@@ -8,35 +8,35 @@
 //
 // For product documentation, see: https://developers.google.com/sheets/
 //
-// Creating a client
+// # Creating a client
 //
 // Usage example:
 //
-//   import "google.golang.org/api/sheets/v4"
-//   ...
-//   ctx := context.Background()
-//   sheetsService, err := sheets.NewService(ctx)
+//	import "google.golang.org/api/sheets/v4"
+//	...
+//	ctx := context.Background()
+//	sheetsService, err := sheets.NewService(ctx)
 //
 // In this example, Google Application Default Credentials are used for authentication.
 //
 // For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
 //
-// Other authentication options
+// # Other authentication options
 //
 // By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
 //
-//   sheetsService, err := sheets.NewService(ctx, option.WithScopes(sheets.SpreadsheetsReadonlyScope))
+//	sheetsService, err := sheets.NewService(ctx, option.WithScopes(sheets.SpreadsheetsReadonlyScope))
 //
 // To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
 //
-//   sheetsService, err := sheets.NewService(ctx, option.WithAPIKey("AIza..."))
+//	sheetsService, err := sheets.NewService(ctx, option.WithAPIKey("AIza..."))
 //
 // To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
 //
-//   config := &oauth2.Config{...}
-//   // ...
-//   token, err := config.Exchange(ctx, ...)
-//   sheetsService, err := sheets.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//	config := &oauth2.Config{...}
+//	// ...
+//	token, err := config.Exchange(ctx, ...)
+//	sheetsService, err := sheets.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
 //
 // See https://godoc.org/google.golang.org/api/option/ for details on options.
 package sheets // import "google.golang.org/api/sheets/v4"
@@ -1037,6 +1037,7 @@ func (s *BandedRange) MarshalJSON() ([]byte, error) {
 // not set.
 type BandingProperties struct {
 	// FirstBandColor: The first color that is alternating. (Required)
+	// Deprecated: Use first_band_color_style.
 	FirstBandColor *Color `json:"firstBandColor,omitempty"`
 
 	// FirstBandColorStyle: The first color that is alternating. (Required)
@@ -1046,7 +1047,7 @@ type BandingProperties struct {
 	// FooterColor: The color of the last row or column. If this field is
 	// not set, the last row or column is filled with either
 	// first_band_color or second_band_color, depending on the color of the
-	// previous row or column.
+	// previous row or column. Deprecated: Use footer_color_style.
 	FooterColor *Color `json:"footerColor,omitempty"`
 
 	// FooterColorStyle: The color of the last row or column. If this field
@@ -1061,7 +1062,7 @@ type BandingProperties struct {
 	// alternate between first_band_color and second_band_color starting
 	// from the second row or column. Otherwise, the first row or column is
 	// filled with first_band_color and the colors proceed to alternate as
-	// they normally would.
+	// they normally would. Deprecated: Use header_color_style.
 	HeaderColor *Color `json:"headerColor,omitempty"`
 
 	// HeaderColorStyle: The color of the first row or column. If this field
@@ -1074,6 +1075,7 @@ type BandingProperties struct {
 	HeaderColorStyle *ColorStyle `json:"headerColorStyle,omitempty"`
 
 	// SecondBandColor: The second color that is alternating. (Required)
+	// Deprecated: Use second_band_color_style.
 	SecondBandColor *Color `json:"secondBandColor,omitempty"`
 
 	// SecondBandColorStyle: The second color that is alternating.
@@ -1122,7 +1124,8 @@ type BaselineValueFormat struct {
 	Description string `json:"description,omitempty"`
 
 	// NegativeColor: Color to be used, in case baseline value represents a
-	// negative change for key value. This field is optional.
+	// negative change for key value. This field is optional. Deprecated:
+	// Use negative_color_style.
 	NegativeColor *Color `json:"negativeColor,omitempty"`
 
 	// NegativeColorStyle: Color to be used, in case baseline value
@@ -1136,7 +1139,8 @@ type BaselineValueFormat struct {
 	Position *TextPosition `json:"position,omitempty"`
 
 	// PositiveColor: Color to be used, in case baseline value represents a
-	// positive change for key value. This field is optional.
+	// positive change for key value. This field is optional. Deprecated:
+	// Use positive_color_style.
 	PositiveColor *Color `json:"positiveColor,omitempty"`
 
 	// PositiveColorStyle: Color to be used, in case baseline value
@@ -1268,6 +1272,7 @@ func (s *BasicChartDomain) MarshalJSON() ([]byte, error) {
 type BasicChartSeries struct {
 	// Color: The color for elements (such as bars, lines, and points)
 	// associated with this series. If empty, a default color is used.
+	// Deprecated: Use color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: The color for elements (such as bars, lines, and points)
@@ -1520,7 +1525,7 @@ func (s *BasicFilter) MarshalJSON() ([]byte, error) {
 // single series data point.
 type BasicSeriesDataPointStyleOverride struct {
 	// Color: Color of the series data point. If empty, the series default
-	// is used.
+	// is used. Deprecated: Use color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: Color of the series data point. If empty, the series
@@ -2510,7 +2515,7 @@ func (s *BooleanRule) MarshalJSON() ([]byte, error) {
 
 // Border: A border along a cell.
 type Border struct {
-	// Color: The color of the border.
+	// Color: The color of the border. Deprecated: Use color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: The color of the border. If color is also set, this field
@@ -2597,7 +2602,8 @@ func (s *Borders) MarshalJSON() ([]byte, error) {
 
 // BubbleChartSpec: A bubble chart.
 type BubbleChartSpec struct {
-	// BubbleBorderColor: The bubble border color.
+	// BubbleBorderColor: The bubble border color. Deprecated: Use
+	// bubble_border_color_style.
 	BubbleBorderColor *Color `json:"bubbleBorderColor,omitempty"`
 
 	// BubbleBorderColorStyle: The bubble border color. If
@@ -2936,7 +2942,8 @@ func (s *CellData) MarshalJSON() ([]byte, error) {
 
 // CellFormat: The format of a cell.
 type CellFormat struct {
-	// BackgroundColor: The background color of the cell.
+	// BackgroundColor: The background color of the cell. Deprecated: Use
+	// background_color_style.
 	BackgroundColor *Color `json:"backgroundColor,omitempty"`
 
 	// BackgroundColorStyle: The background color of the cell. If
@@ -2958,7 +2965,7 @@ type CellFormat struct {
 	//   "RIGHT" - The text is explicitly aligned to the right of the cell.
 	HorizontalAlignment string `json:"horizontalAlignment,omitempty"`
 
-	// HyperlinkDisplayType: How a hyperlink, if it exists, should be
+	// HyperlinkDisplayType: If one exists, how a hyperlink should be
 	// displayed in the cell.
 	//
 	// Possible values:
@@ -2987,12 +2994,12 @@ type CellFormat struct {
 	TextDirection string `json:"textDirection,omitempty"`
 
 	// TextFormat: The format of the text in the cell (unless overridden by
-	// a format run). Setting a cell-level link here will clear the cell's
-	// existing links. Setting the link field in a TextFormatRun will take
+	// a format run). Setting a cell-level link here clears the cell's
+	// existing links. Setting the link field in a TextFormatRun takes
 	// precedence over the cell-level link.
 	TextFormat *TextFormat `json:"textFormat,omitempty"`
 
-	// TextRotation: The rotation applied to text in a cell
+	// TextRotation: The rotation applied to text in the cell.
 	TextRotation *TextRotation `json:"textRotation,omitempty"`
 
 	// VerticalAlignment: The vertical alignment of the value in the cell.
@@ -3403,7 +3410,7 @@ type ChartSpec struct {
 	AltText string `json:"altText,omitempty"`
 
 	// BackgroundColor: The background color of the entire chart. Not
-	// applicable to Org charts.
+	// applicable to Org charts. Deprecated: Use background_color_style.
 	BackgroundColor *Color `json:"backgroundColor,omitempty"`
 
 	// BackgroundColorStyle: The background color of the entire chart. Not
@@ -3637,12 +3644,12 @@ func (s *ClearValuesResponse) MarshalJSON() ([]byte, error) {
 // if (!('alpha' in rgb_color)) { return rgbToCssColor(red, green,
 // blue); } var alphaFrac = rgb_color.alpha.value || 0.0; var rgbParams
 // = [red, green, blue].join(','); return ['rgba(', rgbParams, ',',
-// alphaFrac, ')'].join(''); }; var rgbToCssColor = function(red, green,
+// alphaFrac, ')'].join(”); }; var rgbToCssColor = function(red, green,
 // blue) { var rgbNumber = new Number((red << 16) | (green << 8) |
 // blue); var hexString = rgbNumber.toString(16); var missingZeros = 6 -
 // hexString.length; var resultBuilder = ['#']; for (var i = 0; i <
 // missingZeros; i++) { resultBuilder.push('0'); }
-// resultBuilder.push(hexString); return resultBuilder.join(''); }; //
+// resultBuilder.push(hexString); return resultBuilder.join(”); }; //
 // ...
 type Color struct {
 	// Alpha: The fraction of this color that should be applied to the
@@ -3714,7 +3721,11 @@ func (s *Color) UnmarshalJSON(data []byte) error {
 
 // ColorStyle: A color value.
 type ColorStyle struct {
-	// RgbColor: RGB color.
+	// RgbColor: RGB color. The `alpha`
+	// (/sheets/api/reference/rest/v4/spreadsheets/other#Color.FIELDS.alpha)
+	// value in the `Color`
+	// (/sheets/api/reference/rest/v4/spreadsheets/other#color) object isn't
+	// generally supported.
 	RgbColor *Color `json:"rgbColor,omitempty"`
 
 	// ThemeColor: Theme color.
@@ -6106,7 +6117,7 @@ func (s *EmbeddedChart) MarshalJSON() ([]byte, error) {
 
 // EmbeddedObjectBorder: A border along an embedded object.
 type EmbeddedObjectBorder struct {
-	// Color: The color of the border.
+	// Color: The color of the border. Deprecated: Use color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: The color of the border. If color is also set, this field
@@ -6291,7 +6302,8 @@ type FilterCriteria struct {
 
 	// VisibleBackgroundColor: The background fill color to filter by; only
 	// cells with this fill color are shown. Mutually exclusive with
-	// visible_foreground_color.
+	// visible_foreground_color. Deprecated: Use
+	// visible_background_color_style.
 	VisibleBackgroundColor *Color `json:"visibleBackgroundColor,omitempty"`
 
 	// VisibleBackgroundColorStyle: The background fill color to filter by;
@@ -6303,7 +6315,8 @@ type FilterCriteria struct {
 
 	// VisibleForegroundColor: The foreground color to filter by; only cells
 	// with this foreground color are shown. Mutually exclusive with
-	// visible_background_color.
+	// visible_background_color. Deprecated: Use
+	// visible_foreground_color_style.
 	VisibleForegroundColor *Color `json:"visibleForegroundColor,omitempty"`
 
 	// VisibleForegroundColorStyle: The foreground color to filter by; only
@@ -6948,7 +6961,7 @@ func (s *HistogramRule) UnmarshalJSON(data []byte) error {
 // data.
 type HistogramSeries struct {
 	// BarColor: The color of the column representing this series in each
-	// bucket. This field is optional.
+	// bucket. This field is optional. Deprecated: Use bar_color_style.
 	BarColor *Color `json:"barColor,omitempty"`
 
 	// BarColorStyle: The color of the column representing this series in
@@ -7069,7 +7082,8 @@ func (s *InsertRangeRequest) MarshalJSON() ([]byte, error) {
 // conditional format. These pin the gradient color scale according to
 // the color, type and value chosen.
 type InterpolationPoint struct {
-	// Color: The color this interpolation point should use.
+	// Color: The color this interpolation point should use. Deprecated: Use
+	// color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: The color this interpolation point should use. If color
@@ -7642,7 +7656,8 @@ type OrgChartSpec struct {
 	// chart. Labels must be unique.
 	Labels *ChartData `json:"labels,omitempty"`
 
-	// NodeColor: The color of the org chart nodes.
+	// NodeColor: The color of the org chart nodes. Deprecated: Use
+	// node_color_style.
 	NodeColor *Color `json:"nodeColor,omitempty"`
 
 	// NodeColorStyle: The color of the org chart nodes. If node_color is
@@ -7664,6 +7679,7 @@ type OrgChartSpec struct {
 	ParentLabels *ChartData `json:"parentLabels,omitempty"`
 
 	// SelectedNodeColor: The color of the selected org chart nodes.
+	// Deprecated: Use selected_node_color_style.
 	SelectedNodeColor *Color `json:"selectedNodeColor,omitempty"`
 
 	// SelectedNodeColorStyle: The color of the selected org chart nodes. If
@@ -9388,7 +9404,8 @@ type SheetProperties struct {
 	// shows the preview of data.
 	SheetType string `json:"sheetType,omitempty"`
 
-	// TabColor: The color of the tab in the UI.
+	// TabColor: The color of the tab in the UI. Deprecated: Use
+	// tab_color_style.
 	TabColor *Color `json:"tabColor,omitempty"`
 
 	// TabColorStyle: The color of the tab in the UI. If tab_color is also
@@ -9469,7 +9486,8 @@ type SlicerSpec struct {
 	// If not set, default to `True`.
 	ApplyToPivotTables bool `json:"applyToPivotTables,omitempty"`
 
-	// BackgroundColor: The background color of the slicer.
+	// BackgroundColor: The background color of the slicer. Deprecated: Use
+	// background_color_style.
 	BackgroundColor *Color `json:"backgroundColor,omitempty"`
 
 	// BackgroundColorStyle: The background color of the slicer. If
@@ -9566,7 +9584,7 @@ func (s *SortRangeRequest) MarshalJSON() ([]byte, error) {
 type SortSpec struct {
 	// BackgroundColor: The background fill color to sort by; cells with
 	// this fill color are sorted to the top. Mutually exclusive with
-	// foreground_color.
+	// foreground_color. Deprecated: Use background_color_style.
 	BackgroundColor *Color `json:"backgroundColor,omitempty"`
 
 	// BackgroundColorStyle: The background fill color to sort by; cells
@@ -9583,7 +9601,7 @@ type SortSpec struct {
 
 	// ForegroundColor: The foreground color to sort by; cells with this
 	// foreground color are sorted to the top. Mutually exclusive with
-	// background_color.
+	// background_color. Deprecated: Use foreground_color_style.
 	ForegroundColor *Color `json:"foregroundColor,omitempty"`
 
 	// ForegroundColorStyle: The foreground color to sort by; cells with
@@ -9835,7 +9853,8 @@ type TextFormat struct {
 	// FontSize: The size of the font.
 	FontSize int64 `json:"fontSize,omitempty"`
 
-	// ForegroundColor: The foreground color of the text.
+	// ForegroundColor: The foreground color of the text. Deprecated: Use
+	// foreground_color_style.
 	ForegroundColor *Color `json:"foregroundColor,omitempty"`
 
 	// ForegroundColorStyle: The foreground color of the text. If
@@ -10130,7 +10149,7 @@ func (s *TimeOfDay) MarshalJSON() ([]byte, error) {
 type TreemapChartColorScale struct {
 	// MaxValueColor: The background color for cells with a color value
 	// greater than or equal to maxValue. Defaults to #109618 if not
-	// specified.
+	// specified. Deprecated: Use max_value_color_style.
 	MaxValueColor *Color `json:"maxValueColor,omitempty"`
 
 	// MaxValueColorStyle: The background color for cells with a color value
@@ -10141,7 +10160,7 @@ type TreemapChartColorScale struct {
 
 	// MidValueColor: The background color for cells with a color value at
 	// the midpoint between minValue and maxValue. Defaults to #efe6dc if
-	// not specified.
+	// not specified. Deprecated: Use mid_value_color_style.
 	MidValueColor *Color `json:"midValueColor,omitempty"`
 
 	// MidValueColorStyle: The background color for cells with a color value
@@ -10152,6 +10171,7 @@ type TreemapChartColorScale struct {
 
 	// MinValueColor: The background color for cells with a color value less
 	// than or equal to minValue. Defaults to #dc3912 if not specified.
+	// Deprecated: Use min_value_color_style.
 	MinValueColor *Color `json:"minValueColor,omitempty"`
 
 	// MinValueColorStyle: The background color for cells with a color value
@@ -10161,6 +10181,7 @@ type TreemapChartColorScale struct {
 
 	// NoDataColor: The background color for cells that have no color data
 	// associated with them. Defaults to #000000 if not specified.
+	// Deprecated: Use no_data_color_style.
 	NoDataColor *Color `json:"noDataColor,omitempty"`
 
 	// NoDataColorStyle: The background color for cells that have no color
@@ -10213,7 +10234,8 @@ type TreemapChartSpec struct {
 	// have noDataColor as their background color.
 	ColorScale *TreemapChartColorScale `json:"colorScale,omitempty"`
 
-	// HeaderColor: The background color for header cells.
+	// HeaderColor: The background color for header cells. Deprecated: Use
+	// header_color_style.
 	HeaderColor *Color `json:"headerColor,omitempty"`
 
 	// HeaderColorStyle: The background color for header cells. If
@@ -11355,7 +11377,7 @@ func (s *ValueRange) MarshalJSON() ([]byte, error) {
 
 // WaterfallChartColumnStyle: Styles for a waterfall chart column.
 type WaterfallChartColumnStyle struct {
-	// Color: The color of the column.
+	// Color: The color of the column. Deprecated: Use color_style.
 	Color *Color `json:"color,omitempty"`
 
 	// ColorStyle: The color of the column. If color is also set, this field
@@ -12529,9 +12551,9 @@ type SpreadsheetsSheetsCopyToCall struct {
 // CopyTo: Copies a single sheet from a spreadsheet to another
 // spreadsheet. Returns the properties of the newly created sheet.
 //
-// - sheetId: The ID of the sheet to copy.
-// - spreadsheetId: The ID of the spreadsheet containing the sheet to
-//   copy.
+//   - sheetId: The ID of the sheet to copy.
+//   - spreadsheetId: The ID of the spreadsheet containing the sheet to
+//     copy.
 func (r *SpreadsheetsSheetsService) CopyTo(spreadsheetId string, sheetId int64, copysheettoanotherspreadsheetrequest *CopySheetToAnotherSpreadsheetRequest) *SpreadsheetsSheetsCopyToCall {
 	c := &SpreadsheetsSheetsCopyToCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.spreadsheetId = spreadsheetId
@@ -12695,10 +12717,10 @@ type SpreadsheetsValuesAppendCall struct {
 // the sheet (column-wise or row-wise), it does not influence what cell
 // the data starts being written to.
 //
-// - range: The A1 notation (/sheets/api/guides/concepts#cell) of a
-//   range to search for a logical table of data. Values are appended
-//   after the last row of the table.
-// - spreadsheetId: The ID of the spreadsheet to update.
+//   - range: The A1 notation (/sheets/api/guides/concepts#cell) of a
+//     range to search for a logical table of data. Values are appended
+//     after the last row of the table.
+//   - spreadsheetId: The ID of the spreadsheet to update.
 func (r *SpreadsheetsValuesService) Append(spreadsheetId string, range_ string, valuerange *ValueRange) *SpreadsheetsValuesAppendCall {
 	c := &SpreadsheetsValuesAppendCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.spreadsheetId = spreadsheetId
@@ -12720,10 +12742,13 @@ func (c *SpreadsheetsValuesAppendCall) IncludeValuesInResponse(includeValuesInRe
 // the input data should be inserted.
 //
 // Possible values:
-//   "OVERWRITE" - The new data overwrites existing data in the areas it
+//
+//	"OVERWRITE" - The new data overwrites existing data in the areas it
+//
 // is written. (Note: adding data to the end of the sheet will still
 // insert new rows or columns so the data can be written.)
-//   "INSERT_ROWS" - Rows are inserted for the new data.
+//
+//	"INSERT_ROWS" - Rows are inserted for the new data.
 func (c *SpreadsheetsValuesAppendCall) InsertDataOption(insertDataOption string) *SpreadsheetsValuesAppendCall {
 	c.urlParams_.Set("insertDataOption", insertDataOption)
 	return c
@@ -12736,7 +12761,9 @@ func (c *SpreadsheetsValuesAppendCall) InsertDataOption(insertDataOption string)
 // render option is SERIAL_NUMBER.
 //
 // Possible values:
-//   "SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
+//	"SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
 // fields to be output as doubles in "serial number" format, as
 // popularized by Lotus 1-2-3. The whole number portion of the value
 // (left of the decimal) counts the days since December 30th 1899. The
@@ -12745,7 +12772,9 @@ func (c *SpreadsheetsValuesAppendCall) InsertDataOption(insertDataOption string)
 // 2.5, 2 because it's 2 days after December 30th 1899, and .5 because
 // noon is half a day. February 1st 1900 at 3pm would be 33.625. This
 // correctly treats the year 1900 as not a leap year.
-//   "FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
+//	"FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
 // fields to be output as strings in their given number format (which
 // depends on the spreadsheet locale).
 func (c *SpreadsheetsValuesAppendCall) ResponseDateTimeRenderOption(responseDateTimeRenderOption string) *SpreadsheetsValuesAppendCall {
@@ -12758,15 +12787,21 @@ func (c *SpreadsheetsValuesAppendCall) ResponseDateTimeRenderOption(responseDate
 // should be rendered. The default render option is FORMATTED_VALUE.
 //
 // Possible values:
-//   "FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
+//	"FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
 // reply according to the cell's formatting. Formatting is based on the
 // spreadsheet's locale, not the requesting user's locale. For example,
 // if `A1` is `1.23` and `A2` is `=A1` and formatted as currency, then
 // `A2` would return "$1.23".
-//   "UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
+//	"UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
 // in the reply. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then `A2` would return the number `1.23`.
-//   "FORMULA" - Values will not be calculated. The reply will include
+//
+//	"FORMULA" - Values will not be calculated. The reply will include
+//
 // the formulas. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then A2 would return "=A1".
 func (c *SpreadsheetsValuesAppendCall) ResponseValueRenderOption(responseValueRenderOption string) *SpreadsheetsValuesAppendCall {
@@ -12778,11 +12813,17 @@ func (c *SpreadsheetsValuesAppendCall) ResponseValueRenderOption(responseValueRe
 // the input data should be interpreted.
 //
 // Possible values:
-//   "INPUT_VALUE_OPTION_UNSPECIFIED" - Default input value. This value
+//
+//	"INPUT_VALUE_OPTION_UNSPECIFIED" - Default input value. This value
+//
 // must not be used.
-//   "RAW" - The values the user has entered will not be parsed and will
+//
+//	"RAW" - The values the user has entered will not be parsed and will
+//
 // be stored as-is.
-//   "USER_ENTERED" - The values will be parsed as if the user typed
+//
+//	"USER_ENTERED" - The values will be parsed as if the user typed
+//
 // them into the UI. Numbers will stay as numbers, but strings may be
 // converted to numbers, dates, etc. following the same rules that are
 // applied when entering text into a cell via the Google Sheets UI.
@@ -13303,7 +13344,9 @@ func (r *SpreadsheetsValuesService) BatchGet(spreadsheetId string) *Spreadsheets
 // FORMATTED_VALUE. The default dateTime render option is SERIAL_NUMBER.
 //
 // Possible values:
-//   "SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
+//	"SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
 // fields to be output as doubles in "serial number" format, as
 // popularized by Lotus 1-2-3. The whole number portion of the value
 // (left of the decimal) counts the days since December 30th 1899. The
@@ -13312,7 +13355,9 @@ func (r *SpreadsheetsValuesService) BatchGet(spreadsheetId string) *Spreadsheets
 // 2.5, 2 because it's 2 days after December 30th 1899, and .5 because
 // noon is half a day. February 1st 1900 at 3pm would be 33.625. This
 // correctly treats the year 1900 as not a leap year.
-//   "FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
+//	"FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
 // fields to be output as strings in their given number format (which
 // depends on the spreadsheet locale).
 func (c *SpreadsheetsValuesBatchGetCall) DateTimeRenderOption(dateTimeRenderOption string) *SpreadsheetsValuesBatchGetCall {
@@ -13328,9 +13373,10 @@ func (c *SpreadsheetsValuesBatchGetCall) DateTimeRenderOption(dateTimeRenderOpti
 // `[[1,3],[2,4]]`.
 //
 // Possible values:
-//   "DIMENSION_UNSPECIFIED" - The default value, do not use.
-//   "ROWS" - Operates on the rows of a sheet.
-//   "COLUMNS" - Operates on the columns of a sheet.
+//
+//	"DIMENSION_UNSPECIFIED" - The default value, do not use.
+//	"ROWS" - Operates on the rows of a sheet.
+//	"COLUMNS" - Operates on the columns of a sheet.
 func (c *SpreadsheetsValuesBatchGetCall) MajorDimension(majorDimension string) *SpreadsheetsValuesBatchGetCall {
 	c.urlParams_.Set("majorDimension", majorDimension)
 	return c
@@ -13349,15 +13395,21 @@ func (c *SpreadsheetsValuesBatchGetCall) Ranges(ranges ...string) *SpreadsheetsV
 // option is ValueRenderOption.FORMATTED_VALUE.
 //
 // Possible values:
-//   "FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
+//	"FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
 // reply according to the cell's formatting. Formatting is based on the
 // spreadsheet's locale, not the requesting user's locale. For example,
 // if `A1` is `1.23` and `A2` is `=A1` and formatted as currency, then
 // `A2` would return "$1.23".
-//   "UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
+//	"UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
 // in the reply. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then `A2` would return the number `1.23`.
-//   "FORMULA" - Values will not be calculated. The reply will include
+//
+//	"FORMULA" - Values will not be calculated. The reply will include
+//
 // the formulas. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then A2 would return "=A1".
 func (c *SpreadsheetsValuesBatchGetCall) ValueRenderOption(valueRenderOption string) *SpreadsheetsValuesBatchGetCall {
@@ -13998,9 +14050,9 @@ type SpreadsheetsValuesClearCall struct {
 // properties of the cell (such as formatting, data validation, etc..)
 // are kept.
 //
-// - range: The A1 notation or R1C1 notation
-//   (/sheets/api/guides/concepts#cell) of the values to clear.
-// - spreadsheetId: The ID of the spreadsheet to update.
+//   - range: The A1 notation or R1C1 notation
+//     (/sheets/api/guides/concepts#cell) of the values to clear.
+//   - spreadsheetId: The ID of the spreadsheet to update.
 func (r *SpreadsheetsValuesService) Clear(spreadsheetId string, range_ string, clearvaluesrequest *ClearValuesRequest) *SpreadsheetsValuesClearCall {
 	c := &SpreadsheetsValuesClearCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.spreadsheetId = spreadsheetId
@@ -14154,10 +14206,10 @@ type SpreadsheetsValuesGetCall struct {
 // Get: Returns a range of values from a spreadsheet. The caller must
 // specify the spreadsheet ID and a range.
 //
-// - range: The A1 notation or R1C1 notation
-//   (/sheets/api/guides/concepts#cell) of the range to retrieve values
-//   from.
-// - spreadsheetId: The ID of the spreadsheet to retrieve data from.
+//   - range: The A1 notation or R1C1 notation
+//     (/sheets/api/guides/concepts#cell) of the range to retrieve values
+//     from.
+//   - spreadsheetId: The ID of the spreadsheet to retrieve data from.
 func (r *SpreadsheetsValuesService) Get(spreadsheetId string, range_ string) *SpreadsheetsValuesGetCall {
 	c := &SpreadsheetsValuesGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.spreadsheetId = spreadsheetId
@@ -14171,7 +14223,9 @@ func (r *SpreadsheetsValuesService) Get(spreadsheetId string, range_ string) *Sp
 // FORMATTED_VALUE. The default dateTime render option is SERIAL_NUMBER.
 //
 // Possible values:
-//   "SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
+//	"SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
 // fields to be output as doubles in "serial number" format, as
 // popularized by Lotus 1-2-3. The whole number portion of the value
 // (left of the decimal) counts the days since December 30th 1899. The
@@ -14180,7 +14234,9 @@ func (r *SpreadsheetsValuesService) Get(spreadsheetId string, range_ string) *Sp
 // 2.5, 2 because it's 2 days after December 30th 1899, and .5 because
 // noon is half a day. February 1st 1900 at 3pm would be 33.625. This
 // correctly treats the year 1900 as not a leap year.
-//   "FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
+//	"FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
 // fields to be output as strings in their given number format (which
 // depends on the spreadsheet locale).
 func (c *SpreadsheetsValuesGetCall) DateTimeRenderOption(dateTimeRenderOption string) *SpreadsheetsValuesGetCall {
@@ -14190,15 +14246,16 @@ func (c *SpreadsheetsValuesGetCall) DateTimeRenderOption(dateTimeRenderOption st
 
 // MajorDimension sets the optional parameter "majorDimension": The
 // major dimension that results should use. For example, if the
-// spreadsheet data is: `A1=1,B1=2,A2=3,B2=4`, then requesting
-// `range=A1:B2,majorDimension=ROWS` returns `[[1,2],[3,4]]`, whereas
-// requesting `range=A1:B2,majorDimension=COLUMNS` returns
-// `[[1,3],[2,4]]`.
+// spreadsheet data in Sheet1 is: `A1=1,B1=2,A2=3,B2=4`, then requesting
+// `range=Sheet1!A1:B2?majorDimension=ROWS` returns `[[1,2],[3,4]]`,
+// whereas requesting `range=Sheet1!A1:B2?majorDimension=COLUMNS`
+// returns `[[1,3],[2,4]]`.
 //
 // Possible values:
-//   "DIMENSION_UNSPECIFIED" - The default value, do not use.
-//   "ROWS" - Operates on the rows of a sheet.
-//   "COLUMNS" - Operates on the columns of a sheet.
+//
+//	"DIMENSION_UNSPECIFIED" - The default value, do not use.
+//	"ROWS" - Operates on the rows of a sheet.
+//	"COLUMNS" - Operates on the columns of a sheet.
 func (c *SpreadsheetsValuesGetCall) MajorDimension(majorDimension string) *SpreadsheetsValuesGetCall {
 	c.urlParams_.Set("majorDimension", majorDimension)
 	return c
@@ -14209,15 +14266,21 @@ func (c *SpreadsheetsValuesGetCall) MajorDimension(majorDimension string) *Sprea
 // option is FORMATTED_VALUE.
 //
 // Possible values:
-//   "FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
+//	"FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
 // reply according to the cell's formatting. Formatting is based on the
 // spreadsheet's locale, not the requesting user's locale. For example,
 // if `A1` is `1.23` and `A2` is `=A1` and formatted as currency, then
 // `A2` would return "$1.23".
-//   "UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
+//	"UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
 // in the reply. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then `A2` would return the number `1.23`.
-//   "FORMULA" - Values will not be calculated. The reply will include
+//
+//	"FORMULA" - Values will not be calculated. The reply will include
+//
 // the formulas. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then A2 would return "=A1".
 func (c *SpreadsheetsValuesGetCall) ValueRenderOption(valueRenderOption string) *SpreadsheetsValuesGetCall {
@@ -14348,7 +14411,7 @@ func (c *SpreadsheetsValuesGetCall) Do(opts ...googleapi.CallOption) (*ValueRang
 	//       "type": "string"
 	//     },
 	//     "majorDimension": {
-	//       "description": "The major dimension that results should use. For example, if the spreadsheet data is: `A1=1,B1=2,A2=3,B2=4`, then requesting `range=A1:B2,majorDimension=ROWS` returns `[[1,2],[3,4]]`, whereas requesting `range=A1:B2,majorDimension=COLUMNS` returns `[[1,3],[2,4]]`.",
+	//       "description": "The major dimension that results should use. For example, if the spreadsheet data in Sheet1 is: `A1=1,B1=2,A2=3,B2=4`, then requesting `range=Sheet1!A1:B2?majorDimension=ROWS` returns `[[1,2],[3,4]]`, whereas requesting `range=Sheet1!A1:B2?majorDimension=COLUMNS` returns `[[1,3],[2,4]]`.",
 	//       "enum": [
 	//         "DIMENSION_UNSPECIFIED",
 	//         "ROWS",
@@ -14420,9 +14483,9 @@ type SpreadsheetsValuesUpdateCall struct {
 // Update: Sets values in a range of a spreadsheet. The caller must
 // specify the spreadsheet ID, range, and a valueInputOption.
 //
-// - range: The A1 notation (/sheets/api/guides/concepts#cell) of the
-//   values to update.
-// - spreadsheetId: The ID of the spreadsheet to update.
+//   - range: The A1 notation (/sheets/api/guides/concepts#cell) of the
+//     values to update.
+//   - spreadsheetId: The ID of the spreadsheet to update.
 func (r *SpreadsheetsValuesService) Update(spreadsheetId string, range_ string, valuerange *ValueRange) *SpreadsheetsValuesUpdateCall {
 	c := &SpreadsheetsValuesUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.spreadsheetId = spreadsheetId
@@ -14450,7 +14513,9 @@ func (c *SpreadsheetsValuesUpdateCall) IncludeValuesInResponse(includeValuesInRe
 // render option is SERIAL_NUMBER.
 //
 // Possible values:
-//   "SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
+//	"SERIAL_NUMBER" - Instructs date, time, datetime, and duration
+//
 // fields to be output as doubles in "serial number" format, as
 // popularized by Lotus 1-2-3. The whole number portion of the value
 // (left of the decimal) counts the days since December 30th 1899. The
@@ -14459,7 +14524,9 @@ func (c *SpreadsheetsValuesUpdateCall) IncludeValuesInResponse(includeValuesInRe
 // 2.5, 2 because it's 2 days after December 30th 1899, and .5 because
 // noon is half a day. February 1st 1900 at 3pm would be 33.625. This
 // correctly treats the year 1900 as not a leap year.
-//   "FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
+//	"FORMATTED_STRING" - Instructs date, time, datetime, and duration
+//
 // fields to be output as strings in their given number format (which
 // depends on the spreadsheet locale).
 func (c *SpreadsheetsValuesUpdateCall) ResponseDateTimeRenderOption(responseDateTimeRenderOption string) *SpreadsheetsValuesUpdateCall {
@@ -14472,15 +14539,21 @@ func (c *SpreadsheetsValuesUpdateCall) ResponseDateTimeRenderOption(responseDate
 // should be rendered. The default render option is FORMATTED_VALUE.
 //
 // Possible values:
-//   "FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
+//	"FORMATTED_VALUE" - Values will be calculated & formatted in the
+//
 // reply according to the cell's formatting. Formatting is based on the
 // spreadsheet's locale, not the requesting user's locale. For example,
 // if `A1` is `1.23` and `A2` is `=A1` and formatted as currency, then
 // `A2` would return "$1.23".
-//   "UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
+//	"UNFORMATTED_VALUE" - Values will be calculated, but not formatted
+//
 // in the reply. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then `A2` would return the number `1.23`.
-//   "FORMULA" - Values will not be calculated. The reply will include
+//
+//	"FORMULA" - Values will not be calculated. The reply will include
+//
 // the formulas. For example, if `A1` is `1.23` and `A2` is `=A1` and
 // formatted as currency, then A2 would return "=A1".
 func (c *SpreadsheetsValuesUpdateCall) ResponseValueRenderOption(responseValueRenderOption string) *SpreadsheetsValuesUpdateCall {
@@ -14492,11 +14565,17 @@ func (c *SpreadsheetsValuesUpdateCall) ResponseValueRenderOption(responseValueRe
 // the input data should be interpreted.
 //
 // Possible values:
-//   "INPUT_VALUE_OPTION_UNSPECIFIED" - Default input value. This value
+//
+//	"INPUT_VALUE_OPTION_UNSPECIFIED" - Default input value. This value
+//
 // must not be used.
-//   "RAW" - The values the user has entered will not be parsed and will
+//
+//	"RAW" - The values the user has entered will not be parsed and will
+//
 // be stored as-is.
-//   "USER_ENTERED" - The values will be parsed as if the user typed
+//
+//	"USER_ENTERED" - The values will be parsed as if the user typed
+//
 // them into the UI. Numbers will stay as numbers, but strings may be
 // converted to numbers, dates, etc. following the same rules that are
 // applied when entering text into a cell via the Google Sheets UI.
