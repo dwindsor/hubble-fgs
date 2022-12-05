@@ -14,7 +14,7 @@ require (
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
-	github.com/google/gops v0.3.25
+	github.com/google/gops v0.3.26
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/mennanov/fieldmask-utils v0.7.1
