@@ -30,7 +30,6 @@ jobs:
           version: v1.47.0
           args: --config=.golangci.yml --verbose
           only-new-issues: false
-          skip-go-installation: true
           skip-pkg-cache: true
           skip-build-cache: true
       - name: Check gofmt formatting
