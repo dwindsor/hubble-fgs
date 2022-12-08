@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 var (
@@ -12,7 +12,7 @@ var (
 	// expect in the system or more precisely the number of network
 	// namespaces.
 	netnsDefaultCacheSize = 256
-	cache                 *lru.Cache
+	cache                 *lru.Cache[uint64, *tetragon.Pod]
 )
 
 func init() {
@@ -26,7 +26,7 @@ func NewCache() error {
 		return nil
 	}
 
-	cache, err = lru.New(netnsDefaultCacheSize)
+	cache, err = lru.New[uint64, *tetragon.Pod](netnsDefaultCacheSize)
 	return err
 }
 
@@ -35,7 +35,7 @@ func GetPod(netns uint64) (*tetragon.Pod, error) {
 	if !ok {
 		return nil, fmt.Errorf("no dns entry found")
 	}
-	return entry.(*tetragon.Pod), nil
+	return entry, nil
 }
 
 func AddNetNs(netns uint64, pod *tetragon.Pod) {

@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Cache struct {
-	cache *lru.Cache
+	cache *lru.Cache[string, []string]
 }
 
 var (
@@ -27,7 +27,7 @@ func NewCache() (*Cache, error) {
 		return cache, nil
 	}
 
-	lru, err := lru.New(dnsDefaultCacheSize)
+	lru, err := lru.New[string, []string](dnsDefaultCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (c *Cache) GetIp(ip string) ([]string, error) {
 	if !ok {
 		return nil, fmt.Errorf("no dns entry found")
 	}
-	return entry.([]string), nil
+	return entry, nil
 }
 
 func (c *Cache) AddIp(dns *tetragon.DnsInfo) {

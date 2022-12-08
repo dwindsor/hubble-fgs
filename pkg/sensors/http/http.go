@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
@@ -35,7 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
@@ -45,8 +46,8 @@ var (
 	filters [128]byte
 
 	// Runtime aggregation of request/response
-	aggregate          *lru.Cache
-	moreBytes          *lru.Cache
+	aggregate          *lru.Cache[api.HttpKey, *httpproto.MsgHttpEventUnix]
+	moreBytes          *lru.Cache[api.HttpKey, *httpproto.MsgHttpEventUnix]
 	aggregateEnable    bool
 	moreBytesEnable    bool
 	cacheSize          = 1024
@@ -54,7 +55,7 @@ var (
 
 	// The per-connection and per-direction HTTP/2 state that is required to decompress the
 	// header frames.
-	http2StateCache     *lru.Cache
+	http2StateCache     *lru.Cache[networkapi.MsgIPTuple, *http2State]
 	http2StateCacheSize = 16384
 
 	// Number of frames we can queue. If a HTTP/2 frame with an event sequence number that is
@@ -163,7 +164,7 @@ func (skSkbParser *skSkbParserSensor) SpecHandler(raw interface{}) (*sensors.Sen
 func init() {
 	var err error
 
-	moreBytes, err = lru.New(moreBytesCacheSize)
+	moreBytes, err = lru.New[api.HttpKey, *httpproto.MsgHttpEventUnix](moreBytesCacheSize)
 	if err != nil {
 		logger.GetLogger().Errorf("HTTP More bytes cache failed, may drop data: %s\n", err)
 		moreBytesEnable = false
@@ -171,7 +172,7 @@ func init() {
 		moreBytesEnable = true
 	}
 
-	aggregate, err = lru.New(cacheSize)
+	aggregate, err = lru.New[api.HttpKey, *httpproto.MsgHttpEventUnix](cacheSize)
 	if err != nil {
 		logger.GetLogger().Errorf("HTTP aggregation disabled: %s\n", err)
 		aggregateEnable = false
@@ -179,7 +180,7 @@ func init() {
 		aggregateEnable = true
 	}
 
-	http2StateCache, err = lru.New(http2StateCacheSize)
+	http2StateCache, err = lru.New[networkapi.MsgIPTuple, *http2State](http2StateCacheSize)
 	if err != nil {
 		logger.GetLogger().Fatal(err)
 	}
@@ -359,7 +360,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	if moreBytesEnable {
 		entry, ok := moreBytes.Get(key)
 		if ok {
-			unix = entry.(*httpproto.MsgHttpEventUnix)
+			unix = entry
 			moreBytes.Remove(key)
 			usedMoreBytes |= readerhttp.HttpMultiMessage
 		}
@@ -433,26 +434,24 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 			aggregate.Add(key, unix)
 			return nil, nil
 		}
-		r := entry.(*httpproto.MsgHttpEventUnix)
-		unix.Request.Code = r.Request.Code
-		unix.Request.Reason = r.Request.Reason
-		unix.Request.RespContentLength = r.Request.RespContentLength
-		unix.Request.RespTransferEncoding = r.Request.RespTransferEncoding
+		unix.Request.Code = entry.Request.Code
+		unix.Request.Reason = entry.Request.Reason
+		unix.Request.RespContentLength = entry.Request.RespContentLength
+		unix.Request.RespTransferEncoding = entry.Request.RespTransferEncoding
 		aggregate.Remove(key)
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
-			r := entry.(*httpproto.MsgHttpEventUnix)
-			unix.Request.Method = r.Request.Method
-			unix.Request.Uri = r.Request.Uri
-			unix.Request.Host = r.Request.Host
-			unix.Request.Protocol = r.Request.Protocol
-			unix.Request.UserAgent = r.Request.UserAgent
-			unix.Request.ContentLength = r.Request.ContentLength
-			unix.Request.TransferEncoding = r.Request.TransferEncoding
-			unix.Request.Ktime = r.Common.Ktime
-			unix.Request.FlagsResponse = r.Request.Flags | usedMoreBytes
-			unix.ProcessKey = r.ProcessKey
+			unix.Request.Method = entry.Request.Method
+			unix.Request.Uri = entry.Request.Uri
+			unix.Request.Host = entry.Request.Host
+			unix.Request.Protocol = entry.Request.Protocol
+			unix.Request.UserAgent = entry.Request.UserAgent
+			unix.Request.ContentLength = entry.Request.ContentLength
+			unix.Request.TransferEncoding = entry.Request.TransferEncoding
+			unix.Request.Ktime = entry.Common.Ktime
+			unix.Request.FlagsResponse = entry.Request.Flags | usedMoreBytes
+			unix.ProcessKey = entry.ProcessKey
 			aggregate.Remove(key)
 		} else {
 			/* Response seen before request, stash the response and wait for request. */
@@ -472,11 +471,8 @@ type http2State struct {
 }
 
 func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
-
-	var state *http2State
-	if x, ok := http2StateCache.Get(m.Tuple); ok {
-		state = x.(*http2State)
-	} else {
+	state, ok := http2StateCache.Get(m.Tuple)
+	if !ok {
 		reader := bytes.NewReader(nil)
 		state = &http2State{
 			reader:     reader,
@@ -593,22 +589,20 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 			aggregate.Add(key, unix)
 			return false
 		}
-		r := entry.(*httpproto.MsgHttpEventUnix)
-		unix.Request.Code = r.Request.Code
-		unix.Request.Reason = r.Request.Reason
-		unix.Request.RespContentLength = r.Request.RespContentLength
+		unix.Request.Code = entry.Request.Code
+		unix.Request.Reason = entry.Request.Reason
+		unix.Request.RespContentLength = entry.Request.RespContentLength
 		aggregate.Remove(key)
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
-			r := entry.(*httpproto.MsgHttpEventUnix)
-			unix.Request.Method = r.Request.Method
-			unix.Request.Uri = r.Request.Uri
-			unix.Request.Host = r.Request.Host
-			unix.Request.UserAgent = r.Request.UserAgent
-			unix.Request.Ktime = r.Common.Ktime
-			unix.Request.ContentLength = r.Request.ContentLength
-			unix.ProcessKey = r.ProcessKey
+			unix.Request.Method = entry.Request.Method
+			unix.Request.Uri = entry.Request.Uri
+			unix.Request.Host = entry.Request.Host
+			unix.Request.UserAgent = entry.Request.UserAgent
+			unix.Request.Ktime = entry.Common.Ktime
+			unix.Request.ContentLength = entry.Request.ContentLength
+			unix.ProcessKey = entry.ProcessKey
 			aggregate.Remove(key)
 		} else {
 			/* Response seen before request, stash the response and wait for request. */

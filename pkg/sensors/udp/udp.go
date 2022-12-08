@@ -28,7 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 
@@ -60,7 +60,7 @@ const (
 var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
 
-	stats *lru.Cache
+	stats *lru.Cache[udpInfoKey, udpInfoValue]
 
 	Config           *ConfigValue
 	configured       = false
@@ -493,9 +493,8 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 		return
 	}
 
-	entry, ok := stats.Get(*udpKey)
+	last, ok := stats.Get(*udpKey)
 	if ok {
-		last := entry.(udpInfoValue)
 		if *udpValue != last {
 			diffValue, err := udpDiffValues(udpKey, &last, udpValue)
 			if err == nil {
@@ -730,7 +729,7 @@ func init() {
 func AddUDP() {
 	var err error
 
-	stats, err = lru.New(stataCacheSize)
+	stats, err = lru.New[udpInfoKey, udpInfoValue](stataCacheSize)
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("UDP cache failed. Disabling UDP")
 		return

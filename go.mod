@@ -16,7 +16,7 @@ require (
 	github.com/fatih/color v1.14.1
 	github.com/google/gops v0.3.26
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/golang-lru v0.5.4
+	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/mennanov/fieldmask-utils v0.7.1
 	github.com/miekg/dns v1.1.43
 	github.com/prometheus/client_golang v1.14.0
@@ -86,7 +86,6 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect

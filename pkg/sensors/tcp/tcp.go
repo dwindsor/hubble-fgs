@@ -11,7 +11,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -32,7 +32,7 @@ var (
 	tcpRttHistogramMax uint32
 	tcpRttHistogramMin uint32
 
-	stats          *lru.Cache
+	stats          *lru.Cache[tcpStatsKey, networkapi.MsgSocketStatsUnix]
 	stataCacheSize = 32000
 )
 
@@ -260,10 +260,8 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 // this happens discard the older event.
 func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
 	statsKey := tcpStatsKey{Tuple: tcp.Tuple, SockCookie: tcp.SockCookie}
-	entry, ok := stats.Get(statsKey)
+	last, ok := stats.Get(statsKey)
 	if ok {
-		last := entry.(api.MsgSocketStatsUnix)
-
 		if tcp.SocketStats.Ktime < last.Ktime {
 			// Current stats message is older than last stats message.
 			// This indicates the race has occurred, so we discard.
@@ -352,7 +350,7 @@ func init() {
 func AddTCP() {
 	var err error
 
-	stats, err = lru.New(stataCacheSize)
+	stats, err = lru.New[tcpStatsKey, networkapi.MsgSocketStatsUnix](stataCacheSize)
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("TCP cache failed. Disabling TCP")
 		return
