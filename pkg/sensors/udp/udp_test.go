@@ -1129,6 +1129,11 @@ func TestDnsEvents(t *testing.T) {
 	curl6 := exec.Command("curl", "-6", "https://www.google.com")
 	assert.NoError(t, curl6.Start())
 
+	// Adjust JSON checker delay to account for events that might be coming in more
+	// slowly in 5.4 kernels
+	oldDelay := jsonchecker.RetryDelay
+	jsonchecker.RetryDelay = oldDelay * 2
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+	jsonchecker.RetryDelay = oldDelay
 }
