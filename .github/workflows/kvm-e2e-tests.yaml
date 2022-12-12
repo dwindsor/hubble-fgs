@@ -14,6 +14,8 @@ concurrency:
 
 env:
   clusterName: fgs-cli-ci
+  ciliumCliVersion: v0.12.11
+  ciliumVersion: v1.12.4
 
 jobs:
   ensure-image-available:
@@ -104,10 +106,9 @@ jobs:
 
       - name: Install Cilium CLI
         run: |
-          CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/master/stable.txt)
           GOOS=$(go env GOOS)
           GOARCH=$(go env GOARCH)
-          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.ciliumCliVersion }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
           sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
           sudo tar -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
           rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
@@ -160,6 +161,7 @@ jobs:
             docker cp /boot/btf-\$(uname -r) ${{ env.clusterName }}-control-plane:/btf
 
             go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
+              -tetragon.cilium-version=${{ env.ciliumVersion }} \
               -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
               -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
               -tetragon.helm.set enterprise.btf="/btf" \

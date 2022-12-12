@@ -9,6 +9,8 @@ on:
       - master
 env:
   zone: us-west2-a
+  ciliumCliVersion: v0.12.11
+  ciliumVersion: v1.12.4
 
 jobs:
   ensure-image-available:
@@ -88,7 +90,9 @@ jobs:
 
       - name: Install Cilium CLI
         run: |
-          curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.10.4/cilium-linux-amd64.tar.gz{,.sha256sum}
+          GOOS=$(go env GOOS)
+          GOARCH=$(go env GOARCH)
+          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.ciliumCliVersion }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
           sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
           sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
           rm cilium-linux-amd64.tar.gz{,.sha256sum}
@@ -145,6 +149,7 @@ jobs:
             -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
             -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
             -tetragon.keep-export=true \
+            -tetragon.cilium-version=${{ env.ciliumVersion }} \
             -cluster-name ${{ steps.vars.outputs.clusterName }} \
             -kubeconfig ~/.kube/config
 
