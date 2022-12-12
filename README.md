@@ -4,45 +4,73 @@
 > Telescope to provide pointing information for the spacecraft and as a scientific
 > instrument for astrometric science
 
-FGS is the internal name for the Cilium enterprise
-([soon](https://github.com/isovalent/hubble-fgs/pull/961) to be partly
-open-sourced) component that enables enhanced visibility into in-kernel
-process events via eBPF.
+User-facing documentation can be found in:
+ * https://docs.isovalent.com/quick-start/security_visibility.html
+ * https://docs.isovalent.com/user-guide/sec-ops-visibility/index.html
 
-Some of the features of FGS are:
+## Naming
 
- * Maintains the process hierarchy, and makes it available on the various
-   events it generates
+FGS is the internal name for the Cilium enterprise component that enables enhanced visibility into
+in-kernel process events via eBPF. FGS is, also, sometimes referred as "hubble-enteprise" which is
+the pod name that runs the FGS component in cilium-enterprise installations. Until version 1.8, FGS
+was fully closed source. On May 2022, we released parts of FGS as open source under the name
+[Tetragon](https://github.com/cilium/tetragon/). We want to transition to using the name Tetragon
+everywhere, and Tetragon OSS and Tetragon EE to distinguish between the OSS and enterprise offering,
+but as of the 1.9 release this has not happened yet.
 
- * Supports a variety of different types of events
-     - process events (e.g., exec)
-     - network events (e.g., connect, listen, etc.)
-     - protocol-specific events:
-       [TLS](bpf/parsers/tls),
-       [HTTP and HTTP/2](bpf/parsers/http),
-       [DNS](https://github.com/isovalent/hubble-fgs/pull/895)
+## Features
 
-  * Supports generic kprobe and tracepoint events. These events are called
-    "generic events" because they allow users, via a proper configuration, to
-    insert functionality on arbitrary points in the kernel (mainly on
-    functions/tracepoints).
+| Feature                    | OSS / 💰                |
+| -------------------------- | ----------------------- |
+| Process hierarchy          |  OSS, but some parts 💰 |
+| Network events (L3)        |  💰                     |
+| L7 events (TLS, HTTP, DNS) |  💰                     |
+| Generic events             |  OSS                    |
+| File monitoring            |  💰                     |
 
-    Users can define where the hooks are added (e.g., in what system calls) and
-    what they do. Typically, they will generate events exported by FGS, but they
-    can also take other actions (e.g., send the KILL signal). Users can also
-    define what information is added into generated events (e.g., function
-    arguments/return value), filters that define certain conditions of when the
-    action hooks are triggerd (e.g., generate events only for specific PIDs or
-    when arguments have specific values). There is also support for extracting
-    information that is not available via normal means: such as the buffers of
-    system calls, filenames based on fd arguments, and others.
+### Process hierarchy
 
-    The configuration specification for above events can be found in the CRD
-    [spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml).
-    There are also [examples](/crds/examples/) of how the CRD can be used to configure FGS, not
-    only for the generic events, but also for other parsers (e.g., TLS).
+Tetragon generates events on a new process is executed (`exec`). It maintains the process ancestry,
+and makes it available on the various events it generates. (TODO: more details about the ancestry
+tree)
 
+### Network and L7 events
 
+Tetragon EE supports a variety of different types of events:
+ - L3 network events (e.g., connect, listen, etc.)
+ - L7 events:
+    * [TLS](bpf/parsers/tls),
+    * [HTTP and HTTP/2](bpf/parsers/http),
+    * [DNS](https://github.com/isovalent/hubble-fgs/pull/895)
+
+(TODO: add more details, rest of events)
+
+### Generic events
+
+These events are called "generic events" because they allow users, via a proper configuration, to
+insert functionality on arbitrary points in the kernel (mainly on functions/tracepoints).
+
+Users can define where the hooks are added (e.g., in what system calls) and
+what they do. Typically, they will generate events exported by FGS, but they
+can also take other actions (e.g., send the KILL signal). Users can also
+define what information is added into generated events (e.g., function
+arguments/return value), filters that define certain conditions of when the
+action hooks are triggerd (e.g., generate events only for specific PIDs or
+when arguments have specific values). There is also support for extracting
+information that is not available via normal means: such as the buffers of
+system calls, filenames based on fd arguments, and others.
+
+### File Monitoring
+
+see: [docs/FIM.md](docs/FIM.md)
+
+## Configuration
+
+The configuration specification for above events can be found in the CRD
+[spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml).
+There are also [examples](/crds/examples/) of how the CRD can be used to configure Tetragon.
+
+(TODO: complete this section)
 
 ## BTF
 
@@ -135,6 +163,8 @@ in the comments. See [`tests/e2e/tests/skeleton`](./tests/e2e/tests/skeleton).
 [kind]: https://kind.sigs.k8s.io/docs/user/quick-start/
 
 ## Adding Events
+
+(TODO: this is outdated, we need to talk about sensors here)
 
 Adding new events should be straight forward. We may not be there yet, but it should be
 a goal. The following basic steps are needed to add a new event feature.
