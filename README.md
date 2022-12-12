@@ -311,7 +311,7 @@ to spin up a GKE cluster.
 
 For benchmarking and general low-level FGS BPF development a useful tool
 is the fgs-bench, a benchmarking tool that runs FGS alongside some load,
-e.g. tcp, tls, netperf, http, etc. See BENCHMARK.md for details and pkg/bench
+e.g. tcp, tls, netperf, http, etc. See [docs/BENCHMARK.md](docs/BENCHMARK.md) for details and [pkg/bench](pkg/bench)
 for the implementation.
 
 ### hubble-bpf-verify
