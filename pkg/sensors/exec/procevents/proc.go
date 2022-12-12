@@ -13,7 +13,7 @@ package procevents
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -154,7 +154,7 @@ func procsFindDockerId(cgroups string) (string, int) {
 // returned.
 func procsDockerId(pid uint32) (string, error) {
 	pidstr := fmt.Sprint(pid)
-	cgroups, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, pidstr, "cgroup"))
+	cgroups, err := os.ReadFile(filepath.Join(option.Config.ProcFS, pidstr, "cgroup"))
 	if err != nil {
 		return "", err
 	}

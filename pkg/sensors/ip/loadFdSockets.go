@@ -13,7 +13,6 @@ package ip
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -108,7 +107,7 @@ func (v *FdLookupValue) DeepCopyMapValue() bpf.MapValue {
 
 func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
 	var socketFds []uint32
-	fds, err := ioutil.ReadDir(filepath.Join(dirname, "fd"))
+	fds, err := os.ReadDir(filepath.Join(dirname, "fd"))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +133,7 @@ func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
 func getExistingSockets() (map[uint32][]uint32, error) {
 	procSocketFds := make(map[uint32][]uint32)
 
-	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
+	procFS, err := os.ReadDir(option.Config.ProcFS)
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
 		return nil, err
@@ -148,7 +147,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 		pathName := filepath.Join(option.Config.ProcFS, d.Name())
 
 		// Ignore any non-process directories
-		cmdline, err := ioutil.ReadFile(filepath.Join(pathName, "cmdline"))
+		cmdline, err := os.ReadFile(filepath.Join(pathName, "cmdline"))
 		if err != nil {
 			continue
 		}

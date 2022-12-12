@@ -11,7 +11,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/isovalent/hubble-fgs/pkg/recorder"
 	"sigs.k8s.io/yaml"
@@ -44,7 +44,7 @@ func ReadConfigYaml(data string) (*GenericRecorderConf, error) {
 
 // FileConfigYaml reads out a GenericRecorderConf from a file.
 func FileConfigYaml(fileName string) (*GenericRecorderConf, error) {
-	config, err := ioutil.ReadFile(fileName)
+	config, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}

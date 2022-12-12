@@ -15,7 +15,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -253,7 +252,7 @@ func runNetworkCB() {
 		}
 	}
 
-	nsDir, err := ioutil.ReadDir(defaults.NetnsDir)
+	nsDir, err := os.ReadDir(defaults.NetnsDir)
 	if err != nil {
 		return
 	}

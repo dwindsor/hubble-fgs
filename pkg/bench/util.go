@@ -12,9 +12,9 @@ package bench
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -47,11 +47,11 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 
 	rss := int64(0)
 	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
-	memStat, err := ioutil.ReadFile(memStatFilename)
+	memStat, err := os.ReadFile(memStatFilename)
 	if err != nil {
 		// Fallback to the path observed in CI
 		memStatFilename = fmt.Sprintf("/sys/fs/cgroup/memory/actions_job/%s/memory.stat", containerID)
-		memStat, err = ioutil.ReadFile(memStatFilename)
+		memStat, err = os.ReadFile(memStatFilename)
 	}
 
 	if err != nil {
@@ -68,11 +68,11 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 
 	readUsageNanos := func(suffix string) uint64 {
 		cpuStatFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.usage_%s", containerID, suffix)
-		cpuStat, err := ioutil.ReadFile(cpuStatFilename)
+		cpuStat, err := os.ReadFile(cpuStatFilename)
 		if err != nil {
 			// Fallback to the path observed in CI
 			cpuStatFilename = fmt.Sprintf("/sys/fs/cgroup/cpu,cpuacct/actions_job/%s/cpuacct.usage_%s", containerID, suffix)
-			cpuStat, err = ioutil.ReadFile(cpuStatFilename)
+			cpuStat, err = os.ReadFile(cpuStatFilename)
 		}
 		if err != nil {
 			log.Printf("Failed to read cpuacct.usage_%s: %s\n", suffix, err)
