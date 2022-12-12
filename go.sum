@@ -159,8 +159,8 @@ github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567/go.mod h1:Y522N+Ka
 github.com/cilium/ipam v0.0.0-20200217195329-a46f8d55f9db/go.mod h1:URWgSDyRFKKBgnY4Svj37siCG145nu3qJt6oHlZRdqU=
 github.com/cilium/ipam v0.0.0-20201020084809-76717fcdb3a2/go.mod h1:Ascfar4FtgB+K+mwqbZpSb3WVZ5sPFIarg+iAOXNZqI=
 github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b/go.mod h1:ktgizta3CPZBKz5uW272SJyjiro0vn4nOVP7Pk4RopA=
-github.com/cilium/lumberjack/v2 v2.2.2 h1:RKTdhb63DY0Xu7pE1pipMj7Zq28LyvBGSrCneHiKm4A=
-github.com/cilium/lumberjack/v2 v2.2.2/go.mod h1:yfbtPGmg4i//5oEqzaMxDqSWqgfZFmMoV70Mc2k6v0A=
+github.com/cilium/lumberjack/v2 v2.3.0 h1:IhVJMvPpqDYmQzC0KDhAoy7KlaRsyOsZnT97Nsa3u0o=
+github.com/cilium/lumberjack/v2 v2.3.0/go.mod h1:yfbtPGmg4i//5oEqzaMxDqSWqgfZFmMoV70Mc2k6v0A=
 github.com/cilium/proxy v0.0.0-20191113190709-4c7b379792e6/go.mod h1:lbRnBzpxwMP5KsTu99cM654ShwTWamyhrF6cCLuYqhE=
 github.com/cilium/proxy v0.0.0-20200309181938-3cf80fe45d03/go.mod h1:MsrtgITWuZatZCS715qDH+dp2iaVjOuxnIr8uwja5cM=
 github.com/cilium/proxy v0.0.0-20210511221533-82a70d56bf32/go.mod h1:mvauc94lqkyJunRsU9Ef5FIsixi8vBeDoxuMYoGBemk=

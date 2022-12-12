@@ -6,7 +6,7 @@ require (
 	github.com/cilium/cilium v1.9.16
 	github.com/cilium/ebpf v0.9.3
 	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
-	github.com/cilium/lumberjack/v2 v2.2.2
+	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb

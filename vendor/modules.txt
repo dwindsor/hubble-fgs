@@ -98,7 +98,7 @@ github.com/cilium/hubble/pkg/k8s
 github.com/cilium/hubble/pkg/parser/endpoint
 github.com/cilium/hubble/pkg/parser/getters
 github.com/cilium/hubble/pkg/servicecache
-# github.com/cilium/lumberjack/v2 v2.2.2
+# github.com/cilium/lumberjack/v2 v2.3.0
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
