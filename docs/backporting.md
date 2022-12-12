@@ -1,0 +1,72 @@
+# Backporting
+
+Note: we follow the Cilium backporting process, as described in
+https://docs.cilium.io/en/latest/contributing/release/backports/ as much as we can.
+
+##  Versions
+
+As of Tetragon EE 1.9, each EE version is in sync with an OSS version.
+
+```
+| EE    | OSS  |
+| ----- | ---- |
+| 1.9   | 0.8  |
+
+```
+
+Hence, backporting PRs that are in OSS or have dependencies in PRs that _are_ in OSS needs to go via
+the correspodning OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
+version should be synced accordingly and any EE-specific PRs can now be backported as well.
+
+For 1.9, for example:
+
+```mermaid
+flowchart TD
+    BR[Backport to EE 1.9]
+    BR --> OSS1{OSS PR?}
+    OSS1 -->  |No| OSS2{depends on OSS PRs?}
+    OSS2 --> |No| DOEE[Backport EE PR to 1.9]
+    DOEE --> Done
+    DOOSS[OSS backport to 0.8]
+    DOOSS --> Sync[Sync 1.9 to latest 0.8]
+    Sync --> Done
+    OSS2 --> |Yes| Dep[Backport dependency OSS PRs  to EE 1.9]
+    Dep --> Dep
+    Dep --> DOEE
+    OSS1 --> |Yes|DOOSS
+```
+
+Note that above applies only to EE 1.9, where there is an OSS module. For 1.8, backports from OSS
+need to be done directly into the EE version.
+
+## What PRs should be backported?
+
+Similary, to Cilium we use the the `needs-backport/X.Y` label to mark PRs that need to be
+backported. Similarly, we use `backport-pending/X.Y` and `backport-done/X.Y` to mark that a PR
+backport is pending and finished, respectively. 
+
+## How do I backport a PR?
+
+For now this is done manually.  That is, for every commit cherry-pick the commit. As done in Cilium,
+The upstream commit should be referenced in the commit message as well as any notes that related to
+the backport (e.g., about conficts).
+
+For example:
+```
+commit f0f09158ae7f84fc8d888605aa975ce3421e8d67
+Author: Joe Stringer <joe@cilium.io>
+Date:   Tue Apr 20 16:48:18 2021 -0700
+
+    contrib: Automate digest PR creation
+
+    [ upstream commit 893d0e7ec5766c03da2f0e7b8c548f7c4d89fcd7 ]
+
+    [ Backporter's notes: Dropped conflicts in .github/ issue template ]
+
+    There's still some interactive bits here just for safety, but one less
+    step in the template.
+
+    Signed-off-by: Joe Stringer <joe@cilium.io>
+```
+
+Eventually, we will use the scripts used by Cilium to do this, but we are not there yet.
