@@ -52,6 +52,11 @@ for obj in $FGSDIR/*.o; do
 		continue
 	fi
 
+	# Multi kprobe support is still not widely around, skip the object
+	if [[ $B == bpf_multi_* ]]; then
+		continue
+	fi
+
 	# skip v6.0 objects check, because it is still not widely around
 	if [[ $B == *60.o ]]; then
 		continue
