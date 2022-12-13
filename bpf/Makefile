@@ -29,9 +29,11 @@ NETWORKING = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_se
 	     bpf_tcp_rtt.o
 PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
+	  bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
 	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o \
 	  bpf_execve_event_v60.o bpf_generic_kprobe_v60.o bpf_generic_retkprobe_v60.o \
-	  bpf_generic_tracepoint_v60.o
+	  bpf_generic_tracepoint_v60.o \
+	  bpf_multi_kprobe_v60.o bpf_multi_retkprobe_v60.o
 
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
 	  bpf_rw_verify_area.o  bpf_security_path_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
@@ -149,11 +151,16 @@ objs/%.ll: $(FILEDIR)%.c
 objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_multi_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_multi_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_vfs_mkdir_v512.ll: $(FILEDIR)/bpf_vfs_mkdir.c
 objs/bpf_vfs_rmdir_v512.ll: $(FILEDIR)/bpf_vfs_rmdir.c
 objs/bpf_vfs_rename_v512.ll: $(FILEDIR)/bpf_vfs_rename.c
 objs/bpf_vfs_rename_v419.ll: $(FILEDIR)/bpf_vfs_rename.c
+
+objs/bpf_multi_kprobe_v53.ll objs/bpf_multi_retkprobe_v53.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
 
 objs/%_v419.ll:
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
@@ -170,6 +177,8 @@ $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_multi_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_vfs_mkdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
 deps/bpf_vfs_rmdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
