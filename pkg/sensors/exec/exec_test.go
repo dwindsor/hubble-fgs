@@ -5,9 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cilium/ebpf"
 	api "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
@@ -91,4 +93,47 @@ func Test_msgToExecveKubeUnix(t *testing.T) {
 	copy(event.Kube.Docker[:], id)
 	kube = msgToExecveKubeUnix(&event, "", "")
 	assert.Empty(t, kube.Docker)
+}
+
+func TestUpdateStatsMap(t *testing.T) {
+	m, err := ebpf.NewMap(&ebpf.MapSpec{
+		Type:       ebpf.PerCPUArray,
+		KeySize:    4,
+		ValueSize:  8,
+		MaxEntries: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		m.Close()
+	})
+
+	lookup := func() int64 {
+		var sum int64
+		var v []int64
+
+		if err := m.Lookup(uint32(0), &v); err != nil {
+			t.Fatalf("lookup error: %s", err)
+		}
+
+		for _, val := range v {
+			sum += val
+		}
+		return sum
+	}
+
+	before := lookup()
+	if before != 0 {
+		t.Fatalf("wrong initial lookup value '%d'", before)
+	}
+
+	if err := sensors.UpdateStatsMap(m, 100); err != nil {
+		t.Fatalf("UpdateMap failed: %s", err)
+	}
+
+	after := lookup()
+	if after != 100 {
+		t.Fatalf("wrong final lookup value '%d'", after)
+	}
 }
