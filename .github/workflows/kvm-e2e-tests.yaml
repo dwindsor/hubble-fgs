@@ -131,7 +131,7 @@ jobs:
 
             mv /host/cilium /bin/cilium
 
-            kind create cluster --name ${{ env.clusterName }}
+            kind create cluster --name ${{ env.clusterName }} --image kindest/node:v1.24.7
             cilium install
             curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
