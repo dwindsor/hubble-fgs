@@ -22,7 +22,7 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	if (!inode)
 		return 0;
 
-	get_ino_fs(msg, inode);
+	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dir->dentry));

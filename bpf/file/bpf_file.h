@@ -229,12 +229,103 @@ get_fs_info(struct msg_fs_info *msg, struct inode *inode)
 	probe_read(msg->uuid, 16 * sizeof(char), _(&sb->s_uuid));
 }
 
+#define OVERLAYFS_SUPER_MAGIC 0x794c7630
+
+// returns the fsid of the lower layer in overlayfs
+// (https://elixir.bootlin.com/linux/v5.10/source/fs/overlayfs/util.c#L205)
+static inline __attribute__((always_inline)) int
+ovl_layer_lower_fsid(struct dentry *dentry)
+{
+	struct ovl_entry *poe, oe;
+
+	probe_read(&poe, sizeof(poe), _(&dentry->d_fsdata));
+	probe_read(&oe, sizeof(oe), poe);
+	if (oe.numlower) {
+		struct ovl_path op;
+		struct ovl_layer ol;
+		probe_read(&op, sizeof(op),
+			   (char *)poe + sizeof(struct ovl_entry));
+		probe_read(&ol, sizeof(ol), op.layer);
+		return ol.fsid;
+	}
+	return 0;
+}
+
+/*
+ * There are cases in overlayfs where stat reports a different device ID 
+ * compared to what inode* contains. As we use stat from the user-space
+ * to get <ino, dev_id> this may result in missing several file accesses.
+ * 
+ * In order to have this case, we should have xino = OFF and not all the 
+ * overlayfs layers be in the same file system.
+ * 
+ * This function returns the device ID are returned by stat in overlayfs
+ * (https://elixir.bootlin.com/linux/v5.10/source/fs/overlayfs/inode.c#L97)
+ */
+static inline __attribute__((always_inline)) dev_t
+fix_dev_id_ovl(struct inode *inode, struct dentry *dentry, dev_t dev_id)
+{
+	struct super_block *sb;
+	struct ovl_fs *pof, of;
+	struct ovl_sb *pos, os;
+	unsigned int xinobits;
+	umode_t i_mode;
+	bool samefs;
+	u32 s_magic;
+	int fsid;
+
+	probe_read(&sb, sizeof(sb), _(&inode->i_sb));
+	if (!sb) {
+		return dev_id;
+	}
+
+	// we care only for inodes in overlayfs
+	probe_read(&s_magic, sizeof(s_magic), _(&sb->s_magic));
+	if (s_magic != OVERLAYFS_SUPER_MAGIC)
+		return dev_id;
+
+	probe_read(&pof, sizeof(pof), _(&sb->s_fs_info));
+	probe_read(&of, sizeof(of), pof);
+
+	// all layers are over the same file system
+	// no need to take any action
+	samefs = of.xino_mode == 0;
+	if (samefs) {
+		return dev_id;
+	}
+
+	// xino is ON
+	// no need to take any action
+	xinobits = (of.xino_mode >= 0) ? of.xino_mode : 0;
+	if (xinobits) {
+		return dev_id;
+	}
+
+	// this is a directory
+	// no need to take any action
+	probe_read(&i_mode, sizeof(i_mode), _(&inode->i_mode));
+	if (S_ISDIR(i_mode)) {
+		return dev_id;
+	}
+
+	fsid = ovl_layer_lower_fsid(dentry);
+	asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid) :);
+
+	probe_read(&pos, sizeof(pos), &of.fs);
+	probe_read(&os, sizeof(os),
+		   (char *)pos + (fsid * sizeof(struct ovl_sb)));
+	return os.pseudo_dev;
+}
+
 static inline __attribute__((always_inline)) void
-get_ino_fs(struct msg_file_ops *msg, struct inode *inode)
+get_ino_fs(struct msg_file_ops *msg, struct inode *inode, struct dentry *dentry)
 {
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
 
 	get_fs_info(&(msg->fs), inode);
+
+	// fix dev_id for overlayfs (if needed)
+	msg->fs.dev = fix_dev_id_ovl(inode, dentry, msg->fs.dev);
 }
 
 static inline __attribute__((always_inline)) void
@@ -287,14 +378,14 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	if (!inode)
 		return 0;
 
-	get_ino_fs(msg, inode);
-
 	// get parent inode and fs info
 	probe_read(&path, sizeof(path), _(&file->f_path));
 	if (!path.dentry)
 		return 0;
 
 	dentry = path.dentry;
+	get_ino_fs(msg, inode, dentry);
+
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return 0;
@@ -373,10 +464,10 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 		return 0;
 
 	// get current inode and fs info
-	get_ino_fs(msg, inode);
+	probe_read(&dentry, sizeof(struct dentry *), _(&path->dentry));
+	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&dentry, sizeof(struct dentry *), _(&path->dentry));
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return 0;

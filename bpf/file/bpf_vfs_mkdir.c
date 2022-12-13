@@ -81,7 +81,7 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	if (!d_inode)
 		return 0;
 
-	get_ino_fs(msg, d_inode);
+	get_ino_fs(msg, d_inode, dentry);
 
 	// get parent inode and fs info
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
