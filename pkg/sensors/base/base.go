@@ -102,6 +102,13 @@ func GetExecveMap() *program.Map {
 	return ExecveMap
 }
 
+func GetExecveMapStats() *program.Map {
+	if kernels.EnableLargeProgs() {
+		return ExecveStatsV53
+	}
+	return ExecveStats
+}
+
 func GetTetragonConfMap() *program.Map {
 	if kernels.EnableV60Progs() {
 		return TetragonConfMapV60

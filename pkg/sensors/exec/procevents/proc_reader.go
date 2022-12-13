@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -34,6 +35,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
 
@@ -183,6 +185,23 @@ func pushExecveEvents(p Procs) {
 	observer.AllListeners(&m)
 }
 
+func updateExecveMapStats(procs int64) {
+
+	execveMapStats := base.GetExecveMapStats()
+
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), execveMapStats.Name), nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("Could not open execve_map_stats")
+		return
+	}
+	defer m.Close()
+
+	if err := sensors.UpdateStatsMap(m, procs); err != nil {
+		logger.GetLogger().WithError(err).
+			Errorf("Failed to update execve_map_stats with procfs stats: %s", err)
+	}
+}
+
 func writeExecveMap(procs []Procs) {
 	mapDir := bpf.MapPrefixPath()
 
@@ -238,6 +257,8 @@ func writeExecveMap(procs []Procs) {
 		},
 	})
 	m.Close()
+
+	updateExecveMapStats(int64(len(procs)))
 }
 
 func pushEvents(procs []Procs) {
