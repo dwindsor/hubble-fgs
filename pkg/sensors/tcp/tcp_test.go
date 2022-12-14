@@ -969,6 +969,14 @@ func testTcpBurst(t *testing.T, legacy bool) {
 	}
 }
 
+func TestTcpBurst(t *testing.T) {
+	testTcpBurst(t, true)
+}
+
+func TestTcpWatermarks(t *testing.T) {
+	testTcpBurst(t, false)
+}
+
 func TestNamespaces(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()

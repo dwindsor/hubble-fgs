@@ -201,7 +201,8 @@ func createWatermarksEndEvent(key *ProcessNetworkWatermarksKey, value *ProcessNe
 	m.Type = WATERMARKS_BURST
 	m.WindowSize = value.WatermarksWindowSize
 	m.HistAvg = (value.HistVol + value.LastWinVol + value.WinVol) * 1000000000 / (m.Common.Ktime - value.ProcessStartTime)
-	m.HistTrigger = 0
+	m.HistBurstTrigger = 0
+	m.HistDipTrigger = 0
 	m.WindowAvg = 0
 
 	msgUnix := msgToProcessNetworkWatermarksUnix(&m)

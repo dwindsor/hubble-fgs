@@ -195,8 +195,10 @@ func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpe
 		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
 		// the average measurement window == window size.
 		config.watermarksWindowSize = (uint64(spec.Parser.Udp.Watermarks.WindowSize) * 2 * 1000000) / 3
-		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
+		// BurstTriggerPercent is the percent above the average; we supply it as a percentage multiplier.
 		config.watermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Watermarks.BurstTriggerPercent) + 100
+		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
+		config.watermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
 		go networkWatermarksEvents.Start(spec, IPPROTO_UDP, false)
 	} else if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		watermarkEnabled = true
@@ -216,6 +218,7 @@ func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpe
 		config.watermarksAvgWindowSizeMs = 0
 		config.watermarksWindowSize = 0
 		config.watermarksBurstTriggerPercent = 0
+		config.watermarksDipTriggerPercent = 0
 	}
 }
 

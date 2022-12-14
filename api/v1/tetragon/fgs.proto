@@ -372,8 +372,10 @@ message ProcessNetworkWatermark {
     string protocol = 3;
     string direction = 4;
     string watermarks_state = 5;
-    uint64 window_size = 6;
-    uint64 hist_avg = 7;
-    uint64 hist_trigger = 8;
-    uint64 window_avg = 9;
+    string watermarks_type = 6;
+    uint64 window_size = 7;
+    uint64 hist_avg = 8;
+    uint64 hist_burst_trigger = 9;
+    uint64 hist_dip_trigger = 10;
+    uint64 window_avg = 11;
 }

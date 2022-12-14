@@ -3863,16 +3863,18 @@ func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *tetrag
 
 // ProcessNetworkWatermarkChecker implements a checker struct to check a ProcessNetworkWatermark event
 type ProcessNetworkWatermarkChecker struct {
-	CheckerName     string                       `json:"checkerName"`
-	Process         *ProcessChecker              `json:"process,omitempty"`
-	Parent          *ProcessChecker              `json:"parent,omitempty"`
-	Protocol        *stringmatcher.StringMatcher `json:"protocol,omitempty"`
-	Direction       *stringmatcher.StringMatcher `json:"direction,omitempty"`
-	WatermarksState *stringmatcher.StringMatcher `json:"watermarksState,omitempty"`
-	WindowSize      *uint64                      `json:"windowSize,omitempty"`
-	HistAvg         *uint64                      `json:"histAvg,omitempty"`
-	HistTrigger     *uint64                      `json:"histTrigger,omitempty"`
-	WindowAvg       *uint64                      `json:"windowAvg,omitempty"`
+	CheckerName      string                       `json:"checkerName"`
+	Process          *ProcessChecker              `json:"process,omitempty"`
+	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	Protocol         *stringmatcher.StringMatcher `json:"protocol,omitempty"`
+	Direction        *stringmatcher.StringMatcher `json:"direction,omitempty"`
+	WatermarksState  *stringmatcher.StringMatcher `json:"watermarksState,omitempty"`
+	WatermarksType   *stringmatcher.StringMatcher `json:"watermarksType,omitempty"`
+	WindowSize       *uint64                      `json:"windowSize,omitempty"`
+	HistAvg          *uint64                      `json:"histAvg,omitempty"`
+	HistBurstTrigger *uint64                      `json:"histBurstTrigger,omitempty"`
+	HistDipTrigger   *uint64                      `json:"histDipTrigger,omitempty"`
+	WindowAvg        *uint64                      `json:"windowAvg,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3939,6 +3941,11 @@ func (checker *ProcessNetworkWatermarkChecker) Check(event *tetragon.ProcessNetw
 				return fmt.Errorf("WatermarksState check failed: %w", err)
 			}
 		}
+		if checker.WatermarksType != nil {
+			if err := checker.WatermarksType.Match(event.WatermarksType); err != nil {
+				return fmt.Errorf("WatermarksType check failed: %w", err)
+			}
+		}
 		if checker.WindowSize != nil {
 			if *checker.WindowSize != event.WindowSize {
 				return fmt.Errorf("WindowSize has value %d which does not match expected value %d", event.WindowSize, *checker.WindowSize)
@@ -3949,9 +3956,14 @@ func (checker *ProcessNetworkWatermarkChecker) Check(event *tetragon.ProcessNetw
 				return fmt.Errorf("HistAvg has value %d which does not match expected value %d", event.HistAvg, *checker.HistAvg)
 			}
 		}
-		if checker.HistTrigger != nil {
-			if *checker.HistTrigger != event.HistTrigger {
-				return fmt.Errorf("HistTrigger has value %d which does not match expected value %d", event.HistTrigger, *checker.HistTrigger)
+		if checker.HistBurstTrigger != nil {
+			if *checker.HistBurstTrigger != event.HistBurstTrigger {
+				return fmt.Errorf("HistBurstTrigger has value %d which does not match expected value %d", event.HistBurstTrigger, *checker.HistBurstTrigger)
+			}
+		}
+		if checker.HistDipTrigger != nil {
+			if *checker.HistDipTrigger != event.HistDipTrigger {
+				return fmt.Errorf("HistDipTrigger has value %d which does not match expected value %d", event.HistDipTrigger, *checker.HistDipTrigger)
 			}
 		}
 		if checker.WindowAvg != nil {
@@ -3997,6 +4009,12 @@ func (checker *ProcessNetworkWatermarkChecker) WithWatermarksState(check *string
 	return checker
 }
 
+// WithWatermarksType adds a WatermarksType check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithWatermarksType(check *stringmatcher.StringMatcher) *ProcessNetworkWatermarkChecker {
+	checker.WatermarksType = check
+	return checker
+}
+
 // WithWindowSize adds a WindowSize check to the ProcessNetworkWatermarkChecker
 func (checker *ProcessNetworkWatermarkChecker) WithWindowSize(check uint64) *ProcessNetworkWatermarkChecker {
 	checker.WindowSize = &check
@@ -4009,9 +4027,15 @@ func (checker *ProcessNetworkWatermarkChecker) WithHistAvg(check uint64) *Proces
 	return checker
 }
 
-// WithHistTrigger adds a HistTrigger check to the ProcessNetworkWatermarkChecker
-func (checker *ProcessNetworkWatermarkChecker) WithHistTrigger(check uint64) *ProcessNetworkWatermarkChecker {
-	checker.HistTrigger = &check
+// WithHistBurstTrigger adds a HistBurstTrigger check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithHistBurstTrigger(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.HistBurstTrigger = &check
+	return checker
+}
+
+// WithHistDipTrigger adds a HistDipTrigger check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithHistDipTrigger(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.HistDipTrigger = &check
 	return checker
 }
 
@@ -4035,6 +4059,7 @@ func (checker *ProcessNetworkWatermarkChecker) FromProcessNetworkWatermark(event
 	checker.Protocol = stringmatcher.Full(event.Protocol)
 	checker.Direction = stringmatcher.Full(event.Direction)
 	checker.WatermarksState = stringmatcher.Full(event.WatermarksState)
+	checker.WatermarksType = stringmatcher.Full(event.WatermarksType)
 	{
 		val := event.WindowSize
 		checker.WindowSize = &val
@@ -4044,8 +4069,12 @@ func (checker *ProcessNetworkWatermarkChecker) FromProcessNetworkWatermark(event
 		checker.HistAvg = &val
 	}
 	{
-		val := event.HistTrigger
-		checker.HistTrigger = &val
+		val := event.HistBurstTrigger
+		checker.HistBurstTrigger = &val
+	}
+	{
+		val := event.HistDipTrigger
+		checker.HistDipTrigger = &val
 	}
 	{
 		val := event.WindowAvg

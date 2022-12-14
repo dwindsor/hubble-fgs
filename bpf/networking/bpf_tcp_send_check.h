@@ -15,6 +15,7 @@ struct tcp_send_check_sample_cfg {
 	__u64 watermarksAvgWindowSize;
 	__u64 watermarksWindowSizeNs;
 	__u64 watermarksBurstTriggerMult;
+	__u64 watermarksDipTriggerMult;
 	__u32 bucket00;
 	__u32 bucket01;
 	__u32 bucket10;
@@ -170,8 +171,12 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 				struct process_network_watermarks_config c = {
 					.avg_window_size_ms =
 						cfg->watermarksAvgWindowSize,
-					.window_size = cfg->watermarksWindowSizeNs,
-					.burst_trigger_mult = cfg->watermarksBurstTriggerMult,
+					.window_size =
+						cfg->watermarksWindowSizeNs,
+					.burst_trigger_mult =
+						cfg->watermarksBurstTriggerMult,
+					.dip_trigger_mult =
+						cfg->watermarksDipTriggerMult,
 				};
 				u64 tcp_bytes_sent, tcp_bytes_received;
 				probe_read(&tcp_bytes_sent, sizeof(__u64),

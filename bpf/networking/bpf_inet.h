@@ -374,15 +374,16 @@ udp_watermarks(void *ctx, u64 *cookie, int vol, u64 send)
 	int zero = 0;
 
 	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
-	if (!config || !config->watermark_enable)
+	if (!config || !config->watermarks_enable)
 		return;
 
 	c = (struct process_network_watermarks_config *)map_lookup_elem(&pn_watermarks_config_heap, &zero);
 	if (!c)
 		return;
-	c->avg_window_size_ms = config->watermark_avg_window_size_ms;
-	c->window_size = config->watermark_window_size;
-	c->burst_trigger_mult = config->watermark_trigger_percent;
+	c->avg_window_size_ms = config->watermarks_avg_window_size_ms;
+	c->window_size = config->watermarks_window_size;
+	c->burst_trigger_mult = config->watermarks_burst_trigger_percent;
+	c->dip_trigger_mult = config->watermarks_dip_trigger_percent;
 
 	process = lookup_socketmap(cookie);
 	/* If we don't have a process then we can't assign the watermarks information

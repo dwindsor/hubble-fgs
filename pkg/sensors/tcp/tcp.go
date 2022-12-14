@@ -28,7 +28,8 @@ var (
 	tcpWatermarksEnable           bool
 	tcpWatermarksWindowSize       uint64
 	tcpWatermarksBurstTriggerMult uint64
-	watermarkEnabled              = false
+	tcpWatermarksDipTriggerMult   uint64
+	watermarksEnabled             = false
 
 	tcpRttHistogramMax uint32
 	tcpRttHistogramMin uint32
@@ -126,7 +127,7 @@ type tcpStatsKey struct {
 }
 
 func unloadTcpSensor() error {
-	if watermarkEnabled {
+	if watermarksEnabled {
 		networkWatermarksEvents.Stop(IPPROTO_TCP)
 	}
 	return nil
@@ -190,13 +191,14 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	}
 	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
-		watermarkEnabled = true
+		watermarksEnabled = true
 		tcpWatermarksEnable = true
 		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
 		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
+		tcpWatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
 		go networkWatermarksEvents.Start(spec, IPPROTO_TCP, false)
 	} else if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
-		watermarkEnabled = true
+		watermarksEnabled = true
 		tcpWatermarksEnable = true
 		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
@@ -205,6 +207,7 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		tcpWatermarksEnable = false
 		tcpWatermarksWindowSize = 0
 		tcpWatermarksBurstTriggerMult = 0
+		tcpWatermarksDipTriggerMult = 0
 	}
 	if spec.Parser.Tcp.RttHistogram.Enable {
 		tcpRttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
@@ -351,7 +354,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if tcpInterval > 0 {
-		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
+		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
 		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 	return err

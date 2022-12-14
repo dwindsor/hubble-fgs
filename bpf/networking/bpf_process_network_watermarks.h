@@ -5,6 +5,7 @@
 #include "../lib/networkmsg.h"
 #include "../lib/iso_msg_types.h"
 #include "cookie.h"
+#include "bpf_tracing.h"
 
 #define MAX_UDP_PROCESSES 32768
 
@@ -98,7 +99,8 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 {
 	struct process_network_watermarks_log *watermarks_log;
 
-	__u64 watermarks_key = tgid_to_watermarks_key(e->key.pid, protocol, send);
+	__u64 watermarks_key =
+		tgid_to_watermarks_key(e->key.pid, protocol, send);
 	watermarks_log = map_lookup_elem(&pn_watermarks_map, &watermarks_key);
 	if (watermarks_log && watermarks_log->watermarks_state) {
 		// Currently in burst state, so send burst end event
@@ -106,7 +108,8 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 		e->state = WATERMARKS_END;
 		e->type = watermarks_state_to_type(watermarks_log->watermarks_state);
 		e->protocol = protocol;
-		e->hist_avg = (watermarks_log->hist_vol + watermarks_log->last_win_vol +
+		e->hist_avg = (watermarks_log->hist_vol +
+			       watermarks_log->last_win_vol +
 			       watermarks_log->win_vol) *
 			      1000000000 / (e->common.ktime - e->key.ktime);
 		perf_event_output(
@@ -146,7 +149,8 @@ process_watermarks_map_delete(void *ctx, __u32 tgid)
 			.type = 0,
 			.window_size = 0,
 			.hist_avg = 0,
-			.hist_trigger = 0,
+			.hist_burst_trigger = 0,
+			.hist_dip_trigger = 0,
 			.window_avg = 0,
 		};
 
@@ -183,8 +187,8 @@ init_watermarks_log(u64 watermarks_key, u64 process_start_time, u64 vol,
 		.watermarks_window_size = watermarks_window_size,
 	};
 
-	err = map_update_elem(&pn_watermarks_map, &watermarks_key, watermarks_log,
-			      BPF_NOEXIST);
+	err = map_update_elem(&pn_watermarks_map, &watermarks_key,
+			      watermarks_log, BPF_NOEXIST);
 	if (!err && (cntr = map_lookup_elem(&pn_watermarks_map_stats, &zero)))
 		*cntr = *cntr + 1;
 }
@@ -229,7 +233,8 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 		// still open.
 		return;
 
-	watermarks_key = tgid_to_watermarks_key(process->key.pid, protocol, send);
+	watermarks_key =
+		tgid_to_watermarks_key(process->key.pid, protocol, send);
 
 	watermarks_log = map_lookup_elem(&pn_watermarks_map, &watermarks_key);
 	if (!watermarks_log) {
@@ -307,14 +312,15 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 	u64 last_win_vol = READ_ONCE(watermarks_log->last_win_vol);
 	u64 hist_avg =
 		(hist_vol * NSTOSEC) / (last_win_start_ns - process->key.ktime);
-	u64 hist_avg_trigger = (hist_avg * c->burst_trigger_mult) / 100;
+	u64 hist_burst_avg_trigger = (hist_avg * c->burst_trigger_mult) / 100;
+	u64 hist_dip_avg_trigger = (hist_avg * c->dip_trigger_mult) / 100;
 
 	// Check if the average volume over the last complete window and the current
 	// partial window exceeds the trigger threshold. This approach provides a
 	// fair average of the current rate.
 	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) /
 			   (c->window_size + ns_since_win_start);
-	if (old_watermarks_state ^ (new_win_rate > hist_avg_trigger)) {
+	if (old_watermarks_state ^ (new_win_rate > hist_burst_avg_trigger)) {
 		// If we were already bursting and no longer are, or weren't bursting
 		// but now are (XOR) then emit event.
 		struct msg_process_network_watermarks_event *val;
@@ -337,13 +343,15 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 			.type = WATERMARKS_BURST,
 			.window_size = c->avg_window_size_ms,
 			.hist_avg = hist_avg,
-			.hist_trigger = hist_avg_trigger,
+			.hist_burst_trigger = hist_burst_avg_trigger,
+			.hist_dip_trigger = hist_dip_avg_trigger,
 			.window_avg = new_win_rate,
 		};
 		perf_event_output(
 			ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 			sizeof(struct msg_process_network_watermarks_event));
-		WRITE_ONCE(watermarks_log->watermarks_state, (old_watermarks_state == 0));
+		WRITE_ONCE(watermarks_log->watermarks_state,
+			   (old_watermarks_state == 0));
 	}
 }
 

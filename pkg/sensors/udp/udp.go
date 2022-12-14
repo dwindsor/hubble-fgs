@@ -364,6 +364,7 @@ type ConfigValue struct {
 	watermarksAvgWindowSizeMs     uint64
 	watermarksWindowSize          uint64
 	watermarksBurstTriggerPercent uint64
+	watermarksDipTriggerPercent   uint64
 	bootNs                        uint64
 	latencyEnable                 uint64
 	latencySubnets                [maxLatencySubnets]SubnetSelector
@@ -383,7 +384,10 @@ func (v *ConfigValue) String() string {
 		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
-		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent)
+		"watermarkBurstTriggerPercent: %d, "+
+		"watermarkDipTriggerPercent: %d",
+		v.dnsPorts, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent,
+		v.watermarksDipTriggerPercent)
 }
 func (v *ConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {

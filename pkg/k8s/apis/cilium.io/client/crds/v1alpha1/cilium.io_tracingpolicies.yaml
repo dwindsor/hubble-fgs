@@ -614,6 +614,12 @@ spec:
                               to be a burst
                             format: int32
                             type: integer
+                          dipTriggerPercent:
+                            default: 100
+                            description: Configures the percent under average deemed
+                              to be a dip
+                            format: int32
+                            type: integer
                           enable:
                             default: false
                             description: Enable TCP watermarks observability
@@ -662,6 +668,12 @@ spec:
                             default: 100
                             description: Configures the percent over average deemed
                               to be a burst
+                            format: int32
+                            type: integer
+                          dipTriggerPercent:
+                            default: 100
+                            description: Configures the percent under average deemed
+                              to be a dip
                             format: int32
                             type: integer
                           enable:
@@ -725,6 +737,12 @@ spec:
                             default: 100
                             description: Configures the percent over average deemed
                               to be a burst
+                            format: int32
+                            type: integer
+                          dipTriggerPercent:
+                            default: 100
+                            description: Configures the percent under average deemed
+                              to be a dip
                             format: int32
                             type: integer
                           enable:
@@ -804,6 +822,12 @@ spec:
                             default: 100
                             description: Configures the percent over average deemed
                               to be a burst
+                            format: int32
+                            type: integer
+                          dipTriggerPercent:
+                            default: 100
+                            description: Configures the percent under average deemed
+                              to be a dip
                             format: int32
                             type: integer
                           enable:

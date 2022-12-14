@@ -254,6 +254,10 @@ type TcpWatermarksPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
 	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent under average deemed to be a dip
+	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
 }
 
 type UdpPolicySpec struct {
@@ -301,6 +305,10 @@ type UdpWatermarksPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
 	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent under average deemed to be a dip
+	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
 }
 
 type UdpLatencyPolicySpec struct {

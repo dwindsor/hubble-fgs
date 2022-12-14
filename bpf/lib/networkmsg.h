@@ -77,7 +77,8 @@ struct msg_process_network_watermarks_event {
 	__u8 pad;
 	__u64 window_size;
 	__u64 hist_avg;
-	__u64 hist_trigger;
+	__u64 hist_burst_trigger;
+	__u64 hist_dip_trigger;
 	__u64 window_avg;
 };
 

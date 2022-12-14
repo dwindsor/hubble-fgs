@@ -21,36 +21,38 @@ func (k *SockStatKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *SockStatKey) DeepCopyMapKey() bpf.MapKey { return &SockStatKey{} }
 
 type SockStatValue struct {
-	KTime              uint64
-	BurstEnable        uint64
-	BurstAvgWindowSize uint64
-	BurstWindowSizeNs  uint64
-	BurstTriggerMult   uint64
-	RttBucket0         uint32
-	RttBucket1         uint32
-	RttBucket2         uint32
-	RttBucket3         uint32
-	RttBucket4         uint32
-	RttBucket5         uint32
-	RttBucket6         uint32
-	RttBucket7         uint32
+	KTime                      uint64
+	WatermarksEnable           uint64
+	WatermarksAvgWindowSize    uint64
+	WatermarksWindowSizeNs     uint64
+	WatermarksBurstTriggerMult uint64
+	WatermarksDipTriggerMult   uint64
+	RttBucket0                 uint32
+	RttBucket1                 uint32
+	RttBucket2                 uint32
+	RttBucket3                 uint32
+	RttBucket4                 uint32
+	RttBucket5                 uint32
+	RttBucket6                 uint32
+	RttBucket7                 uint32
 }
 
 func (v *SockStatValue) String() string {
 	return fmt.Sprintf("Sample Time: %d, "+
-		"BurstEnable: %d, "+
-		"BurstAvgWindowSize: %d, "+
-		"BurstWindowSizeNs: %d, "+
-		"BurstTriggerMult: %d, ",
-		v.KTime, v.BurstEnable, v.BurstAvgWindowSize, v.BurstWindowSizeNs, v.BurstTriggerMult)
+		"WatermarksEnable: %d, "+
+		"WatermarksAvgWindowSize: %d, "+
+		"WatermarksWindowSizeNs: %d, "+
+		"WatermarksBurstTriggerMult: %d, "+
+		"WatermarksDipTriggerMult: %d",
+		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 func (v *SockStatValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
 	return &SockStatValue{}
 }
 
-func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstAvgWindowSize uint64,
-	burstTriggerMult uint64, rttMax, rttMin uint32) error {
+func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
+	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
 	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name))
 	if err != nil {
 		return err
@@ -61,9 +63,9 @@ func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstA
 		Zero: uint32(0),
 	}
 	interval := uint64(sampleRate)
-	burstEnableVar := uint64(0)
-	if burstEnable {
-		burstEnableVar = 1
+	watermarksEnableVar := uint64(0)
+	if watermarksEnable {
+		watermarksEnableVar = 1
 	}
 
 	rttRange := float64(rttMax - rttMin)
@@ -71,25 +73,28 @@ func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstA
 
 	/* Convert sample rate from seconds into ns */
 	value := &SockStatValue{
-		KTime:              interval,
-		BurstEnable:        burstEnableVar,
-		BurstAvgWindowSize: burstAvgWindowSize,
-		BurstWindowSizeNs:  (burstAvgWindowSize * 2 * 1000000) / 3,
-		BurstTriggerMult:   burstTriggerMult + 100,
-		RttBucket0:         rttMin,
-		RttBucket1:         uint32((rttRange * .01) + fRttMin),
-		RttBucket2:         uint32((rttRange * .10) + fRttMin),
-		RttBucket3:         uint32((rttRange * .25) + fRttMin),
-		RttBucket4:         uint32((rttRange * .50) + fRttMin),
-		RttBucket5:         uint32((rttRange * .75) + fRttMin),
-		RttBucket6:         uint32((rttRange * .90) + fRttMin),
-		RttBucket7:         uint32((rttRange * .99) + fRttMin),
+		KTime:                      interval,
+		WatermarksEnable:           watermarksEnableVar,
+		WatermarksAvgWindowSize:    watermarksAvgWindowSize,
+		WatermarksWindowSizeNs:     (watermarksAvgWindowSize * 2 * 1000000) / 3,
+		WatermarksBurstTriggerMult: burstTriggerMult + 100,
+		WatermarksDipTriggerMult:   100 - dipTriggerMult,
+		RttBucket0:                 rttMin,
+		RttBucket1:                 uint32((rttRange * .01) + fRttMin),
+		RttBucket2:                 uint32((rttRange * .10) + fRttMin),
+		RttBucket3:                 uint32((rttRange * .25) + fRttMin),
+		RttBucket4:                 uint32((rttRange * .50) + fRttMin),
+		RttBucket5:                 uint32((rttRange * .75) + fRttMin),
+		RttBucket6:                 uint32((rttRange * .90) + fRttMin),
+		RttBucket7:                 uint32((rttRange * .99) + fRttMin),
 	}
 	m.Update(key, value)
 	logger.GetLogger().WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
-	logger.GetLogger().WithFields(logrus.Fields{"enable": burstEnable,
-		"windowSize":  burstAvgWindowSize,
-		"triggerMult": burstTriggerMult}).Info("Configured TCP watermarks: ")
+	logger.GetLogger().WithFields(logrus.Fields{"enable": watermarksEnable,
+		"windowSize":       watermarksAvgWindowSize,
+		"burstTriggerMult": burstTriggerMult,
+		"dipTriggerMult":   dipTriggerMult,
+	}).Info("Configured TCP watermarks: ")
 	logger.GetLogger().WithFields(logrus.Fields{"rttMin": rttMin, "rttRange": rttRange,
 		"bucket0": value.RttBucket0,
 		"bucket1": value.RttBucket1,

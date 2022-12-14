@@ -138,10 +138,11 @@ struct subnet_selector {
 
 struct udp_sensor_config {
 	u16 dnsPorts[4];
-	u64 watermark_enable;
-	u64 watermark_avg_window_size_ms;
-	u64 watermark_window_size;
-	u64 watermark_trigger_percent;
+	u64 watermarks_enable;
+	u64 watermarks_avg_window_size_ms;
+	u64 watermarks_window_size;
+	u64 watermarks_burst_trigger_percent;
+	u64 watermarks_dip_trigger_percent;
 	u64 boot_ns;
 	u64 latency_enable;
 	struct subnet_selector latency_subnets[4];

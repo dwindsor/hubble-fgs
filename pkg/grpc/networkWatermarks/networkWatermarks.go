@@ -140,7 +140,8 @@ func createProcessNetworkWatermarks(
 	}
 	fgsEvent.WindowSize = event.WindowSize
 	fgsEvent.HistAvg = event.HistAvg
-	fgsEvent.HistTrigger = event.HistTrigger
+	fgsEvent.HistBurstTrigger = event.HistBurstTrigger
+	fgsEvent.HistDipTrigger = event.HistDipTrigger
 	fgsEvent.WindowAvg = event.WindowAvg
 
 	ec := eventcache.Get()
@@ -208,7 +209,7 @@ func createProcessNetworkBurst(
 	}
 	fgsEvent.WindowSize = event.WindowSize
 	fgsEvent.HistAvg = event.HistAvg
-	fgsEvent.HistTrigger = event.HistTrigger
+	fgsEvent.HistTrigger = event.HistBurstTrigger
 	fgsEvent.WindowAvg = event.WindowAvg
 
 	ec := eventcache.Get()
