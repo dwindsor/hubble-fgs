@@ -144,6 +144,9 @@ objs/%.ll: $(PROCESSDIR)%.c
 objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
+deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)  $< > $@
+
 # FILEDIR
 objs/%.ll: $(FILEDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
