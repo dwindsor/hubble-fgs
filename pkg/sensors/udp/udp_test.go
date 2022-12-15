@@ -656,7 +656,7 @@ func TestLoadUdpSensor(t *testing.T) {
 		}
 		sensorMaps = []tus.SensorMap{
 			// sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 7}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 6, 7}},
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -693,7 +693,7 @@ func TestLoadUdpSensor(t *testing.T) {
 		}
 		sensorMaps = []tus.SensorMap{
 			// sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 5, 7, 8}},
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -737,7 +737,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			// tus.SensorMap{Name: "socket_cookie_to_proc_map", Progs: []uint{ /* 0, 1, */ 2, 3, 4, 6, 8}},
 
 			// udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 5, 7, 8}},
 
 			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
 			// udp6_sendret_kprobe, udp_recv_kprobe

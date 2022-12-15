@@ -10,7 +10,7 @@ event_exit(struct sched_execve_args *ctx)
 
 	pid_tgid = get_current_pid_tgid();
 
-	process_burst_map_delete(ctx, pid_tgid >> 32);
+	process_burst_map_delete(ctx, pid_tgid);
 	event_exit_send(ctx, pid_tgid);
 	return 0;
 }

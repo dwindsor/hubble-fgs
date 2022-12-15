@@ -967,7 +967,7 @@ func TestLoadTcpSensor(t *testing.T) {
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
 
 		// all but event_tcp4_close, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 4, 5, 6}},
 
 		// event_tcp_acceptret, event_tcp_accept4ret
 		tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{4, 5}},

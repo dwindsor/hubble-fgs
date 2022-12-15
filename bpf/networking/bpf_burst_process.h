@@ -106,14 +106,25 @@ process_burst_check_and_delete(struct msg_process_network_burst_event *e,
 }
 
 static inline __attribute__((always_inline)) void
-process_burst_map_delete(void *ctx, __u32 pid)
+process_burst_map_delete(void *ctx, __u64 pid_tgid)
 {
 	int zero = 0;
 	__u64 *cntr;
 	struct msg_process_network_burst_event *val;
 	struct execve_map_value *process;
+	__u32 pid, tgid;
 
-	process = execve_map_get_noinit(pid);
+	pid = pid_tgid & 0xFFFFffff;
+	tgid = pid_tgid >> 32;
+
+	/* We are only tracking group leaders so if tgid is not
+	 * the same as the pid then this is an untracked child
+	 * and we shouldn't delete the entry.
+	 */
+	if (pid != tgid)
+		return;
+
+	process = execve_map_get_noinit(tgid);
 	val = map_lookup_elem(&pn_burst_event_heap, &zero);
 	cntr = map_lookup_elem(&pn_burst_map_stats, &zero);
 
@@ -124,7 +135,7 @@ process_burst_map_delete(void *ctx, __u32 pid)
 			.common.size =
 				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = ktime_get_ns(),
-			.key.pid = pid,
+			.key.pid = tgid,
 			.key.ktime = process->key.ktime,
 			.protocol = 0,
 			.burst_start_dir = 0,
@@ -203,6 +214,15 @@ process_network_burst(void *ctx, struct socketmap_value *process, u64 protocol,
 	struct process_network_burst_log *burst_log;
 
 	u64 current_time_ns = ktime_get_ns();
+
+	if (execve_map_get_noinit(process->key.pid) == 0)
+		// If the process is not in the execve map, then this means the
+		// process has ended, and this is a stray packet arriving on the
+		// socket after the exit; and it also means that the socket
+		// cookie is still in the socket map, which means the socket
+		// wasn't closed, but the process exited while the socket was
+		// still open.
+		return;
 
 	burst_key = tgid_to_burst_key(process->key.pid, protocol, send);
 

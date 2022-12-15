@@ -271,7 +271,7 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	sensorMaps := []tus.SensorMap{
 		// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 15, 16}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 4, 15, 16, 17}},
 
 		// all but base and bpf_sockmap
 		tus.SensorMap{Name: "socket_map", Progs: []uint{1, 2, 3, 4, 15, 16, 17}},
