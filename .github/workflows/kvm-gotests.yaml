@@ -26,19 +26,6 @@ jobs:
           - '5.4'
           - '4.19'
     steps:
-      - name: Install Dependencies
-        run: |
-          sudo apt update -y
-          sudo apt install -y cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
-
-      - name: Dump KVM Info
-        run: |
-          cat /sys/module/kvm_intel/parameters/nested
-          egrep -c '(vmx|svm)' /proc/cpuinfo
-          echo "${{ matrix.kernel }}"
-          kvm-ok
-          sudo systemctl is-active libvirtd
-
       - name: Checkout Git Repo
         uses: actions/checkout@v3
         with:
@@ -46,14 +33,18 @@ jobs:
           submodules: true
 
       - name: Provision LVH VM
-        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
+        uses: cilium/little-vm-helper@0b7d7157dae56a44dc531c852e7756dc671071af
         with:
+          install-dependencies: true
           test-name: tetragon-unit-tests
           image: kind
           image-version: '${{ matrix.kernel }}'
-          lvh-version: 'v0.0.1'
+          lvh-version: 'v0.0.2'
           host-mount: ./
           ssh-port: 2222
+          mem: 4G
+          cpu: 2
+          cpu-kind: host
           cmd: |
             set -eux
             cd /host/hubble-fgs
@@ -70,7 +61,7 @@ jobs:
             DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
 
       - name: Run Tests
-        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
+        uses: cilium/little-vm-helper@0b7d7157dae56a44dc531c852e7756dc671071af
         with:
           provision: 'false'
           cmd: |
