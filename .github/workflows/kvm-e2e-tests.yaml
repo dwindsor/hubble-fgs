@@ -40,9 +40,9 @@ jobs:
           else
             SHA=${{ github.sha }}
           fi
-          echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
       - name: Attempt To Pull Docker Images
         uses: nick-invision/retry@v2
@@ -100,9 +100,9 @@ jobs:
           else
             SHA=${{ github.sha }}
           fi
-          echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
       - name: Install Cilium CLI
         run: |

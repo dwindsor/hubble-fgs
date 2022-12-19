@@ -29,8 +29,8 @@ jobs:
         id: tag
         run: |
           # GITHUB_REF is set to "refs/heads/$branch" for branches and "refs/tags/$tag" for tags.
-          echo ::set-output name=tag::$(basename "$GITHUB_REF")
-          echo ::set-output name=shortSHA::$(git rev-parse --short HEAD)
+          echo "tag=$(basename "$GITHUB_REF")" >> $GITHUB_OUTPUT
+          echo "shortSHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Checkout Source Code
         uses: actions/checkout@v3

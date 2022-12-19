@@ -35,9 +35,9 @@ jobs:
           else
             SHA=${{ github.sha }}
           fi
-          echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
       - name: Attempt To Pull Docker Images
         uses: nick-invision/retry@v2
@@ -83,10 +83,10 @@ jobs:
           else
             SHA=${{ github.sha }}
           fi
-          echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
-          echo ::set-output name=clusterName::fgs-cli-ci-${{ github.run_id }}-${{ matrix.release-channel }}
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "clusterName=fgs-cli-ci-${{ github.run_id }}-${{ matrix.release-channel }}" >> $GITHUB_OUTPUT
 
       - name: Install Cilium CLI
         run: |
@@ -126,7 +126,7 @@ jobs:
             --node-taints node.cilium.io/agent-not-ready=true:NoExecute \
             --zone ${{ env.zone }}
           CLUSTER_CIDR=$(gcloud container clusters describe ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }} --format="value(clusterIpv4Cidr)")
-          echo ::set-output name=cluster_cidr::${CLUSTER_CIDR}
+          echo "cluster_cidr=${CLUSTER_CIDR}" >> $GITHUB_OUTPUT
 
       - name: Get Credentials
         run: |
@@ -157,7 +157,7 @@ jobs:
         id: cleanup
         if: ${{ always() }}
         run: |
-          echo ::set-output name=kernel_version::$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
+          echo "kernel_version=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')" >> $GITHUB_OUTPUT
           gcloud container clusters delete --quiet ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 
