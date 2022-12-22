@@ -598,7 +598,7 @@ github.com/vladimirvivien/gexe/exec
 github.com/vladimirvivien/gexe/fs
 github.com/vladimirvivien/gexe/prog
 github.com/vladimirvivien/gexe/vars
-# github.com/yalue/native_endian v1.0.1
+# github.com/yalue/native_endian v1.0.2
 ## explicit; go 1.15
 github.com/yalue/native_endian
 # go.mongodb.org/mongo-driver v1.8.3
