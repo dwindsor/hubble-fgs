@@ -345,8 +345,8 @@ func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 
 func execute() error {
 	rootCmd := &cobra.Command{
-		Use:   "hubble-fgs SOURCE_DIR BUCKET",
-		Short: "Hubble FGS",
+		Use:   "hubble-fgs",
+		Short: "Run the Hubble FGS agent",
 		Run: func(cmd *cobra.Command, args []string) {
 			readAndSetFlags()
 
