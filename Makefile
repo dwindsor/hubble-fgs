@@ -1,4 +1,5 @@
 GO := go
+ARCH := amd64
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
@@ -12,6 +13,8 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 # Extra flags to pass to test binary
 EXTRA_TESTFLAGS ?=
 
+BUILD_PKG_DIR ?= $(shell pwd)/build/
+BUILD_PKG_DIR_ARCH=$(BUILD_PKG_DIR)$(ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always)
 GO_GCFLAGS ?= ""
@@ -154,6 +157,7 @@ clean:
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench
+	rm -fr $(BUILD_PKG_DIR)
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -220,6 +224,22 @@ update-copyright:
 
 lint:
 	golint -set_exit_status $$(go list ./...)
+
+.PHONY: tarball
+# Share same build environment as docker image
+tarball: image
+	$(CONTAINER_ENGINE) build --build-arg HUBBLE_FGS_VERSION=$(VERSION) --build-arg ARCH=$(ARCH) -f Dockerfile.tarball -t "isovalent/hubble-fgs-tarball:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)
+	$(CONTAINER_ENGINE) save isovalent/hubble-fgs-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
+	$(QUIET)rm -fr $(BUILD_PKG_DIR_ARCH)/docker/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)/docker/
+	$(QUIET)rm -fr $(BUILD_PKG_DIR_ARCH)/linux-tarball/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)/linux-tarball/
+	tar xC $(BUILD_PKG_DIR_ARCH)/docker/ -f $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
+	find $(BUILD_PKG_DIR_ARCH)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar \;
+	@rm -fr $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
+	gzip -6 $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar
+	echo "hubble-fgs tarball is ready: $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar.gz"
 
 image:
 	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
