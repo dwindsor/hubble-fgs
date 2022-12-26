@@ -1,0 +1,25 @@
+#  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+#
+#  NOTICE: All information contained herein is, and remains the property of
+#  Isovalent Inc and its suppliers, if any. The intellectual and technical
+#  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+#  and may be covered by U.S. and Foreign Patents, patents in process, and are
+#  protected by trade secret or copyright law.  Dissemination of this information
+#  or reproduction of this material is strictly forbidden unless prior written
+#  permission is obtained from Isovalent Inc.
+
+[Unit]
+Description=Hubble FGS eBPF-based Security Observability and Runtime Enforcement Service
+DefaultDependencies=no
+After=network.target local-fs.target
+Documentation=https://docs.isovalent.com/
+
+[Service]
+User=root
+Group=root
+ExecStart=/usr/local/bin/hubble-fgs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

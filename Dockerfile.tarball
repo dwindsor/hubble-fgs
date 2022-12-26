@@ -1,0 +1,31 @@
+FROM isovalent/hubble-fgs:latest as hubble-fgs-release
+
+FROM scratch as linux-tarball-1
+
+# Copy the systemd service file
+COPY install/linux-tarball/systemd/hubble-fgs.service /usr/lib/systemd/system/
+
+# COPY configurations
+COPY install/linux-tarball/usr /usr
+COPY install/linux-tarball/etc /etc
+
+# Our binaries
+COPY --from=hubble-fgs-release /usr/bin/hubble-fgs /usr/local/bin/
+COPY --from=hubble-fgs-release /usr/bin/hubble-enterprise /usr/local/bin/
+COPY --from=hubble-fgs-release /usr/bin/hubble-enterprise /usr/local/bin/hubble-fgs-printer
+
+# Helper binaries
+COPY --from=hubble-fgs-release /usr/bin/bpftool /usr/local/lib/hubble-fgs/hubble-fgs-bpftool
+COPY --from=hubble-fgs-release /usr/bin/fs-scanner /usr/local/lib/hubble-fgs/hubble-fgs-fs-scanner
+
+# BPF files
+COPY --from=hubble-fgs-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf
+
+# We need one layer
+FROM scratch as linux-tarball-2
+
+ARG HUBBLE_FGS_VERSION
+ARG ARCH
+
+# We explicitly prefix the filesystem with hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGETARCH}
+COPY --from=linux-tarball-1 / /hubble-fgs-${HUBBLE_FGS_VERSION}-${ARCH}/
