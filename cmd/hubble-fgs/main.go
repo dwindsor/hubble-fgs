@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -45,7 +44,6 @@ import (
 	// Add enterprise-specific filters to the global registry
 	_ "github.com/isovalent/hubble-fgs/pkg/filters"
 
-	ciliumopt "github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/lumberjack/v2"
 	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
@@ -364,27 +362,7 @@ func execute() error {
 	}
 
 	cobra.OnInitialize(func() {
-		viper.SetEnvPrefix("fgs")
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(".") // look for a config file in cwd first, useful during development
-		if err := viper.ReadInConfig(); err == nil {
-			log.Info("Loaded config from file")
-		}
-		if viper.IsSet(keyConfigDir) {
-			configDir := viper.GetString(keyConfigDir)
-			cm, err := ciliumopt.ReadDirConfig(configDir)
-			if err != nil {
-				log.WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
-			}
-			if err := viper.MergeConfigMap(cm); err != nil {
-				log.WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to merge config from directory")
-			}
-			log.WithField(keyConfigDir, configDir).Info("Loaded config from directory")
-		}
-		replacer := strings.NewReplacer("-", "_")
-		viper.SetEnvKeyReplacer(replacer)
-		viper.AutomaticEnv()
+		readConfigSettings(adminFgsConfDir, adminFgsConfDropIn, packageFgsConfDropIns)
 	})
 
 	flags := rootCmd.PersistentFlags()
