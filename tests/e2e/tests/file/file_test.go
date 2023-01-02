@@ -151,6 +151,18 @@ func TestFile(t *testing.T) {
 				return ctx
 			}
 
+			// read the /etc/passwd (in GKE this is over an overlayfs with xino=off)
+			_, err = helpers.ExecInPodCombinedOutput(ctx,
+				client,
+				namespace,
+				pod.Name,
+				"ubuntu",
+				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- cat /etc/passwd"))
+			if !assert.NoError(t, err, "failed to run cat") {
+				klog.Errorf("cat failed with error: %w", err)
+				return ctx
+			}
+
 			return ctx
 		}).
 		Feature()
@@ -174,9 +186,14 @@ func FileChecker() ec.MultiEventChecker {
 		}).
 		WithContainer(containerChecker)
 
-	catChecker := ec.NewProcessChecker().
+	catCheckerTmp := ec.NewProcessChecker().
 		WithBinary(sm.Contains("cat")).
 		WithArguments(sm.Contains("/tmp/testfile")).
+		WithPod(podChecker)
+
+	catCheckerEtc := ec.NewProcessChecker().
+		WithBinary(sm.Contains("cat")).
+		WithArguments(sm.Contains("/etc/passwd")).
 		WithPod(podChecker)
 
 	shellChecker := ec.NewProcessChecker().
@@ -184,14 +201,26 @@ func FileChecker() ec.MultiEventChecker {
 
 	fileChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker().
-			WithProcess(catChecker).
+			WithProcess(catCheckerTmp).
 			WithParent(shellChecker),
 		ec.NewProcessFileChecker().
-			WithProcess(catChecker).
+			WithProcess(catCheckerTmp).
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile"))),
+				),
+			).
+			WithHook(sm.Full("rw_verify_area")),
+		ec.NewProcessExecChecker().
+			WithProcess(catCheckerEtc).
+			WithParent(shellChecker),
+		ec.NewProcessFileChecker().
+			WithProcess(catCheckerEtc).
+			WithAction(tetragon.FileAction_FILE_READ).
+			WithArgs(
+				ec.NewFileArgumentChecker().WithGenericArg(
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd"))),
 				),
 			).
 			WithHook(sm.Full("rw_verify_area")),
