@@ -419,7 +419,7 @@ func AddNetwork() {
 		name: "Interface sensor",
 	}
 	sensors.RegisterProbeType("interface_sensor", net)
-	sensors.RegisterTracingSensorsAtInit(net.name, net)
+	sensors.RegisterSpecHandlerAtInit(net.name, net)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_NETNS_EXIT, handleNetNsExit)
 }
 

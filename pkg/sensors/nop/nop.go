@@ -128,7 +128,7 @@ func AddNop() {
 
 	sensors.RegisterProbeType("nop_skskb_verdict", skskbVerdict)
 	sensors.RegisterProbeType("nop_skmsg", skmsg)
-	sensors.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
+	sensors.RegisterSpecHandlerAtInit(skmsg.name, skmsg)
 }
 
 /* Add sensor from CRD */

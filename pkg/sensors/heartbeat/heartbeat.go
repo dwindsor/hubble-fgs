@@ -239,5 +239,5 @@ func AddHeartbeat() {
 		name: "Heartbeat",
 	}
 	sensors.RegisterProbeType("heartbeat", hb)
-	sensors.RegisterTracingSensorsAtInit(hb.name, hb)
+	sensors.RegisterSpecHandlerAtInit(hb.name, hb)
 }

@@ -202,7 +202,7 @@ func init() {
 	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 	sensors.RegisterProbeType("http_skmsg", http)
 
-	sensors.RegisterTracingSensorsAtInit(http.name, http)
+	sensors.RegisterSpecHandlerAtInit(http.name, http)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_HTTP, handleHTTP)
 }
 

@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	sensors.RegisterSensorAtInit(createPacketDropSensor())
+	// sensors.RegisterSensorAtInit(createPacketDropSensor())
 }
 
 type PacketdropSensorConfig struct {
@@ -50,6 +50,7 @@ type PacketdropSensorImpl struct {
 	config PacketdropSensorConfig
 }
 
+// nolint: unused
 func createPacketDropSensor() *sensors.Sensor {
 	progs := []*program.Program{ObserverKfreeSkb}
 	maps := []*program.Map{}

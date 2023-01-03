@@ -754,7 +754,7 @@ func AddUDP() {
 		name: "UDP sensor",
 	}
 	sensors.RegisterProbeType("udp_sensor", udp)
-	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
+	sensors.RegisterSpecHandlerAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)

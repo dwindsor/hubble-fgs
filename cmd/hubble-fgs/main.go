@@ -151,11 +151,11 @@ func hubbleFGSExecute() error {
 		cancel()
 	}()
 
-	sensors.LogRegisteredSensorsAndProbes()
-
 	if err := obs.InitSensorManager(); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
+
+	observer.SensorManager.LogSensorsAndProbes(ctx)
 
 	// Remove old tcpmon BPF directory
 	//

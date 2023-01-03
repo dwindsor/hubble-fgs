@@ -243,7 +243,7 @@ func init() {
 	sensors.RegisterProbeType("tls_cgrp_egress", tls)
 	sensors.RegisterProbeType("cgrp_socketopt", socketopt)
 
-	sensors.RegisterTracingSensorsAtInit(tls.name, tls)
+	sensors.RegisterSpecHandlerAtInit(tls.name, tls)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS, HandleTLS)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }

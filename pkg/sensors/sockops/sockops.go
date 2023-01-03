@@ -50,7 +50,7 @@ func init() {
 		name: "sockops loader",
 	}
 	sensors.RegisterProbeType("sockops", sockops)
-	sensors.RegisterTracingSensorsAtInit(sockops.name, sockops)
+	sensors.RegisterSpecHandlerAtInit(sockops.name, sockops)
 }
 
 func builder(name string) (*sensors.Sensor, error) {

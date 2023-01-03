@@ -95,7 +95,7 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 		return fmt.Errorf("tetragon, aborting could not find BPF programs: %w", err)
 	}
 
-	if err := s.LoadMaps(stopCtx, mapDir); err != nil {
+	if err := s.loadMaps(stopCtx, mapDir); err != nil {
 		return fmt.Errorf("tetragon, aborting could not load sensor BPF maps: %w", err)
 	}
 
@@ -114,6 +114,32 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 	}
 	l.WithField("sensor", s.Name).Infof("Loaded BPF maps and events for sensor successfully")
 	s.Loaded = true
+	return nil
+}
+
+func (s *Sensor) Unload() error {
+	logger.GetLogger().Infof("Unloading sensor %s", s.Name)
+	if !s.Loaded {
+		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", s.Name)
+	}
+
+	if s.UnloadHook != nil {
+		if err := s.UnloadHook(); err != nil {
+			logger.GetLogger().Warnf("Sensor %s unload hook failed: %s", s.Name, err)
+		}
+	}
+
+	for _, p := range s.Progs {
+		unloadProgram(p)
+	}
+
+	for _, m := range s.Maps {
+		if err := m.Unload(); err != nil {
+			logger.GetLogger().Warnf("Failed to unload map %s: %s", m.Name, err)
+		}
+	}
+
+	s.Loaded = false
 	return nil
 }
 
@@ -157,8 +183,8 @@ func isValidSubdir(dir string) bool {
 	return dir != "." && dir != ".."
 }
 
-// LoadMaps loads all the BPF maps in the sensor.
-func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
+// loadMaps loads all the BPF maps in the sensor.
+func (s *Sensor) loadMaps(stopCtx context.Context, mapDir string) error {
 	l := logger.GetLogger()
 	for _, m := range s.Maps {
 		if m.PinState.IsLoaded() {
@@ -338,9 +364,28 @@ func createDir(bpfDir, mapDir string) {
 	os.Mkdir(mapDir, os.ModeDir)
 }
 
+func unloadProgram(prog *program.Program) {
+	log := logger.GetLogger().WithField("label", prog.Label).WithField("pin", prog.PinPath)
+
+	if !prog.LoadState.IsLoaded() {
+		log.Debugf("Refusing to remove %s, program not loaded", prog.Label)
+		return
+	}
+	if count := prog.LoadState.RefDec(); count > 0 {
+		log.Debugf("Program reference count %d, not unloading yet", count)
+		return
+	}
+
+	if err := prog.Unload(); err != nil {
+		logger.GetLogger().WithField("name", prog.Name).WithError(err).Warn("Failed to unload program")
+	}
+
+	log.Info("BPF prog was unloaded")
+}
+
 func UnloadAll(bpfDir string) {
 	for _, l := range AllPrograms {
-		RemoveProgram(bpfDir, l)
+		unloadProgram(l)
 	}
 
 	for _, m := range AllMaps {

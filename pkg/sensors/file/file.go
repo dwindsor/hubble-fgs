@@ -191,7 +191,7 @@ func init() {
 		name: "file sensor",
 	}
 	sensors.RegisterProbeType("file_monitoring", file)
-	sensors.RegisterTracingSensorsAtInit(file.name, file)
+	sensors.RegisterSpecHandlerAtInit(file.name, file)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 }

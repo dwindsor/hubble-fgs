@@ -8,12 +8,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 )
 
-func RegisterSensorsAtInit(loaded []*sensors.Sensor) {
-	for _, s := range loaded {
-		sensors.RegisterSensorAtInit(s)
-	}
-}
-
 // LoadSensor is a helper for loading a sensor in tests
 func LoadSensor(ctx context.Context, t *testing.T, sensor *sensors.Sensor) {
 
@@ -26,7 +20,7 @@ func LoadSensor(ctx context.Context, t *testing.T, sensor *sensors.Sensor) {
 	}
 
 	t.Cleanup(func() {
-		sensors.UnloadSensor(ctx, mapDir, mapDir, sensor)
+		sensor.Unload()
 	})
 }
 
@@ -87,6 +81,18 @@ func (tsm *TestSensorManager) EnableSensors(
 		if err := tsm.Manager.EnableSensor(ctx, s.Name); err != nil {
 			t.Fatalf("EnableSensor error: %s", err)
 		}
+	}
+}
+
+// AddAndEnableSensor is a helper function that adds and enables a new sensor
+func (tsm *TestSensorManager) AddAndEnableSensors(
+	ctx context.Context,
+	t *testing.T,
+	targets []*sensors.Sensor,
+) {
+	for i := range targets {
+		sensor := targets[i]
+		tsm.AddAndEnableSensor(ctx, t, sensor, sensor.Name)
 	}
 }
 

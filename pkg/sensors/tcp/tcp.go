@@ -355,7 +355,7 @@ func AddTCP() {
 	}
 
 	sensors.RegisterProbeType("tcp_sensor", tcp)
-	sensors.RegisterTracingSensorsAtInit(tcp.name, tcp)
+	sensors.RegisterSpecHandlerAtInit(tcp.name, tcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPSTATS, handleTcpStats)
 
 	/* Core set of TCP events */

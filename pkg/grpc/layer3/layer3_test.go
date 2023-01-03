@@ -267,7 +267,7 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 	}
 
 	dn := DummyNotifier{t}
-	do := execOSS.DummyObserver{}
+	do := &server.FakeObserver{}
 	lServer := server.NewServer(ctx, cancelWg, dn, do)
 
 	// Exec cache is always needed to ensure events have an associated Process{}
