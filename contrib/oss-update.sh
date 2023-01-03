@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# This script creates a commit that updates to the given OSS branch. If no argument is provided, the
+# script will update to the latest main branch on OSS. Otherwise, it will checkout and update based
+# on the given argument. For example, for testing a PR on oss, users can use the name of the branch
+# there under orign, e.g., origin/pr/kkourt/pizza-is-the-best.
+#
+# The script will create a new branch (using timestamp) before doing any changes.
+#
+# NB(kkourt): please treat this as beta for now, since there might be things that I've missed.
+
+set -e
+#set -x
+
+v=""
+if [ -z "$1" ]; then
+	echo "No argument specified: using main branch"
+	v="origin/main"
+else
+	v="$1"
+fi
+
+# Ensure that there are no pending changes
+git diff --quiet || (echo "There are pending changes, bailing out" && false)
+git diff --quiet --cached || (echo "There are pending changes in the cache, bailing out" && false)
+
+# checkout a new branch
+git checkout -b oss-sync-$(date +%Y%m%d.%H%M%S)
+
+# get the current (old) sha of OSS
+old_sha=$(git submodule status modules/tetragon-oss | awk '{ print $1 }')
+
+# checkout the new OSS version
+pushd modules/tetragon-oss
+git status
+git fetch
+git checkout $v
+popd
+
+# get the new sha of OSS
+new_sha=$(git submodule status modules/tetragon-oss | awk '{ print $1 }' | sed -e 's/^\+//')
+
+# create a temp file for the log message
+outf=$(mktemp oss-update.log.XXXXX)
+trap 'rm -f -- "$outf"' EXIT
+echo "chore: OSS sync" >> $outf
+echo "" >> $outf
+echo "Synching from $old_sha to $new_sha." >> $outf
+echo "Commits:" >> $outf
+echo "" >> $outf
+git -C modules/tetragon-oss log --pretty=' * %h (%s)'  $old_sha..$new_sha >> $outf
+
+make generate && make codegen && make vendor
+git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss
+
+git commit -s -F $outf
