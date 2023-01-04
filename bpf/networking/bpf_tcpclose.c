@@ -38,6 +38,7 @@ event_tcp_close(struct pt_regs *ctx)
 	u16 family;
 	u32 zero = 0;
 	u64 cookie;
+	unsigned char old_state;
 
 	state = ctx->si;
 	if (state != TCP_CLOSE)
@@ -110,6 +111,28 @@ event_tcp_close(struct pt_regs *ctx)
 
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 		get_socket_stats(skp, netns, process, &val->stats);
+
+		/* Get the state that we are transitioning from */
+		probe_read(&old_state, sizeof(old_state),
+			   _((const void *)&(skp->__sk_common.skc_state)));
+
+		/* When a socket is closing, it may have received a FIN/ACK segment.
+		 * Unfortunately, a FIN/ACK increases the received sequence counter
+		 * by 1 (in order to maintain appropriate state). We use the received
+		 * sequence counter to indicate the number of bytes received, so if
+		 * we have received a FIN/ACK then our counter will be 1 greater than
+		 * it should be.
+		 * 
+		 * The situations where this will be the case are any where we are
+		 * transitioning from LAST_ACK to CLOSE, as all of these imply a
+		 * FIN/ACK was received (as the remote end has initiated the close);
+		 * and the specific case where the local end initiated the close and
+		 * a FIN/ACK was ACKed, recorded in the ack_finack flag on the socket
+		 * (see bpf_tcp_send_check.h for details).
+		 */
+		if ((old_state == TCP_LAST_ACK || process->ack_finack) &&
+		    val->stats.bytes_received > 0)
+			val->stats.bytes_received--;
 
 		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,

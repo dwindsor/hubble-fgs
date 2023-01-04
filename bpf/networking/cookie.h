@@ -13,6 +13,8 @@ struct socketmap_value {
 	__u64 sent;
 	__u64 received;
 	__u64 buckets[8];
+	__u8 ack_finack;
+	__u8 pad[7];
 };
 
 struct {
@@ -193,6 +195,7 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 			process->sent = 0;
 			process->socket_flags = 0;
 			process->zero_window = 0;
+			process->ack_finack = 0;
 #pragma unroll
 			for (i = 0; i < 8; i++) {
 				process->buckets[i] = 0;
@@ -206,6 +209,7 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 			process->sent = 0;
 			process->socket_flags = 0;
 			process->zero_window = 0;
+			process->ack_finack = 0;
 		}
 	}
 }

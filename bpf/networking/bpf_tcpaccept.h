@@ -121,6 +121,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->received = 0;
 	acc_process->sent = 0;
 	acc_process->zero_window = 0;
+	acc_process->ack_finack = 0;
 
 	if (family != AF_INET6) {
 		tuple.saddr[0] = val->tuple.saddr[0];

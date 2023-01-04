@@ -47,6 +47,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	struct net *netns;
 	int zero = 0;
 	u64 cookie;
+	u8 state;
 
 	tcp = (struct tcp_sock *)skp;
 	/* In TCP we use the struct sock address as the socket cookie.
@@ -65,6 +66,37 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		struct msg_ip_event *val;
 		__u32 rcv_wnd;
 		size_t size;
+
+		/* Get the current socket TCP state. */
+		probe_read(&state, sizeof(state),
+			   _((const void *)&(skp->__sk_common.skc_state)));
+
+		/* If we're in FIN_WAIT2, then the packet we are sending *must*
+		 * (according to the TCP finite state machine, caveat emptor) be
+		 * ACKing a FIN. Assuming a relatively standard TCP stack - one
+		 * where FIN packets do not have a payload (i.e. payloads are
+		 * sent, and then afterwards a FIN is sent) - this means that a
+		 * FIN packet with 0 payload was received, and this would have
+		 * incremented our receive sequence number by 1. As we use this
+		 * value as our bytes_received count, we need to reduce it by 1
+		 * when we report the count, which we do in the tcp_close program.
+		 * We therefore set a flag on the socket to indicate this and do
+		 * not process further in this program.
+		 */
+		if (state == TCP_FIN_WAIT2) {
+			process->ack_finack = 1;
+			return 0;
+		}
+
+		/* Check if this socket is established. If it is in the handshake
+		 * then there will be no data to account; if it is closing, then
+		 * we will account for the data when the socket actually closes.
+		 * This will avoid the receive bytes off-by-one that happens when
+		 * a FIN/ACK is received, and will save processing when
+		 * unnecessary.
+		 */
+		if (state != TCP_ESTABLISHED)
+			return 0;
 
 		/* Check for zero window event. On zero window events we want to
 		 * do some extra accounting to report these events to user space.
