@@ -4,6 +4,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tracing.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
  * members byte-by-byte, as offsets may not be aligned. This is bad for
@@ -134,18 +135,11 @@ struct {
 } udp_cookie_heap SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, u64);
-	__type(value, struct msg_udp_event);
-	__uint(max_entries, MAX_UDP_PAYLOADS);
-} udp_payload_map SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, __u64);
+	__type(value, struct msg_udp_event);
 	__uint(max_entries, 1);
-} udp_payload_map_stats SEC(".maps");
+} udp_payload_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -157,13 +151,6 @@ struct {
 struct payload_bloom_value {
 	u16 data[UDP_BLOOM_BUCKETS];
 };
-
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct payload_bloom_value);
-	__uint(max_entries, 1);
-} udp_payload_bloom_map SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
@@ -213,63 +200,6 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
-}
-
-static inline __attribute__((always_inline)) int
-lookup_udp_payload_bloom(u64 cookie)
-{
-	u16 *bloom;
-	int zero = 0;
-	u64 index;
-
-	bloom = map_lookup_elem(&udp_payload_bloom_map, &zero);
-	if (!bloom) {
-		/* If the bloom map can't be loaded, report that
-		 * the entry IS in it, to force the lookup
-		 */
-		return true;
-	}
-	index = cookie & UDP_BLOOM_KEY_MASK;
-
-	return bloom[index] != 0;
-}
-
-static inline __attribute__((always_inline)) void
-modify_udp_payload_bloom(u64 cookie, bool add)
-{
-	u16 *bloom;
-	int zero = 0;
-	u64 index;
-
-	bloom = map_lookup_elem(&udp_payload_bloom_map, &zero);
-	if (!bloom)
-		return;
-	index = cookie & UDP_BLOOM_KEY_MASK;
-
-	/* We technically shouldn't need these checks, but it
-	 * makes sense to ensure the bloom counts can't overflow.
-	 * Using __sync_fetch_and_add() here caused a SEGV in
-	 * clang, so this is a simple increment and decrement.
-	 * It is possible for a race to happen, but it should be
-	 * rare.
-	 */
-	if (add && bloom[index] < 0xFFFF) {
-		bloom[index] = bloom[index] + 1;
-	} else if (!add && bloom[index] > 0) {
-		bloom[index] = bloom[index] - 1;
-	}
-}
-
-static inline __attribute__((always_inline)) void
-add_to_udp_payload_bloom(u64 cookie)
-{
-	modify_udp_payload_bloom(cookie, true);
-}
-
-static inline __attribute__((always_inline)) void
-remove_from_udp_payload_bloom(u64 cookie)
-{
-	modify_udp_payload_bloom(cookie, false);
 }
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
@@ -350,34 +280,13 @@ emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
-static inline __attribute__((always_inline)) void inc_udp_payload_map()
-{
-	u64 *cntr;
-	int zero = 0;
-
-	cntr = map_lookup_elem(&udp_payload_map_stats, &zero);
-	if (!cntr)
-		return;
-	*cntr = *cntr + 1;
-}
-
-static inline __attribute__((always_inline)) void dec_udp_payload_map()
-{
-	u64 *cntr;
-	int zero = 0;
-
-	cntr = map_lookup_elem(&udp_payload_map_stats, &zero);
-	if (!cntr)
-		return;
-	*cntr = *cntr - 1;
-}
-
 static inline __attribute__((always_inline)) void
 store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 			void *skb_head, struct udp_info_value *v, int off,
 			int payload_size, bool kp)
 {
 	struct msg_udp_event *val;
+	int zero = 0;
 	size_t size;
 
 	val = create_udp_payload_event(ctx, ip, cookie, ipv6, skb_head, v, off,
@@ -385,10 +294,17 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	if (!val)
 		return;
 
-	if (map_update_elem(&udp_payload_map, cookie, val, 0) == 0) {
-		inc_udp_payload_map();
-		add_to_udp_payload_bloom(*cookie);
-	}
+	/* Store and then retrieve the payload data in order to trick the
+	 * verifier into thinking it isn't skb data so that we can send it
+	 * out the perf ring buffer!
+	 */
+	map_update_elem(&udp_payload_map, &zero, val, 0);
+
+	val = map_lookup_elem(&udp_payload_map, &zero);
+	if (!val)
+		return;
+	size &= 0x7ff;
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
 static inline __attribute__((always_inline)) void

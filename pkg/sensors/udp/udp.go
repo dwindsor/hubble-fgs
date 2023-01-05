@@ -46,14 +46,12 @@ import (
 )
 
 const (
-	UdpGCIntervalDefault   = time.Duration(60 * time.Second)
-	UdpMapName             = "udp_map"
-	UdpRetprobeMapName     = "udp_retprobe_map"
-	UdpConfigMapName       = "udp_config_map"
-	UdpPayloadMapName      = "udp_payload_map"
-	UdpPayloadMapStatsName = "udp_payload_map_stats"
-	UdpPayloadBloomMapName = "udp_payload_bloom_map"
-	SocketMapName          = "socket_map"
+	UdpGCIntervalDefault = time.Duration(60 * time.Second)
+	UdpMapName           = "udp_map"
+	UdpRetprobeMapName   = "udp_retprobe_map"
+	UdpConfigMapName     = "udp_config_map"
+	UdpPayloadMapName    = "udp_payload_map"
+	SocketMapName        = "socket_map"
 
 	stataCacheSize = 32000
 	IPPROTO_UDP    = 17
@@ -227,25 +225,19 @@ var (
 	SocketCookieStatsLazy = program.MapBuilder("socket_map_stats", Udp4SendLazy)
 
 	// UDP maps
-	UdpMap                       = program.MapBuilder(UdpMapName, InetSend)
-	UdpMapLazy                   = program.MapBuilder(UdpMapName, InetSendLazy)
-	UdpMapLazyKprobe             = program.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpRetprobeMap               = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
-	UdpRetprobeMapLazy           = program.MapBuilder(UdpRetprobeMapName, Udp4SendLazy)
-	UdpConfigMap                 = program.MapBuilder(UdpConfigMapName, InetSend)
-	UdpConfigLazyMap             = program.MapBuilder(UdpConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe       = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
-	UdpPayloadMap                = program.MapBuilder(UdpPayloadMapName, InetSend)
-	UdpPayloadMapStats           = program.MapBuilder(UdpPayloadMapStatsName, InetSend)
-	UdpPayloadLazyMap            = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
-	UdpPayloadLazyMapStats       = program.MapBuilder(UdpPayloadMapStatsName, InetSendLazy)
-	UdpPayloadLazyMapKprobe      = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	UdpPayloadLazyMapStatsKprobe = program.MapBuilder(UdpPayloadMapStatsName, InetSendRecvLazy)
-	UdpPayloadBloomMap           = program.MapBuilder(UdpPayloadBloomMapName, InetSend)
-	UdpPayloadBloomMapLazy       = program.MapBuilder(UdpPayloadBloomMapName, InetSendLazy)
-	UdpPayloadBloomMapKprobe     = program.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
-	FdLookupConfigMap            = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
-	FdLookupConfigMapLazy        = program.MapBuilder(ip.FdLookupConfigMapName, SockReleaseLazy)
+	UdpMap                  = program.MapBuilder(UdpMapName, InetSend)
+	UdpMapLazy              = program.MapBuilder(UdpMapName, InetSendLazy)
+	UdpMapLazyKprobe        = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
+	UdpRetprobeMapLazy      = program.MapBuilder(UdpRetprobeMapName, Udp4SendLazy)
+	UdpConfigMap            = program.MapBuilder(UdpConfigMapName, InetSend)
+	UdpConfigLazyMap        = program.MapBuilder(UdpConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe  = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpPayloadMap           = program.MapBuilder(UdpPayloadMapName, InetSend)
+	UdpPayloadLazyMap       = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
+	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
+	FdLookupConfigMap       = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
+	FdLookupConfigMapLazy   = program.MapBuilder(ip.FdLookupConfigMapName, SockReleaseLazy)
 )
 
 type udpInfoKey struct {
@@ -640,8 +632,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeMapLazy,
 			UdpConfigLazyMapKprobe,
 			UdpPayloadLazyMapKprobe,
-			UdpPayloadLazyMapStatsKprobe,
-			UdpPayloadBloomMapKprobe,
 			SocketCookieMapLazy,
 			SocketCookieStatsLazy,
 			FdLookupConfigMapLazy,
@@ -665,8 +655,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeMapLazy,
 			UdpConfigLazyMap,
 			UdpPayloadLazyMap,
-			UdpPayloadLazyMapStats,
-			UdpPayloadBloomMapLazy,
 			SocketCookieMapLazy,
 			SocketCookieStatsLazy,
 			FdLookupConfigMapLazy,
@@ -690,8 +678,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeMap,
 			UdpConfigMap,
 			UdpPayloadMap,
-			UdpPayloadMapStats,
-			UdpPayloadBloomMap,
 			SocketCookieMap,
 			SocketCookieStats,
 			FdLookupConfigMap,

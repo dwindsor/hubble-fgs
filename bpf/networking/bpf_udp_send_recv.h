@@ -34,56 +34,6 @@ struct {
 	__uint(max_entries, 1);
 } udp_sock_info_heap SEC(".maps");
 
-static inline __attribute__((always_inline)) void
-check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
-{
-	struct msg_udp_event *ev;
-	size_t size;
-	struct udp_sensor_config *config;
-	int zero = 0;
-
-	config = map_lookup_elem(&udp_config_map, &zero);
-	if (!config)
-		return;
-
-	if (config->dnsPorts[0] == 0 ||
-	    !dns_port_match(config->dnsPorts, value->sport,
-			    bpf_ntohs(value->dport)))
-		return;
-
-	/* Cheap lookup to see if the cookie is likely in the payload_map.
-	 * This returns true if a cookie with the same LSBs has been added
-	 * to the map, and false otherwise. False positives are possible
-	 * (and expected), but false negatives will never happen. Therefore,
-	 * sometimes we will look up in the real map when the cookie isn't
-	 * in there, but will save ourselves many look ups when the cookie
-	 * definitely isn't in there.
-	 * The only times the cookie shouldn't be in the map, after passing
-	 * the DNS ports check, is in kernels >=5.10 where the DNS payload
-	 * has already been transmitted by the stack programs.
-	 */
-	if (!lookup_udp_payload_bloom(*cookie))
-		return;
-
-	ev = map_lookup_elem(&udp_payload_map, cookie);
-	if (!ev)
-		return;
-
-	ev->event.key.pid = value->pid;
-	ev->event.key.ktime = value->pid_ktime;
-
-	size = ev->event.common.size;
-	if (size <= sizeof(*ev)) {
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, ev,
-				  size);
-	}
-
-	if (map_delete_elem(&udp_payload_map, cookie) == 0) {
-		dec_udp_payload_map();
-		remove_from_udp_payload_bloom(*cookie);
-	}
-}
-
 static inline __attribute__((always_inline)) struct udp_info *
 udp4_get_info(struct udp_sock_info *sock_info)
 {
@@ -286,7 +236,6 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 				emit_udp_connect_event(ctx, value);
 			}
 		}
-		check_and_send_payload(ctx, &cookie, value);
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
@@ -487,7 +436,6 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 				emit_udp_connect_event(ctx, value);
 			}
 		}
-		check_and_send_payload(ctx, &cookie, value);
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
