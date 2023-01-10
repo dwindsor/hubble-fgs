@@ -207,39 +207,50 @@ on a system with a new test program, but it's also a bit annoying on the code si
 
 ## Running FGS
 
-### By Building it on a Linux machine
+### By building it on a Linux machine
 
 FGS has two components to build:
   * the bpf programs under `./bpf` (written in C)
-  * the agent code (written in go)
+  * the agent code (written in Go)
 
-The bpf programs require to be compiled with a custom version of `clang`.
-There is docker container that include binary versions the custom `clang`.
+The bpf programs require to be compiled with a custom version of `clang`. For
+conveniance, a container image including the binaries of the custom compiler can
+be used.
 
-On a Linux machine, they can be installed using `make  tools-install`:
+#### Prerequisites
 
+Initialize the OSS submodule with:
 ```
-$ make tools-install
-mkdir -p ./bin
-docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/clang-11 ./bin/clang
-docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/llc ./bin/llc
-docker stop f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510
-f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510
+make oss-init
 ```
 
-And then used to build and run FGS locally:
-
+Install `libcap` and `libelf`, on Debian systems:
 ```
-$ PATH=$(pwd)/bin:$PATH  make
-...
-$ sudo sh -c './hubble-fgs --hubble-lib ./bpf/objs'
+sudo apt install libelf-dev libcap-dev
 ```
 
-Once the agent (`./hubble-fgs`) is running, events can be observed using the
-`./hubble-enterprise` cli:
+#### Build and run
+
+Build the BPF programs with `hubble-bpf`, the userland agent with `hubble-fgs`
+and the hubble enterprise CLI with `hubble-enterprise`:
+```
+make hubble-bpf hubble-fgs hubble-enterprise
+```
+
+Run FGS locally:
+```
+sudo ./hubble-fgs --hubble-lib bpf/objs
+```
+
+Once the agent (`hubble-fgs`) is running, events can be observed using the
+`hubble-enterprise` CLI:
 
 ```
-$ ./hubble-enterprise getevents
+./hubble-enterprise getevents
+```
+
+The output should be similar to:
+```json
 {"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321," ...
 ```
 
