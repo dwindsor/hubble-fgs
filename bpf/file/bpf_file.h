@@ -202,54 +202,125 @@ static inline __attribute__((always_inline)) void get_mnt_ns(__u32 *mnt_ns)
 	probe_read(mnt_ns, sizeof(*mnt_ns), _(&nsp.mnt_ns->ns.inum));
 }
 
-static inline __attribute__((always_inline)) void
-get_fs_info(struct msg_fs_info *msg, struct inode *inode)
-{
-	struct super_block *sb;
-	struct file_system_type *sb_type;
-	char *sb_name;
-
-	probe_read(&sb, sizeof(sb), _(&inode->i_sb));
-	if (!sb)
-		return;
-
-	probe_read(&(msg->dev), sizeof(msg->dev), _(&sb->s_dev));
-	msg->pad = 0;
-	probe_read(msg->id, 8 * sizeof(char), _(&(sb->s_id[0])));
-
-	probe_read(&sb_type, sizeof(sb_type), _(&sb->s_type));
-	if (!sb_type)
-		return;
-
-	probe_read(&sb_name, sizeof(sb_name), _(&sb_type->name));
-	if (!sb_name)
-		return;
-
-	probe_read_str(msg->name, 8 * sizeof(char), sb_name);
-	probe_read(msg->uuid, 16 * sizeof(char), _(&sb->s_uuid));
-}
-
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
+
+static inline __attribute__((always_inline)) struct ovl_layer *
+ovl_layer_lower(struct dentry *dentry)
+{
+	struct ovl_entry *poe, oe;
+
+	if (!dentry)
+		return 0;
+
+	probe_read(&poe, sizeof(poe), _(&dentry->d_fsdata));
+	probe_read(&oe, sizeof(oe), poe);
+	if (oe.numlower) {
+		struct ovl_path op;
+		probe_read(&op, sizeof(op),
+			   (char *)poe + sizeof(struct ovl_entry));
+		return (struct ovl_layer *)op.layer;
+	}
+	return 0;
+}
 
 // returns the fsid of the lower layer in overlayfs
 // (https://elixir.bootlin.com/linux/v5.10/source/fs/overlayfs/util.c#L205)
 static inline __attribute__((always_inline)) int
 ovl_layer_lower_fsid(struct dentry *dentry)
 {
-	struct ovl_entry *poe, oe;
-
-	probe_read(&poe, sizeof(poe), _(&dentry->d_fsdata));
-	probe_read(&oe, sizeof(oe), poe);
-	if (oe.numlower) {
-		struct ovl_path op;
+	struct ovl_layer *l = ovl_layer_lower(dentry);
+	if (l) {
 		struct ovl_layer ol;
-		probe_read(&op, sizeof(op),
-			   (char *)poe + sizeof(struct ovl_entry));
-		probe_read(&ol, sizeof(ol), op.layer);
+		probe_read(&ol, sizeof(ol), l);
 		return ol.fsid;
 	}
 	return 0;
 }
+
+struct ovl_fs__old {
+	struct vfsmount *upper_mnt;
+	unsigned int numlower;
+	/* Number of unique lower sb that differ from upper sb */
+	unsigned int numlowerfs;
+	struct ovl_layer *lower_layers;
+	struct ovl_sb *lower_fs;
+	/* workbasedir is the path at workdir= mount option */
+	struct dentry *workbasedir;
+	/* workdir is the 'work' directory under workbasedir */
+	struct dentry *workdir;
+	/* index directory listing overlay inodes by origin file handle */
+	struct dentry *indexdir;
+	long namelen;
+	/* pathnames of lower and upper dirs, for show_options */
+	struct ovl_config config;
+	/* creds of process who forced instantiation of super block */
+	const struct cred *creator_cred;
+	bool tmpfile;
+	bool noxattr;
+	/* Did we take the inuse lock? */
+	bool upperdir_locked;
+	bool workdir_locked;
+	/* Traps in ovl inode cache */
+	struct inode *upperdir_trap;
+	struct inode *workbasedir_trap;
+	struct inode *workdir_trap;
+	struct inode *indexdir_trap;
+	/* Inode numbers in all layers do not use the high xino_bits */
+	unsigned int xino_bits;
+};
+
+struct ovl_fs__new {
+	unsigned int numlayer;
+	/* Number of unique fs among layers including upper fs */
+	unsigned int numfs;
+	const struct ovl_layer *layers;
+	struct ovl_sb *fs;
+	/* workbasedir is the path at workdir= mount option */
+	struct dentry *workbasedir;
+	/* workdir is the 'work' directory under workbasedir */
+	struct dentry *workdir;
+	/* index directory listing overlay inodes by origin file handle */
+	struct dentry *indexdir;
+	long namelen;
+	/* pathnames of lower and upper dirs, for show_options */
+	struct ovl_config config;
+	/* creds of process who forced instantiation of super block */
+	const struct cred *creator_cred;
+	bool tmpfile;
+	bool noxattr;
+	/* Did we take the inuse lock? */
+	bool upperdir_locked;
+	bool workdir_locked;
+	bool share_whiteout;
+	/* Traps in ovl inode cache */
+	struct inode *workbasedir_trap;
+	struct inode *workdir_trap;
+	struct inode *indexdir_trap;
+	/* -1: disabled, 0: same fs, 1..32: number of unused ino bits */
+	int xino_mode;
+	/* For allocation of non-persistent inode numbers */
+	atomic_long_t last_ino;
+	/* Whiteout dentry cache */
+	struct dentry *whiteout;
+	/* r/o snapshot of upperdir sb's only taken on volatile mounts */
+	errseq_t errseq;
+};
+
+struct ovl_sb__new {
+	struct super_block *sb;
+	dev_t pseudo_dev;
+	/* Unusable (conflicting) uuid */
+	bool bad_uuid;
+	/* Used as a lower layer (but maybe also as upper) */
+	bool is_lower;
+};
+
+struct ovl_sb_old {
+	struct super_block *sb;
+	dev_t pseudo_dev;
+	/* Unusable (conflicting) uuid */
+	bool bad_uuid;
+};
 
 /*
  * There are cases in overlayfs where stat reports a different device ID 
@@ -266,55 +337,122 @@ static inline __attribute__((always_inline)) dev_t
 fix_dev_id_ovl(struct inode *inode, struct dentry *dentry, dev_t dev_id)
 {
 	struct super_block *sb;
-	struct ovl_fs *pof, of;
-	struct ovl_sb *pos, os;
-	unsigned int xinobits;
+	struct ovl_fs *s_fs_info;
 	umode_t i_mode;
-	bool samefs;
-	u32 s_magic;
-	int fsid;
+	unsigned long s_magic;
 
-	probe_read(&sb, sizeof(sb), _(&inode->i_sb));
-	if (!sb) {
+	probe_read(&sb, sizeof(sb), _(&dentry->d_sb));
+	if (!sb)
 		return dev_id;
-	}
 
 	// we care only for inodes in overlayfs
 	probe_read(&s_magic, sizeof(s_magic), _(&sb->s_magic));
 	if (s_magic != OVERLAYFS_SUPER_MAGIC)
 		return dev_id;
 
-	probe_read(&pof, sizeof(pof), _(&sb->s_fs_info));
-	probe_read(&of, sizeof(of), pof);
+	probe_read(&s_fs_info, sizeof(s_fs_info), _(&sb->s_fs_info));
 
-	// all layers are over the same file system
-	// no need to take any action
-	samefs = of.xino_mode == 0;
-	if (samefs) {
-		return dev_id;
-	}
+	if (bpf_core_field_exists(sb->s_wb_err)) { // introduced in 5.8
+		struct ovl_fs__new pof;
+		int xino_mode;
+		unsigned int xinobits;
+		bool samefs;
 
-	// xino is ON
-	// no need to take any action
-	xinobits = (of.xino_mode >= 0) ? of.xino_mode : 0;
-	if (xinobits) {
-		return dev_id;
+		probe_read(&pof, sizeof(pof), s_fs_info);
+		xino_mode = pof.xino_mode;
+
+		// all layers are over the same file system
+		// no need to take any action
+		samefs = xino_mode == 0;
+		if (samefs)
+			return dev_id;
+
+		// xino is ON
+		// no need to take any action
+		xinobits = (xino_mode >= 0) ? xino_mode : 0;
+		if (xinobits)
+			return dev_id;
+	} else {
+		struct ovl_fs__old pof;
+		unsigned int xino_bits;
+		unsigned int numlowerfs;
+		struct vfsmount *upper_mnt;
+
+		probe_read(&pof, sizeof(pof), s_fs_info);
+
+		numlowerfs = pof.numlowerfs;
+		upper_mnt = pof.upper_mnt;
+		if (!numlowerfs)
+			return dev_id;
+		else if (numlowerfs == 1 && !upper_mnt)
+			return dev_id;
+
+		xino_bits = pof.xino_bits;
+		if (xino_bits)
+			return dev_id;
 	}
 
 	// this is a directory
 	// no need to take any action
 	probe_read(&i_mode, sizeof(i_mode), _(&inode->i_mode));
-	if (S_ISDIR(i_mode)) {
+	if (S_ISDIR(i_mode))
 		return dev_id;
+
+	if (bpf_core_field_exists(sb->s_wb_err)) { // introduced in 5.8
+		struct ovl_fs__new pof;
+		struct ovl_sb__new *pos, os;
+		int fsid;
+
+		probe_read(&pof, sizeof(pof), s_fs_info);
+
+		fsid = ovl_layer_lower_fsid(dentry);
+		asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid) :);
+
+		pos = (struct ovl_sb__new *)pof.fs;
+		probe_read(&os, sizeof(os),
+			   (char *)pos + (fsid * sizeof(struct ovl_sb__new)));
+		return os.pseudo_dev;
+	} else {
+		struct ovl_layer *pol, ol;
+		struct ovl_sb os;
+
+		pol = ovl_layer_lower(dentry);
+		if (!pol)
+			return dev_id;
+
+		probe_read(&ol, sizeof(ol), pol);
+		probe_read(&os, sizeof(os), ol.fs);
+		return os.pseudo_dev;
 	}
+}
 
-	fsid = ovl_layer_lower_fsid(dentry);
-	asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid) :);
+static inline __attribute__((always_inline)) void
+get_fs_info(struct msg_fs_info *msg, struct inode *inode, struct dentry *dentry)
+{
+	struct super_block *sb;
+	struct file_system_type *sb_type;
+	char *sb_name;
 
-	probe_read(&pos, sizeof(pos), &of.fs);
-	probe_read(&os, sizeof(os),
-		   (char *)pos + (fsid * sizeof(struct ovl_sb)));
-	return os.pseudo_dev;
+	probe_read(&sb, sizeof(sb), _(&inode->i_sb));
+	if (!sb)
+		return;
+
+	probe_read(&(msg->dev), sizeof(msg->dev), _(&sb->s_dev));
+	// fix dev_id for overlayfs (if needed)
+	msg->dev = fix_dev_id_ovl(inode, dentry, msg->dev);
+	msg->pad = 0;
+	probe_read(msg->id, 8 * sizeof(char), _(&(sb->s_id[0])));
+
+	probe_read(&sb_type, sizeof(sb_type), _(&sb->s_type));
+	if (!sb_type)
+		return;
+
+	probe_read(&sb_name, sizeof(sb_name), _(&sb_type->name));
+	if (!sb_name)
+		return;
+
+	probe_read_str(msg->name, 8 * sizeof(char), sb_name);
+	probe_read(msg->uuid, 16 * sizeof(char), _(&sb->s_uuid));
 }
 
 static inline __attribute__((always_inline)) void
@@ -322,10 +460,7 @@ get_ino_fs(struct msg_file_ops *msg, struct inode *inode, struct dentry *dentry)
 {
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
 
-	get_fs_info(&(msg->fs), inode);
-
-	// fix dev_id for overlayfs (if needed)
-	msg->fs.dev = fix_dev_id_ovl(inode, dentry, msg->fs.dev);
+	get_fs_info(&(msg->fs), inode, dentry);
 }
 
 static inline __attribute__((always_inline)) void
@@ -341,7 +476,7 @@ get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
 		   _(&parent_inode->i_ino));
 
-	get_fs_info(&(msg->parent_fs), parent_inode);
+	get_fs_info(&(msg->parent_fs), parent_inode, parent_dentry);
 }
 
 static inline __attribute__((always_inline)) struct hash_map_file_val *

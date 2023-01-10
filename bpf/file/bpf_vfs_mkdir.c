@@ -86,7 +86,7 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// get parent inode and fs info
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
 		   _(&inode->i_ino));
-	get_fs_info(&(msg->parent_fs), inode);
+	get_fs_info(&(msg->parent_fs), inode, dentry);
 
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
 				     msg->parent_ino, msg->parent_fs.dev);
