@@ -1074,19 +1074,19 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
-				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1))),
-		ec.NewProcessDnsChecker().
-			WithProcess(curl4Checker).
-			WithParent(selfChecker).
-			WithDns(ec.NewDnsInfoChecker().
-				WithRcode(0).
-				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
 				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
 				WithIps(ec.NewStringListMatcher().
 					WithOperator(listmatcher.Subset).
 					// Match a valid IPv4 address
 					WithValues(sm.Regex(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$`)))),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl4Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1))),
 		ec.NewProcessExecChecker().
 			WithProcess(curl6Checker).
 			WithParent(selfChecker),
@@ -1101,13 +1101,6 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
-				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28))),
-		ec.NewProcessDnsChecker().
-			WithProcess(curl6Checker).
-			WithParent(selfChecker).
-			WithDns(ec.NewDnsInfoChecker().
-				WithRcode(0).
-				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
 				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28)).
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(28)).
 				WithIps(ec.NewStringListMatcher().
@@ -1115,6 +1108,13 @@ func TestDnsEvents(t *testing.T) {
 					// Full IPv6 regex is probably too complicated, let's just see if it
 					// contains a ::
 					WithValues(sm.Contains(`::`)))),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl6Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28))),
 	)
 
 	curl4 := exec.Command("curl", "-4", "https://www.google.com")

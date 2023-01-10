@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -154,12 +153,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 
 func (msg *MsgTLSEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	internal, _ := process.GetParentProcessInternal(p.Pid.Value, timestamp)
-	if internal != nil {
-		return internal, nil
-	}
-	errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
-	return nil, eventcache.ErrFailedToGetProcessInfo
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
 }
 
 func (msg *MsgTLSEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
