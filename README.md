@@ -136,22 +136,22 @@ Or by passing an `--export-filename` flag to the agent.
 
 ### Building and running via Docker
 
-To run docker image with custom BTF link btf in /var/lib/hubble-fgs/btf as shown
-below. If BTF link is omitted hubble-fgs will attempt to search for it in the
-list of known kernels using the running kernels `uname -r`. If it is still not
-found an error will be reported.
+Use the following command to build a container image without BTF metadata:
+```
+make image
+```
 
-To build the image with metadata use
+If BTF link is omitted hubble-fgs will attempt to search for it in the list of
+known kernels using the running kernels `uname -r`. If it is still not found an
+error will be reported.
+```
+docker run --rm --name hubble-fgs --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -ti isovalent/hubble-fgs
+```
 
-    make image-btf
-
-To build without metadata this will require users to include metadata manually.
-
-    make image
-
-To run image in docker,
-
-    docker run --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
+To run Docker image with custom BTF link in `/var/lib/hubble-fgs/btf` use:
+```
+docker run --rm --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti isovalent/hubble-fgs
+```
 
 ### Running on GKE
 
