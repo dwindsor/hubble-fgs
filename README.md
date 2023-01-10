@@ -83,7 +83,58 @@ README](https://github.com/isovalent/hubble-builder/tree/master/fgs-btf/README.m
 of the  [hubble-builder](https://github.com/isovalent/hubble-builder/)
 repository for more details.
 
-## Execute FGS via Docker
+## Running FGS
+
+### Building and running on a Linux machine
+
+FGS has two components to build:
+  * the bpf programs under `./bpf` (written in C)
+  * the agent code (written in Go)
+
+The bpf programs require to be compiled with a custom version of `clang`. For
+conveniance, a container image including the binaries of the custom compiler can
+be used.
+
+#### Prerequisites
+
+Initialize the OSS submodule with:
+```
+make oss-init
+```
+
+Install `libcap` and `libelf`, on Debian systems:
+```
+sudo apt install libelf-dev libcap-dev
+```
+
+#### Build and run
+
+Build the BPF programs with `hubble-bpf`, the userland agent with `hubble-fgs`
+and the hubble enterprise CLI with `hubble-enterprise`:
+```
+make hubble-bpf hubble-fgs hubble-enterprise
+```
+
+Run FGS locally:
+```
+sudo ./hubble-fgs --hubble-lib bpf/objs
+```
+
+Once the agent (`hubble-fgs`) is running, events can be observed using the
+`hubble-enterprise` CLI:
+
+```
+./hubble-enterprise getevents
+```
+
+The output should be similar to:
+```json
+{"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321," ...
+```
+
+Or by passing an `--export-filename` flag to the agent.
+
+### Building and running via Docker
 
 To run docker image with custom BTF link btf in /var/lib/hubble-fgs/btf as shown
 below. If BTF link is omitted hubble-fgs will attempt to search for it in the
@@ -101,6 +152,95 @@ To build without metadata this will require users to include metadata manually.
 To run image in docker,
 
     docker run --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
+
+### Running on GKE
+
+#### 1. Create a GKE cluster and Install Cilium
+
+Follow https://docs.cilium.io/en/v1.10/gettingstarted/k8s-install-default/ to create a
+GKE cluster and install Cilium. Use the following command to create a GKE cluster instead
+of the one in the Cilium to get kernel version `5.10.68+`:
+
+    export NAME="$(whoami)-$RANDOM"
+    gcloud container clusters create "${NAME}" \
+      --node-taints node.cilium.io/agent-not-ready=true:NoSchedule \
+      --zone us-west2-a \
+      --release-channel rapid \
+      --image-type COS \
+      --num-nodes 1 \
+      --cluster-version 1.22.3-gke.700
+
+#### 2. Install the latest FGS
+
+To install hubble-enterprise using the latest Helm chart, run:
+
+    helm repo add isovalent https://helm.isovalent.com
+    helm install -n kube-system hubble-enterprise isovalent/hubble-enterprise \
+      --version 9999.9999.9999-dev \
+      --set enterprise.image.tag=latest \
+      --set hubbleEnterpriseOperator.image.tag=latest \
+      --set imagePullPolicy=Always
+
+#### 3. Deploy CRD with set of recent features
+
+Alpo testing cluster runs most Alpha/Beta features that are ready for
+testing and exploratory use. For a good set of features to put you on
+the cutting edge consider using a similar policy linked here,
+
+ https://github.com/isovalent/cilium-enterprise-dogfooding/blob/main/flux/bases/tracing-policies/trace-all.yaml
+
+### Running on minikube on Mac
+
+#### 1. Check minikube version
+
+FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
+
+    % minikube version
+    minikube version: v1.15.1
+    commit: 23f40a012abb52eff365ff99a709501a61ac5876
+
+#### 2. Start minikube
+
+    minikube start --network-plugin=cni --memory=4096 --driver=virtualbox
+    minikube ssh -- sudo mount bpffs -t bpf /sys/fs/bpf
+
+#### 3. Install the latest FGS
+
+    helm repo add isovalent https://helm.isovalent.com
+    helm install -n kube-system --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set hubble-enterprise.enterprise.metadataImage.tag=minikube-current
+
+### Verifying the Installation
+
+The FGS container is called `enterprise`. If everything went well, you should see something like:
+
+    kubectl logs -n cilium ds/hubble-enterprise -c enterprise
+    ...
+    time="2020-11-11T03:45:23Z" level=info msg="Listening for events..."
+
+There is `export-stdout` container that prints FGS events to stdout:
+
+    kubectl logs -n cilium ds/hubble-enterprise -c export-stdout -f
+
+Note that the default installation comes with pre-defined event filters that exclude
+certain events. If you don't see any events in `export-stdout` log, you might need to
+edit `EXPORT_{ALLOW,DENY}_LIST` environment variables:
+
+    kubectl edit ds -n cilium hubble-enterprise
+
+### Running on minikube with 5.4 Kernel
+
+This is useful for testing / demoing features that require >=5.4 kernel without having
+to spin up a GKE cluster.
+
+    vagrant up
+    minikube start --driver=ssh \
+      --ssh-ip-address=192.168.56.11 \
+      --ssh-user=vagrant \
+      --ssh-key=./.vagrant/machines/default/virtualbox/private_key
+
+    helm repo add isovalent https://helm.isovalent.com
+    helm repo update
+    helm install -n kube-system cilium-enterprise isovalent/cilium-enterprise
 
 ## Testing
 
@@ -204,147 +344,6 @@ object. This way folks creating events can completely avoid editing core code.
 At the moment hubble-fgs_main.go needs a link to the program name. Reasonable defaults
 should be added, so we can skip this step. It is a bit useful to replace a program
 on a system with a new test program, but it's also a bit annoying on the code side.
-
-## Running FGS
-
-### By building it on a Linux machine
-
-FGS has two components to build:
-  * the bpf programs under `./bpf` (written in C)
-  * the agent code (written in Go)
-
-The bpf programs require to be compiled with a custom version of `clang`. For
-conveniance, a container image including the binaries of the custom compiler can
-be used.
-
-#### Prerequisites
-
-Initialize the OSS submodule with:
-```
-make oss-init
-```
-
-Install `libcap` and `libelf`, on Debian systems:
-```
-sudo apt install libelf-dev libcap-dev
-```
-
-#### Build and run
-
-Build the BPF programs with `hubble-bpf`, the userland agent with `hubble-fgs`
-and the hubble enterprise CLI with `hubble-enterprise`:
-```
-make hubble-bpf hubble-fgs hubble-enterprise
-```
-
-Run FGS locally:
-```
-sudo ./hubble-fgs --hubble-lib bpf/objs
-```
-
-Once the agent (`hubble-fgs`) is running, events can be observed using the
-`hubble-enterprise` CLI:
-
-```
-./hubble-enterprise getevents
-```
-
-The output should be similar to:
-```json
-{"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321," ...
-```
-
-Or by passing an `--export-filename` flag to the agent.
-
-### GKE
-
-#### 1. Create a GKE cluster and Install Cilium
-
-Follow https://docs.cilium.io/en/v1.10/gettingstarted/k8s-install-default/ to create a
-GKE cluster and install Cilium. Use the following command to create a GKE cluster instead
-of the one in the Cilium to get kernel version `5.10.68+`:
-
-    export NAME="$(whoami)-$RANDOM"
-    gcloud container clusters create "${NAME}" \
-      --node-taints node.cilium.io/agent-not-ready=true:NoSchedule \
-      --zone us-west2-a \
-      --release-channel rapid \
-      --image-type COS \
-      --num-nodes 1 \
-      --cluster-version 1.22.3-gke.700
-
-#### 2. Install the latest FGS
-
-To install hubble-enterprise using the latest Helm chart, run:
-
-    helm repo add isovalent https://helm.isovalent.com
-    helm install -n kube-system hubble-enterprise isovalent/hubble-enterprise \
-      --version 9999.9999.9999-dev \
-      --set enterprise.image.tag=latest \
-      --set hubbleEnterpriseOperator.image.tag=latest \
-      --set imagePullPolicy=Always
-
-#### 3. Deploy CRD with set of recent features
-
-Alpo testing cluster runs most Alpha/Beta features that are ready for
-testing and exploratory use. For a good set of features to put you on
-the cutting edge consider using a similar policy linked here,
-
- https://github.com/isovalent/cilium-enterprise-dogfooding/blob/main/flux/bases/tracing-policies/trace-all.yaml
-
-### Minikube on Mac
-
-#### 1. Check minikube version
-
-FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
-
-    % minikube version
-    minikube version: v1.15.1
-    commit: 23f40a012abb52eff365ff99a709501a61ac5876
-
-#### 2. Start minikube
-
-    minikube start --network-plugin=cni --memory=4096 --driver=virtualbox
-    minikube ssh -- sudo mount bpffs -t bpf /sys/fs/bpf
-
-#### 3. Install the latest FGS
-
-    helm repo add isovalent https://helm.isovalent.com
-    helm install -n kube-system --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set hubble-enterprise.enterprise.metadataImage.tag=minikube-current
-
-### Verifying the Installation
-
-The FGS container is called `enterprise`. If everything went well, you should see something like:
-
-    kubectl logs -n cilium ds/hubble-enterprise -c enterprise
-    ...
-    time="2020-11-11T03:45:23Z" level=info msg="Listening for events..."
-
-There is `export-stdout` container that prints FGS events to stdout:
-
-    kubectl logs -n cilium ds/hubble-enterprise -c export-stdout -f
-
-Note that the default installation comes with pre-defined event filters that exclude
-certain events. If you don't see any events in `export-stdout` log, you might need to
-edit `EXPORT_{ALLOW,DENY}_LIST` environment variables:
-
-    kubectl edit ds -n cilium hubble-enterprise
-
-### Minikube with 5.4 Kernel
-
-This is useful for testing / demoing features that require >=5.4 kernel without having
-to spin up a GKE cluster.
-
-    vagrant up
-    minikube start --driver=ssh \
-      --ssh-ip-address=192.168.56.11 \
-      --ssh-user=vagrant \
-      --ssh-key=./.vagrant/machines/default/virtualbox/private_key
-
-    helm repo add isovalent https://helm.isovalent.com
-    helm repo update
-    helm install -n kube-system cilium-enterprise isovalent/cilium-enterprise
-
 
 ## Developing BPF programs
 
