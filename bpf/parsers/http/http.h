@@ -75,19 +75,19 @@ enum http_request_header {
 // Supported header fields, header fields are converted to lower case
 // for parsing.
 #define HOST { 'h', 'o', 's', 't' };
-#define USERAGENT                                                              \
-	{                                                                      \
-		'u', 's', 'e', 'r', '-', 'a', 'g', 'e', 'n', 't'               \
+#define USERAGENT                                                \
+	{                                                        \
+		'u', 's', 'e', 'r', '-', 'a', 'g', 'e', 'n', 't' \
 	}
-#define CONTENT                                                                \
-	{                                                                      \
-		'c', 'o', 'n', 't', 'e', 'n', 't', '-', 'l', 'e', 'n', 'g',    \
-			't', 'h'                                               \
+#define CONTENT                                                             \
+	{                                                                   \
+		'c', 'o', 'n', 't', 'e', 'n', 't', '-', 'l', 'e', 'n', 'g', \
+			't', 'h'                                            \
 	}
-#define TRANSFER                                                               \
-	{                                                                      \
-		't', 'r', 'a', 'n', 's', 'f', 'e', 'r', '-', 'e', 'n', 'c',    \
-			'o', 'd', 'i', 'n', 'g'                                \
+#define TRANSFER                                                            \
+	{                                                                   \
+		't', 'r', 'a', 'n', 's', 'f', 'e', 'r', '-', 'e', 'n', 'c', \
+			'o', 'd', 'i', 'n', 'g'                             \
 	}
 
 enum http_request_state {

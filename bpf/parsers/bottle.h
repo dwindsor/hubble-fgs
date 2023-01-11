@@ -4,7 +4,8 @@
 #include "parser.h"
 
 #define BOTTLE_DATA_SIZE 8192
-#define BOTTLE_MASK(var) asm volatile("%0 &= 0x1fff;\n" : "+r"(var)::)
+#define BOTTLE_MASK(var) asm volatile("%0 &= 0x1fff;\n" \
+				      : "+r"(var)::)
 
 struct bottle {
 	u32 len;

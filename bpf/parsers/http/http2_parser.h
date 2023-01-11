@@ -158,7 +158,8 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	void *data = ctx_data(skb);
 	void *data_end = ctx_data_end(skb);
 
-	asm volatile("%[offset] &= 0x1ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[offset] &= 0x1ff;\n"
+		     : [offset] "+r"(offset)::);
 	asm volatile("%[requested] &= 0x1ff;\n"
 		     : [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
@@ -184,7 +185,8 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	}
 
 	/* Recheck bounds */
-	asm volatile("%[offset] &= 0x1ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[offset] &= 0x1ff;\n"
+		     : [offset] "+r"(offset)::);
 	asm volatile("%[requested] &= 0x1ff;\n"
 		     : [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {

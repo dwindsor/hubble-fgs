@@ -67,16 +67,20 @@ get_chars(ctx_md *msg, long offset, long cnt)
 	void *data_end = (void *)(long)msg->data_end;
 	void *payload = (void *)(long)msg->data;
 
-	asm volatile("%[offset] &= 0x7fff;\n" : [offset] "+r"(offset)::);
-	asm volatile("%[cnt] &= 0x1f;\n" : [cnt] "+r"(cnt)::);
+	asm volatile("%[offset] &= 0x7fff;\n"
+		     : [offset] "+r"(offset)::);
+	asm volatile("%[cnt] &= 0x1f;\n"
+		     : [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
 		ctx_pull_data(msg, offset + cnt);
 
 		data_end = (void *)(long)msg->data_end;
 		payload = (void *)(long)msg->data;
 
-		asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
-		asm volatile("%[cnt] &= 0x1f;\n" : [cnt] "+r"(cnt)::);
+		asm volatile("%[offset] &= 0x3ff;\n"
+			     : [offset] "+r"(offset)::);
+		asm volatile("%[cnt] &= 0x1f;\n"
+			     : [cnt] "+r"(cnt)::);
 		if (payload + offset + cnt > data_end)
 			return 0;
 		return payload + offset;
@@ -191,7 +195,8 @@ get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 			break;
 		if (v >= 'A' & v <= 'Z')
 			v += 32;
-		asm volatile("%[off] &= 0xff;\n" : [off] "+r"(off)::);
+		asm volatile("%[off] &= 0xff;\n"
+			     : [off] "+r"(off)::);
 		http->scratch[off + i + 4] = v;
 	}
 	dstsz[0] = i + off;
@@ -232,8 +237,10 @@ get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 	 * see if we can fix verifier/clang to do the right thing without
 	 * introducing cryptic and ugly asm.
 	 */
-	asm volatile("%[i] += 0;\n" : [i] "+r"(i)::);
-	asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[i] += 0;\n"
+		     : [i] "+r"(i)::);
+	asm volatile("%[offset] &= 0x3ff;\n"
+		     : [offset] "+r"(offset)::);
 
 	for (i = 0; i < max - 8; i++) {
 		c = eat_next_char(msg, http);
@@ -266,7 +273,8 @@ get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 	 * through stack. So duplicate the offset bound here.
 	 */
 	offset = http->url_offset;
-	asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[offset] &= 0x3ff;\n"
+		     : [offset] "+r"(offset)::);
 	dstsz = (__u32 *)&dst[offset];
 	dstsz[0] = ty;
 	dstsz[1] = i + http->url_continue;

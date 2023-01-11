@@ -92,26 +92,26 @@ struct {
 #define TLS_MAX_PORTS	  10
 #define TLS_MAX_SELECTORS 2
 
-#define DO_TLS_PORT_FILTER_ONE(j)                                              \
-	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)];                   \
-	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport)          \
-		goto track;                                                    \
-	if (++j >= ports)                                                      \
+#define DO_TLS_PORT_FILTER_ONE(j)                                     \
+	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)];          \
+	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport) \
+		goto track;                                           \
+	if (++j >= ports)                                             \
 		goto skip;
 
-#define DO_TLS_PORT_FILTER                                                     \
-	{                                                                      \
-		int j = 0;                                                     \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
-		DO_TLS_PORT_FILTER_ONE(j)                                      \
+#define DO_TLS_PORT_FILTER                \
+	{                                 \
+		int j = 0;                \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
+		DO_TLS_PORT_FILTER_ONE(j) \
 	}
 
 static inline __attribute__((always_inline)) int
@@ -233,14 +233,14 @@ struct {
 	__uint(max_entries, 1);
 } tls_parser_stats SEC(".maps");
 
-#define INC_TLS_PARSER_STATS_FUNC(field)                                       \
-	static inline __attribute__((always_inline)) void tls_inc_##field()    \
-	{                                                                      \
-		int zero = 0;                                                  \
-		struct __tls_parser_stats *stats;                              \
-		stats = map_lookup_elem(&tls_parser_stats, &zero);             \
-		if (stats)                                                     \
-			stats->cnt_##field++;                                  \
+#define INC_TLS_PARSER_STATS_FUNC(field)                                    \
+	static inline __attribute__((always_inline)) void tls_inc_##field() \
+	{                                                                   \
+		int zero = 0;                                               \
+		struct __tls_parser_stats *stats;                           \
+		stats = map_lookup_elem(&tls_parser_stats, &zero);          \
+		if (stats)                                                  \
+			stats->cnt_##field++;                               \
 	}
 
 INC_TLS_PARSER_STATS_FUNC(egress_out_of_data); /* tls_inc_egress_out_of_data() */

@@ -69,123 +69,123 @@ static inline __attribute__((always_inline)) void *get_data(ctx_md *ctx,
 	return data;
 }
 
-#define COPY32B                                                                \
-                                                                               \
-	"if %[len] < 32 goto +14\n"                                            \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 32;\n"                                                      \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u64 *)(%[ptr] +0);\n"                                      \
-	"*(u64 *)(%[to] + 0) = %[tmp];\n"                                      \
-	"%[tmp] = *(u64 *)(%[ptr] +8);\n"                                      \
-	"*(u64 *)(%[to] + 8) = %[tmp];\n"                                      \
-	"%[tmp] = *(u64 *)(%[ptr] +16);\n"                                     \
-	"*(u64 *)(%[to] + 16) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +24);\n"                                     \
-	"*(u64 *)(%[to] + 24) = %[tmp];\n"                                     \
-	"%[to] += 32;\n"                                                       \
-	"%[ptr] += 32;\n"                                                      \
-	"%[len] -= 32;\n"                                                      \
-                                                                               \
-	"if %[len] < 16 goto +10\n"                                            \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 16;\n"                                                      \
-	"if %[tmp] > %[end] goto 1f\n"                                         \
-	"%[tmp] = *(u64 *)(%[ptr] +0);\n"                                      \
-	"*(u64 *)(%[to] + 0) = %[tmp];\n"                                      \
-	"%[tmp] = *(u64 *)(%[ptr] +8);\n"                                      \
-	"*(u64 *)(%[to] + 8) = %[tmp];\n"                                      \
-	"%[to] += 16;\n"                                                       \
-	"%[ptr] += 16;\n"                                                      \
-	"%[len] -= 16;\n"                                                      \
-                                                                               \
-	"if %[len] < 8 goto +8\n"                                              \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 8;\n"                                                       \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u64 *)(%[ptr] +0);\n"                                      \
-	"*(u64 *)(%[to] + 0) = %[tmp];\n"                                      \
-	"%[ptr] += 8;\n"                                                       \
-	"%[to] += 8;\n"                                                        \
-	"%[len] -= 8;\n"                                                       \
-                                                                               \
-	"if %[len] < 4 goto +8\n"                                              \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 4;\n"                                                       \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u32 *)(%[ptr] +0);\n"                                      \
-	"*(u32 *)(%[to] + 0) = %[tmp];\n"                                      \
-	"%[to] += 4;\n"                                                        \
-	"%[ptr] += 4;\n"                                                       \
-	"%[len] -= 4;\n"                                                       \
-                                                                               \
-	"if %[len] < 3 goto +12;\n"                                            \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 3;\n"                                                       \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u8 *)(%[ptr] +0);\n"                                       \
-	"*(u8 *)(%[to] + 0) = %[tmp];\n"                                       \
-	"%[tmp] = *(u8 *)(%[ptr] +1);\n"                                       \
-	"*(u8 *)(%[to] + 1) = %[tmp];\n"                                       \
-	"%[tmp] = *(u8 *)(%[ptr] +2);\n"                                       \
-	"*(u8 *)(%[to] + 2) = %[tmp];\n"                                       \
-	"%[to] += 3;\n"                                                        \
-	"%[ptr] += 3;\n"                                                       \
-	"%[len] -= 3;\n"                                                       \
-                                                                               \
-	"if %[len] < 2 goto +10;\n"                                            \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 2;\n"                                                       \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u8 *)(%[ptr] +0);\n"                                       \
-	"*(u8 *)(%[to] + 0) = %[tmp];\n"                                       \
-	"%[tmp] = *(u8 *)(%[ptr] +1);\n"                                       \
-	"*(u8 *)(%[to] + 1) = %[tmp];\n"                                       \
-	"%[to] += 2;\n"                                                        \
-	"%[ptr] += 2;\n"                                                       \
-	"%[len] -= 2;\n"                                                       \
-                                                                               \
-	"if %[len] < 1 goto +8;\n"                                             \
-	"%[tmp] = %[ptr];\n"                                                   \
-	"%[tmp] += 1;\n"                                                       \
-	"if %[tmp] > %[end] goto 1f;\n"                                        \
-	"%[tmp] = *(u8 *)(%[ptr] +0);\n"                                       \
-	"*(u8 *)(%[to] + 0) = %[tmp];\n"                                       \
-	"%[to] += 1;\n"                                                        \
-	"%[ptr] += 1;\n"                                                       \
+#define COPY32B                            \
+                                           \
+	"if %[len] < 32 goto +14\n"        \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 32;\n"                  \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"  \
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"  \
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"  \
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"  \
+	"%[tmp] = *(u64 *)(%[ptr] +16);\n" \
+	"*(u64 *)(%[to] + 16) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +24);\n" \
+	"*(u64 *)(%[to] + 24) = %[tmp];\n" \
+	"%[to] += 32;\n"                   \
+	"%[ptr] += 32;\n"                  \
+	"%[len] -= 32;\n"                  \
+                                           \
+	"if %[len] < 16 goto +10\n"        \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 16;\n"                  \
+	"if %[tmp] > %[end] goto 1f\n"     \
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"  \
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"  \
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"  \
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"  \
+	"%[to] += 16;\n"                   \
+	"%[ptr] += 16;\n"                  \
+	"%[len] -= 16;\n"                  \
+                                           \
+	"if %[len] < 8 goto +8\n"          \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 8;\n"                   \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"  \
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"  \
+	"%[ptr] += 8;\n"                   \
+	"%[to] += 8;\n"                    \
+	"%[len] -= 8;\n"                   \
+                                           \
+	"if %[len] < 4 goto +8\n"          \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 4;\n"                   \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u32 *)(%[ptr] +0);\n"  \
+	"*(u32 *)(%[to] + 0) = %[tmp];\n"  \
+	"%[to] += 4;\n"                    \
+	"%[ptr] += 4;\n"                   \
+	"%[len] -= 4;\n"                   \
+                                           \
+	"if %[len] < 3 goto +12;\n"        \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 3;\n"                   \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"   \
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"   \
+	"%[tmp] = *(u8 *)(%[ptr] +1);\n"   \
+	"*(u8 *)(%[to] + 1) = %[tmp];\n"   \
+	"%[tmp] = *(u8 *)(%[ptr] +2);\n"   \
+	"*(u8 *)(%[to] + 2) = %[tmp];\n"   \
+	"%[to] += 3;\n"                    \
+	"%[ptr] += 3;\n"                   \
+	"%[len] -= 3;\n"                   \
+                                           \
+	"if %[len] < 2 goto +10;\n"        \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 2;\n"                   \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"   \
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"   \
+	"%[tmp] = *(u8 *)(%[ptr] +1);\n"   \
+	"*(u8 *)(%[to] + 1) = %[tmp];\n"   \
+	"%[to] += 2;\n"                    \
+	"%[ptr] += 2;\n"                   \
+	"%[len] -= 2;\n"                   \
+                                           \
+	"if %[len] < 1 goto +8;\n"         \
+	"%[tmp] = %[ptr];\n"               \
+	"%[tmp] += 1;\n"                   \
+	"if %[tmp] > %[end] goto 1f;\n"    \
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"   \
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"   \
+	"%[to] += 1;\n"                    \
+	"%[ptr] += 1;\n"                   \
 	"%[len] -= 1;\n"
 
-#define COPY64B                                                                \
-	"%[tmp] = *(u64 *)(%[ptr] +0);\n"                                      \
-	"*(u64 *)(%[to] + 0) = %[tmp];\n"                                      \
-	"%[tmp] = *(u64 *)(%[ptr] +8);\n"                                      \
-	"*(u64 *)(%[to] + 8) = %[tmp];\n"                                      \
-	"%[tmp] = *(u64 *)(%[ptr] +16);\n"                                     \
-	"*(u64 *)(%[to] + 16) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +24);\n"                                     \
-	"*(u64 *)(%[to] + 24) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +32);\n"                                     \
-	"*(u64 *)(%[to] + 32) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +40);\n"                                     \
-	"*(u64 *)(%[to] + 40) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +48);\n"                                     \
-	"*(u64 *)(%[to] + 48) = %[tmp];\n"                                     \
-	"%[tmp] = *(u64 *)(%[ptr] +56);\n"                                     \
-	"*(u64 *)(%[to] + 56) = %[tmp];\n"                                     \
-	"%[to] += 64;\n"                                                       \
-	"%[ptr] += 64;\n"                                                      \
+#define COPY64B                            \
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"  \
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"  \
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"  \
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"  \
+	"%[tmp] = *(u64 *)(%[ptr] +16);\n" \
+	"*(u64 *)(%[to] + 16) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +24);\n" \
+	"*(u64 *)(%[to] + 24) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +32);\n" \
+	"*(u64 *)(%[to] + 32) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +40);\n" \
+	"*(u64 *)(%[to] + 40) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +48);\n" \
+	"*(u64 *)(%[to] + 48) = %[tmp];\n" \
+	"%[tmp] = *(u64 *)(%[ptr] +56);\n" \
+	"*(u64 *)(%[to] + 56) = %[tmp];\n" \
+	"%[to] += 64;\n"                   \
+	"%[ptr] += 64;\n"                  \
 	"%[len] -= 64;\n"
 
-#define COPY256B                                                               \
-	COPY64B                                                                \
-	COPY64B                                                                \
-	COPY64B                                                                \
+#define COPY256B \
+	COPY64B  \
+	COPY64B  \
+	COPY64B  \
 	COPY64B
 
-#define COPY1024B                                                              \
-	COPY256B                                                               \
-	COPY256B                                                               \
-	COPY256B                                                               \
+#define COPY1024B \
+	COPY256B  \
+	COPY256B  \
+	COPY256B  \
 	COPY256B
 
 static inline __attribute__((always_inline)) int
@@ -309,11 +309,14 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 	data_end = (void *)(long)ctx->data_end;
 
 	/* Bound our inputs to "good" values */
-	asm volatile("%[next] &= 0x1fff;\n" : [next] "+r"(next)::);
-	asm volatile("%[copy] &= 0x1fff;\n" : [copy] "+r"(copy)::);
+	asm volatile("%[next] &= 0x1fff;\n"
+		     : [next] "+r"(next)::);
+	asm volatile("%[copy] &= 0x1fff;\n"
+		     : [copy] "+r"(copy)::);
 
 	if ((data + next + copy) > data_end) {
-		asm volatile("%[copy] &= 0x1fff;\n" : [copy] "+r"(copy)::);
+		asm volatile("%[copy] &= 0x1fff;\n"
+			     : [copy] "+r"(copy)::);
 		data = get_data(ctx, next, copy);
 		if (!data)
 			return 0;

@@ -406,7 +406,8 @@ fix_dev_id_ovl(struct inode *inode, struct dentry *dentry, dev_t dev_id)
 		probe_read(&pof, sizeof(pof), s_fs_info);
 
 		fsid = ovl_layer_lower_fsid(dentry);
-		asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid) :);
+		asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid)
+			     :);
 
 		pos = (struct ovl_sb__new *)pof.fs;
 		probe_read(&os, sizeof(os),
@@ -627,7 +628,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	// first write the dentry name
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size) :);
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
+		     :);
 	dlen_offset = MAX_FILEPATH_SIZE;
 	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
@@ -635,7 +637,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	// then write the directory name
 	// this is what we have in the map already (we don't traverse anything)
 	dir_size = file_val->size;
-	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size) :);
+	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
+		     :);
 	dir_offset = MAX_FILEPATH_SIZE - dir_size;
 	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
 		     :);
@@ -643,7 +646,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	path_size += dir_size;
 
 	// set the filepath inside msg
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
+		     :);
 	probe_read(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
@@ -673,7 +677,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 
 	file_val->action = action;
 	file_val->size = msg->path.size;
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
+		     :);
 	probe_read(file_val->path, path_size, msg->path.str);
 
 	// add this new file to the map of files

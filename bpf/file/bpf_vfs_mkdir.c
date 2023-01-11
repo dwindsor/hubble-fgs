@@ -104,7 +104,8 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// first write the dentry name
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size) :);
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
+		     :);
 	dlen_offset = 256;
 	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
@@ -115,14 +116,16 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	// write the directory name
 	dir_size = file_val->size;
-	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size) :);
+	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
+		     :);
 	dir_offset = 256 - dir_size;
 	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
 		     :);
 	probe_read(buffer + dir_offset, dir_size, file_val->path);
 	path_size += dir_size;
 
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
+		     :);
 	probe_read(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
@@ -151,7 +154,8 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	file_val->action = action;
 	file_val->size = msg->path.size;
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
+		     :);
 	probe_read(file_val->path, path_size, msg->path.str);
 
 	map_update_elem(&hash_map_dir_alloc, &file_key, file_val, 0);

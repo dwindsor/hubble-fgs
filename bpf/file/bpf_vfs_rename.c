@@ -10,7 +10,8 @@ rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
 
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size) :);
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
+		     :);
 	probe_read(pth->path.name, dlen_size, (const char *)d_name.name);
 	pth->path.name_size = dlen_size;
 }
@@ -333,13 +334,15 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 
 	// copy parent directory path (including '/')
 	dir_size = dir_val->size;
-	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size) :);
+	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
+		     :);
 	probe_read(buf, dir_size, dir_val->path);
 	file_val->size = dir_size;
 
 	// copy file name
 	name_size = name->path.name_size;
-	asm volatile("%[name_size] &= 0x3f;\n" ::[name_size] "+r"(name_size) :);
+	asm volatile("%[name_size] &= 0x3f;\n" ::[name_size] "+r"(name_size)
+		     :);
 	probe_read(buf + dir_size, name_size, name->path.name);
 	file_val->size += name_size;
 

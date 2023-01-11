@@ -31,16 +31,16 @@
 #define EXT_VERSION_LENGTH     16
 
 /* A length-value, with a fixed max length. */
-#define FLV(max_len)                                                           \
-	struct {                                                               \
-		__u8 length;                                                   \
-		__u8 value[(max_len)];                                         \
+#define FLV(max_len)                   \
+	struct {                       \
+		__u8 length;           \
+		__u8 value[(max_len)]; \
 	}
 
-#define FLV_COPY(_tlv, _from, _len)                                            \
-	do {                                                                   \
-		(_tlv).length = (_len);                                        \
-		memcpy((_tlv).value, (_from), sizeof((_tlv).value));           \
+#define FLV_COPY(_tlv, _from, _len)                                  \
+	do {                                                         \
+		(_tlv).length = (_len);                              \
+		memcpy((_tlv).value, (_from), sizeof((_tlv).value)); \
 	} while (0)
 
 struct msg_tls {
@@ -54,10 +54,14 @@ struct msg_tls {
 	__u8 alert_level;
 	__u8 alert_description;
 
-	FLV(64) flv_session_id;
-	FLV(64) flv_cipher;
-	FLV(EXT_SERVER_NAME_LENGTH) flv_sni;
-	FLV(EXT_VERSION_LENGTH) flv_supported_versions;
+	FLV(64)
+	flv_session_id;
+	FLV(64)
+	flv_cipher;
+	FLV(EXT_SERVER_NAME_LENGTH)
+	flv_sni;
+	FLV(EXT_VERSION_LENGTH)
+	flv_supported_versions;
 } __attribute__((packed));
 
 #define SOCKET_TLS_DONE 0x0001
