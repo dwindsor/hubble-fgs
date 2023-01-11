@@ -312,7 +312,7 @@ endif
 
 .PHONY: go-format
 go-format:
-	find . -name '*.go' -not -path './vendor/*' -not -path './api/vendor/*' -not -path './pkg/k8s/vendor/*' -not -path './modules/*' | xargs gofmt -w
+	find . -name '*.go' -not -path './vendor/*' -not -path './api/vendor/*' -not -path './pkg/k8s/vendor/*' -not -path './modules/*' -not -path './api/v1/tetragon/*' | xargs gofmt -w
 
 .PHONY: format
 format: go-format clang-format
