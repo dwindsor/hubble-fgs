@@ -1,7 +1,7 @@
 #define ALIGNCHECKER
 
-#include "include/vmlinux.h"
-#include "include/api.h"
+#include "vmlinux.h"
+#include "api.h"
 #include "hubble_msg.h"
 #include "parsers/http/http.h"
 #include "lib/file.h"
