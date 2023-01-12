@@ -19,4 +19,3 @@ cscope.out
 cscope.in.out
 .vscode
 compile_commands.json
-pkg/sensors/file/scanner/fs-scanner

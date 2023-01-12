@@ -16,7 +16,7 @@ COPY --from=hubble-fgs-release /usr/bin/hubble-enterprise /usr/local/bin/hubble-
 
 # Helper binaries
 COPY --from=hubble-fgs-release /usr/bin/bpftool /usr/local/lib/hubble-fgs/hubble-fgs-bpftool
-COPY --from=hubble-fgs-release /usr/bin/fs-scanner /usr/local/lib/hubble-fgs/hubble-fgs-fs-scanner
+COPY --from=hubble-fgs-release /usr/bin/fs-scanner /usr/local/lib/hubble-fgs/bpf/fs-scanner
 
 # BPF files
 COPY --from=hubble-fgs-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf

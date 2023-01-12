@@ -13,7 +13,6 @@ package file
 import (
 	"bytes"
 	"context"
-	"embed"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -78,9 +77,6 @@ const (
 	DST_SOCKET      = (1 << 18)
 	DST_INVALID     = (1 << 19)
 )
-
-//go:embed scanner/*
-var embededFiles embed.FS
 
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
@@ -213,17 +209,6 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string) error {
 }
 
 func startFsScanner() (*exec.Cmd, error) {
-	fsScannerPayload, err := embededFiles.ReadFile("scanner/fs-scanner")
-	if err != nil {
-		return nil, err
-	}
-
-	fsScannerCommand := "./fs-scanner.bin"
-	if err := os.WriteFile(fsScannerCommand, fsScannerPayload, 0700); err != nil {
-		return nil, err
-	}
-	defer os.Remove(fsScannerCommand)
-
 	if fm.ScannerFifoPath == "" {
 		if option.Config.EnableK8s {
 			fm.ScannerFifoPath = path.Join(fm.K8sScannerFifoPath, fm.ScannerFifoName)
@@ -233,7 +218,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	fsScannerCmd := exec.CommandContext(ctx, fsScannerCommand,
+	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "fs-scanner"),
 		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
 		"-scannerFifoPath", fm.ScannerFifoPath,
 	)

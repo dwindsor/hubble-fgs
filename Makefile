@@ -23,7 +23,7 @@ GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'
 GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -s -w"
 
 OSS_DIR=./modules/tetragon-oss
-FS_SCANNER_BIN=./pkg/sensors/file/scanner/fs-scanner
+FS_SCANNER_BIN=bpf/objs/fs-scanner
 
 GOLANGCILINT_WANT_VERSION = $(shell grep docker.io/golangci/golangci-lint Dockerfile.golangci-lint | cut -f 2 -d ":" | cut -c2-)
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
@@ -157,7 +157,7 @@ vendor:
 clean:
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
 	rm -fr $(BUILD_PKG_DIR)
 
 .PHONY: fgs-bench fgs-bench-image
