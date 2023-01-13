@@ -60,6 +60,8 @@ jobs:
           - 'stable'
           - 'regular'
           # - 'rapid' # Temporarily disabled pending cilium bugfix
+    env:
+      USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -98,6 +100,13 @@ jobs:
           rm cilium-linux-amd64.tar.gz{,.sha256sum}
           cilium version
 
+      - uses: azure/setup-helm@v3
+        with:
+           version: 'v3.11.0'
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58
         with:
@@ -107,7 +116,9 @@ jobs:
           version: "405.0.0"
 
       - name: install beta component
-        run: gcloud components install beta
+        run: |
+          gcloud components install beta
+          gcloud components install gke-gcloud-auth-plugin
 
       - name: gcloud info
         run: |
