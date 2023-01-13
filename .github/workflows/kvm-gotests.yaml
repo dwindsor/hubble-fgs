@@ -69,7 +69,7 @@ jobs:
             cd /host/hubble-fgs
 
             export KVM_CI=true
-            make hubble-bpf fs-scanner tester-progs test
+            make hubble-bpf hubble-fgs-fs-scanner tester-progs test
 
       - name: Copy out FGS logs
         if: ${{ failure() || cancelled() }}

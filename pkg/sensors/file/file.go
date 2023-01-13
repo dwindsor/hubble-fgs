@@ -218,7 +218,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "fs-scanner"),
+	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner"),
 		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
 		"-scannerFifoPath", fm.ScannerFifoPath,
 	)
@@ -226,7 +226,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	fsScannerCancelFn = cancel
 	fsScannerCancelFnMtx.Unlock()
 
-	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting fs-scanner")
+	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting hubble-fgs-fs-scanner")
 
 	fsScannerCmd.Stdout = os.Stdout
 	fsScannerCmd.Stderr = os.Stderr
@@ -242,9 +242,9 @@ func startFsScanner() (*exec.Cmd, error) {
 			break
 		}
 		if retry > 10 {
-			return nil, fmt.Errorf("failed to start fs-scanner")
+			return nil, fmt.Errorf("failed to start hubble-fgs-fs-scanner")
 		}
-		logger.GetLogger().Warnf("fs-scanner fifo does not exist [retry = %d]", retry)
+		logger.GetLogger().Warnf("hubble-fgs-fs-scanner fifo does not exist [retry = %d]", retry)
 		time.Sleep(2 * time.Second)
 		retry++
 	}
@@ -690,12 +690,12 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 
-		// start fs-scanner if it hasn't started yet
+		// start hubble-fgs-fs-scanner if it hasn't started yet
 		if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
 			var err error
 			fsScannerCmd, err = startFsScanner()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Failed to start fs-scanner")
+				logger.GetLogger().WithError(err).Warnf("Failed to start hubble-fgs-fs-scanner")
 				return nil, nil
 			}
 

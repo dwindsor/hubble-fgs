@@ -17,7 +17,7 @@ Tarball should be:
 
 5. Helper Binaries:
    bpftool	=> /usr/local/lib/hubble-fgs/hubble-fgs-bpftool
-   fs-scanner	=> /usr/local/lib/hubble-fgs/bpf/fs-scanner
+   hubble-fgs-fs-scanner	=> /usr/local/lib/hubble-fgs/bpf/hubble-fgs-fs-scanner
 
 6. BPF files
    /usr/local/lib/hubble-fgs/bpf

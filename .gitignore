@@ -6,7 +6,7 @@ lib/*
 /fgs-alignchecker
 /parsertest
 /checkerpc
-/fs-scanner
+/hubble-fgs-fs-scanner
 observer.test
 go-tests
 fgs-bench-rootfs*
