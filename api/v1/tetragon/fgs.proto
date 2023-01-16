@@ -176,10 +176,24 @@ message Inode {
     FileSystem fs = 2;
 }
 
+enum FileScope {
+    UNKNOWN_FILE = 0;
+    HOST_FILE = 1; // HOST_FILE means that the file is monitored as a host file, and the access happened from a container or the host
+    CONTAINER_FILE_LOCAL = 2; // CONTAINER_FILE_LOCAL means that the file is monitored as a container file, and the access happened from the same container
+    CONTAINER_FILE_REMOTE = 3; // CONTAINER_FILE_REMOTE means that the file is monitored as a container file, and the access happened from a different container or the host
+}
+
+message FileLocation {
+    FileScope type = 1;
+    string container_id = 2; // only valid if type == CONTAINER_FILE_{LOCAL, REMOTE}
+    tetragon.Pod pod =  3; // only valid if type == CONTAINER_FILE_REMOTE
+}
+
 message FileDetails {
     string filename = 1;
     Inode inode = 2;
     Inode parent_inode = 3;
+    FileLocation location = 4;
 }
 
 message FileIO {

@@ -7367,11 +7367,91 @@ func (checker *InodeChecker) FromInode(event *tetragon.Inode) *InodeChecker {
 	return checker
 }
 
+// FileLocationChecker implements a checker struct to check a FileLocation field
+type FileLocationChecker struct {
+	Type        *FileScopeChecker            `json:"type,omitempty"`
+	ContainerId *stringmatcher.StringMatcher `json:"containerId,omitempty"`
+	Pod         *PodChecker                  `json:"pod,omitempty"`
+}
+
+// NewFileLocationChecker creates a new FileLocationChecker
+func NewFileLocationChecker() *FileLocationChecker {
+	return &FileLocationChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *FileLocationChecker) GetCheckerType() string {
+	return "FileLocationChecker"
+}
+
+// Check checks a FileLocation field
+func (checker *FileLocationChecker) Check(event *tetragon.FileLocation) error {
+	if event == nil {
+		return fmt.Errorf("%s: FileLocation field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Type != nil {
+			if err := checker.Type.Check(&event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
+		if checker.ContainerId != nil {
+			if err := checker.ContainerId.Match(event.ContainerId); err != nil {
+				return fmt.Errorf("ContainerId check failed: %w", err)
+			}
+		}
+		if checker.Pod != nil {
+			if err := checker.Pod.Check(event.Pod); err != nil {
+				return fmt.Errorf("Pod check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithType adds a Type check to the FileLocationChecker
+func (checker *FileLocationChecker) WithType(check tetragon.FileScope) *FileLocationChecker {
+	wrappedCheck := FileScopeChecker(check)
+	checker.Type = &wrappedCheck
+	return checker
+}
+
+// WithContainerId adds a ContainerId check to the FileLocationChecker
+func (checker *FileLocationChecker) WithContainerId(check *stringmatcher.StringMatcher) *FileLocationChecker {
+	checker.ContainerId = check
+	return checker
+}
+
+// WithPod adds a Pod check to the FileLocationChecker
+func (checker *FileLocationChecker) WithPod(check *PodChecker) *FileLocationChecker {
+	checker.Pod = check
+	return checker
+}
+
+//FromFileLocation populates the FileLocationChecker using data from a FileLocation field
+func (checker *FileLocationChecker) FromFileLocation(event *tetragon.FileLocation) *FileLocationChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Type = NewFileScopeChecker(event.Type)
+	checker.ContainerId = stringmatcher.Full(event.ContainerId)
+	if event.Pod != nil {
+		checker.Pod = NewPodChecker().FromPod(event.Pod)
+	}
+	return checker
+}
+
 // FileDetailsChecker implements a checker struct to check a FileDetails field
 type FileDetailsChecker struct {
 	Filename    *stringmatcher.StringMatcher `json:"filename,omitempty"`
 	Inode       *InodeChecker                `json:"inode,omitempty"`
 	ParentInode *InodeChecker                `json:"parentInode,omitempty"`
+	Location    *FileLocationChecker         `json:"location,omitempty"`
 }
 
 // NewFileDetailsChecker creates a new FileDetailsChecker
@@ -7406,6 +7486,11 @@ func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
 				return fmt.Errorf("ParentInode check failed: %w", err)
 			}
 		}
+		if checker.Location != nil {
+			if err := checker.Location.Check(event.Location); err != nil {
+				return fmt.Errorf("Location check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -7432,6 +7517,12 @@ func (checker *FileDetailsChecker) WithParentInode(check *InodeChecker) *FileDet
 	return checker
 }
 
+// WithLocation adds a Location check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithLocation(check *FileLocationChecker) *FileDetailsChecker {
+	checker.Location = check
+	return checker
+}
+
 //FromFileDetails populates the FileDetailsChecker using data from a FileDetails field
 func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) *FileDetailsChecker {
 	if event == nil {
@@ -7443,6 +7534,9 @@ func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) 
 	}
 	if event.ParentInode != nil {
 		checker.ParentInode = NewInodeChecker().FromInode(event.ParentInode)
+	}
+	if event.Location != nil {
+		checker.Location = NewFileLocationChecker().FromFileLocation(event.Location)
 	}
 	return checker
 }
@@ -9129,6 +9223,58 @@ func (enum *FileActionChecker) Check(val *tetragon.FileAction) error {
 	}
 	if *enum != FileActionChecker(*val) {
 		return fmt.Errorf("FileActionChecker: FileAction has value %s which does not match expected value %s", (*val), tetragon.FileAction(*enum))
+	}
+	return nil
+}
+
+// FileScopeChecker checks a tetragon.FileScope
+type FileScopeChecker tetragon.FileScope
+
+// MarshalJSON implements json.Marshaler interface
+func (enum FileScopeChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.FileScope_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown FileScope %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *FileScopeChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.FileScope_value[str]; ok {
+		*enum = FileScopeChecker(n)
+	} else if n, ok := tetragon.FileScope_value[""+str]; ok {
+		*enum = FileScopeChecker(n)
+	} else {
+		return fmt.Errorf("Unknown FileScope %s", str)
+	}
+
+	return nil
+}
+
+// NewFileScopeChecker creates a new FileScopeChecker
+func NewFileScopeChecker(val tetragon.FileScope) *FileScopeChecker {
+	enum := FileScopeChecker(val)
+	return &enum
+}
+
+// Check checks a FileScope against the checker
+func (enum *FileScopeChecker) Check(val *tetragon.FileScope) error {
+	if val == nil {
+		return fmt.Errorf("FileScopeChecker: FileScope is nil and does not match expected value %s", tetragon.FileScope(*enum))
+	}
+	if *enum != FileScopeChecker(*val) {
+		return fmt.Errorf("FileScopeChecker: FileScope has value %s which does not match expected value %s", (*val), tetragon.FileScope(*enum))
 	}
 	return nil
 }
