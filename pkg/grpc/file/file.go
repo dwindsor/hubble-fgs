@@ -15,11 +15,13 @@ import (
 	"io/fs"
 	"os/user"
 	"strconv"
+	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -119,6 +121,7 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Number: event.ParentIno,
 			Fs:     createFileSystem(event.ParentFs),
 		},
+		Location: &tetragon.FileLocation{},
 	}
 	args := &tetragon.GenericFileArg{
 		File:  fileDetails,
@@ -151,14 +154,14 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if process == nil {
+	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if internal == nil {
 		tetragonProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		tetragonProcess = process.UnsafeGetProcess()
+		tetragonProcess = internal.UnsafeGetProcess()
 	}
 	if parent != nil {
 		tetragonParent = parent.UnsafeGetProcess()
@@ -170,6 +173,27 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		args = createReadDirArgs(event)
 	} else {
 		args = createGenericArgs(event)
+
+		// setup file location
+		fileLocation := args.GetGenericArg().GetFile().GetLocation()
+		if event.ContainerID == "" {
+			fileLocation.Type = tetragon.FileScope_HOST_FILE
+		} else {
+			// We may truncate tetragonProcess.Docker in some places to fix
+			// some kernel buffers. event.ContainerID is user provided and
+			// can be the full container ID length. Thus we use HasPrefix
+			// to cover where they have different length.
+			if strings.HasPrefix(event.ContainerID, tetragonProcess.Docker) {
+				fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
+			} else {
+				fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
+				if option.Config.EnableK8s {
+					podInfo, _ := process.GetPodInfo(event.ContainerID, "", "", 0)
+					fileLocation.Pod = podInfo
+				}
+			}
+			fileLocation.ContainerId = event.ContainerID
+		}
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
@@ -210,8 +234,8 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	if parent != nil {
 		tetragonEvent.Parent = parent.GetProcessCopy()
 	}
-	if process != nil {
-		tetragonEvent.Process = process.GetProcessCopy()
+	if internal != nil {
+		tetragonEvent.Process = internal.GetProcessCopy()
 	}
 	return tetragonEvent
 }
@@ -224,22 +248,23 @@ type MsgFsInfoUnix struct {
 }
 
 type MsgFileEventUnix struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Path       string
-	Action     uint32
-	Hook       uint32
-	Timestamp  uint64
-	Imode      uint32
-	Uid        uint32
-	Gid        uint32
-	Ino        uint64
-	Fs         MsgFsInfoUnix
-	ParentIno  uint64
-	ParentFs   MsgFsInfoUnix
-	Offset     int64
-	Size       uint32
-	MntNs      uint32
+	Common      processapi.MsgCommon
+	ProcessKey  processapi.MsgExecveKey
+	Path        string
+	Action      uint32
+	Hook        uint32
+	Timestamp   uint64
+	Imode       uint32
+	Uid         uint32
+	Gid         uint32
+	Ino         uint64
+	Fs          MsgFsInfoUnix
+	ParentIno   uint64
+	ParentFs    MsgFsInfoUnix
+	ContainerID string
+	Offset      int64
+	Size        uint32
+	MntNs       uint32
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -292,6 +317,7 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 			Number: event.Src.ParentIno,
 			Fs:     createFileSystem(event.Src.ParentFs),
 		},
+		Location: &tetragon.FileLocation{},
 	}
 	dst := &tetragon.FileDetails{
 		Filename: event.Dst.Path,
@@ -303,6 +329,7 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 			Number: event.Dst.ParentIno,
 			Fs:     createFileSystem(event.Dst.ParentFs),
 		},
+		Location: &tetragon.FileLocation{},
 	}
 	if dst.Inode.Number == 0 { // the destination name does not exist -- will create new
 		dst.Inode.Fs = nil
@@ -317,11 +344,12 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 }
 
 type MsgRenameElemUnix struct {
-	Path      string
-	Ino       uint64
-	Fs        MsgFsInfoUnix
-	ParentIno uint64
-	ParentFs  MsgFsInfoUnix
+	Path        string
+	Ino         uint64
+	Fs          MsgFsInfoUnix
+	ParentIno   uint64
+	ParentFs    MsgFsInfoUnix
+	ContainerID string
 }
 
 type MsgFileRenameEventUnix struct {
@@ -340,14 +368,14 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 	var args *tetragon.FileArgument
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if process == nil {
+	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if internal == nil {
 		tetragonProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		tetragonProcess = process.UnsafeGetProcess()
+		tetragonProcess = internal.UnsafeGetProcess()
 	}
 	if parent != nil {
 		tetragonParent = parent.UnsafeGetProcess()
@@ -355,6 +383,49 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 
 	action := tetragon.FileAction(event.Action)
 	args = createRenameArgs(event)
+
+	// setup src file location
+	srcFileLocation := args.GetRenameArg().GetSrc().GetLocation()
+	if event.Src.ContainerID == "" {
+		srcFileLocation.Type = tetragon.FileScope_HOST_FILE
+	} else {
+		// We may truncate tetragonProcess.Docker in some places to fix
+		// some kernel buffers. event.ContainerID is user provided and
+		// can be the full container ID length. Thus we use HasPrefix
+		// to cover where they have different length.
+		if strings.HasPrefix(event.Src.ContainerID, tetragonProcess.Docker) {
+			srcFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
+		} else {
+			srcFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
+			if option.Config.EnableK8s {
+				podInfo, _ := process.GetPodInfo(event.Src.ContainerID, "", "", 0)
+				srcFileLocation.Pod = podInfo
+			}
+		}
+		srcFileLocation.ContainerId = event.Src.ContainerID
+	}
+
+	// setup dst file location
+	dstFileLocation := args.GetRenameArg().GetDst().GetLocation()
+	if event.Dst.ContainerID == "" {
+		dstFileLocation.Type = tetragon.FileScope_HOST_FILE
+	} else {
+		// We may truncate tetragonProcess.Docker in some places to fix
+		// some kernel buffers. event.ContainerID is user provided and
+		// can be the full container ID length. Thus we use HasPrefix
+		// to cover where they have different length.
+		if strings.HasPrefix(event.Dst.ContainerID, tetragonProcess.Docker) {
+			dstFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
+		} else {
+			dstFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
+			if option.Config.EnableK8s {
+				podInfo, _ := process.GetPodInfo(event.Dst.ContainerID, "", "", 0)
+				dstFileLocation.Pod = podInfo
+			}
+		}
+		dstFileLocation.ContainerId = event.Dst.ContainerID
+	}
+
 	tetragonEvent := &tetragon.ProcessFile{
 		Process: tetragonProcess,
 		Parent:  tetragonParent,
@@ -375,8 +446,8 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	if parent != nil {
 		tetragonEvent.Parent = parent.GetProcessCopy()
 	}
-	if process != nil {
-		tetragonEvent.Process = process.GetProcessCopy()
+	if internal != nil {
+		tetragonEvent.Process = internal.GetProcessCopy()
 	}
 	return tetragonEvent
 

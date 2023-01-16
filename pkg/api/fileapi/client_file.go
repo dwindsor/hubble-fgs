@@ -25,16 +25,24 @@ type HashMapFileKey struct {
 	DevMinor uint32 `align:"dev_minor"`
 }
 
+const (
+	HOST_FILE      = (1 << 0)
+	CONTAINER_FILE = (1 << 1)
+)
+
 type HashMapFileVal struct {
-	Action   uint32    `align:"action"`
-	PathSize uint32    `align:"size"`
-	FullPath [256]byte `align:"path"`
+	Action        uint32    `align:"action"`
+	PathSize      uint32    `align:"size"`
+	FullPath      [256]byte `align:"path"`
+	ContainerID   [64]byte  `align:"container_id"`
+	LocationFlags uint64    `align:"location_flags"` // HOST_FILE or CONTAINER_FILE
 }
 
 type MsgFilePath struct {
-	Str   [256]byte `align:"str"` // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
-	Size  uint32    `align:"size"`
-	Flags uint32    `align:"flags"`
+	Str         [256]byte `align:"str"` // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
+	Size        uint32    `align:"size"`
+	Flags       uint32    `align:"flags"`
+	ContainerID [64]byte  `align:"container_id"`
 }
 
 type MsgFsInfo struct {
@@ -67,12 +75,13 @@ type MsgFileEvent struct {
 }
 
 type MsgFileSplitPath struct {
-	Dir      [256]byte `align:"dir"`  // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
-	Name     [128]byte `align:"name"` // should match MAX_NAME_SIZE in bpf/lib/generic.h
-	DirSize  uint32    `align:"dir_size"`
-	NameSize uint32    `align:"name_size"`
-	Flags    uint32    `align:"flags"`
-	Pad      uint32    `align:"pad"`
+	Dir         [256]byte `align:"dir"`  // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
+	Name        [128]byte `align:"name"` // should match MAX_NAME_SIZE in bpf/lib/generic.h
+	DirSize     uint32    `align:"dir_size"`
+	NameSize    uint32    `align:"name_size"`
+	Flags       uint32    `align:"flags"`
+	Pad         uint32    `align:"pad"`
+	ContainerID [64]byte  `align:"container_id"`
 }
 
 type MsgRenameElem struct {

@@ -163,6 +163,11 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	if (action == FILTER_IGNORE)
 		return 0;
 
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
+
 	// create the event
 	msg->action = action_mkdir;
 	msg->hook = hook_vfs_mkdir;

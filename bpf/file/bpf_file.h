@@ -541,6 +541,10 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
 
 	msg->imode = 0;
 	msg->pad1 = msg->pad2 = 0;
@@ -651,6 +655,10 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	probe_read(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
 
 	// although we care about files inside this directory
 	// we may have this specific file path in the exclude

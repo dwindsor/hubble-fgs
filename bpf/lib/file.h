@@ -4,6 +4,11 @@
 #define MAX_FILEPATH_SIZE 256
 #define MAX_NAME_SIZE	  128
 
+#define HOST_FILE      (1 << 0)
+#define CONTAINER_FILE (1 << 1)
+
+#define CONTAINER_ID_LEN 64
+
 enum { action_invalid = 0,
        action_write = 1,
        action_read = 2,
@@ -51,13 +56,16 @@ struct hash_map_file_val {
 	__u32 action;
 	__u32 size;
 	char path[256];
+	char container_id[CONTAINER_ID_LEN];
+	__u64 location_flags;
 };
 
 struct msg_file_path {
 	char str[MAX_FILEPATH_SIZE];
 	__u32 size;
 	__u32 flags;
-} __attribute__((packed));
+	char container_id[CONTAINER_ID_LEN];
+};
 
 struct msg_fs_info {
 	__u32 dev;
@@ -65,7 +73,7 @@ struct msg_fs_info {
 	char name[8]; // should be enough for all file system names
 	char id[8];
 	__u8 uuid[16];
-} __attribute__((packed));
+};
 
 struct msg_file_ops {
 	struct msg_common common;
@@ -86,7 +94,7 @@ struct msg_file_ops {
 	__s64 offset;
 	__u32 size;
 	__u32 mnt_ns;
-} __attribute__((packed));
+};
 
 struct msg_file_split_path {
 	char dir[MAX_FILEPATH_SIZE];
@@ -95,6 +103,7 @@ struct msg_file_split_path {
 	__u32 name_size;
 	__u32 flags;
 	__u32 pad;
+	char container_id[CONTAINER_ID_LEN];
 };
 
 struct msg_rename_elem {

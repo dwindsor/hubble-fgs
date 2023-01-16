@@ -170,6 +170,10 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			memcpy(v->msg.src.path.dir, fval->path, 256);
 			v->msg.src.path.dir_size = fval->size;
 			v->msg.src.path.flags = 0;
+			if (fval->location_flags == CONTAINER_FILE) {
+				memcpy(v->msg.src.path.container_id, fval->container_id, CONTAINER_ID_LEN);
+			}
+			v->msg.src.path.flags |= fval->location_flags;
 		}
 
 		rename_copy_dname(old_dentry, &(v->msg.src));
@@ -195,6 +199,10 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			memcpy(v->msg.dst.path.dir, fval->path, 256);
 			v->msg.dst.path.dir_size = fval->size;
 			v->msg.dst.path.flags = 0;
+			if (fval->location_flags == CONTAINER_FILE) {
+				memcpy(v->msg.dst.path.container_id, fval->container_id, CONTAINER_ID_LEN);
+			}
+			v->msg.dst.path.flags |= fval->location_flags;
 		}
 
 		rename_copy_dname(new_dentry, &(v->msg.dst));

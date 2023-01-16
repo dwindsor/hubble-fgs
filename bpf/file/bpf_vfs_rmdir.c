@@ -37,6 +37,10 @@ kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
 
 	msg->action = action_rmdir;
 	msg->hook = hook_vfs_rmdir;

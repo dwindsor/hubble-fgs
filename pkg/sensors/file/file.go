@@ -507,23 +507,30 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	if uint32(len(str)) > m.Path.Size {
 		str = str[:m.Path.Size]
 	}
+
+	cid := ""
+	if m.Path.Flags&fileapi.CONTAINER_FILE != 0 {
+		cid = string(m.Path.ContainerID[:])
+	}
+
 	unix := &file.MsgFileEventUnix{
-		Common:     m.Common,
-		ProcessKey: m.ProcessKey,
-		Path:       str,
-		Action:     m.Action,
-		Hook:       m.Hook,
-		Timestamp:  m.Timestamp,
-		Imode:      uint32(m.Imode),
-		Uid:        m.Uid,
-		Gid:        m.Gid,
-		Ino:        m.Ino,
-		Fs:         createFsInfoUnix(m.Fs),
-		ParentIno:  m.ParentIno,
-		ParentFs:   createFsInfoUnix(m.ParentFs),
-		Offset:     m.Offset,
-		Size:       m.Size,
-		MntNs:      m.MntNs,
+		Common:      m.Common,
+		ProcessKey:  m.ProcessKey,
+		Path:        str,
+		Action:      m.Action,
+		Hook:        m.Hook,
+		Timestamp:   m.Timestamp,
+		Imode:       uint32(m.Imode),
+		Uid:         m.Uid,
+		Gid:         m.Gid,
+		Ino:         m.Ino,
+		Fs:          createFsInfoUnix(m.Fs),
+		ParentIno:   m.ParentIno,
+		ParentFs:    createFsInfoUnix(m.ParentFs),
+		ContainerID: cid,
+		Offset:      m.Offset,
+		Size:        m.Size,
+		MntNs:       m.MntNs,
 	}
 
 	return []observer.Event{unix}, nil
@@ -550,6 +557,11 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		srcName = srcName[:m.Src.Path.NameSize]
 	}
 
+	srcCid := ""
+	if m.Src.Path.Flags&fileapi.CONTAINER_FILE != 0 {
+		srcCid = string(m.Src.Path.ContainerID[:])
+	}
+
 	dstDir := string(m.Dst.Path.Dir[:])
 	if uint32(len(dstDir)) > m.Dst.Path.DirSize {
 		dstDir = dstDir[:m.Dst.Path.DirSize]
@@ -558,6 +570,11 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	dstName := string(m.Dst.Path.Name[:])
 	if uint32(len(dstName)) > m.Dst.Path.NameSize {
 		dstName = dstName[:m.Dst.Path.NameSize]
+	}
+
+	dstCid := ""
+	if m.Dst.Path.Flags&fileapi.CONTAINER_FILE != 0 {
+		dstCid = string(m.Dst.Path.ContainerID[:])
 	}
 
 	if hasFlag(m.Flags, SRC_DIRECTORY) {
@@ -614,18 +631,20 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		Hook:       m.Hook,
 		Timestamp:  m.Timestamp,
 		Src: file.MsgRenameElemUnix{
-			Path:      filepath.Join(srcDir, srcName),
-			Ino:       m.Src.Ino,
-			Fs:        createFsInfoUnix(m.Src.Fs),
-			ParentIno: m.Src.ParentIno,
-			ParentFs:  createFsInfoUnix(m.Src.ParentFs),
+			Path:        filepath.Join(srcDir, srcName),
+			Ino:         m.Src.Ino,
+			Fs:          createFsInfoUnix(m.Src.Fs),
+			ParentIno:   m.Src.ParentIno,
+			ParentFs:    createFsInfoUnix(m.Src.ParentFs),
+			ContainerID: srcCid,
 		},
 		Dst: file.MsgRenameElemUnix{
-			Path:      filepath.Join(dstDir, dstName),
-			Ino:       m.Dst.Ino,
-			Fs:        createFsInfoUnix(m.Dst.Fs),
-			ParentIno: m.Dst.ParentIno,
-			ParentFs:  createFsInfoUnix(m.Dst.ParentFs),
+			Path:        filepath.Join(dstDir, dstName),
+			Ino:         m.Dst.Ino,
+			Fs:          createFsInfoUnix(m.Dst.Fs),
+			ParentIno:   m.Dst.ParentIno,
+			ParentFs:    createFsInfoUnix(m.Dst.ParentFs),
+			ContainerID: dstCid,
 		},
 		MntNs: m.MntNs,
 		Flags: m.Flags,
