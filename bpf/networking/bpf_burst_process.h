@@ -106,23 +106,12 @@ process_burst_check_and_delete(struct msg_process_network_burst_event *e,
 }
 
 static inline __attribute__((always_inline)) void
-process_burst_map_delete(void *ctx, __u64 pid_tgid)
+process_burst_map_delete(void *ctx, __u32 tgid)
 {
 	int zero = 0;
 	__u64 *cntr;
 	struct msg_process_network_burst_event *val;
 	struct execve_map_value *process;
-	__u32 pid, tgid;
-
-	pid = pid_tgid & 0xFFFFffff;
-	tgid = pid_tgid >> 32;
-
-	/* We are only tracking group leaders so if tgid is not
-	 * the same as the pid then this is an untracked child
-	 * and we shouldn't delete the entry.
-	 */
-	if (pid != tgid)
-		return;
 
 	process = execve_map_get_noinit(tgid);
 	val = map_lookup_elem(&pn_burst_event_heap, &zero);

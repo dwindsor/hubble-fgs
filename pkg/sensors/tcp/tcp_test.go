@@ -793,6 +793,9 @@ func TestTcpBurst(t *testing.T) {
 		ec.NewProcessExecChecker().
 			WithProcess(serverProcess).
 			WithParent(selfChecker),
+		ec.NewProcessExitChecker().
+			WithProcess(serverProcess).
+			WithParent(selfChecker),
 		burstIngressStart,
 		burstIngressEnd,
 	)
@@ -861,9 +864,6 @@ func TestTcpBurst(t *testing.T) {
 		panic(err)
 	}
 
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
 	err = m.Lookup(processKey, &processValue)
 	if err != nil {
 		fmt.Printf("ERROR Server process not in burst map\n")
@@ -892,6 +892,12 @@ func TestTcpBurst(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+
+	// the burst map record is sure to be removed after exit event is
+	// received, let's wait for that and do the lookup check after
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {

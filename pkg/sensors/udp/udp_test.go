@@ -235,6 +235,8 @@ func TestUdpBurst(t *testing.T) {
 			WithProtocol(sm.Full("UDP")).
 			WithDirection(sm.Full("ingress")).
 			WithBurstState(sm.Full("end")),
+		ec.NewProcessExitChecker().
+			WithProcess(serverProcess),
 	)
 
 	var doneWG, readyWG sync.WaitGroup
@@ -284,9 +286,6 @@ func TestUdpBurst(t *testing.T) {
 	err = clientCmd.Run()
 	assert.NoError(t, err, "cannot start client")
 
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
 	err = m.Lookup(processKey, &processValue)
 	assert.NoError(t, err, "server process must be in burst map")
 
@@ -303,6 +302,12 @@ func TestUdpBurst(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+
+	// the burst map record is sure to be removed after exit event is
+	// received, let's wait for that and do the lookup check after
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
 	assert.Error(t, err, "server process in burst map after exit")
