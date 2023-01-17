@@ -41,9 +41,24 @@ type FsScannerInit struct {
 }
 
 type FsScannerRename struct {
-	Path    string
-	MapDir  string
-	Op      uint32
-	Action  uint32
-	PinPath string
+	Path        string
+	MapDir      string
+	Op          uint32
+	Action      uint32
+	PinPath     string
+	ContainerID string
+}
+
+type FsScannerContainerInit struct {
+	Spec        []v1alpha1.FileSpec
+	PinPath     []string
+	ContainerID string
+	RootDir     string
+	MapDir      string
+}
+
+type FsScannerContainerDestroy struct {
+	PinPath     []string
+	ContainerID string
+	MapDir      string
 }

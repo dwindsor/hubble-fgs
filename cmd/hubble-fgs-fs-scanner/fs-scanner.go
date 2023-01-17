@@ -75,6 +75,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -103,8 +104,12 @@ func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) er
 	}
 	defer cleanup()
 
+	locFn := func(v *fileapi.HashMapFileVal) {
+		v.LocationFlags = fileapi.HOST_FILE
+	}
+
 	for _, p := range args.Spec.Paths {
-		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Adding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
@@ -112,7 +117,7 @@ func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) er
 	}
 
 	for _, p := range args.Spec.PathsExclude {
-		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Excluding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
@@ -129,10 +134,102 @@ func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
 	}
 	defer cleanup()
 
-	if fNum, dNum, err := fm.WalkPathRaw(args.Path, maps, args.Op, args.Action, true); err != nil {
+	locFn := func(v *fileapi.HashMapFileVal) {
+		if args.ContainerID == "" {
+			v.LocationFlags = fileapi.HOST_FILE
+		} else {
+			var cid [64]byte
+			copy(cid[:], args.ContainerID)
+			v.ContainerID = cid
+			v.LocationFlags = fileapi.CONTAINER_FILE
+		}
+	}
+
+	if fNum, dNum, err := fm.WalkPathRaw(args.Path, maps, args.Op, args.Action, true, locFn); err != nil {
 		logger.GetLogger().WithField("path", args.Path).WithError(err).Warnf("Renaming files/directories failed")
 	} else {
 		logger.GetLogger().WithField("path", args.Path).Infof("Renamed %d file(s) and %d directorie(s)", fNum, dNum)
+	}
+	return nil
+}
+
+func chroot(path string) (func() error, error) {
+	root, err := os.Open("/")
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Chroot(path); err != nil {
+		root.Close()
+		return nil, err
+	}
+	return func() error {
+		defer root.Close()
+		if err := root.Chdir(); err != nil {
+			return err
+		}
+		return syscall.Chroot(".")
+	}, nil
+}
+
+func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerInit, _ *struct{}) error {
+	if len(args.Spec) != len(args.PinPath) {
+		return fmt.Errorf("TracingPolicyContainerInit: spec and pinpath arrays have different lengths")
+	}
+
+	for i := 0; i < len(args.PinPath); i++ {
+		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath[i])
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+
+		locFn := func(v *fileapi.HashMapFileVal) {
+			v.LocationFlags = fileapi.CONTAINER_FILE
+			copy(v.ContainerID[:], []byte(args.ContainerID))
+		}
+
+		// enter chroot
+		exit, err := chroot(args.RootDir)
+		if err != nil {
+			return err
+		}
+
+		for _, p := range args.Spec[i].Paths {
+			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
+				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).WithError(err).Warnf("Adding files/directories failed")
+			} else {
+				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+			}
+		}
+
+		for _, p := range args.Spec[i].PathsExclude {
+			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
+				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).WithError(err).Warnf("Excluding files/directories failed")
+			} else {
+				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
+			}
+		}
+
+		// exit from the chroot
+		if err := exit(); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (f *FsScannerRpc) TracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy, _ *struct{}) error {
+	for _, pinPath := range args.PinPath {
+		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, pinPath)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+
+		if err := fm.RemoveContainerEntries(maps, args.ContainerID); err != nil {
+			return err
+		}
 	}
 	return nil
 }

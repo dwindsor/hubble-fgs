@@ -188,13 +188,14 @@ func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error
 	return nil
 }
 
-func RenameFsScanner(p string, m string, o uint32, a uint32, pin string) error {
+func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid string) error {
 	f := fm.FsScannerRename{
-		Path:    p,
-		MapDir:  m,
-		Op:      o,
-		Action:  a,
-		PinPath: pin,
+		Path:        p,
+		MapDir:      m,
+		Op:          o,
+		Action:      a,
+		PinPath:     pin,
+		ContainerID: cid,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
@@ -204,6 +205,48 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string) error {
 	defer client.Close()
 
 	if err := client.Call("FsScannerRpc.RenameDir", &f, &struct{}{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TracingPolicyInitContainerFsScanner(containerID string, rootDir string) error {
+	pinPath, spec := fileMonitoringTable.getValuesFIM()
+	f := fm.FsScannerContainerInit{
+		Spec:        spec,
+		PinPath:     pinPath,
+		MapDir:      option.Config.MapDir,
+		ContainerID: containerID,
+		RootDir:     rootDir,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Call("FsScannerRpc.TracingPolicyContainerInit", &f, &struct{}{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TracingPolicyDestroyContainerFsScanner(containerID string) error {
+	pinPath, _ := fileMonitoringTable.getValuesFIM()
+	f := fm.FsScannerContainerDestroy{
+		MapDir:      option.Config.MapDir,
+		PinPath:     pinPath,
+		ContainerID: containerID,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Call("FsScannerRpc.TracingPolicyContainerDestroy", &f, &struct{}{}); err != nil {
 		return err
 	}
 	return nil
@@ -327,6 +370,18 @@ func (t *fimTable) rmFIM(id uint32) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	delete(t.mp, id)
+}
+
+func (t *fimTable) getValuesFIM() ([]string, []v1alpha1.FileSpec) {
+	var pinPaths []string
+	var specs []v1alpha1.FileSpec
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, elem := range t.mp {
+		pinPaths = append(pinPaths, elem.pinPathPrefix)
+		specs = append(specs, *elem.Spec)
+	}
+	return pinPaths, specs
 }
 
 func ClearFIMTracingPolicies() {
@@ -595,7 +650,16 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
 		}
 
-		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix); err != nil {
+		renameCid := ""
+		if srcCid == "" && dstCid != "" { // use the non-empty
+			renameCid = dstCid
+		} else if srcCid != "" && dstCid == "" { // use the non-empty
+			renameCid = srcCid
+		} else if srcCid != "" && dstCid != "" { // both are non-empty
+			renameCid = dstCid // both not empty -- use destination containerID
+		}
+
+		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid); err != nil {
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
 	}

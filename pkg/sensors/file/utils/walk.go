@@ -18,9 +18,12 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+
+	"go.uber.org/multierr"
 )
 
 type FimMaps struct {
@@ -141,7 +144,86 @@ func RemoveFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey) error {
 	return nil
 }
 
-func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefix bool) (int, int, error) {
+func rmHandleContainerEntries(handle *ebpf.Map, containerID string) (int, error) {
+	var key fileapi.HashMapFileKey
+	var val fileapi.HashMapFileVal
+
+	count := 0
+	for {
+		entries := handle.Iterate()
+		keyFound := false
+		for entries.Next(&key, &val) {
+			if val.LocationFlags == fileapi.CONTAINER_FILE && string(val.ContainerID[:]) == containerID {
+				if err := handle.Delete(key); err == nil {
+					count++
+				}
+				keyFound = true
+				break
+			}
+		}
+
+		// We iterate the whole map and no keys found for the specified containerID.
+		// We can stop searching now.
+		if !keyFound {
+			break
+		}
+	}
+
+	return count, nil
+}
+
+// similar to rmHandleContainerEntries but uses BatchDelete and thus it is more efficient
+// only supported in kernels >= 5.6
+func rmHandleContainerEntries56(handle *ebpf.Map, containerID string) (int, error) {
+	var key fileapi.HashMapFileKey
+	var val fileapi.HashMapFileVal
+	var keys []fileapi.HashMapFileKey
+
+	entries := handle.Iterate()
+	for entries.Next(&key, &val) {
+		if val.LocationFlags == fileapi.CONTAINER_FILE && string(val.ContainerID[:]) == containerID {
+			keys = append(keys, key)
+		}
+	}
+
+	if err := entries.Err(); err != nil {
+		return 0, err
+	}
+
+	count, err := handle.BatchDelete(keys, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	if count != len(keys) {
+		return 0, fmt.Errorf("BatchDelete: expected %d deletions got %d", len(keys), count)
+	}
+
+	return count, nil
+}
+
+func RemoveContainerEntries(maps FimMaps, containerID string) error {
+	rmEntries := rmHandleContainerEntries
+	if kernels.MinKernelVersion("5.6.0") {
+		rmEntries = rmHandleContainerEntries56
+	}
+
+	var ret error
+	fNum, err := rmEntries(maps.File, containerID)
+	if err != nil {
+		ret = multierr.Append(ret, err)
+	}
+
+	dNum, err := rmEntries(maps.Dir, containerID)
+	if err != nil {
+		ret = multierr.Append(ret, err)
+	}
+
+	logger.GetLogger().Warnf("Deleted %d files and %d directories for container %s", fNum, dNum, containerID)
+	return ret
+}
+
+func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -191,6 +273,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 				val.Action = action
 				val.PathSize = uint32(len(path))
 				copy(val.FullPath[:], path)
+				locationFn(&val)
 
 				addToMap := true
 				if checkPrefix {
@@ -231,6 +314,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 				val.Action = action
 				val.PathSize = uint32(len(path))
 				copy(val.FullPath[:], path)
+				locationFn(&val)
 
 				addToMap := true
 				if checkPrefix {
