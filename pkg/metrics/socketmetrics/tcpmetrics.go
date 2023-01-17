@@ -30,6 +30,10 @@ var (
 		Name: consts.MetricNamePrefix + "socket_stats_txbursts",
 		Help: "TCP socket TX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
+	SocketStatsTxDips = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_txdips",
+		Help: "TCP socket TX dips statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_rxbytes",
 		Help: "TCP socket RX bytes statistics",
@@ -41,6 +45,10 @@ var (
 	SocketStatsRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_rxbursts",
 		Help: "TCP socket RX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRxDips = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rxdips",
+		Help: "TCP socket RX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_retransmitbytes",

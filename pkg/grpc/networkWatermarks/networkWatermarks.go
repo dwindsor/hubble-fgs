@@ -138,6 +138,11 @@ func createProcessNetworkWatermarks(
 	} else {
 		fgsEvent.WatermarksState = "end"
 	}
+	if event.Type == WATERMARKS_BURST {
+		fgsEvent.WatermarksType = "burst"
+	} else {
+		fgsEvent.WatermarksType = "dip"
+	}
 	fgsEvent.WindowSize = event.WindowSize
 	fgsEvent.HistAvg = event.HistAvg
 	fgsEvent.HistBurstTrigger = event.HistBurstTrigger

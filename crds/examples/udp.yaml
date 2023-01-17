@@ -9,10 +9,11 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-      burst:
+      watermarks:
         enable: true
         windowSize: 1000
-        triggerPercent: 50
+        burstTriggerPercent: 50
+        dipTriggerPercent: 20
       latency:
         enable: true
         matchSubnets: [127.0.0.1/32]
@@ -21,7 +22,7 @@ spec:
         max: 10000
         clockCheckInterval: 1
         clockMaxSkew: 5
-    burstExitGen:
+    networkWatermarksExitGen:
       enable: true
       interval: 1000
     dns:

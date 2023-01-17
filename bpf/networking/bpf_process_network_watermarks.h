@@ -67,6 +67,7 @@ struct {
 #define WATERMARKS_KEY_SEND_EGRESS  1
 #define NSTOSEC			    1000000000L
 #define WATERMARKS_END		    0
+#define WATERMARKS_START	    1
 #define WATERMARKS_BURST	    0
 #define WATERMARKS_DIP		    1
 #define WATERMARKS_STATE_NONE	    0
@@ -316,13 +317,18 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 	u64 hist_dip_avg_trigger = (hist_avg * c->dip_trigger_mult) / 100;
 
 	// Check if the average volume over the last complete window and the current
-	// partial window exceeds the trigger threshold. This approach provides a
-	// fair average of the current rate.
+	// partial window exceeds the burst trigger threshold or fails to reach the
+	// dip trigger threshold. This approach provides a fair average of the
+	// current rate.
 	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) /
 			   (c->window_size + ns_since_win_start);
-	if (old_watermarks_state ^ (new_win_rate > hist_burst_avg_trigger)) {
-		// If we were already bursting and no longer are, or weren't bursting
-		// but now are (XOR) then emit event.
+
+	// Check if: a) we were in a burst but are no longer, or not in a burst and now are; or
+	// b) we were in a dip but are no longer, or not in a dip and now are.
+	// If so, we need to send an event to mark the start or end of a burst or dip.
+	if (
+		((old_watermarks_state == WATERMARKS_STATE_BURST) ^ (new_win_rate > hist_burst_avg_trigger)) ||
+		((old_watermarks_state == WATERMARKS_STATE_DIP) ^ (new_win_rate < hist_dip_avg_trigger))) {
 		struct msg_process_network_watermarks_event *val;
 		int zero = 0;
 
@@ -339,19 +345,63 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 			.key.ktime = process->key.ktime,
 			.protocol = protocol,
 			.direction = send,
-			.state = old_watermarks_state == 0,
-			.type = WATERMARKS_BURST,
 			.window_size = c->avg_window_size_ms,
 			.hist_avg = hist_avg,
 			.hist_burst_trigger = hist_burst_avg_trigger,
 			.hist_dip_trigger = hist_dip_avg_trigger,
 			.window_avg = new_win_rate,
 		};
-		perf_event_output(
-			ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-			sizeof(struct msg_process_network_watermarks_event));
-		WRITE_ONCE(watermarks_log->watermarks_state,
-			   (old_watermarks_state == 0));
+
+		u32 new_watermarks_state = 0;
+
+		switch (old_watermarks_state) {
+		case WATERMARKS_STATE_BURST:
+			// send burst end.
+			val->type = WATERMARKS_BURST;
+			val->state = WATERMARKS_END;
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					  sizeof(struct msg_process_network_watermarks_event));
+			new_watermarks_state = WATERMARKS_STATE_NONE;
+			// check if dip start needed.
+			if (new_win_rate < hist_dip_avg_trigger) {
+				val->type = WATERMARKS_STATE_DIP;
+				val->state = WATERMARKS_START;
+				perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+						  sizeof(struct msg_process_network_watermarks_event));
+				new_watermarks_state = WATERMARKS_STATE_DIP;
+			}
+			break;
+		case WATERMARKS_STATE_DIP:
+			// send dip end.
+			val->type = WATERMARKS_DIP;
+			val->state = WATERMARKS_END;
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					  sizeof(struct msg_process_network_watermarks_event));
+			new_watermarks_state = WATERMARKS_STATE_NONE;
+			// check if burst start needed.
+			if (new_win_rate > hist_burst_avg_trigger) {
+				val->type = WATERMARKS_BURST;
+				val->state = WATERMARKS_START;
+				perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+						  sizeof(struct msg_process_network_watermarks_event));
+				new_watermarks_state = WATERMARKS_STATE_BURST;
+			}
+			break;
+		default:
+			if (new_win_rate > hist_burst_avg_trigger) {
+				val->type = WATERMARKS_BURST;
+				val->state = WATERMARKS_START;
+				new_watermarks_state = WATERMARKS_STATE_BURST;
+			} else {
+				val->type = WATERMARKS_DIP;
+				val->state = WATERMARKS_START;
+				new_watermarks_state = WATERMARKS_STATE_DIP;
+			}
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					  sizeof(struct msg_process_network_watermarks_event));
+		}
+
+		WRITE_ONCE(watermarks_log->watermarks_state, new_watermarks_state);
 	}
 }
 

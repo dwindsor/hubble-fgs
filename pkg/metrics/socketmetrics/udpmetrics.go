@@ -30,6 +30,10 @@ var (
 		Name: consts.MetricNamePrefix + "socket_stats_udp_txbursts",
 		Help: "UDP socket TX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
+	SocketStatsUDPTxDips = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_txdips",
+		Help: "UDP socket TX dips statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_udp_rxbytes",
 		Help: "UDP socket RX bytes statistics",
@@ -41,6 +45,10 @@ var (
 	SocketStatsUDPRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_udp_rxbursts",
 		Help: "UDP socket RX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsUDPRxDips = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_rxdips",
+		Help: "UDP socket RX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPDrops = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "socket_stats_udp_drops",

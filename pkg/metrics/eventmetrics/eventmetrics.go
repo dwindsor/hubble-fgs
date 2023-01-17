@@ -325,7 +325,7 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postUDPWatermarksStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
 	} else {
@@ -333,11 +333,27 @@ func postUDPWatermarksStats(ns, pod, binary string, s *tetragon.ProcessNetworkWa
 	}
 }
 
-func postTCPWatermarksStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksDipStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		socketmetrics.SocketStatsUDPTxDips.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		socketmetrics.SocketStatsUDPRxDips.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postTCPWatermarksBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
 	} else {
 		socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postTCPWatermarksDipStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		socketmetrics.SocketStatsTxDips.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		socketmetrics.SocketStatsRxDips.WithLabelValues(ns, pod, binary).Inc()
 	}
 }
 
@@ -346,9 +362,18 @@ func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermar
 	if res.WatermarksState == "start" {
 		switch res.Protocol {
 		case tetragon.SocketProtocol_UDP.String():
-			postUDPWatermarksStats(ns, pod, binary, res)
+			if res.WatermarksType == "burst" {
+				postUDPWatermarksBurstStats(ns, pod, binary, res)
+			} else {
+				postUDPWatermarksDipStats(ns, pod, binary, res)
+			}
+
 		case tetragon.SocketProtocol_TCP.String():
-			postTCPWatermarksStats(ns, pod, binary, res)
+			if res.WatermarksType == "burst" {
+				postTCPWatermarksBurstStats(ns, pod, binary, res)
+			} else {
+				postTCPWatermarksDipStats(ns, pod, binary, res)
+			}
 		}
 	}
 }

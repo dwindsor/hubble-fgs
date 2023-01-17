@@ -46,6 +46,8 @@ const (
 	WATERMARKS_START                         = 1
 	WATERMARKS_BURST                         = 0
 	WATERMARKS_DIP                           = 1
+	WATERMARKS_STATE_BURST                   = 1
+	WATERMARKS_STATE_DIP                     = 2
 )
 
 var (
@@ -198,7 +200,11 @@ func createWatermarksEndEvent(key *ProcessNetworkWatermarksKey, value *ProcessNe
 	m.Protocol = uint32(key.Key >> PROCESS_NETWORK_WATERMARKS_PROTO_SHIFT)
 	m.Direction = uint8((key.Key >> PROCESS_NETWORK_WATERMARKS_KEY_DIR_SHIFT) & 1)
 	m.State = WATERMARKS_END
-	m.Type = WATERMARKS_BURST
+	if value.WatermarksState == WATERMARKS_STATE_BURST {
+		m.Type = WATERMARKS_BURST
+	} else {
+		m.Type = WATERMARKS_DIP
+	}
 	m.WindowSize = value.WatermarksWindowSize
 	m.HistAvg = (value.HistVol + value.LastWinVol + value.WinVol) * 1000000000 / (m.Common.Ktime - value.ProcessStartTime)
 	m.HistBurstTrigger = 0
