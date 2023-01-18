@@ -71,6 +71,14 @@ var (
 		Name: consts.MetricNamePrefix + "socket_stats_drops",
 		Help: "TCP socket socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsTxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_tx_watermarks_state",
+		Help: "TCP socket TX watermarks state",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rx_watermarks_state",
+		Help: "TCP socket RX watermarks state",
+	}, []string{"namespace", "pod", "binary"})
 )
 
 // TCP Latency Histogram

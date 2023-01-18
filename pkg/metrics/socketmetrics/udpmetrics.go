@@ -74,6 +74,14 @@ var (
 		Name: consts.MetricNamePrefix + "socket_stats_udp_stack_rxsegs",
 		Help: "UDP stack RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPTxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_tx_watermarks_state",
+		Help: "UDP socket TX watermarks state",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsUDPRxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_rx_watermarks_state",
+		Help: "UDP socket RX watermarks state",
+	}, []string{"namespace", "pod", "binary"})
 )
 
 // UDP multicast socket metrics
