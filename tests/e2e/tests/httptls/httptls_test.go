@@ -208,7 +208,10 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessDnsChecker("curlDns").
 			WithProcess(curlChecker).
 			WithDns(ec.NewDnsInfoChecker().
+				// TODO: remove this check at some point once we stop populating
+				// Dns.AnswerTypes
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithResponseTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A))).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Contains("google.com"))).
 				WithReturnCode(0).
 				WithResponse(true),

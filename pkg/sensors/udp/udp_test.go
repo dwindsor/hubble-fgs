@@ -1326,8 +1326,14 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				// TODO: remove this check at some point once we stop populating
+				// Dns.QuestionTypes
 				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A))).
+				// TODO: remove this check at some point once we stop populating
+				// Dns.AnswerTypes
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithResponseTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A))).
 				WithIps(ec.NewStringListMatcher().
 					WithOperator(listmatcher.Subset).
 					// Match a valid IPv4 address
@@ -1339,7 +1345,10 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
-				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1))),
+				// TODO: remove this check at some point once we stop populating
+				// Dns.QuestionTypes
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A)))),
 		ec.NewProcessExecChecker("curl6Exec").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker),
@@ -1354,8 +1363,14 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				// TODO: remove this check at some point once we stop populating
+				// Dns.QuestionTypes
 				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28)).
+				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_AAAA))).
+				// TODO: remove this check at some point once we stop populating
+				// Dns.AnswerTypes
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(28)).
+				WithResponseTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_AAAA))).
 				WithIps(ec.NewStringListMatcher().
 					WithOperator(listmatcher.Subset).
 					// Full IPv6 regex is probably too complicated, let's just see if it
@@ -1368,7 +1383,7 @@ func TestDnsEvents(t *testing.T) {
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
-				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28))),
+				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_AAAA)))),
 	)
 
 	curl4 := exec.Command("curl", "-4", "https://www.google.com")
