@@ -217,11 +217,23 @@ func startFsScanner() (*exec.Cmd, error) {
 		}
 	}
 
+	args := []string{"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10), "-scannerFifoPath", fm.ScannerFifoPath}
+	if option.Config.Debug {
+		args = append([]string{"-debug"}, args...)
+	}
+
+	level, levelOk := option.Config.LogOpts["level"]
+	if levelOk {
+		args = append([]string{"-logLevel", level}, args...)
+	}
+
+	format, formatOk := option.Config.LogOpts["format"]
+	if formatOk {
+		args = append([]string{"-logFormat", format}, args...)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
-	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner"),
-		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
-		"-scannerFifoPath", fm.ScannerFifoPath,
-	)
+	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner"), args...)
 	fsScannerCancelFnMtx.Lock()
 	fsScannerCancelFn = cancel
 	fsScannerCancelFnMtx.Unlock()

@@ -49,6 +49,9 @@ import (
 var (
 	hostMntNs       = flag.Uint("hostMntNs", 0, "host mnt namespace to check that the scanner is indeed running on the host mount namespace (sanity check).")
 	scannerFifoPath = flag.String("scannerFifoPath", "", "path to create the scanner FIFO (for communication with the agent)")
+	debug           = flag.Bool("debug", false, "Enable debug messages. Equivalent to '--log-level=debug'")
+	logLevel        = flag.String("logLevel", "info", "Set log level")
+	logFormat       = flag.String("logFormat", "text", "Set log format")
 	help            = flag.Bool("help", false, "Show help")
 )
 
@@ -138,6 +141,23 @@ func main() {
 	if *help {
 		flag.Usage()
 		os.Exit(0)
+	}
+
+	logL := ""
+	if isFlagPassed("logLevel") {
+		logL = *logLevel
+	}
+
+	logF := ""
+	if isFlagPassed("logFormat") {
+		logF = *logFormat
+	}
+
+	// setup logging
+	o := make(map[string]string)
+	logger.PopulateLogOpts(o, logL, logF)
+	if err := logger.SetupLogging(o, *debug); err != nil {
+		log.Fatal(err)
 	}
 
 	if !isFlagPassed("hostMntNs") {
