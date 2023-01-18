@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -40,6 +41,8 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
@@ -1400,6 +1403,90 @@ func testFileMkdir(gt *testing.T, t *testing.T) {
 
 }
 
+// this function returns the root filesystem of a container
+func dockerIdToRootFs(cid string) (string, error) {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
+	defer cli.Close()
+
+	cnts, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, c := range cnts {
+		if c.ID == cid {
+			if j, err := cli.ContainerInspect(ctx, c.ID); err == nil {
+				if j.GraphDriver.Name == "overlay2" {
+					mergeDir, ok := j.GraphDriver.Data["MergedDir"]
+					if ok {
+						return mergeDir, nil
+					}
+				}
+				return fmt.Sprintf("/proc/%d/root/", j.State.Pid), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("cannot find container with ID %s", cid)
+}
+
+// this test check accessing files inside a container
+func testFileReadContainerFile(gt *testing.T, t *testing.T) {
+	// create a new container
+	id, err := exec.Command("docker", "run", "--detach", "ubuntu:20.04", "/bin/sleep", "3650d").Output()
+	if err != nil {
+		t.Fatalf("failed to spawn docker container: %s", err)
+	}
+
+	containerId := strings.TrimSpace(string(id)) // get the container id
+	t.Cleanup(func() {
+		if err := exec.Command("docker", "rm", "--force", containerId).Run(); err != nil {
+			t.Logf("failed to remove container %s: %s", containerId, err)
+		}
+	})
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{"/etc/"},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	rootDir, err := dockerIdToRootFs(containerId)
+	if err != nil {
+		t.Fatalf("failed to spawn docker container: %s", err)
+	}
+
+	// now we apply the existing tracing policy (i.e. /etc/) for the root filesystem of a running container
+	if err := TracingPolicyInitContainerFsScanner(containerId, rootDir); err != nil {
+		t.Fatalf("failed to call TracingPolicyInitContainerFsScanner(%s, %s): %s", containerId, rootDir, err)
+	}
+
+	// read /etc/shadow from inside the container
+	if err := exec.Command("docker", "exec", containerId, "cat", "/etc/shadow").Run(); err != nil {
+		t.Fatalf("failed to read /etc/shadow inside container %s: %s", containerId, err)
+	}
+
+	// remove any files related to the container
+	if err := TracingPolicyDestroyContainerFsScanner(containerId); err != nil {
+		t.Fatalf("failed to call TracingPolicyDestroyContainerFsScanner(%s): %s", containerId, err)
+	}
+
+	locChecker := ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL).WithContainerId(sm.Full(containerId))
+	fdChecker := ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(locChecker)
+	gfileChecker := ec.NewGenericFileArgChecker().WithFile(fdChecker)
+	argChecker := ec.NewFileArgumentChecker().WithGenericArg(gfileChecker)
+	readChecker := ec.NewProcessFileChecker("").WithAction(tetragon.FileAction_FILE_READ).WithArgs(argChecker)
+	checker := ec.NewUnorderedEventChecker(readChecker)
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -1552,6 +1639,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("rmdir", func(lt *testing.T) {
 		testFileRmdir(t, lt)
+	})
+	t.Run("readcontainerfile", func(lt *testing.T) {
+		testFileReadContainerFile(t, lt)
 	})
 }
 
