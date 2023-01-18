@@ -2433,32 +2433,32 @@ func DNSHasRcode(rcode int32) DNSChecker {
 	})
 }
 
-// DNSHasAnswerTypes checks a specific set of answer types.
+// DNSHasResponseTypes checks a specific set of answer types.
 // N.B. This check is order-preserving and expects a full match.
-func DNSHasAnswerTypes(answerTypes []uint32) DNSChecker {
+func DNSHasResponseTypes(responseTypes []tetragon.DnsType) DNSChecker {
 	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
-			return fmt.Errorf("DNS is nil and cannot match AnswerTypes: %+v", answerTypes)
+			return fmt.Errorf("DNS is nil and cannot match ResponseTypes: %+v", responseTypes)
 		}
-		if !reflect.DeepEqual(t.Dns.AnswerTypes, answerTypes) {
-			return fmt.Errorf("expecting DNS AnswerTypes to be %+v but got %+v", answerTypes, t.Dns.AnswerTypes)
+		if !reflect.DeepEqual(t.Dns.ResponseTypes, responseTypes) {
+			return fmt.Errorf("expecting DNS ResponseTypes to be %+v but got %+v", responseTypes, t.Dns.ResponseTypes)
 		}
-		log.Logf("**** MATCH DNS on AnswerTypes: %+v", t.Dns.AnswerTypes)
+		log.Logf("**** MATCH DNS on ResponseTypes: %+v", t.Dns.ResponseTypes)
 		return nil
 	})
 }
 
-// DNSHasQuestionTypes checks a specific set of question types.
+// DNSHasQueryTypes checks a specific set of question types.
 // N.B. This check is order-preserving and expects a full match.
-func DNSHasQuestionTypes(questionTypes []uint32) DNSChecker {
+func DNSHasQueryTypes(queryTypes []tetragon.DnsType) DNSChecker {
 	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
-			return fmt.Errorf("DNS is nil and cannot match QuestionTypes: %+v", questionTypes)
+			return fmt.Errorf("DNS is nil and cannot match QueryTypes: %+v", queryTypes)
 		}
-		if !reflect.DeepEqual(t.Dns.QuestionTypes, questionTypes) {
-			return fmt.Errorf("expecting DNs QuestionTypes to be %+v but got %+v", questionTypes, t.Dns.QuestionTypes)
+		if !reflect.DeepEqual(t.Dns.QueryTypes, queryTypes) {
+			return fmt.Errorf("expecting DNs QueryTypes to be %+v but got %+v", queryTypes, t.Dns.QueryTypes)
 		}
-		log.Logf("**** MATCH DNS on QuestionTypes: %+v", t.Dns.QuestionTypes)
+		log.Logf("**** MATCH DNS on QueryTypes: %+v", t.Dns.QueryTypes)
 		return nil
 	})
 }
@@ -2534,22 +2534,15 @@ func (o *DNSCheckerAND) WithRcode(rcode int32) *DNSCheckerAND {
 	return o
 }
 
-// WithQuery adds a DNS.Query check to a DNS checker
-func (o *DNSCheckerAND) WithQuery(query StringArg) *DNSCheckerAND {
-	sm := stringMatcherFromArg(query)
-	o.checks = append(o.checks, DNSHasQuery(sm))
+// WithResponseTypes adds a DNS.ResponseTypes check to a DNS checker
+func (o *DNSCheckerAND) WithResponseTypes(responseTypes []tetragon.DnsType) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSHasResponseTypes(responseTypes))
 	return o
 }
 
-// WithAnswerTypes adds a DNS.AnswerTypes check to a DNS checker
-func (o *DNSCheckerAND) WithAnswerTypes(answerTypes []uint32) *DNSCheckerAND {
-	o.checks = append(o.checks, DNSHasAnswerTypes(answerTypes))
-	return o
-}
-
-// WithQuestionTypes adds a DNS.QuestionTypes check to a DNS checker
-func (o *DNSCheckerAND) WithQuestionTypes(questionTypes []uint32) *DNSCheckerAND {
-	o.checks = append(o.checks, DNSHasQuestionTypes(questionTypes))
+// WithQueryTypes adds a DNS.QueryTypes check to a DNS checker
+func (o *DNSCheckerAND) WithQueryTypes(queryTypes []tetragon.DnsType) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSHasQueryTypes(queryTypes))
 	return o
 }
 

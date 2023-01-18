@@ -8962,6 +8962,8 @@ type DnsInfoChecker struct {
 	Query         *stringmatcher.StringMatcher `json:"query,omitempty"`
 	Response      *bool                        `json:"response,omitempty"`
 	ReturnCode    *int32                       `json:"returnCode,omitempty"`
+	QueryTypes    *DnsTypeListMatcher          `json:"queryTypes,omitempty"`
+	ResponseTypes *DnsTypeListMatcher          `json:"responseTypes,omitempty"`
 }
 
 // NewDnsInfoChecker creates a new DnsInfoChecker
@@ -9024,6 +9026,16 @@ func (checker *DnsInfoChecker) Check(event *tetragon.DnsInfo) error {
 				return fmt.Errorf("ReturnCode has value %v which does not match expected value %v", event.ReturnCode.Value, *checker.ReturnCode)
 			}
 		}
+		if checker.QueryTypes != nil {
+			if err := checker.QueryTypes.Check(event.QueryTypes); err != nil {
+				return fmt.Errorf("QueryTypes check failed: %w", err)
+			}
+		}
+		if checker.ResponseTypes != nil {
+			if err := checker.ResponseTypes.Check(event.ResponseTypes); err != nil {
+				return fmt.Errorf("ResponseTypes check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -9077,6 +9089,18 @@ func (checker *DnsInfoChecker) WithResponse(check bool) *DnsInfoChecker {
 // WithReturnCode adds a ReturnCode check to the DnsInfoChecker
 func (checker *DnsInfoChecker) WithReturnCode(check int32) *DnsInfoChecker {
 	checker.ReturnCode = &check
+	return checker
+}
+
+// WithQueryTypes adds a QueryTypes check to the DnsInfoChecker
+func (checker *DnsInfoChecker) WithQueryTypes(check *DnsTypeListMatcher) *DnsInfoChecker {
+	checker.QueryTypes = check
+	return checker
+}
+
+// WithResponseTypes adds a ResponseTypes check to the DnsInfoChecker
+func (checker *DnsInfoChecker) WithResponseTypes(check *DnsTypeListMatcher) *DnsInfoChecker {
+	checker.ResponseTypes = check
 	return checker
 }
 
@@ -9141,6 +9165,28 @@ func (checker *DnsInfoChecker) FromDnsInfo(event *tetragon.DnsInfo) *DnsInfoChec
 	if event.ReturnCode != nil {
 		val := event.ReturnCode.Value
 		checker.ReturnCode = &val
+	}
+	{
+		var checks []*DnsTypeChecker
+		for _, check := range event.QueryTypes {
+			var convertedCheck *DnsTypeChecker
+			convertedCheck = NewDnsTypeChecker(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewDnsTypeListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.QueryTypes = lm
+	}
+	{
+		var checks []*DnsTypeChecker
+		for _, check := range event.ResponseTypes {
+			var convertedCheck *DnsTypeChecker
+			convertedCheck = NewDnsTypeChecker(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewDnsTypeListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.ResponseTypes = lm
 	}
 	return checker
 }
@@ -9240,6 +9286,106 @@ nextCheck:
 
 	if numMatched < numDesired {
 		return fmt.Errorf("Uint32ListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
+	}
+
+	return nil
+}
+
+// DnsTypeListMatcher checks a list of tetragon.DnsType fields
+type DnsTypeListMatcher struct {
+	Operator listmatcher.Operator `json:"operator"`
+	Values   []*DnsTypeChecker    `json:"values"`
+}
+
+// NewDnsTypeListMatcher creates a new DnsTypeListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
+func NewDnsTypeListMatcher() *DnsTypeListMatcher {
+	return &DnsTypeListMatcher{
+		Operator: listmatcher.Subset,
+	}
+}
+
+// WithOperator sets the match kind for the DnsTypeListMatcher
+func (checker *DnsTypeListMatcher) WithOperator(operator listmatcher.Operator) *DnsTypeListMatcher {
+	checker.Operator = operator
+	return checker
+}
+
+// WithValues sets the checkers that the DnsTypeListMatcher should use
+func (checker *DnsTypeListMatcher) WithValues(values ...*DnsTypeChecker) *DnsTypeListMatcher {
+	checker.Values = values
+	return checker
+}
+
+// Check checks a list of tetragon.DnsType fields
+func (checker *DnsTypeListMatcher) Check(values []tetragon.DnsType) error {
+	switch checker.Operator {
+	case listmatcher.Ordered:
+		return checker.orderedCheck(values)
+	case listmatcher.Unordered:
+		return checker.unorderedCheck(values)
+	case listmatcher.Subset:
+		return checker.subsetCheck(values)
+	default:
+		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
+	}
+}
+
+// orderedCheck checks a list of ordered tetragon.DnsType fields
+func (checker *DnsTypeListMatcher) orderedCheck(values []tetragon.DnsType) error {
+	innerCheck := func(check *DnsTypeChecker, value tetragon.DnsType) error {
+		if err := check.Check(&value); err != nil {
+			return fmt.Errorf("QueryTypes check failed: %w", err)
+		}
+		return nil
+	}
+
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("DnsTypeListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	for i, check := range checker.Values {
+		value := values[i]
+		if err := innerCheck(check, value); err != nil {
+			return fmt.Errorf("DnsTypeListMatcher: Check failed on element %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// unorderedCheck checks a list of unordered tetragon.DnsType fields
+func (checker *DnsTypeListMatcher) unorderedCheck(values []tetragon.DnsType) error {
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("DnsTypeListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	return checker.subsetCheck(values)
+}
+
+// subsetCheck checks a subset of tetragon.DnsType fields
+func (checker *DnsTypeListMatcher) subsetCheck(values []tetragon.DnsType) error {
+	innerCheck := func(check *DnsTypeChecker, value tetragon.DnsType) error {
+		if err := check.Check(&value); err != nil {
+			return fmt.Errorf("QueryTypes check failed: %w", err)
+		}
+		return nil
+	}
+
+	numDesired := len(checker.Values)
+	numMatched := 0
+
+nextCheck:
+	for _, check := range checker.Values {
+		for _, value := range values {
+			if err := innerCheck(check, value); err == nil {
+				numMatched += 1
+				continue nextCheck
+			}
+		}
+	}
+
+	if numMatched < numDesired {
+		return fmt.Errorf("DnsTypeListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
 	}
 
 	return nil
@@ -9553,6 +9699,58 @@ func (enum *TlsCertificateErrorChecker) Check(val *tetragon.TlsCertificateError)
 	}
 	if *enum != TlsCertificateErrorChecker(*val) {
 		return fmt.Errorf("TlsCertificateErrorChecker: TlsCertificateError has value %s which does not match expected value %s", (*val), tetragon.TlsCertificateError(*enum))
+	}
+	return nil
+}
+
+// DnsTypeChecker checks a tetragon.DnsType
+type DnsTypeChecker tetragon.DnsType
+
+// MarshalJSON implements json.Marshaler interface
+func (enum DnsTypeChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.DnsType_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown DnsType %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *DnsTypeChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.DnsType_value[str]; ok {
+		*enum = DnsTypeChecker(n)
+	} else if n, ok := tetragon.DnsType_value[""+str]; ok {
+		*enum = DnsTypeChecker(n)
+	} else {
+		return fmt.Errorf("Unknown DnsType %s", str)
+	}
+
+	return nil
+}
+
+// NewDnsTypeChecker creates a new DnsTypeChecker
+func NewDnsTypeChecker(val tetragon.DnsType) *DnsTypeChecker {
+	enum := DnsTypeChecker(val)
+	return &enum
+}
+
+// Check checks a DnsType against the checker
+func (enum *DnsTypeChecker) Check(val *tetragon.DnsType) error {
+	if val == nil {
+		return fmt.Errorf("DnsTypeChecker: DnsType is nil and does not match expected value %s", tetragon.DnsType(*enum))
+	}
+	if *enum != DnsTypeChecker(*val) {
+		return fmt.Errorf("DnsTypeChecker: DnsType has value %s which does not match expected value %s", (*val), tetragon.DnsType(*enum))
 	}
 	return nil
 }

@@ -20,15 +20,36 @@ import "tetragon/tetragon.proto";
 import "tetragon/fgs.proto";
 import "google/protobuf/wrappers.proto";
 
+enum DnsType {
+    DNS_TYPE_UNDEF = 0;
+    A     = 1;
+    NS    = 2;
+    CNAME = 5;
+    SOA   = 6;
+    PTR   = 12;
+    MX    = 15;
+    TXT   = 16;
+    AAAA  = 28;
+    SRV   = 33;
+    OPT   = 41;
+    WKS   = 11;
+    HINFO = 13;
+    MINFO = 14;
+    AXFR  = 252;
+    ALL   = 255;
+}
+
 message DnsInfo {
-    repeated uint32 question_types = 1;
-    repeated uint32 answer_types = 2;
+    repeated uint32 question_types = 1 [deprecated=true]; // deprecated in favor of query_types
+    repeated uint32 answer_types = 2 [deprecated=true]; // deprecated in favor of response_types
     int32 rcode = 3 [deprecated=true]; // deprecated in favor of return_code
     repeated string names = 4;
     repeated string ips = 5;
-    string query = 6 [deprecated=true]; // unused field, deprecated in favor of names and question_types
+    string query = 6 [deprecated=true]; // unused field, deprecated in favor of names and query_types
     bool response = 7;
     google.protobuf.Int32Value return_code = 8;
+    repeated DnsType query_types = 9;
+    repeated DnsType response_types = 10;
 }
 
 message ProcessDns {
