@@ -11,22 +11,19 @@
 package getevents
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
-	"os"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/cmd/tetra/common"
+	ossGetevents "github.com/cilium/tetragon/cmd/tetra/getevents"
 	ossEncoder "github.com/cilium/tetragon/pkg/encoder"
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
+
+	// append enterprise filters
+	_ "github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // GetEncoder returns an encoder for an event stream based on configuration options.
@@ -37,109 +34,80 @@ var GetEncoder = func(w io.Writer, colorMode ossEncoder.ColorMode, timestamps bo
 	return json.NewEncoder(w)
 }
 
-func getRequest(includeFields, excludeFields []string, namespaces []string, host bool, processes, pods, IPs, sourceIPs, destIPs, destNames, SNINames, URIs, destPods []string) *tetragon.GetEventsRequest {
+var (
+	host       bool
+	namespaces []string
+	processes  []string
+	pods       []string
+	IPs        []string
+	sourceIPs  []string
+	destIPs    []string
+	destNames  []string
+	SNINames   []string
+	URIs       []string
+	destPods   []string
+)
+
+// GetFilter returns a filter for an event stream based on configuration options.
+var GetFilter = func() *tetragon.Filter {
+	// retrieve filter flags from OSS that records them into viper global state,
+	// it can results in issue if the two subcommands bind the same flag, the
+	// last will override the rest, see https://github.com/spf13/viper/issues/233
+	namespaces = viper.GetStringSlice("namespace")
+	processes = viper.GetStringSlice("process")
+	pods = viper.GetStringSlice("pod")
+
 	if host {
 		// Host events can be matched by an empty namespace string.
 		namespaces = append(namespaces, "")
 	}
 
-	var fieldFilters []*tetragon.FieldFilter
-	if len(includeFields) > 0 {
-		fieldFilters = append(fieldFilters, &tetragon.FieldFilter{
-			EventSet: []tetragon.EventType{},
-			Fields: &fieldmaskpb.FieldMask{
-				Paths: includeFields,
-			},
-			Action: tetragon.FieldFilterAction_INCLUDE,
-		})
+	// Only set these filters if they are not empty. We currently rely on Protobuf to
+	// marshal empty lists as nil for filters to function properly. It doesn't work with
+	// stdin mode since it doesn't go over the wire, causing all events to get filtered
+	// out because empty allowlist does not match anything.
+	filter := tetragon.Filter{}
+	if len(namespaces) > 0 {
+		filter.Namespace = namespaces
 	}
-	if len(excludeFields) > 0 {
-		fieldFilters = append(fieldFilters, &tetragon.FieldFilter{
-			EventSet: []tetragon.EventType{},
-			Fields: &fieldmaskpb.FieldMask{
-				Paths: excludeFields,
-			},
-			Action: tetragon.FieldFilterAction_EXCLUDE,
-		})
+	if len(processes) > 0 {
+		filter.BinaryRegex = processes
+	}
+	if len(pods) > 0 {
+		filter.PodRegex = pods
+	}
+	if len(IPs) > 0 {
+		filter.IpCidr = IPs
+	}
+	if len(sourceIPs) > 0 {
+		filter.SourceIpCidr = sourceIPs
+	}
+	if len(destIPs) > 0 {
+		filter.DestinationIpCidr = destIPs
+	}
+	if len(destNames) > 0 {
+		filter.DestinationNamesRegex = destNames
+	}
+	if len(SNINames) > 0 {
+		filter.SniRegex = SNINames
+	}
+	if len(URIs) > 0 {
+		filter.UriRegex = URIs
+	}
+	if len(destPods) > 0 {
+		filter.DestinationPodRegex = destPods
 	}
 
-	return &tetragon.GetEventsRequest{
-		AllowList: []*tetragon.Filter{{
-			BinaryRegex:           processes,
-			Namespace:             namespaces,
-			PodRegex:              pods,
-			IpCidr:                IPs,
-			SourceIpCidr:          sourceIPs,
-			DestinationIpCidr:     destIPs,
-			DestinationNamesRegex: destNames,
-			SniRegex:              SNINames,
-			UriRegex:              URIs,
-			DestinationPodRegex:   destPods,
-		}},
-		FieldFilters: fieldFilters,
-	}
-}
-
-var (
-	host          bool
-	namespaces    []string
-	processes     []string
-	pods          []string
-	IPs           []string
-	sourceIPs     []string
-	destIPs       []string
-	destNames     []string
-	SNINames      []string
-	URIs          []string
-	destPods      []string
-	timestamps    bool
-	output        string
-	color         string
-	includeFields []string
-	excludeFields []string
-)
-
-func getEvents(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
-	compact := output == "compact"
-	colorMode := ossEncoder.ColorMode(color)
-
-	request := getRequest(includeFields, excludeFields, namespaces, host, processes, pods, IPs, sourceIPs, destIPs, destNames, SNINames, URIs, destPods)
-	stream, err := client.GetEvents(ctx, request)
-	if err != nil {
-		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
-	}
-	eventEncoder := GetEncoder(os.Stdout, colorMode, timestamps, compact)
-	for {
-		res, err := stream.Recv()
-		if err != nil {
-			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
-				logger.GetLogger().WithError(err).Fatal("Failed to receive events")
-			}
-			return
-		}
-		if err = eventEncoder.Encode(res); err != nil {
-			logger.GetLogger().WithError(err).WithField("event", res).Debug("Failed to encode event")
-		}
-	}
+	return &filter
 }
 
 func New() *cobra.Command {
-	cmd := cobra.Command{
-		Use:   "getevents",
-		Short: "Print events",
-		Run: func(cmd *cobra.Command, args []string) {
-			common.CliRun(getEvents)
-		},
-	}
+	ossGetevents.GetEncoder = GetEncoder
+	ossGetevents.GetFilter = GetFilter
+	cmd := ossGetevents.New()
+	cmd.Long = fmt.Sprintf(ossGetevents.DocLong, "hubble-enterprise")
 
 	flags := cmd.Flags()
-	flags.StringVarP(&output, "output", "o", "json", "Output format. json or compact")
-	flags.StringVar(&color, "color", "auto", "Colorize compact output. auto, always, or never")
-	flags.StringSliceVarP(&includeFields, "include-fields", "f", nil, "Include fields in events")
-	flags.StringSliceVarP(&excludeFields, "exclude-fields", "F", nil, "Exclude fields from events")
-	flags.StringSliceVarP(&namespaces, "namespace", "n", nil, "Get events by Kubernetes namespaces")
-	flags.StringSliceVar(&processes, "process", nil, "Get events by process name regex")
-	flags.StringSliceVar(&pods, "pod", nil, "Get events by pod name regex")
 	flags.StringSliceVar(&IPs, "ip-cidr", nil, "Get ProcessListen events by IP CIDR")
 	flags.StringSliceVar(&sourceIPs, "source-ip-cidr", nil, "Get network events by source IP CIDR")
 	flags.StringSliceVar(&destIPs, "dest-ip-cidr", nil, "Get network events by destination IP CIDR")
@@ -147,9 +115,6 @@ func New() *cobra.Command {
 	flags.StringSliceVar(&SNINames, "sni-name", nil, "Get network events by SNI name field regex")
 	flags.StringSliceVar(&URIs, "uri", nil, "Get network events by URI field regex")
 	flags.StringSliceVar(&destPods, "dest-pod", nil, "Get network events by destination pod field regex")
-	flags.BoolVar(&host, "host", false, "Get host events")
-	flags.BoolVar(&timestamps, "timestamps", false, "Include timestamps in compact output")
-	viper.BindPFlags(flags)
 
-	return &cmd
+	return cmd
 }
