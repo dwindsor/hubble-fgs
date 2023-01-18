@@ -1690,7 +1690,10 @@ func TestFileReadDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
