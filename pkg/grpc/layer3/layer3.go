@@ -423,11 +423,6 @@ func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.Process
 	state := cilium.GetCiliumState()
 	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, dnsCache, state)
 
-	if option.Config.EnableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
-		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-	}
-
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil

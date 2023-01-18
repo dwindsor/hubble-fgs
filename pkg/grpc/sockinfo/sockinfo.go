@@ -6,9 +6,11 @@ import (
 
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -56,7 +58,7 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 
 	destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
 
-	return &tetragon.SockInfo{
+	sockInfo := &tetragon.SockInfo{
 		SourcePort:      sourcePort,
 		SourceIp:        network.GetIP(tuple.SAddr, op, tuple.IPv6 != 0).String(),
 		DestinationIp:   destinationIP.String(),
@@ -65,6 +67,13 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 
 		Protocol: network.MsgOpToProtocol(op),
 	}
+
+	if option.Config.EnableCilium {
+		destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
+		sockInfo.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
+	}
+
+	return sockInfo
 }
 
 func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *cilium.State) ([]string, error) {

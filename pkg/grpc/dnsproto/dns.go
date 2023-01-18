@@ -84,6 +84,8 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
+	// TODO: this field is deprecated in favor of the Socket field, so we can probably
+	// remove this at some point in the future.
 	if option.Config.EnableCilium && proc != nil {
 		destinationIP := network.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
