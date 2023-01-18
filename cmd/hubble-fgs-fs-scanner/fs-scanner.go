@@ -156,18 +156,21 @@ func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
 func chroot(path string) (func() error, error) {
 	root, err := os.Open("/")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("os.Open root: %w", err)
 	}
 	if err := syscall.Chroot(path); err != nil {
 		root.Close()
-		return nil, err
+		return nil, fmt.Errorf("syscall.Chroot to %s: %w", path, err)
 	}
 	return func() error {
 		defer root.Close()
 		if err := root.Chdir(); err != nil {
-			return err
+			return fmt.Errorf("root.Chdir to root: %w", err)
 		}
-		return syscall.Chroot(".")
+		if err := syscall.Chroot("."); err != nil {
+			return fmt.Errorf("syscall.Chroot to cwd: %w", err)
+		}
+		return nil
 	}, nil
 }
 
@@ -179,7 +182,7 @@ func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerIni
 	for i := 0; i < len(args.PinPath); i++ {
 		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath[i])
 		if err != nil {
-			return err
+			return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, args.PinPath[i], err)
 		}
 		defer cleanup()
 
@@ -191,7 +194,7 @@ func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerIni
 		// enter chroot
 		exit, err := chroot(args.RootDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("chroot to %s: %w", args.RootDir, err)
 		}
 
 		for _, p := range args.Spec[i].Paths {
@@ -212,7 +215,7 @@ func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerIni
 
 		// exit from the chroot
 		if err := exit(); err != nil {
-			return err
+			return fmt.Errorf("exit from chroot: %w", err)
 		}
 
 	}
