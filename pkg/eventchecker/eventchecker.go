@@ -2402,25 +2402,6 @@ func (f DNSCheckerFn) Check(c *tetragon.ProcessDns, log Logger) error {
 	return f(c, log)
 }
 
-func dnsWithString(
-	sm StringMatcher,
-	getter func(*tetragon.ProcessDns) string,
-	desc string, // desc is used for helpful error messages
-) DNSChecker {
-	matcher := sm.GetMatcher()
-	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
-		if t == nil {
-			return fmt.Errorf("DNS is nil and cannot match %s using %v", desc, sm)
-		}
-		s := getter(t)
-		if err := matcher(s); err != nil {
-			return fmt.Errorf("failed DNS check on %s: %w", desc, err)
-		}
-		log.Logf("**** MATCH DNS on %s: %s", desc, s)
-		return nil
-	})
-}
-
 // DNSIsResponse checks whether a Dns event is a response
 func DNSIsResponse(isResponse bool) DNSChecker {
 	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
@@ -2450,17 +2431,6 @@ func DNSHasRcode(rcode int32) DNSChecker {
 		log.Logf("**** MATCH DNS on Rcode: %t", t.Dns.ReturnCode.Value)
 		return nil
 	})
-}
-
-// DNSHasQuery checks the Query field
-func DNSHasQuery(sm StringMatcher) DNSChecker {
-	return dnsWithString(
-		sm,
-		func(t *tetragon.ProcessDns) string {
-			return t.Dns.Query
-		},
-		"Query",
-	)
 }
 
 // DNSHasAnswerTypes checks a specific set of answer types.
