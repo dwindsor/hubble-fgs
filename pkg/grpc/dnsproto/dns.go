@@ -88,7 +88,8 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	// remove this at some point in the future.
 	if option.Config.EnableCilium && proc != nil {
 		destinationIP := network.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
+		// We want to continue populating this deprecated field for now
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
