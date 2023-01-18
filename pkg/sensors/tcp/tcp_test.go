@@ -82,6 +82,7 @@ spec:
         enable: true
         windowSize: 1000
         burstTriggerPercent: 50
+        dipTriggerPercent: 10
     networkWatermarksExitGen:
       enable: true
       interval: 1000
@@ -723,7 +724,7 @@ func tcpClient() {
 	burstRate := 10
 	baselineDuration := 1
 	burstDuration := 1
-	numBursts := 1
+	numBursts := 3
 
 	baselineWait := time.Duration(1000000 / baselineRate)
 	burstWait := time.Duration(1000000 / burstRate)
@@ -763,7 +764,7 @@ func tcpClient() {
 	socket.Close()
 }
 
-func testTcpBurst(t *testing.T, legacy bool) {
+func testTcpWatermarks(t *testing.T, legacy bool) {
 
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
@@ -805,18 +806,6 @@ func testTcpBurst(t *testing.T, legacy bool) {
 			ec.NewProcessExitChecker("serverExit").
 				WithProcess(serverProcess).
 				WithParent(selfChecker),
-			ec.NewProcessNetworkBurstChecker("burstIngressStart").
-				WithProcess(serverProcess).
-				WithParent(selfChecker).
-				WithProtocol(sm.Full("TCP")).
-				WithDirection(sm.Full("ingress")).
-				WithBurstState(sm.Full("start")),
-			ec.NewProcessNetworkBurstChecker("burstIngressEnd").
-				WithProcess(serverProcess).
-				WithParent(selfChecker).
-				WithProtocol(sm.Full("TCP")).
-				WithDirection(sm.Full("ingress")).
-				WithBurstState(sm.Full("end")),
 		)
 	} else {
 		checker = ec.NewUnorderedEventChecker(
@@ -827,12 +816,28 @@ func testTcpBurst(t *testing.T, legacy bool) {
 				WithProcess(clientProcess).
 				WithParent(selfChecker).
 				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("burst")).
 				WithDirection(sm.Full("egress")).
 				WithWatermarksState(sm.Full("start")),
 			ec.NewProcessNetworkWatermarkChecker("burstEgressEnd").
 				WithProcess(clientProcess).
 				WithParent(selfChecker).
 				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("burst")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessNetworkWatermarkChecker("dipEgressStart").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("dip")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("dipEgressEnd").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("dip")).
 				WithDirection(sm.Full("egress")).
 				WithWatermarksState(sm.Full("end")),
 			ec.NewProcessExecChecker("serverExec").
@@ -845,12 +850,28 @@ func testTcpBurst(t *testing.T, legacy bool) {
 				WithProcess(serverProcess).
 				WithParent(selfChecker).
 				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("burst")).
 				WithDirection(sm.Full("ingress")).
 				WithWatermarksState(sm.Full("start")),
 			ec.NewProcessNetworkWatermarkChecker("burstIngressEnd").
 				WithProcess(serverProcess).
 				WithParent(selfChecker).
 				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("burst")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessNetworkWatermarkChecker("dipIngressStart").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("dip")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("dipIngressEnd").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithWatermarksType(sm.Full("dip")).
 				WithDirection(sm.Full("ingress")).
 				WithWatermarksState(sm.Full("end")),
 		)
@@ -970,11 +991,11 @@ func testTcpBurst(t *testing.T, legacy bool) {
 }
 
 func TestTcpBurst(t *testing.T) {
-	testTcpBurst(t, true)
+	testTcpWatermarks(t, true)
 }
 
 func TestTcpWatermarks(t *testing.T) {
-	testTcpBurst(t, false)
+	testTcpWatermarks(t, false)
 }
 
 func TestNamespaces(t *testing.T) {

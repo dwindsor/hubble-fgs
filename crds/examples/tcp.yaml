@@ -9,22 +9,24 @@ spec:
       cgroup: true
       statsInterval: 10
       deleteIdleSocketInterval: 60
-      burst:
+      watermarks:
         enable: true
         windowSize: 1000
-        triggerPercent: 50
+        burstTriggerPercent: 50
+        dipTriggerPercent: 20
     tcp:
       enable: true
       statsInterval: 10
-      burst:
+      watermarks:
         enable: true
         windowSize: 1000
-        triggerPercent: 50
+        burstTriggerPercent: 50
+        dipTriggerPercent: 20
       histogram:
         enable: true
         min: 0
         max: 4000
-    burstExitGen:
+    networkWatermarksExitGen:
       enable: true
       interval: 1000
     dns:

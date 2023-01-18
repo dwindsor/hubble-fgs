@@ -45,7 +45,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
-	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
@@ -130,6 +129,7 @@ spec:
         enable: true
         windowSize: 1000
         burstTriggerPercent: 50
+        dipTriggerPercent: 10
     networkWatermarksExitGen:
       enable: true
       interval: 1000
@@ -220,7 +220,7 @@ func udpClient() {
 	}
 }
 
-func testUdpBurst(t *testing.T, legacy bool) {
+func testUdpWatermarks(t *testing.T, legacy bool) {
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -274,26 +274,54 @@ func testUdpBurst(t *testing.T, legacy bool) {
 		checker = ec.NewUnorderedEventChecker(
 			ec.NewProcessExecChecker("clientExec").
 				WithProcess(clientProcess),
-			ec.NewProcessNetworkWatermarkChecker("egressStart").
+			ec.NewProcessNetworkWatermarkChecker("burstEgressStart").
 				WithProcess(clientProcess).
 				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("burst")).
 				WithDirection(sm.Full("egress")).
 				WithWatermarksState(sm.Full("start")),
-			ec.NewProcessNetworkWatermarkChecker("egressEnd").
+			ec.NewProcessNetworkWatermarkChecker("burstEgressEnd").
 				WithProcess(clientProcess).
 				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("burst")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessNetworkWatermarkChecker("dipEgressStart").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("dip")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("dipEgressEnd").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("dip")).
 				WithDirection(sm.Full("egress")).
 				WithWatermarksState(sm.Full("end")),
 			ec.NewProcessExecChecker("serverStart").
 				WithProcess(serverProcess),
-			ec.NewProcessNetworkWatermarkChecker("ingressStart").
+			ec.NewProcessNetworkWatermarkChecker("burstIngressStart").
 				WithProcess(serverProcess).
 				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("burst")).
 				WithDirection(sm.Full("ingress")).
 				WithWatermarksState(sm.Full("start")),
-			ec.NewProcessNetworkWatermarkChecker("ingressEnd").
+			ec.NewProcessNetworkWatermarkChecker("burstIngressEnd").
 				WithProcess(serverProcess).
 				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("burst")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessNetworkWatermarkChecker("dipIngressStart").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("dip")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("dipIngressEnd").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithWatermarksType(sm.Full("dip")).
 				WithDirection(sm.Full("ingress")).
 				WithWatermarksState(sm.Full("end")),
 			ec.NewProcessCloseChecker("serverClose").
@@ -361,7 +389,7 @@ func testUdpBurst(t *testing.T, legacy bool) {
 	assert.NoError(t, err, "server process must be in watermarks map")
 
 	err = m.Lookup(processKey, &processValue)
-	assert.NoError(t, err, "client process must be in burst map")
+	assert.NoError(t, err, "client process must be in watermarks map")
 
 	killAndWaitCommand(t, serverCmd)
 
@@ -387,11 +415,11 @@ func testUdpBurst(t *testing.T, legacy bool) {
 }
 
 func TestUdpBurst(t *testing.T) {
-	testUdpBurst(t, true)
+	testUdpWatermarks(t, true)
 }
 
 func TestUdpWatermarks(t *testing.T) {
-	testUdpBurst(t, false)
+	testUdpWatermarks(t, false)
 }
 
 // Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
