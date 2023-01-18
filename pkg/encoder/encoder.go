@@ -208,7 +208,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 func dnsToString(dnsInfo *tetragon.DnsInfo) string {
 	if dnsInfo.Response {
 		var answerTypes []string
-		for _, answerType := range dnsInfo.AnswerTypes {
+		for _, answerType := range dnsInfo.ResponseTypes {
 			answerTypes = append(answerTypes, dns.TypeToString[uint16(answerType)])
 		}
 
@@ -219,7 +219,7 @@ func dnsToString(dnsInfo *tetragon.DnsInfo) string {
 		return fmt.Sprintf("%s %s %s %s", rcode, dnsInfo.Names, answerTypes, dnsInfo.Ips)
 	}
 	var questionTypes []string
-	for _, questionType := range dnsInfo.QuestionTypes {
+	for _, questionType := range dnsInfo.QueryTypes {
 		questionTypes = append(questionTypes, dns.TypeToString[uint16(questionType)])
 	}
 
