@@ -20,7 +20,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/recorder"
 	"github.com/isovalent/hubble-fgs/pkg/recorder/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sigs.k8s.io/yaml"
@@ -183,7 +182,6 @@ func New() *cobra.Command {
 	flags.StringSliceVar(&processes, "process", nil, "Get events by process name regex")
 	flags.StringSliceVar(&pods, "pod", nil, "Get events by pod name regex")
 	flags.BoolVar(&host, "host", false, "Get host events")
-	viper.BindPFlags(flags)
 	return &cmd
 }
 
