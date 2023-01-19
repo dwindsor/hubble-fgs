@@ -127,7 +127,8 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	// cache where a retry will happen.
 	if option.Config.EnableCilium && proc != nil {
 		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
+		// We want to continue populating this deprecated field for now
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {

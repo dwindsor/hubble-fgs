@@ -440,7 +440,7 @@ func HandleProcessWatermarksEvent(res *tetragon.ProcessNetworkWatermark) {
 
 func postHttpStats(res *tetragon.ProcessHttp) {
 	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
-	dstPod := res.GetDestinationPod()
+	dstPod := res.Socket.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
