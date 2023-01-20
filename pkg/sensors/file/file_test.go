@@ -196,7 +196,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	testBin := testutils.ContribPath(exec_path)
+	testBin := testutils.RepoRootPath("contrib/" + exec_path)
 	testCmd := exec.CommandContext(ctx, testBin, test_file)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
@@ -255,7 +255,7 @@ func runCopyTest(t *testing.T, exec_path string) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	testBin := testutils.ContribPath(exec_path)
+	testBin := testutils.RepoRootPath("contrib/" + exec_path)
 	testCmd := exec.CommandContext(ctx, testBin, in_file, out_file)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
@@ -319,7 +319,7 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	testBin := testutils.ContribPath(exec_path)
+	testBin := testutils.RepoRootPath("contrib/" + exec_path)
 	testCmd := exec.CommandContext(ctx, testBin, test_file)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
