@@ -94,7 +94,7 @@ message Filter {
     repeated string sni_regex = 1004;
     // Filter by destination_names field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax
-    repeated string desintation_names_regex = 1005;
+    repeated string destination_names_regex = 1005;
     // Filter by destination_pod.name field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax
     repeated string destination_pod_regex = 1006;

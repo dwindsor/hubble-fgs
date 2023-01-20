@@ -71,7 +71,7 @@ func getRequest(includeFields, excludeFields []string, namespaces []string, host
 			IpCidr:                IPs,
 			SourceIpCidr:          sourceIPs,
 			DestinationIpCidr:     destIPs,
-			DesintationNamesRegex: destNames,
+			DestinationNamesRegex: destNames,
 			SniRegex:              SNINames,
 			UriRegex:              URIs,
 			DestinationPodRegex:   destPods,

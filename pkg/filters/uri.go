@@ -49,8 +49,8 @@ type DestinationNamesRegexFilter struct{}
 func (f *DestinationNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
 	var fs []hubbleFilters.FilterFunc
 
-	if ff.DesintationNamesRegex != nil {
-		filter, err := filterByURIRegex(ff.DesintationNamesRegex, f)
+	if ff.DestinationNamesRegex != nil {
+		filter, err := filterByURIRegex(ff.DestinationNamesRegex, f)
 		if err != nil {
 			return nil, err
 		}
