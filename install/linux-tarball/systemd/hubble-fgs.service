@@ -15,6 +15,7 @@ After=network.target local-fs.target
 Documentation=https://docs.isovalent.com/
 
 [Service]
+Environment="PATH=/usr/local/lib/hubble-fgs/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 User=root
 Group=root
 ExecStart=/usr/local/bin/hubble-fgs
