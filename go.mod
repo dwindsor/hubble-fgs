@@ -12,7 +12,7 @@ require (
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb
 	github.com/containernetworking/plugins v1.1.1
 	github.com/docker/docker v20.10.22+incompatible
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.13.0
 	github.com/google/gops v0.3.26
 	github.com/google/uuid v1.3.0
