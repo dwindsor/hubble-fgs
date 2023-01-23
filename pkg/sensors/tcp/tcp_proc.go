@@ -14,13 +14,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -30,16 +27,15 @@ import (
 )
 
 const (
-	IPPROTO_TCP = 6
+	IPPROTO_TCP           = 6
+	TCP_PROC_STATE_LISTEN = 10
 )
 
 var (
 	// Mutex to prevent concurrent loading
 	loading sync.Mutex
 
-	_writeMaps  = false
 	_pushEvents = false
-	m           *bpf.Map
 )
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
@@ -86,10 +82,6 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	if _pushEvents {
 		observer.AllListeners(&tcp)
 	}
-	if _writeMaps {
-		netns := uint64(namespace.GetPidNsInode(pid, "net"))
-		writeSockMap(&tcp, m, netns)
-	}
 }
 
 func getRunningSockets(writeMaps, pushEvents bool) {
@@ -99,25 +91,6 @@ func getRunningSockets(writeMaps, pushEvents bool) {
 	loading.Lock()
 	defer loading.Unlock()
 
-	_writeMaps = writeMaps
 	_pushEvents = pushEvents
-
-	if writeMaps {
-		var err error
-		mapDir := bpf.MapPrefixPath()
-
-		m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
-		for i := 0; err != nil; i++ {
-			m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
-			if err != nil {
-				time.Sleep(mapRetryDelay * time.Second)
-			}
-			if i > maxMapRetries {
-				panic(err)
-			}
-		}
-		defer m.Close()
-	}
-
 	ip.LoadSockets(FdCallback, IPPROTO_TCP)
 }
