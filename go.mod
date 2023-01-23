@@ -28,7 +28,7 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20220125195016-0639e7e787ba
 	github.com/yalue/native_endian v1.0.2
 	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
-	golang.org/x/sys v0.3.0
+	golang.org/x/sys v0.4.0
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858
 	google.golang.org/api v0.108.0
 	google.golang.org/grpc v1.51.0
