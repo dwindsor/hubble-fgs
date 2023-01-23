@@ -21,13 +21,13 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool) api.MsgSocketStatsUni
 	}
 
 	return api.MsgSocketStatsUnix{
-		BytesSubmitted:   0,
+		BytesSubmitted:   m.BytesSubmitted,
 		BytesSent:        m.BytesSent,
-		BytesConsumed:    0,
+		BytesConsumed:    m.BytesConsumed,
 		BytesReceived:    m.BytesReceived,
-		ConsumedSegs:     0,
+		ConsumedSegs:     m.SegsConsumed,
 		SegsIn:           m.SegsIn,
-		SubmittedSegs:    0,
+		SubmittedSegs:    m.SegsSubmitted,
 		SegsOut:          m.SegsOut,
 		SRtt:             m.SRtt / 8, // TCP srtt_us is reported <<3 in usecs
 		RetransmitSegs:   m.RetransmitSegs,

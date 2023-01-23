@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -66,6 +67,7 @@ var (
 	configured       = false
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
+	statsUpdate      sync.Mutex
 )
 
 var (
@@ -522,6 +524,8 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 }
 
 func runUdpGC() {
+	statsUpdate.Lock()
+	defer statsUpdate.Unlock()
 	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTicker)
 	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
@@ -719,6 +723,52 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	msgUnix := ip.MsgToIPUnix(&m, false)
+
+	if m.Common.Op == ops.MSG_OP_UDPCLOSE {
+		// Send stats event
+		statsUpdate.Lock()
+		defer statsUpdate.Unlock()
+
+		udpKey := udpInfoKey{Cookie: m.SockCookie}
+		udpValue := udpInfoValue{
+			SubmittedBytes:   m.SocketStats.BytesSubmitted,
+			TXBytes:          m.SocketStats.BytesSent,
+			ConsumedBytes:    m.SocketStats.BytesConsumed,
+			RXBytes:          m.SocketStats.BytesReceived,
+			ConsumedSegs:     uint64(m.SocketStats.SegsConsumed),
+			SegsIn:           uint64(m.SocketStats.SegsIn),
+			SubmittedSegs:    uint64(m.SocketStats.SegsSubmitted),
+			SegsOut:          uint64(m.SocketStats.SegsOut),
+			Ktime:            m.SocketStats.Ktime,
+			PidKtime:         m.ProcessKey.Ktime,
+			Pid:              m.ProcessKey.Pid,
+			SkDrops:          m.SocketStats.SkDrop,
+			SAddr:            m.Tuple.SAddr,
+			DAddr:            m.Tuple.DAddr,
+			SPort:            m.Tuple.SPort,
+			DPort:            m.Tuple.DPort,
+			SkbConsumeMisses: m.SocketStats.SkbConsumeMisses,
+			IPv6:             m.Tuple.IPv6,
+		}
+
+		entry, ok := stats.Get(udpKey)
+		if ok {
+			last := entry.(udpInfoValue)
+			if udpValue != last {
+				diffValue, err := udpDiffValues(&udpKey, &last, &udpValue)
+				if err == nil {
+					emitStatEvent(&udpKey, &diffValue)
+				} else {
+					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
+				}
+			}
+			stats.Remove(udpKey)
+		} else {
+			emitStatEvent(&udpKey, &udpValue)
+		}
+
+		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
+	}
 	return []observer.Event{msgUnix}, nil
 }
 
@@ -743,6 +793,7 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEvents.HandleProcessNetworkBurst)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 

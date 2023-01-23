@@ -33,6 +33,10 @@ struct msg_socket_stats {
 	__u64 bytes_received;
 	__u32 segs_in;
 	__u32 segs_out;
+	__u64 bytes_submitted;
+	__u64 bytes_consumed;
+	__u32 segs_consumed;
+	__u32 segs_submitted;
 	__u32 srtt;
 	__u32 retranssegs;
 	__u64 retransbytes;
