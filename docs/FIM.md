@@ -2,8 +2,6 @@
 
 Hubble-FGS now supports File Integrity Monitoring (FIM). More specifically, it can generate events for file operations based on watch and exclude paths without requiring from the user to provide any complex configurations. 
 
-***In order to use file monitoring inside K8s, we require the host root (```/```) to be mounted inside ```hubble-enterprise``` pod under ```/hostRoot```. Helm charts will not do that for us. We need to provide the appropriate command-line arguments. An example of these arguments can be found [here](contrib/kind/install-fgs.sh#L97-L101).***
-
 ***FIM can be also used in bare-metal hosts outside of K8s.***
 
 ## How to enable FIM?
