@@ -7,6 +7,7 @@
 
 struct socketmap_value {
 	struct msg_execve_key key;
+	__u64 create_time;
 	__u32 zero_window;
 	__u32 socket_flags;
 	__u64 last_time;
@@ -190,6 +191,7 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 				return;
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
+			process->create_time = ktime_get_ns();
 			process->last_time = 0;
 			process->received = 0;
 			process->sent = 0;
@@ -204,6 +206,7 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
+			process->create_time = ktime_get_ns();
 			process->last_time = 0;
 			process->received = 0;
 			process->sent = 0;

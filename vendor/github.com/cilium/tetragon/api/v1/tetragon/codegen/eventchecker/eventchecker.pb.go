@@ -1955,19 +1955,20 @@ nextCheck:
 
 // ProcessCloseChecker implements a checker struct to check a ProcessClose event
 type ProcessCloseChecker struct {
-	CheckerName      string                       `json:"checkerName"`
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
-	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
-	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
-	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
-	DestinationPort  *uint32                      `json:"destinationPort,omitempty"`
-	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
-	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	Stats            *SocketStatsChecker          `json:"stats,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
-	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
-	SocketType       *stringmatcher.StringMatcher `json:"socketType,omitempty"`
+	CheckerName      string                           `json:"checkerName"`
+	Process          *ProcessChecker                  `json:"process,omitempty"`
+	Parent           *ProcessChecker                  `json:"parent,omitempty"`
+	SourceIp         *stringmatcher.StringMatcher     `json:"sourceIp,omitempty"`
+	SourcePort       *uint32                          `json:"sourcePort,omitempty"`
+	DestinationIp    *stringmatcher.StringMatcher     `json:"destinationIp,omitempty"`
+	DestinationPort  *uint32                          `json:"destinationPort,omitempty"`
+	DestinationNames *StringListMatcher               `json:"destinationNames,omitempty"`
+	SockCookie       *uint64                          `json:"sockCookie,omitempty"`
+	Stats            *SocketStatsChecker              `json:"stats,omitempty"`
+	DestinationPod   *PodChecker                      `json:"destinationPod,omitempty"`
+	Protocol         *SocketProtocolChecker           `json:"protocol,omitempty"`
+	SocketType       *stringmatcher.StringMatcher     `json:"socketType,omitempty"`
+	Duration         *durationmatcher.DurationMatcher `json:"duration,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2075,6 +2076,11 @@ func (checker *ProcessCloseChecker) Check(event *tetragon.ProcessClose) error {
 				return fmt.Errorf("SocketType check failed: %w", err)
 			}
 		}
+		if checker.Duration != nil {
+			if err := checker.Duration.Match(event.Duration); err != nil {
+				return fmt.Errorf("Duration check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2156,6 +2162,12 @@ func (checker *ProcessCloseChecker) WithSocketType(check *stringmatcher.StringMa
 	return checker
 }
 
+// WithDuration adds a Duration check to the ProcessCloseChecker
+func (checker *ProcessCloseChecker) WithDuration(check *durationmatcher.DurationMatcher) *ProcessCloseChecker {
+	checker.Duration = check
+	return checker
+}
+
 //FromProcessClose populates the ProcessCloseChecker using data from a ProcessClose event
 func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClose) *ProcessCloseChecker {
 	if event == nil {
@@ -2200,6 +2212,8 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClos
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
 	checker.SocketType = stringmatcher.Full(event.SocketType)
+	// NB: We don't want to match durations for now
+	checker.Duration = nil
 	return checker
 }
 

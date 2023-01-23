@@ -32,6 +32,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -236,7 +237,9 @@ func TestUdpBurst(t *testing.T) {
 			WithDirection(sm.Full("ingress")).
 			WithBurstState(sm.Full("end")),
 		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(serverProcess),
+			WithProcess(serverProcess).
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
+				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 		ec.NewProcessExitChecker("serverExit").
 			WithProcess(serverProcess),
 	)

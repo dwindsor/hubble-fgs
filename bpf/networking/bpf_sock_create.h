@@ -50,6 +50,7 @@ __sk_allocret(struct pt_regs *ctx)
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
 	}
+	process.create_time = ktime_get_ns();
 	add_socketmap(&cookie, 0, &process);
 	return 1;
 }

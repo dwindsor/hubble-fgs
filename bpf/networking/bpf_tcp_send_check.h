@@ -133,6 +133,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			.socket_cookie = cookie,
 			.socket_flags = 0,
 			.pad = 0,
+			.duration = 0,
 		};
 
 		probe_read(&val->tuple.sport, sizeof(val->tuple.sport),

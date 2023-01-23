@@ -59,6 +59,7 @@ event_tcp_connect(struct pt_regs *ctx)
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
+		.duration = 0,
 	};
 
 	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
@@ -90,6 +91,7 @@ event_tcp_connect(struct pt_regs *ctx)
 	struct socketmap_value v = { 0 };
 	v.key.pid = process->key.pid;
 	v.key.ktime = process->key.ktime;
+	v.create_time = val->common.ktime;
 	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
 	v.sent = 0;
 	v.received = 0;

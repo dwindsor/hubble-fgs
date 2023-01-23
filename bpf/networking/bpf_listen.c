@@ -60,6 +60,7 @@ event_sys_listen(struct pt_regs *ctx)
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
+		.duration = 0,
 	};
 
 	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
@@ -84,6 +85,7 @@ event_sys_listen(struct pt_regs *ctx)
 
 	v.key.pid = process->key.pid;
 	v.key.ktime = process->key.ktime;
+	v.create_time = val->common.ktime;
 	v.zero_window = 0;
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
 	v.sent = 0;

@@ -57,6 +57,7 @@ struct msg_ip_event {
 	struct msg_socket_stats stats;
 	__u32 socket_flags;
 	__u32 pad;
+	__u64 duration; // only used on close events.
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_ipv4_key {

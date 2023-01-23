@@ -12,6 +12,7 @@ package layer3
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -24,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -91,6 +93,7 @@ type MsgIPEventUnix struct {
 	SocketFlags uint32
 	RefCntDone  [2]bool
 	Rtt         networkapi.Histogram
+	Duration    time.Duration
 }
 
 func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
@@ -220,6 +223,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		Stats:           socketStats,
 		Protocol:        msgToProtocol(event),
 		SocketType:      SocketFlagsToType(event.SocketFlags),
+		Duration:        durationpb.New(event.Duration),
 	}
 
 	if event.SockCookie != 0 {

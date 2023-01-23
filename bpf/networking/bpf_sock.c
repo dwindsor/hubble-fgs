@@ -45,6 +45,7 @@ sock_create(struct bpf_sock *ctx)
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
 	}
+	process.create_time = ktime_get_ns();
 	add_socketmap(&sock, 0, &process);
 	return 1;
 }

@@ -3,6 +3,7 @@ package ip
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/yalue/native_endian"
@@ -34,6 +35,7 @@ func MsgToIPUnix(m *api.MsgIPEvent, rtt bool) *layer3.MsgIPEventUnix {
 	unix.SockCookie = m.SockCookie
 	unix.SocketStats = stats.MsgToSocketStatsUnix(&m.SocketStats, rtt)
 	unix.SocketFlags = m.SocketFlags
+	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
 	// no need to copy the pad here
 	if enableDns {
 		unix.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY

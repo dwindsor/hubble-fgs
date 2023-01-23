@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) struct udp_info *
 udp4_get_info(struct udp_sock_info *sock_info)
 {
 	struct sock *sk = sock_info->sk;
-	struct inet_sock *inet = (void *)sk;
+	struct inet_sock *inet = (struct inet_sock *)sk;
 	struct msghdr *msg = sock_info->msg;
 	struct sockaddr_in *in;
 	int namelen;
@@ -46,7 +46,7 @@ udp4_get_info(struct udp_sock_info *sock_info)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -80,7 +80,7 @@ static inline __attribute__((always_inline)) struct udp_info *
 udp6_get_info(struct udp_sock_info *sock_info)
 {
 	struct sock *sk = sock_info->sk;
-	struct inet_sock *inet = (void *)sk;
+	struct inet_sock *inet = (struct inet_sock *)sk;
 	struct ipv6_pinfo *pinet6;
 	struct msghdr *msg = sock_info->msg;
 	struct sockaddr_in6 *in;
@@ -88,7 +88,7 @@ udp6_get_info(struct udp_sock_info *sock_info)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -146,12 +146,12 @@ static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 	struct udp_sock_info *value;
 	int zero = 0;
 
-	value = map_lookup_elem(&udp_sock_info_heap, &zero);
+	value = (struct udp_sock_info *)map_lookup_elem(&udp_sock_info_heap, &zero);
 	if (!value)
 		return 0;
 
-	value->sk = (void *)ctx->di;
-	value->msg = (void *)ctx->si;
+	value->sk = (struct sock *)ctx->di;
+	value->msg = (struct msghdr *)ctx->si;
 	map_update_elem(&udp_retprobe_map, &pid_tgid, value, 0);
 	return 0;
 }
@@ -173,7 +173,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 		return 0;
 	}
 
-	sock_info = map_lookup_elem(&udp_retprobe_map, &pid_tgid);
+	sock_info = (struct udp_sock_info *)map_lookup_elem(&udp_retprobe_map, &pid_tgid);
 	if (!sock_info) {
 		emit_ip_error_event(ctx, 0, 0, false,
 				    IP_ERROR_UDP_SEND_NO_SOCK_INFO);
@@ -188,12 +188,12 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 		return 0;
 	}
 
-	value = map_lookup_elem(&udp_map, &cookie);
+	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
 		 */
-		value = map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
 			map_delete_elem(&udp_retprobe_map, &pid_tgid);
 			return 0;
@@ -256,10 +256,10 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 	void *skb_head;
 	u8 ipver;
 
-	info = map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
-	packet = map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return 0;
 
@@ -394,8 +394,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 {
 	struct udp_info_value *value;
 	int zero = 0;
-	struct sock *sk = (void *)ctx->di;
-	struct sk_buff *skb = (void *)ctx->si;
+	struct sock *sk = (struct sock *)ctx->di;
+	struct sk_buff *skb = (struct sk_buff *)ctx->si;
 	int len = (int)ctx->dx;
 	u64 cookie;
 
@@ -411,13 +411,13 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		return 0;
 	}
 
-	value = map_lookup_elem(&udp_map, &cookie);
+	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
 		 * Should be a rare occurrence.
 		 */
-		value = map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
 		if (!value)
 			return 0;
 

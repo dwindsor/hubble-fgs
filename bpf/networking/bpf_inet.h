@@ -158,6 +158,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		if (process) {
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
+			value->create_time = process->create_time;
 			emit_udp_connect_event(skb, value);
 		}
 
@@ -186,6 +187,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		value->dport = (*info)->dport;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
+		value->create_time = process->create_time;
 
 		emit_udp_connect_event(skb, value);
 	} else {

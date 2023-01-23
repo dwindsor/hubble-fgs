@@ -107,6 +107,7 @@ event_tcp_close(struct pt_regs *ctx)
 		val->common.op = ISO_MSG_OP_TCPCLOSE;
 		val->key.pid = process->key.pid;
 		val->key.ktime = process->key.ktime;
+		val->duration = ktime_get_ns() - process->create_time;
 		val->socket_flags = process->socket_flags;
 
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));

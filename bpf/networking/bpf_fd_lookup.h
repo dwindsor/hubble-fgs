@@ -93,6 +93,11 @@ __kprobe_check_kill_permission(struct pt_regs *ctx)
 	sockmap_process.key.pid = value->key.pid;
 	sockmap_process.key.ktime = value->key.ktime;
 
+	// Store the create time as the current time (e.g. Tetragon start up time).
+	// This is far from perfect, but at least the discovered flag will indicate
+	// how we found this create time in case we want to exclude these.
+	sockmap_process.create_time = ktime_get_ns();
+
 	/* Store the socket even if family or protocol couldn't be read.
 	*/
 	add_socketmap(&cookie, 0, &sockmap_process);

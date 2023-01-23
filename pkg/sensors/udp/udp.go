@@ -266,6 +266,7 @@ type udpInfoValue struct {
 	SkbConsumeMisses uint32
 	IPv6             uint8
 	Padding          [7]uint8
+	CreateTime       uint64
 }
 
 func (k *udpInfoKey) String() string {
@@ -341,7 +342,7 @@ func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
+func emitUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPEventUnix {
 	unix := layer3.MsgIPEventUnix{}
 
 	unix.Common = processapi.MsgCommon{
@@ -375,18 +376,23 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
 	}
+	unix.Duration = duration
 	return &unix
 }
 
 func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
-	unix := emitUdpEvent(k, v)
+	duration, err := ktime.NanoTimeSince(int64(v.CreateTime))
+	if err != nil {
+		duration = time.Duration(0)
+	}
+	unix := emitUdpEvent(k, v, duration)
 	unix.Common.Op = ops.MSG_OP_UDPCLOSE
 
 	observer.AllListeners(unix)
 }
 
 func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
-	unix := emitUdpEvent(k, v)
+	unix := emitUdpEvent(k, v, 0)
 	unix.Common.Op = ops.MSG_OP_UDPSTATS
 
 	observer.AllListeners(unix)

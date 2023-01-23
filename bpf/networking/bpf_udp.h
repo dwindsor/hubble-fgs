@@ -46,6 +46,7 @@ struct udp_info_value {
 	u32 skb_consume_misses;
 	u8 ipv6;
 	u8 padding[7];
+	u64 create_time;
 }; // All fields aligned so no 'packed' attribute.
 
 struct udp_info {
@@ -197,6 +198,7 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 	val->stats.skb_consume_misses = v->skb_consume_misses;
 	val->socket_flags = 0;
 	val->pad = 0;
+	val->duration = 0;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
@@ -236,6 +238,8 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	val->event.stats.bytes_received = v->rx_bytes;
 	val->event.stats.sk_drops = v->sk_drops;
 	val->event.stats.skb_consume_misses = v->skb_consume_misses;
+	val->event.pad = 0;
+	val->event.duration = 0;
 
 	// Move constraint on payload_size to closer to use to stop register
 	// spilling condusing the verifier.
@@ -335,7 +339,8 @@ udp_info_init(struct udp_info_value *v)
 	v->dport = 0;
 	v->skb_consume_misses = 0;
 	v->ipv6 = 0;
-	v->ktime = ktime_get_ns();
+	WRITE_ONCE(v->ktime, ktime_get_ns());
+	v->create_time = 0;
 }
 
 static inline __attribute__((always_inline)) void

@@ -106,6 +106,7 @@ message ProcessClose {
     tetragon.Pod destination_pod = 10;
     SocketProtocol protocol = 11;
     string socket_type = 12;
+    google.protobuf.Duration duration = 13;
 }
 
 message ProcessListen {

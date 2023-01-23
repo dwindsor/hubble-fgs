@@ -78,6 +78,7 @@ __sock_release(struct pt_regs *ctx, bool lazy)
 		.socket_flags = process->socket_flags,
 		.pad = 0,
 	};
+	event->duration = event->common.ktime - process->create_time;
 
 	if (value) {
 		event->tuple.saddr[0] = value->saddr[0];

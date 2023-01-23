@@ -2,6 +2,7 @@ package networkapi
 
 import (
 	"encoding/binary"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 )
@@ -52,6 +53,7 @@ type MsgIPEvent struct {
 	SocketStats MsgSocketStats          `align:"stats"`
 	SocketFlags uint32                  `align:"socket_flags"`
 	Pad         uint32                  `align:"pad"`
+	Duration    uint64                  `align:"duration"`
 }
 
 type MsgSocketStatsUnix struct {
@@ -102,6 +104,9 @@ type MsgIPEventUnix struct {
 	SockCookie  uint64
 	SocketStats MsgSocketStatsUnix
 	SocketFlags uint32
+	RefCntDone  [2]bool
+	Rtt         Histogram
+	Duration    time.Duration
 }
 
 type Histogram struct {

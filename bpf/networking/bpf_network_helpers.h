@@ -402,6 +402,8 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		val->socket_cookie = 0;
 	}
 	val->ret = err;
+	val->pad = 0;
+	val->duration = 0;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 			  sizeof(struct msg_ip_event));

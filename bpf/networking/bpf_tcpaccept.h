@@ -72,6 +72,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
+		.duration = 0,
 	};
 
 	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
@@ -116,6 +117,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 
 	acc_process->key.pid = process->key.pid;
 	acc_process->key.ktime = process->key.ktime;
+	acc_process->create_time = val->common.ktime;
 	acc_process->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
 	acc_process->last_time = 0;
 	acc_process->received = 0;

@@ -11,7 +11,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 264        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -69,7 +69,12 @@ EVENT TCPACCEPT
   ## socket flags
   h4 0x00
 
-  h4 0x00 # pad
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  $ 00 00 00 00 00 00 00 00
+
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 
@@ -77,7 +82,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 264        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -133,7 +138,11 @@ EVENT TCPCONNECTRET
   ## socket flags
   h4 0x00
 
-  h4 0x00 # pad
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  $ 00 00 00 00 00 00 00 00
 
   $ 00 00 00 00
   # ^ Where is the padding coming from?
@@ -144,7 +153,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 264       # size
+  h4 272       # size
   ? 8           # ktime
 
   ## tuple
@@ -200,7 +209,12 @@ EVENT TCPCLOSE
   ## socket flags
   h4 0x02 # accept
 
-  h4 0x00 # pad
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
+
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 END
@@ -210,7 +224,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 264        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -266,7 +280,12 @@ EVENT TCPCLOSE
   ## socket flags
   h4 0x01 # connect
 
-  h4 0x00 # pad
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
+
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 END
@@ -275,7 +294,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 264        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -332,7 +351,12 @@ EVENT TCPCLOSE
   ## socket flags
   h4 0x04 # listen
 
-  h4 0x00 # pad
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
+
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 END
