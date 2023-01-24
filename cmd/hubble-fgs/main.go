@@ -498,7 +498,7 @@ func execute() error {
 	flags.String(keyProtocolShift, "auto", "Shfit the socket protocol field (true) or not (false), or discover automatically (auto)")
 
 	// Config files
-	flags.String(keyConfigFile, "", "Configuration file to load from")
+	flags.String(keyConfigFile, "", "Location of the TracingPolicy file")
 
 	// JSON export aggregation options.
 	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")
