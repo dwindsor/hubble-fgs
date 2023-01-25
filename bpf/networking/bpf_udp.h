@@ -26,6 +26,15 @@
 #define UDP_BLOOM_BUCKETS  4096
 #define UDP_BLOOM_KEY_MASK 0xFFF
 
+struct udp_info_key {
+	u64 cookie;
+	u64 daddr[2];
+	u16 dport;
+	u8 ipv6;
+	u8 padding1;
+	u32 padding2;
+}; // All fields aligned so no 'packed' attribute.
+
 struct udp_info_value {
 	u64 submitted_bytes;
 	u64 tx_bytes;
@@ -40,9 +49,9 @@ struct udp_info_value {
 	u32 pid;
 	u32 sk_drops;
 	u64 saddr[2];
-	u64 daddr[2];
+	u64 daddr[2]; // retain (and complete) as useful for debugging
 	u16 sport;
-	u16 dport;
+	u16 dport; // retain (and complete) as useful for debugging
 	u32 skb_consume_misses;
 	u8 ipv6;
 	u8 padding[7];
@@ -109,7 +118,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, u64);
+	__type(key, struct udp_info_key);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
 } udp_map SEC(".maps");
@@ -167,13 +176,13 @@ copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_event(void *ctx, int op, struct udp_info_value *v)
+emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
 	struct msg_ip_event *val;
 	int zero = 0;
 
-	val = map_lookup_elem(&udp_event_heap, &zero);
+	val = (struct msg_ip_event *)map_lookup_elem(&udp_event_heap, &zero);
 	if (!val)
 		return;
 
@@ -199,6 +208,7 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 	val->socket_flags = 0;
 	val->pad = 0;
 	val->duration = 0;
+	val->socket_cookie = *cookie;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
@@ -213,7 +223,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	struct msg_udp_event *val;
 	int zero = 0;
 
-	val = map_lookup_elem(&udp_event_heap, &zero);
+	val = (struct msg_udp_event *)map_lookup_elem(&udp_event_heap, &zero);
 	if (!val)
 		return 0;
 
@@ -240,6 +250,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	val->event.stats.skb_consume_misses = v->skb_consume_misses;
 	val->event.pad = 0;
 	val->event.duration = 0;
+	val->event.socket_cookie = *cookie;
 
 	// Move constraint on payload_size to closer to use to stop register
 	// spilling condusing the verifier.
@@ -304,7 +315,7 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	 */
 	map_update_elem(&udp_payload_map, &zero, val, 0);
 
-	val = map_lookup_elem(&udp_payload_map, &zero);
+	val = (struct msg_udp_event *)map_lookup_elem(&udp_payload_map, &zero);
 	if (!val)
 		return;
 	size &= 0x7ff;
@@ -312,9 +323,9 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_connect_event(void *ctx, struct udp_info_value *v)
+emit_udp_connect_event(void *ctx, u64 *cookie, struct udp_info_value *v)
 {
-	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, v);
+	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, v);
 }
 
 static inline __attribute__((always_inline)) void

@@ -1,6 +1,7 @@
 #ifndef __BPF_INET_H_
 #define __BPF_INET_H_
 
+#include "vmlinux.h"
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
@@ -25,7 +26,7 @@ udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, bool send)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
 	if (!info || !ip)
 		return 0;
 
@@ -62,13 +63,45 @@ udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, bool send)
 	return info;
 }
 
+static inline __attribute__((always_inline)) void
+udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *udp, bool send)
+{
+	if (send) {
+		if (!ipv6) {
+			key->daddr[0] = ip->daddr;
+			key->daddr[1] = 0;
+			key->ipv6 = false;
+		} else {
+			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
+			key->daddr[0] = addr[0];
+			key->daddr[1] = addr[1];
+			key->ipv6 = true;
+		}
+		key->dport = udp->dest;
+	} else {
+		if (!ipv6) {
+			key->daddr[0] = ip->saddr;
+			key->daddr[1] = 0;
+			key->ipv6 = false;
+		} else {
+			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
+			key->daddr[0] = addr[0];
+			key->daddr[1] = addr[1];
+			key->ipv6 = true;
+		}
+		key->dport = udp->source;
+	}
+	key->padding1 = 0;
+	key->padding2 = 0;
+}
+
 static inline __attribute__((always_inline)) struct udp_info *
 udp_port_info(struct udphdr *udp, bool send)
 {
 	struct udp_info *info;
 	int zero = 0;
 
-	info = map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -120,12 +153,16 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	struct udp_info_value *value;
 	struct socketmap_value *process;
 	int zero = 0;
+	struct udp_info_key key;
 
-	value = map_lookup_elem(&udp_map, cookie);
+	key.cookie = *cookie;
+	udp_key(&key, ip, ipv6, udp, send);
+
+	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
 	process = locate_socketmap(cookie, (struct sock *)skb->sk, lazy);
 
 	if (!value) {
-		value = map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
 		if (!value)
 			return 0;
 
@@ -154,15 +191,20 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		value->sport = (*info)->sport;
 		value->dport = (*info)->dport;
 
+		/* socket create time is when we see the first datagram, as a socket can
+		 * support multiple pseudo-connections (using sendto()) and we shouldn't
+		 * consider each to have been created when the actual socket was created.
+		 * We should use the 'connect' time instead. */
+		value->create_time = ktime_get_ns();
+
 		/* If process was found, fill in the PID */
 		if (process) {
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
-			value->create_time = process->create_time;
-			emit_udp_connect_event(skb, value);
+			emit_udp_connect_event(skb, cookie, value);
 		}
 
-		map_update_elem(&udp_map, cookie, value, 0);
+		map_update_elem(&udp_map, &key, value, 0);
 	} else if (process && value->pid != process->key.pid) {
 		/* PID doesn't match, so this must be a new socket */
 		if (send)
@@ -187,9 +229,13 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		value->dport = (*info)->dport;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
-		value->create_time = process->create_time;
+		/* socket create time is when we see the first datagram, as a socket can
+		 * support multiple pseudo-connections (using sendto()) and we shouldn't
+		 * consider each to have been created when the actual socket was created.
+		 * We should use the 'connect' time instead. */
+		value->create_time = ktime_get_ns();
 
-		emit_udp_connect_event(skb, value);
+		emit_udp_connect_event(skb, cookie, value);
 	} else {
 		if (send)
 			update_tx_value(value, payload_sz);
@@ -222,7 +268,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	if (!value)
 		return 1;
 
-	config = map_lookup_elem(&udp_config_map, &zero);
+	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
 	if (!config)
 		return 1;
 
@@ -273,11 +319,11 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	struct socketmap_value *process;
 	int zero = 0;
 
-	config = map_lookup_elem(&udp_config_map, &zero);
+	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
 	if (!config || !config->watermark_enable)
 		return;
 
-	c = map_lookup_elem(&pn_burst_config_heap, &zero);
+	c = (struct process_network_burst_config *)map_lookup_elem(&pn_burst_config_heap, &zero);
 	if (!c)
 		return;
 	c->avg_window_size_ms = config->watermark_avg_window_size_ms;
@@ -314,7 +360,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	u8 proto;
 	unsigned long int err = 0;
 
-	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
+	cookie = (u64 *)map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
 		return;
 	write_cookie_from_sk(cookie, (struct sock *)skb->sk, true);
@@ -324,7 +370,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 		return;
 	}
 
-	packet = map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;
 
@@ -396,7 +442,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 		emit_ip_error_event(ctx, 0, 0, false, IP_ERROR_INET_NO_COOKIE);
 		return;
 	}
-	packet = map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;
 
@@ -461,7 +507,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	packet->payload_off = -1;
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-	udp_send(ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,
+	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
 		 send, true, true);
 	udp_burst(ctx, &cookie, packet->payload_sz, send);
@@ -481,7 +527,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 	unsigned long int err = 0;
 
 	cookie = get_socket_cookie(skb);
-	packet = map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;
 

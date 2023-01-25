@@ -19,6 +19,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -58,6 +59,12 @@ const (
 	IPPROTO_UDP    = 17
 )
 
+type udpPseudoSocket struct {
+	DAddr [2]uint64
+	DPort uint16
+	IPv6  uint8
+}
+
 var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
 
@@ -68,6 +75,8 @@ var (
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
 	statsUpdate      sync.Mutex
+
+	pseudoSockets = make(map[uint64](map[udpPseudoSocket]bool))
 )
 
 var (
@@ -243,7 +252,11 @@ var (
 )
 
 type udpInfoKey struct {
-	Cookie uint64
+	Cookie  uint64
+	DAddr   [2]uint64
+	DPort   uint16
+	IPv6    uint8
+	Padding [5]uint8
 }
 
 type udpInfoValue struct {
@@ -270,7 +283,9 @@ type udpInfoValue struct {
 }
 
 func (k *udpInfoKey) String() string {
-	return fmt.Sprintf("Cookie=%d", k.Cookie)
+	ipDst := network.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
+	return fmt.Sprintf("Cookie=%d\n"+
+		"DAddr=%s:%d\n", k.Cookie, ipDst, k.DPort)
 }
 func (k *udpInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
 func (k *udpInfoKey) NewValue() bpf.MapValue {
@@ -279,6 +294,9 @@ func (k *udpInfoKey) NewValue() bpf.MapValue {
 func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 	return &udpInfoKey{
 		Cookie: k.Cookie,
+		DAddr:  k.DAddr,
+		DPort:  k.DPort,
+		IPv6:   k.IPv6,
 	}
 }
 
@@ -342,7 +360,7 @@ func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func emitUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPEventUnix {
+func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPEventUnix {
 	unix := layer3.MsgIPEventUnix{}
 
 	unix.Common = processapi.MsgCommon{
@@ -380,20 +398,38 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer
 	return &unix
 }
 
-func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
-	duration, err := ktime.NanoTimeSince(int64(v.CreateTime))
-	if err != nil {
-		duration = time.Duration(0)
+func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer3.MsgIPEventUnix {
+	//	duration, err := ktime.NanoTimeSince(int64(v.CreateTime))
+	var duration time.Duration
+	if closeTimeNs > v.CreateTime {
+		duration = time.Duration(closeTimeNs - v.CreateTime)
+	} else {
+		duration = 0
 	}
-	unix := emitUdpEvent(k, v, duration)
+	//	if err != nil {
+	//		duration = time.Duration(0)
+	//	}
+	unix := createUdpEvent(k, v, duration)
 	unix.Common.Op = ops.MSG_OP_UDPCLOSE
+
+	return unix
+}
+
+func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
+	unix := createCloseEvent(k, v, v.Ktime)
 
 	observer.AllListeners(unix)
 }
 
-func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
-	unix := emitUdpEvent(k, v, 0)
+func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
+	unix := createUdpEvent(k, v, 0)
 	unix.Common.Op = ops.MSG_OP_UDPSTATS
+
+	return unix
+}
+
+func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
+	unix := createStatEvent(k, v)
 
 	observer.AllListeners(unix)
 }
@@ -510,7 +546,6 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 				udpKey = k.DeepCopyMapKey().(*udpInfoKey)
 				stats.Add(*udpKey, *mapUpdate)
 				emitStatEvent(udpKey, &diffValue)
-				lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 			} else {
 				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
 			}
@@ -524,9 +559,12 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	if t > UdpDeleteInterval {
 		emitCloseEvent(udpKey, udpValue)
 		stats.Remove(*udpKey)
+		if pseudoSockets[udpKey.Cookie] != nil {
+			delete(pseudoSockets[udpKey.Cookie], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
+		}
 		m.DeleteKey(k)
-		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 	}
+	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 }
 
 func runUdpGC() {
@@ -543,7 +581,7 @@ func runUdpGC() {
 	}
 	defer m.Close()
 	m.MapKey = &udpInfoKey{}
-	m.KeySize = 8
+	m.KeySize = 32
 	m.MapValue = &udpInfoValue{}
 	m.DumpWithCallback(udpGcCb)
 }
@@ -730,50 +768,73 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	msgUnix := ip.MsgToIPUnix(&m, false)
 
-	if m.Common.Op == ops.MSG_OP_UDPCLOSE {
-		// Send stats event
+	if m.Common.Op == ops.MSG_OP_UDPCONNECT {
+		// Store the pseudo-socket against this cookie
+		pseudoSockList := pseudoSockets[m.SockCookie]
+		if pseudoSockList == nil {
+			pseudoSockets[m.SockCookie] = make(map[udpPseudoSocket]bool)
+		}
+		pseudoSockets[m.SockCookie][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
+	} else if m.Common.Op == ops.MSG_OP_UDPCLOSE {
+		// Close event contains the socket cookie that was closed. We use this
+		// as a key into the pseudoSockets map to retrieve the list of pseudo-
+		// sockets. Then we send a stats event and a close event for each one,
+		// before deleting them from the maps.
+
+		// Access to stats is protected by a lock to prevent corruption.
 		statsUpdate.Lock()
 		defer statsUpdate.Unlock()
 
-		udpKey := udpInfoKey{Cookie: m.SockCookie}
-		udpValue := udpInfoValue{
-			SubmittedBytes:   m.SocketStats.BytesSubmitted,
-			TXBytes:          m.SocketStats.BytesSent,
-			ConsumedBytes:    m.SocketStats.BytesConsumed,
-			RXBytes:          m.SocketStats.BytesReceived,
-			ConsumedSegs:     uint64(m.SocketStats.SegsConsumed),
-			SegsIn:           uint64(m.SocketStats.SegsIn),
-			SubmittedSegs:    uint64(m.SocketStats.SegsSubmitted),
-			SegsOut:          uint64(m.SocketStats.SegsOut),
-			Ktime:            m.SocketStats.Ktime,
-			PidKtime:         m.ProcessKey.Ktime,
-			Pid:              m.ProcessKey.Pid,
-			SkDrops:          m.SocketStats.SkDrop,
-			SAddr:            m.Tuple.SAddr,
-			DAddr:            m.Tuple.DAddr,
-			SPort:            m.Tuple.SPort,
-			DPort:            m.Tuple.DPort,
-			SkbConsumeMisses: m.SocketStats.SkbConsumeMisses,
-			IPv6:             m.Tuple.IPv6,
+		pseudoSocketList := pseudoSockets[m.SockCookie]
+		if len(pseudoSocketList) == 0 {
+			return nil, nil
 		}
 
-		entry, ok := stats.Get(udpKey)
-		if ok {
-			last := entry.(udpInfoValue)
-			if udpValue != last {
-				diffValue, err := udpDiffValues(&udpKey, &last, &udpValue)
-				if err == nil {
-					emitStatEvent(&udpKey, &diffValue)
-				} else {
-					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
-				}
+		mapFile := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
+		udpMap, err := ebpf.LoadPinnedMap(mapFile, nil)
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("file", mapFile).Warn("UDP Close event failed to open map")
+			return nil, fmt.Errorf("failed to open udp info map")
+		}
+		defer udpMap.Close()
+
+		closeEvents := []observer.Event{}
+
+		for psock := range pseudoSocketList {
+			// Send stats event
+			udpKey := udpInfoKey{Cookie: m.SockCookie, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6}
+			var udpValue udpInfoValue
+			err := udpMap.Lookup(udpKey, &udpValue)
+			if err != nil {
+				continue
 			}
-			stats.Remove(udpKey)
-		} else {
-			emitStatEvent(&udpKey, &udpValue)
+
+			entry, ok := stats.Get(udpKey)
+			if ok {
+				// Send stats event for the difference from the last one
+				last := entry.(udpInfoValue)
+				if udpValue != last {
+					diffValue, err := udpDiffValues(&udpKey, &last, &udpValue)
+					if err == nil {
+						closeEvents = append(closeEvents, createStatEvent(&udpKey, &diffValue))
+					} else {
+						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
+					}
+				}
+				// Send close event – Duration actually indicates close time
+				closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+				stats.Remove(udpKey)
+			} else {
+				// Send stats event – no stats event previously sent
+				closeEvents = append(closeEvents, createStatEvent(&udpKey, &udpValue))
+				// Send close event – Duration actually indicates close time
+				closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+			}
 		}
 
+		delete(pseudoSockets, m.SockCookie)
 		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
+		return closeEvents, nil
 	}
 	return []observer.Event{msgUnix}, nil
 }
