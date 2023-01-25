@@ -7,26 +7,27 @@
 package bpf
 
 import (
+	"sync"
+	"unsafe"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
 )
 
 type Feature struct {
-	initialized bool
-	detected    bool
+	init     sync.Once
+	detected bool
 }
 
 var (
-	overrideHelper = Feature{false, false}
-	kprobeMulti    = Feature{false, false}
+	overrideHelper Feature
+	kprobeMulti    Feature
+	buildid        Feature
 )
 
-func HasOverrideHelper() bool {
-	if overrideHelper.initialized {
-		return overrideHelper.detected
-	}
-	overrideHelper.initialized = true
+func detectOverrideHelper() bool {
 	prog, err := ebpf.NewProgram(&ebpf.ProgramSpec{
 		Type: ebpf.Kprobe,
 		Instructions: asm.Instructions{
@@ -43,7 +44,13 @@ func HasOverrideHelper() bool {
 		overrideHelper.detected = false
 		return false
 	}
-	overrideHelper.detected = true
+	return true
+}
+
+func HasOverrideHelper() bool {
+	overrideHelper.init.Do(func() {
+		overrideHelper.detected = detectOverrideHelper()
+	})
 	return overrideHelper.detected
 }
 
@@ -71,11 +78,33 @@ func detectKprobeMulti() bool {
 }
 
 func HasKprobeMulti() bool {
-	if kprobeMulti.initialized {
-		return kprobeMulti.detected
+	kprobeMulti.init.Do(func() {
+		kprobeMulti.detected = detectKprobeMulti()
+	})
+	return kprobeMulti.detected
+}
+
+func detectBuildId() bool {
+	attr := &unix.PerfEventAttr{
+		Type:        unix.PERF_TYPE_SOFTWARE,
+		Config:      unix.PERF_COUNT_SW_BPF_OUTPUT,
+		Bits:        unix.PerfBitWatermark | unix.PerfBitMmap | unix.PerfBitMmap2 | PerfBitBuildId,
+		Sample_type: unix.PERF_SAMPLE_RAW,
+		Wakeup:      1,
 	}
 
-	kprobeMulti.detected = detectKprobeMulti()
-	kprobeMulti.initialized = true
-	return kprobeMulti.detected
+	attr.Size = uint32(unsafe.Sizeof(*attr))
+	fd, err := unix.PerfEventOpen(attr, -1, 0, -1, unix.PERF_FLAG_FD_CLOEXEC)
+	if err == nil {
+		unix.Close(fd)
+		return true
+	}
+	return false
+}
+
+func HasBuildId() bool {
+	buildid.init.Do(func() {
+		buildid.detected = detectBuildId()
+	})
+	return buildid.detected
 }

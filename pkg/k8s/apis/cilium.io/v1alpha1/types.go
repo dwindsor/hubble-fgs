@@ -59,6 +59,9 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// File monitoring policy specification.
 	FileMonitoring FileSpec `json:"file"`
+	// +kubebuilder:validation:Optional
+	// Enable loader events
+	Loader bool `json:"loader"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {

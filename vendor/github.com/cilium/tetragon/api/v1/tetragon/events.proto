@@ -50,7 +50,8 @@ enum EventType {
 	PROCESS_DNS = 14;
 	PROCESS_NETWORK_BURST = 15;
 	PROCESS_FILE = 16;
-    PROCESS_IP_ERROR = 17;
+	PROCESS_IP_ERROR = 17;
+	PROCESS_LOADER = 18;
 
 	TEST = 40000;
 }
@@ -184,6 +185,7 @@ message GetEventsResponse {
         ProcessNetworkBurst process_network_burst = 15;
         ProcessFile process_file = 16;
         ProcessIpError process_ip_error = 17;
+        ProcessLoader process_loader = 18;
 
         Test test = 40000;
     }

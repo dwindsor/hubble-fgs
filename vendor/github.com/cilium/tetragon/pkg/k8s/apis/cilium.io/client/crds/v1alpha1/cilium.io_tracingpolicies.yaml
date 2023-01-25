@@ -449,6 +449,9 @@ spec:
                   - call
                   type: object
                 type: array
+              loader:
+                description: Enable loader events
+                type: boolean
               parser:
                 description: Parser policy specification.
                 properties:
