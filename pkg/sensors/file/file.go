@@ -547,7 +547,12 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 	}
 	defer lpmMap.Close()
 
-	if err := lpmMap.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "lpm_trie_map_alloc"))); err != nil {
+	lpmPinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "lpm_trie_map_alloc"))
+	// remove the map if already exists, otheriwse Pin() will fail
+	if _, err := os.Stat(lpmPinPath); err == nil {
+		os.Remove(lpmPinPath)
+	}
+	if err := lpmMap.Pin(lpmPinPath); err != nil {
 		return nil, fmt.Errorf("failed lpmMap.Pin: %w", err)
 	}
 
@@ -578,7 +583,12 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 	}
 	defer fileHandle.Close()
 
-	if err := fileHandle.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_file_alloc"))); err != nil {
+	filePinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_file_alloc"))
+	// remove the map if already exists, otheriwse Pin() will fail
+	if _, err := os.Stat(filePinPath); err == nil {
+		os.Remove(filePinPath)
+	}
+	if err := fileHandle.Pin(filePinPath); err != nil {
 		return nil, fmt.Errorf("failed fileHandle.Pin: %w", err)
 	}
 
@@ -608,7 +618,12 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 	}
 	defer dirHandle.Close()
 
-	if err := dirHandle.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_dir_alloc"))); err != nil {
+	dirPinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_dir_alloc"))
+	// remove the map if already exists, otheriwse Pin() will fail
+	if _, err := os.Stat(dirPinPath); err == nil {
+		os.Remove(dirPinPath)
+	}
+	if err := dirHandle.Pin(dirPinPath); err != nil {
 		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
 
