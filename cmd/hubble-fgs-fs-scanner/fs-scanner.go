@@ -71,7 +71,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -90,14 +92,134 @@ var (
 
 var stopChan = make(chan os.Signal, 2)
 
+type rpcRunner interface {
+	Run()
+}
+
+var runnerChan chan rpcRunner
+
 type FsScannerRpc struct{}
+
+type rpcInit struct {
+	arg  *fm.FsScannerInit
+	done chan error
+}
+
+func (r rpcInit) Run() {
+	err := tracingPolicyInit(r.arg)
+	if r.done != nil {
+		r.done <- err
+	}
+}
+
+func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) error {
+	r := rpcInit{
+		arg:  args,
+		done: make(chan error),
+	}
+
+	select {
+	case runnerChan <- r:
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op TracingPolicyInit timed out")
+		}
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
+
+type rpcRename struct {
+	arg *fm.FsScannerRename
+}
+
+func (r rpcRename) Run() {
+	renameDir(r.arg)
+}
+
+func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
+	r := rpcRename{
+		arg: args,
+	}
+
+	select {
+	case runnerChan <- r:
+		return nil // do not wait for operation to complete
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
+
+type rpcContainerInit struct {
+	arg  *fm.FsScannerContainerInit
+	done chan error
+}
+
+func (r rpcContainerInit) Run() {
+	err := tracingPolicyContainerInit(r.arg)
+	if r.done != nil {
+		r.done <- err
+	}
+}
+
+func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerInit, _ *struct{}) error {
+	r := rpcContainerInit{
+		arg:  args,
+		done: make(chan error),
+	}
+
+	select {
+	case runnerChan <- r:
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op TracingPolicyContainerInit timed out")
+		}
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
+
+type rpcContainerDestroy struct {
+	arg  *fm.FsScannerContainerDestroy
+	done chan error
+}
+
+func (r rpcContainerDestroy) Run() {
+	err := tracingPolicyContainerDestroy(r.arg)
+	if r.done != nil {
+		r.done <- err
+	}
+}
+
+func (f *FsScannerRpc) TracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy, _ *struct{}) error {
+	r := rpcContainerDestroy{
+		arg:  args,
+		done: make(chan error),
+	}
+
+	select {
+	case runnerChan <- r:
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op TracingPolicyContainerDestroy timed out")
+		}
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
 
 func (f *FsScannerRpc) Terminate(_, _ *struct{}) error {
 	stopChan <- syscall.SIGTERM
 	return nil
 }
 
-func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) error {
+func tracingPolicyInit(args *fm.FsScannerInit) error {
 	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
 	if err != nil {
 		return err
@@ -127,7 +249,7 @@ func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) er
 	return nil
 }
 
-func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
+func renameDir(args *fm.FsScannerRename) error {
 	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
 	if err != nil {
 		return err
@@ -174,7 +296,7 @@ func chroot(path string) (func() error, error) {
 	}, nil
 }
 
-func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerInit, _ *struct{}) error {
+func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 	if len(args.Spec) != len(args.PinPath) {
 		return fmt.Errorf("TracingPolicyContainerInit: spec and pinpath arrays have different lengths")
 	}
@@ -222,7 +344,7 @@ func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerIni
 	return nil
 }
 
-func (f *FsScannerRpc) TracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy, _ *struct{}) error {
+func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 	for _, pinPath := range args.PinPath {
 		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, pinPath)
 		if err != nil {
@@ -331,8 +453,28 @@ func main() {
 		log.Fatalf("unable to listen: path: %s error: %s", *scannerFifoPath, err)
 	}
 	defer os.Remove(*scannerFifoPath)
+
+	// start executor goroutine
+	runnerChan = make(chan rpcRunner, 128)
+	var runnerWg sync.WaitGroup
+	runnerWg.Add(1)
+	go func() {
+		for {
+			r, ok := <-runnerChan
+			if ok {
+				r.Run()
+			} else { // channel is closed
+				runnerWg.Done()
+				return
+			}
+		}
+	}()
+
 	go rpc.Accept(listener)
 
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	<-stopChan
+
+	close(runnerChan) // close runnerChan
+	runnerWg.Wait()   // wait for executor goroutine to finish execution
 }
