@@ -1623,6 +1623,7 @@ type FileArgument struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Arg:
+	//
 	//	*FileArgument_GenericArg
 	//	*FileArgument_RenameArg
 	Arg isFileArgument_Arg `protobuf_oneof:"arg"`
@@ -2237,7 +2238,6 @@ func (x *Tls) GetParent() *Process {
 	return nil
 }
 
-//
 // HTTP PARSER
 type HttpHeader struct {
 	state         protoimpl.MessageState

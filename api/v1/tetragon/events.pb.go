@@ -689,6 +689,7 @@ type GetEventsResponse struct {
 	// NOTE: Numbers must stay in sync with enum EventType.
 	//
 	// Types that are assignable to Event:
+	//
 	//	*GetEventsResponse_ProcessExec
 	//	*GetEventsResponse_ProcessConnect
 	//	*GetEventsResponse_ProcessListen
