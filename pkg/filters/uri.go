@@ -124,12 +124,12 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 
 		switch f.(type) {
 		case *URIRegexFilter:
-			URI, ok := getURI(ev)
+			request, ok := getHttpRequest(ev)
 			if !ok {
-				// Event has no URI field
+				// Event has no Http.Request field
 				return false
 			}
-			URIStrings = append(URIStrings, URI)
+			URIStrings = append(URIStrings, request.Uri)
 		case *SNIRegexFilter:
 			SNI, ok := getSNIName(ev)
 			if !ok {
@@ -189,10 +189,6 @@ type GetSNIName interface {
 	GetSniName() string
 }
 
-type GetURI interface {
-	GetURI() string
-}
-
 type GetDestinationNames interface {
 	GetDestinationNames() []string
 }
@@ -226,21 +222,6 @@ func getSNIName(event *v1.Event) (string, bool) {
 		return "", false
 	}
 	return ev.GetSniName(), true
-}
-
-func getURI(event *v1.Event) (string, bool) {
-	if event == nil {
-		return "", false
-	}
-	response, ok := event.Event.(*tetragon.GetEventsResponse)
-	if !ok {
-		return "", false
-	}
-	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetURI)
-	if !ok {
-		return "", false
-	}
-	return ev.GetURI(), true
 }
 
 func getDestinationNames(event *v1.Event) ([]string, bool) {
