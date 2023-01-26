@@ -5,7 +5,7 @@ RUN apt-get install -y linux-libc-dev
 COPY . ./
 RUN make hubble-bpf LOCAL_CLANG=1
 
-FROM quay.io/cilium/cilium-builder:a2dc3278c48e1593b1f6c8fd9e5c6a982d56a875@sha256:98c4e694805e9a9d410ed73d555e97e91d77e2ab4529b6b51f5243b33ab411b1 as hubble-builder
+FROM quay.io/cilium/cilium-builder:2460ae43ce9ab3ab0ff3a8b6e3bc434e6b58e9c0@sha256:97a6aa77af7f8fd5b2cff11ce2049a57e7debec4684652bd368f5911279da4bc as hubble-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN apt-get update && apt-get install -y libelf-dev zlib1g-dev
 RUN ldconfig /usr/local/
