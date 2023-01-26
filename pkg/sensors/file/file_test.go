@@ -181,7 +181,8 @@ func getInodeInfo(t *testing.T, fileName string) (uint64, string) {
 func genericArgFilenameChecker(fileName string, ino uint64, dev string) *ec.FileArgumentChecker {
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fileName)).WithInode(i)
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fileName)).WithInode(i).WithLocation(l)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 	return ec.NewFileArgumentChecker().WithGenericArg(c)
 }
@@ -760,7 +761,8 @@ func fileRemove(t *testing.T, f string) {
 }
 
 func renameDeleteChecker(f string) *ec.ProcessFileChecker {
-	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f))
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f)).WithLocation(l)
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
@@ -770,7 +772,8 @@ func renameDeleteChecker(f string) *ec.ProcessFileChecker {
 }
 
 func renameReadChecker(f string) *ec.ProcessFileChecker {
-	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f))
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f)).WithLocation(l)
 	i := ec.NewFileIOChecker().WithOffset(sm.Full("0")).WithSize(sm.Full("8"))
 	g := ec.NewGenericFileArgChecker().WithFile(d).WithIo(i)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
@@ -781,8 +784,9 @@ func renameReadChecker(f string) *ec.ProcessFileChecker {
 }
 
 func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
-	d1 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_a))
-	d2 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_b))
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	d1 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_a)).WithLocation(l)
+	d2 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_b)).WithLocation(l)
 	fl := ec.NewStringListMatcher().
 		WithOperator(lm.Ordered).
 		WithValues(
