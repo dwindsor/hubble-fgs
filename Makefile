@@ -12,6 +12,7 @@ CLANG_IMAGE = quay.io/cilium/clang:ca424d14eb4326ffc65fccd8049d8a7bfdd06607@sha2
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 # Extra flags to pass to test binary
 EXTRA_TESTFLAGS ?=
+SUDO ?= sudo
 
 BUILD_PKG_DIR ?= $(shell pwd)/build/
 BUILD_PKG_DIR_ARCH=$(BUILD_PKG_DIR)$(ARCH)
@@ -175,8 +176,8 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
 
 .PHONY: test
-test:
-	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
+test: tester-progs hubble-bpf
+	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
 
 # Agent image to use for end-to-end tests
 E2E_AGENT ?= "isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"

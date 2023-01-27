@@ -69,6 +69,7 @@ jobs:
             cd /host/hubble-fgs
 
             export KVM_CI=true
+            export SUDO=
             make hubble-bpf hubble-fgs-fs-scanner tester-progs test
 
       - name: Copy out FGS logs
