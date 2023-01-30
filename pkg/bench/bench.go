@@ -403,7 +403,7 @@ func generateCrd(args *Arguments, sinkPort int) string {
 	tmpl := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
-  name: "benchmark spec"
+  name: "benchmark-spec"
 spec:
   parser:
     http:
