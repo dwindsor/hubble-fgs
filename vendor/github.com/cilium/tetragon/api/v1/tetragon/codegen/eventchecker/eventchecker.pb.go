@@ -266,41 +266,41 @@ func (checker *FnEventChecker) FinalCheck(logger *logrus.Logger) error {
 func CheckerFromEvent(event Event) (EventChecker, error) {
 	switch ev := event.(type) {
 	case *tetragon.ProcessExec:
-		return NewProcessExecChecker().FromProcessExec(ev), nil
+		return NewProcessExecChecker("").FromProcessExec(ev), nil
 	case *tetragon.ProcessExit:
-		return NewProcessExitChecker().FromProcessExit(ev), nil
+		return NewProcessExitChecker("").FromProcessExit(ev), nil
 	case *tetragon.ProcessKprobe:
-		return NewProcessKprobeChecker().FromProcessKprobe(ev), nil
+		return NewProcessKprobeChecker("").FromProcessKprobe(ev), nil
 	case *tetragon.ProcessTracepoint:
-		return NewProcessTracepointChecker().FromProcessTracepoint(ev), nil
+		return NewProcessTracepointChecker("").FromProcessTracepoint(ev), nil
 	case *tetragon.Test:
-		return NewTestChecker().FromTest(ev), nil
+		return NewTestChecker("").FromTest(ev), nil
 	case *tetragon.ProcessLoader:
-		return NewProcessLoaderChecker().FromProcessLoader(ev), nil
+		return NewProcessLoaderChecker("").FromProcessLoader(ev), nil
 	case *tetragon.InterfaceStats:
-		return NewInterfaceStatsChecker().FromInterfaceStats(ev), nil
+		return NewInterfaceStatsChecker("").FromInterfaceStats(ev), nil
 	case *tetragon.ProcessConnect:
-		return NewProcessConnectChecker().FromProcessConnect(ev), nil
+		return NewProcessConnectChecker("").FromProcessConnect(ev), nil
 	case *tetragon.ProcessClose:
-		return NewProcessCloseChecker().FromProcessClose(ev), nil
+		return NewProcessCloseChecker("").FromProcessClose(ev), nil
 	case *tetragon.ProcessListen:
-		return NewProcessListenChecker().FromProcessListen(ev), nil
+		return NewProcessListenChecker("").FromProcessListen(ev), nil
 	case *tetragon.ProcessAccept:
-		return NewProcessAcceptChecker().FromProcessAccept(ev), nil
+		return NewProcessAcceptChecker("").FromProcessAccept(ev), nil
 	case *tetragon.ProcessIpError:
-		return NewProcessIpErrorChecker().FromProcessIpError(ev), nil
+		return NewProcessIpErrorChecker("").FromProcessIpError(ev), nil
 	case *tetragon.ProcessFile:
-		return NewProcessFileChecker().FromProcessFile(ev), nil
+		return NewProcessFileChecker("").FromProcessFile(ev), nil
 	case *tetragon.ProcessSockStats:
-		return NewProcessSockStatsChecker().FromProcessSockStats(ev), nil
+		return NewProcessSockStatsChecker("").FromProcessSockStats(ev), nil
 	case *tetragon.Tls:
-		return NewTlsChecker().FromTls(ev), nil
+		return NewTlsChecker("").FromTls(ev), nil
 	case *tetragon.ProcessHttp:
-		return NewProcessHttpChecker().FromProcessHttp(ev), nil
+		return NewProcessHttpChecker("").FromProcessHttp(ev), nil
 	case *tetragon.ProcessNetworkBurst:
-		return NewProcessNetworkBurstChecker().FromProcessNetworkBurst(ev), nil
+		return NewProcessNetworkBurstChecker("").FromProcessNetworkBurst(ev), nil
 	case *tetragon.ProcessDns:
-		return NewProcessDnsChecker().FromProcessDns(ev), nil
+		return NewProcessDnsChecker("").FromProcessDns(ev), nil
 
 	default:
 		return nil, fmt.Errorf("Unhandled event type %T", event)
@@ -314,6 +314,21 @@ func CheckerFromResponse(response *tetragon.GetEventsResponse) (EventChecker, er
 		return nil, err
 	}
 	return CheckerFromEvent(event)
+}
+
+// CheckerLogPrefix is a helper that outputs the log prefix for an event checker,
+// which is a combination of the checker type and the checker name if applicable.
+func CheckerLogPrefix(checker interface{ GetCheckerType() string }) string {
+	type_ := checker.GetCheckerType()
+
+	if withName, ok := checker.(interface{ GetCheckerName() string }); ok {
+		name := withName.GetCheckerName()
+		if len(name) > 0 {
+			return fmt.Sprintf("%s/%s", type_, name)
+		}
+	}
+
+	return type_
 }
 
 // Event is an empty interface used for events like ProcessExec, etc.
@@ -374,9 +389,10 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 
 // ProcessExecChecker implements a checker struct to check a ProcessExec event
 type ProcessExecChecker struct {
-	Process   *ProcessChecker     `json:"process,omitempty"`
-	Parent    *ProcessChecker     `json:"parent,omitempty"`
-	Ancestors *ProcessListMatcher `json:"ancestors,omitempty"`
+	CheckerName string              `json:"checkerName"`
+	Process     *ProcessChecker     `json:"process,omitempty"`
+	Parent      *ProcessChecker     `json:"parent,omitempty"`
+	Ancestors   *ProcessListMatcher `json:"ancestors,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -397,30 +413,46 @@ func (checker *ProcessExecChecker) CheckResponse(response *tetragon.GetEventsRes
 }
 
 // NewProcessExecChecker creates a new ProcessExecChecker
-func NewProcessExecChecker() *ProcessExecChecker {
-	return &ProcessExecChecker{}
+func NewProcessExecChecker(name string) *ProcessExecChecker {
+	return &ProcessExecChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessExecChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessExecChecker) GetCheckerType() string {
+	return "ProcessExecChecker"
 }
 
 // Check checks a ProcessExec event
 func (checker *ProcessExecChecker) Check(event *tetragon.ProcessExec) error {
 	if event == nil {
-		return fmt.Errorf("ProcessExecChecker: ProcessExec event is nil")
+		return fmt.Errorf("%s: ProcessExec event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessExecChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Ancestors != nil {
+			if err := checker.Ancestors.Check(event.Ancestors); err != nil {
+				return fmt.Errorf("Ancestors check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessExecChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Ancestors != nil {
-		if err := checker.Ancestors.Check(event.Ancestors); err != nil {
-			return fmt.Errorf("ProcessExecChecker: Ancestors check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -513,7 +545,7 @@ func (checker *ProcessListMatcher) Check(values []*tetragon.Process) error {
 func (checker *ProcessListMatcher) orderedCheck(values []*tetragon.Process) error {
 	innerCheck := func(check *ProcessChecker, value *tetragon.Process) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("ProcessListMatcher: Ancestors check failed: %w", err)
+			return fmt.Errorf("Ancestors check failed: %w", err)
 		}
 		return nil
 	}
@@ -545,7 +577,7 @@ func (checker *ProcessListMatcher) unorderedCheck(values []*tetragon.Process) er
 func (checker *ProcessListMatcher) subsetCheck(values []*tetragon.Process) error {
 	innerCheck := func(check *ProcessChecker, value *tetragon.Process) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("ProcessListMatcher: Ancestors check failed: %w", err)
+			return fmt.Errorf("Ancestors check failed: %w", err)
 		}
 		return nil
 	}
@@ -572,11 +604,12 @@ nextCheck:
 
 // ProcessExitChecker implements a checker struct to check a ProcessExit event
 type ProcessExitChecker struct {
-	Process *ProcessChecker                    `json:"process,omitempty"`
-	Parent  *ProcessChecker                    `json:"parent,omitempty"`
-	Signal  *stringmatcher.StringMatcher       `json:"signal,omitempty"`
-	Status  *uint32                            `json:"status,omitempty"`
-	Time    *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
+	CheckerName string                             `json:"checkerName"`
+	Process     *ProcessChecker                    `json:"process,omitempty"`
+	Parent      *ProcessChecker                    `json:"parent,omitempty"`
+	Signal      *stringmatcher.StringMatcher       `json:"signal,omitempty"`
+	Status      *uint32                            `json:"status,omitempty"`
+	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -597,40 +630,56 @@ func (checker *ProcessExitChecker) CheckResponse(response *tetragon.GetEventsRes
 }
 
 // NewProcessExitChecker creates a new ProcessExitChecker
-func NewProcessExitChecker() *ProcessExitChecker {
-	return &ProcessExitChecker{}
+func NewProcessExitChecker(name string) *ProcessExitChecker {
+	return &ProcessExitChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessExitChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessExitChecker) GetCheckerType() string {
+	return "ProcessExitChecker"
 }
 
 // Check checks a ProcessExit event
 func (checker *ProcessExitChecker) Check(event *tetragon.ProcessExit) error {
 	if event == nil {
-		return fmt.Errorf("ProcessExitChecker: ProcessExit event is nil")
+		return fmt.Errorf("%s: ProcessExit event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessExitChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Signal != nil {
+			if err := checker.Signal.Match(event.Signal); err != nil {
+				return fmt.Errorf("Signal check failed: %w", err)
+			}
+		}
+		if checker.Status != nil {
+			if *checker.Status != event.Status {
+				return fmt.Errorf("Status has value %d which does not match expected value %d", event.Status, *checker.Status)
+			}
+		}
+		if checker.Time != nil {
+			if err := checker.Time.Match(event.Time); err != nil {
+				return fmt.Errorf("Time check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessExitChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Signal != nil {
-		if err := checker.Signal.Match(event.Signal); err != nil {
-			return fmt.Errorf("ProcessExitChecker: Signal check failed: %w", err)
-		}
-	}
-	if checker.Status != nil {
-		if *checker.Status != event.Status {
-			return fmt.Errorf("ProcessExitChecker: Status has value %d which does not match expected value %d", event.Status, *checker.Status)
-		}
-	}
-	if checker.Time != nil {
-		if err := checker.Time.Match(event.Time); err != nil {
-			return fmt.Errorf("ProcessExitChecker: Time check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -688,6 +737,7 @@ func (checker *ProcessExitChecker) FromProcessExit(event *tetragon.ProcessExit) 
 
 // ProcessKprobeChecker implements a checker struct to check a ProcessKprobe event
 type ProcessKprobeChecker struct {
+	CheckerName  string                       `json:"checkerName"`
 	Process      *ProcessChecker              `json:"process,omitempty"`
 	Parent       *ProcessChecker              `json:"parent,omitempty"`
 	FunctionName *stringmatcher.StringMatcher `json:"functionName,omitempty"`
@@ -714,45 +764,61 @@ func (checker *ProcessKprobeChecker) CheckResponse(response *tetragon.GetEventsR
 }
 
 // NewProcessKprobeChecker creates a new ProcessKprobeChecker
-func NewProcessKprobeChecker() *ProcessKprobeChecker {
-	return &ProcessKprobeChecker{}
+func NewProcessKprobeChecker(name string) *ProcessKprobeChecker {
+	return &ProcessKprobeChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessKprobeChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessKprobeChecker) GetCheckerType() string {
+	return "ProcessKprobeChecker"
 }
 
 // Check checks a ProcessKprobe event
 func (checker *ProcessKprobeChecker) Check(event *tetragon.ProcessKprobe) error {
 	if event == nil {
-		return fmt.Errorf("ProcessKprobeChecker: ProcessKprobe event is nil")
+		return fmt.Errorf("%s: ProcessKprobe event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.FunctionName != nil {
+			if err := checker.FunctionName.Match(event.FunctionName); err != nil {
+				return fmt.Errorf("FunctionName check failed: %w", err)
+			}
+		}
+		if checker.Args != nil {
+			if err := checker.Args.Check(event.Args); err != nil {
+				return fmt.Errorf("Args check failed: %w", err)
+			}
+		}
+		if checker.Return != nil {
+			if err := checker.Return.Check(event.Return); err != nil {
+				return fmt.Errorf("Return check failed: %w", err)
+			}
+		}
+		if checker.Action != nil {
+			if err := checker.Action.Check(&event.Action); err != nil {
+				return fmt.Errorf("Action check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.FunctionName != nil {
-		if err := checker.FunctionName.Match(event.FunctionName); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: FunctionName check failed: %w", err)
-		}
-	}
-	if checker.Args != nil {
-		if err := checker.Args.Check(event.Args); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: Args check failed: %w", err)
-		}
-	}
-	if checker.Return != nil {
-		if err := checker.Return.Check(event.Return); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: Return check failed: %w", err)
-		}
-	}
-	if checker.Action != nil {
-		if err := checker.Action.Check(&event.Action); err != nil {
-			return fmt.Errorf("ProcessKprobeChecker: Action check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -869,7 +935,7 @@ func (checker *KprobeArgumentListMatcher) Check(values []*tetragon.KprobeArgumen
 func (checker *KprobeArgumentListMatcher) orderedCheck(values []*tetragon.KprobeArgument) error {
 	innerCheck := func(check *KprobeArgumentChecker, value *tetragon.KprobeArgument) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("KprobeArgumentListMatcher: Args check failed: %w", err)
+			return fmt.Errorf("Args check failed: %w", err)
 		}
 		return nil
 	}
@@ -901,7 +967,7 @@ func (checker *KprobeArgumentListMatcher) unorderedCheck(values []*tetragon.Kpro
 func (checker *KprobeArgumentListMatcher) subsetCheck(values []*tetragon.KprobeArgument) error {
 	innerCheck := func(check *KprobeArgumentChecker, value *tetragon.KprobeArgument) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("KprobeArgumentListMatcher: Args check failed: %w", err)
+			return fmt.Errorf("Args check failed: %w", err)
 		}
 		return nil
 	}
@@ -928,11 +994,12 @@ nextCheck:
 
 // ProcessTracepointChecker implements a checker struct to check a ProcessTracepoint event
 type ProcessTracepointChecker struct {
-	Process *ProcessChecker              `json:"process,omitempty"`
-	Parent  *ProcessChecker              `json:"parent,omitempty"`
-	Subsys  *stringmatcher.StringMatcher `json:"subsys,omitempty"`
-	Event   *stringmatcher.StringMatcher `json:"event,omitempty"`
-	Args    *KprobeArgumentListMatcher   `json:"args,omitempty"`
+	CheckerName string                       `json:"checkerName"`
+	Process     *ProcessChecker              `json:"process,omitempty"`
+	Parent      *ProcessChecker              `json:"parent,omitempty"`
+	Subsys      *stringmatcher.StringMatcher `json:"subsys,omitempty"`
+	Event       *stringmatcher.StringMatcher `json:"event,omitempty"`
+	Args        *KprobeArgumentListMatcher   `json:"args,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -953,40 +1020,56 @@ func (checker *ProcessTracepointChecker) CheckResponse(response *tetragon.GetEve
 }
 
 // NewProcessTracepointChecker creates a new ProcessTracepointChecker
-func NewProcessTracepointChecker() *ProcessTracepointChecker {
-	return &ProcessTracepointChecker{}
+func NewProcessTracepointChecker(name string) *ProcessTracepointChecker {
+	return &ProcessTracepointChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessTracepointChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessTracepointChecker) GetCheckerType() string {
+	return "ProcessTracepointChecker"
 }
 
 // Check checks a ProcessTracepoint event
 func (checker *ProcessTracepointChecker) Check(event *tetragon.ProcessTracepoint) error {
 	if event == nil {
-		return fmt.Errorf("ProcessTracepointChecker: ProcessTracepoint event is nil")
+		return fmt.Errorf("%s: ProcessTracepoint event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessTracepointChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Subsys != nil {
+			if err := checker.Subsys.Match(event.Subsys); err != nil {
+				return fmt.Errorf("Subsys check failed: %w", err)
+			}
+		}
+		if checker.Event != nil {
+			if err := checker.Event.Match(event.Event); err != nil {
+				return fmt.Errorf("Event check failed: %w", err)
+			}
+		}
+		if checker.Args != nil {
+			if err := checker.Args.Check(event.Args); err != nil {
+				return fmt.Errorf("Args check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessTracepointChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Subsys != nil {
-		if err := checker.Subsys.Match(event.Subsys); err != nil {
-			return fmt.Errorf("ProcessTracepointChecker: Subsys check failed: %w", err)
-		}
-	}
-	if checker.Event != nil {
-		if err := checker.Event.Match(event.Event); err != nil {
-			return fmt.Errorf("ProcessTracepointChecker: Event check failed: %w", err)
-		}
-	}
-	if checker.Args != nil {
-		if err := checker.Args.Check(event.Args); err != nil {
-			return fmt.Errorf("ProcessTracepointChecker: Args check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -1052,10 +1135,11 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *tetragon.P
 
 // TestChecker implements a checker struct to check a Test event
 type TestChecker struct {
-	Arg0 *uint64 `json:"arg0,omitempty"`
-	Arg1 *uint64 `json:"arg1,omitempty"`
-	Arg2 *uint64 `json:"arg2,omitempty"`
-	Arg3 *uint64 `json:"arg3,omitempty"`
+	CheckerName string  `json:"checkerName"`
+	Arg0        *uint64 `json:"arg0,omitempty"`
+	Arg1        *uint64 `json:"arg1,omitempty"`
+	Arg2        *uint64 `json:"arg2,omitempty"`
+	Arg3        *uint64 `json:"arg3,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1076,35 +1160,51 @@ func (checker *TestChecker) CheckResponse(response *tetragon.GetEventsResponse) 
 }
 
 // NewTestChecker creates a new TestChecker
-func NewTestChecker() *TestChecker {
-	return &TestChecker{}
+func NewTestChecker(name string) *TestChecker {
+	return &TestChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *TestChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *TestChecker) GetCheckerType() string {
+	return "TestChecker"
 }
 
 // Check checks a Test event
 func (checker *TestChecker) Check(event *tetragon.Test) error {
 	if event == nil {
-		return fmt.Errorf("TestChecker: Test event is nil")
+		return fmt.Errorf("%s: Test event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Arg0 != nil {
-		if *checker.Arg0 != event.Arg0 {
-			return fmt.Errorf("TestChecker: Arg0 has value %d which does not match expected value %d", event.Arg0, *checker.Arg0)
+	fieldChecks := func() error {
+		if checker.Arg0 != nil {
+			if *checker.Arg0 != event.Arg0 {
+				return fmt.Errorf("Arg0 has value %d which does not match expected value %d", event.Arg0, *checker.Arg0)
+			}
 		}
+		if checker.Arg1 != nil {
+			if *checker.Arg1 != event.Arg1 {
+				return fmt.Errorf("Arg1 has value %d which does not match expected value %d", event.Arg1, *checker.Arg1)
+			}
+		}
+		if checker.Arg2 != nil {
+			if *checker.Arg2 != event.Arg2 {
+				return fmt.Errorf("Arg2 has value %d which does not match expected value %d", event.Arg2, *checker.Arg2)
+			}
+		}
+		if checker.Arg3 != nil {
+			if *checker.Arg3 != event.Arg3 {
+				return fmt.Errorf("Arg3 has value %d which does not match expected value %d", event.Arg3, *checker.Arg3)
+			}
+		}
+		return nil
 	}
-	if checker.Arg1 != nil {
-		if *checker.Arg1 != event.Arg1 {
-			return fmt.Errorf("TestChecker: Arg1 has value %d which does not match expected value %d", event.Arg1, *checker.Arg1)
-		}
-	}
-	if checker.Arg2 != nil {
-		if *checker.Arg2 != event.Arg2 {
-			return fmt.Errorf("TestChecker: Arg2 has value %d which does not match expected value %d", event.Arg2, *checker.Arg2)
-		}
-	}
-	if checker.Arg3 != nil {
-		if *checker.Arg3 != event.Arg3 {
-			return fmt.Errorf("TestChecker: Arg3 has value %d which does not match expected value %d", event.Arg3, *checker.Arg3)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -1159,9 +1259,10 @@ func (checker *TestChecker) FromTest(event *tetragon.Test) *TestChecker {
 
 // ProcessLoaderChecker implements a checker struct to check a ProcessLoader event
 type ProcessLoaderChecker struct {
-	Process *ProcessChecker              `json:"process,omitempty"`
-	Path    *stringmatcher.StringMatcher `json:"path,omitempty"`
-	Buildid *bytesmatcher.BytesMatcher   `json:"buildid,omitempty"`
+	CheckerName string                       `json:"checkerName"`
+	Process     *ProcessChecker              `json:"process,omitempty"`
+	Path        *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Buildid     *bytesmatcher.BytesMatcher   `json:"buildid,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1182,30 +1283,46 @@ func (checker *ProcessLoaderChecker) CheckResponse(response *tetragon.GetEventsR
 }
 
 // NewProcessLoaderChecker creates a new ProcessLoaderChecker
-func NewProcessLoaderChecker() *ProcessLoaderChecker {
-	return &ProcessLoaderChecker{}
+func NewProcessLoaderChecker(name string) *ProcessLoaderChecker {
+	return &ProcessLoaderChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessLoaderChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessLoaderChecker) GetCheckerType() string {
+	return "ProcessLoaderChecker"
 }
 
 // Check checks a ProcessLoader event
 func (checker *ProcessLoaderChecker) Check(event *tetragon.ProcessLoader) error {
 	if event == nil {
-		return fmt.Errorf("ProcessLoaderChecker: ProcessLoader event is nil")
+		return fmt.Errorf("%s: ProcessLoader event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessLoaderChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Path != nil {
+			if err := checker.Path.Match(event.Path); err != nil {
+				return fmt.Errorf("Path check failed: %w", err)
+			}
+		}
+		if checker.Buildid != nil {
+			if err := checker.Buildid.Match(event.Buildid); err != nil {
+				return fmt.Errorf("Buildid check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Path != nil {
-		if err := checker.Path.Match(event.Path); err != nil {
-			return fmt.Errorf("ProcessLoaderChecker: Path check failed: %w", err)
-		}
-	}
-	if checker.Buildid != nil {
-		if err := checker.Buildid.Match(event.Buildid); err != nil {
-			return fmt.Errorf("ProcessLoaderChecker: Buildid check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -1243,6 +1360,7 @@ func (checker *ProcessLoaderChecker) FromProcessLoader(event *tetragon.ProcessLo
 
 // InterfaceStatsChecker implements a checker struct to check a InterfaceStats event
 type InterfaceStatsChecker struct {
+	CheckerName      string                       `json:"checkerName"`
 	InterfaceName    *stringmatcher.StringMatcher `json:"interfaceName,omitempty"`
 	InterfaceIfindex *uint32                      `json:"interfaceIfindex,omitempty"`
 	BytesSent        *uint64                      `json:"bytesSent,omitempty"`
@@ -1277,85 +1395,101 @@ func (checker *InterfaceStatsChecker) CheckResponse(response *tetragon.GetEvents
 }
 
 // NewInterfaceStatsChecker creates a new InterfaceStatsChecker
-func NewInterfaceStatsChecker() *InterfaceStatsChecker {
-	return &InterfaceStatsChecker{}
+func NewInterfaceStatsChecker(name string) *InterfaceStatsChecker {
+	return &InterfaceStatsChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *InterfaceStatsChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *InterfaceStatsChecker) GetCheckerType() string {
+	return "InterfaceStatsChecker"
 }
 
 // Check checks a InterfaceStats event
 func (checker *InterfaceStatsChecker) Check(event *tetragon.InterfaceStats) error {
 	if event == nil {
-		return fmt.Errorf("InterfaceStatsChecker: InterfaceStats event is nil")
+		return fmt.Errorf("%s: InterfaceStats event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.InterfaceName != nil {
-		if err := checker.InterfaceName.Match(event.InterfaceName); err != nil {
-			return fmt.Errorf("InterfaceStatsChecker: InterfaceName check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.InterfaceName != nil {
+			if err := checker.InterfaceName.Match(event.InterfaceName); err != nil {
+				return fmt.Errorf("InterfaceName check failed: %w", err)
+			}
 		}
+		if checker.InterfaceIfindex != nil {
+			if *checker.InterfaceIfindex != event.InterfaceIfindex {
+				return fmt.Errorf("InterfaceIfindex has value %d which does not match expected value %d", event.InterfaceIfindex, *checker.InterfaceIfindex)
+			}
+		}
+		if checker.BytesSent != nil {
+			if *checker.BytesSent != event.BytesSent {
+				return fmt.Errorf("BytesSent has value %d which does not match expected value %d", event.BytesSent, *checker.BytesSent)
+			}
+		}
+		if checker.BytesReceived != nil {
+			if *checker.BytesReceived != event.BytesReceived {
+				return fmt.Errorf("BytesReceived has value %d which does not match expected value %d", event.BytesReceived, *checker.BytesReceived)
+			}
+		}
+		if checker.PacketsSent != nil {
+			if *checker.PacketsSent != event.PacketsSent {
+				return fmt.Errorf("PacketsSent has value %d which does not match expected value %d", event.PacketsSent, *checker.PacketsSent)
+			}
+		}
+		if checker.PacketsReceived != nil {
+			if *checker.PacketsReceived != event.PacketsReceived {
+				return fmt.Errorf("PacketsReceived has value %d which does not match expected value %d", event.PacketsReceived, *checker.PacketsReceived)
+			}
+		}
+		if checker.TxErrors != nil {
+			if *checker.TxErrors != event.TxErrors {
+				return fmt.Errorf("TxErrors has value %d which does not match expected value %d", event.TxErrors, *checker.TxErrors)
+			}
+		}
+		if checker.RxErrors != nil {
+			if *checker.RxErrors != event.RxErrors {
+				return fmt.Errorf("RxErrors has value %d which does not match expected value %d", event.RxErrors, *checker.RxErrors)
+			}
+		}
+		if checker.TxDrops != nil {
+			if *checker.TxDrops != event.TxDrops {
+				return fmt.Errorf("TxDrops has value %d which does not match expected value %d", event.TxDrops, *checker.TxDrops)
+			}
+		}
+		if checker.RxDrops != nil {
+			if *checker.RxDrops != event.RxDrops {
+				return fmt.Errorf("RxDrops has value %d which does not match expected value %d", event.RxDrops, *checker.RxDrops)
+			}
+		}
+		if checker.Pod != nil {
+			if err := checker.Pod.Check(event.Pod); err != nil {
+				return fmt.Errorf("Pod check failed: %w", err)
+			}
+		}
+		if checker.Netns != nil {
+			if err := checker.Netns.Match(event.Netns); err != nil {
+				return fmt.Errorf("Netns check failed: %w", err)
+			}
+		}
+		if checker.ContainerName != nil {
+			if err := checker.ContainerName.Match(event.ContainerName); err != nil {
+				return fmt.Errorf("ContainerName check failed: %w", err)
+			}
+		}
+		if checker.Qlen != nil {
+			if err := checker.Qlen.Check(event.Qlen); err != nil {
+				return fmt.Errorf("Qlen check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.InterfaceIfindex != nil {
-		if *checker.InterfaceIfindex != event.InterfaceIfindex {
-			return fmt.Errorf("InterfaceStatsChecker: InterfaceIfindex has value %d which does not match expected value %d", event.InterfaceIfindex, *checker.InterfaceIfindex)
-		}
-	}
-	if checker.BytesSent != nil {
-		if *checker.BytesSent != event.BytesSent {
-			return fmt.Errorf("InterfaceStatsChecker: BytesSent has value %d which does not match expected value %d", event.BytesSent, *checker.BytesSent)
-		}
-	}
-	if checker.BytesReceived != nil {
-		if *checker.BytesReceived != event.BytesReceived {
-			return fmt.Errorf("InterfaceStatsChecker: BytesReceived has value %d which does not match expected value %d", event.BytesReceived, *checker.BytesReceived)
-		}
-	}
-	if checker.PacketsSent != nil {
-		if *checker.PacketsSent != event.PacketsSent {
-			return fmt.Errorf("InterfaceStatsChecker: PacketsSent has value %d which does not match expected value %d", event.PacketsSent, *checker.PacketsSent)
-		}
-	}
-	if checker.PacketsReceived != nil {
-		if *checker.PacketsReceived != event.PacketsReceived {
-			return fmt.Errorf("InterfaceStatsChecker: PacketsReceived has value %d which does not match expected value %d", event.PacketsReceived, *checker.PacketsReceived)
-		}
-	}
-	if checker.TxErrors != nil {
-		if *checker.TxErrors != event.TxErrors {
-			return fmt.Errorf("InterfaceStatsChecker: TxErrors has value %d which does not match expected value %d", event.TxErrors, *checker.TxErrors)
-		}
-	}
-	if checker.RxErrors != nil {
-		if *checker.RxErrors != event.RxErrors {
-			return fmt.Errorf("InterfaceStatsChecker: RxErrors has value %d which does not match expected value %d", event.RxErrors, *checker.RxErrors)
-		}
-	}
-	if checker.TxDrops != nil {
-		if *checker.TxDrops != event.TxDrops {
-			return fmt.Errorf("InterfaceStatsChecker: TxDrops has value %d which does not match expected value %d", event.TxDrops, *checker.TxDrops)
-		}
-	}
-	if checker.RxDrops != nil {
-		if *checker.RxDrops != event.RxDrops {
-			return fmt.Errorf("InterfaceStatsChecker: RxDrops has value %d which does not match expected value %d", event.RxDrops, *checker.RxDrops)
-		}
-	}
-	if checker.Pod != nil {
-		if err := checker.Pod.Check(event.Pod); err != nil {
-			return fmt.Errorf("InterfaceStatsChecker: Pod check failed: %w", err)
-		}
-	}
-	if checker.Netns != nil {
-		if err := checker.Netns.Match(event.Netns); err != nil {
-			return fmt.Errorf("InterfaceStatsChecker: Netns check failed: %w", err)
-		}
-	}
-	if checker.ContainerName != nil {
-		if err := checker.ContainerName.Match(event.ContainerName); err != nil {
-			return fmt.Errorf("InterfaceStatsChecker: ContainerName check failed: %w", err)
-		}
-	}
-	if checker.Qlen != nil {
-		if err := checker.Qlen.Check(event.Qlen); err != nil {
-			return fmt.Errorf("InterfaceStatsChecker: Qlen check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -1499,6 +1633,7 @@ func (checker *InterfaceStatsChecker) FromInterfaceStats(event *tetragon.Interfa
 
 // ProcessConnectChecker implements a checker struct to check a ProcessConnect event
 type ProcessConnectChecker struct {
+	CheckerName      string                       `json:"checkerName"`
 	Process          *ProcessChecker              `json:"process,omitempty"`
 	Parent           *ProcessChecker              `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
@@ -1529,71 +1664,87 @@ func (checker *ProcessConnectChecker) CheckResponse(response *tetragon.GetEvents
 }
 
 // NewProcessConnectChecker creates a new ProcessConnectChecker
-func NewProcessConnectChecker() *ProcessConnectChecker {
-	return &ProcessConnectChecker{}
+func NewProcessConnectChecker(name string) *ProcessConnectChecker {
+	return &ProcessConnectChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessConnectChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessConnectChecker) GetCheckerType() string {
+	return "ProcessConnectChecker"
 }
 
 // Check checks a ProcessConnect event
 func (checker *ProcessConnectChecker) Check(event *tetragon.ProcessConnect) error {
 	if event == nil {
-		return fmt.Errorf("ProcessConnectChecker: ProcessConnect event is nil")
+		return fmt.Errorf("%s: ProcessConnect event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: SourceIp check failed: %w", err)
-		}
-	}
-	if checker.SourcePort != nil {
-		if event.SourcePort == nil {
-			return fmt.Errorf("ProcessConnectChecker: SourcePort is nil and does not match expected value %v", *checker.SourcePort)
-		}
-		if *checker.SourcePort != event.SourcePort.Value {
-			return fmt.Errorf("ProcessConnectChecker: SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationPort != nil {
-		if event.DestinationPort == nil {
-			return fmt.Errorf("ProcessConnectChecker: DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
-		}
-		if *checker.DestinationPort != event.DestinationPort.Value {
-			return fmt.Errorf("ProcessConnectChecker: DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("ProcessConnectChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Check(&event.Protocol); err != nil {
-			return fmt.Errorf("ProcessConnectChecker: Protocol check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -1745,7 +1896,7 @@ func (checker *StringListMatcher) Check(values []string) error {
 func (checker *StringListMatcher) orderedCheck(values []string) error {
 	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
 		if err := check.Match(value); err != nil {
-			return fmt.Errorf("StringListMatcher: DestinationNames check failed: %w", err)
+			return fmt.Errorf("DestinationNames check failed: %w", err)
 		}
 		return nil
 	}
@@ -1777,7 +1928,7 @@ func (checker *StringListMatcher) unorderedCheck(values []string) error {
 func (checker *StringListMatcher) subsetCheck(values []string) error {
 	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
 		if err := check.Match(value); err != nil {
-			return fmt.Errorf("StringListMatcher: DestinationNames check failed: %w", err)
+			return fmt.Errorf("DestinationNames check failed: %w", err)
 		}
 		return nil
 	}
@@ -1804,6 +1955,7 @@ nextCheck:
 
 // ProcessCloseChecker implements a checker struct to check a ProcessClose event
 type ProcessCloseChecker struct {
+	CheckerName      string                       `json:"checkerName"`
 	Process          *ProcessChecker              `json:"process,omitempty"`
 	Parent           *ProcessChecker              `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
@@ -1836,81 +1988,97 @@ func (checker *ProcessCloseChecker) CheckResponse(response *tetragon.GetEventsRe
 }
 
 // NewProcessCloseChecker creates a new ProcessCloseChecker
-func NewProcessCloseChecker() *ProcessCloseChecker {
-	return &ProcessCloseChecker{}
+func NewProcessCloseChecker(name string) *ProcessCloseChecker {
+	return &ProcessCloseChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessCloseChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessCloseChecker) GetCheckerType() string {
+	return "ProcessCloseChecker"
 }
 
 // Check checks a ProcessClose event
 func (checker *ProcessCloseChecker) Check(event *tetragon.ProcessClose) error {
 	if event == nil {
-		return fmt.Errorf("ProcessCloseChecker: ProcessClose event is nil")
+		return fmt.Errorf("%s: ProcessClose event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Stats != nil {
+			if err := checker.Stats.Check(event.Stats); err != nil {
+				return fmt.Errorf("Stats check failed: %w", err)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.SocketType != nil {
+			if err := checker.SocketType.Match(event.SocketType); err != nil {
+				return fmt.Errorf("SocketType check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: SourceIp check failed: %w", err)
-		}
-	}
-	if checker.SourcePort != nil {
-		if event.SourcePort == nil {
-			return fmt.Errorf("ProcessCloseChecker: SourcePort is nil and does not match expected value %v", *checker.SourcePort)
-		}
-		if *checker.SourcePort != event.SourcePort.Value {
-			return fmt.Errorf("ProcessCloseChecker: SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationPort != nil {
-		if event.DestinationPort == nil {
-			return fmt.Errorf("ProcessCloseChecker: DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
-		}
-		if *checker.DestinationPort != event.DestinationPort.Value {
-			return fmt.Errorf("ProcessCloseChecker: DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("ProcessCloseChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.Stats != nil {
-		if err := checker.Stats.Check(event.Stats); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: Stats check failed: %w", err)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Check(&event.Protocol); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: Protocol check failed: %w", err)
-		}
-	}
-	if checker.SocketType != nil {
-		if err := checker.SocketType.Match(event.SocketType); err != nil {
-			return fmt.Errorf("ProcessCloseChecker: SocketType check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2037,12 +2205,13 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClos
 
 // ProcessListenChecker implements a checker struct to check a ProcessListen event
 type ProcessListenChecker struct {
-	Process    *ProcessChecker              `json:"process,omitempty"`
-	Parent     *ProcessChecker              `json:"parent,omitempty"`
-	Ip         *stringmatcher.StringMatcher `json:"ip,omitempty"`
-	Port       *uint32                      `json:"port,omitempty"`
-	SockCookie *uint64                      `json:"sockCookie,omitempty"`
-	Protocol   *SocketProtocolChecker       `json:"protocol,omitempty"`
+	CheckerName string                       `json:"checkerName"`
+	Process     *ProcessChecker              `json:"process,omitempty"`
+	Parent      *ProcessChecker              `json:"parent,omitempty"`
+	Ip          *stringmatcher.StringMatcher `json:"ip,omitempty"`
+	Port        *uint32                      `json:"port,omitempty"`
+	SockCookie  *uint64                      `json:"sockCookie,omitempty"`
+	Protocol    *SocketProtocolChecker       `json:"protocol,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2063,48 +2232,64 @@ func (checker *ProcessListenChecker) CheckResponse(response *tetragon.GetEventsR
 }
 
 // NewProcessListenChecker creates a new ProcessListenChecker
-func NewProcessListenChecker() *ProcessListenChecker {
-	return &ProcessListenChecker{}
+func NewProcessListenChecker(name string) *ProcessListenChecker {
+	return &ProcessListenChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessListenChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessListenChecker) GetCheckerType() string {
+	return "ProcessListenChecker"
 }
 
 // Check checks a ProcessListen event
 func (checker *ProcessListenChecker) Check(event *tetragon.ProcessListen) error {
 	if event == nil {
-		return fmt.Errorf("ProcessListenChecker: ProcessListen event is nil")
+		return fmt.Errorf("%s: ProcessListen event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessListenChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Ip != nil {
+			if err := checker.Ip.Match(event.Ip); err != nil {
+				return fmt.Errorf("Ip check failed: %w", err)
+			}
+		}
+		if checker.Port != nil {
+			if event.Port == nil {
+				return fmt.Errorf("Port is nil and does not match expected value %v", *checker.Port)
+			}
+			if *checker.Port != event.Port.Value {
+				return fmt.Errorf("Port has value %v which does not match expected value %v", event.Port.Value, *checker.Port)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessListenChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Ip != nil {
-		if err := checker.Ip.Match(event.Ip); err != nil {
-			return fmt.Errorf("ProcessListenChecker: Ip check failed: %w", err)
-		}
-	}
-	if checker.Port != nil {
-		if event.Port == nil {
-			return fmt.Errorf("ProcessListenChecker: Port is nil and does not match expected value %v", *checker.Port)
-		}
-		if *checker.Port != event.Port.Value {
-			return fmt.Errorf("ProcessListenChecker: Port has value %v which does not match expected value %v", event.Port.Value, *checker.Port)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("ProcessListenChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Check(&event.Protocol); err != nil {
-			return fmt.Errorf("ProcessListenChecker: Protocol check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2172,6 +2357,7 @@ func (checker *ProcessListenChecker) FromProcessListen(event *tetragon.ProcessLi
 
 // ProcessAcceptChecker implements a checker struct to check a ProcessAccept event
 type ProcessAcceptChecker struct {
+	CheckerName      string                       `json:"checkerName"`
 	Process          *ProcessChecker              `json:"process,omitempty"`
 	Parent           *ProcessChecker              `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
@@ -2202,71 +2388,87 @@ func (checker *ProcessAcceptChecker) CheckResponse(response *tetragon.GetEventsR
 }
 
 // NewProcessAcceptChecker creates a new ProcessAcceptChecker
-func NewProcessAcceptChecker() *ProcessAcceptChecker {
-	return &ProcessAcceptChecker{}
+func NewProcessAcceptChecker(name string) *ProcessAcceptChecker {
+	return &ProcessAcceptChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessAcceptChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessAcceptChecker) GetCheckerType() string {
+	return "ProcessAcceptChecker"
 }
 
 // Check checks a ProcessAccept event
 func (checker *ProcessAcceptChecker) Check(event *tetragon.ProcessAccept) error {
 	if event == nil {
-		return fmt.Errorf("ProcessAcceptChecker: ProcessAccept event is nil")
+		return fmt.Errorf("%s: ProcessAccept event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: SourceIp check failed: %w", err)
-		}
-	}
-	if checker.SourcePort != nil {
-		if event.SourcePort == nil {
-			return fmt.Errorf("ProcessAcceptChecker: SourcePort is nil and does not match expected value %v", *checker.SourcePort)
-		}
-		if *checker.SourcePort != event.SourcePort.Value {
-			return fmt.Errorf("ProcessAcceptChecker: SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationPort != nil {
-		if event.DestinationPort == nil {
-			return fmt.Errorf("ProcessAcceptChecker: DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
-		}
-		if *checker.DestinationPort != event.DestinationPort.Value {
-			return fmt.Errorf("ProcessAcceptChecker: DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("ProcessAcceptChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Check(&event.Protocol); err != nil {
-			return fmt.Errorf("ProcessAcceptChecker: Protocol check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2377,6 +2579,7 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAc
 
 // ProcessIpErrorChecker implements a checker struct to check a ProcessIpError event
 type ProcessIpErrorChecker struct {
+	CheckerName    string                       `json:"checkerName"`
 	Process        *ProcessChecker              `json:"process,omitempty"`
 	Parent         *ProcessChecker              `json:"parent,omitempty"`
 	SourceIp       *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
@@ -2405,55 +2608,71 @@ func (checker *ProcessIpErrorChecker) CheckResponse(response *tetragon.GetEvents
 }
 
 // NewProcessIpErrorChecker creates a new ProcessIpErrorChecker
-func NewProcessIpErrorChecker() *ProcessIpErrorChecker {
-	return &ProcessIpErrorChecker{}
+func NewProcessIpErrorChecker(name string) *ProcessIpErrorChecker {
+	return &ProcessIpErrorChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessIpErrorChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessIpErrorChecker) GetCheckerType() string {
+	return "ProcessIpErrorChecker"
 }
 
 // Check checks a ProcessIpError event
 func (checker *ProcessIpErrorChecker) Check(event *tetragon.ProcessIpError) error {
 	if event == nil {
-		return fmt.Errorf("ProcessIpErrorChecker: ProcessIpError event is nil")
+		return fmt.Errorf("%s: ProcessIpError event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.Version != nil {
+			if err := checker.Version.Match(event.Version); err != nil {
+				return fmt.Errorf("Version check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Details != nil {
+			if err := checker.Details.Match(event.Details); err != nil {
+				return fmt.Errorf("Details check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: SourceIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.Version != nil {
-		if err := checker.Version.Match(event.Version); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: Version check failed: %w", err)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("ProcessIpErrorChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Details != nil {
-		if err := checker.Details.Match(event.Details); err != nil {
-			return fmt.Errorf("ProcessIpErrorChecker: Details check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2533,6 +2752,7 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.Process
 
 // ProcessFileChecker implements a checker struct to check a ProcessFile event
 type ProcessFileChecker struct {
+	CheckerName string                             `json:"checkerName"`
 	Process     *ProcessChecker                    `json:"process,omitempty"`
 	Parent      *ProcessChecker                    `json:"parent,omitempty"`
 	Action      *FileActionChecker                 `json:"action,omitempty"`
@@ -2562,60 +2782,76 @@ func (checker *ProcessFileChecker) CheckResponse(response *tetragon.GetEventsRes
 }
 
 // NewProcessFileChecker creates a new ProcessFileChecker
-func NewProcessFileChecker() *ProcessFileChecker {
-	return &ProcessFileChecker{}
+func NewProcessFileChecker(name string) *ProcessFileChecker {
+	return &ProcessFileChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessFileChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessFileChecker) GetCheckerType() string {
+	return "ProcessFileChecker"
 }
 
 // Check checks a ProcessFile event
 func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 	if event == nil {
-		return fmt.Errorf("ProcessFileChecker: ProcessFile event is nil")
+		return fmt.Errorf("%s: ProcessFile event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Action != nil {
+			if err := checker.Action.Check(&event.Action); err != nil {
+				return fmt.Errorf("Action check failed: %w", err)
+			}
+		}
+		if checker.Args != nil {
+			if err := checker.Args.Check(event.Args); err != nil {
+				return fmt.Errorf("Args check failed: %w", err)
+			}
+		}
+		if checker.Permissions != nil {
+			if err := checker.Permissions.Match(event.Permissions); err != nil {
+				return fmt.Errorf("Permissions check failed: %w", err)
+			}
+		}
+		if checker.Uid != nil {
+			if err := checker.Uid.Match(event.Uid); err != nil {
+				return fmt.Errorf("Uid check failed: %w", err)
+			}
+		}
+		if checker.Gid != nil {
+			if err := checker.Gid.Match(event.Gid); err != nil {
+				return fmt.Errorf("Gid check failed: %w", err)
+			}
+		}
+		if checker.Time != nil {
+			if err := checker.Time.Match(event.Time); err != nil {
+				return fmt.Errorf("Time check failed: %w", err)
+			}
+		}
+		if checker.Hook != nil {
+			if err := checker.Hook.Match(event.Hook); err != nil {
+				return fmt.Errorf("Hook check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Action != nil {
-		if err := checker.Action.Check(&event.Action); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Action check failed: %w", err)
-		}
-	}
-	if checker.Args != nil {
-		if err := checker.Args.Check(event.Args); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Args check failed: %w", err)
-		}
-	}
-	if checker.Permissions != nil {
-		if err := checker.Permissions.Match(event.Permissions); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Permissions check failed: %w", err)
-		}
-	}
-	if checker.Uid != nil {
-		if err := checker.Uid.Match(event.Uid); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Uid check failed: %w", err)
-		}
-	}
-	if checker.Gid != nil {
-		if err := checker.Gid.Match(event.Gid); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Gid check failed: %w", err)
-		}
-	}
-	if checker.Time != nil {
-		if err := checker.Time.Match(event.Time); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Time check failed: %w", err)
-		}
-	}
-	if checker.Hook != nil {
-		if err := checker.Hook.Match(event.Hook); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Hook check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2701,10 +2937,11 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 
 // ProcessSockStatsChecker implements a checker struct to check a ProcessSockStats event
 type ProcessSockStatsChecker struct {
-	Process *ProcessChecker     `json:"process,omitempty"`
-	Parent  *ProcessChecker     `json:"parent,omitempty"`
-	Socket  *SockInfoChecker    `json:"socket,omitempty"`
-	Stats   *SocketStatsChecker `json:"stats,omitempty"`
+	CheckerName string              `json:"checkerName"`
+	Process     *ProcessChecker     `json:"process,omitempty"`
+	Parent      *ProcessChecker     `json:"parent,omitempty"`
+	Socket      *SockInfoChecker    `json:"socket,omitempty"`
+	Stats       *SocketStatsChecker `json:"stats,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2725,35 +2962,51 @@ func (checker *ProcessSockStatsChecker) CheckResponse(response *tetragon.GetEven
 }
 
 // NewProcessSockStatsChecker creates a new ProcessSockStatsChecker
-func NewProcessSockStatsChecker() *ProcessSockStatsChecker {
-	return &ProcessSockStatsChecker{}
+func NewProcessSockStatsChecker(name string) *ProcessSockStatsChecker {
+	return &ProcessSockStatsChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessSockStatsChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessSockStatsChecker) GetCheckerType() string {
+	return "ProcessSockStatsChecker"
 }
 
 // Check checks a ProcessSockStats event
 func (checker *ProcessSockStatsChecker) Check(event *tetragon.ProcessSockStats) error {
 	if event == nil {
-		return fmt.Errorf("ProcessSockStatsChecker: ProcessSockStats event is nil")
+		return fmt.Errorf("%s: ProcessSockStats event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessSockStatsChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Socket != nil {
+			if err := checker.Socket.Check(event.Socket); err != nil {
+				return fmt.Errorf("Socket check failed: %w", err)
+			}
+		}
+		if checker.Stats != nil {
+			if err := checker.Stats.Check(event.Stats); err != nil {
+				return fmt.Errorf("Stats check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessSockStatsChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Socket != nil {
-		if err := checker.Socket.Check(event.Socket); err != nil {
-			return fmt.Errorf("ProcessSockStatsChecker: Socket check failed: %w", err)
-		}
-	}
-	if checker.Stats != nil {
-		if err := checker.Stats.Check(event.Stats); err != nil {
-			return fmt.Errorf("ProcessSockStatsChecker: Stats check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -2804,6 +3057,7 @@ func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *tetragon.Pro
 
 // TlsChecker implements a checker struct to check a Tls event
 type TlsChecker struct {
+	CheckerName         string                       `json:"checkerName"`
 	Process             *ProcessChecker              `json:"process,omitempty"`
 	SourceIp            *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort          *uint32                      `json:"sourcePort,omitempty"`
@@ -2850,151 +3104,167 @@ func (checker *TlsChecker) CheckResponse(response *tetragon.GetEventsResponse) e
 }
 
 // NewTlsChecker creates a new TlsChecker
-func NewTlsChecker() *TlsChecker {
-	return &TlsChecker{}
+func NewTlsChecker(name string) *TlsChecker {
+	return &TlsChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *TlsChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *TlsChecker) GetCheckerType() string {
+	return "TlsChecker"
 }
 
 // Check checks a Tls event
 func (checker *TlsChecker) Check(event *tetragon.Tls) error {
 	if event == nil {
-		return fmt.Errorf("TlsChecker: Tls event is nil")
+		return fmt.Errorf("%s: Tls event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("TlsChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.NegotiatedVersion != nil {
+			if err := checker.NegotiatedVersion.Match(event.NegotiatedVersion); err != nil {
+				return fmt.Errorf("NegotiatedVersion check failed: %w", err)
+			}
+		}
+		if checker.SupportedVersions != nil {
+			if err := checker.SupportedVersions.Match(event.SupportedVersions); err != nil {
+				return fmt.Errorf("SupportedVersions check failed: %w", err)
+			}
+		}
+		if checker.SniType != nil {
+			if err := checker.SniType.Match(event.SniType); err != nil {
+				return fmt.Errorf("SniType check failed: %w", err)
+			}
+		}
+		if checker.SniName != nil {
+			if err := checker.SniName.Match(event.SniName); err != nil {
+				return fmt.Errorf("SniName check failed: %w", err)
+			}
+		}
+		if checker.Cipher != nil {
+			if err := checker.Cipher.Match(event.Cipher); err != nil {
+				return fmt.Errorf("Cipher check failed: %w", err)
+			}
+		}
+		if checker.ClientFlags != nil {
+			if err := checker.ClientFlags.Match(event.ClientFlags); err != nil {
+				return fmt.Errorf("ClientFlags check failed: %w", err)
+			}
+		}
+		if checker.ServerFlags != nil {
+			if err := checker.ServerFlags.Match(event.ServerFlags); err != nil {
+				return fmt.Errorf("ServerFlags check failed: %w", err)
+			}
+		}
+		if checker.ClientVersion != nil {
+			if err := checker.ClientVersion.Match(event.ClientVersion); err != nil {
+				return fmt.Errorf("ClientVersion check failed: %w", err)
+			}
+		}
+		if checker.ServerVersion != nil {
+			if err := checker.ServerVersion.Match(event.ServerVersion); err != nil {
+				return fmt.Errorf("ServerVersion check failed: %w", err)
+			}
+		}
+		if checker.ClientAlert != nil {
+			if err := checker.ClientAlert.Match(event.ClientAlert); err != nil {
+				return fmt.Errorf("ClientAlert check failed: %w", err)
+			}
+		}
+		if checker.ServerAlert != nil {
+			if err := checker.ServerAlert.Match(event.ServerAlert); err != nil {
+				return fmt.Errorf("ServerAlert check failed: %w", err)
+			}
+		}
+		if checker.ClientSession != nil {
+			if err := checker.ClientSession.Match(event.ClientSession); err != nil {
+				return fmt.Errorf("ClientSession check failed: %w", err)
+			}
+		}
+		if checker.ServerSession != nil {
+			if err := checker.ServerSession.Match(event.ServerSession); err != nil {
+				return fmt.Errorf("ServerSession check failed: %w", err)
+			}
+		}
+		if checker.Certificates != nil {
+			if err := checker.Certificates.Check(event.Certificates); err != nil {
+				return fmt.Errorf("Certificates check failed: %w", err)
+			}
+		}
+		if checker.CertificateError != nil {
+			if err := checker.CertificateError.Check(&event.CertificateError); err != nil {
+				return fmt.Errorf("CertificateError check failed: %w", err)
+			}
+		}
+		if checker.ParserStateNext != nil {
+			if *checker.ParserStateNext != event.ParserStateNext {
+				return fmt.Errorf("ParserStateNext has value %d which does not match expected value %d", event.ParserStateNext, *checker.ParserStateNext)
+			}
+		}
+		if checker.ParserStateNeeded != nil {
+			if *checker.ParserStateNeeded != event.ParserStateNeeded {
+				return fmt.Errorf("ParserStateNeeded has value %d which does not match expected value %d", event.ParserStateNeeded, *checker.ParserStateNeeded)
+			}
+		}
+		if checker.ParserStateCsize != nil {
+			if *checker.ParserStateCsize != event.ParserStateCsize {
+				return fmt.Errorf("ParserStateCsize has value %d which does not match expected value %d", event.ParserStateCsize, *checker.ParserStateCsize)
+			}
+		}
+		if checker.ParserStateSkblen != nil {
+			if *checker.ParserStateSkblen != event.ParserStateSkblen {
+				return fmt.Errorf("ParserStateSkblen has value %d which does not match expected value %d", event.ParserStateSkblen, *checker.ParserStateSkblen)
+			}
+		}
+		if checker.ParserInternalState != nil {
+			if err := checker.ParserInternalState.Match(event.ParserInternalState); err != nil {
+				return fmt.Errorf("ParserInternalState check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("TlsChecker: SourceIp check failed: %w", err)
-		}
-	}
-	if checker.SourcePort != nil {
-		if event.SourcePort == nil {
-			return fmt.Errorf("TlsChecker: SourcePort is nil and does not match expected value %v", *checker.SourcePort)
-		}
-		if *checker.SourcePort != event.SourcePort.Value {
-			return fmt.Errorf("TlsChecker: SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("TlsChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationPort != nil {
-		if event.DestinationPort == nil {
-			return fmt.Errorf("TlsChecker: DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
-		}
-		if *checker.DestinationPort != event.DestinationPort.Value {
-			return fmt.Errorf("TlsChecker: DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
-		}
-	}
-	if checker.NegotiatedVersion != nil {
-		if err := checker.NegotiatedVersion.Match(event.NegotiatedVersion); err != nil {
-			return fmt.Errorf("TlsChecker: NegotiatedVersion check failed: %w", err)
-		}
-	}
-	if checker.SupportedVersions != nil {
-		if err := checker.SupportedVersions.Match(event.SupportedVersions); err != nil {
-			return fmt.Errorf("TlsChecker: SupportedVersions check failed: %w", err)
-		}
-	}
-	if checker.SniType != nil {
-		if err := checker.SniType.Match(event.SniType); err != nil {
-			return fmt.Errorf("TlsChecker: SniType check failed: %w", err)
-		}
-	}
-	if checker.SniName != nil {
-		if err := checker.SniName.Match(event.SniName); err != nil {
-			return fmt.Errorf("TlsChecker: SniName check failed: %w", err)
-		}
-	}
-	if checker.Cipher != nil {
-		if err := checker.Cipher.Match(event.Cipher); err != nil {
-			return fmt.Errorf("TlsChecker: Cipher check failed: %w", err)
-		}
-	}
-	if checker.ClientFlags != nil {
-		if err := checker.ClientFlags.Match(event.ClientFlags); err != nil {
-			return fmt.Errorf("TlsChecker: ClientFlags check failed: %w", err)
-		}
-	}
-	if checker.ServerFlags != nil {
-		if err := checker.ServerFlags.Match(event.ServerFlags); err != nil {
-			return fmt.Errorf("TlsChecker: ServerFlags check failed: %w", err)
-		}
-	}
-	if checker.ClientVersion != nil {
-		if err := checker.ClientVersion.Match(event.ClientVersion); err != nil {
-			return fmt.Errorf("TlsChecker: ClientVersion check failed: %w", err)
-		}
-	}
-	if checker.ServerVersion != nil {
-		if err := checker.ServerVersion.Match(event.ServerVersion); err != nil {
-			return fmt.Errorf("TlsChecker: ServerVersion check failed: %w", err)
-		}
-	}
-	if checker.ClientAlert != nil {
-		if err := checker.ClientAlert.Match(event.ClientAlert); err != nil {
-			return fmt.Errorf("TlsChecker: ClientAlert check failed: %w", err)
-		}
-	}
-	if checker.ServerAlert != nil {
-		if err := checker.ServerAlert.Match(event.ServerAlert); err != nil {
-			return fmt.Errorf("TlsChecker: ServerAlert check failed: %w", err)
-		}
-	}
-	if checker.ClientSession != nil {
-		if err := checker.ClientSession.Match(event.ClientSession); err != nil {
-			return fmt.Errorf("TlsChecker: ClientSession check failed: %w", err)
-		}
-	}
-	if checker.ServerSession != nil {
-		if err := checker.ServerSession.Match(event.ServerSession); err != nil {
-			return fmt.Errorf("TlsChecker: ServerSession check failed: %w", err)
-		}
-	}
-	if checker.Certificates != nil {
-		if err := checker.Certificates.Check(event.Certificates); err != nil {
-			return fmt.Errorf("TlsChecker: Certificates check failed: %w", err)
-		}
-	}
-	if checker.CertificateError != nil {
-		if err := checker.CertificateError.Check(&event.CertificateError); err != nil {
-			return fmt.Errorf("TlsChecker: CertificateError check failed: %w", err)
-		}
-	}
-	if checker.ParserStateNext != nil {
-		if *checker.ParserStateNext != event.ParserStateNext {
-			return fmt.Errorf("TlsChecker: ParserStateNext has value %d which does not match expected value %d", event.ParserStateNext, *checker.ParserStateNext)
-		}
-	}
-	if checker.ParserStateNeeded != nil {
-		if *checker.ParserStateNeeded != event.ParserStateNeeded {
-			return fmt.Errorf("TlsChecker: ParserStateNeeded has value %d which does not match expected value %d", event.ParserStateNeeded, *checker.ParserStateNeeded)
-		}
-	}
-	if checker.ParserStateCsize != nil {
-		if *checker.ParserStateCsize != event.ParserStateCsize {
-			return fmt.Errorf("TlsChecker: ParserStateCsize has value %d which does not match expected value %d", event.ParserStateCsize, *checker.ParserStateCsize)
-		}
-	}
-	if checker.ParserStateSkblen != nil {
-		if *checker.ParserStateSkblen != event.ParserStateSkblen {
-			return fmt.Errorf("TlsChecker: ParserStateSkblen has value %d which does not match expected value %d", event.ParserStateSkblen, *checker.ParserStateSkblen)
-		}
-	}
-	if checker.ParserInternalState != nil {
-		if err := checker.ParserInternalState.Match(event.ParserInternalState); err != nil {
-			return fmt.Errorf("TlsChecker: ParserInternalState check failed: %w", err)
-		}
-	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("TlsChecker: Parent check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3224,6 +3494,7 @@ func (checker *TlsChecker) FromTls(event *tetragon.Tls) *TlsChecker {
 
 // ProcessHttpChecker implements a checker struct to check a ProcessHttp event
 type ProcessHttpChecker struct {
+	CheckerName      string             `json:"checkerName"`
 	Process          *ProcessChecker    `json:"process,omitempty"`
 	Socket           *SockInfoChecker   `json:"socket,omitempty"`
 	Http             *HttpInfoChecker   `json:"http,omitempty"`
@@ -3250,45 +3521,61 @@ func (checker *ProcessHttpChecker) CheckResponse(response *tetragon.GetEventsRes
 }
 
 // NewProcessHttpChecker creates a new ProcessHttpChecker
-func NewProcessHttpChecker() *ProcessHttpChecker {
-	return &ProcessHttpChecker{}
+func NewProcessHttpChecker(name string) *ProcessHttpChecker {
+	return &ProcessHttpChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessHttpChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessHttpChecker) GetCheckerType() string {
+	return "ProcessHttpChecker"
 }
 
 // Check checks a ProcessHttp event
 func (checker *ProcessHttpChecker) Check(event *tetragon.ProcessHttp) error {
 	if event == nil {
-		return fmt.Errorf("ProcessHttpChecker: ProcessHttp event is nil")
+		return fmt.Errorf("%s: ProcessHttp event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Socket != nil {
+			if err := checker.Socket.Check(event.Socket); err != nil {
+				return fmt.Errorf("Socket check failed: %w", err)
+			}
+		}
+		if checker.Http != nil {
+			if err := checker.Http.Check(event.Http); err != nil {
+				return fmt.Errorf("Http check failed: %w", err)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Socket != nil {
-		if err := checker.Socket.Check(event.Socket); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: Socket check failed: %w", err)
-		}
-	}
-	if checker.Http != nil {
-		if err := checker.Http.Check(event.Http); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: Http check failed: %w", err)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessHttpChecker: Parent check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3365,6 +3652,7 @@ func (checker *ProcessHttpChecker) FromProcessHttp(event *tetragon.ProcessHttp) 
 
 // ProcessNetworkBurstChecker implements a checker struct to check a ProcessNetworkBurst event
 type ProcessNetworkBurstChecker struct {
+	CheckerName string                       `json:"checkerName"`
 	Process     *ProcessChecker              `json:"process,omitempty"`
 	Parent      *ProcessChecker              `json:"parent,omitempty"`
 	Protocol    *stringmatcher.StringMatcher `json:"protocol,omitempty"`
@@ -3394,60 +3682,76 @@ func (checker *ProcessNetworkBurstChecker) CheckResponse(response *tetragon.GetE
 }
 
 // NewProcessNetworkBurstChecker creates a new ProcessNetworkBurstChecker
-func NewProcessNetworkBurstChecker() *ProcessNetworkBurstChecker {
-	return &ProcessNetworkBurstChecker{}
+func NewProcessNetworkBurstChecker(name string) *ProcessNetworkBurstChecker {
+	return &ProcessNetworkBurstChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessNetworkBurstChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessNetworkBurstChecker) GetCheckerType() string {
+	return "ProcessNetworkBurstChecker"
 }
 
 // Check checks a ProcessNetworkBurst event
 func (checker *ProcessNetworkBurstChecker) Check(event *tetragon.ProcessNetworkBurst) error {
 	if event == nil {
-		return fmt.Errorf("ProcessNetworkBurstChecker: ProcessNetworkBurst event is nil")
+		return fmt.Errorf("%s: ProcessNetworkBurst event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessNetworkBurstChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Match(event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.Direction != nil {
+			if err := checker.Direction.Match(event.Direction); err != nil {
+				return fmt.Errorf("Direction check failed: %w", err)
+			}
+		}
+		if checker.BurstState != nil {
+			if err := checker.BurstState.Match(event.BurstState); err != nil {
+				return fmt.Errorf("BurstState check failed: %w", err)
+			}
+		}
+		if checker.WindowSize != nil {
+			if *checker.WindowSize != event.WindowSize {
+				return fmt.Errorf("WindowSize has value %d which does not match expected value %d", event.WindowSize, *checker.WindowSize)
+			}
+		}
+		if checker.HistAvg != nil {
+			if *checker.HistAvg != event.HistAvg {
+				return fmt.Errorf("HistAvg has value %d which does not match expected value %d", event.HistAvg, *checker.HistAvg)
+			}
+		}
+		if checker.HistTrigger != nil {
+			if *checker.HistTrigger != event.HistTrigger {
+				return fmt.Errorf("HistTrigger has value %d which does not match expected value %d", event.HistTrigger, *checker.HistTrigger)
+			}
+		}
+		if checker.WindowAvg != nil {
+			if *checker.WindowAvg != event.WindowAvg {
+				return fmt.Errorf("WindowAvg has value %d which does not match expected value %d", event.WindowAvg, *checker.WindowAvg)
+			}
+		}
+		return nil
 	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessNetworkBurstChecker: Parent check failed: %w", err)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Match(event.Protocol); err != nil {
-			return fmt.Errorf("ProcessNetworkBurstChecker: Protocol check failed: %w", err)
-		}
-	}
-	if checker.Direction != nil {
-		if err := checker.Direction.Match(event.Direction); err != nil {
-			return fmt.Errorf("ProcessNetworkBurstChecker: Direction check failed: %w", err)
-		}
-	}
-	if checker.BurstState != nil {
-		if err := checker.BurstState.Match(event.BurstState); err != nil {
-			return fmt.Errorf("ProcessNetworkBurstChecker: BurstState check failed: %w", err)
-		}
-	}
-	if checker.WindowSize != nil {
-		if *checker.WindowSize != event.WindowSize {
-			return fmt.Errorf("ProcessNetworkBurstChecker: WindowSize has value %d which does not match expected value %d", event.WindowSize, *checker.WindowSize)
-		}
-	}
-	if checker.HistAvg != nil {
-		if *checker.HistAvg != event.HistAvg {
-			return fmt.Errorf("ProcessNetworkBurstChecker: HistAvg has value %d which does not match expected value %d", event.HistAvg, *checker.HistAvg)
-		}
-	}
-	if checker.HistTrigger != nil {
-		if *checker.HistTrigger != event.HistTrigger {
-			return fmt.Errorf("ProcessNetworkBurstChecker: HistTrigger has value %d which does not match expected value %d", event.HistTrigger, *checker.HistTrigger)
-		}
-	}
-	if checker.WindowAvg != nil {
-		if *checker.WindowAvg != event.WindowAvg {
-			return fmt.Errorf("ProcessNetworkBurstChecker: WindowAvg has value %d which does not match expected value %d", event.WindowAvg, *checker.WindowAvg)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3541,6 +3845,7 @@ func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *tetrag
 
 // ProcessDnsChecker implements a checker struct to check a ProcessDns event
 type ProcessDnsChecker struct {
+	CheckerName      string             `json:"checkerName"`
 	Process          *ProcessChecker    `json:"process,omitempty"`
 	Socket           *SockInfoChecker   `json:"socket,omitempty"`
 	Dns              *DnsInfoChecker    `json:"dns,omitempty"`
@@ -3567,45 +3872,61 @@ func (checker *ProcessDnsChecker) CheckResponse(response *tetragon.GetEventsResp
 }
 
 // NewProcessDnsChecker creates a new ProcessDnsChecker
-func NewProcessDnsChecker() *ProcessDnsChecker {
-	return &ProcessDnsChecker{}
+func NewProcessDnsChecker(name string) *ProcessDnsChecker {
+	return &ProcessDnsChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessDnsChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessDnsChecker) GetCheckerType() string {
+	return "ProcessDnsChecker"
 }
 
 // Check checks a ProcessDns event
 func (checker *ProcessDnsChecker) Check(event *tetragon.ProcessDns) error {
 	if event == nil {
-		return fmt.Errorf("ProcessDnsChecker: ProcessDns event is nil")
+		return fmt.Errorf("%s: ProcessDns event is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Process != nil {
-		if err := checker.Process.Check(event.Process); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: Process check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
 		}
+		if checker.Socket != nil {
+			if err := checker.Socket.Check(event.Socket); err != nil {
+				return fmt.Errorf("Socket check failed: %w", err)
+			}
+		}
+		if checker.Dns != nil {
+			if err := checker.Dns.Check(event.Dns); err != nil {
+				return fmt.Errorf("Dns check failed: %w", err)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Socket != nil {
-		if err := checker.Socket.Check(event.Socket); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: Socket check failed: %w", err)
-		}
-	}
-	if checker.Dns != nil {
-		if err := checker.Dns.Check(event.Dns); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: Dns check failed: %w", err)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: DestinationPod check failed: %w", err)
-		}
-	}
-	if checker.Parent != nil {
-		if err := checker.Parent.Check(event.Parent); err != nil {
-			return fmt.Errorf("ProcessDnsChecker: Parent check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3691,21 +4012,32 @@ func NewImageChecker() *ImageChecker {
 	return &ImageChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *ImageChecker) GetCheckerType() string {
+	return "ImageChecker"
+}
+
 // Check checks a Image field
 func (checker *ImageChecker) Check(event *tetragon.Image) error {
 	if event == nil {
-		return fmt.Errorf("ImageChecker: Image field is nil")
+		return fmt.Errorf("%s: Image field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Id != nil {
-		if err := checker.Id.Match(event.Id); err != nil {
-			return fmt.Errorf("ImageChecker: Id check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Id != nil {
+			if err := checker.Id.Match(event.Id); err != nil {
+				return fmt.Errorf("Id check failed: %w", err)
+			}
 		}
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("ImageChecker: Name check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3747,44 +4079,55 @@ func NewContainerChecker() *ContainerChecker {
 	return &ContainerChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *ContainerChecker) GetCheckerType() string {
+	return "ContainerChecker"
+}
+
 // Check checks a Container field
 func (checker *ContainerChecker) Check(event *tetragon.Container) error {
 	if event == nil {
-		return fmt.Errorf("ContainerChecker: Container field is nil")
+		return fmt.Errorf("%s: Container field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Id != nil {
-		if err := checker.Id.Match(event.Id); err != nil {
-			return fmt.Errorf("ContainerChecker: Id check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Id != nil {
+			if err := checker.Id.Match(event.Id); err != nil {
+				return fmt.Errorf("Id check failed: %w", err)
+			}
 		}
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
+		}
+		if checker.Image != nil {
+			if err := checker.Image.Check(event.Image); err != nil {
+				return fmt.Errorf("Image check failed: %w", err)
+			}
+		}
+		if checker.StartTime != nil {
+			if err := checker.StartTime.Match(event.StartTime); err != nil {
+				return fmt.Errorf("StartTime check failed: %w", err)
+			}
+		}
+		if checker.Pid != nil {
+			if event.Pid == nil {
+				return fmt.Errorf("Pid is nil and does not match expected value %v", *checker.Pid)
+			}
+			if *checker.Pid != event.Pid.Value {
+				return fmt.Errorf("Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
+			}
+		}
+		if checker.MaybeExecProbe != nil {
+			if *checker.MaybeExecProbe != event.MaybeExecProbe {
+				return fmt.Errorf("MaybeExecProbe has value %t which does not match expected value %t", event.MaybeExecProbe, *checker.MaybeExecProbe)
+			}
+		}
+		return nil
 	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("ContainerChecker: Name check failed: %w", err)
-		}
-	}
-	if checker.Image != nil {
-		if err := checker.Image.Check(event.Image); err != nil {
-			return fmt.Errorf("ContainerChecker: Image check failed: %w", err)
-		}
-	}
-	if checker.StartTime != nil {
-		if err := checker.StartTime.Match(event.StartTime); err != nil {
-			return fmt.Errorf("ContainerChecker: StartTime check failed: %w", err)
-		}
-	}
-	if checker.Pid != nil {
-		if event.Pid == nil {
-			return fmt.Errorf("ContainerChecker: Pid is nil and does not match expected value %v", *checker.Pid)
-		}
-		if *checker.Pid != event.Pid.Value {
-			return fmt.Errorf("ContainerChecker: Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
-		}
-	}
-	if checker.MaybeExecProbe != nil {
-		if *checker.MaybeExecProbe != event.MaybeExecProbe {
-			return fmt.Errorf("ContainerChecker: MaybeExecProbe has value %t which does not match expected value %t", event.MaybeExecProbe, *checker.MaybeExecProbe)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -3862,89 +4205,100 @@ func NewPodChecker() *PodChecker {
 	return &PodChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *PodChecker) GetCheckerType() string {
+	return "PodChecker"
+}
+
 // Check checks a Pod field
 func (checker *PodChecker) Check(event *tetragon.Pod) error {
 	if event == nil {
-		return fmt.Errorf("PodChecker: Pod field is nil")
+		return fmt.Errorf("%s: Pod field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Namespace != nil {
-		if err := checker.Namespace.Match(event.Namespace); err != nil {
-			return fmt.Errorf("PodChecker: Namespace check failed: %w", err)
-		}
-	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("PodChecker: Name check failed: %w", err)
-		}
-	}
-	{
-		values := make(map[string]string)
-		for _, s := range event.Labels {
-			// Split out key,value pair
-			kv := strings.SplitN(s, "=", 2)
-			if len(kv) != 2 {
-				// If we wanted to match an invalid label, error out
-				if _, ok := checker.Labels[s]; ok {
-					return fmt.Errorf("PodChecker: Label %s is in an invalid format (want key=value)", s)
-				}
-				continue
+	fieldChecks := func() error {
+		if checker.Namespace != nil {
+			if err := checker.Namespace.Match(event.Namespace); err != nil {
+				return fmt.Errorf("Namespace check failed: %w", err)
 			}
-			values[kv[0]] = kv[1]
 		}
-		var unmatched []string
-		matched := make(map[string]struct{})
-		for key, value := range values {
-			if len(checker.Labels) > 0 {
-				// Attempt to grab the matcher for this key
-				if matcher, ok := checker.Labels[key]; ok {
-					if err := matcher.Match(value); err != nil {
-						return fmt.Errorf("PodChecker: Labels[%s] (%s=%s) check failed: %w", key, key, value, err)
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
+		}
+		{
+			values := make(map[string]string)
+			for _, s := range event.Labels {
+				// Split out key,value pair
+				kv := strings.SplitN(s, "=", 2)
+				if len(kv) != 2 {
+					// If we wanted to match an invalid label, error out
+					if _, ok := checker.Labels[s]; ok {
+						return fmt.Errorf("PodChecker: Label %s is in an invalid format (want key=value)", s)
 					}
-					matched[key] = struct{}{}
+					continue
 				}
+				values[kv[0]] = kv[1]
 			}
-		}
-
-		// See if we have any unmatched values that we wanted to match
-		if len(matched) != len(checker.Labels) {
-			for k := range checker.Labels {
-				if _, ok := matched[k]; !ok {
-					unmatched = append(unmatched, k)
-				}
-			}
-			return fmt.Errorf("PodChecker: Labels unmatched: %v", unmatched)
-		}
-	}
-	if checker.Container != nil {
-		if err := checker.Container.Check(event.Container); err != nil {
-			return fmt.Errorf("PodChecker: Container check failed: %w", err)
-		}
-	}
-	{
-		var unmatched []string
-		matched := make(map[string]struct{})
-		for key, value := range event.PodLabels {
-			if len(checker.PodLabels) > 0 {
-				// Attempt to grab the matcher for this key
-				if matcher, ok := checker.PodLabels[key]; ok {
-					if err := matcher.Match(value); err != nil {
-						return fmt.Errorf("PodChecker: PodLabels[%s] (%s=%s) check failed: %w", key, key, value, err)
+			var unmatched []string
+			matched := make(map[string]struct{})
+			for key, value := range values {
+				if len(checker.Labels) > 0 {
+					// Attempt to grab the matcher for this key
+					if matcher, ok := checker.Labels[key]; ok {
+						if err := matcher.Match(value); err != nil {
+							return fmt.Errorf("Labels[%s] (%s=%s) check failed: %w", key, key, value, err)
+						}
+						matched[key] = struct{}{}
 					}
-					matched[key] = struct{}{}
 				}
 			}
-		}
 
-		// See if we have any unmatched values that we wanted to match
-		if len(matched) != len(checker.PodLabels) {
-			for k := range checker.PodLabels {
-				if _, ok := matched[k]; !ok {
-					unmatched = append(unmatched, k)
+			// See if we have any unmatched values that we wanted to match
+			if len(matched) != len(checker.Labels) {
+				for k := range checker.Labels {
+					if _, ok := matched[k]; !ok {
+						unmatched = append(unmatched, k)
+					}
+				}
+				return fmt.Errorf("Labels unmatched: %v", unmatched)
+			}
+		}
+		if checker.Container != nil {
+			if err := checker.Container.Check(event.Container); err != nil {
+				return fmt.Errorf("Container check failed: %w", err)
+			}
+		}
+		{
+			var unmatched []string
+			matched := make(map[string]struct{})
+			for key, value := range event.PodLabels {
+				if len(checker.PodLabels) > 0 {
+					// Attempt to grab the matcher for this key
+					if matcher, ok := checker.PodLabels[key]; ok {
+						if err := matcher.Match(value); err != nil {
+							return fmt.Errorf("PodLabels[%s] (%s=%s) check failed: %w", key, key, value, err)
+						}
+						matched[key] = struct{}{}
+					}
 				}
 			}
-			return fmt.Errorf("PodChecker: PodLabels unmatched: %v", unmatched)
+
+			// See if we have any unmatched values that we wanted to match
+			if len(matched) != len(checker.PodLabels) {
+				for k := range checker.PodLabels {
+					if _, ok := matched[k]; !ok {
+						unmatched = append(unmatched, k)
+					}
+				}
+				return fmt.Errorf("PodLabels unmatched: %v", unmatched)
+			}
 		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4006,26 +4360,37 @@ func NewCapabilitiesChecker() *CapabilitiesChecker {
 	return &CapabilitiesChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *CapabilitiesChecker) GetCheckerType() string {
+	return "CapabilitiesChecker"
+}
+
 // Check checks a Capabilities field
 func (checker *CapabilitiesChecker) Check(event *tetragon.Capabilities) error {
 	if event == nil {
-		return fmt.Errorf("CapabilitiesChecker: Capabilities field is nil")
+		return fmt.Errorf("%s: Capabilities field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Permitted != nil {
-		if err := checker.Permitted.Check(event.Permitted); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Permitted check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Permitted != nil {
+			if err := checker.Permitted.Check(event.Permitted); err != nil {
+				return fmt.Errorf("Permitted check failed: %w", err)
+			}
 		}
+		if checker.Effective != nil {
+			if err := checker.Effective.Check(event.Effective); err != nil {
+				return fmt.Errorf("Effective check failed: %w", err)
+			}
+		}
+		if checker.Inheritable != nil {
+			if err := checker.Inheritable.Check(event.Inheritable); err != nil {
+				return fmt.Errorf("Inheritable check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Effective != nil {
-		if err := checker.Effective.Check(event.Effective); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Effective check failed: %w", err)
-		}
-	}
-	if checker.Inheritable != nil {
-		if err := checker.Inheritable.Check(event.Inheritable); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Inheritable check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4132,7 +4497,7 @@ func (checker *CapabilitiesTypeListMatcher) Check(values []tetragon.Capabilities
 func (checker *CapabilitiesTypeListMatcher) orderedCheck(values []tetragon.CapabilitiesType) error {
 	innerCheck := func(check *CapabilitiesTypeChecker, value tetragon.CapabilitiesType) error {
 		if err := check.Check(&value); err != nil {
-			return fmt.Errorf("CapabilitiesTypeListMatcher: Permitted check failed: %w", err)
+			return fmt.Errorf("Permitted check failed: %w", err)
 		}
 		return nil
 	}
@@ -4164,7 +4529,7 @@ func (checker *CapabilitiesTypeListMatcher) unorderedCheck(values []tetragon.Cap
 func (checker *CapabilitiesTypeListMatcher) subsetCheck(values []tetragon.CapabilitiesType) error {
 	innerCheck := func(check *CapabilitiesTypeChecker, value tetragon.CapabilitiesType) error {
 		if err := check.Check(&value); err != nil {
-			return fmt.Errorf("CapabilitiesTypeListMatcher: Permitted check failed: %w", err)
+			return fmt.Errorf("Permitted check failed: %w", err)
 		}
 		return nil
 	}
@@ -4200,21 +4565,32 @@ func NewNamespaceChecker() *NamespaceChecker {
 	return &NamespaceChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *NamespaceChecker) GetCheckerType() string {
+	return "NamespaceChecker"
+}
+
 // Check checks a Namespace field
 func (checker *NamespaceChecker) Check(event *tetragon.Namespace) error {
 	if event == nil {
-		return fmt.Errorf("NamespaceChecker: Namespace field is nil")
+		return fmt.Errorf("%s: Namespace field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Inum != nil {
-		if *checker.Inum != event.Inum {
-			return fmt.Errorf("NamespaceChecker: Inum has value %d which does not match expected value %d", event.Inum, *checker.Inum)
+	fieldChecks := func() error {
+		if checker.Inum != nil {
+			if *checker.Inum != event.Inum {
+				return fmt.Errorf("Inum has value %d which does not match expected value %d", event.Inum, *checker.Inum)
+			}
 		}
+		if checker.IsHost != nil {
+			if *checker.IsHost != event.IsHost {
+				return fmt.Errorf("IsHost has value %t which does not match expected value %t", event.IsHost, *checker.IsHost)
+			}
+		}
+		return nil
 	}
-	if checker.IsHost != nil {
-		if *checker.IsHost != event.IsHost {
-			return fmt.Errorf("NamespaceChecker: IsHost has value %t which does not match expected value %t", event.IsHost, *checker.IsHost)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4266,61 +4642,72 @@ func NewNamespacesChecker() *NamespacesChecker {
 	return &NamespacesChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *NamespacesChecker) GetCheckerType() string {
+	return "NamespacesChecker"
+}
+
 // Check checks a Namespaces field
 func (checker *NamespacesChecker) Check(event *tetragon.Namespaces) error {
 	if event == nil {
-		return fmt.Errorf("NamespacesChecker: Namespaces field is nil")
+		return fmt.Errorf("%s: Namespaces field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Uts != nil {
-		if err := checker.Uts.Check(event.Uts); err != nil {
-			return fmt.Errorf("NamespacesChecker: Uts check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Uts != nil {
+			if err := checker.Uts.Check(event.Uts); err != nil {
+				return fmt.Errorf("Uts check failed: %w", err)
+			}
 		}
+		if checker.Ipc != nil {
+			if err := checker.Ipc.Check(event.Ipc); err != nil {
+				return fmt.Errorf("Ipc check failed: %w", err)
+			}
+		}
+		if checker.Mnt != nil {
+			if err := checker.Mnt.Check(event.Mnt); err != nil {
+				return fmt.Errorf("Mnt check failed: %w", err)
+			}
+		}
+		if checker.Pid != nil {
+			if err := checker.Pid.Check(event.Pid); err != nil {
+				return fmt.Errorf("Pid check failed: %w", err)
+			}
+		}
+		if checker.PidForChildren != nil {
+			if err := checker.PidForChildren.Check(event.PidForChildren); err != nil {
+				return fmt.Errorf("PidForChildren check failed: %w", err)
+			}
+		}
+		if checker.Net != nil {
+			if err := checker.Net.Check(event.Net); err != nil {
+				return fmt.Errorf("Net check failed: %w", err)
+			}
+		}
+		if checker.Time != nil {
+			if err := checker.Time.Check(event.Time); err != nil {
+				return fmt.Errorf("Time check failed: %w", err)
+			}
+		}
+		if checker.TimeForChildren != nil {
+			if err := checker.TimeForChildren.Check(event.TimeForChildren); err != nil {
+				return fmt.Errorf("TimeForChildren check failed: %w", err)
+			}
+		}
+		if checker.Cgroup != nil {
+			if err := checker.Cgroup.Check(event.Cgroup); err != nil {
+				return fmt.Errorf("Cgroup check failed: %w", err)
+			}
+		}
+		if checker.User != nil {
+			if err := checker.User.Check(event.User); err != nil {
+				return fmt.Errorf("User check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Ipc != nil {
-		if err := checker.Ipc.Check(event.Ipc); err != nil {
-			return fmt.Errorf("NamespacesChecker: Ipc check failed: %w", err)
-		}
-	}
-	if checker.Mnt != nil {
-		if err := checker.Mnt.Check(event.Mnt); err != nil {
-			return fmt.Errorf("NamespacesChecker: Mnt check failed: %w", err)
-		}
-	}
-	if checker.Pid != nil {
-		if err := checker.Pid.Check(event.Pid); err != nil {
-			return fmt.Errorf("NamespacesChecker: Pid check failed: %w", err)
-		}
-	}
-	if checker.PidForChildren != nil {
-		if err := checker.PidForChildren.Check(event.PidForChildren); err != nil {
-			return fmt.Errorf("NamespacesChecker: PidForChildren check failed: %w", err)
-		}
-	}
-	if checker.Net != nil {
-		if err := checker.Net.Check(event.Net); err != nil {
-			return fmt.Errorf("NamespacesChecker: Net check failed: %w", err)
-		}
-	}
-	if checker.Time != nil {
-		if err := checker.Time.Check(event.Time); err != nil {
-			return fmt.Errorf("NamespacesChecker: Time check failed: %w", err)
-		}
-	}
-	if checker.TimeForChildren != nil {
-		if err := checker.TimeForChildren.Check(event.TimeForChildren); err != nil {
-			return fmt.Errorf("NamespacesChecker: TimeForChildren check failed: %w", err)
-		}
-	}
-	if checker.Cgroup != nil {
-		if err := checker.Cgroup.Check(event.Cgroup); err != nil {
-			return fmt.Errorf("NamespacesChecker: Cgroup check failed: %w", err)
-		}
-	}
-	if checker.User != nil {
-		if err := checker.User.Check(event.User); err != nil {
-			return fmt.Errorf("NamespacesChecker: User check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4447,95 +4834,106 @@ func NewProcessChecker() *ProcessChecker {
 	return &ProcessChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *ProcessChecker) GetCheckerType() string {
+	return "ProcessChecker"
+}
+
 // Check checks a Process field
 func (checker *ProcessChecker) Check(event *tetragon.Process) error {
 	if event == nil {
-		return fmt.Errorf("ProcessChecker: Process field is nil")
+		return fmt.Errorf("%s: Process field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.ExecId != nil {
-		if err := checker.ExecId.Match(event.ExecId); err != nil {
-			return fmt.Errorf("ProcessChecker: ExecId check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.ExecId != nil {
+			if err := checker.ExecId.Match(event.ExecId); err != nil {
+				return fmt.Errorf("ExecId check failed: %w", err)
+			}
 		}
+		if checker.Pid != nil {
+			if event.Pid == nil {
+				return fmt.Errorf("Pid is nil and does not match expected value %v", *checker.Pid)
+			}
+			if *checker.Pid != event.Pid.Value {
+				return fmt.Errorf("Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
+			}
+		}
+		if checker.Uid != nil {
+			if event.Uid == nil {
+				return fmt.Errorf("Uid is nil and does not match expected value %v", *checker.Uid)
+			}
+			if *checker.Uid != event.Uid.Value {
+				return fmt.Errorf("Uid has value %v which does not match expected value %v", event.Uid.Value, *checker.Uid)
+			}
+		}
+		if checker.Cwd != nil {
+			if err := checker.Cwd.Match(event.Cwd); err != nil {
+				return fmt.Errorf("Cwd check failed: %w", err)
+			}
+		}
+		if checker.Binary != nil {
+			if err := checker.Binary.Match(event.Binary); err != nil {
+				return fmt.Errorf("Binary check failed: %w", err)
+			}
+		}
+		if checker.Arguments != nil {
+			if err := checker.Arguments.Match(event.Arguments); err != nil {
+				return fmt.Errorf("Arguments check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		if checker.StartTime != nil {
+			if err := checker.StartTime.Match(event.StartTime); err != nil {
+				return fmt.Errorf("StartTime check failed: %w", err)
+			}
+		}
+		if checker.Auid != nil {
+			if event.Auid == nil {
+				return fmt.Errorf("Auid is nil and does not match expected value %v", *checker.Auid)
+			}
+			if *checker.Auid != event.Auid.Value {
+				return fmt.Errorf("Auid has value %v which does not match expected value %v", event.Auid.Value, *checker.Auid)
+			}
+		}
+		if checker.Pod != nil {
+			if err := checker.Pod.Check(event.Pod); err != nil {
+				return fmt.Errorf("Pod check failed: %w", err)
+			}
+		}
+		if checker.Docker != nil {
+			if err := checker.Docker.Match(event.Docker); err != nil {
+				return fmt.Errorf("Docker check failed: %w", err)
+			}
+		}
+		if checker.ParentExecId != nil {
+			if err := checker.ParentExecId.Match(event.ParentExecId); err != nil {
+				return fmt.Errorf("ParentExecId check failed: %w", err)
+			}
+		}
+		if checker.Refcnt != nil {
+			if *checker.Refcnt != event.Refcnt {
+				return fmt.Errorf("Refcnt has value %d which does not match expected value %d", event.Refcnt, *checker.Refcnt)
+			}
+		}
+		if checker.Cap != nil {
+			if err := checker.Cap.Check(event.Cap); err != nil {
+				return fmt.Errorf("Cap check failed: %w", err)
+			}
+		}
+		if checker.Ns != nil {
+			if err := checker.Ns.Check(event.Ns); err != nil {
+				return fmt.Errorf("Ns check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Pid != nil {
-		if event.Pid == nil {
-			return fmt.Errorf("ProcessChecker: Pid is nil and does not match expected value %v", *checker.Pid)
-		}
-		if *checker.Pid != event.Pid.Value {
-			return fmt.Errorf("ProcessChecker: Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
-		}
-	}
-	if checker.Uid != nil {
-		if event.Uid == nil {
-			return fmt.Errorf("ProcessChecker: Uid is nil and does not match expected value %v", *checker.Uid)
-		}
-		if *checker.Uid != event.Uid.Value {
-			return fmt.Errorf("ProcessChecker: Uid has value %v which does not match expected value %v", event.Uid.Value, *checker.Uid)
-		}
-	}
-	if checker.Cwd != nil {
-		if err := checker.Cwd.Match(event.Cwd); err != nil {
-			return fmt.Errorf("ProcessChecker: Cwd check failed: %w", err)
-		}
-	}
-	if checker.Binary != nil {
-		if err := checker.Binary.Match(event.Binary); err != nil {
-			return fmt.Errorf("ProcessChecker: Binary check failed: %w", err)
-		}
-	}
-	if checker.Arguments != nil {
-		if err := checker.Arguments.Match(event.Arguments); err != nil {
-			return fmt.Errorf("ProcessChecker: Arguments check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("ProcessChecker: Flags check failed: %w", err)
-		}
-	}
-	if checker.StartTime != nil {
-		if err := checker.StartTime.Match(event.StartTime); err != nil {
-			return fmt.Errorf("ProcessChecker: StartTime check failed: %w", err)
-		}
-	}
-	if checker.Auid != nil {
-		if event.Auid == nil {
-			return fmt.Errorf("ProcessChecker: Auid is nil and does not match expected value %v", *checker.Auid)
-		}
-		if *checker.Auid != event.Auid.Value {
-			return fmt.Errorf("ProcessChecker: Auid has value %v which does not match expected value %v", event.Auid.Value, *checker.Auid)
-		}
-	}
-	if checker.Pod != nil {
-		if err := checker.Pod.Check(event.Pod); err != nil {
-			return fmt.Errorf("ProcessChecker: Pod check failed: %w", err)
-		}
-	}
-	if checker.Docker != nil {
-		if err := checker.Docker.Match(event.Docker); err != nil {
-			return fmt.Errorf("ProcessChecker: Docker check failed: %w", err)
-		}
-	}
-	if checker.ParentExecId != nil {
-		if err := checker.ParentExecId.Match(event.ParentExecId); err != nil {
-			return fmt.Errorf("ProcessChecker: ParentExecId check failed: %w", err)
-		}
-	}
-	if checker.Refcnt != nil {
-		if *checker.Refcnt != event.Refcnt {
-			return fmt.Errorf("ProcessChecker: Refcnt has value %d which does not match expected value %d", event.Refcnt, *checker.Refcnt)
-		}
-	}
-	if checker.Cap != nil {
-		if err := checker.Cap.Check(event.Cap); err != nil {
-			return fmt.Errorf("ProcessChecker: Cap check failed: %w", err)
-		}
-	}
-	if checker.Ns != nil {
-		if err := checker.Ns.Check(event.Ns); err != nil {
-			return fmt.Errorf("ProcessChecker: Ns check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4690,56 +5088,67 @@ func NewKprobeSockChecker() *KprobeSockChecker {
 	return &KprobeSockChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeSockChecker) GetCheckerType() string {
+	return "KprobeSockChecker"
+}
+
 // Check checks a KprobeSock field
 func (checker *KprobeSockChecker) Check(event *tetragon.KprobeSock) error {
 	if event == nil {
-		return fmt.Errorf("KprobeSockChecker: KprobeSock field is nil")
+		return fmt.Errorf("%s: KprobeSock field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Family != nil {
-		if err := checker.Family.Match(event.Family); err != nil {
-			return fmt.Errorf("KprobeSockChecker: Family check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Family != nil {
+			if err := checker.Family.Match(event.Family); err != nil {
+				return fmt.Errorf("Family check failed: %w", err)
+			}
 		}
+		if checker.Type != nil {
+			if err := checker.Type.Match(event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Match(event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.Mark != nil {
+			if *checker.Mark != event.Mark {
+				return fmt.Errorf("Mark has value %d which does not match expected value %d", event.Mark, *checker.Mark)
+			}
+		}
+		if checker.Priority != nil {
+			if *checker.Priority != event.Priority {
+				return fmt.Errorf("Priority has value %d which does not match expected value %d", event.Priority, *checker.Priority)
+			}
+		}
+		if checker.Saddr != nil {
+			if err := checker.Saddr.Match(event.Saddr); err != nil {
+				return fmt.Errorf("Saddr check failed: %w", err)
+			}
+		}
+		if checker.Daddr != nil {
+			if err := checker.Daddr.Match(event.Daddr); err != nil {
+				return fmt.Errorf("Daddr check failed: %w", err)
+			}
+		}
+		if checker.Sport != nil {
+			if *checker.Sport != event.Sport {
+				return fmt.Errorf("Sport has value %d which does not match expected value %d", event.Sport, *checker.Sport)
+			}
+		}
+		if checker.Dport != nil {
+			if *checker.Dport != event.Dport {
+				return fmt.Errorf("Dport has value %d which does not match expected value %d", event.Dport, *checker.Dport)
+			}
+		}
+		return nil
 	}
-	if checker.Type != nil {
-		if err := checker.Type.Match(event.Type); err != nil {
-			return fmt.Errorf("KprobeSockChecker: Type check failed: %w", err)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Match(event.Protocol); err != nil {
-			return fmt.Errorf("KprobeSockChecker: Protocol check failed: %w", err)
-		}
-	}
-	if checker.Mark != nil {
-		if *checker.Mark != event.Mark {
-			return fmt.Errorf("KprobeSockChecker: Mark has value %d which does not match expected value %d", event.Mark, *checker.Mark)
-		}
-	}
-	if checker.Priority != nil {
-		if *checker.Priority != event.Priority {
-			return fmt.Errorf("KprobeSockChecker: Priority has value %d which does not match expected value %d", event.Priority, *checker.Priority)
-		}
-	}
-	if checker.Saddr != nil {
-		if err := checker.Saddr.Match(event.Saddr); err != nil {
-			return fmt.Errorf("KprobeSockChecker: Saddr check failed: %w", err)
-		}
-	}
-	if checker.Daddr != nil {
-		if err := checker.Daddr.Match(event.Daddr); err != nil {
-			return fmt.Errorf("KprobeSockChecker: Daddr check failed: %w", err)
-		}
-	}
-	if checker.Sport != nil {
-		if *checker.Sport != event.Sport {
-			return fmt.Errorf("KprobeSockChecker: Sport has value %d which does not match expected value %d", event.Sport, *checker.Sport)
-		}
-	}
-	if checker.Dport != nil {
-		if *checker.Dport != event.Dport {
-			return fmt.Errorf("KprobeSockChecker: Dport has value %d which does not match expected value %d", event.Dport, *checker.Dport)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -4847,66 +5256,77 @@ func NewKprobeSkbChecker() *KprobeSkbChecker {
 	return &KprobeSkbChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeSkbChecker) GetCheckerType() string {
+	return "KprobeSkbChecker"
+}
+
 // Check checks a KprobeSkb field
 func (checker *KprobeSkbChecker) Check(event *tetragon.KprobeSkb) error {
 	if event == nil {
-		return fmt.Errorf("KprobeSkbChecker: KprobeSkb field is nil")
+		return fmt.Errorf("%s: KprobeSkb field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Hash != nil {
-		if *checker.Hash != event.Hash {
-			return fmt.Errorf("KprobeSkbChecker: Hash has value %d which does not match expected value %d", event.Hash, *checker.Hash)
+	fieldChecks := func() error {
+		if checker.Hash != nil {
+			if *checker.Hash != event.Hash {
+				return fmt.Errorf("Hash has value %d which does not match expected value %d", event.Hash, *checker.Hash)
+			}
 		}
+		if checker.Len != nil {
+			if *checker.Len != event.Len {
+				return fmt.Errorf("Len has value %d which does not match expected value %d", event.Len, *checker.Len)
+			}
+		}
+		if checker.Priority != nil {
+			if *checker.Priority != event.Priority {
+				return fmt.Errorf("Priority has value %d which does not match expected value %d", event.Priority, *checker.Priority)
+			}
+		}
+		if checker.Mark != nil {
+			if *checker.Mark != event.Mark {
+				return fmt.Errorf("Mark has value %d which does not match expected value %d", event.Mark, *checker.Mark)
+			}
+		}
+		if checker.Saddr != nil {
+			if err := checker.Saddr.Match(event.Saddr); err != nil {
+				return fmt.Errorf("Saddr check failed: %w", err)
+			}
+		}
+		if checker.Daddr != nil {
+			if err := checker.Daddr.Match(event.Daddr); err != nil {
+				return fmt.Errorf("Daddr check failed: %w", err)
+			}
+		}
+		if checker.Sport != nil {
+			if *checker.Sport != event.Sport {
+				return fmt.Errorf("Sport has value %d which does not match expected value %d", event.Sport, *checker.Sport)
+			}
+		}
+		if checker.Dport != nil {
+			if *checker.Dport != event.Dport {
+				return fmt.Errorf("Dport has value %d which does not match expected value %d", event.Dport, *checker.Dport)
+			}
+		}
+		if checker.Proto != nil {
+			if *checker.Proto != event.Proto {
+				return fmt.Errorf("Proto has value %d which does not match expected value %d", event.Proto, *checker.Proto)
+			}
+		}
+		if checker.SecPathLen != nil {
+			if *checker.SecPathLen != event.SecPathLen {
+				return fmt.Errorf("SecPathLen has value %d which does not match expected value %d", event.SecPathLen, *checker.SecPathLen)
+			}
+		}
+		if checker.SecPathOlen != nil {
+			if *checker.SecPathOlen != event.SecPathOlen {
+				return fmt.Errorf("SecPathOlen has value %d which does not match expected value %d", event.SecPathOlen, *checker.SecPathOlen)
+			}
+		}
+		return nil
 	}
-	if checker.Len != nil {
-		if *checker.Len != event.Len {
-			return fmt.Errorf("KprobeSkbChecker: Len has value %d which does not match expected value %d", event.Len, *checker.Len)
-		}
-	}
-	if checker.Priority != nil {
-		if *checker.Priority != event.Priority {
-			return fmt.Errorf("KprobeSkbChecker: Priority has value %d which does not match expected value %d", event.Priority, *checker.Priority)
-		}
-	}
-	if checker.Mark != nil {
-		if *checker.Mark != event.Mark {
-			return fmt.Errorf("KprobeSkbChecker: Mark has value %d which does not match expected value %d", event.Mark, *checker.Mark)
-		}
-	}
-	if checker.Saddr != nil {
-		if err := checker.Saddr.Match(event.Saddr); err != nil {
-			return fmt.Errorf("KprobeSkbChecker: Saddr check failed: %w", err)
-		}
-	}
-	if checker.Daddr != nil {
-		if err := checker.Daddr.Match(event.Daddr); err != nil {
-			return fmt.Errorf("KprobeSkbChecker: Daddr check failed: %w", err)
-		}
-	}
-	if checker.Sport != nil {
-		if *checker.Sport != event.Sport {
-			return fmt.Errorf("KprobeSkbChecker: Sport has value %d which does not match expected value %d", event.Sport, *checker.Sport)
-		}
-	}
-	if checker.Dport != nil {
-		if *checker.Dport != event.Dport {
-			return fmt.Errorf("KprobeSkbChecker: Dport has value %d which does not match expected value %d", event.Dport, *checker.Dport)
-		}
-	}
-	if checker.Proto != nil {
-		if *checker.Proto != event.Proto {
-			return fmt.Errorf("KprobeSkbChecker: Proto has value %d which does not match expected value %d", event.Proto, *checker.Proto)
-		}
-	}
-	if checker.SecPathLen != nil {
-		if *checker.SecPathLen != event.SecPathLen {
-			return fmt.Errorf("KprobeSkbChecker: SecPathLen has value %d which does not match expected value %d", event.SecPathLen, *checker.SecPathLen)
-		}
-	}
-	if checker.SecPathOlen != nil {
-		if *checker.SecPathOlen != event.SecPathOlen {
-			return fmt.Errorf("KprobeSkbChecker: SecPathOlen has value %d which does not match expected value %d", event.SecPathOlen, *checker.SecPathOlen)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5035,26 +5455,37 @@ func NewKprobePathChecker() *KprobePathChecker {
 	return &KprobePathChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobePathChecker) GetCheckerType() string {
+	return "KprobePathChecker"
+}
+
 // Check checks a KprobePath field
 func (checker *KprobePathChecker) Check(event *tetragon.KprobePath) error {
 	if event == nil {
-		return fmt.Errorf("KprobePathChecker: KprobePath field is nil")
+		return fmt.Errorf("%s: KprobePath field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Mount != nil {
-		if err := checker.Mount.Match(event.Mount); err != nil {
-			return fmt.Errorf("KprobePathChecker: Mount check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Mount != nil {
+			if err := checker.Mount.Match(event.Mount); err != nil {
+				return fmt.Errorf("Mount check failed: %w", err)
+			}
 		}
+		if checker.Path != nil {
+			if err := checker.Path.Match(event.Path); err != nil {
+				return fmt.Errorf("Path check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Path != nil {
-		if err := checker.Path.Match(event.Path); err != nil {
-			return fmt.Errorf("KprobePathChecker: Path check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("KprobePathChecker: Flags check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5100,26 +5531,37 @@ func NewKprobeFileChecker() *KprobeFileChecker {
 	return &KprobeFileChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeFileChecker) GetCheckerType() string {
+	return "KprobeFileChecker"
+}
+
 // Check checks a KprobeFile field
 func (checker *KprobeFileChecker) Check(event *tetragon.KprobeFile) error {
 	if event == nil {
-		return fmt.Errorf("KprobeFileChecker: KprobeFile field is nil")
+		return fmt.Errorf("%s: KprobeFile field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Mount != nil {
-		if err := checker.Mount.Match(event.Mount); err != nil {
-			return fmt.Errorf("KprobeFileChecker: Mount check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Mount != nil {
+			if err := checker.Mount.Match(event.Mount); err != nil {
+				return fmt.Errorf("Mount check failed: %w", err)
+			}
 		}
+		if checker.Path != nil {
+			if err := checker.Path.Match(event.Path); err != nil {
+				return fmt.Errorf("Path check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Path != nil {
-		if err := checker.Path.Match(event.Path); err != nil {
-			return fmt.Errorf("KprobeFileChecker: Path check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("KprobeFileChecker: Flags check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5164,21 +5606,32 @@ func NewKprobeTruncatedBytesChecker() *KprobeTruncatedBytesChecker {
 	return &KprobeTruncatedBytesChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeTruncatedBytesChecker) GetCheckerType() string {
+	return "KprobeTruncatedBytesChecker"
+}
+
 // Check checks a KprobeTruncatedBytes field
 func (checker *KprobeTruncatedBytesChecker) Check(event *tetragon.KprobeTruncatedBytes) error {
 	if event == nil {
-		return fmt.Errorf("KprobeTruncatedBytesChecker: KprobeTruncatedBytes field is nil")
+		return fmt.Errorf("%s: KprobeTruncatedBytes field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.BytesArg != nil {
-		if err := checker.BytesArg.Match(event.BytesArg); err != nil {
-			return fmt.Errorf("KprobeTruncatedBytesChecker: BytesArg check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.BytesArg != nil {
+			if err := checker.BytesArg.Match(event.BytesArg); err != nil {
+				return fmt.Errorf("BytesArg check failed: %w", err)
+			}
 		}
+		if checker.OrigSize != nil {
+			if *checker.OrigSize != event.OrigSize {
+				return fmt.Errorf("OrigSize has value %d which does not match expected value %d", event.OrigSize, *checker.OrigSize)
+			}
+		}
+		return nil
 	}
-	if checker.OrigSize != nil {
-		if *checker.OrigSize != event.OrigSize {
-			return fmt.Errorf("KprobeTruncatedBytesChecker: OrigSize has value %d which does not match expected value %d", event.OrigSize, *checker.OrigSize)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5220,26 +5673,37 @@ func NewKprobeCredChecker() *KprobeCredChecker {
 	return &KprobeCredChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeCredChecker) GetCheckerType() string {
+	return "KprobeCredChecker"
+}
+
 // Check checks a KprobeCred field
 func (checker *KprobeCredChecker) Check(event *tetragon.KprobeCred) error {
 	if event == nil {
-		return fmt.Errorf("KprobeCredChecker: KprobeCred field is nil")
+		return fmt.Errorf("%s: KprobeCred field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Permitted != nil {
-		if err := checker.Permitted.Check(event.Permitted); err != nil {
-			return fmt.Errorf("KprobeCredChecker: Permitted check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Permitted != nil {
+			if err := checker.Permitted.Check(event.Permitted); err != nil {
+				return fmt.Errorf("Permitted check failed: %w", err)
+			}
 		}
+		if checker.Effective != nil {
+			if err := checker.Effective.Check(event.Effective); err != nil {
+				return fmt.Errorf("Effective check failed: %w", err)
+			}
+		}
+		if checker.Inheritable != nil {
+			if err := checker.Inheritable.Check(event.Inheritable); err != nil {
+				return fmt.Errorf("Inheritable check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Effective != nil {
-		if err := checker.Effective.Check(event.Effective); err != nil {
-			return fmt.Errorf("KprobeCredChecker: Effective check failed: %w", err)
-		}
-	}
-	if checker.Inheritable != nil {
-		if err := checker.Inheritable.Check(event.Inheritable); err != nil {
-			return fmt.Errorf("KprobeCredChecker: Inheritable check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5314,24 +5778,35 @@ func NewKprobeCapabilityChecker() *KprobeCapabilityChecker {
 	return &KprobeCapabilityChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeCapabilityChecker) GetCheckerType() string {
+	return "KprobeCapabilityChecker"
+}
+
 // Check checks a KprobeCapability field
 func (checker *KprobeCapabilityChecker) Check(event *tetragon.KprobeCapability) error {
 	if event == nil {
-		return fmt.Errorf("KprobeCapabilityChecker: KprobeCapability field is nil")
+		return fmt.Errorf("%s: KprobeCapability field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Value != nil {
-		if event.Value == nil {
-			return fmt.Errorf("KprobeCapabilityChecker: Value is nil and does not match expected value %v", *checker.Value)
+	fieldChecks := func() error {
+		if checker.Value != nil {
+			if event.Value == nil {
+				return fmt.Errorf("Value is nil and does not match expected value %v", *checker.Value)
+			}
+			if *checker.Value != event.Value.Value {
+				return fmt.Errorf("Value has value %v which does not match expected value %v", event.Value.Value, *checker.Value)
+			}
 		}
-		if *checker.Value != event.Value.Value {
-			return fmt.Errorf("KprobeCapabilityChecker: Value has value %v which does not match expected value %v", event.Value.Value, *checker.Value)
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
 		}
+		return nil
 	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("KprobeCapabilityChecker: Name check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5374,40 +5849,51 @@ func NewKprobeUserNamespaceChecker() *KprobeUserNamespaceChecker {
 	return &KprobeUserNamespaceChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeUserNamespaceChecker) GetCheckerType() string {
+	return "KprobeUserNamespaceChecker"
+}
+
 // Check checks a KprobeUserNamespace field
 func (checker *KprobeUserNamespaceChecker) Check(event *tetragon.KprobeUserNamespace) error {
 	if event == nil {
-		return fmt.Errorf("KprobeUserNamespaceChecker: KprobeUserNamespace field is nil")
+		return fmt.Errorf("%s: KprobeUserNamespace field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Level != nil {
-		if event.Level == nil {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Level is nil and does not match expected value %v", *checker.Level)
+	fieldChecks := func() error {
+		if checker.Level != nil {
+			if event.Level == nil {
+				return fmt.Errorf("Level is nil and does not match expected value %v", *checker.Level)
+			}
+			if *checker.Level != event.Level.Value {
+				return fmt.Errorf("Level has value %v which does not match expected value %v", event.Level.Value, *checker.Level)
+			}
 		}
-		if *checker.Level != event.Level.Value {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Level has value %v which does not match expected value %v", event.Level.Value, *checker.Level)
+		if checker.Owner != nil {
+			if event.Owner == nil {
+				return fmt.Errorf("Owner is nil and does not match expected value %v", *checker.Owner)
+			}
+			if *checker.Owner != event.Owner.Value {
+				return fmt.Errorf("Owner has value %v which does not match expected value %v", event.Owner.Value, *checker.Owner)
+			}
 		}
+		if checker.Group != nil {
+			if event.Group == nil {
+				return fmt.Errorf("Group is nil and does not match expected value %v", *checker.Group)
+			}
+			if *checker.Group != event.Group.Value {
+				return fmt.Errorf("Group has value %v which does not match expected value %v", event.Group.Value, *checker.Group)
+			}
+		}
+		if checker.Ns != nil {
+			if err := checker.Ns.Check(event.Ns); err != nil {
+				return fmt.Errorf("Ns check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Owner != nil {
-		if event.Owner == nil {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Owner is nil and does not match expected value %v", *checker.Owner)
-		}
-		if *checker.Owner != event.Owner.Value {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Owner has value %v which does not match expected value %v", event.Owner.Value, *checker.Owner)
-		}
-	}
-	if checker.Group != nil {
-		if event.Group == nil {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Group is nil and does not match expected value %v", *checker.Group)
-		}
-		if *checker.Group != event.Group.Value {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Group has value %v which does not match expected value %v", event.Group.Value, *checker.Group)
-		}
-	}
-	if checker.Ns != nil {
-		if err := checker.Ns.Check(event.Ns); err != nil {
-			return fmt.Errorf("KprobeUserNamespaceChecker: Ns check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5471,26 +5957,37 @@ func NewKprobeBpfAttrChecker() *KprobeBpfAttrChecker {
 	return &KprobeBpfAttrChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeBpfAttrChecker) GetCheckerType() string {
+	return "KprobeBpfAttrChecker"
+}
+
 // Check checks a KprobeBpfAttr field
 func (checker *KprobeBpfAttrChecker) Check(event *tetragon.KprobeBpfAttr) error {
 	if event == nil {
-		return fmt.Errorf("KprobeBpfAttrChecker: KprobeBpfAttr field is nil")
+		return fmt.Errorf("%s: KprobeBpfAttr field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.ProgType != nil {
-		if err := checker.ProgType.Match(event.ProgType); err != nil {
-			return fmt.Errorf("KprobeBpfAttrChecker: ProgType check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.ProgType != nil {
+			if err := checker.ProgType.Match(event.ProgType); err != nil {
+				return fmt.Errorf("ProgType check failed: %w", err)
+			}
 		}
+		if checker.InsnCnt != nil {
+			if *checker.InsnCnt != event.InsnCnt {
+				return fmt.Errorf("InsnCnt has value %d which does not match expected value %d", event.InsnCnt, *checker.InsnCnt)
+			}
+		}
+		if checker.ProgName != nil {
+			if err := checker.ProgName.Match(event.ProgName); err != nil {
+				return fmt.Errorf("ProgName check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.InsnCnt != nil {
-		if *checker.InsnCnt != event.InsnCnt {
-			return fmt.Errorf("KprobeBpfAttrChecker: InsnCnt has value %d which does not match expected value %d", event.InsnCnt, *checker.InsnCnt)
-		}
-	}
-	if checker.ProgName != nil {
-		if err := checker.ProgName.Match(event.ProgName); err != nil {
-			return fmt.Errorf("KprobeBpfAttrChecker: ProgName check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5540,31 +6037,42 @@ func NewKprobePerfEventChecker() *KprobePerfEventChecker {
 	return &KprobePerfEventChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobePerfEventChecker) GetCheckerType() string {
+	return "KprobePerfEventChecker"
+}
+
 // Check checks a KprobePerfEvent field
 func (checker *KprobePerfEventChecker) Check(event *tetragon.KprobePerfEvent) error {
 	if event == nil {
-		return fmt.Errorf("KprobePerfEventChecker: KprobePerfEvent field is nil")
+		return fmt.Errorf("%s: KprobePerfEvent field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.KprobeFunc != nil {
-		if err := checker.KprobeFunc.Match(event.KprobeFunc); err != nil {
-			return fmt.Errorf("KprobePerfEventChecker: KprobeFunc check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.KprobeFunc != nil {
+			if err := checker.KprobeFunc.Match(event.KprobeFunc); err != nil {
+				return fmt.Errorf("KprobeFunc check failed: %w", err)
+			}
 		}
+		if checker.Type != nil {
+			if err := checker.Type.Match(event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
+		if checker.Config != nil {
+			if *checker.Config != event.Config {
+				return fmt.Errorf("Config has value %d which does not match expected value %d", event.Config, *checker.Config)
+			}
+		}
+		if checker.ProbeOffset != nil {
+			if *checker.ProbeOffset != event.ProbeOffset {
+				return fmt.Errorf("ProbeOffset has value %d which does not match expected value %d", event.ProbeOffset, *checker.ProbeOffset)
+			}
+		}
+		return nil
 	}
-	if checker.Type != nil {
-		if err := checker.Type.Match(event.Type); err != nil {
-			return fmt.Errorf("KprobePerfEventChecker: Type check failed: %w", err)
-		}
-	}
-	if checker.Config != nil {
-		if *checker.Config != event.Config {
-			return fmt.Errorf("KprobePerfEventChecker: Config has value %d which does not match expected value %d", event.Config, *checker.Config)
-		}
-	}
-	if checker.ProbeOffset != nil {
-		if *checker.ProbeOffset != event.ProbeOffset {
-			return fmt.Errorf("KprobePerfEventChecker: ProbeOffset has value %d which does not match expected value %d", event.ProbeOffset, *checker.ProbeOffset)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5625,36 +6133,47 @@ func NewKprobeBpfMapChecker() *KprobeBpfMapChecker {
 	return &KprobeBpfMapChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeBpfMapChecker) GetCheckerType() string {
+	return "KprobeBpfMapChecker"
+}
+
 // Check checks a KprobeBpfMap field
 func (checker *KprobeBpfMapChecker) Check(event *tetragon.KprobeBpfMap) error {
 	if event == nil {
-		return fmt.Errorf("KprobeBpfMapChecker: KprobeBpfMap field is nil")
+		return fmt.Errorf("%s: KprobeBpfMap field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.MapType != nil {
-		if err := checker.MapType.Match(event.MapType); err != nil {
-			return fmt.Errorf("KprobeBpfMapChecker: MapType check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.MapType != nil {
+			if err := checker.MapType.Match(event.MapType); err != nil {
+				return fmt.Errorf("MapType check failed: %w", err)
+			}
 		}
+		if checker.KeySize != nil {
+			if *checker.KeySize != event.KeySize {
+				return fmt.Errorf("KeySize has value %d which does not match expected value %d", event.KeySize, *checker.KeySize)
+			}
+		}
+		if checker.ValueSize != nil {
+			if *checker.ValueSize != event.ValueSize {
+				return fmt.Errorf("ValueSize has value %d which does not match expected value %d", event.ValueSize, *checker.ValueSize)
+			}
+		}
+		if checker.MaxEntries != nil {
+			if *checker.MaxEntries != event.MaxEntries {
+				return fmt.Errorf("MaxEntries has value %d which does not match expected value %d", event.MaxEntries, *checker.MaxEntries)
+			}
+		}
+		if checker.MapName != nil {
+			if err := checker.MapName.Match(event.MapName); err != nil {
+				return fmt.Errorf("MapName check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.KeySize != nil {
-		if *checker.KeySize != event.KeySize {
-			return fmt.Errorf("KprobeBpfMapChecker: KeySize has value %d which does not match expected value %d", event.KeySize, *checker.KeySize)
-		}
-	}
-	if checker.ValueSize != nil {
-		if *checker.ValueSize != event.ValueSize {
-			return fmt.Errorf("KprobeBpfMapChecker: ValueSize has value %d which does not match expected value %d", event.ValueSize, *checker.ValueSize)
-		}
-	}
-	if checker.MaxEntries != nil {
-		if *checker.MaxEntries != event.MaxEntries {
-			return fmt.Errorf("KprobeBpfMapChecker: MaxEntries has value %d which does not match expected value %d", event.MaxEntries, *checker.MaxEntries)
-		}
-	}
-	if checker.MapName != nil {
-		if err := checker.MapName.Match(event.MapName); err != nil {
-			return fmt.Errorf("KprobeBpfMapChecker: MapName check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -5737,181 +6256,192 @@ func NewKprobeArgumentChecker() *KprobeArgumentChecker {
 	return &KprobeArgumentChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *KprobeArgumentChecker) GetCheckerType() string {
+	return "KprobeArgumentChecker"
+}
+
 // Check checks a KprobeArgument field
 func (checker *KprobeArgumentChecker) Check(event *tetragon.KprobeArgument) error {
 	if event == nil {
-		return fmt.Errorf("KprobeArgumentChecker: KprobeArgument field is nil")
+		return fmt.Errorf("%s: KprobeArgument field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.StringArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_StringArg:
-			if err := checker.StringArg.Match(event.StringArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: StringArg check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.StringArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_StringArg:
+				if err := checker.StringArg.Match(event.StringArg); err != nil {
+					return fmt.Errorf("StringArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: StringArg check failed: %T is not a StringArg", event)
 			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: StringArg check failed: %T is not a StringArg", event)
 		}
+		if checker.IntArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_IntArg:
+				if *checker.IntArg != event.IntArg {
+					return fmt.Errorf("IntArg has value %d which does not match expected value %d", event.IntArg, *checker.IntArg)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: IntArg check failed: %T is not a IntArg", event)
+			}
+		}
+		if checker.SkbArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_SkbArg:
+				if err := checker.SkbArg.Check(event.SkbArg); err != nil {
+					return fmt.Errorf("SkbArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: SkbArg check failed: %T is not a SkbArg", event)
+			}
+		}
+		if checker.SizeArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_SizeArg:
+				if *checker.SizeArg != event.SizeArg {
+					return fmt.Errorf("SizeArg has value %d which does not match expected value %d", event.SizeArg, *checker.SizeArg)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: SizeArg check failed: %T is not a SizeArg", event)
+			}
+		}
+		if checker.BytesArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_BytesArg:
+				if err := checker.BytesArg.Match(event.BytesArg); err != nil {
+					return fmt.Errorf("BytesArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: BytesArg check failed: %T is not a BytesArg", event)
+			}
+		}
+		if checker.PathArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_PathArg:
+				if err := checker.PathArg.Check(event.PathArg); err != nil {
+					return fmt.Errorf("PathArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: PathArg check failed: %T is not a PathArg", event)
+			}
+		}
+		if checker.FileArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_FileArg:
+				if err := checker.FileArg.Check(event.FileArg); err != nil {
+					return fmt.Errorf("FileArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: FileArg check failed: %T is not a FileArg", event)
+			}
+		}
+		if checker.TruncatedBytesArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_TruncatedBytesArg:
+				if err := checker.TruncatedBytesArg.Check(event.TruncatedBytesArg); err != nil {
+					return fmt.Errorf("TruncatedBytesArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: TruncatedBytesArg check failed: %T is not a TruncatedBytesArg", event)
+			}
+		}
+		if checker.SockArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_SockArg:
+				if err := checker.SockArg.Check(event.SockArg); err != nil {
+					return fmt.Errorf("SockArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: SockArg check failed: %T is not a SockArg", event)
+			}
+		}
+		if checker.CredArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_CredArg:
+				if err := checker.CredArg.Check(event.CredArg); err != nil {
+					return fmt.Errorf("CredArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: CredArg check failed: %T is not a CredArg", event)
+			}
+		}
+		if checker.LongArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_LongArg:
+				if *checker.LongArg != event.LongArg {
+					return fmt.Errorf("LongArg has value %d which does not match expected value %d", event.LongArg, *checker.LongArg)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: LongArg check failed: %T is not a LongArg", event)
+			}
+		}
+		if checker.BpfAttrArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_BpfAttrArg:
+				if err := checker.BpfAttrArg.Check(event.BpfAttrArg); err != nil {
+					return fmt.Errorf("BpfAttrArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: BpfAttrArg check failed: %T is not a BpfAttrArg", event)
+			}
+		}
+		if checker.PerfEventArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_PerfEventArg:
+				if err := checker.PerfEventArg.Check(event.PerfEventArg); err != nil {
+					return fmt.Errorf("PerfEventArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: PerfEventArg check failed: %T is not a PerfEventArg", event)
+			}
+		}
+		if checker.BpfMapArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_BpfMapArg:
+				if err := checker.BpfMapArg.Check(event.BpfMapArg); err != nil {
+					return fmt.Errorf("BpfMapArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: BpfMapArg check failed: %T is not a BpfMapArg", event)
+			}
+		}
+		if checker.UintArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_UintArg:
+				if *checker.UintArg != event.UintArg {
+					return fmt.Errorf("UintArg has value %d which does not match expected value %d", event.UintArg, *checker.UintArg)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: UintArg check failed: %T is not a UintArg", event)
+			}
+		}
+		if checker.UserNamespaceArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_UserNamespaceArg:
+				if err := checker.UserNamespaceArg.Check(event.UserNamespaceArg); err != nil {
+					return fmt.Errorf("UserNamespaceArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: UserNamespaceArg check failed: %T is not a UserNamespaceArg", event)
+			}
+		}
+		if checker.CapabilityArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.KprobeArgument_CapabilityArg:
+				if err := checker.CapabilityArg.Check(event.CapabilityArg); err != nil {
+					return fmt.Errorf("CapabilityArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("KprobeArgumentChecker: CapabilityArg check failed: %T is not a CapabilityArg", event)
+			}
+		}
+		return nil
 	}
-	if checker.IntArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_IntArg:
-			if *checker.IntArg != event.IntArg {
-				return fmt.Errorf("KprobeArgumentChecker: IntArg has value %d which does not match expected value %d", event.IntArg, *checker.IntArg)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: IntArg check failed: %T is not a IntArg", event)
-		}
-	}
-	if checker.SkbArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_SkbArg:
-			if err := checker.SkbArg.Check(event.SkbArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: SkbArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: SkbArg check failed: %T is not a SkbArg", event)
-		}
-	}
-	if checker.SizeArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_SizeArg:
-			if *checker.SizeArg != event.SizeArg {
-				return fmt.Errorf("KprobeArgumentChecker: SizeArg has value %d which does not match expected value %d", event.SizeArg, *checker.SizeArg)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: SizeArg check failed: %T is not a SizeArg", event)
-		}
-	}
-	if checker.BytesArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_BytesArg:
-			if err := checker.BytesArg.Match(event.BytesArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: BytesArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: BytesArg check failed: %T is not a BytesArg", event)
-		}
-	}
-	if checker.PathArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_PathArg:
-			if err := checker.PathArg.Check(event.PathArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: PathArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: PathArg check failed: %T is not a PathArg", event)
-		}
-	}
-	if checker.FileArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_FileArg:
-			if err := checker.FileArg.Check(event.FileArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: FileArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: FileArg check failed: %T is not a FileArg", event)
-		}
-	}
-	if checker.TruncatedBytesArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_TruncatedBytesArg:
-			if err := checker.TruncatedBytesArg.Check(event.TruncatedBytesArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: TruncatedBytesArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: TruncatedBytesArg check failed: %T is not a TruncatedBytesArg", event)
-		}
-	}
-	if checker.SockArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_SockArg:
-			if err := checker.SockArg.Check(event.SockArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: SockArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: SockArg check failed: %T is not a SockArg", event)
-		}
-	}
-	if checker.CredArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_CredArg:
-			if err := checker.CredArg.Check(event.CredArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: CredArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: CredArg check failed: %T is not a CredArg", event)
-		}
-	}
-	if checker.LongArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_LongArg:
-			if *checker.LongArg != event.LongArg {
-				return fmt.Errorf("KprobeArgumentChecker: LongArg has value %d which does not match expected value %d", event.LongArg, *checker.LongArg)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: LongArg check failed: %T is not a LongArg", event)
-		}
-	}
-	if checker.BpfAttrArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_BpfAttrArg:
-			if err := checker.BpfAttrArg.Check(event.BpfAttrArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: BpfAttrArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: BpfAttrArg check failed: %T is not a BpfAttrArg", event)
-		}
-	}
-	if checker.PerfEventArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_PerfEventArg:
-			if err := checker.PerfEventArg.Check(event.PerfEventArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: PerfEventArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: PerfEventArg check failed: %T is not a PerfEventArg", event)
-		}
-	}
-	if checker.BpfMapArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_BpfMapArg:
-			if err := checker.BpfMapArg.Check(event.BpfMapArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: BpfMapArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: BpfMapArg check failed: %T is not a BpfMapArg", event)
-		}
-	}
-	if checker.UintArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_UintArg:
-			if *checker.UintArg != event.UintArg {
-				return fmt.Errorf("KprobeArgumentChecker: UintArg has value %d which does not match expected value %d", event.UintArg, *checker.UintArg)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: UintArg check failed: %T is not a UintArg", event)
-		}
-	}
-	if checker.UserNamespaceArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_UserNamespaceArg:
-			if err := checker.UserNamespaceArg.Check(event.UserNamespaceArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: UserNamespaceArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: UserNamespaceArg check failed: %T is not a UserNamespaceArg", event)
-		}
-	}
-	if checker.CapabilityArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.KprobeArgument_CapabilityArg:
-			if err := checker.CapabilityArg.Check(event.CapabilityArg); err != nil {
-				return fmt.Errorf("KprobeArgumentChecker: CapabilityArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("KprobeArgumentChecker: CapabilityArg check failed: %T is not a CapabilityArg", event)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6140,26 +6670,37 @@ func NewHistogramBucketChecker() *HistogramBucketChecker {
 	return &HistogramBucketChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HistogramBucketChecker) GetCheckerType() string {
+	return "HistogramBucketChecker"
+}
+
 // Check checks a HistogramBucket field
 func (checker *HistogramBucketChecker) Check(event *tetragon.HistogramBucket) error {
 	if event == nil {
-		return fmt.Errorf("HistogramBucketChecker: HistogramBucket field is nil")
+		return fmt.Errorf("%s: HistogramBucket field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Percentile != nil {
-		if *checker.Percentile != event.Percentile {
-			return fmt.Errorf("HistogramBucketChecker: Percentile has value %d which does not match expected value %d", event.Percentile, *checker.Percentile)
+	fieldChecks := func() error {
+		if checker.Percentile != nil {
+			if *checker.Percentile != event.Percentile {
+				return fmt.Errorf("Percentile has value %d which does not match expected value %d", event.Percentile, *checker.Percentile)
+			}
 		}
+		if checker.Size != nil {
+			if *checker.Size != event.Size {
+				return fmt.Errorf("Size has value %d which does not match expected value %d", event.Size, *checker.Size)
+			}
+		}
+		if checker.Count != nil {
+			if *checker.Count != event.Count {
+				return fmt.Errorf("Count has value %d which does not match expected value %d", event.Count, *checker.Count)
+			}
+		}
+		return nil
 	}
-	if checker.Size != nil {
-		if *checker.Size != event.Size {
-			return fmt.Errorf("HistogramBucketChecker: Size has value %d which does not match expected value %d", event.Size, *checker.Size)
-		}
-	}
-	if checker.Count != nil {
-		if *checker.Count != event.Count {
-			return fmt.Errorf("HistogramBucketChecker: Count has value %d which does not match expected value %d", event.Count, *checker.Count)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6212,16 +6753,27 @@ func NewHistogramChecker() *HistogramChecker {
 	return &HistogramChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HistogramChecker) GetCheckerType() string {
+	return "HistogramChecker"
+}
+
 // Check checks a Histogram field
 func (checker *HistogramChecker) Check(event *tetragon.Histogram) error {
 	if event == nil {
-		return fmt.Errorf("HistogramChecker: Histogram field is nil")
+		return fmt.Errorf("%s: Histogram field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Buckets != nil {
-		if err := checker.Buckets.Check(event.Buckets); err != nil {
-			return fmt.Errorf("HistogramChecker: Buckets check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Buckets != nil {
+			if err := checker.Buckets.Check(event.Buckets); err != nil {
+				return fmt.Errorf("Buckets check failed: %w", err)
+			}
 		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6296,7 +6848,7 @@ func (checker *HistogramBucketListMatcher) Check(values []*tetragon.HistogramBuc
 func (checker *HistogramBucketListMatcher) orderedCheck(values []*tetragon.HistogramBucket) error {
 	innerCheck := func(check *HistogramBucketChecker, value *tetragon.HistogramBucket) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("HistogramBucketListMatcher: Buckets check failed: %w", err)
+			return fmt.Errorf("Buckets check failed: %w", err)
 		}
 		return nil
 	}
@@ -6328,7 +6880,7 @@ func (checker *HistogramBucketListMatcher) unorderedCheck(values []*tetragon.His
 func (checker *HistogramBucketListMatcher) subsetCheck(values []*tetragon.HistogramBucket) error {
 	innerCheck := func(check *HistogramBucketChecker, value *tetragon.HistogramBucket) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("HistogramBucketListMatcher: Buckets check failed: %w", err)
+			return fmt.Errorf("Buckets check failed: %w", err)
 		}
 		return nil
 	}
@@ -6377,86 +6929,97 @@ func NewSocketStatsChecker() *SocketStatsChecker {
 	return &SocketStatsChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *SocketStatsChecker) GetCheckerType() string {
+	return "SocketStatsChecker"
+}
+
 // Check checks a SocketStats field
 func (checker *SocketStatsChecker) Check(event *tetragon.SocketStats) error {
 	if event == nil {
-		return fmt.Errorf("SocketStatsChecker: SocketStats field is nil")
+		return fmt.Errorf("%s: SocketStats field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.BytesSent != nil {
-		if *checker.BytesSent != event.BytesSent {
-			return fmt.Errorf("SocketStatsChecker: BytesSent has value %d which does not match expected value %d", event.BytesSent, *checker.BytesSent)
+	fieldChecks := func() error {
+		if checker.BytesSent != nil {
+			if *checker.BytesSent != event.BytesSent {
+				return fmt.Errorf("BytesSent has value %d which does not match expected value %d", event.BytesSent, *checker.BytesSent)
+			}
 		}
+		if checker.BytesReceived != nil {
+			if *checker.BytesReceived != event.BytesReceived {
+				return fmt.Errorf("BytesReceived has value %d which does not match expected value %d", event.BytesReceived, *checker.BytesReceived)
+			}
+		}
+		if checker.SegsIn != nil {
+			if *checker.SegsIn != event.SegsIn {
+				return fmt.Errorf("SegsIn has value %d which does not match expected value %d", event.SegsIn, *checker.SegsIn)
+			}
+		}
+		if checker.SegsOut != nil {
+			if *checker.SegsOut != event.SegsOut {
+				return fmt.Errorf("SegsOut has value %d which does not match expected value %d", event.SegsOut, *checker.SegsOut)
+			}
+		}
+		if checker.Srtt != nil {
+			if *checker.Srtt != event.Srtt {
+				return fmt.Errorf("Srtt has value %d which does not match expected value %d", event.Srtt, *checker.Srtt)
+			}
+		}
+		if checker.RetransmitsBytes != nil {
+			if *checker.RetransmitsBytes != event.RetransmitsBytes {
+				return fmt.Errorf("RetransmitsBytes has value %d which does not match expected value %d", event.RetransmitsBytes, *checker.RetransmitsBytes)
+			}
+		}
+		if checker.RetransmitsSegs != nil {
+			if *checker.RetransmitsSegs != event.RetransmitsSegs {
+				return fmt.Errorf("RetransmitsSegs has value %d which does not match expected value %d", event.RetransmitsSegs, *checker.RetransmitsSegs)
+			}
+		}
+		if checker.ToZeroWindow != nil {
+			if *checker.ToZeroWindow != event.ToZeroWindow {
+				return fmt.Errorf("ToZeroWindow has value %d which does not match expected value %d", event.ToZeroWindow, *checker.ToZeroWindow)
+			}
+		}
+		if checker.SkDrop != nil {
+			if *checker.SkDrop != event.SkDrop {
+				return fmt.Errorf("SkDrop has value %d which does not match expected value %d", event.SkDrop, *checker.SkDrop)
+			}
+		}
+		if checker.BytesConsumed != nil {
+			if *checker.BytesConsumed != event.BytesConsumed {
+				return fmt.Errorf("BytesConsumed has value %d which does not match expected value %d", event.BytesConsumed, *checker.BytesConsumed)
+			}
+		}
+		if checker.BytesSubmitted != nil {
+			if *checker.BytesSubmitted != event.BytesSubmitted {
+				return fmt.Errorf("BytesSubmitted has value %d which does not match expected value %d", event.BytesSubmitted, *checker.BytesSubmitted)
+			}
+		}
+		if checker.SegsConsumed != nil {
+			if *checker.SegsConsumed != event.SegsConsumed {
+				return fmt.Errorf("SegsConsumed has value %d which does not match expected value %d", event.SegsConsumed, *checker.SegsConsumed)
+			}
+		}
+		if checker.SegsSubmitted != nil {
+			if *checker.SegsSubmitted != event.SegsSubmitted {
+				return fmt.Errorf("SegsSubmitted has value %d which does not match expected value %d", event.SegsSubmitted, *checker.SegsSubmitted)
+			}
+		}
+		if checker.SkbConsumeMisses != nil {
+			if *checker.SkbConsumeMisses != event.SkbConsumeMisses {
+				return fmt.Errorf("SkbConsumeMisses has value %d which does not match expected value %d", event.SkbConsumeMisses, *checker.SkbConsumeMisses)
+			}
+		}
+		if checker.Rtt != nil {
+			if err := checker.Rtt.Check(event.Rtt); err != nil {
+				return fmt.Errorf("Rtt check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.BytesReceived != nil {
-		if *checker.BytesReceived != event.BytesReceived {
-			return fmt.Errorf("SocketStatsChecker: BytesReceived has value %d which does not match expected value %d", event.BytesReceived, *checker.BytesReceived)
-		}
-	}
-	if checker.SegsIn != nil {
-		if *checker.SegsIn != event.SegsIn {
-			return fmt.Errorf("SocketStatsChecker: SegsIn has value %d which does not match expected value %d", event.SegsIn, *checker.SegsIn)
-		}
-	}
-	if checker.SegsOut != nil {
-		if *checker.SegsOut != event.SegsOut {
-			return fmt.Errorf("SocketStatsChecker: SegsOut has value %d which does not match expected value %d", event.SegsOut, *checker.SegsOut)
-		}
-	}
-	if checker.Srtt != nil {
-		if *checker.Srtt != event.Srtt {
-			return fmt.Errorf("SocketStatsChecker: Srtt has value %d which does not match expected value %d", event.Srtt, *checker.Srtt)
-		}
-	}
-	if checker.RetransmitsBytes != nil {
-		if *checker.RetransmitsBytes != event.RetransmitsBytes {
-			return fmt.Errorf("SocketStatsChecker: RetransmitsBytes has value %d which does not match expected value %d", event.RetransmitsBytes, *checker.RetransmitsBytes)
-		}
-	}
-	if checker.RetransmitsSegs != nil {
-		if *checker.RetransmitsSegs != event.RetransmitsSegs {
-			return fmt.Errorf("SocketStatsChecker: RetransmitsSegs has value %d which does not match expected value %d", event.RetransmitsSegs, *checker.RetransmitsSegs)
-		}
-	}
-	if checker.ToZeroWindow != nil {
-		if *checker.ToZeroWindow != event.ToZeroWindow {
-			return fmt.Errorf("SocketStatsChecker: ToZeroWindow has value %d which does not match expected value %d", event.ToZeroWindow, *checker.ToZeroWindow)
-		}
-	}
-	if checker.SkDrop != nil {
-		if *checker.SkDrop != event.SkDrop {
-			return fmt.Errorf("SocketStatsChecker: SkDrop has value %d which does not match expected value %d", event.SkDrop, *checker.SkDrop)
-		}
-	}
-	if checker.BytesConsumed != nil {
-		if *checker.BytesConsumed != event.BytesConsumed {
-			return fmt.Errorf("SocketStatsChecker: BytesConsumed has value %d which does not match expected value %d", event.BytesConsumed, *checker.BytesConsumed)
-		}
-	}
-	if checker.BytesSubmitted != nil {
-		if *checker.BytesSubmitted != event.BytesSubmitted {
-			return fmt.Errorf("SocketStatsChecker: BytesSubmitted has value %d which does not match expected value %d", event.BytesSubmitted, *checker.BytesSubmitted)
-		}
-	}
-	if checker.SegsConsumed != nil {
-		if *checker.SegsConsumed != event.SegsConsumed {
-			return fmt.Errorf("SocketStatsChecker: SegsConsumed has value %d which does not match expected value %d", event.SegsConsumed, *checker.SegsConsumed)
-		}
-	}
-	if checker.SegsSubmitted != nil {
-		if *checker.SegsSubmitted != event.SegsSubmitted {
-			return fmt.Errorf("SocketStatsChecker: SegsSubmitted has value %d which does not match expected value %d", event.SegsSubmitted, *checker.SegsSubmitted)
-		}
-	}
-	if checker.SkbConsumeMisses != nil {
-		if *checker.SkbConsumeMisses != event.SkbConsumeMisses {
-			return fmt.Errorf("SocketStatsChecker: SkbConsumeMisses has value %d which does not match expected value %d", event.SkbConsumeMisses, *checker.SkbConsumeMisses)
-		}
-	}
-	if checker.Rtt != nil {
-		if err := checker.Rtt.Check(event.Rtt); err != nil {
-			return fmt.Errorf("SocketStatsChecker: Rtt check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6631,31 +7194,42 @@ func NewFileSystemChecker() *FileSystemChecker {
 	return &FileSystemChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *FileSystemChecker) GetCheckerType() string {
+	return "FileSystemChecker"
+}
+
 // Check checks a FileSystem field
 func (checker *FileSystemChecker) Check(event *tetragon.FileSystem) error {
 	if event == nil {
-		return fmt.Errorf("FileSystemChecker: FileSystem field is nil")
+		return fmt.Errorf("%s: FileSystem field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("FileSystemChecker: Name check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
 		}
+		if checker.Dev != nil {
+			if err := checker.Dev.Match(event.Dev); err != nil {
+				return fmt.Errorf("Dev check failed: %w", err)
+			}
+		}
+		if checker.Id != nil {
+			if err := checker.Id.Match(event.Id); err != nil {
+				return fmt.Errorf("Id check failed: %w", err)
+			}
+		}
+		if checker.Uuid != nil {
+			if err := checker.Uuid.Match(event.Uuid); err != nil {
+				return fmt.Errorf("Uuid check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Dev != nil {
-		if err := checker.Dev.Match(event.Dev); err != nil {
-			return fmt.Errorf("FileSystemChecker: Dev check failed: %w", err)
-		}
-	}
-	if checker.Id != nil {
-		if err := checker.Id.Match(event.Id); err != nil {
-			return fmt.Errorf("FileSystemChecker: Id check failed: %w", err)
-		}
-	}
-	if checker.Uuid != nil {
-		if err := checker.Uuid.Match(event.Uuid); err != nil {
-			return fmt.Errorf("FileSystemChecker: Uuid check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6707,21 +7281,32 @@ func NewInodeChecker() *InodeChecker {
 	return &InodeChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *InodeChecker) GetCheckerType() string {
+	return "InodeChecker"
+}
+
 // Check checks a Inode field
 func (checker *InodeChecker) Check(event *tetragon.Inode) error {
 	if event == nil {
-		return fmt.Errorf("InodeChecker: Inode field is nil")
+		return fmt.Errorf("%s: Inode field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Number != nil {
-		if *checker.Number != event.Number {
-			return fmt.Errorf("InodeChecker: Number has value %d which does not match expected value %d", event.Number, *checker.Number)
+	fieldChecks := func() error {
+		if checker.Number != nil {
+			if *checker.Number != event.Number {
+				return fmt.Errorf("Number has value %d which does not match expected value %d", event.Number, *checker.Number)
+			}
 		}
+		if checker.Fs != nil {
+			if err := checker.Fs.Check(event.Fs); err != nil {
+				return fmt.Errorf("Fs check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Fs != nil {
-		if err := checker.Fs.Check(event.Fs); err != nil {
-			return fmt.Errorf("InodeChecker: Fs check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6765,26 +7350,37 @@ func NewFileDetailsChecker() *FileDetailsChecker {
 	return &FileDetailsChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *FileDetailsChecker) GetCheckerType() string {
+	return "FileDetailsChecker"
+}
+
 // Check checks a FileDetails field
 func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
 	if event == nil {
-		return fmt.Errorf("FileDetailsChecker: FileDetails field is nil")
+		return fmt.Errorf("%s: FileDetails field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Filename != nil {
-		if err := checker.Filename.Match(event.Filename); err != nil {
-			return fmt.Errorf("FileDetailsChecker: Filename check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Filename != nil {
+			if err := checker.Filename.Match(event.Filename); err != nil {
+				return fmt.Errorf("Filename check failed: %w", err)
+			}
 		}
+		if checker.Inode != nil {
+			if err := checker.Inode.Check(event.Inode); err != nil {
+				return fmt.Errorf("Inode check failed: %w", err)
+			}
+		}
+		if checker.ParentInode != nil {
+			if err := checker.ParentInode.Check(event.ParentInode); err != nil {
+				return fmt.Errorf("ParentInode check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Inode != nil {
-		if err := checker.Inode.Check(event.Inode); err != nil {
-			return fmt.Errorf("FileDetailsChecker: Inode check failed: %w", err)
-		}
-	}
-	if checker.ParentInode != nil {
-		if err := checker.ParentInode.Check(event.ParentInode); err != nil {
-			return fmt.Errorf("FileDetailsChecker: ParentInode check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6833,21 +7429,32 @@ func NewFileIOChecker() *FileIOChecker {
 	return &FileIOChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *FileIOChecker) GetCheckerType() string {
+	return "FileIOChecker"
+}
+
 // Check checks a FileIO field
 func (checker *FileIOChecker) Check(event *tetragon.FileIO) error {
 	if event == nil {
-		return fmt.Errorf("FileIOChecker: FileIO field is nil")
+		return fmt.Errorf("%s: FileIO field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Offset != nil {
-		if err := checker.Offset.Match(event.Offset); err != nil {
-			return fmt.Errorf("FileIOChecker: Offset check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Offset != nil {
+			if err := checker.Offset.Match(event.Offset); err != nil {
+				return fmt.Errorf("Offset check failed: %w", err)
+			}
 		}
+		if checker.Size != nil {
+			if err := checker.Size.Match(event.Size); err != nil {
+				return fmt.Errorf("Size check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Size != nil {
-		if err := checker.Size.Match(event.Size); err != nil {
-			return fmt.Errorf("FileIOChecker: Size check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6886,26 +7493,37 @@ func NewGenericFileArgChecker() *GenericFileArgChecker {
 	return &GenericFileArgChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *GenericFileArgChecker) GetCheckerType() string {
+	return "GenericFileArgChecker"
+}
+
 // Check checks a GenericFileArg field
 func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) error {
 	if event == nil {
-		return fmt.Errorf("GenericFileArgChecker: GenericFileArg field is nil")
+		return fmt.Errorf("%s: GenericFileArg field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.File != nil {
-		if err := checker.File.Check(event.File); err != nil {
-			return fmt.Errorf("GenericFileArgChecker: File check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.File != nil {
+			if err := checker.File.Check(event.File); err != nil {
+				return fmt.Errorf("File check failed: %w", err)
+			}
 		}
+		if checker.Io != nil {
+			if err := checker.Io.Check(event.Io); err != nil {
+				return fmt.Errorf("Io check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Io != nil {
-		if err := checker.Io.Check(event.Io); err != nil {
-			return fmt.Errorf("GenericFileArgChecker: Io check failed: %w", err)
-		}
-	}
-	if checker.MntNs != nil {
-		if err := checker.MntNs.Check(event.MntNs); err != nil {
-			return fmt.Errorf("GenericFileArgChecker: MntNs check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -6958,31 +7576,42 @@ func NewRenameFileArgChecker() *RenameFileArgChecker {
 	return &RenameFileArgChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *RenameFileArgChecker) GetCheckerType() string {
+	return "RenameFileArgChecker"
+}
+
 // Check checks a RenameFileArg field
 func (checker *RenameFileArgChecker) Check(event *tetragon.RenameFileArg) error {
 	if event == nil {
-		return fmt.Errorf("RenameFileArgChecker: RenameFileArg field is nil")
+		return fmt.Errorf("%s: RenameFileArg field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Src != nil {
-		if err := checker.Src.Check(event.Src); err != nil {
-			return fmt.Errorf("RenameFileArgChecker: Src check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Src != nil {
+			if err := checker.Src.Check(event.Src); err != nil {
+				return fmt.Errorf("Src check failed: %w", err)
+			}
 		}
+		if checker.Dst != nil {
+			if err := checker.Dst.Check(event.Dst); err != nil {
+				return fmt.Errorf("Dst check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Check(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Dst != nil {
-		if err := checker.Dst.Check(event.Dst); err != nil {
-			return fmt.Errorf("RenameFileArgChecker: Dst check failed: %w", err)
-		}
-	}
-	if checker.MntNs != nil {
-		if err := checker.MntNs.Check(event.MntNs); err != nil {
-			return fmt.Errorf("RenameFileArgChecker: MntNs check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Check(event.Flags); err != nil {
-			return fmt.Errorf("RenameFileArgChecker: Flags check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7050,31 +7679,42 @@ func NewFileArgumentChecker() *FileArgumentChecker {
 	return &FileArgumentChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *FileArgumentChecker) GetCheckerType() string {
+	return "FileArgumentChecker"
+}
+
 // Check checks a FileArgument field
 func (checker *FileArgumentChecker) Check(event *tetragon.FileArgument) error {
 	if event == nil {
-		return fmt.Errorf("FileArgumentChecker: FileArgument field is nil")
+		return fmt.Errorf("%s: FileArgument field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.GenericArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.FileArgument_GenericArg:
-			if err := checker.GenericArg.Check(event.GenericArg); err != nil {
-				return fmt.Errorf("FileArgumentChecker: GenericArg check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.GenericArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_GenericArg:
+				if err := checker.GenericArg.Check(event.GenericArg); err != nil {
+					return fmt.Errorf("GenericArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: GenericArg check failed: %T is not a GenericArg", event)
 			}
-		default:
-			return fmt.Errorf("FileArgumentChecker: GenericArg check failed: %T is not a GenericArg", event)
 		}
+		if checker.RenameArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_RenameArg:
+				if err := checker.RenameArg.Check(event.RenameArg); err != nil {
+					return fmt.Errorf("RenameArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %T is not a RenameArg", event)
+			}
+		}
+		return nil
 	}
-	if checker.RenameArg != nil {
-		switch event := event.Arg.(type) {
-		case *tetragon.FileArgument_RenameArg:
-			if err := checker.RenameArg.Check(event.RenameArg); err != nil {
-				return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %w", err)
-			}
-		default:
-			return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %T is not a RenameArg", event)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7128,57 +7768,68 @@ func NewSockInfoChecker() *SockInfoChecker {
 	return &SockInfoChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *SockInfoChecker) GetCheckerType() string {
+	return "SockInfoChecker"
+}
+
 // Check checks a SockInfo field
 func (checker *SockInfoChecker) Check(event *tetragon.SockInfo) error {
 	if event == nil {
-		return fmt.Errorf("SockInfoChecker: SockInfo field is nil")
+		return fmt.Errorf("%s: SockInfo field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.SourceIp != nil {
-		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
-			return fmt.Errorf("SockInfoChecker: SourceIp check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
 		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.SourcePort != nil {
-		if event.SourcePort == nil {
-			return fmt.Errorf("SockInfoChecker: SourcePort is nil and does not match expected value %v", *checker.SourcePort)
-		}
-		if *checker.SourcePort != event.SourcePort.Value {
-			return fmt.Errorf("SockInfoChecker: SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
-		}
-	}
-	if checker.DestinationIp != nil {
-		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
-			return fmt.Errorf("SockInfoChecker: DestinationIp check failed: %w", err)
-		}
-	}
-	if checker.DestinationPort != nil {
-		if event.DestinationPort == nil {
-			return fmt.Errorf("SockInfoChecker: DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
-		}
-		if *checker.DestinationPort != event.DestinationPort.Value {
-			return fmt.Errorf("SockInfoChecker: DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
-		}
-	}
-	if checker.SockCookie != nil {
-		if *checker.SockCookie != event.SockCookie {
-			return fmt.Errorf("SockInfoChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
-		}
-	}
-	if checker.Protocol != nil {
-		if err := checker.Protocol.Check(&event.Protocol); err != nil {
-			return fmt.Errorf("SockInfoChecker: Protocol check failed: %w", err)
-		}
-	}
-	if checker.DestinationNames != nil {
-		if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
-			return fmt.Errorf("SockInfoChecker: DestinationNames check failed: %w", err)
-		}
-	}
-	if checker.DestinationPod != nil {
-		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
-			return fmt.Errorf("SockInfoChecker: DestinationPod check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7280,21 +7931,32 @@ func NewHttpHeaderChecker() *HttpHeaderChecker {
 	return &HttpHeaderChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HttpHeaderChecker) GetCheckerType() string {
+	return "HttpHeaderChecker"
+}
+
 // Check checks a HttpHeader field
 func (checker *HttpHeaderChecker) Check(event *tetragon.HttpHeader) error {
 	if event == nil {
-		return fmt.Errorf("HttpHeaderChecker: HttpHeader field is nil")
+		return fmt.Errorf("%s: HttpHeader field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("HttpHeaderChecker: Name check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
 		}
+		if checker.Value != nil {
+			if err := checker.Value.Match(event.Value); err != nil {
+				return fmt.Errorf("Value check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Value != nil {
-		if err := checker.Value.Match(event.Value); err != nil {
-			return fmt.Errorf("HttpHeaderChecker: Value check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7340,64 +8002,75 @@ func NewHttpRequestChecker() *HttpRequestChecker {
 	return &HttpRequestChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HttpRequestChecker) GetCheckerType() string {
+	return "HttpRequestChecker"
+}
+
 // Check checks a HttpRequest field
 func (checker *HttpRequestChecker) Check(event *tetragon.HttpRequest) error {
 	if event == nil {
-		return fmt.Errorf("HttpRequestChecker: HttpRequest field is nil")
+		return fmt.Errorf("%s: HttpRequest field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Timestamp != nil {
-		if err := checker.Timestamp.Match(event.Timestamp); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Timestamp check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Timestamp != nil {
+			if err := checker.Timestamp.Match(event.Timestamp); err != nil {
+				return fmt.Errorf("Timestamp check failed: %w", err)
+			}
 		}
+		if checker.Method != nil {
+			if err := checker.Method.Match(event.Method); err != nil {
+				return fmt.Errorf("Method check failed: %w", err)
+			}
+		}
+		if checker.Uri != nil {
+			if err := checker.Uri.Match(event.Uri); err != nil {
+				return fmt.Errorf("Uri check failed: %w", err)
+			}
+		}
+		if checker.Version != nil {
+			if err := checker.Version.Match(event.Version); err != nil {
+				return fmt.Errorf("Version check failed: %w", err)
+			}
+		}
+		if checker.Host != nil {
+			if err := checker.Host.Match(event.Host); err != nil {
+				return fmt.Errorf("Host check failed: %w", err)
+			}
+		}
+		if checker.Agent != nil {
+			if err := checker.Agent.Match(event.Agent); err != nil {
+				return fmt.Errorf("Agent check failed: %w", err)
+			}
+		}
+		if checker.ContentLength != nil {
+			if event.ContentLength == nil {
+				return fmt.Errorf("ContentLength is nil and does not match expected value %v", *checker.ContentLength)
+			}
+			if *checker.ContentLength != event.ContentLength.Value {
+				return fmt.Errorf("ContentLength has value %v which does not match expected value %v", event.ContentLength.Value, *checker.ContentLength)
+			}
+		}
+		if checker.Headers != nil {
+			if err := checker.Headers.Check(event.Headers); err != nil {
+				return fmt.Errorf("Headers check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		if checker.TransferEncoding != nil {
+			if err := checker.TransferEncoding.Match(event.TransferEncoding); err != nil {
+				return fmt.Errorf("TransferEncoding check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Method != nil {
-		if err := checker.Method.Match(event.Method); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Method check failed: %w", err)
-		}
-	}
-	if checker.Uri != nil {
-		if err := checker.Uri.Match(event.Uri); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Uri check failed: %w", err)
-		}
-	}
-	if checker.Version != nil {
-		if err := checker.Version.Match(event.Version); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Version check failed: %w", err)
-		}
-	}
-	if checker.Host != nil {
-		if err := checker.Host.Match(event.Host); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Host check failed: %w", err)
-		}
-	}
-	if checker.Agent != nil {
-		if err := checker.Agent.Match(event.Agent); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Agent check failed: %w", err)
-		}
-	}
-	if checker.ContentLength != nil {
-		if event.ContentLength == nil {
-			return fmt.Errorf("HttpRequestChecker: ContentLength is nil and does not match expected value %v", *checker.ContentLength)
-		}
-		if *checker.ContentLength != event.ContentLength.Value {
-			return fmt.Errorf("HttpRequestChecker: ContentLength has value %v which does not match expected value %v", event.ContentLength.Value, *checker.ContentLength)
-		}
-	}
-	if checker.Headers != nil {
-		if err := checker.Headers.Check(event.Headers); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Headers check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("HttpRequestChecker: Flags check failed: %w", err)
-		}
-	}
-	if checker.TransferEncoding != nil {
-		if err := checker.TransferEncoding.Match(event.TransferEncoding); err != nil {
-			return fmt.Errorf("HttpRequestChecker: TransferEncoding check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7539,7 +8212,7 @@ func (checker *HttpHeaderListMatcher) Check(values []*tetragon.HttpHeader) error
 func (checker *HttpHeaderListMatcher) orderedCheck(values []*tetragon.HttpHeader) error {
 	innerCheck := func(check *HttpHeaderChecker, value *tetragon.HttpHeader) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("HttpHeaderListMatcher: Headers check failed: %w", err)
+			return fmt.Errorf("Headers check failed: %w", err)
 		}
 		return nil
 	}
@@ -7571,7 +8244,7 @@ func (checker *HttpHeaderListMatcher) unorderedCheck(values []*tetragon.HttpHead
 func (checker *HttpHeaderListMatcher) subsetCheck(values []*tetragon.HttpHeader) error {
 	innerCheck := func(check *HttpHeaderChecker, value *tetragon.HttpHeader) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("HttpHeaderListMatcher: Headers check failed: %w", err)
+			return fmt.Errorf("Headers check failed: %w", err)
 		}
 		return nil
 	}
@@ -7613,54 +8286,65 @@ func NewHttpResponseChecker() *HttpResponseChecker {
 	return &HttpResponseChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HttpResponseChecker) GetCheckerType() string {
+	return "HttpResponseChecker"
+}
+
 // Check checks a HttpResponse field
 func (checker *HttpResponseChecker) Check(event *tetragon.HttpResponse) error {
 	if event == nil {
-		return fmt.Errorf("HttpResponseChecker: HttpResponse field is nil")
+		return fmt.Errorf("%s: HttpResponse field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Timestamp != nil {
-		if err := checker.Timestamp.Match(event.Timestamp); err != nil {
-			return fmt.Errorf("HttpResponseChecker: Timestamp check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Timestamp != nil {
+			if err := checker.Timestamp.Match(event.Timestamp); err != nil {
+				return fmt.Errorf("Timestamp check failed: %w", err)
+			}
 		}
+		if checker.Version != nil {
+			if err := checker.Version.Match(event.Version); err != nil {
+				return fmt.Errorf("Version check failed: %w", err)
+			}
+		}
+		if checker.Code != nil {
+			if *checker.Code != event.Code {
+				return fmt.Errorf("Code has value %d which does not match expected value %d", event.Code, *checker.Code)
+			}
+		}
+		if checker.Reason != nil {
+			if err := checker.Reason.Match(event.Reason); err != nil {
+				return fmt.Errorf("Reason check failed: %w", err)
+			}
+		}
+		if checker.ContentLength != nil {
+			if event.ContentLength == nil {
+				return fmt.Errorf("ContentLength is nil and does not match expected value %v", *checker.ContentLength)
+			}
+			if *checker.ContentLength != event.ContentLength.Value {
+				return fmt.Errorf("ContentLength has value %v which does not match expected value %v", event.ContentLength.Value, *checker.ContentLength)
+			}
+		}
+		if checker.Headers != nil {
+			if err := checker.Headers.Check(event.Headers); err != nil {
+				return fmt.Errorf("Headers check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		if checker.TransferEncoding != nil {
+			if err := checker.TransferEncoding.Match(event.TransferEncoding); err != nil {
+				return fmt.Errorf("TransferEncoding check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Version != nil {
-		if err := checker.Version.Match(event.Version); err != nil {
-			return fmt.Errorf("HttpResponseChecker: Version check failed: %w", err)
-		}
-	}
-	if checker.Code != nil {
-		if *checker.Code != event.Code {
-			return fmt.Errorf("HttpResponseChecker: Code has value %d which does not match expected value %d", event.Code, *checker.Code)
-		}
-	}
-	if checker.Reason != nil {
-		if err := checker.Reason.Match(event.Reason); err != nil {
-			return fmt.Errorf("HttpResponseChecker: Reason check failed: %w", err)
-		}
-	}
-	if checker.ContentLength != nil {
-		if event.ContentLength == nil {
-			return fmt.Errorf("HttpResponseChecker: ContentLength is nil and does not match expected value %v", *checker.ContentLength)
-		}
-		if *checker.ContentLength != event.ContentLength.Value {
-			return fmt.Errorf("HttpResponseChecker: ContentLength has value %v which does not match expected value %v", event.ContentLength.Value, *checker.ContentLength)
-		}
-	}
-	if checker.Headers != nil {
-		if err := checker.Headers.Check(event.Headers); err != nil {
-			return fmt.Errorf("HttpResponseChecker: Headers check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("HttpResponseChecker: Flags check failed: %w", err)
-		}
-	}
-	if checker.TransferEncoding != nil {
-		if err := checker.TransferEncoding.Match(event.TransferEncoding); err != nil {
-			return fmt.Errorf("HttpResponseChecker: TransferEncoding check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7760,26 +8444,37 @@ func NewHttpInfoChecker() *HttpInfoChecker {
 	return &HttpInfoChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *HttpInfoChecker) GetCheckerType() string {
+	return "HttpInfoChecker"
+}
+
 // Check checks a HttpInfo field
 func (checker *HttpInfoChecker) Check(event *tetragon.HttpInfo) error {
 	if event == nil {
-		return fmt.Errorf("HttpInfoChecker: HttpInfo field is nil")
+		return fmt.Errorf("%s: HttpInfo field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.Request != nil {
-		if err := checker.Request.Check(event.Request); err != nil {
-			return fmt.Errorf("HttpInfoChecker: Request check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.Request != nil {
+			if err := checker.Request.Check(event.Request); err != nil {
+				return fmt.Errorf("Request check failed: %w", err)
+			}
 		}
+		if checker.Response != nil {
+			if err := checker.Response.Check(event.Response); err != nil {
+				return fmt.Errorf("Response check failed: %w", err)
+			}
+		}
+		if checker.Latency != nil {
+			if err := checker.Latency.Match(event.Latency); err != nil {
+				return fmt.Errorf("Latency check failed: %w", err)
+			}
+		}
+		return nil
 	}
-	if checker.Response != nil {
-		if err := checker.Response.Check(event.Response); err != nil {
-			return fmt.Errorf("HttpInfoChecker: Response check failed: %w", err)
-		}
-	}
-	if checker.Latency != nil {
-		if err := checker.Latency.Match(event.Latency); err != nil {
-			return fmt.Errorf("HttpInfoChecker: Latency check failed: %w", err)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -7835,54 +8530,65 @@ func NewDnsInfoChecker() *DnsInfoChecker {
 	return &DnsInfoChecker{}
 }
 
+// Get the type of the checker as a string
+func (checker *DnsInfoChecker) GetCheckerType() string {
+	return "DnsInfoChecker"
+}
+
 // Check checks a DnsInfo field
 func (checker *DnsInfoChecker) Check(event *tetragon.DnsInfo) error {
 	if event == nil {
-		return fmt.Errorf("DnsInfoChecker: DnsInfo field is nil")
+		return fmt.Errorf("%s: DnsInfo field is nil", CheckerLogPrefix(checker))
 	}
 
-	if checker.QuestionTypes != nil {
-		if err := checker.QuestionTypes.Check(event.QuestionTypes); err != nil {
-			return fmt.Errorf("DnsInfoChecker: QuestionTypes check failed: %w", err)
+	fieldChecks := func() error {
+		if checker.QuestionTypes != nil {
+			if err := checker.QuestionTypes.Check(event.QuestionTypes); err != nil {
+				return fmt.Errorf("QuestionTypes check failed: %w", err)
+			}
 		}
+		if checker.AnswerTypes != nil {
+			if err := checker.AnswerTypes.Check(event.AnswerTypes); err != nil {
+				return fmt.Errorf("AnswerTypes check failed: %w", err)
+			}
+		}
+		if checker.Rcode != nil {
+			if *checker.Rcode != event.Rcode {
+				return fmt.Errorf("Rcode has value %d which does not match expected value %d", event.Rcode, *checker.Rcode)
+			}
+		}
+		if checker.Names != nil {
+			if err := checker.Names.Check(event.Names); err != nil {
+				return fmt.Errorf("Names check failed: %w", err)
+			}
+		}
+		if checker.Ips != nil {
+			if err := checker.Ips.Check(event.Ips); err != nil {
+				return fmt.Errorf("Ips check failed: %w", err)
+			}
+		}
+		if checker.Query != nil {
+			if err := checker.Query.Match(event.Query); err != nil {
+				return fmt.Errorf("Query check failed: %w", err)
+			}
+		}
+		if checker.Response != nil {
+			if *checker.Response != event.Response {
+				return fmt.Errorf("Response has value %t which does not match expected value %t", event.Response, *checker.Response)
+			}
+		}
+		if checker.ReturnCode != nil {
+			if event.ReturnCode == nil {
+				return fmt.Errorf("ReturnCode is nil and does not match expected value %v", *checker.ReturnCode)
+			}
+			if *checker.ReturnCode != event.ReturnCode.Value {
+				return fmt.Errorf("ReturnCode has value %v which does not match expected value %v", event.ReturnCode.Value, *checker.ReturnCode)
+			}
+		}
+		return nil
 	}
-	if checker.AnswerTypes != nil {
-		if err := checker.AnswerTypes.Check(event.AnswerTypes); err != nil {
-			return fmt.Errorf("DnsInfoChecker: AnswerTypes check failed: %w", err)
-		}
-	}
-	if checker.Rcode != nil {
-		if *checker.Rcode != event.Rcode {
-			return fmt.Errorf("DnsInfoChecker: Rcode has value %d which does not match expected value %d", event.Rcode, *checker.Rcode)
-		}
-	}
-	if checker.Names != nil {
-		if err := checker.Names.Check(event.Names); err != nil {
-			return fmt.Errorf("DnsInfoChecker: Names check failed: %w", err)
-		}
-	}
-	if checker.Ips != nil {
-		if err := checker.Ips.Check(event.Ips); err != nil {
-			return fmt.Errorf("DnsInfoChecker: Ips check failed: %w", err)
-		}
-	}
-	if checker.Query != nil {
-		if err := checker.Query.Match(event.Query); err != nil {
-			return fmt.Errorf("DnsInfoChecker: Query check failed: %w", err)
-		}
-	}
-	if checker.Response != nil {
-		if *checker.Response != event.Response {
-			return fmt.Errorf("DnsInfoChecker: Response has value %t which does not match expected value %t", event.Response, *checker.Response)
-		}
-	}
-	if checker.ReturnCode != nil {
-		if event.ReturnCode == nil {
-			return fmt.Errorf("DnsInfoChecker: ReturnCode is nil and does not match expected value %v", *checker.ReturnCode)
-		}
-		if *checker.ReturnCode != event.ReturnCode.Value {
-			return fmt.Errorf("DnsInfoChecker: ReturnCode has value %v which does not match expected value %v", event.ReturnCode.Value, *checker.ReturnCode)
-		}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
 	}
 	return nil
 }
@@ -8043,7 +8749,7 @@ func (checker *Uint32ListMatcher) Check(values []uint32) error {
 func (checker *Uint32ListMatcher) orderedCheck(values []uint32) error {
 	innerCheck := func(check uint32, value uint32) error {
 		if check != value {
-			return fmt.Errorf("Uint32ListMatcher: QuestionTypes has value %d which does not match expected value %d", value, check)
+			return fmt.Errorf("QuestionTypes has value %d which does not match expected value %d", value, check)
 		}
 		return nil
 	}
@@ -8075,7 +8781,7 @@ func (checker *Uint32ListMatcher) unorderedCheck(values []uint32) error {
 func (checker *Uint32ListMatcher) subsetCheck(values []uint32) error {
 	innerCheck := func(check uint32, value uint32) error {
 		if check != value {
-			return fmt.Errorf("Uint32ListMatcher: QuestionTypes has value %d which does not match expected value %d", value, check)
+			return fmt.Errorf("QuestionTypes has value %d which does not match expected value %d", value, check)
 		}
 		return nil
 	}
