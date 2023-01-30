@@ -232,80 +232,72 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 
 	demoAppChecker := ec.NewUnorderedEventChecker(
 		// jobposting pod
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("jobpostingExec").
 			WithProcess(jobpostingChecker).
 			WithParent(ec.NewProcessChecker().
 				WithBinary(sm.Full("/bin/sh")).
 				WithArguments(sm.Full("-c \"PORT=9080 node server.js\"")),
 			),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("jobpostingListen").
 			WithProcess(jobpostingChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(9080),
 
 		// recruiter pod
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("recruiterExec").
 			WithProcess(recruiterChecker).
 			WithParent(ec.NewProcessChecker().
 				WithBinary(sm.Full("/bin/sh")).
 				WithArguments(sm.Full("-c \"PORT=9080 node server.js\""))),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("recruiterListen").
 			WithProcess(recruiterChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(9080),
 
 		// loader pod
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("loaderExec").
 			WithProcess(loaderChecker).
 			WithParent(ec.NewProcessChecker().
 				WithBinary(sm.Full("/usr/local/bin/docker-entrypoint.sh")).
 				WithArguments(sm.Full("/usr/local/bin/docker-entrypoint.sh node server.js"))),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("loaderListen").
 			WithProcess(loaderChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(50051),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("loaderConnect").
 			WithProcess(loaderChecker).
 			WithProtocol(tetragon.SocketProtocol_UDP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("loaderClose").
 			WithProcess(loaderChecker).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 
 		// coreapi pod
-		ec.NewProcessExecChecker().WithProcess(coreapiChecker),
+		ec.NewProcessExecChecker("coreapiExec").WithProcess(coreapiChecker),
 
 		// crawler pod
-		ec.NewProcessExecChecker().WithProcess(crawlerChecker),
+		ec.NewProcessExecChecker("crawlerExec").WithProcess(crawlerChecker),
 
 		// elasticsearch pod
-		ec.NewProcessExecChecker().WithProcess(elasticsearchChecker),
+		ec.NewProcessExecChecker("elasticsearchExec").WithProcess(elasticsearchChecker),
 
 		// kafka deployment
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("kafkaExec").
 			WithProcess(kafkaChecker),
 
 		// zookeeper deployment
-		ec.NewProcessExecChecker().WithProcess(zookeeperChecker),
+		ec.NewProcessExecChecker("zookeeperExec").WithProcess(zookeeperChecker),
 
 		// strimzi cluster operator
-		ec.NewProcessExecChecker().WithProcess(strimziChecker),
+		ec.NewProcessExecChecker("strimziExec").WithProcess(strimziChecker),
 	)
 
 	if kernels.MinKernelVersion("5.4.0") { // No DNS support for kernels <v5.4
 		// loader pod
 		demoAppChecker.AddChecks(
-			ec.NewProcessDnsChecker().
-				WithProcess(loaderChecker).
-				WithDns(ec.NewDnsInfoChecker().
-					WithNames(ec.NewStringListMatcher().
-						WithOperator(listmatcher.Ordered).
-						WithValues(
-							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
-						))),
-			ec.NewProcessDnsChecker().
+			ec.NewProcessDnsChecker("loaderDnsReply").
 				WithProcess(loaderChecker).
 				WithDns(ec.NewDnsInfoChecker().
 					WithNames(ec.NewStringListMatcher().
@@ -315,6 +307,16 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 						)).
 					WithResponse(true).
 					WithRcode(3)),
+			// This needs to be second in the list of checks since it is less
+			// specific then the above check
+			ec.NewProcessDnsChecker("loaderDnsRequest").
+				WithProcess(loaderChecker).
+				WithDns(ec.NewDnsInfoChecker().
+					WithNames(ec.NewStringListMatcher().
+						WithOperator(listmatcher.Ordered).
+						WithValues(
+							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
+						))),
 		)
 	}
 

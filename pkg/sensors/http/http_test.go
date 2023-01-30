@@ -102,14 +102,14 @@ func TestHttp11Curl(t *testing.T) {
 			WithReason(sm.Full("OK")))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(80),
-		ec.NewProcessHttpChecker().
+		ec.NewProcessHttpChecker("curlHttp").
 			WithProcess(curlChecker).
 			WithHttp(httpChecker),
 	)
@@ -197,14 +197,14 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 			WithReason(sm.Full("OK")))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(uint32(http2Port)),
-		ec.NewProcessHttpChecker().
+		ec.NewProcessHttpChecker("curlHttp").
 			WithProcess(curlChecker).
 			WithHttp(httpChecker),
 	)

@@ -200,10 +200,10 @@ func FileChecker() ec.MultiEventChecker {
 		WithBinary(sm.Contains("nsenter"))
 
 	fileChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("catTmpExec").
 			WithProcess(catCheckerTmp).
 			WithParent(shellChecker),
-		ec.NewProcessFileChecker().
+		ec.NewProcessFileChecker("catTmpRead").
 			WithProcess(catCheckerTmp).
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
@@ -212,10 +212,10 @@ func FileChecker() ec.MultiEventChecker {
 				),
 			).
 			WithHook(sm.Full("rw_verify_area")),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("catEtcExec").
 			WithProcess(catCheckerEtc).
 			WithParent(shellChecker),
-		ec.NewProcessFileChecker().
+		ec.NewProcessFileChecker("catEtcRead").
 			WithProcess(catCheckerEtc).
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(

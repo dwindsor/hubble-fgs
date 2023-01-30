@@ -177,19 +177,19 @@ func TestConnectEvent4(t *testing.T) {
 		WithArguments(sm.Full("127.0.0.1"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("curlClose").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
@@ -240,22 +240,22 @@ func TestExecEventClone4(t *testing.T) {
 		WithArguments(sm.Full("127.0.0.1 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
@@ -291,13 +291,13 @@ func TestExistingListenEvent4(t *testing.T) {
 		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
@@ -337,19 +337,19 @@ func TestExistingAcceptEvent4(t *testing.T) {
 		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker().
+		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
@@ -391,13 +391,13 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 		WithCwd(sm.Full("/"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
@@ -442,25 +442,25 @@ func TestListenAcceptClose4(t *testing.T) {
 		WithArguments(sm.Full("-nvlp 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker().
+		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("ncClose").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
@@ -474,7 +474,7 @@ func TestListenAcceptClose4(t *testing.T) {
 	)
 
 	exitChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExitChecker().
+		ec.NewProcessExitChecker("ncExit").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSignal(sm.Full("SIGKILL")),
@@ -541,12 +541,12 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 		WithUid(0)
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
@@ -599,30 +599,30 @@ func TestDockerListenConnect4(t *testing.T) {
 		WithDocker(fgsClientID)
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("serverClose").
 			WithProcess(ncSrvChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
 			WithSourcePort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("clientClose").
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).
@@ -759,25 +759,25 @@ func TestTcpBurst(t *testing.T) {
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-server"))
 
-	burstEgressStart := ec.NewProcessNetworkBurstChecker().
+	burstEgressStart := ec.NewProcessNetworkBurstChecker("burstEgressStart").
 		WithProcess(clientProcess).
 		WithParent(selfChecker).
 		WithProtocol(sm.Full("TCP")).
 		WithDirection(sm.Full("egress")).
 		WithBurstState(sm.Full("start"))
-	burstEgressEnd := ec.NewProcessNetworkBurstChecker().
+	burstEgressEnd := ec.NewProcessNetworkBurstChecker("burstEgressEnd").
 		WithProcess(clientProcess).
 		WithParent(selfChecker).
 		WithProtocol(sm.Full("TCP")).
 		WithDirection(sm.Full("egress")).
 		WithBurstState(sm.Full("end"))
-	burstIngressStart := ec.NewProcessNetworkBurstChecker().
+	burstIngressStart := ec.NewProcessNetworkBurstChecker("burstIngressStart").
 		WithProcess(serverProcess).
 		WithParent(selfChecker).
 		WithProtocol(sm.Full("TCP")).
 		WithDirection(sm.Full("ingress")).
 		WithBurstState(sm.Full("start"))
-	burstIngressEnd := ec.NewProcessNetworkBurstChecker().
+	burstIngressEnd := ec.NewProcessNetworkBurstChecker("burstIngressEnd").
 		WithProcess(serverProcess).
 		WithParent(selfChecker).
 		WithProtocol(sm.Full("TCP")).
@@ -785,15 +785,15 @@ func TestTcpBurst(t *testing.T) {
 		WithBurstState(sm.Full("end"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(clientProcess).
 			WithParent(selfChecker),
 		burstEgressStart,
 		burstEgressEnd,
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(serverProcess).
 			WithParent(selfChecker),
-		ec.NewProcessExitChecker().
+		ec.NewProcessExitChecker("serverExit").
 			WithProcess(serverProcess).
 			WithParent(selfChecker),
 		burstIngressStart,
@@ -921,7 +921,7 @@ func TestNamespaces(t *testing.T) {
 		WithNs(nsChecker)
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
 	)
@@ -999,19 +999,19 @@ func TestConnectEvent6(t *testing.T) {
 		WithArguments(sm.Full("[::1]"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("::1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("curlClose").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("::1")).
@@ -1062,22 +1062,22 @@ func TestExecEventClone6(t *testing.T) {
 		WithArguments(sm.Full("-6 ::1 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("::1")).
@@ -1113,13 +1113,13 @@ func TestExistingListenEvent6(t *testing.T) {
 		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
@@ -1159,19 +1159,19 @@ func TestExistingAcceptEvent6(t *testing.T) {
 		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker().
+		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
@@ -1213,13 +1213,13 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 		WithCwd(sm.Full("/"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
@@ -1264,25 +1264,25 @@ func TestListenAcceptClose6(t *testing.T) {
 		WithArguments(sm.Full("-6nvlp 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker).
 			WithParent(selfChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker().
+		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
 			WithSourcePort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("ncClose").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::")).
@@ -1296,7 +1296,7 @@ func TestListenAcceptClose6(t *testing.T) {
 	)
 
 	exitChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExitChecker().
+		ec.NewProcessExitChecker("ncExit").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSignal(sm.Full("SIGKILL")),
@@ -1363,12 +1363,12 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 		WithUid(0)
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("ncExec").
 			WithProcess(ncChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithIp(sm.Full("::")).
 			WithPort(8081).
@@ -1421,30 +1421,30 @@ func TestDockerListenConnect6(t *testing.T) {
 		WithDocker(fgsClientID)
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("severExec").
 			WithProcess(ncSrvChecker),
-		ec.NewProcessListenChecker().
+		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithIp(sm.Full("::")).
 			WithPort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("serverClose").
 			WithProcess(ncSrvChecker).
 			WithSourceIp(sm.Full("::")).
 			WithSourcePort(8081).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("clientClose").
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).

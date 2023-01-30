@@ -62,7 +62,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	if err := unix.Listen(lFD, 1); err != nil {
 		return nil, fmt.Errorf("listen failed: %w", err)
 	}
-	checker.AddChecks(ec.NewProcessListenChecker().WithSockCookie(lCookie))
+	checker.AddChecks(ec.NewProcessListenChecker("listen").WithSockCookie(lCookie))
 
 	laddr, err := unix.Getsockname(lFD)
 	if err != nil {
@@ -78,7 +78,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect failed: %w", err)
 	}
-	checker.AddChecks(ec.NewProcessConnectChecker().WithSockCookie(cCookie))
+	checker.AddChecks(ec.NewProcessConnectChecker("connect").WithSockCookie(cCookie))
 
 	aFD, _, err = unix.Accept(lFD)
 	if err != nil {
@@ -86,19 +86,19 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	}
 	aCookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), aFD)
 	// cannot set cookie for accept from user-space
-	checker.AddChecks(ec.NewProcessAcceptChecker())
+	checker.AddChecks(ec.NewProcessAcceptChecker("accept"))
 
 	unix.Close(aFD)
 	aFD = -1
-	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(aCookie))
+	checker.AddChecks(ec.NewProcessCloseChecker("closeAccept").WithSockCookie(aCookie))
 
 	unix.Close(cFD)
 	cFD = -1
-	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(cCookie))
+	checker.AddChecks(ec.NewProcessCloseChecker("closeConnect").WithSockCookie(cCookie))
 
 	unix.Close(lFD)
 	lFD = -1
-	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(lCookie))
+	checker.AddChecks(ec.NewProcessCloseChecker("closeListen").WithSockCookie(lCookie))
 	return checker, nil
 }
 

@@ -202,10 +202,10 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 		WithBinary(sm.Contains("runc"))
 
 	tlsChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(shellChecker),
-		ec.NewProcessDnsChecker().
+		ec.NewProcessDnsChecker("curlDns").
 			WithProcess(curlChecker).
 			WithDns(ec.NewDnsInfoChecker().
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
@@ -213,11 +213,11 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 				WithReturnCode(0).
 				WithResponse(true),
 			),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithDestinationPort(443).
 			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker().
+		ec.NewProcessCloseChecker("curlClose").
 			WithProcess(curlChecker).
 			WithDestinationPort(443),
 	)
@@ -226,7 +226,7 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 	if kernels.KernelStringToNumeric(kernelVersion) < kernels.KernelStringToNumeric("5.10.0") {
 		klog.Info("TLS events need kernel >= 5.10, skipping TLS checks")
 	} else {
-		tlsChecker.AddChecks(ec.NewTlsChecker().
+		tlsChecker.AddChecks(ec.NewTlsChecker("curlTls").
 			WithProcess(curlChecker).
 			WithDestinationPort(443).
 			WithNegotiatedVersion(sm.Full("TLS1.3")).
@@ -278,10 +278,10 @@ func HttpChecker(kernelVersion string) ec.MultiEventChecker {
 		)
 
 	httpChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(shellChecker),
-		ec.NewProcessHttpChecker().
+		ec.NewProcessHttpChecker("curlHttp").
 			WithProcess(curlChecker).
 			WithHttp(httpEventChecker),
 	)

@@ -227,7 +227,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 	}
 
 	ino, dev := getInodeInfo(t, test_file)
-	fileChecker := ec.NewProcessFileChecker().
+	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(act).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
@@ -286,11 +286,11 @@ func runCopyTest(t *testing.T, exec_path string) {
 	}
 
 	in_ino, in_dev := getInodeInfo(t, in_file)
-	inFileChecker := ec.NewProcessFileChecker().
+	inFileChecker := ec.NewProcessFileChecker("inFile").
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(in_file, in_ino, in_dev))
 	out_ino, out_dev := getInodeInfo(t, out_file)
-	outFileChecker := ec.NewProcessFileChecker().
+	outFileChecker := ec.NewProcessFileChecker("outFile").
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(out_file, out_ino, out_dev))
 	checker := ec.NewUnorderedEventChecker(
@@ -350,10 +350,10 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 	}
 
 	ino, dev := getInodeInfo(t, test_file)
-	fileCheckerRead := ec.NewProcessFileChecker().
+	fileCheckerRead := ec.NewProcessFileChecker("readChecker").
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
-	fileCheckerWrite := ec.NewProcessFileChecker().
+	fileCheckerWrite := ec.NewProcessFileChecker("writeChecker").
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(
@@ -539,7 +539,7 @@ func TestFileDelete(t *testing.T) {
 		t.Errorf("os.Remove failed (%s)", errOp)
 	}
 
-	inFileChecker := ec.NewProcessFileChecker().
+	inFileChecker := ec.NewProcessFileChecker("inFileChecker").
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(in_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
@@ -667,25 +667,25 @@ func TestFileCreate(t *testing.T) {
 
 	fileCleanup(t, test_path)
 
-	file1CreateChecker := ec.NewProcessFileChecker().
+	file1CreateChecker := ec.NewProcessFileChecker("file1Create").
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp1, ino1, dev1)).
 		WithPermissions(sm.Full(perm1)).
 		WithUid(sm.Full(uid1)).
 		WithGid(sm.Full(gid1))
-	file2CreateChecker := ec.NewProcessFileChecker().
+	file2CreateChecker := ec.NewProcessFileChecker("file2Create").
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2)).
 		WithPermissions(sm.Full(perm2)).
 		WithUid(sm.Full(uid2)).
 		WithGid(sm.Full(gid2))
-	file2WriteChecker := ec.NewProcessFileChecker().
+	file2WriteChecker := ec.NewProcessFileChecker("file2Write").
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2))
-	file1DeleteChecker := ec.NewProcessFileChecker().
+	file1DeleteChecker := ec.NewProcessFileChecker("file1Delete").
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp1, ino1, dev1))
-	file2DeleteChecker := ec.NewProcessFileChecker().
+	file2DeleteChecker := ec.NewProcessFileChecker("file2Delete").
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2))
 	checker := ec.NewUnorderedEventChecker(
@@ -807,7 +807,7 @@ func renameDeleteChecker(f string) *ec.ProcessFileChecker {
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
-	return ec.NewProcessFileChecker().
+	return ec.NewProcessFileChecker(fmt.Sprintf("renameDelete(%s)", f)).
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(a)
 }
@@ -818,7 +818,7 @@ func renameReadChecker(f string) *ec.ProcessFileChecker {
 	g := ec.NewGenericFileArgChecker().WithFile(d).WithIo(i)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
-	return ec.NewProcessFileChecker().
+	return ec.NewProcessFileChecker(fmt.Sprintf("renameRead(%s)", f)).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(a)
 }
@@ -836,7 +836,7 @@ func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChe
 	c := ec.NewRenameFileArgChecker().WithSrc(d1).WithDst(d2).WithFlags(fl)
 	a := ec.NewFileArgumentChecker().WithRenameArg(c)
 
-	return ec.NewProcessFileChecker().
+	return ec.NewProcessFileChecker(fmt.Sprintf("renameRename(%s -> %s)", src, dst)).
 		WithAction(tetragon.FileAction_FILE_RENAME).
 		WithArgs(a)
 }
@@ -1579,7 +1579,7 @@ func TestFileRmdir(t *testing.T) {
 		t.Fatalf("Remove directory failed: %s\n", err)
 	}
 
-	dirChecker := ec.NewProcessFileChecker().
+	dirChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_RMDIR).
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
@@ -1618,7 +1618,7 @@ func TestFileMkdir(t *testing.T) {
 	createTestDir(t, a)
 	ino, dev := getInodeInfo(t, a)
 
-	dirChecker := ec.NewProcessFileChecker().
+	dirChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_MKDIR).
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)

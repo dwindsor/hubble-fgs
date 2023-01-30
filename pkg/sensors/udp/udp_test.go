@@ -211,31 +211,31 @@ func TestUdpBurst(t *testing.T) {
 		WithArguments(sm.Full("-server"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(clientProcess),
-		ec.NewProcessNetworkBurstChecker().
+		ec.NewProcessNetworkBurstChecker("egressStart").
 			WithProcess(clientProcess).
 			WithProtocol(sm.Full("UDP")).
 			WithDirection(sm.Full("egress")).
 			WithBurstState(sm.Full("start")),
-		ec.NewProcessNetworkBurstChecker().
+		ec.NewProcessNetworkBurstChecker("egressEnd").
 			WithProcess(clientProcess).
 			WithProtocol(sm.Full("UDP")).
 			WithDirection(sm.Full("egress")).
 			WithBurstState(sm.Full("end")),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("severStart").
 			WithProcess(serverProcess),
-		ec.NewProcessNetworkBurstChecker().
+		ec.NewProcessNetworkBurstChecker("ingressStart").
 			WithProcess(serverProcess).
 			WithProtocol(sm.Full("UDP")).
 			WithDirection(sm.Full("ingress")).
 			WithBurstState(sm.Full("start")),
-		ec.NewProcessNetworkBurstChecker().
+		ec.NewProcessNetworkBurstChecker("ingressEnd").
 			WithProcess(serverProcess).
 			WithProtocol(sm.Full("UDP")).
 			WithDirection(sm.Full("ingress")).
 			WithBurstState(sm.Full("end")),
-		ec.NewProcessExitChecker().
+		ec.NewProcessExitChecker("serverExit").
 			WithProcess(serverProcess),
 	)
 
@@ -415,7 +415,7 @@ func TestConnectEvent4(t *testing.T) {
 		WithBinary(sm.Suffix(client)).
 		WithArguments(sm.Full("-u 127.0.0.1 8081"))
 
-	clientStatsChecker := ec.NewProcessSockStatsChecker().
+	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(ncCliChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
@@ -423,7 +423,7 @@ func TestConnectEvent4(t *testing.T) {
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(8081))
 
-	serverStatsChecker := ec.NewProcessSockStatsChecker().
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(ncSrvChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
@@ -433,16 +433,16 @@ func TestConnectEvent4(t *testing.T) {
 			WithSourcePort(8081))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("serverConnect").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
@@ -579,16 +579,16 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 		WithArguments(sm.Full("-u 127.0.0.1 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("serverConnect").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
@@ -596,7 +596,7 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		// Check client sock stats
-		ec.NewProcessSockStatsChecker().
+		ec.NewProcessSockStatsChecker("clientStats").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
@@ -609,7 +609,7 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 				WithSegsOut(1).
 				WithSegsSubmitted(1)),
 		// Check server sock stats
-		ec.NewProcessSockStatsChecker().
+		ec.NewProcessSockStatsChecker("serverStats").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
@@ -799,7 +799,7 @@ func TestConnectEvent6(t *testing.T) {
 		WithBinary(sm.Suffix(client)).
 		WithArguments(sm.Full("-6u ::1 8081"))
 
-	clientStatsChecker := ec.NewProcessSockStatsChecker().
+	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(ncCliChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
@@ -807,7 +807,7 @@ func TestConnectEvent6(t *testing.T) {
 			WithDestinationIp(sm.Full("::1")).
 			WithDestinationPort(8081))
 
-	serverStatsChecker := ec.NewProcessSockStatsChecker().
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(ncSrvChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
@@ -817,16 +817,16 @@ func TestConnectEvent6(t *testing.T) {
 			WithSourcePort(8081))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("serverConnect").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
@@ -963,16 +963,16 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 		WithArguments(sm.Full("-6u ::1 8081"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("serverExec").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("serverConnect").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
@@ -980,7 +980,7 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 			WithDestinationIp(sm.Full("::1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		// Check client sock stats
-		ec.NewProcessSockStatsChecker().
+		ec.NewProcessSockStatsChecker("clientConnect").
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
@@ -993,7 +993,7 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 				WithSegsOut(1).
 				WithSegsSubmitted(1)),
 		// Check server sock stats
-		ec.NewProcessSockStatsChecker().
+		ec.NewProcessSockStatsChecker("clientStats").
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
@@ -1065,15 +1065,15 @@ func TestDnsEvents(t *testing.T) {
 		WithArguments(sm.Full("-6 https://www.google.com"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curl4Exec").
 			WithProcess(curl4Checker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curl4Connect").
 			WithProcess(curl4Checker).
 			WithParent(selfChecker).
 			WithDestinationPort(53).
 			WithProtocol(tetragon.SocketProtocol_UDP),
-		ec.NewProcessDnsChecker().
+		ec.NewProcessDnsChecker("curl4DnsReply").
 			WithProcess(curl4Checker).
 			WithParent(selfChecker).
 			WithDns(ec.NewDnsInfoChecker().
@@ -1085,22 +1085,23 @@ func TestDnsEvents(t *testing.T) {
 					WithOperator(listmatcher.Subset).
 					// Match a valid IPv4 address
 					WithValues(sm.Regex(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$`)))),
-		ec.NewProcessDnsChecker().
+		// This is less specific than the above so it must be specified second
+		ec.NewProcessDnsChecker("curl4DnsRequest").
 			WithProcess(curl4Checker).
 			WithParent(selfChecker).
 			WithDns(ec.NewDnsInfoChecker().
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
 				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1))),
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curl6Exec").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curl6Connect").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker).
 			WithDestinationPort(53).
 			WithProtocol(tetragon.SocketProtocol_UDP),
-		ec.NewProcessDnsChecker().
+		ec.NewProcessDnsChecker("curl6DnsReply").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker).
 			WithDns(ec.NewDnsInfoChecker().
@@ -1113,7 +1114,8 @@ func TestDnsEvents(t *testing.T) {
 					// Full IPv6 regex is probably too complicated, let's just see if it
 					// contains a ::
 					WithValues(sm.Contains(`::`)))),
-		ec.NewProcessDnsChecker().
+		// This is less specific than the above so it must be specified second
+		ec.NewProcessDnsChecker("curl6DnsRequest").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker).
 			WithDns(ec.NewDnsInfoChecker().

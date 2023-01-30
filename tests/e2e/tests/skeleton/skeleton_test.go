@@ -137,7 +137,7 @@ func TestSkeletonBasic(t *testing.T) {
 
 func curlEventChecker(kernelVersion string) *checker.RPCChecker {
 	curlEventChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("checkerNameHere").
 			WithProcess(
 				ec.NewProcessChecker().
 					WithPod(ec.NewPodChecker().

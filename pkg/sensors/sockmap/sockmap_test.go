@@ -96,7 +96,7 @@ func TestTLS13(t *testing.T) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
 
-	tlsChecker := ec.NewTlsChecker().
+	tlsChecker := ec.NewTlsChecker("curlTls").
 		WithProcess(curlChecker).
 		WithParent(selfChecker).
 		WithNegotiatedVersion(sm.Full("TLS1.3")).
@@ -108,10 +108,10 @@ func TestTLS13(t *testing.T) {
 		WithServerFlags(sm.Contains("ExtVersion"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(443),
@@ -160,7 +160,7 @@ func TestTLS12(t *testing.T) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"))
 
-	tlsChecker := ec.NewTlsChecker().
+	tlsChecker := ec.NewTlsChecker("curlTls").
 		WithProcess(curlChecker).
 		WithParent(selfChecker).
 		WithClientVersion(sm.Full("TLS1.2")).
@@ -178,10 +178,10 @@ func TestTLS12(t *testing.T) {
 			))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(443),
@@ -337,7 +337,7 @@ func TestCGTLS13(t *testing.T) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
 
-	tlsChecker := ec.NewTlsChecker().
+	tlsChecker := ec.NewTlsChecker("curlTls").
 		WithProcess(curlChecker).
 		WithParent(selfChecker).
 		WithNegotiatedVersion(sm.Full("TLS1.3")).
@@ -349,10 +349,10 @@ func TestCGTLS13(t *testing.T) {
 		WithServerFlags(sm.Contains("ExtVersion"))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(443),
@@ -401,7 +401,7 @@ func TestCGTLS12(t *testing.T) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"))
 
-	tlsChecker := ec.NewTlsChecker().
+	tlsChecker := ec.NewTlsChecker("curlTls").
 		WithProcess(curlChecker).
 		WithParent(selfChecker).
 		WithClientVersion(sm.Full("TLS1.2")).
@@ -419,10 +419,10 @@ func TestCGTLS12(t *testing.T) {
 			))
 
 	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker().
+		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(selfChecker),
-		ec.NewProcessConnectChecker().
+		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationPort(443),
