@@ -39,12 +39,12 @@ var (
 	namespaces []string
 	processes  []string
 	pods       []string
-	IPs        []string
+	ips        []string
 	sourceIPs  []string
 	destIPs    []string
 	destNames  []string
-	SNINames   []string
-	URIs       []string
+	sniNames   []string
+	uris       []string
 	destPods   []string
 )
 
@@ -76,8 +76,8 @@ var GetFilter = func() *tetragon.Filter {
 	if len(pods) > 0 {
 		filter.PodRegex = pods
 	}
-	if len(IPs) > 0 {
-		filter.IpCidr = IPs
+	if len(ips) > 0 {
+		filter.IpCidr = ips
 	}
 	if len(sourceIPs) > 0 {
 		filter.SourceIpCidr = sourceIPs
@@ -88,11 +88,11 @@ var GetFilter = func() *tetragon.Filter {
 	if len(destNames) > 0 {
 		filter.DestinationNamesRegex = destNames
 	}
-	if len(SNINames) > 0 {
-		filter.SniRegex = SNINames
+	if len(sniNames) > 0 {
+		filter.SniRegex = sniNames
 	}
-	if len(URIs) > 0 {
-		filter.UriRegex = URIs
+	if len(uris) > 0 {
+		filter.UriRegex = uris
 	}
 	if len(destPods) > 0 {
 		filter.DestinationPodRegex = destPods
@@ -108,12 +108,12 @@ func New() *cobra.Command {
 	cmd.Long = fmt.Sprintf(ossGetevents.DocLong, "hubble-enterprise")
 
 	flags := cmd.Flags()
-	flags.StringSliceVar(&IPs, "ip-cidr", nil, "Get ProcessListen events by IP CIDR")
+	flags.StringSliceVar(&ips, "ip-cidr", nil, "Get ProcessListen events by IP CIDR")
 	flags.StringSliceVar(&sourceIPs, "source-ip-cidr", nil, "Get network events by source IP CIDR")
 	flags.StringSliceVar(&destIPs, "dest-ip-cidr", nil, "Get network events by destination IP CIDR")
 	flags.StringSliceVar(&destNames, "dest-name", nil, "Get network events by destination names field regex")
-	flags.StringSliceVar(&SNINames, "sni-name", nil, "Get network events by SNI name field regex")
-	flags.StringSliceVar(&URIs, "uri", nil, "Get network events by URI field regex")
+	flags.StringSliceVar(&sniNames, "sni-name", nil, "Get network events by SNI name field regex")
+	flags.StringSliceVar(&uris, "uri", nil, "Get network events by URI field regex")
 	flags.StringSliceVar(&destPods, "dest-pod", nil, "Get network events by destination pod field regex")
 
 	return cmd
