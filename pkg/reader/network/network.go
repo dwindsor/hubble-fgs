@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"syscall"
 
@@ -216,6 +217,28 @@ func GetDport(dport uint16, op uint8) uint16 {
 		return 0
 	}
 	return SwapByte(dport)
+}
+
+// TupleAddrString returns two strings to represent the tuple addresses.
+// The first is the source, and the second is the destination.
+func TupleAddrString(tuple *api.MsgIPTuple, op uint8) (string, string) {
+	var saddr, daddr net.IP
+	var sport, dport uint16
+
+	saddr = GetIP(tuple.SAddr, op, tuple.IPv6 == 1)
+	daddr = GetIP(tuple.DAddr, op, tuple.IPv6 == 1)
+
+	sport = GetSport(tuple.SPort)
+	dport = GetDport(tuple.DPort, op)
+
+	wrapAddr := func(ip net.IP) string {
+		if tuple.IPv6 == 1 {
+			return fmt.Sprintf("[%s]", ip)
+		}
+		return fmt.Sprint(ip)
+	}
+
+	return fmt.Sprintf("%s:%d", wrapAddr(saddr), sport), fmt.Sprintf("%s:%d", wrapAddr(daddr), dport)
 }
 
 func ObserverTCPPrinter(msg *api.MsgIPEventUnix, log logrus.FieldLogger) {
