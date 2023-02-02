@@ -16,13 +16,45 @@ package main
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+int open_ret = -1;
+int open_errno = 0;
+int setns_ret = -1;
+int setns_errno = 0;
 
 __attribute__((constructor)) void enter_host_mnt_ns(void) {
-	int fd = open("/procRoot/1/ns/mnt", O_RDONLY);
-	if (fd == -1)
-		return;
+	char *env_path, mnt_ns_path[256] = { 0 };
+	int fd;
 
-	setns(fd, 0);
+	strcpy(mnt_ns_path, "/procRoot/1/ns/mnt");
+	env_path = getenv("TETRAGON_PROCFS");
+	if (env_path) {
+		snprintf(mnt_ns_path, 255, "%s/1/ns/mnt", env_path);
+	}
+
+	fd = open(mnt_ns_path, O_RDONLY);
+	if (fd == -1) {
+		// If /procRoot does not exist we run in host mode.
+		// In that case, it is valid for the open call to fail
+		// as there is no need to take any further action
+		// (we are already in the host mnt namespace).
+		if (errno == ENOENT) {
+			open_ret = 0;
+			setns_ret = 0;
+			return;
+		}
+		open_ret = fd;
+		open_errno = errno;
+		return;
+	}
+	open_ret = 0;
+
+	setns_ret = setns(fd, 0);
+	if (setns_ret == -1)
+		setns_errno = errno;
 	close(fd);
 }
 */
@@ -158,6 +190,17 @@ func main() {
 	logger.PopulateLogOpts(o, logL, logF)
 	if err := logger.SetupLogging(o, *debug); err != nil {
 		log.Fatal(err)
+	}
+
+	// open failed due to a different error than "No such file or directory"
+	if C.open_ret == -1 {
+		logger.GetLogger().WithField("errno", C.open_errno).Warnf("open failed in hubble-fgs-fs-scanner")
+		os.Exit(1)
+	}
+
+	if C.setns_ret == -1 {
+		logger.GetLogger().WithField("errno", C.setns_errno).Warnf("setns failed in hubble-fgs-fs-scanner")
+		os.Exit(1)
 	}
 
 	if !isFlagPassed("hostMntNs") {
