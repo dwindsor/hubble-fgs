@@ -16,6 +16,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
@@ -225,13 +226,20 @@ func tcpDiffRtt(last, curr *api.Histogram) api.Histogram {
 	}
 }
 
-func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, error) {
+func tcpDiffValues(last, curr *api.MsgSocketStatsUnix, tuple *api.MsgIPTuple) (api.MsgSocketStatsUnix, error) {
+	source, dest := network.TupleAddrString(tuple, ops.MSG_OP_TCPSTATS)
 	if curr.BytesReceived < last.BytesReceived {
-		logger.GetLogger().Warnf("RX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
+		logger.GetLogger().WithFields(logrus.Fields{
+			"source": source,
+			"dest":   dest,
+		}).Warnf("RX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
 		return *last, fmt.Errorf("TCP BytesReceived stats invalid diff operation")
 	}
 	if curr.BytesSent < last.BytesSent {
-		logger.GetLogger().Warnf("TX TCP stats underflow: %d < %d", curr.BytesSent, last.BytesSent)
+		logger.GetLogger().WithFields(logrus.Fields{
+			"source": source,
+			"dest":   dest,
+		}).Warnf("TX TCP stats underflow: %d < %d", curr.BytesSent, last.BytesSent)
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
 	return api.MsgSocketStatsUnix{
@@ -268,7 +276,7 @@ func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, er
 			return nil, fmt.Errorf("TCP stats message is older than previous")
 		}
 
-		tmpSocketStats, err := tcpDiffValues(&last, &tcp.SocketStats)
+		tmpSocketStats, err := tcpDiffValues(&last, &tcp.SocketStats, &tcp.Tuple)
 		if err != nil {
 			return nil, err
 		}
