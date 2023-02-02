@@ -203,6 +203,10 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
 
+	if err := observer.InitDataCache(dataCacheSize); err != nil {
+		return err
+	}
+
 	if metricsServer != "" {
 		go metrics.EnableMetrics(metricsServer)
 	}
@@ -513,6 +517,7 @@ func execute() error {
 	flags.String(keyKernelVersion, "", "Kernel version")
 	flags.Int(keyVerbosity, 0, "set verbosity level")
 	flags.Int(keyProcessCacheSize, 65536, "Size of the process cache")
+	flags.Int(keyDataCacheSize, 1024, "Size of the data events cache")
 	flags.Bool(keyForceSmallProgs, false, "Force loading small programs, even in kernels with >= 5.3 versions")
 	flags.String(keyExportFilename, "", "Filename for JSON export. Disabled by default")
 	flags.Int(keyExportFileMaxSizeMB, 10, "Size in MB for rotating JSON export files")

@@ -123,6 +123,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	var wg sync.WaitGroup
 
 	processCacheSize := 32768
+	dataCacheSize := 1024
 	option.Config.EnableProcessCred = false
 	option.Config.EnableProcessNs = false
 	option.Config.EnableCilium = false
@@ -132,6 +133,10 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 		return err
 	}
 	if err := process.InitCache(ctx, &raceK8sWatcher{}, option.Config.EnableCilium, processCacheSize); err != nil {
+		return err
+	}
+
+	if err := observer.InitDataCache(dataCacheSize); err != nil {
 		return err
 	}
 

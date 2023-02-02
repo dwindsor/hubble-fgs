@@ -231,6 +231,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	var wg sync.WaitGroup
 
 	processCacheSize := 32768
+	dataCacheSize := 1024
 	option.Config.EnableProcessCred = false
 	option.Config.EnableProcessNs = false
 	option.Config.EnableCilium = false
@@ -241,6 +242,10 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		return err
 	}
 	if err := process.InitCache(ctx, watcher.NewFakeK8sWatcher(nil), option.Config.EnableCilium, processCacheSize); err != nil {
+		return err
+	}
+
+	if err := observer.InitDataCache(dataCacheSize); err != nil {
 		return err
 	}
 

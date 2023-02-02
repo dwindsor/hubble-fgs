@@ -16,7 +16,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 
 	// Import OSS sensor handlers
-	_ "github.com/cilium/tetragon/pkg/data"
 	_ "github.com/cilium/tetragon/pkg/sensors/test"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 

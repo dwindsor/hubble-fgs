@@ -30,6 +30,7 @@ const (
 	keyKernelVersion    = "kernel"
 	keyVerbosity        = "verbose"
 	keyProcessCacheSize = "process-cache-size"
+	keyDataCacheSize    = "data-cache-size"
 	keyForceSmallProgs  = "force-small-progs"
 
 	keyLogLevel  = "log-level"
@@ -74,6 +75,7 @@ const (
 
 var (
 	processCacheSize int
+	dataCacheSize    int
 
 	metricsServer string
 	serverAddress string
@@ -116,6 +118,7 @@ func readAndSetFlags() {
 	logger.PopulateLogOpts(option.Config.LogOpts, logLevel, logFormat)
 
 	processCacheSize = viper.GetInt(keyProcessCacheSize)
+	dataCacheSize = viper.GetInt(keyDataCacheSize)
 
 	metricsServer = viper.GetString(keyMetricsServer)
 	serverAddress = viper.GetString(keyServerAddress)

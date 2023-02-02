@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/watcher"
@@ -264,6 +265,10 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 
 	if err := process.InitCache(ctx, watcher, false, 65536); err != nil {
 		t.Fatalf("failed to call process.InitCache %s", err)
+	}
+
+	if err := observer.InitDataCache(1024); err != nil {
+		t.Fatalf("failed to call observer.InitDataCache %s", err)
 	}
 
 	dn := DummyNotifier{t}
