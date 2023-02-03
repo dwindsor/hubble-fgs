@@ -329,6 +329,136 @@ func (t *fimTable) rmFIM(id uint32) {
 	delete(t.mp, id)
 }
 
+func ClearFIMTracingPolicies() {
+	fileMonitoringTable = fimTable{
+		mp: make(map[uint32]*fileMonitoring),
+	}
+}
+
+// only for testing
+// remove all entries of a map
+func cleanupMap[K any, V any](pinPathPrefix string, mapName string) (int, error) {
+	mapDir := bpf.MapPrefixPath()
+	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
+	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
+	if err != nil {
+		return 0, fmt.Errorf("cannot open pinned map %s", mapPath)
+	}
+	defer handle.Close()
+
+	var key K
+	var val V
+	count := 0
+	for {
+		entries := handle.Iterate()
+		keyFound := false
+		for entries.Next(&key, &val) {
+			if err := handle.Delete(key); err == nil {
+				count++
+			}
+			keyFound = true
+			break
+
+		}
+		if !keyFound {
+			break
+		}
+	}
+
+	return count, nil
+}
+
+// only for testing
+// remove all entries of all FIM maps
+func cleanupFIMMaps(id uint32) error {
+	var tc *fileMonitoring
+	if x, found := fileMonitoringTable.mp[id]; found {
+		tc = x
+	} else {
+		return fmt.Errorf("tracing policy with ID=%d does not exist", id)
+	}
+
+	cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.pinPathPrefix, "lpm_trie_map_alloc")
+	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_file_alloc")
+	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
+
+	return nil
+}
+
+// only for testing
+// generate the contents of FIM maps (the maps already exist and are empty)
+func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
+	var tc *fileMonitoring
+	if x, found := fileMonitoringTable.mp[id]; found {
+		tc = x
+	} else {
+		return fmt.Errorf("tracing policy with ID=%d does not exist", id)
+	}
+
+	tc.Spec = spec
+	mapDir := bpf.MapPrefixPath()
+	mapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "lpm_trie_map_alloc"))
+	lpmMap, err := ebpf.LoadPinnedMap(mapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", mapPath)
+	}
+
+	for _, str := range spec.Paths {
+		if err := addFilter(lpmMap, str, fm.FilterMatch); err != nil {
+			return fmt.Errorf("failed to add WatchPath: %w", err)
+		}
+	}
+
+	for _, str := range spec.PathsExclude {
+		if err := addFilter(lpmMap, str, fm.FilterIgnore); err != nil {
+			return fmt.Errorf("failed to add ExcludePath: %w", err)
+		}
+	}
+
+	if err := TracingPolicyInitFsScanner(*spec, mapDir, tc.pinPathPrefix); err != nil {
+		return err
+	}
+
+	fileMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "hash_map_file_alloc"))
+	fileHandle, err := ebpf.LoadPinnedMap(fileMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", fileMapPath)
+	}
+	defer fileHandle.Close()
+
+	// special (zero) value to store the policy index
+	if err := fm.AddFilePath(fileHandle, fileapi.HashMapFileKey{}, fileapi.HashMapFileVal{
+		Action: uint32(id),
+	}); err != nil {
+		return fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
+	}
+
+	return nil
+}
+
+// only for testing
+// cleanup and re-generate the contents of FIM maps
+// the maps (and programs) are loaded during the whole time of this procedure
+func reGenerateFimMaps(spec *v1alpha1.FileSpec) error {
+	fileMonitoringTable.mu.Lock()
+	defer fileMonitoringTable.mu.Unlock()
+
+	if len(fileMonitoringTable.mp) != 1 {
+		return fmt.Errorf("file sensor has more than one tracing policies")
+	}
+
+	tcID := uint32(0)
+	for key := range fileMonitoringTable.mp {
+		tcID = key
+	}
+
+	if err := cleanupFIMMaps(tcID); err != nil {
+		return err
+	}
+
+	return generateFIMMaps(tcID, spec)
+}
+
 func init() {
 	file := &observerFileSensor{
 		name: "file sensor",

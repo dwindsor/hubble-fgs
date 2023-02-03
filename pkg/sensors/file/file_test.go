@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
@@ -59,6 +60,10 @@ func TestMain(m *testing.M) {
 	ec := runner.TestSensorsRun(m, "SensorFile")
 	os.Exit(ec)
 }
+
+const (
+	renameDelay = 200
+)
 
 // CheckStructAlignments checks whether size and offsets of the C and Go
 // structs match.
@@ -178,21 +183,14 @@ func genericArgFilenameChecker(fileName string, ino uint64, dev string) *ec.File
 	return ec.NewFileArgumentChecker().WithGenericArg(c)
 }
 
-func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetragon.FileAction) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file bool, act tetragon.FileAction) {
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	test_file := filepath.Join(test_path, "test1")
 	if create_file == true {
 		createFileInDir(t, test_file)
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
@@ -205,16 +203,13 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 	}
 	defer testPipes.Close()
 
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := testCmd.Start(); err != nil {
 		t.Fatal(err)
@@ -233,25 +228,18 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func runCopyTest(t *testing.T, exec_path string) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	in_file := filepath.Join(test_path, "test1")
 	createFileInDir(t, in_file)
 
 	out_file := filepath.Join(test_path, "test2")
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
@@ -264,16 +252,13 @@ func runCopyTest(t *testing.T, exec_path string) {
 	}
 	defer testPipes.Close()
 
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := testCmd.Start(); err != nil {
 		t.Fatal(err)
@@ -299,23 +284,16 @@ func runCopyTest(t *testing.T, exec_path string) {
 		outFileChecker,
 	)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.FileAction) {
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	test_file := filepath.Join(test_path, "test1")
 	fallocateFileInDir(t, test_file)
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
@@ -328,16 +306,13 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 	}
 	defer testPipes.Close()
 
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := testCmd.Start(); err != nil {
 		t.Fatal(err)
@@ -365,172 +340,159 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 		checker = ec.NewUnorderedEventChecker(fileCheckerRead)
 	}
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
 // tests in "hubble-fgs/contrib/tester-progs/read_write"
 
-func TestFileRead(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/read", true, tetragon.FileAction_FILE_READ)
+func testFileRead(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/read", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFileReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/readv", true, tetragon.FileAction_FILE_READ)
+func testFileReadV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/readv", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFilePReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/preadv", true, tetragon.FileAction_FILE_READ)
+func testFilePReadV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/preadv", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFilePReadV2(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/preadv2", true, tetragon.FileAction_FILE_READ)
+func testFilePReadV2(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/preadv2", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFilePRead64(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pread64", true, tetragon.FileAction_FILE_READ)
+func testFilePRead64(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/pread64", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFileWrite(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/write", false, tetragon.FileAction_FILE_WRITE)
+func testFileWrite(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/write", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/writev", false, tetragon.FileAction_FILE_WRITE)
+func testFileWriteV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/writev", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFilePWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwritev", false, tetragon.FileAction_FILE_WRITE)
+func testFilePWriteV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/pwritev", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFilePWriteV2(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwritev2", false, tetragon.FileAction_FILE_WRITE)
+func testFilePWriteV2(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/pwritev2", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFilePWrite64(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwrite64", false, tetragon.FileAction_FILE_WRITE)
+func testFilePWrite64(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/read_write/pwrite64", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestSendfile(t *testing.T) {
-	runCopyTest(t, "tester-progs/read_write/sendfile")
+func testSendfile(gt *testing.T, t *testing.T) {
+	runCopyTest(gt, t, "tester-progs/read_write/sendfile")
 }
 
-func TestCopyFileRange(t *testing.T) {
-	runCopyTest(t, "tester-progs/read_write/copy_file_range")
+func testCopyFileRange(gt *testing.T, t *testing.T) {
+	runCopyTest(gt, t, "tester-progs/read_write/copy_file_range")
 }
 
 // tests in hubble-fgs/contrib/tester-progs/aio
 
-func TestFileAioPRead(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pread", true, tetragon.FileAction_FILE_READ)
+func testFileAioPRead(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/aio/aio_pread", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFileAioPReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_preadv", true, tetragon.FileAction_FILE_READ)
+func testFileAioPReadV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/aio/aio_preadv", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFileAioPWrite(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pwrite", false, tetragon.FileAction_FILE_WRITE)
+func testFileAioPWrite(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/aio/aio_pwrite", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileAioPWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pwritev", false, tetragon.FileAction_FILE_WRITE)
+func testFileAioPWriteV(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/aio/aio_pwritev", false, tetragon.FileAction_FILE_WRITE)
 }
 
 // tests in hubble-fgs/contrib/tester-progs/open
 
-func TestFileFallocate(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/open/fallocate", false, tetragon.FileAction_FILE_WRITE)
+func testFileFallocate(gt *testing.T, t *testing.T) {
+	runReadWriteTest(gt, t, "tester-progs/open/fallocate", false, tetragon.FileAction_FILE_WRITE)
 }
 
 // tests in hubble-fgs/contrib/tester-progs/splice
 
-func TestFileSplice(t *testing.T) {
-	runCopyTest(t, "tester-progs/splice/splice")
+func testFileSplice(gt *testing.T, t *testing.T) {
+	runCopyTest(gt, t, "tester-progs/splice/splice")
 }
 
 // tests in hubble-fgs/contrib/tester-progs/io_uring
 
-func TestFileCatIouring(t *testing.T) {
+func testFileCatIouring(gt *testing.T, t *testing.T) {
 	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
 	if !kernels.MinKernelVersion("5.1.0") {
 		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
 	}
 
-	runReadWriteTest(t, "tester-progs/io_uring/cat_liburing", true, tetragon.FileAction_FILE_READ)
+	runReadWriteTest(gt, t, "tester-progs/io_uring/cat_liburing", true, tetragon.FileAction_FILE_READ)
 }
 
-func TestFileWriteIouring(t *testing.T) {
+func testFileWriteIouring(gt *testing.T, t *testing.T) {
 	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
 	if !kernels.MinKernelVersion("5.1.0") {
 		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
 	}
 
-	runReadWriteTest(t, "tester-progs/io_uring/write_liburing", false, tetragon.FileAction_FILE_WRITE)
+	runReadWriteTest(gt, t, "tester-progs/io_uring/write_liburing", false, tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileCpIouring(t *testing.T) {
+func testFileCpIouring(gt *testing.T, t *testing.T) {
 	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
 	if !kernels.MinKernelVersion("5.1.0") {
 		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
 	}
 
-	runCopyTest(t, "tester-progs/io_uring/cp_liburing")
+	runCopyTest(gt, t, "tester-progs/io_uring/cp_liburing")
 }
 
 // tests in hubble-fgs/contrib/tester-progs/mmap
 
-func TestFileMmapReadPopulate(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_populate_read", tetragon.FileAction_FILE_READ)
+func testFileMmapReadPopulate(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_populate_read", tetragon.FileAction_FILE_READ)
 }
 
-func TestFileMmapWritePopulate(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_populate_write", tetragon.FileAction_FILE_WRITE)
+func testFileMmapWritePopulate(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_populate_write", tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileMmapRead(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_read", tetragon.FileAction_FILE_READ)
+func testFileMmapRead(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_read", tetragon.FileAction_FILE_READ)
 }
 
-func TestFileMmapReadWrite(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_read_write", tetragon.FileAction_FILE_WRITE)
+func testFileMmapReadWrite(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_read_write", tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileMmapWrite(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_write", tetragon.FileAction_FILE_WRITE)
+func testFileMmapWrite(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_write", tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileMmapWriteRead(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_write_read", tetragon.FileAction_FILE_WRITE)
+func testFileMmapWriteRead(gt *testing.T, t *testing.T) {
+	runMmapTest(gt, t, "tester-progs/mmap/mmap_write_read", tetragon.FileAction_FILE_WRITE)
 }
 
-func TestFileDelete(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func testFileDelete(gt *testing.T, t *testing.T) {
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	in_file := filepath.Join(test_path, "test1")
 	createFileInDir(t, in_file)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	// get inode before removing the file
 	ino, dev := getInodeInfo(t, in_file)
@@ -545,7 +507,7 @@ func TestFileDelete(t *testing.T) {
 		WithArgs(genericArgFilenameChecker(in_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -630,30 +592,17 @@ func getFilePermsUidGui(t *testing.T, fileName string) (string, string, string) 
 	return permStr, userStr, groupStr
 }
 
-func TestFileCreate(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func testFileCreate(gt *testing.T, t *testing.T) {
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	fp1 := filepath.Join(test_path, "newfile1.txt")
 	fp2 := filepath.Join(test_path, "newfile2.txt")
@@ -697,7 +646,7 @@ func TestFileCreate(t *testing.T) {
 		file2DeleteChecker,
 	)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -706,7 +655,7 @@ func TestLoadFileSensor(t *testing.T) {
 		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	specFname := createSpecFile(t, test_path)
 
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
@@ -714,7 +663,10 @@ func TestLoadFileSensor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
 
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
@@ -782,7 +734,6 @@ func TestLoadFileSensor(t *testing.T) {
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensors.UnloadAll(tus.Conf().TetragonLib)
-
 }
 
 func fileRead(t *testing.T, f string) {
@@ -846,12 +797,8 @@ func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChe
 
 // Rename operations that handled in kernel-space (eBPF)
 
-func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	in_file := filepath.Join(test_path, "test1")
@@ -859,22 +806,13 @@ func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NO
 
 	out_file := filepath.Join(test_path, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(in_file, out_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -889,16 +827,12 @@ func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NO
 	fileCheckers[2] = renameDeleteChecker(out_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	test_path := filepath.Join(workingDir, "fim_test_dir")
+func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE]
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
 	in_file := filepath.Join(test_path, "test1")
@@ -907,22 +841,13 @@ func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_RE
 	out_file := filepath.Join(test_path, "test2")
 	createFileInDir(t, out_file)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, test_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{test_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(in_file, out_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -937,19 +862,15 @@ func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_RE
 	fileCheckers[2] = renameDeleteChecker(out_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	inside_path := filepath.Join(workingDir, "fim_test_indir")
+func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS]
+	inside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, inside_path)
 
-	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	outside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, outside_path)
 
 	in_file := filepath.Join(inside_path, "test1")
@@ -957,22 +878,13 @@ func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EX
 	out_file := filepath.Join(outside_path, "test1")
 	createFileInDir(t, out_file)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, inside_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{inside_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(out_file, in_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -987,19 +899,15 @@ func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EX
 	fileCheckers[2] = renameDeleteChecker(in_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	inside_path := filepath.Join(workingDir, "fim_test_indir")
+func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE]
+	inside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, inside_path)
 
-	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	outside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, outside_path)
 
 	in_file := filepath.Join(inside_path, "test1")
@@ -1008,22 +916,13 @@ func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FI
 	out_file := filepath.Join(outside_path, "test1")
 	createFileInDir(t, out_file)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, inside_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{inside_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(out_file, in_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -1038,19 +937,15 @@ func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FI
 	fileCheckers[2] = renameDeleteChecker(in_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	inside_path := filepath.Join(workingDir, "fim_test_indir")
+func testFileRename5(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS]
+	inside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, inside_path)
 
-	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	outside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, outside_path)
 
 	in_file := filepath.Join(inside_path, "test1")
@@ -1058,22 +953,13 @@ func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_E
 
 	out_file := filepath.Join(outside_path, "test1")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, inside_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{inside_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(in_file, out_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -1086,23 +972,19 @@ func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_E
 	errorFileCheckers := renameReadChecker(in_file)
 
 	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	errorChecker := ec.NewUnorderedEventChecker(errorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, errorChecker)
+	err = jsonchecker.JsonTestCheck(gt, errorChecker)
 	assert.Error(t, err)
 }
 
-func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	inside_path := filepath.Join(workingDir, "fim_test_indir")
+func testFileRename6(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE]
+	inside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, inside_path)
 
-	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	outside_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, outside_path)
 
 	in_file := filepath.Join(inside_path, "test1")
@@ -1111,22 +993,13 @@ func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_F
 	out_file := filepath.Join(outside_path, "test1")
 	createFileInDir(t, out_file)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, inside_path)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{inside_path},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(in_file, out_file); err != nil {
 		t.Errorf("os.Rename failed (%s)", err)
@@ -1139,22 +1012,18 @@ func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_F
 	errorFileCheckers := renameReadChecker(in_file)
 
 	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	errorChecker := ec.NewUnorderedEventChecker(errorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, errorChecker)
+	err = jsonchecker.JsonTestCheck(gt, errorChecker)
 	assert.Error(t, err)
 }
 
 // Rename operations that handled in user-space
 
-func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1166,35 +1035,26 @@ func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_E
 	oFile2 := filepath.Join(out_a, "test2")
 	createFileInDir(t, oFile2)
 
-	in1 := filepath.Join(workingDir, "fim_test_indir")
+	in1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, in1)
 
 	in_a := filepath.Join(in1, "a")
 	iFile1 := filepath.Join(in_a, "test1")
 	iFile2 := filepath.Join(in_a, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, in1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{in1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(out_a, in_a); err != nil {
 		t.Fatalf("os.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1209,16 +1069,12 @@ func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_E
 	fileCheckers[4] = renameDeleteChecker(iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1230,7 +1086,7 @@ func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIREC
 	oFile2 := filepath.Join(out_a, "test2")
 	createFileInDir(t, oFile2)
 
-	in1 := filepath.Join(workingDir, "fim_test_indir")
+	in1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, in1)
 
 	in_a := filepath.Join(in1, "a")
@@ -1239,28 +1095,19 @@ func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIREC
 	iFile1 := filepath.Join(in_a, "test1")
 	iFile2 := filepath.Join(in_a, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, in1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{in1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := syscall.Rename(out_a, in_a); err != nil {
 		t.Fatalf("syscall.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1275,16 +1122,12 @@ func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIREC
 	fileCheckers[4] = renameDeleteChecker(iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1296,7 +1139,7 @@ func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_
 	oFile2 := filepath.Join(out_a, "test2")
 	createFileInDir(t, oFile2)
 
-	in1 := filepath.Join(workingDir, "fim_test_indir")
+	in1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, in1)
 
 	in_a := filepath.Join(in1, "a")
@@ -1304,28 +1147,19 @@ func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_
 	iFile1 := filepath.Join(in_a, "test1")
 	iFile2 := filepath.Join(in_a, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(out_a, in_a); err != nil {
 		t.Fatalf("os.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1341,20 +1175,16 @@ func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_
 	errorFileCheckers[3] = renameDeleteChecker(iFile2)
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, checker1)
+	err := jsonchecker.JsonTestCheck(gt, checker1)
 	assert.NoError(t, err)
 
 	checker2 := ec.NewUnorderedEventChecker(errorFileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker2)
+	err = jsonchecker.JsonTestCheck(gt, checker2)
 	assert.Error(t, err)
 }
 
-func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1366,7 +1196,7 @@ func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIR
 	oFile2 := filepath.Join(out_a, "test2")
 	createFileInDir(t, oFile2)
 
-	in1 := filepath.Join(workingDir, "fim_test_indir")
+	in1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_indir_%s", filepath.Base(t.Name())))
 	createTestDir(t, in1)
 
 	in_a := filepath.Join(in1, "a")
@@ -1375,28 +1205,19 @@ func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIR
 	iFile1 := filepath.Join(in_a, "test1")
 	iFile2 := filepath.Join(in_a, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := syscall.Rename(out_a, in_a); err != nil {
 		t.Fatalf("syscall.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1412,20 +1233,16 @@ func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIR
 	errorFileCheckers[3] = renameDeleteChecker(iFile2)
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
-	err = jsonchecker.JsonTestCheck(t, checker1)
+	err := jsonchecker.JsonTestCheck(gt, checker1)
 	assert.NoError(t, err)
 
 	checker2 := ec.NewUnorderedEventChecker(errorFileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker2)
+	err = jsonchecker.JsonTestCheck(gt, checker2)
 	assert.Error(t, err)
 }
 
-func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1442,28 +1259,19 @@ func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 	iFile1 := filepath.Join(in_b, "test1")
 	iFile2 := filepath.Join(in_b, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := os.Rename(out_a, in_b); err != nil {
 		t.Fatalf("os.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1478,16 +1286,12 @@ func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 	fileCheckers[4] = renameDeleteChecker(iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out1 := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY]
+	out1 := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out1)
 
 	out_a := filepath.Join(out1, "a")
@@ -1505,28 +1309,19 @@ func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 	iFile1 := filepath.Join(in_b, "test1")
 	iFile2 := filepath.Join(in_b, "test2")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out1)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out1},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	if err := syscall.Rename(out_a, in_b); err != nil {
 		t.Fatalf("syscall.Rename failed (%s)", err)
 	}
 
-	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
 
 	fileRead(t, iFile1)
 	fileRead(t, iFile2)
@@ -1541,16 +1336,12 @@ func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 	fileCheckers[4] = renameDeleteChecker(iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileRmdir(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out := filepath.Join(workingDir, "fim_test_outdir")
+func testFileRmdir(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out)
 
 	a := filepath.Join(out, "a")
@@ -1560,22 +1351,13 @@ func TestFileRmdir(t *testing.T) {
 		t.Fatalf("Mkdir failed: %s\n", err)
 	}
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	ino, dev := getInodeInfo(t, a)
 	if err := os.RemoveAll(a); err != nil {
@@ -1587,36 +1369,23 @@ func TestFileRmdir(t *testing.T) {
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestFileMkdir(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
-	}
-
-	out := filepath.Join(workingDir, "fim_test_outdir")
+func testFileMkdir(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out)
 
 	a := filepath.Join(out, "a")
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	specFname := createSpecFile(t, out)
-
-	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
 
 	createTestDir(t, a)
 	ino, dev := getInodeInfo(t, a)
@@ -1626,8 +1395,164 @@ func TestFileMkdir(t *testing.T) {
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
+
+}
+
+func TestFileOps(t *testing.T) {
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, "/sample/file") // this file does not exist -- we only need to initialize all fim progs and maps
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	t.Run("read", func(lt *testing.T) {
+		testFileRead(t, lt)
+	})
+	t.Run("readv", func(lt *testing.T) {
+		testFileReadV(t, lt)
+	})
+	t.Run("preadv", func(lt *testing.T) {
+		testFilePReadV(t, lt)
+	})
+	t.Run("preadv2", func(lt *testing.T) {
+		testFilePReadV2(t, lt)
+	})
+	t.Run("pread64", func(lt *testing.T) {
+		testFilePRead64(t, lt)
+	})
+	t.Run("write", func(lt *testing.T) {
+		testFileWrite(t, lt)
+	})
+	t.Run("writev", func(lt *testing.T) {
+		testFileWriteV(t, lt)
+	})
+	t.Run("pwritev", func(lt *testing.T) {
+		testFilePWriteV(t, lt)
+	})
+	t.Run("pwritev2", func(lt *testing.T) {
+		testFilePWriteV2(t, lt)
+	})
+	t.Run("pwrite64", func(lt *testing.T) {
+		testFilePWrite64(t, lt)
+	})
+	t.Run("mmapreadpopulate", func(lt *testing.T) {
+		testFileMmapReadPopulate(t, lt)
+	})
+	t.Run("mmapwritepopulate", func(lt *testing.T) {
+		testFileMmapWritePopulate(t, lt)
+	})
+	t.Run("mmapread", func(lt *testing.T) {
+		testFileMmapRead(t, lt)
+	})
+	t.Run("mmapreadwrite", func(lt *testing.T) {
+		testFileMmapReadWrite(t, lt)
+	})
+	t.Run("mmapwrite", func(lt *testing.T) {
+		testFileMmapWrite(t, lt)
+	})
+	t.Run("mmapwriteread", func(lt *testing.T) {
+		testFileMmapWriteRead(t, lt)
+	})
+	t.Run("sendfile", func(lt *testing.T) {
+		testSendfile(t, lt)
+	})
+	t.Run("copyfilerange", func(lt *testing.T) {
+		testCopyFileRange(t, lt)
+	})
+	t.Run("splice", func(lt *testing.T) {
+		testFileSplice(t, lt)
+	})
+	t.Run("fallocate", func(lt *testing.T) {
+		testFileFallocate(t, lt)
+	})
+	t.Run("aiopread", func(lt *testing.T) {
+		testFileAioPRead(t, lt)
+	})
+	t.Run("aiopreadv", func(lt *testing.T) {
+		testFileAioPReadV(t, lt)
+	})
+	t.Run("aiopwrite", func(lt *testing.T) {
+		testFileAioPWrite(t, lt)
+	})
+	t.Run("aiopwritev", func(lt *testing.T) {
+		testFileAioPWriteV(t, lt)
+	})
+	t.Run("cpiouring", func(lt *testing.T) {
+		testFileCpIouring(t, lt)
+	})
+	t.Run("catiouring", func(lt *testing.T) {
+		testFileCatIouring(t, lt)
+	})
+	t.Run("writeiouring", func(lt *testing.T) {
+		testFileWriteIouring(t, lt)
+	})
+	t.Run("create", func(lt *testing.T) {
+		testFileCreate(t, lt)
+	})
+	t.Run("delete", func(lt *testing.T) {
+		testFileDelete(t, lt)
+	})
+	t.Run("rename1", func(lt *testing.T) {
+		testFileRename1(t, lt)
+	})
+	t.Run("rename2", func(lt *testing.T) {
+		testFileRename2(t, lt)
+	})
+	t.Run("rename3", func(lt *testing.T) {
+		testFileRename3(t, lt)
+	})
+	t.Run("rename4", func(lt *testing.T) {
+		testFileRename4(t, lt)
+	})
+	t.Run("rename5", func(lt *testing.T) {
+		testFileRename5(t, lt)
+	})
+	t.Run("rename6", func(lt *testing.T) {
+		testFileRename6(t, lt)
+	})
+	t.Run("rename7", func(lt *testing.T) {
+		testFileRename7(t, lt)
+	})
+	t.Run("rename8", func(lt *testing.T) {
+		testFileRename8(t, lt)
+	})
+	t.Run("rename9", func(lt *testing.T) {
+		testFileRename9(t, lt)
+	})
+	t.Run("rename10", func(lt *testing.T) {
+		testFileRename10(t, lt)
+	})
+	t.Run("rename11", func(lt *testing.T) {
+		testFileRename11(t, lt)
+	})
+	t.Run("rename12", func(lt *testing.T) {
+		testFileRename12(t, lt)
+	})
+	t.Run("mkdir", func(lt *testing.T) {
+		testFileMkdir(t, lt)
+	})
+	t.Run("rmdir", func(lt *testing.T) {
+		testFileRmdir(t, lt)
+	})
 }
 
 func readdirArgChecker(t *testing.T, path string) *ec.ReadDirArgChecker {
