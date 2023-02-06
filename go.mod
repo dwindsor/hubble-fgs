@@ -10,7 +10,7 @@ require (
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb
-	github.com/containernetworking/plugins v1.1.1
+	github.com/containernetworking/plugins v1.2.0
 	github.com/docker/docker v23.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.14.1
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
-	github.com/vishvananda/netlink v1.1.1-0.20220125195016-0639e7e787ba
+	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/yalue/native_endian v1.0.2
 	golang.org/x/net v0.5.0
 	golang.org/x/sys v0.4.0
