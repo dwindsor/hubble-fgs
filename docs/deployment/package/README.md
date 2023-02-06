@@ -46,21 +46,28 @@ TODO complete.
 2. Install hubble-fgs
 
    ```bash
-   tar -xvf hubble-fgs-v1.9.0-x86_64.tar.gz
-   sudo cp -vRf hubble-fgs-v1.9.0-x86_64/* /
+   tar -xvf hubble-fgs-v1.9.0-amd64.tar.gz
+   cd hubble-fgs-v1.9.0-amd64/
+   sudo ./install.sh
    ```
 
-3. Install hubble-fgs service
+3. Check hubble-fgs service
 
    ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable hubble-fgs
+   sudo systemctl status hubble-fgs
    ```
 
-4. Start hubble-fgs service
-
-   ```bash
-   sudo systemctl start hubble-fgs
+   ```
+   ● hubble-fgs.service - "Hubble FGS / Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement Service"
+     Loaded: loaded (/lib/systemd/system/hubble-fgs.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2023-02-06 13:26:30 CET; 8s ago
+       Docs: https://docs.isovalent.com/
+   Main PID: 825990 (hubble-fgs)
+      Tasks: 17 (limit: 18985)
+     Memory: 196.5M
+        CPU: 1.084s
+     CGroup: /system.slice/hubble-fgs.service
+             └─825990 /usr/local/bin/hubble-fgs
    ```
 
 ### Update
@@ -88,20 +95,9 @@ To update Hubble Enterprise:
 4. Install new hubble-fgs version
 
    ```bash
-   tar -xvf hubble-fgs-v1.9.1-x86_64.tar.gz
-   sudo cp -vRf hubble-fgs-v1.9.1-x86_64/* /
-   ```
-
-5. Reload systemd configuration
-
-   ```bash
-   sudo systemctl daemon-reload
-   ```
-
-6. Start hubble-fgs service
-
-   ```bash
-   sudo systemctl start hubble-fgs
+   tar -xvf hubble-fgs-v1.9.1-amd64.tar.gz
+   cd hubble-fgs-v1.9.1-amd64/
+   sudo ./install.sh
    ```
 
 ### Configure
@@ -120,6 +116,14 @@ To restore default settings, remove any added configuration inside
 
 To remove Hubble Enterprise:
 
+Run the `uninstall.sh` script that is provided inside the tarball.
+
+   ```bash
+   sudo ./uninstall.sh
+   ```
+
+Or manually:
+
    ```bash
    sudo systemctl stop hubble-fgs
    sudo systemctl disable hubble-fgs
@@ -127,6 +131,12 @@ To remove Hubble Enterprise:
    sudo rm -fr /usr/local/bin/hubble-fgs*
    sudo rm -fr /usr/local/bin/hubble-enterprise
    sudo rm -fr /usr/local/lib/hubble-fgs/
+   ```
+
+To purge custom settings:
+
+   ```bash
+   sudo rm -fr /etc/hubble-fgs/
    ```
 
 ## Hubble Enterprise Events
