@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -117,6 +118,11 @@ var (
 	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkBurstMap = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, SendCheck4)
 )
+
+type tcpStatsKey struct {
+	Tuple      networkapi.MsgIPTuple
+	SockCookie uint64
+}
 
 func unloadTcpSensor() error {
 	if watermarkEnabled {
@@ -253,7 +259,8 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
 func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
-	entry, ok := stats.Get(tcp.Tuple)
+	statsKey := tcpStatsKey{Tuple: tcp.Tuple, SockCookie: tcp.SockCookie}
+	entry, ok := stats.Get(statsKey)
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)
 
@@ -267,10 +274,10 @@ func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, er
 		if err != nil {
 			return nil, err
 		}
-		stats.Add(tcp.Tuple, tcp.SocketStats)
+		stats.Add(statsKey, tcp.SocketStats)
 		tcp.SocketStats = tmpSocketStats
 	} else {
-		stats.Add(tcp.Tuple, tcp.SocketStats)
+		stats.Add(statsKey, tcp.SocketStats)
 	}
 	return tcp, nil
 }
@@ -303,7 +310,8 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		// Convert to a TCPStats event by simply setting op code
 		c.Common.Op = ops.MsgOpTCPStats
-		stats.Remove(c.Tuple)
+		statsKey := tcpStatsKey{Tuple: c.Tuple, SockCookie: c.SockCookie}
+		stats.Remove(statsKey)
 		return []observer.Event{tcp, c}, nil
 	}
 	return []observer.Event{tcp}, nil
