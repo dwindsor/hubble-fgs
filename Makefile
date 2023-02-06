@@ -1,5 +1,5 @@
 GO := go
-ARCH := amd64
+export TARGET_ARCH ?= amd64
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
@@ -14,8 +14,7 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 EXTRA_TESTFLAGS ?=
 SUDO ?= sudo
 
-BUILD_PKG_DIR ?= $(shell pwd)/build/
-BUILD_PKG_DIR_ARCH=$(BUILD_PKG_DIR)$(ARCH)
+BUILD_PKG_DIR ?= $(shell pwd)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always)
 GO_GCFLAGS ?= ""
@@ -230,18 +229,18 @@ lint:
 .PHONY: tarball
 # Share same build environment as docker image
 tarball: image
-	$(CONTAINER_ENGINE) build --build-arg HUBBLE_FGS_VERSION=$(VERSION) --build-arg ARCH=$(ARCH) -f Dockerfile.tarball -t "isovalent/hubble-fgs-tarball:${DOCKER_IMAGE_TAG}" .
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)
-	$(CONTAINER_ENGINE) save isovalent/hubble-fgs-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
-	$(QUIET)rm -fr $(BUILD_PKG_DIR_ARCH)/docker/
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)/docker/
-	$(QUIET)rm -fr $(BUILD_PKG_DIR_ARCH)/linux-tarball/
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR_ARCH)/linux-tarball/
-	tar xC $(BUILD_PKG_DIR_ARCH)/docker/ -f $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
-	find $(BUILD_PKG_DIR_ARCH)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar \;
-	@rm -fr $(BUILD_PKG_DIR_ARCH)/hubble-fgs-$(VERSION)-$(ARCH).tmp.tar
-	gzip -6 $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar
-	echo "hubble-fgs tarball is ready: $(BUILD_PKG_DIR_ARCH)/linux-tarball/hubble-fgs-$(VERSION)-$(ARCH).tar.gz"
+	$(CONTAINER_ENGINE) build --build-arg HUBBLE_FGS_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/hubble-fgs-tarball:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
+	$(CONTAINER_ENGINE) save isovalent/hubble-fgs-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/docker/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/docker/
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
+	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	find $(BUILD_PKG_DIR)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar \;
+	@rm -fr $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar
+	@echo "hubble-fgs tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz"
 
 image:
 	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
