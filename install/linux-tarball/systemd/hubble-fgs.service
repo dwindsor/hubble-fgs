@@ -9,7 +9,7 @@
 #  permission is obtained from Isovalent Inc.
 
 [Unit]
-Description=Hubble FGS eBPF-based Security Observability and Runtime Enforcement Service
+Description="Hubble FGS / Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement Service"
 DefaultDependencies=no
 After=network.target local-fs.target
 Documentation=https://docs.isovalent.com/

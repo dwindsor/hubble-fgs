@@ -1,15 +1,19 @@
 FROM isovalent/hubble-fgs:latest as hubble-fgs-release
 
-RUN mkdir -p /etc/hubble-fgs/hubble-fgs.conf.d/
-
 FROM scratch as linux-tarball-1
+
+# Copy install script
+COPY install/linux-tarball/install.sh /
+COPY install/linux-tarball/uninstall.sh /
+
+# COPY configurations
+COPY install/linux-tarball/usr /usr
 
 # Copy the systemd service file
 COPY install/linux-tarball/systemd/hubble-fgs.service /usr/lib/systemd/system/
 
-# COPY configurations
-COPY install/linux-tarball/usr /usr
-COPY --from=hubble-fgs-release /etc/hubble-fgs/ /etc/hubble-fgs/
+# Make a copy of the systemd resources into our location
+COPY install/linux-tarball/systemd /usr/local/lib/hubble-fgs/systemd
 
 # Our binaries
 COPY --from=hubble-fgs-release /usr/bin/hubble-fgs /usr/local/bin/
@@ -26,7 +30,7 @@ COPY --from=hubble-fgs-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf
 FROM scratch as linux-tarball-2
 
 ARG HUBBLE_FGS_VERSION
-ARG ARCH
+ARG TARGET_ARCH
 
-# We explicitly prefix the filesystem with hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGETARCH}
-COPY --from=linux-tarball-1 / /hubble-fgs-${HUBBLE_FGS_VERSION}-${ARCH}/
+# We explicitly prefix the filesystem with hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGET_ARCH}
+COPY --from=linux-tarball-1 / /hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGET_ARCH}/

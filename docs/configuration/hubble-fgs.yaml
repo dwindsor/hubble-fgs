@@ -3,7 +3,7 @@
 # Entries in this file show the compile time defaults. Local configuration
 # should be created by editing and copying this file into
 # /etc/hubble-fgs/hubble-fgs.yaml, or by creating "drop-ins" in the
-# /etc/hubble-fgs/conf.d/ subdirectory. The latter is generally
+# /etc/hubble-fgs/hubble-fgs.conf.d/ subdirectory. The latter is generally
 # recommended. Defaults can be restored by simply deleting this file and
 # all drop-ins.
 #
