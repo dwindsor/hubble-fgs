@@ -194,6 +194,7 @@ github.com/cilium/tetragon/pkg/testutils
 github.com/cilium/tetragon/pkg/testutils/sensors
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
+github.com/cilium/tetragon/pkg/unixlisten
 github.com/cilium/tetragon/pkg/version
 github.com/cilium/tetragon/pkg/vtuple
 github.com/cilium/tetragon/pkg/vtuplefilter

@@ -37,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/server"
+	"github.com/cilium/tetragon/pkg/unixlisten"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crd"
@@ -458,7 +459,13 @@ func Serve(ctx context.Context, listenAddr string, server *server.Server) error 
 		return fmt.Errorf("failed to parse listen address: %w", err)
 	}
 	go func(proto, addr string) {
-		listener, err := net.Listen(proto, addr)
+		var listener net.Listener
+		var err error
+		if proto == "unix" {
+			listener, err = unixlisten.ListenWithRename(addr, 0660)
+		} else {
+			listener, err = net.Listen(proto, addr)
+		}
 		if err != nil {
 			log.WithError(err).WithField("protocol", proto).WithField("address", addr).Fatal("Failed to start gRPC server")
 		}
@@ -467,10 +474,15 @@ func Serve(ctx context.Context, listenAddr string, server *server.Server) error 
 			log.WithError(err).Error("Failed to close gRPC server")
 		}
 	}(proto, addr)
-	go func() {
+	go func(proto, addr string) {
 		<-ctx.Done()
 		grpcServer.Stop()
-	}()
+		// if proto is unix, ListenWithRename() creates the socket
+		// then renames it, so explicitly clean it up.
+		if proto == "unix" {
+			os.Remove(addr)
+		}
+	}(proto, addr)
 	return nil
 }
 
