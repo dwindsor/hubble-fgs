@@ -50,6 +50,9 @@ help:
 	@echo '    generate     - genereate kubebuilder files'
 	@echo 'Compilation: '
 	@echo '    test-compile - compile go tests'
+	@echo 'Packages:'
+	@echo '    tarball           - build Tetragon Enterprise compressed tarball'
+	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
 
 .PHONY: oss-init
 oss-init:
@@ -154,11 +157,11 @@ vendor:
 	$(GO) mod vendor
 	$(GO) mod verify
 
-clean:
+clean: tarball-clean
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
-	rm -fr $(BUILD_PKG_DIR)
+	rm -fr ./release
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -226,9 +229,9 @@ update-copyright:
 lint:
 	golint -set_exit_status $$(go list ./...)
 
-.PHONY: tarball
+.PHONY: tarball tarball-release tarball-clean
 # Share same build environment as docker image
-tarball: image
+tarball: tarball-clean image
 	$(CONTAINER_ENGINE) build --build-arg HUBBLE_FGS_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/hubble-fgs-tarball:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
 	$(CONTAINER_ENGINE) save isovalent/hubble-fgs-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
@@ -241,6 +244,14 @@ tarball: image
 	@rm -fr $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
 	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar
 	@echo "hubble-fgs tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz"
+
+tarball-release: tarball
+	mkdir -p release/
+	mv $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz release/
+	(cd release && sha256sum hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz > hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
+
+tarball-clean:
+	rm -fr $(BUILD_PKG_DIR)
 
 image:
 	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
