@@ -13,9 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  clusterName: fgs-cli-ci
   ciliumCliVersion: v0.12.11
-  ciliumVersion: v1.12.4
+  ciliumVersion: v1.12.6
 
 jobs:
   ensure-image-available:
@@ -122,9 +121,6 @@ jobs:
             cd /host/hubble-fgs
 
             mv /host/cilium /bin/cilium
-
-            kind create cluster --name ${{ env.clusterName }} --image kindest/node:v1.24.7
-            cilium install
             curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Pull Docker Images
@@ -145,22 +141,11 @@ jobs:
             set -eux
             cd /host/hubble-fgs
 
-            kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.agentImage }}
-            kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.operatorImage }}
-
-            # copy btf file
-            docker cp /boot/btf-\$(uname -r) ${{ env.clusterName }}-control-plane:/btf
-
             go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
               -tetragon.cilium-version=${{ env.ciliumVersion }} \
+              -tetragon.btf=/boot/btf-\$(uname -r) \
               -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
               -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
-              -tetragon.helm.set enterprise.btf="/btf" \
-              -tetragon.helm.set 'extraHostPathMounts[0].name=btf' \
-              -tetragon.helm.set 'extraHostPathMounts[0].mountPath=/btf' \
-              -tetragon.helm.set 'extraHostPathMounts[0].readOnly=true' \
-              -cluster-name ${{ env.clusterName }} \
-              -kubeconfig ~/.kube/config \
               -v
 
       - name: Copy out e2e test logs
