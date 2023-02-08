@@ -41,7 +41,8 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o \
 	  bpf_execve_event_v60.o bpf_generic_kprobe_v60.o bpf_generic_retkprobe_v60.o \
 	  bpf_generic_tracepoint_v60.o \
-	  bpf_multi_kprobe_v60.o bpf_multi_retkprobe_v60.o
+	  bpf_multi_kprobe_v60.o bpf_multi_retkprobe_v60.o \
+	  bpf_loader.o
 
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
 	  bpf_rw_verify_area.o  bpf_security_path_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
