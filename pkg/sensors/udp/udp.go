@@ -812,9 +812,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			entry, ok := stats.Get(udpKey)
 			if ok {
 				// Send stats event for the difference from the last one
-				last := entry.(udpInfoValue)
-				if udpValue != last {
-					diffValue, err := udpDiffValues(&udpKey, &last, &udpValue)
+				if udpValue != entry {
+					diffValue, err := udpDiffValues(&udpKey, &entry, &udpValue)
 					if err == nil {
 						closeEvents = append(closeEvents, createStatEvent(&udpKey, &diffValue))
 					} else {
