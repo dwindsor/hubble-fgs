@@ -572,9 +572,10 @@ func execute() error {
 	// Network namespace options
 	flags.String(keyNetnsDir, "/var/run/docker/netns/", "Network namespace dir")
 
-	// Provide option to remove existing pinned BPF programs and maps in
-	// Tetragon's observer dir. Useful for doing upgrades/downgrades.
-	flags.Bool(keyReleasePinnedBPF, false, "Release all pinned BPF programs and maps in Tetragon BPF directory")
+	// Provide option to remove existing pinned BPF programs and maps in Tetragon's
+	// observer dir on startup. Useful for doing upgrades/downgrades. Set to false to
+	// disable.
+	flags.Bool(keyReleasePinnedBPF, true, "Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
