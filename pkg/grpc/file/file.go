@@ -44,6 +44,7 @@ var (
 		9:  "vfs_rename",
 		10: "finish_open",
 		11: "vfs_open",
+		12: "iterate_dir",
 	}
 
 	renameFlagsString = map[uint32]string{
@@ -127,6 +128,26 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
 }
 
+func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
+	fileDetails := &tetragon.FileDetails{
+		Filename: event.Path,
+		Inode: &tetragon.Inode{
+			Number: event.Ino,
+			Fs:     createFileSystem(event.Fs),
+		},
+		ParentInode: &tetragon.Inode{
+			Number: event.ParentIno,
+			Fs:     createFileSystem(event.ParentFs),
+		},
+	}
+	args := &tetragon.ReadDirArg{
+		File:  fileDetails,
+		MntNs: createMntNs(event.MntNs),
+	}
+	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_ReaddirArg{ReaddirArg: args}}
+
+}
+
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -144,7 +165,12 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 
 	action := tetragon.FileAction(event.Action)
-	args := createGenericArgs(event)
+	var args *tetragon.FileArgument
+	if action == tetragon.FileAction_FILE_READDIR {
+		args = createReadDirArgs(event)
+	} else {
+		args = createGenericArgs(event)
+	}
 
 	tetragonEvent := &tetragon.ProcessFile{
 		Process: tetragonProcess,

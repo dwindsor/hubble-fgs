@@ -127,6 +127,7 @@ var (
 			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o"},
 			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o"},
 		}},
+		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o"}}},
 	}
 
 	SharedMaps = [...]string{

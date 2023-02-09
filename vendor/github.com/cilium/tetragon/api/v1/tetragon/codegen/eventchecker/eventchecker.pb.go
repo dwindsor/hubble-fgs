@@ -7697,10 +7697,78 @@ func (checker *RenameFileArgChecker) FromRenameFileArg(event *tetragon.RenameFil
 	return checker
 }
 
+// ReadDirArgChecker implements a checker struct to check a ReadDirArg field
+type ReadDirArgChecker struct {
+	File  *FileDetailsChecker `json:"file,omitempty"`
+	MntNs *NamespaceChecker   `json:"mntNs,omitempty"`
+}
+
+// NewReadDirArgChecker creates a new ReadDirArgChecker
+func NewReadDirArgChecker() *ReadDirArgChecker {
+	return &ReadDirArgChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *ReadDirArgChecker) GetCheckerType() string {
+	return "ReadDirArgChecker"
+}
+
+// Check checks a ReadDirArg field
+func (checker *ReadDirArgChecker) Check(event *tetragon.ReadDirArg) error {
+	if event == nil {
+		return fmt.Errorf("%s: ReadDirArg field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.File != nil {
+			if err := checker.File.Check(event.File); err != nil {
+				return fmt.Errorf("File check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithFile adds a File check to the ReadDirArgChecker
+func (checker *ReadDirArgChecker) WithFile(check *FileDetailsChecker) *ReadDirArgChecker {
+	checker.File = check
+	return checker
+}
+
+// WithMntNs adds a MntNs check to the ReadDirArgChecker
+func (checker *ReadDirArgChecker) WithMntNs(check *NamespaceChecker) *ReadDirArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
+//FromReadDirArg populates the ReadDirArgChecker using data from a ReadDirArg field
+func (checker *ReadDirArgChecker) FromReadDirArg(event *tetragon.ReadDirArg) *ReadDirArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.File != nil {
+		checker.File = NewFileDetailsChecker().FromFileDetails(event.File)
+	}
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	return checker
+}
+
 // FileArgumentChecker implements a checker struct to check a FileArgument field
 type FileArgumentChecker struct {
 	GenericArg *GenericFileArgChecker `json:"genericArg,omitempty"`
 	RenameArg  *RenameFileArgChecker  `json:"renameArg,omitempty"`
+	ReaddirArg *ReadDirArgChecker     `json:"readdirArg,omitempty"`
 }
 
 // NewFileArgumentChecker creates a new FileArgumentChecker
@@ -7740,6 +7808,16 @@ func (checker *FileArgumentChecker) Check(event *tetragon.FileArgument) error {
 				return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %T is not a RenameArg", event)
 			}
 		}
+		if checker.ReaddirArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_ReaddirArg:
+				if err := checker.ReaddirArg.Check(event.ReaddirArg); err != nil {
+					return fmt.Errorf("ReaddirArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: ReaddirArg check failed: %T is not a ReaddirArg", event)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -7760,6 +7838,12 @@ func (checker *FileArgumentChecker) WithRenameArg(check *RenameFileArgChecker) *
 	return checker
 }
 
+// WithReaddirArg adds a ReaddirArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithReaddirArg(check *ReadDirArgChecker) *FileArgumentChecker {
+	checker.ReaddirArg = check
+	return checker
+}
+
 //FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
 func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgument) *FileArgumentChecker {
 	if event == nil {
@@ -7775,6 +7859,12 @@ func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgumen
 	case *tetragon.FileArgument_RenameArg:
 		if event.RenameArg != nil {
 			checker.RenameArg = NewRenameFileArgChecker().FromRenameFileArg(event.RenameArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_ReaddirArg:
+		if event.ReaddirArg != nil {
+			checker.ReaddirArg = NewReadDirArgChecker().FromReadDirArg(event.ReaddirArg)
 		}
 	}
 	return checker

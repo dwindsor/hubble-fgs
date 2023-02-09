@@ -46,7 +46,8 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
 	  bpf_rw_verify_area.o  bpf_security_path_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
 	  bpf_vfs_mkdir.o bpf_vfs_mkdir_v512.o bpf_vfs_rmdir.o bpf_vfs_rmdir_v512.o \
-	  bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v512.o bpf_vfs_rename_v419.o
+	  bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v512.o bpf_vfs_rename_v419.o \
+	  bpf_iterate_dir.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 

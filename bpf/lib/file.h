@@ -12,6 +12,7 @@ enum { action_invalid = 0,
        action_rmdir = 5,
        action_mkdir = 6,
        action_rename = 7,
+       action_readdir = 8,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -27,6 +28,7 @@ enum { hook_undef = 0,
        hook_vfs_rename = 9,
        hook_finish_open = 10,
        hook_vfs_open = 11,
+       hook_iterate_dir = 12,
 };
 
 struct retprobe_key {

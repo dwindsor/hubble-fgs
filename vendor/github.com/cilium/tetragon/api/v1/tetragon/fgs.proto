@@ -161,6 +161,7 @@ enum FileAction {
     FILE_RMDIR = 5;
     FILE_MKDIR = 6;
     FILE_RENAME = 7;
+    FILE_READDIR = 8;
 }
 
 message FileSystem {
@@ -199,10 +200,16 @@ message RenameFileArg {
     repeated string flags = 4;
 }
 
+message ReadDirArg {
+    FileDetails file = 1;
+    tetragon.Namespace mnt_ns = 2;
+}
+
 message FileArgument {
     oneof arg {
         GenericFileArg generic_arg = 1;
         RenameFileArg rename_arg = 2;
+        ReadDirArg readdir_arg = 3;
     }
 }
 
