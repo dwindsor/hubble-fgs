@@ -1474,6 +1474,43 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testFileTruncate(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	oFile := filepath.Join(out, "test1")
+	createFileInDir(t, oFile)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := os.Truncate(oFile, 222); err != nil {
+		t.Fatalf("os.Truncate failed (%s)", err)
+	}
+
+	ino, dev := getInodeInfo(t, oFile)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	o := ec.NewFileIOChecker().WithOffset(sm.Full("0")).WithSize(sm.Full("222"))
+	c := ec.NewGenericFileArgChecker().WithFile(f).WithIo(o)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("do_truncate"))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 // this function returns the root filesystem of a container
 func dockerIdToRootFs(cid string) (string, error) {
 	ctx := context.Background()
@@ -1713,6 +1750,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("readdir", func(lt *testing.T) {
 		testFileReadDir(t, lt)
+	})
+	t.Run("truncate", func(lt *testing.T) {
+		testFileTruncate(t, lt)
 	})
 	t.Run("readcontainerfile", func(lt *testing.T) {
 		testFileReadContainerFile(t, lt)
