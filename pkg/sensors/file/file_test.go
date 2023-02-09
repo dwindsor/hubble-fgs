@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -1623,6 +1624,86 @@ func TestFileMkdir(t *testing.T) {
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
 
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func readdirArgChecker(t *testing.T, path string) *ec.ReadDirArgChecker {
+	ino, dev := getInodeInfo(t, path)
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fmt.Sprintf("%s/", path))).WithInode(i)
+	return ec.NewReadDirArgChecker().WithFile(f)
+}
+
+func readdirChecker(t *testing.T, path string) *ec.ProcessFileChecker {
+	return ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_READDIR).
+		WithArgs(ec.NewFileArgumentChecker().WithReaddirArg(readdirArgChecker(t, path))).
+		WithHook(sm.Full("iterate_dir"))
+}
+
+func TestFileReadDir(t *testing.T) {
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
+	}
+
+	out := filepath.Join(workingDir, "fim_test_dir")
+	createTestDir(t, out)
+
+	in1 := filepath.Join(out, "a")
+	createTestDir(t, in1)
+
+	in2 := filepath.Join(out, "b")
+	createTestDir(t, in2)
+
+	in3 := filepath.Join(out, "c")
+	createTestDir(t, in3)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, out)
+
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() { TerminateFsScanner() })
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	// method 1
+	if _, err := ioutil.ReadDir(in1); err != nil {
+		t.Fatalf("ioutil.ReadDir failed (%s)", err)
+	}
+
+	// method 2
+	if err := filepath.Walk(in2, func(path string, info os.FileInfo, err error) error {
+		return nil
+	}); err != nil {
+		t.Fatalf("filepath.Walk failed (%s)", err)
+	}
+
+	// method 3
+	if f, err := os.Open(in3); err == nil {
+		if _, err := f.Readdir(0); err != nil {
+			t.Fatalf("f.Readdir failed (%s)", err)
+		}
+	} else {
+		t.Fatalf("os.Open failed (%s)", err)
+	}
+
+	dirCheckers := make([]ec.EventChecker, 3)
+	dirCheckers[0] = readdirChecker(t, in1)
+	dirCheckers[1] = readdirChecker(t, in2)
+	dirCheckers[2] = readdirChecker(t, in3)
+
+	checker := ec.NewUnorderedEventChecker(dirCheckers...)
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
