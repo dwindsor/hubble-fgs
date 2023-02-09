@@ -128,6 +128,10 @@ var (
 			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o"},
 		}},
 		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o"}}},
+		{"kprobe", "do_truncate", []FimFunc{
+			{"do_truncate(struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o"},
+			{"do_truncate(struct user_namespace*, struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate_v512.o"},
+		}},
 	}
 
 	SharedMaps = [...]string{

@@ -48,7 +48,7 @@ FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o 
 	  bpf_rw_verify_area.o  bpf_security_path_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
 	  bpf_vfs_mkdir.o bpf_vfs_mkdir_v512.o bpf_vfs_rmdir.o bpf_vfs_rmdir_v512.o \
 	  bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v512.o bpf_vfs_rename_v419.o \
-	  bpf_iterate_dir.o
+	  bpf_iterate_dir.o bpf_do_truncate.o bpf_do_truncate_v512.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 
@@ -165,6 +165,7 @@ objs/bpf_vfs_mkdir_v512.ll: $(FILEDIR)/bpf_vfs_mkdir.c
 objs/bpf_vfs_rmdir_v512.ll: $(FILEDIR)/bpf_vfs_rmdir.c
 objs/bpf_vfs_rename_v512.ll: $(FILEDIR)/bpf_vfs_rename.c
 objs/bpf_vfs_rename_v419.ll: $(FILEDIR)/bpf_vfs_rename.c
+objs/bpf_do_truncate_v512.ll: $(FILEDIR)/bpf_do_truncate.c
 
 objs/bpf_multi_kprobe_v53.ll objs/bpf_multi_retkprobe_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
@@ -191,6 +192,7 @@ deps/bpf_vfs_mkdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
 deps/bpf_vfs_rmdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
 deps/bpf_vfs_rename_v512.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_vfs_rename_v419.d: $(FILEDIR)/bpf_vfs_rename.c
+deps/bpf_do_truncate_v512.d: $(FILEDIR)/bpf_do_truncate.c
 
 $(DEPSDIR)%_v419.d:
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@

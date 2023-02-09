@@ -47,6 +47,7 @@ var (
 		10: "finish_open",
 		11: "vfs_open",
 		12: "iterate_dir",
+		13: "do_truncate",
 	}
 
 	renameFlagsString = map[uint32]string{

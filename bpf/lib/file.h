@@ -34,6 +34,7 @@ enum { hook_undef = 0,
        hook_finish_open = 10,
        hook_vfs_open = 11,
        hook_iterate_dir = 12,
+       hook_do_truncate = 13,
 };
 
 struct retprobe_key {
