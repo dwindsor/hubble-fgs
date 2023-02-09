@@ -177,7 +177,7 @@ This event contains ```rename_arg``` instead of ```generic_arg``` in order to pr
     2. Optimized ways to copy files inside kernel. These include: ```copy_file_range```, ```sendfile```, and ```splice``` system calls.
     3. Asynchronous ways to do I/O. These include [```io_uring```](https://man.archlinux.org/man/io_uring.7.en) and [```aio```](https://man7.org/linux/man-pages/man7/aio.7.html)
     4. File access through memory-mapped files (i.e. ```mmap```). Also check [here](#mmap-events) for details and limitation on generated events.
-    5. ```fallocate*``` system calls.
+    5. ```fallocate*``` and ```truncate*``` system calls.
 
 2. ### ```FILE_CREATE```
     These are events for creating files inside a watched path.
@@ -224,4 +224,3 @@ As memory-mapped files is a very common operation when a new process starts (i.e
 7. We do not track mount/unmount inside/outside of watched directory (i.e. if we monitor ```/etc``` and we mount a new tree at ```/etc/test/``` we will not get any events from ```/etc/test/```).
 8. There is no way to monitor files inside a K8s Pod (we only monitor files in the host).
 9. Kernels ```< 4.19``` are not currently supported.
-10. Calling truncate to shrink or extend the size of a file to the specified size will not generate any events.
