@@ -288,6 +288,7 @@ func startFsScanner() (*exec.Cmd, error) {
 
 	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting hubble-fgs-fs-scanner")
 
+	fsScannerCmd.Env = append(fsScannerCmd.Env, fmt.Sprintf("TETRAGON_PROCFS=%s", option.Config.ProcFS))
 	fsScannerCmd.Stdout = os.Stdout
 	fsScannerCmd.Stderr = os.Stderr
 
