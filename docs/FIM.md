@@ -82,7 +82,7 @@ A FIM generated event looks like (we omit ```process``` and ```parent``` fields 
 ```
 
 FIM defines ```process_file```, a new event type. Except from the known ```process```, ```parent```, ```time```, and ```node_name``` fields, it also includes some new fields. These include:
-1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```/```FILE_DELETE```/```FILE_CREATE```/```FILE_RMDIR```/```FILE_MKDIR```).
+1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```/```FILE_DELETE```/```FILE_CREATE```/```FILE_RMDIR```/```FILE_MKDIR```/```FILE_READDIR```).
 2. ```args.generic_arg.file.filename``` is the full path of the file that is related to this event.
 3. ```args.generic_arg.file.inode``` the inode number and file system details of the file/directory shown in the ```filename```.
 4. ```args.generic_arg.file.parent_inode``` the inode number and file system details of the parent directory (i.e. the directory that contains the file/directory that we care).
@@ -193,6 +193,9 @@ This event contains ```rename_arg``` instead of ```generic_arg``` in order to pr
 
 6. ### ```FILE_RENAME```
     These are events for renaming (mv) files/directories inside/outside a watched path.
+
+7. ### ```FILE_READDIR```
+    These are events for listing the contents of a direcotry inside a watched path.
 
 FIM requires a kernel version of 4.19 or later. Our tests cover all above on 4.19, 5.4, 5.10, and 5.15 kernels (longterm releases).
 
