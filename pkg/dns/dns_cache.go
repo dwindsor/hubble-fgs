@@ -5,6 +5,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 )
 
 type Cache struct {
@@ -39,6 +40,7 @@ func NewCache() (*Cache, error) {
 func (c *Cache) GetIp(ip string) ([]string, error) {
 	entry, ok := c.cache.Get(ip)
 	if !ok {
+		dnsmetrics.DnsCacheErrors(ip, dnsmetrics.DnsCacheErrorTetragonMissingEntry).Inc()
 		return nil, fmt.Errorf("no dns entry found")
 	}
 	return entry, nil
@@ -50,7 +52,9 @@ func (c *Cache) AddIp(dns *tetragon.DnsInfo) {
 	}
 
 	for _, ip := range dns.Ips {
-		c.cache.Add(ip, dns.Names)
+		if c.cache.Add(ip, dns.Names) {
+			dnsmetrics.DnsCacheEvictions().Inc()
+		}
 	}
 }
 

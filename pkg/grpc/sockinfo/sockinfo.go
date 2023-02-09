@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -73,10 +74,12 @@ func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *ciliu
 	if dns.CiliumDnsEnabled() {
 		endpoint := process.GetProcessEndpoint(proc)
 		if endpoint == nil {
+			dnsmetrics.DnsCacheErrors(ip, dnsmetrics.DnsCacheErrorCiliumEndpoint).Inc()
 			return nil, fmt.Errorf("no endpoint found for GetIp")
 		}
 		entry = cs.GetFQDNCache().GetNamesOf(endpoint.ID, net.ParseIP(ip))
 		if len(entry) == 0 {
+			dnsmetrics.DnsCacheErrors(ip, dnsmetrics.DnsCacheErrorCiliumFQDNCache).Inc()
 			return nil, fmt.Errorf("no dns entry found through FQDN Cache")
 		}
 		return entry, nil
