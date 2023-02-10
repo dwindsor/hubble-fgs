@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/logger"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type Cache struct {
@@ -13,10 +15,8 @@ type Cache struct {
 }
 
 var (
-	LazyDns             = false
-	dnsDefaultCacheSize = 1024
-
-	cache *Cache
+	LazyDns = false
+	cache   *Cache
 )
 
 func init() {
@@ -28,13 +28,25 @@ func NewCache() (*Cache, error) {
 		return cache, nil
 	}
 
-	lru, err := lru.New[string, []string](dnsDefaultCacheSize)
+	logger.GetLogger().WithField("size", enterpriseOption.Config.DnsCacheSize).Info("Initializing DNS cache")
+	lru, err := lru.New[string, []string](enterpriseOption.Config.DnsCacheSize)
 	if err != nil {
 		return nil, err
 	}
 
 	cache = &Cache{cache: lru}
 	return cache, nil
+}
+
+func ResizeCache(size int) error {
+	if cache == nil {
+		if _, err := NewCache(); err != nil {
+			return err
+		}
+	}
+
+	cache.cache.Resize(size)
+	return nil
 }
 
 func (c *Cache) GetIp(ip string) ([]string, error) {

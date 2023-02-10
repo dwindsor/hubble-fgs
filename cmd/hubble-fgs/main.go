@@ -15,7 +15,9 @@ import (
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
 	"github.com/cilium/tetragon/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -500,12 +502,29 @@ func startGopsServer() error {
 	return nil
 }
 
+func resizeCaches() error {
+	if err := dns.ResizeCache(enterpriseOption.Config.DnsCacheSize); err != nil {
+		return err
+	}
+	return nil
+}
+
 func execute() error {
 	rootCmd := &cobra.Command{
 		Use:   "hubble-fgs",
 		Short: "Run the Hubble FGS agent",
 		Run: func(cmd *cobra.Command, args []string) {
 			readAndSetFlags()
+
+			// Unfortunately, due to an over-reliance on init() throughout the codebase,
+			// we have to rely on resizing the caches here rather than simply initializing
+			// them. (Otherwise we'd require a bunch of refactors and NewCache calls in
+			// a lot of different places.) This should be fine to do as the operation
+			// shouldn't be prohibitively expensive and the caches won't actually have any
+			// entries yet.
+			if err := resizeCaches(); err != nil {
+				log.WithError(err).Fatal("Failed to configure caches")
+			}
 
 			if err := startGopsServer(); err != nil {
 				log.WithError(err).Fatal("Failed to start gops")
@@ -553,6 +572,7 @@ func execute() error {
 	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
 	flags.String(keyProtocolShift, "auto", "Shfit the socket protocol field (true) or not (false), or discover automatically (auto)")
+	flags.Int(keyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 
 	// Config files
 	flags.String(keyConfigFile, "", "Location of the TracingPolicy file")

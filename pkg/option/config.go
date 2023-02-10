@@ -6,6 +6,7 @@ package option
 type config struct {
 	EnableProcessAncestors bool
 	ProtocolShift          int
+	DnsCacheSize           int
 }
 
 const (
@@ -19,5 +20,6 @@ var (
 	Config = config{
 		EnableProcessAncestors: false,
 		ProtocolShift:          ShiftAuto,
+		DnsCacheSize:           1024,
 	}
 )

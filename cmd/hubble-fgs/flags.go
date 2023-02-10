@@ -71,6 +71,8 @@ const (
 	keyReleasePinnedBPF = "release-pinned-bpf"
 
 	keyProtocolShift = "protocol-shift"
+
+	keyDnsCacheSize = "dns-cache-size"
 )
 
 var (
@@ -147,4 +149,6 @@ func readAndSetFlags() {
 	} else {
 		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftAuto
 	}
+
+	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
 }
