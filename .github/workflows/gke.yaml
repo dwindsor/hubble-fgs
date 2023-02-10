@@ -156,6 +156,7 @@ jobs:
       - name: Run end-to-end tests
         run: |
           cd hubble-fgs
+          export HOST_PROC=/proc
           go test -p 1 -parallel 1 -timeout 20m -failfast -cover ./tests/e2e/tests/... \
             -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
             -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \

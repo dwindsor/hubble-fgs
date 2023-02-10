@@ -28,4 +28,4 @@ spec:
       volumes:
       - name: host-proc
         hostPath:
-          path: /proc
+          path: HOST_PROC

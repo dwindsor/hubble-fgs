@@ -13,6 +13,8 @@ package file_test
 
 import (
 	// Fix up OSS configuration defaults.
+	"os"
+
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 
 	"context"
@@ -63,7 +65,11 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return ctx, fmt.Errorf("failed to create file namespace: %w", err)
 		}
-		ctx, err = helpers.LoadCRDString(namespace, ubuntulYaml, true)(ctx, cfg)
+		pr := os.Getenv("HOST_PROC")
+		if pr == "" {
+			pr = "/proc"
+		}
+		ctx, err = helpers.LoadCRDString(namespace, strings.Replace(ubuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to deploy ubuntu pod: %w", err)
 		}
