@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "http"
+spec:
+  parser:
+    http:
+      enable: true
+      selectors:
+      - matchPorts:
+        - 8080
+        - 80
+    tcp:
+      enable: true
+      histogram:
+        enable: true
+        min: 0
+        max: 100000
