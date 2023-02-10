@@ -8,6 +8,7 @@ type config struct {
 	ProtocolShift          int
 	DnsCacheSize           int
 	NetNsCacheSize         int
+	FimFifoPath            string
 }
 
 const (
@@ -23,5 +24,6 @@ var (
 		ProtocolShift:          ShiftAuto,
 		DnsCacheSize:           1024,
 		NetNsCacheSize:         256,
+		FimFifoPath:            "/var/run/cilium/hubble",
 	}
 )

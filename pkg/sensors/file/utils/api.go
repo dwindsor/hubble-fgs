@@ -18,7 +18,6 @@ const (
 	LpmMapName  = "lpm_trie_map_alloc"
 
 	ScannerFifoName      = "fs_scanner.sock" // this is used for hubble-fgs-fs-scanner <-> file-sensor communication
-	K8sScannerFifoPath   = "/var/run/cilium/hubble"
 	LocalScannerFifoPath = "/var/run"
 )
 

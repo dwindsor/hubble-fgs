@@ -74,6 +74,8 @@ const (
 
 	keyDnsCacheSize   = "dns-cache-size"
 	keyNetNsCacheSize = "net-ns-cache-size"
+
+	keyFimFifoPath = "fim-fifo-path"
 )
 
 var (
@@ -153,4 +155,6 @@ func readAndSetFlags() {
 
 	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
 	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
+
+	enterpriseOption.Config.FimFifoPath = viper.GetString(keyFimFifoPath)
 }

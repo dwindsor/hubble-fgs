@@ -44,6 +44,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
+	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 
 	"github.com/google/uuid"
@@ -259,7 +260,7 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 func startFsScanner() (*exec.Cmd, error) {
 	if fm.ScannerFifoPath == "" {
 		if option.Config.EnableK8s {
-			fm.ScannerFifoPath = path.Join(fm.K8sScannerFifoPath, fm.ScannerFifoName)
+			fm.ScannerFifoPath = path.Join(eeOption.Config.FimFifoPath, fm.ScannerFifoName)
 		} else {
 			fm.ScannerFifoPath = path.Join(fm.LocalScannerFifoPath, fm.ScannerFifoName)
 		}
