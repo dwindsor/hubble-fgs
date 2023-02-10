@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/selectors"
@@ -134,6 +135,7 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 func (http *httpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	spec := raw.(*v1alpha1.TracingPolicySpec)
+
 	return AddHTTPSensor(spec.Parser)
 }
 
@@ -287,6 +289,11 @@ func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if !kernels.MinKernelVersion("5.10") {
+		return nil, fmt.Errorf("HTTP parser requires kernel version >= 5.10")
+	}
+
 	return EnableHTTPParser(), nil
 }
 
