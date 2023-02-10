@@ -46,7 +46,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	}()
 
 	getFDAndCookie := func() (int, uint64, error) {
-		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, IPPROTO_TCP)
 		if err != nil {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}

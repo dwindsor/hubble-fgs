@@ -6,9 +6,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/check_kill_permission"), used)) int
-kprobe_check_kill_permission(struct pt_regs *ctx)
+__attribute__((section("kprobe/proc_task_name"), used)) int
+kprobe_proc_task_name(struct pt_regs *ctx)
 {
-	__kprobe_check_kill_permission(ctx);
+	__kprobe_proc_task_name(ctx);
 	return 0;
 }
