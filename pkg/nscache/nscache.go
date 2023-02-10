@@ -5,14 +5,11 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	lru "github.com/hashicorp/golang-lru/v2"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
-	// This needs to be aligned with the maximum number of Pods we
-	// expect in the system or more precisely the number of network
-	// namespaces.
-	netnsDefaultCacheSize = 256
-	cache                 *lru.Cache[uint64, *tetragon.Pod]
+	cache *lru.Cache[uint64, *tetragon.Pod]
 )
 
 func init() {
@@ -26,14 +23,25 @@ func NewCache() error {
 		return nil
 	}
 
-	cache, err = lru.New[uint64, *tetragon.Pod](netnsDefaultCacheSize)
+	cache, err = lru.New[uint64, *tetragon.Pod](enterpriseOption.Config.NetNsCacheSize)
 	return err
+}
+
+func ResizeCache(size int) error {
+	if cache == nil {
+		if err := NewCache(); err != nil {
+			return err
+		}
+	}
+
+	cache.Resize(size)
+	return nil
 }
 
 func GetPod(netns uint64) (*tetragon.Pod, error) {
 	entry, ok := cache.Get(netns)
 	if !ok {
-		return nil, fmt.Errorf("no dns entry found")
+		return nil, fmt.Errorf("no pod entry found")
 	}
 	return entry, nil
 }

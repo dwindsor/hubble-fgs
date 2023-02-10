@@ -7,6 +7,7 @@ type config struct {
 	EnableProcessAncestors bool
 	ProtocolShift          int
 	DnsCacheSize           int
+	NetNsCacheSize         int
 }
 
 const (
@@ -21,5 +22,6 @@ var (
 		EnableProcessAncestors: false,
 		ProtocolShift:          ShiftAuto,
 		DnsCacheSize:           1024,
+		NetNsCacheSize:         256,
 	}
 )

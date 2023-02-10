@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
+	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -506,6 +507,9 @@ func resizeCaches() error {
 	if err := dns.ResizeCache(enterpriseOption.Config.DnsCacheSize); err != nil {
 		return err
 	}
+	if err := nscache.ResizeCache(enterpriseOption.Config.NetNsCacheSize); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -573,6 +577,7 @@ func execute() error {
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
 	flags.String(keyProtocolShift, "auto", "Shfit the socket protocol field (true) or not (false), or discover automatically (auto)")
 	flags.Int(keyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
+	flags.Int(keyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
 
 	// Config files
 	flags.String(keyConfigFile, "", "Location of the TracingPolicy file")

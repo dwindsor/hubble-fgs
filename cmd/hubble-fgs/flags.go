@@ -72,7 +72,8 @@ const (
 
 	keyProtocolShift = "protocol-shift"
 
-	keyDnsCacheSize = "dns-cache-size"
+	keyDnsCacheSize   = "dns-cache-size"
+	keyNetNsCacheSize = "net-ns-cache-size"
 )
 
 var (
@@ -151,4 +152,5 @@ func readAndSetFlags() {
 	}
 
 	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
+	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
 }
