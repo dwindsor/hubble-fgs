@@ -46,7 +46,10 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	}()
 
 	getFDAndCookie := func() (int, uint64, error) {
+		// syscall.Socket needs a ForkLock. See https://go.dev/src/syscall/exec_unix.go
+		syscall.ForkLock.Lock()
 		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, IPPROTO_TCP)
+		syscall.ForkLock.Unlock()
 		if err != nil {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}
