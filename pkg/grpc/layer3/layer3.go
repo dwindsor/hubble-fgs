@@ -35,6 +35,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
@@ -624,6 +625,9 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	errorCode := event.Return & 0xffffffff
 	if errorCode <= ipErrorMax {
 		details = ipErrorToString[errorCode]
+		// Populate the metrics here before we parameterize with any data, otherwise we
+		// risk cardinality exploding
+		iperrormetrics.ProcessIpErrors(details).Inc()
 		if errorCode == 5 {
 			details = details + fmt.Sprintf(": %d", event.Return>>32)
 		}
