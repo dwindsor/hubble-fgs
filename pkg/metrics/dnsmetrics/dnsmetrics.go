@@ -14,28 +14,25 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-)
 
-const (
-	DnsCacheErrorCiliumEndpoint       = "CiliumEndpointError"
-	DnsCacheErrorCiliumFQDNCache      = "CiliumFQDNCacheError"
-	DnsCacheErrorTetragonMissingEntry = "TetragonMissingEntry"
+	// Needed to fix metrics prefix
+	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 )
 
 var (
-	dnsCacheErrors = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "dns_cache_errors",
-		Help: "DNS cache errors",
-	}, []string{"ip", "error"})
+	dnsCacheErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "dns_cache_misses",
+		Help: "Number of IPs not found in the DNS cache. Note that this is expected for IPs that don't have FQDNs",
+	})
 
 	dnsCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "dns_cache_evictions",
-		Help: "DNS cache evictions",
+		Help: "DNS cache evictions. Some churn is expected, but this metric can be useful to determine the rate of churn",
 	})
 )
 
-func DnsCacheErrors(ip string, errType string) prometheus.Counter {
-	return dnsCacheErrors.WithLabelValues(ip, errType)
+func DnsCacheMisses() prometheus.Counter {
+	return dnsCacheErrors
 }
 
 func DnsCacheEvictions() prometheus.Counter {

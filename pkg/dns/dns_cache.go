@@ -52,7 +52,7 @@ func ResizeCache(size int) error {
 func (c *Cache) GetIp(ip string) ([]string, error) {
 	entry, ok := c.cache.Get(ip)
 	if !ok {
-		dnsmetrics.DnsCacheErrors(ip, dnsmetrics.DnsCacheErrorTetragonMissingEntry).Inc()
+		dnsmetrics.DnsCacheMisses().Inc()
 		return nil, fmt.Errorf("no dns entry found")
 	}
 	return entry, nil
