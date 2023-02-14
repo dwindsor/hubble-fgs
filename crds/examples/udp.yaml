@@ -19,6 +19,8 @@ spec:
         matchPorts: [9955]
         min: 0
         max: 10000
+        clockCheckInterval: 1
+        clockMaxSkew: 5
     burstExitGen:
       enable: true
       interval: 1000

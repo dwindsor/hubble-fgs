@@ -702,6 +702,9 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 	}
 	m.Update(key, config)
 	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
+	if config.latencyEnable == 1 && clockCheckInterval > 0 && clockMaxSkew > 0 {
+		clockUpdateTimer.Start(time.Duration(clockCheckInterval) * time.Second)
+	}
 	return nil
 }
 

@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
+	"path/filepath"
 	"time"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
@@ -29,6 +33,12 @@ const (
 	maxDnsPorts       = 4
 	maxLatencySubnets = 4
 	maxLatencyPorts   = 4
+)
+
+var (
+	clockUpdateTimer   = timer.NewPeriodicTimer("UDP Clock Update Timer", checkClock, true)
+	clockCheckInterval = uint32(0)
+	clockMaxSkew       = uint32(0)
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
@@ -270,6 +280,9 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 			"bucket90": config.latBucket90,
 			"bucket99": config.latBucket99}).Info("Configured Latency buckets: ")
 
+		clockCheckInterval = spec.Parser.Udp.Latency.ClockCheckInterval
+		clockMaxSkew = spec.Parser.Udp.Latency.ClockMaxSkew
+
 		// MatchPorts are strictly optional, as we have constrained the packet mangling
 		// to the specified subnets, or refused to enable latency.
 		if len(spec.Parser.Udp.Latency.MatchPorts) == 0 {
@@ -289,15 +302,68 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	}
 }
 
-// ConfigureBootTime sets the boot time in nanoseconds, which is used in latency calculations
+// GetBootTime gets the boot time in nanoseconds, which is used in latency calculations
 // between nodes.
-func ConfigureBootTime(config *ConfigValue) {
+func GetBootTime() (uint64, error) {
 	clk := int32(unix.CLOCK_MONOTONIC)
 	currentTime := unix.Timespec{}
 	if err := unix.ClockGettime(clk, &currentTime); err != nil {
-		logger.GetLogger().Warn("UDP sensor failed to get current monotonic time")
-		return
+		return 0, fmt.Errorf("failed to get current monotonic time")
 	}
 	t := time.Now().Add(-time.Duration(currentTime.Nano()))
-	config.bootNs = uint64(t.UnixNano())
+	return uint64(t.UnixNano()), nil
+}
+
+// ConfigureBootTime sets the boot time in nanoseconds, which is used in latency calculations
+// between nodes.
+func ConfigureBootTime(config *ConfigValue) {
+	t, err := GetBootTime()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("UDP sensor clock error")
+		return
+	}
+	config.bootNs = t
+}
+
+// checkClock checks if the difference between the current boot time and the configured
+// boot time is more than half a microsecond; if so, it updates the configuration.
+func checkClock() {
+	udpConfig, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), UdpConfigMapName))
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("UDP checkClock failed to open configuration map")
+		return
+	}
+	defer udpConfig.Close()
+
+	key := &udpSensorConfigKey{
+		Zero: uint32(0),
+	}
+
+	configValue, err := udpConfig.Lookup(key)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("UDP checkClock failed to read configuration map")
+		return
+	}
+	config := configValue.(*ConfigValue)
+
+	t, err := GetBootTime()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("UDP checkClock failed to get boot time")
+		return
+	}
+	diff := int64(t - config.bootNs)
+	if diff < 0 {
+		diff = -diff
+	}
+	// Is the difference more than the max clock skew?
+	if diff > int64(clockMaxSkew*1000) {
+		old := config.bootNs
+		config.bootNs = t
+		err = udpConfig.Update(key, config)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("UDP checkClock failed to update configuration map")
+			return
+		}
+		logger.GetLogger().WithFields(logrus.Fields{"From": old, "To": t}).Debug("UDP checkClock updated")
+	}
 }

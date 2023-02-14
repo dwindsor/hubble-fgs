@@ -298,6 +298,12 @@ type UdpLatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the expected Min Latency value
 	Min uint32 `json:"min"`
+	// +kubebuilder:validation:Optional
+	// Configures the clock check interval in seconds
+	ClockCheckInterval uint32 `json:"clockCheckInterval"`
+	// +kubebuilder:validation:Optional
+	// Configures the maximum acceptable clock skew before updating in microseconds
+	ClockMaxSkew uint32 `json:"clockMaxSkew"`
 }
 
 type BurstExitGenPolicySpec struct {

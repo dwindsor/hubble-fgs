@@ -706,6 +706,15 @@ spec:
                       latency:
                         description: UDP latency observability policy specification
                         properties:
+                          clockCheckInterval:
+                            description: Configures the clock check interval in seconds
+                            format: int32
+                            type: integer
+                          clockMaxSkew:
+                            description: Configures the maximum acceptable clock skew
+                              before updating in microseconds
+                            format: int32
+                            type: integer
                           enable:
                             default: false
                             description: Enable UDP latency observability
