@@ -23,9 +23,9 @@ var (
 	processIpErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "layer3_event_errors",
 		Help: "Errors propagated to userspace by the L3 event sensors",
-	}, []string{"error"})
+	}, []string{"error", "version"})
 )
 
-func ProcessIpErrors(err string) prometheus.Counter {
-	return processIpErrors.WithLabelValues(err)
+func ProcessIpErrors(err string, version string) prometheus.Counter {
+	return processIpErrors.WithLabelValues(err, version)
 }

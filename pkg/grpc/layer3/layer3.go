@@ -630,7 +630,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		details = ipErrorToString[errorCode]
 		// Populate the metrics here before we parameterize with any data, otherwise we
 		// risk cardinality exploding
-		iperrormetrics.ProcessIpErrors(details).Inc()
+		iperrormetrics.ProcessIpErrors(details, version).Inc()
 		if errorCode == 5 {
 			details = details + fmt.Sprintf(": %d", event.Return>>32)
 		}
