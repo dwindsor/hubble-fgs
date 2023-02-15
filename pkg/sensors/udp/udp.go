@@ -52,6 +52,7 @@ const (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
 	UdpMapName           = "udp_map"
 	UdpRetprobeMapName   = "udp_retprobe_map"
+	UdpRetprobeStatsName = "udp_retprobe_map_stats"
 	UdpConfigMapName     = "udp_config_map"
 	UdpPayloadMapName    = "udp_payload_map"
 	SocketMapName        = "socket_map"
@@ -250,6 +251,8 @@ var (
 	UdpMapLazyKprobe        = program.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
 	UdpRetprobeMapLazy      = program.MapBuilder(UdpRetprobeMapName, Udp4SendLazy)
+	UdpRetprobeStats        = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
+	UdpRetprobeStatsLazy    = program.MapBuilder(UdpRetprobeStatsName, Udp4SendLazy)
 	UdpConfigMap            = program.MapBuilder(UdpConfigMapName, InetSend)
 	UdpConfigLazyMap        = program.MapBuilder(UdpConfigMapName, InetSendLazy)
 	UdpConfigLazyMapKprobe  = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
@@ -736,6 +739,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
 			UdpRetprobeMapLazy,
+			UdpRetprobeStatsLazy,
 			UdpConfigLazyMapKprobe,
 			UdpPayloadLazyMapKprobe,
 			SocketCookieMapLazy,
@@ -760,6 +764,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*program.Map{
 			UdpMapLazy,
 			UdpRetprobeMapLazy,
+			UdpRetprobeStatsLazy,
 			UdpConfigLazyMap,
 			UdpPayloadLazyMap,
 			SocketCookieMapLazy,
@@ -784,6 +789,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*program.Map{
 			UdpMap,
 			UdpRetprobeMap,
+			UdpRetprobeStats,
 			UdpConfigMap,
 			UdpPayloadMap,
 			SocketCookieMap,

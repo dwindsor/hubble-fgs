@@ -798,6 +798,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{3, 4, 5, 6}},
 
+			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map_stats", Progs: []uint{3, 4, 5, 6}},
+
 			// inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 4, 6, 7}},
@@ -805,12 +809,12 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// sk_allocret, sock_release_lazy, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 4, 6, 7}},
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7}},
 			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 4, 6, 7}},
 
 			// sk_allocret, sock_release_lazy, inet_lazy_send_kp, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 4, 6, 7, 8}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
 
 			// sock_release_lazy
 			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},
@@ -836,6 +840,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7}},
 
+			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map_stats", Progs: []uint{4, 5, 6, 7}},
+
 			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
@@ -843,12 +851,12 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// sk_allocret, sock_release_lazy, inet_lazy_send (not stats), inet_lazy_recv (not stats),
 			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
 			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 5, 7, 8}},
 
 			// sk_allocret_v56, sock_release_lazy_v56, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8, 9}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
 
 			// sock_release_lazy
 			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},
@@ -878,6 +886,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			// udp6_sendret_kprobe, udp_recv_kprobe
 			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7}},
 
+			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
+			// udp6_sendret_kprobe, udp_recv_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map_stats", Progs: []uint{4, 5, 6, 7}},
+
 			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe,
 			// udp_recv_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
@@ -885,12 +897,12 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// sock_create, sock_release, inet_send, inet_recv, udp4_sendret_kprobe,
 			// udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
 			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
 
 			// sock_create, sock_release, inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe
 			// udp_recv_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8, 9}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
 
 			// sock_release
 			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},

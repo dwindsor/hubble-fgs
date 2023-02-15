@@ -21,11 +21,18 @@ struct udp_sock_info {
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, __u64);
 	__type(value, struct udp_sock_info);
-	__uint(max_entries, 1024);
+	__uint(max_entries, 16384);
 } udp_retprobe_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, int64_t);
+	__uint(max_entries, 1);
+} udp_retprobe_map_stats SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -174,6 +181,76 @@ add_process_ctx(struct udp_info_value *value)
 	return 0;
 }
 
+static inline __attribute__((always_inline)) void
+add_to_retprobe_map(void *ctx, u64 cookie, u64 *key, struct udp_sock_info *value)
+{
+	u32 *stat;
+	int zero = 0;
+	struct udp_sock_info *
+	try
+		= map_lookup_elem(&udp_retprobe_map, key);
+	if (try) {
+		emit_ip_error_event(ctx, 0, &cookie, false,
+				    IP_ERROR_UDP_RETPROBE_OVERWRITE);
+	}
+
+	long ret = map_update_elem(&udp_retprobe_map, key, value, 0);
+	if (ret < 0) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_UDP_RETPROBE_ADD);
+	} else if (!try) {
+		stat = map_lookup_elem(&udp_retprobe_map_stats, &zero);
+		if (stat) {
+			*stat = *stat + 1;
+		}
+	}
+}
+
+static inline __attribute__((always_inline)) struct udp_sock_info *
+lookup_retprobe_map(void *ctx, u64 *key)
+{
+	struct udp_sock_info *value = map_lookup_elem(&udp_retprobe_map, key);
+	if (!value) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_UDP_SEND_NO_SOCK_INFO);
+	}
+	return value;
+}
+
+static inline __attribute__((always_inline)) void
+del_from_retprobe_map(void *ctx, u64 cookie, struct udp_info *info, u64 *key)
+{
+	u32 *stat;
+	void *ip = 0;
+	struct iphdr ip4;
+	struct ipv6hdr ip6;
+	int zero = 0;
+	long ret = map_delete_elem(&udp_retprobe_map, key);
+	if (ret < 0) {
+		if (info) {
+			if (!info->ipv6) {
+				ip4.saddr = info->saddr.ipv4;
+				ip4.daddr = info->daddr.ipv4;
+				ip = (void *)&ip4;
+			} else {
+				copy_ipv6_addr((u64 *)&ip6.saddr, info->saddr.ipv6);
+				copy_ipv6_addr((u64 *)&ip6.daddr, info->daddr.ipv6);
+				ip = (void *)&ip6;
+			}
+			emit_ip_error_event(ctx, ip, &cookie, info->ipv6,
+					    IP_ERROR_UDP_RETPROBE_DEL);
+		} else {
+			emit_ip_error_event(ctx, 0, &cookie, false,
+					    IP_ERROR_UDP_RETPROBE_DEL);
+		}
+	} else {
+		stat = map_lookup_elem(&udp_retprobe_map_stats, &zero);
+		if (stat && *stat > 0) {
+			*stat = *stat - 1;
+		}
+	}
+}
+
 /* On the first entry to udp_sendmsg() for a new socket, the
  * socket cookie is empty, so instead of trying to do socket
  * gymnastics here, store the sk and msg and look them up on
@@ -191,7 +268,7 @@ static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 
 	value->sk = (struct sock *)ctx->di;
 	value->msg = (struct msghdr *)ctx->si;
-	map_update_elem(&udp_retprobe_map, &pid_tgid, value, 0);
+	add_to_retprobe_map(ctx, (u64)value->sk, &pid_tgid, value);
 	return 0;
 }
 
@@ -200,29 +277,27 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *sock_info;
-	struct udp_info *info;
+	struct udp_info *info = 0;
 	struct udp_info_value *value;
 	struct udp_info_key key;
 	int hasctx;
 	int ret = ctx->ax;
-	u64 cookie;
+	u64 cookie = 0;
 	int zero = 0;
 
 	if (ret < 0) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
+		del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 		return 0;
 	}
 
-	sock_info = (struct udp_sock_info *)map_lookup_elem(&udp_retprobe_map, &pid_tgid);
+	sock_info = lookup_retprobe_map(ctx, &pid_tgid);
 	if (!sock_info) {
-		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_UDP_SEND_NO_SOCK_INFO);
 		return 0;
 	}
 
 	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
 	if (!cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
+		del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 		emit_ip_error_event(ctx, 0, 0, false,
 				    IP_ERROR_UDP_SEND_NO_COOKIE);
 		return 0;
@@ -239,7 +314,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 		 */
 		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
-			map_delete_elem(&udp_retprobe_map, &pid_tgid);
+			del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 			return 0;
 		}
 
@@ -249,7 +324,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 			info = udp6_get_info(sock_info);
 		}
 		if (!info) {
-			map_delete_elem(&udp_retprobe_map, &pid_tgid);
+			del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 			return 0;
 		}
 
@@ -285,7 +360,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 	/* Ensure we have an up-to-date cookie->process mapping. */
 	update_socketmap(&cookie, 0, value->pid);
 
-	map_delete_elem(&udp_retprobe_map, &pid_tgid);
+	del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 	return 0;
 }
 
