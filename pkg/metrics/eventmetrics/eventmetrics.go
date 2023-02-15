@@ -325,15 +325,6 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postIpErrorStats(ns, pod, binary, version, details string, s *tetragon.ProcessIpError) {
-	socketmetrics.IpErrors.WithLabelValues(ns, pod, binary, version, details).Inc()
-}
-
-func HandleIpErrorEvent(res *tetragon.ProcessIpError) {
-	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
-	postIpErrorStats(ns, pod, binary, res.Version, res.Details, res)
-}
-
 func postHttpStats(res *tetragon.ProcessHttp) {
 	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	dstPod := res.GetDestinationPod()

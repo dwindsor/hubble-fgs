@@ -667,6 +667,6 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	if parent != nil {
 		fgsEvent.Parent = parent.GetProcessCopy()
 	}
-	eventmetrics.HandleIpErrorEvent(fgsEvent)
+
 	return fgsEvent
 }
