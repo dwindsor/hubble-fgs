@@ -78,10 +78,9 @@ var ipErrorToString = []string{
 	24: "UDP failed to read IP option",
 	25: "UDP retprobe add failed",
 	26: "UDP retprobe delete failed",
-	27: "UDP retprobe key already exists",
 }
 
-const ipErrorMax = 27
+const ipErrorMax = 26
 
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
