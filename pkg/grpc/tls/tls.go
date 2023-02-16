@@ -141,7 +141,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if processInt != nil {

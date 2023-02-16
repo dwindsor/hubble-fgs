@@ -126,7 +126,7 @@ func createProcessNetworkBurst(
 
 	ec := eventcache.Get()
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {

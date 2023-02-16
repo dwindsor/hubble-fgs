@@ -64,7 +64,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 
 	if ec := eventcache.Get(); ec != nil &&
 		(ec.Needed(fgsEvent.Process) || (fgsProcess.Pid.Value > 1 && fgsEvent.Parent == nil)) {
-		ec.Add(proc, fgsEvent, event.Common.Ktime, event)
+		ec.Add(proc, fgsEvent, event.Common.Ktime, event.Process.Ktime, event)
 		return nil
 	}
 
@@ -193,7 +193,7 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		if err := process.AddCloneEvent(&msg.MsgCloneEvent); err != nil {
 			ec := eventcache.Get()
 			if ec != nil {
-				ec.Add(nil, nil, msg.MsgCloneEvent.Ktime, msg)
+				ec.Add(nil, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
 			}
 		}
 	default:
@@ -238,7 +238,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	if ec != nil &&
 		(ec.Needed(fgsProcess) ||
 			(fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if parent != nil {
@@ -370,7 +370,7 @@ func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsRespon
 		process.RefDec()
 	} else {
 		if ec := eventcache.Get(); ec != nil {
-			ec.Add(nil, nil, msg.Ktime, msg)
+			ec.Add(nil, nil, msg.Ktime, msg.Ktime, msg)
 		}
 	}
 	return nil

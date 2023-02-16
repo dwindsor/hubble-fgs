@@ -131,7 +131,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if processInt != nil {

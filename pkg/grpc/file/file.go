@@ -177,7 +177,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	ec := eventcache.Get()
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(nil, tetragonEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -342,7 +342,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(nil, tetragonEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 

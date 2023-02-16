@@ -157,7 +157,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -244,7 +244,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -296,7 +296,7 @@ func GetProcessListen(
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -371,7 +371,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -426,7 +426,7 @@ func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.Process
 	}
 
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -655,7 +655,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
