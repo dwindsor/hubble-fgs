@@ -185,7 +185,7 @@ git push origin $RELEASE
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
-<!-- - [ ] TODO: add a section about breakages and the upgrade path -->
+- [ ] Document any breakages in `docs/operations-guide/upgrades/tetragon-version-notes.rst` if applicable
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
