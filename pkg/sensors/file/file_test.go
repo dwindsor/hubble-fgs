@@ -60,6 +60,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// cleanup all files that may exist from previous tests
+	if workDirs, err := filepath.Glob(filepath.Join(workingDir, "fim_test_*")); err == nil {
+		for _, f := range workDirs {
+			os.RemoveAll(f)
+		}
+	}
+
 	ec := runner.TestSensorsRun(m, "SensorFile")
 	os.Exit(ec)
 }
