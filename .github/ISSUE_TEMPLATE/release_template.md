@@ -66,6 +66,8 @@ git push origin $RELEASE
   - [ ] NOTE: Depending on the current status of the Alpo-2 configuration, the above fields may not be present (for example when we are currently using default values from the Helm chart). You can just add them if needed.
   - [ ] Make sure everything looks good in the Alpo-2 cluster. You can refer to the README in dogfooding for how to configure your kubectl to work with Alpo-2
 
+**IF YOU ARE DOING A RELEASE CANDIDATE, STOP HERE.**
+
 ### Documentation
 
 - [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of FGS
