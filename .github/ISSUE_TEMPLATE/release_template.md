@@ -66,6 +66,49 @@ git push origin $RELEASE
   - [ ] NOTE: Depending on the current status of the Alpo-2 configuration, the above fields may not be present (for example when we are currently using default values from the Helm chart). You can just add them if needed.
   - [ ] Make sure everything looks good in the Alpo-2 cluster. You can refer to the README in dogfooding for how to configure your kubectl to work with Alpo-2
 
+### Documentation
+
+- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of FGS
+  - [ ] Check out a new release branch:
+  ```
+  git checkout master && git pull origin master
+  git checkout -b pr/document-fgs-$RELEASE
+  ```
+- [ ] Add release notes to the docs
+  - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the FGS version. Example diff:
+  ```
+  diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+  index 98284b7..92a1d34 100644
+  --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+  +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+  @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
+   .. toctree::
+     :maxdepth: 1
+
+  +  v1.9.3
+     v1.9.2
+     v1.9.1
+     v1.9.0
+   ```
+   - [ ] Create a new file `docs/operations-guide/releases/release-notes/hubble-enterprise/$RELEASE.md`. Use the release notes you generated for the `hubble-enterprise` chart as a basis for what goes into the file. You can use the following as a template:
+   ```markdown
+    # vX.Y.Z
+
+    ## Features
+    * Features here
+
+    ## Enhancements
+    * Update to hubble-fgs vX.Y.Z
+    * Other enhancements here
+
+    ## Breaking changes
+    * Breaking changes here
+   ```
+- [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
+  - [ ] See `docs/operations-guide/features/status.rst`
+- [ ] Ping feature owners to add documentation for undocumented new features
+- [ ] Document any breakages in `docs/operations-guide/upgrades/tetragon-version-notes.rst` if applicable
+
 ### Updating the hubble-enterprise helm chart
 
 - [ ] Navigate to the [hubble-enterprise chart] repo and file a PR to update the Helm chart version
@@ -143,49 +186,6 @@ git push origin $RELEASE
   ```
   git commit -a -m "Pick up latest hubble-enterprise" -s && git push origin HEAD
   ```
-
-### Documentation
-
-- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of FGS
-  - [ ] Check out a new release branch:
-  ```
-  git checkout master && git pull origin master
-  git checkout -b pr/document-fgs-$RELEASE
-  ```
-- [ ] Add release notes to the docs
-  - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the FGS version. Example diff:
-  ```
-  diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  index 98284b7..92a1d34 100644
-  --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
-   .. toctree::
-     :maxdepth: 1
-
-  +  v1.9.3
-     v1.9.2
-     v1.9.1
-     v1.9.0
-   ```
-   - [ ] Create a new file `docs/operations-guide/releases/release-notes/hubble-enterprise/$RELEASE.md`. Use the release notes you generated for the `hubble-enterprise` chart as a basis for what goes into the file. You can use the following as a template:
-   ```markdown
-    # vX.Y.Z
-
-    ## Features
-    * Features here
-
-    ## Enhancements
-    * Update to hubble-fgs vX.Y.Z
-    * Other enhancements here
-
-    ## Breaking changes
-    * Breaking changes here
-   ```
-- [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
-  - [ ] See `docs/operations-guide/features/status.rst`
-- [ ] Ping feature owners to add documentation for undocumented new features
-- [ ] Document any breakages in `docs/operations-guide/upgrades/tetragon-version-notes.rst` if applicable
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
