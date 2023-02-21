@@ -10,6 +10,14 @@ assignees: ''
 
 The following is a release checklist that should be followed when cutting a new release of FGS. Please follow the steps carefully and ask for help in Slack if you have difficulty during the release process.
 
+### Minor Version Bump
+
+If you are doing a minor version bump (i.e. the Y in X.Y.Z), there are a few steps we need to do first before we can work on the Enterprise release.
+
+- [ ] [Cut a new OSS release][oss-release]
+- [ ] **After** checking out your new release branch (see below) but **before** you push the tag, update the `modules/tetragon-oss` to point to your new OSS release branch, and do an OSS sync
+- [ ] Make sure you add the `-rc1` suffix to the version number for release candidates
+
 ### Cutting the FGS release
 
 - [ ] Check that there are no [release blockers].
@@ -196,3 +204,4 @@ git push origin $RELEASE
 [umbrella chart]: https://github.com/isovalent/helm-charts
 [cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
 [cilium-enterprise-dogfooding]: https://github.com/isovalent/cilium-enterprise-dogfooding
+[oss-release]: https://github.com/cilium/tetragon/issues/new?assignees=&labels=kind%2Frelease&template=release_template.md&title=vX.Y.Z+release
