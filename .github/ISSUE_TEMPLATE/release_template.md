@@ -36,6 +36,36 @@ git push origin $RELEASE
   - [ ] Click "generate release notes"
   - [ ] Click "publish release"
 
+### Deploy the new release to Alpo-2
+
+- [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the FGS version in Alpo-2
+  - [ ] Edit the file flux/clusters/alpo-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
+  ```diff
+  diff --git a/flux/clusters/alpo-2/hubble-enterprise/hr.yaml b/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
+  index 4bca3d5..5c178eb 100644
+  --- a/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
+  +++ b/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
+  @@ -21,14 +21,14 @@ spec:
+         btf: /sys/kernel/btf/vmlinux
+         image:
+           repository: quay.io/isovalent/hubble-enterprise
+  -        tag: v1.8.5
+  +        tag: v1.9.0
+         processCacheSize: 64000
+         exportDenyList: |-
+           {"event_set":["INTERFACE_STATS"]}
+       hubbleEnterpriseOperator:
+         image:
+           repository: quay.io/isovalent/hubble-enterprise-operator
+  -        tag: v1.8.5
+  +        tag: v1.9.0
+       export:
+         mode: fluentd
+         fluentd:
+  ```
+  - [ ] NOTE: Depending on the current status of the Alpo-2 configuration, the above fields may not be present (for example when we are currently using default values from the Helm chart). You can just add them if needed.
+  - [ ] Make sure everything looks good in the Alpo-2 cluster. You can refer to the README in dogfooding for how to configure your kubectl to work with Alpo-2
+
 ### Updating the hubble-enterprise helm chart
 
 - [ ] Navigate to the [hubble-enterprise chart] repo and file a PR to update the Helm chart version
@@ -163,3 +193,4 @@ git push origin $RELEASE
 [hubble-enterprise chart release]: https://github.com/isovalent/hubble-enterprise-chart/releases/new
 [umbrella chart]: https://github.com/isovalent/helm-charts
 [cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
+[cilium-enterprise-dogfooding]: https://github.com/isovalent/cilium-enterprise-dogfooding
