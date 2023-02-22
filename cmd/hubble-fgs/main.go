@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -267,7 +266,7 @@ func hubbleFGSExecute() error {
 		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
 
-	logPinnedBpf(observerDir)
+	obs.LogPinnedBpf(observerDir)
 
 	// Load default base sensors
 	if err := base.LoadDefault(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
@@ -295,35 +294,6 @@ func hubbleFGSExecute() error {
 	go logStatus(ctx, obs)
 
 	return obs.Start(ctx)
-}
-
-func logPinnedBpf(observerDir string) {
-	finfo, err := os.Stat(observerDir)
-	if err != nil {
-		log.WithField("bpf-dir", observerDir).Info("Starting with empty BPF resources")
-		return
-	}
-
-	if finfo.IsDir() == false {
-		err := fmt.Errorf("is not a directory")
-		log.WithField("bpf-dir", observerDir).WithError(err).Warn("Checking pinned BPF resources failed")
-		// Do not fail, let bpf part handle it
-		return
-	}
-
-	bpfRes, _ := os.ReadDir(observerDir)
-	if len(bpfRes) == 0 {
-		log.WithField("bpf-dir", observerDir).Info("Starting with empty BPF resources")
-	} else {
-		res := make([]string, 0)
-		for _, b := range bpfRes {
-			res = append(res, b.Name())
-		}
-		log.WithFields(logrus.Fields{
-			"bpf-dir":    observerDir,
-			"pinned-bpf": fmt.Sprintf("[%s]", strings.Join(res, " ")),
-		}).Info("Starting with pinned BPF resources")
-	}
 }
 
 // Periodically log current status every 1 hour. For lost or error
