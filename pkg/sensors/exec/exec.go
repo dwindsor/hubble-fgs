@@ -90,7 +90,7 @@ func execParse(reader *bytes.Reader) (processapi.MsgProcess, bool, error) {
 	exec := processapi.MsgExec{}
 
 	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
-		fmt.Printf("read error!\n")
+		logger.GetLogger().WithError(err).Debug("Failed to read exec event")
 		return proc, true, err
 	}
 
