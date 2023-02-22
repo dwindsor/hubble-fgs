@@ -78,7 +78,8 @@ var (
 	watermarkEnabled = false
 	statsUpdate      sync.Mutex
 
-	pseudoSockets = make(map[uint64](map[udpPseudoSocket]bool))
+	pseudoSockets       = make(map[uint64](map[udpPseudoSocket]bool))
+	pseudoSocketsUpdate sync.Mutex
 )
 
 var (
@@ -619,9 +620,11 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	if t > UdpDeleteInterval {
 		emitCloseEvent(udpKey, udpValue)
 		stats.Remove(*udpKey)
+		pseudoSocketsUpdate.Lock()
 		if pseudoSockets[udpKey.Cookie] != nil {
 			delete(pseudoSockets[udpKey.Cookie], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
+		pseudoSocketsUpdate.Unlock()
 		m.DeleteKey(k)
 	}
 	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
@@ -845,11 +848,13 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 
 	if m.Common.Op == ops.MSG_OP_UDPCONNECT {
 		// Store the pseudo-socket against this cookie
+		pseudoSocketsUpdate.Lock()
 		pseudoSockList := pseudoSockets[m.SockCookie]
 		if pseudoSockList == nil {
 			pseudoSockets[m.SockCookie] = make(map[udpPseudoSocket]bool)
 		}
 		pseudoSockets[m.SockCookie][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
+		pseudoSocketsUpdate.Unlock()
 	} else if m.Common.Op == ops.MSG_OP_UDPCLOSE {
 		// Close event contains the socket cookie that was closed. We use this
 		// as a key into the pseudoSockets map to retrieve the list of pseudo-
@@ -860,7 +865,9 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		statsUpdate.Lock()
 		defer statsUpdate.Unlock()
 
+		pseudoSocketsUpdate.Lock()
 		pseudoSocketList := pseudoSockets[m.SockCookie]
+		pseudoSocketsUpdate.Unlock()
 		if len(pseudoSocketList) == 0 {
 			return nil, nil
 		}
@@ -906,7 +913,9 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			}
 		}
 
+		pseudoSocketsUpdate.Lock()
 		delete(pseudoSockets, m.SockCookie)
+		pseudoSocketsUpdate.Unlock()
 		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 		return closeEvents, nil
 	}
