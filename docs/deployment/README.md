@@ -4,7 +4,9 @@ It is possible to deploy Tetragon as a container or as a service managed by syst
 
 ## Docker deployment
 
-TODO.
+For deploying Tetragon Enterprise as a docker image, please refer to the [Docker deployment guide][docker-deployment].
+
+[docker-deployment]: ./docker/README.md
 
 ## Package deployment
 
