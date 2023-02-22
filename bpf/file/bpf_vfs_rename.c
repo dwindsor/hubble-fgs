@@ -229,7 +229,6 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	return 0;
 }
 
-#ifdef VFS_PROGS_V512
 struct renamedata {
 	struct user_namespace *old_mnt_userns;
 	struct inode *old_dir;
@@ -241,24 +240,23 @@ struct renamedata {
 	unsigned int flags;
 } __randomize_layout;
 
-__attribute__((section(("kprobe/vfs_rename")), used)) int
-BPF_KPROBE(vfs_rename, struct renamedata *rd)
+__attribute__((section(("kprobe/vfs_rename/512")), used)) int
+BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 {
 	struct renamedata d;
 	probe_read(&d, sizeof(struct renamedata), rd);
 	return kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
 				 d.new_dentry, d.delegated_inode);
 }
-#else
-__attribute__((section(("kprobe/vfs_rename")), used)) int
-BPF_KPROBE(vfs_rename, struct inode *old_dir, struct dentry *old_dentry,
+
+__attribute__((section(("kprobe/vfs_rename/419")), used)) int
+BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry,
 	   struct inode *new_dir, struct dentry *new_dentry,
 	   struct inode **delegated_inode /*, unsigned int flags */)
 {
 	return kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
 				 delegated_inode);
 }
-#endif
 
 static inline __attribute__((always_inline)) void
 resolve_missed_paths(struct vfs_rename_info *val)

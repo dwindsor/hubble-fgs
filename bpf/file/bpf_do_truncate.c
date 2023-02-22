@@ -57,16 +57,14 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	return 0;
 }
 
-#ifdef VFS_PROGS_V512
-__attribute__((section(("kprobe/do_truncate")), used)) int
-BPF_KPROBE(do_truncate, struct user_namespace *mnt_userns, struct dentry *dentry, loff_t start, unsigned int time_attrs, struct file *filp)
+__attribute__((section(("kprobe/do_truncate/512")), used)) int
+BPF_KPROBE(do_truncate_v512, struct user_namespace *mnt_userns, struct dentry *dentry, loff_t start, unsigned int time_attrs, struct file *filp)
 {
 	return kprobe_do_truncate(ctx, dentry, start);
 }
-#else
-__attribute__((section(("kprobe/do_truncate")), used)) int
-BPF_KPROBE(do_truncate, struct dentry *dentry, loff_t start, unsigned int time_attrs, struct file *filp)
+
+__attribute__((section(("kprobe/do_truncate/419")), used)) int
+BPF_KPROBE(do_truncate_v419, struct dentry *dentry, loff_t start, unsigned int time_attrs, struct file *filp)
 {
 	return kprobe_do_truncate(ctx, dentry, start);
 }
-#endif

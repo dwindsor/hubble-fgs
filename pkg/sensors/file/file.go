@@ -84,7 +84,7 @@ var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
 
 type FimFunc struct {
-	proto, progName string
+	proto, progName, progSection string
 }
 
 type FimHook struct {
@@ -93,45 +93,45 @@ type FimHook struct {
 }
 
 type FimProg struct {
-	tp, name, progName string
+	tp, name, progName, progSection string
 }
 
 var (
 	FimHooks = [...]FimHook{
-		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o"}}},
-		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o"}}},
-		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o"}}},
-		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o"}}},
-		{"kprobe", "rw_verify_area", []FimFunc{{"rw_verify_area(int, struct file*, const loff_t*, size_t)", "bpf_rw_verify_area.o"}}},
-		{"kprobe", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "bpf_security_path_unlink.o"}}},
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o"}}},
+		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate"}}},
+		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault"}}},
+		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages"}}},
+		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite"}}},
+		{"kprobe", "rw_verify_area", []FimFunc{{"rw_verify_area(int, struct file*, const loff_t*, size_t)", "bpf_rw_verify_area.o", "rw_verify_area"}}},
+		{"kprobe", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "bpf_security_path_unlink.o", "security_path_unlink"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
 		{"kprobe", "vfs_rmdir", []FimFunc{
-			{"vfs_rmdir(struct inode*, struct dentry*)", "bpf_vfs_rmdir.o"},
-			{"vfs_rmdir(struct user_namespace*, struct inode*, struct dentry*)", "bpf_vfs_rmdir_v512.o"},
+			{"vfs_rmdir(struct inode*, struct dentry*)", "bpf_vfs_rmdir.o", "vfs_rmdir/419"},
+			{"vfs_rmdir(struct user_namespace*, struct inode*, struct dentry*)", "bpf_vfs_rmdir.o", "vfs_rmdir/512"},
 		}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o"},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_v512.o"},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o"},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o"},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 		}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o"}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o"}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o"},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename_v512.o"},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o"},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o"},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
 		}},
-		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o"}}},
+		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir"}}},
 		{"kprobe", "do_truncate", []FimFunc{
-			{"do_truncate(struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o"},
-			{"do_truncate(struct user_namespace*, struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate_v512.o"},
+			{"do_truncate(struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o", "do_truncate/419"},
+			{"do_truncate(struct user_namespace*, struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o", "do_truncate/512"},
 		}},
 	}
 
@@ -855,7 +855,7 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
-			fmt.Sprintf("%s/%s", h.tp, h.name),
+			fmt.Sprintf("%s/%s", h.tp, h.progSection),
 			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", h.tp, h.name)),
 			"kprobe")
 		if h.tp == "kretprobe" {
@@ -907,7 +907,7 @@ func findHooks() ([]FimProg, error) {
 		for _, f := range h.prog {
 			if f.proto == p {
 				progFound = true
-				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName)})
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection})
 				break
 			}
 		}

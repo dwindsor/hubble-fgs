@@ -46,9 +46,8 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
 	  bpf_rw_verify_area.o  bpf_security_path_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
-	  bpf_vfs_mkdir.o bpf_vfs_mkdir_v512.o bpf_vfs_rmdir.o bpf_vfs_rmdir_v512.o \
-	  bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v512.o bpf_vfs_rename_v419.o \
-	  bpf_iterate_dir.o bpf_do_truncate.o bpf_do_truncate_v512.o
+	  bpf_vfs_mkdir.o bpf_vfs_rmdir.o bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v419.o \
+	  bpf_iterate_dir.o bpf_do_truncate.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 
@@ -161,11 +160,7 @@ objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_multi_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
-objs/bpf_vfs_mkdir_v512.ll: $(FILEDIR)/bpf_vfs_mkdir.c
-objs/bpf_vfs_rmdir_v512.ll: $(FILEDIR)/bpf_vfs_rmdir.c
-objs/bpf_vfs_rename_v512.ll: $(FILEDIR)/bpf_vfs_rename.c
 objs/bpf_vfs_rename_v419.ll: $(FILEDIR)/bpf_vfs_rename.c
-objs/bpf_do_truncate_v512.ll: $(FILEDIR)/bpf_do_truncate.c
 
 objs/bpf_multi_kprobe_v53.ll objs/bpf_multi_retkprobe_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
@@ -176,9 +171,6 @@ objs/%_v419.ll:
 objs/%_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
-objs/%_v512.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -DVFS_PROGS_V512 -c $< -o $@
-
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
@@ -188,11 +180,7 @@ deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
-deps/bpf_vfs_mkdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
-deps/bpf_vfs_rmdir_v512.d: $(FILEDIR)/bpf_vfs_mkdir.c
-deps/bpf_vfs_rename_v512.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_vfs_rename_v419.d: $(FILEDIR)/bpf_vfs_rename.c
-deps/bpf_do_truncate_v512.d: $(FILEDIR)/bpf_do_truncate.c
 
 $(DEPSDIR)%_v419.d:
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@

@@ -20,22 +20,19 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	return 0;
 }
 
-#ifdef VFS_PROGS_V512
-__attribute__((section(("kprobe/vfs_mkdir")), used)) int
-BPF_KPROBE(vfs_mkdir, struct user_namespace *mnt_userns, struct inode *dir,
+__attribute__((section(("kprobe/vfs_mkdir/512")), used)) int
+BPF_KPROBE(vfs_mkdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
 	   struct dentry *dentry, umode_t mode)
 {
 	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
 }
-#else
-__attribute__((section(("kprobe/vfs_mkdir")), used)) int
-BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
+
+__attribute__((section(("kprobe/vfs_mkdir/419")), used)) int
+BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
 }
-#endif
 
-#ifndef VFS_PROGS_V512
 __attribute__((section(("kretprobe/vfs_mkdir")), used)) int
 BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 {
@@ -179,4 +176,3 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	return 0;
 }
-#endif

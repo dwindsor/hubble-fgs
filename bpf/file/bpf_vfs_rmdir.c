@@ -62,17 +62,15 @@ ignore_rmdir:
 	return 0;
 }
 
-#ifdef VFS_PROGS_V512
-__attribute__((section(("kprobe/vfs_rmdir")), used)) int
-BPF_KPROBE(vfs_rmdir, struct user_namespace *mnt_userns, struct inode *dir,
+__attribute__((section(("kprobe/vfs_rmdir/512")), used)) int
+BPF_KPROBE(vfs_rmdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
 	   struct dentry *dentry)
 {
 	return kprobe_vfs_rmdir(ctx, dir, dentry);
 }
-#else
-__attribute__((section(("kprobe/vfs_rmdir")), used)) int
-BPF_KPROBE(vfs_rmdir, struct inode *dir, struct dentry *dentry)
+
+__attribute__((section(("kprobe/vfs_rmdir/419")), used)) int
+BPF_KPROBE(vfs_rmdir_v419, struct inode *dir, struct dentry *dentry)
 {
 	return kprobe_vfs_rmdir(ctx, dir, dentry);
 }
-#endif
