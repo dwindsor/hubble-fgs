@@ -1,0 +1,37 @@
+#  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+#
+#  NOTICE: All information contained herein is, and remains the property of
+#  Isovalent Inc and its suppliers, if any. The intellectual and technical
+#  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+#  and may be covered by U.S. and Foreign Patents, patents in process, and are
+#  protected by trade secret or copyright law.  Dissemination of this information
+#  or reproduction of this material is strictly forbidden unless prior written
+#  permission is obtained from Isovalent Inc.
+
+[Unit]
+Description="Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement Service"
+DefaultDependencies=no
+After=network.target local-fs.target docker.service
+Requires=docker.service
+Documentation=https://docs.isovalent.com/
+
+[Service]
+Environment="PATH=/usr/local/lib/hubble-fgs/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStartPre=/usr/bin/docker pull quay.io/isovalent/hubble-enterprise:v1.9.3
+ExecStart=/usr/bin/docker run --name tetragon-enterprise \
+    --rm --pid=host --network=host \
+    --cgroupns=host --privileged=true \
+    -v /etc/hubble-fgs:/etc/hubble-fgs \
+    -v /sys/fs/bpf:/sys/fs/bpf \
+    -v /sys/kernel:/sys/kernel \
+    -v /var/log/hubble-fgs:/var/log/hubble-fgs \
+    quay.io/isovalent/hubble-enterprise:v1.9.3 \
+    /usr/bin/hubble-fgs \
+    --export-filename /var/log/hubble/hubble-fgs.log
+
+Restart=always
+RestartSec=5
+ExecStop=/usr/bin/docker stop tetragon-enterprise
+
+[Install]
+WantedBy=default.target
