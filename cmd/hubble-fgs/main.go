@@ -14,6 +14,7 @@ import (
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
 	"github.com/cilium/tetragon/pkg/config"
+	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
@@ -242,11 +243,14 @@ func hubbleFGSExecute() error {
 	ctx, cancel2 := context.WithCancel(ctx)
 	defer cancel2()
 
+	hookRunner := rthooks.GlobalRunner().WithWatcher(watcher)
+
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
 		ciliumState,
-		observer.SensorManager)
+		observer.SensorManager,
+		hookRunner)
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
@@ -279,7 +283,7 @@ func hubbleFGSExecute() error {
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}
-		sens, err = sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
+		sens, err = sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
 		if err != nil {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}

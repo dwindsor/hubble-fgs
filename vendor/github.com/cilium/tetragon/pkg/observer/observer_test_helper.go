@@ -38,15 +38,16 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crd"
 
-	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -165,41 +166,8 @@ func createFakeCiliumState(testPod, testNamespace string) *hubbleCilium.State {
 // Create a fake K8s watcher to avoid delayed event due to missing pod info
 func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 	return &fakeK8sWatcher{
-		OnFindPod: func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
-			if containerID == "" {
-				return nil, nil, false
-			}
-
-			container := corev1.ContainerStatus{
-				Name:        containerID,
-				Image:       "image",
-				ImageID:     "id",
-				ContainerID: "docker://" + containerID,
-				State: corev1.ContainerState{
-					Running: &corev1.ContainerStateRunning{
-						StartedAt: v1.Time{
-							Time: time.Unix(1, 2),
-						},
-					},
-				},
-			}
-			pod := corev1.Pod{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      testPod,
-					Namespace: testNamespace,
-				},
-				Status: corev1.PodStatus{
-					ContainerStatuses: []corev1.ContainerStatus{
-						container,
-					},
-				},
-			}
-
-			return &pod, &container, true
-		},
-		OnGetPodInfo: func(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
-			return nil, nil
-		},
+		fakePod:       testPod,
+		fakeNamespace: testNamespace,
 	}
 }
 
@@ -279,7 +247,7 @@ func getDefaultObserverSensors(t *testing.T, ctx context.Context, base *sensors.
 	cnf, _ := readConfig(o.observer.config)
 	if cnf != nil {
 		var err error
-		cnfSensor, err = sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
+		cnfSensor, err = sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
 		if err != nil {
 			return nil, ret, err
 		}
@@ -391,6 +359,9 @@ func loadExporter(t *testing.T, ctx context.Context, obs *Observer, opts *testEx
 	// signals from users.
 	var cancelWg sync.WaitGroup
 
+	// use an empty hooks runner
+	hookRunner := (&rthooks.Runner{}).WithWatcher(watcher)
+
 	// For testing we disable the eventcache and cilium cache by default. If we
 	// enable these then every tests would need to wait for the 1.5 mimutes needed
 	// to bounce events through the cache waiting for Cilium to reply with endpoints
@@ -399,7 +370,7 @@ func loadExporter(t *testing.T, ctx context.Context, obs *Observer, opts *testEx
 	option.Config.EnableProcessNs = true
 	option.Config.EnableProcessCred = true
 	option.Config.EnableCilium = false
-	processManager, err := tetragonGrpc.NewProcessManager(ctx, &cancelWg, ciliumState, SensorManager)
+	processManager, err := tetragonGrpc.NewProcessManager(ctx, &cancelWg, ciliumState, SensorManager, hookRunner)
 	if err != nil {
 		return err
 	}
@@ -495,22 +466,54 @@ func DockerRun(t *testing.T, args ...string) (containerId string) {
 }
 
 type fakeK8sWatcher struct {
-	OnFindPod    func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
-	OnGetPodInfo func(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint)
+	fakePod, fakeNamespace string
 }
 
-func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
-	if f.OnFindPod == nil {
-		panic("FindPod not implemented")
+func (f *fakeK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
+	if podID == "" {
+		return nil, fmt.Errorf("empty podID")
 	}
-	return f.OnFindPod(containerID)
+
+	return &corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      f.fakePod,
+			Namespace: f.fakeNamespace,
+			UID:       k8stypes.UID(podID),
+		},
+	}, nil
 }
 
-func (f *fakeK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
-	if f.OnGetPodInfo == nil {
-		panic("GetPodInfo not implemented")
+func (f *fakeK8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
+	if containerID == "" {
+		return nil, nil, false
 	}
-	return f.OnGetPodInfo(containerID, binary, args, nspid)
+
+	container := corev1.ContainerStatus{
+		Name:        containerID,
+		Image:       "image",
+		ImageID:     "id",
+		ContainerID: "docker://" + containerID,
+		State: corev1.ContainerState{
+			Running: &corev1.ContainerStateRunning{
+				StartedAt: v1.Time{
+					Time: time.Unix(1, 2),
+				},
+			},
+		},
+	}
+	pod := corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      f.fakePod,
+			Namespace: f.fakeNamespace,
+		},
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{
+				container,
+			},
+		},
+	}
+
+	return &pod, &container, true
 }
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this

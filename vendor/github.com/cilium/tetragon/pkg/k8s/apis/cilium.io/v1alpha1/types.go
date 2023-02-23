@@ -72,6 +72,10 @@ func (tp *TracingPolicy) TpInfo() string {
 	return fmt.Sprintf("%s (object:%d/%s) (type:%s/%s)", tp.ObjectMeta.Name, tp.ObjectMeta.Generation, tp.ObjectMeta.UID, tp.TypeMeta.Kind, tp.TypeMeta.APIVersion)
 }
 
+func (tp *TracingPolicy) TpName() string {
+	return tp.ObjectMeta.Name
+}
+
 type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// What paths to monitor

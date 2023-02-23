@@ -11,11 +11,13 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	sttManager "github.com/cilium/tetragon/pkg/stt"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 )
 
 type SensorStatus struct {
-	Name    string
-	Enabled bool
+	Name       string
+	Enabled    bool
+	Collection string
 }
 
 // StartSensorManager initializes the sensorCtlHandle by spawning a sensor
@@ -25,185 +27,46 @@ type SensorStatus struct {
 // sensors as requested from different goroutines (e.g., different GRPC
 // clients).
 func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
-	var m Manager
-
 	c := make(chan sensorOp)
+	m := Manager{
+		STTManager: sttManager.StartSttManager(),
+		sensorCtl:  c,
+	}
 	go func() {
-
-		// map of sensor collections: name -> collection
-		sensorCols := map[string]collection{}
-
+		handler := newHandler(bpfDir, mapDir, ciliumDir)
 		done := false
 		for !done {
 			op_ := <-c
-			// NB: let's keep this to avoid issues from changes. A better approach would
-			// be to create functions for each type.
 			err := errors.New("BUG in SensorCtl: unset error value") // nolint
 			switch op := op_.(type) {
-
 			case *tracingPolicyAdd:
-				if _, exists := sensorCols[op.name]; exists {
-					err = fmt.Errorf("failed to add tracing policy %s, a sensor collection with the name already exists", op.name)
-					break
-				}
-
-				var sensors []*Sensor
-				for _, s := range registeredSpecHandlers {
-					var sensor *Sensor
-					spec := op.tp.TpSpec()
-					sensor, err = s.SpecHandler(spec)
-					if err != nil {
-						break
-					}
-					if sensor == nil {
-						continue
-					}
-					sensors = append(sensors, sensor)
-				}
-
-				if err != nil {
-					break
-				}
-
-				col := collection{
-					sensors: sensors,
-					name:    op.name,
-				}
-				err = col.load(op.ctx, bpfDir, mapDir, ciliumDir, nil)
-				if err == nil {
-					// NB: in some cases it might make
-					// sense to keep the policy registered
-					// if there was an error. For now,
-					// however, we only keep it if it was
-					// successfully loaded
-					sensorCols[op.name] = col
-				}
-
+				err = handler.addTracingPolicy(op)
 			case *tracingPolicyDel:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("tracing policy %s does not exist", op.name)
-					break
-				}
-				err = col.unload(nil)
-				delete(sensorCols, op.name)
-
+				err = handler.delTracingPolicy(op)
 			case *sensorAdd:
-				if _, exists := sensorCols[op.name]; exists {
-					err = fmt.Errorf("sensor %s already exists", op.name)
-					break
-				}
-				sensorCols[op.name] = collection{
-					sensors: []*Sensor{op.sensor},
-					name:    op.name,
-				}
-				err = nil
-
+				err = handler.addSensor(op)
 			case *sensorRemove:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-				err = col.unload(nil)
-				delete(sensorCols, op.name)
-
+				err = handler.removeSensor(op)
 			case *sensorEnable:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-
-				// NB: LoadArg was passed for a previous implementation of a sensor.
-				// The idea is that sensors can get a handle to the stt manager when
-				// they are loaded which they can use to attach stt information to
-				// events. Need to revsit this, and until we do we keep LoadArg.
-				err = col.load(op.ctx, bpfDir, mapDir, ciliumDir, &LoadArg{STTManagerHandle: op.sttManagerHandle})
-
+				err = handler.enableSensor(op)
 			case *sensorDisable:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-
-				// NB: see LoadArg for sensorEnable
-				err = col.unload(&UnloadArg{STTManagerHandle: op.sttManagerHandle})
-
+				err = handler.disableSensor(op)
 			case *sensorList:
-				ret := make([]SensorStatus, 0)
-				for _, col := range sensorCols {
-					for _, s := range col.sensors {
-						ret = append(ret, SensorStatus{Name: s.Name, Enabled: s.Loaded})
-					}
-				}
-				op.result = &ret
-				err = nil
-
+				err = handler.listSensors(op)
 			case *sensorConfigSet:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-				// NB: sensorConfigSet was used before tracing policies were
-				// introduced. The idea was that it could be used to provide
-				// sensor-specifc configuration values. We can either modify the
-				// call to specify a sensor within a collection, or completely
-				// remove it. TBD.
-				if len(col.sensors) != 1 {
-					err = fmt.Errorf("configuration only supported for collections of one sensor, but %s has %d sensors", op.name, len(col.sensors))
-					break
-				}
-				s := col.sensors[0]
-				if s.Ops == nil {
-					err = fmt.Errorf("sensor %s does not support configuration", op.name)
-					break
-				}
-				err = s.Ops.SetConfig(op.key, op.val)
-				if err != nil {
-					err = fmt.Errorf("sensor %s SetConfig failed: %w", op.name, err)
-					break
-				}
-
+				err = handler.configSet(op)
 			case *sensorConfigGet:
-				col, exists := sensorCols[op.name]
-				if !exists {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-				// NB: see sensorConfigSet
-				if len(col.sensors) != 1 {
-					err = fmt.Errorf("configuration only supported for collections of one sensor, but %s has %d sensors", op.name, len(col.sensors))
-					break
-				}
-				s := col.sensors[0]
-				if s.Ops == nil {
-					err = fmt.Errorf("sensor %s does not support configuration", op.name)
-					break
-				}
-				op.val, err = s.Ops.GetConfig(op.key)
-				if err != nil {
-					err = fmt.Errorf("sensor %s GetConfig failed: %s", op.name, err)
-					break
-				}
-
+				err = handler.configGet(op)
 			case *sensorCtlStop:
 				logger.GetLogger().Debugf("stopping sensor controller...")
 				done = true
 				err = nil
-
 			default:
 				err = fmt.Errorf("unknown sensorOp: %v", op)
 			}
-
 			op_.sensorOpDone(err)
 		}
 	}()
-
-	m.STTManager = sttManager.StartSttManager()
-	m.sensorCtl = c
 	return &m, nil
 }
 
@@ -308,16 +171,20 @@ func (h *Manager) SetSensorConfig(ctx context.Context, name string, cfgkey strin
 // config.GenericTracingConf. The former is what is the k8s API server uses,
 // and the latter is used when we load files directly (e.g., via the cli).
 type TracingPolicy interface {
+	// TpName returns the name of the policy.
+	TpName() string
+	// TpSpec  returns the specification of the policy
 	TpSpec() *v1alpha1.TracingPolicySpec
+	// TpInfo returns a description of the policy
 	TpInfo() string
 }
 
 // AddTracingPolicy adds a new sensor based on a tracing policy
-func (h *Manager) AddTracingPolicy(ctx context.Context, name string, tp TracingPolicy) error {
+func (h *Manager) AddTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error {
 	retc := make(chan error)
 	op := &tracingPolicyAdd{
 		ctx:     ctx,
-		name:    name,
+		name:    tp.TpName(),
 		tp:      tp,
 		retChan: retc,
 	}
@@ -414,7 +281,7 @@ type Manager struct {
 type tracingPolicyAdd struct {
 	ctx     context.Context
 	name    string
-	tp      TracingPolicy
+	tp      tracingpolicy.TracingPolicy
 	retChan chan error
 }
 

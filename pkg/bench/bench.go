@@ -38,6 +38,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/watcher"
 
@@ -53,6 +54,13 @@ import (
 	// Iinit sensors for benchmarking
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+)
+
+var (
+	// NB: we use a global runner for now. A better solution would be to
+	// have a way to reset the global variable of pkg/rthooks, but this
+	// requires OSS changes.
+	glblHookRunner = rthooks.GlobalRunner()
 )
 
 type Arguments struct {
@@ -153,7 +161,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	if err != nil {
 		log.Fatalf("readConfig error: %v", err)
 	}
-	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
@@ -241,7 +249,9 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
 		return err
 	}
-	if err := process.InitCache(ctx, watcher.NewFakeK8sWatcher(nil), option.Config.EnableCilium, processCacheSize); err != nil {
+
+	fakeWatcher := watcher.NewFakeK8sWatcher(nil)
+	if err := process.InitCache(ctx, fakeWatcher, option.Config.EnableCilium, processCacheSize); err != nil {
 		return err
 	}
 
@@ -254,6 +264,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
+		glblHookRunner,
 	)
 	if err != nil {
 		return err

@@ -21,6 +21,7 @@ import (
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -273,7 +274,8 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 
 	dn := DummyNotifier{t}
 	do := &server.FakeObserver{}
-	lServer := server.NewServer(ctx, cancelWg, dn, do)
+	dr := rthooks.DummyHookRunner{}
+	lServer := server.NewServer(ctx, cancelWg, dn, do, dr)
 
 	// Exec cache is always needed to ensure events have an associated Process{}
 	eventcache.NewWithTimer(lServer, time.Millisecond*execOSS.CacheTimerMs)

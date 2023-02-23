@@ -13,6 +13,7 @@ package bench
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"math/rand"
@@ -78,7 +79,7 @@ func (l *raceListener) Close() error {
 type raceK8sWatcher struct {
 }
 
-func (r *raceK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
+func (r *raceK8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 	if containerID == "" {
 		return nil, nil, false
 	}
@@ -87,6 +88,14 @@ func (r *raceK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 		return &corev1.Pod{}, &corev1.ContainerStatus{Image: "fake"}, true
 	}
 	return nil, nil, false
+}
+
+func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
+	if podID == "" {
+		return nil, errors.New("empty pod ID")
+	}
+
+	return &corev1.Pod{}, nil
 }
 
 func (r *raceK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
@@ -132,7 +141,9 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
 		return err
 	}
-	if err := process.InitCache(ctx, &raceK8sWatcher{}, option.Config.EnableCilium, processCacheSize); err != nil {
+
+	watcher := &raceK8sWatcher{}
+	if err := process.InitCache(ctx, watcher, option.Config.EnableCilium, processCacheSize); err != nil {
 		return err
 	}
 
@@ -145,6 +156,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
+		glblHookRunner,
 	)
 	if err != nil {
 		return err
@@ -250,7 +262,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
 	}
 
-	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
