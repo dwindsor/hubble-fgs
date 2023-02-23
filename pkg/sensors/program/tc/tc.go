@@ -84,7 +84,7 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) error {
 	if filter.Fd < 0 {
 		return fmt.Errorf("BpfFilter failed (%s): %d", linkName, filter.Fd)
 	}
-	if err = netlink.FilterAdd(filter); err != nil {
+	if err = netlink.FilterReplace(filter); err != nil {
 		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err)
 	}
 	return err
