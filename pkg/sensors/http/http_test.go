@@ -77,7 +77,7 @@ spec:
 }
 
 func TestHttp11Curl(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
@@ -164,7 +164,7 @@ func spawnHttp2Server(ctx context.Context, t *testing.T) string {
 func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
 
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
