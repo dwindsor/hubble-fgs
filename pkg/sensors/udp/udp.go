@@ -723,7 +723,7 @@ func unloadUdpSensor() error {
 	return nil
 }
 
-func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
+func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 	var versionStr string
@@ -741,7 +741,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6SendLazy,
 			Udp6RetSendLazy,
 			UdpRecvLazy,
-			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
@@ -766,7 +765,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6SendLazy,
 			Udp6RetSendLazy,
 			UdpRecvLazy,
-			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMapLazy,
@@ -791,7 +789,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
-			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMap,
@@ -804,6 +801,10 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			FdLookupConfigMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"
+	}
+
+	if timestampEnabled {
+		progs = append(progs, TCEgressTimestamp)
 	}
 
 	gcTimer.Start(interval)
@@ -831,7 +832,7 @@ func (udp *udpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
 	Config, _ = ParseUdpSpec(spec)
-	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
+	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
