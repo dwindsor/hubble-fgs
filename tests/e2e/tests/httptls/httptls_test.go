@@ -223,21 +223,14 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessCloseChecker("curlClose").
 			WithProcess(curlChecker).
 			WithDestinationPort(443),
-	)
-
-	// It's still worth running the other checks here even if TLS is not supported
-	if kernels.KernelStringToNumeric(kernelVersion) < kernels.KernelStringToNumeric("5.10.0") {
-		klog.Info("TLS events need kernel >= 5.10, skipping TLS checks")
-	} else {
-		tlsChecker.AddChecks(ec.NewTlsChecker("curlTls").
+		ec.NewTlsChecker("curlTls").
 			WithProcess(curlChecker).
 			WithDestinationPort(443).
 			WithNegotiatedVersion(sm.Full("TLS1.3")).
 			WithSupportedVersions(sm.Full("TLS1.3 TLS1.2 TLS1.1 TLS1.0")).
 			WithSniName(sm.Contains("google.com")).
 			WithSniType(sm.Full("host_name")),
-		)
-	}
+	)
 
 	return tlsChecker
 }
