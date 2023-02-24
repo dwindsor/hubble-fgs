@@ -4,9 +4,9 @@ For Linux Binary tarball, files should reside in /usr/local/
 
 Tarball should be:
 
-1. hubble-fgs.service:
+1. tetragon-enterprise.service:
    ```
-   /usr/lib/systemd/system/hubble-fgs.service
+   /usr/lib/systemd/system/tetragon-enterprise.service
    ```
 
 2. linux-tarball/usr => /usr/
