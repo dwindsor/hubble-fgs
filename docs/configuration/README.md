@@ -129,6 +129,29 @@ Default control settings example:
 
 Note: defaults controlling settings can be restored by simply deleting `/etc/hubble-fgs/hubble-fgs.yaml` and all drop-ins under `/etc/hubble-fgs/hubble-fgs.conf.d/`.
 
+### Restrict gRPC API access
+
+Starting from 1.10 version, the gRPC API supports unix sockets. This can be set using one of the following methods:
+
+1. Use the `--server-address` controlling setting directly:
+
+   ```
+   --server-address unix:///var/run/tetragon/tetragon.sock
+   ```
+
+2. Or use configuration files, a "drop-in" example:
+
+   ```
+   cat /etc/hubble-fgs/hubble-fgs.conf.d/server-address
+   unix:///var/run/tetragon/tetragon.sock
+   ```
+
+Then to access the gRPC API with Tetragon client, set the `--server-address`:
+
+   ```
+   sudo hubble-enterprise --server-address unix:///var/run/tetragon/tetragon.sock getevents
+   ```
+
 ### Tracing Policy
 
 A [Tracing Policy](https://github.com/cilium/tetragon/tree/main/docs/tracingpolicy) can be specified by the `--config-file` setting or by creating the drop-in file `/etc/hubble-fgs/hubble-fgs.conf.d/config-file` that contains the location of the Tracing Policy file.

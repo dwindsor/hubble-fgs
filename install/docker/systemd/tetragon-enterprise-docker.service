@@ -24,6 +24,7 @@ ExecStart=/usr/bin/docker run --name tetragon-enterprise \
     -v /etc/hubble-fgs:/etc/hubble-fgs \
     -v /sys/fs/bpf:/sys/fs/bpf \
     -v /sys/kernel:/sys/kernel \
+    -v /var/run/tetragon:/var/run/tetragon \
     -v /var/log/hubble-fgs:/var/log/hubble-fgs \
     quay.io/isovalent/hubble-enterprise:v1.9.3 \
     /usr/bin/hubble-fgs \
