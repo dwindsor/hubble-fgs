@@ -122,3 +122,7 @@ Tetragon Enterprise also ships a GRPC client that can be used to receive events.
    🚀 process  /usr/bin/whoami
    💥 exit     /usr/bin/whoami  0
    ```
+
+## Configuration
+
+To change the default configuration, see [Tetragon Enterprise Configuration](../../../docs/configuration/README.md) documentation.
