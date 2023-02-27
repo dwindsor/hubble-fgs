@@ -37,7 +37,7 @@ jobs:
     - ubuntu-22.04
     # 30 minutes seems reasonable to build a kernel image in my experiments. If this
     # becomes a problem, we can always bump this in the future.
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       # Name the kernel image artifact after the current date. This lets us cache images
       # once per day.
@@ -106,7 +106,7 @@ jobs:
   run-tests:
     runs-on:
     - majestic-ketchup-light
-    timeout-minutes: 20
+    timeout-minutes: 40
     needs: build-kernel
     steps:
       - name: Set Job Variables
