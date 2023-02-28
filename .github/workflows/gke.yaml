@@ -136,8 +136,6 @@ jobs:
             --release-channel ${{ matrix.release-channel }} \
             --node-taints node.cilium.io/agent-not-ready=true:NoExecute \
             --zone ${{ env.zone }}
-          CLUSTER_CIDR=$(gcloud container clusters describe ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }} --format="value(clusterIpv4Cidr)")
-          echo "cluster_cidr=${CLUSTER_CIDR}" >> $GITHUB_OUTPUT
 
       - name: Get Credentials
         run: |
