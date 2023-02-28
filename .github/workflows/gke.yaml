@@ -53,7 +53,7 @@ jobs:
   installation-and-connectivity:
     needs: ensure-image-available
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     strategy:
       matrix:
         release-channel:
@@ -154,6 +154,7 @@ jobs:
             docker pull ${{ steps.vars.outputs.operatorImage }}
 
       - name: Run end-to-end tests
+        timeout-minutes: 30
         run: |
           cd hubble-fgs
           export HOST_PROC=/proc
