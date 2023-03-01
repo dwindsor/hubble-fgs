@@ -22,6 +22,7 @@ spec:
         max: 10000
         clockCheckInterval: 1
         clockMaxSkew: 5
+        interfaces: ["lo"]
     networkWatermarksExitGen:
       enable: true
       interval: 1000

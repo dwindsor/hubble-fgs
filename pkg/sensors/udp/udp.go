@@ -680,7 +680,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	} else if args.Load.Type == "tc_egress" {
-		err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, [128]byte{})
+		err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, [128]byte{}, latencyInterfaces)
 		if err != nil {
 			return err
 		}

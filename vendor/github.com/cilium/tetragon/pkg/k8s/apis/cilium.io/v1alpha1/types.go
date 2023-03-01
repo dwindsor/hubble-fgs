@@ -338,6 +338,9 @@ type UdpLatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the maximum acceptable clock skew before updating in microseconds
 	ClockMaxSkew uint32 `json:"clockMaxSkew"`
+	// +kubebuilder:validation:Optional
+	// Configures the interfaces to enable on
+	Interfaces []string `json:"interfaces"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {

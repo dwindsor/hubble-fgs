@@ -20,6 +20,28 @@ func getAllRouteLinks() ([]netlink.Link, error) {
 	return allLinks, nil
 }
 
+func inInterfaces(i string, interfaces []string) bool {
+	for _, s := range interfaces {
+		if s == i {
+			return true
+		}
+	}
+	return false
+}
+
+func filterLinks(links []netlink.Link, interfaces []string) []netlink.Link {
+	if len(interfaces) == 0 {
+		return links
+	}
+	var filtered []netlink.Link
+	for _, link := range links {
+		if inInterfaces(link.Attrs().Name, interfaces) {
+			filtered = append(filtered, link)
+		}
+	}
+	return filtered
+}
+
 func QdiscTCInsert(linkName string, ingress bool) error {
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
@@ -95,12 +117,14 @@ func LoadTC(
 	load *program.Program,
 	version, verbose int,
 	selectors [128]byte,
+	interfaces []string,
 ) error {
 	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
-		attachLinks, err := getAllRouteLinks()
+		allLinks, err := getAllRouteLinks()
 		if err != nil {
 			return nil, err
 		}
+		attachLinks := filterLinks(allLinks, interfaces)
 		var un unloader.TcUnloader
 		for _, link := range attachLinks {
 			// NOTE: Set outer 'err' and break on error to rewind.

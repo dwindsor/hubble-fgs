@@ -39,6 +39,7 @@ var (
 	clockUpdateTimer   = timer.NewPeriodicTimer("UDP Clock Update Timer", checkClock, true)
 	clockCheckInterval = uint32(0)
 	clockMaxSkew       = uint32(0)
+	latencyInterfaces  []string
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
@@ -298,6 +299,8 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 
 		clockCheckInterval = spec.Parser.Udp.Latency.ClockCheckInterval
 		clockMaxSkew = spec.Parser.Udp.Latency.ClockMaxSkew
+
+		latencyInterfaces = spec.Parser.Udp.Latency.Interfaces
 
 		// MatchPorts are strictly optional, as we have constrained the packet mangling
 		// to the specified subnets, or refused to enable latency.

@@ -792,6 +792,11 @@ spec:
                             default: false
                             description: Enable UDP latency observability
                             type: boolean
+                          interfaces:
+                            description: Configures the interfaces to enable on
+                            items:
+                              type: string
+                            type: array
                           matchPorts:
                             description: Configures the ports to enable on
                             items:
