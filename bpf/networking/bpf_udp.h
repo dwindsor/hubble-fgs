@@ -144,7 +144,10 @@ struct udp_sensor_config {
 	u64 watermarks_burst_trigger_percent;
 	u64 watermarks_dip_trigger_percent;
 	u64 boot_ns;
-	u64 latency_enable;
+	u8 latency_enable;
+	u8 pad1;
+	u16 maxPacketSize;
+	u32 pad2;
 	struct subnet_selector latency_subnets[4];
 	u16 latency_ports[4];
 	u32 bucket00;

@@ -118,6 +118,9 @@ udp_egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	if (!config->latency_enable)
 		return true;
 
+	if (config->maxPacketSize && (data_end - data - sizeof(*eth) + IPO_LEN > config->maxPacketSize))
+		return true;
+
 	if (data + sizeof(*eth) + sizeof(*iph) + sizeof(*udph) > data_end)
 		return true;
 

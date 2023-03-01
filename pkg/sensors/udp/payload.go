@@ -301,6 +301,7 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		clockMaxSkew = spec.Parser.Udp.Latency.ClockMaxSkew
 
 		latencyInterfaces = spec.Parser.Udp.Latency.Interfaces
+		config.maxPacketSize = spec.Parser.Udp.Latency.MaxPacketSize
 
 		// MatchPorts are strictly optional, as we have constrained the packet mangling
 		// to the specified subnets, or refused to enable latency.

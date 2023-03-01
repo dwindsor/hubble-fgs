@@ -341,6 +341,9 @@ type UdpLatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the interfaces to enable on
 	Interfaces []string `json:"interfaces"`
+	// +kubebuilder:validation:Optional
+	// Configures the maximum packet size
+	MaxPacketSize uint16 `json:"maxPacketSize"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {

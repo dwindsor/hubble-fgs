@@ -367,7 +367,10 @@ type ConfigValue struct {
 	watermarksBurstTriggerPercent uint64
 	watermarksDipTriggerPercent   uint64
 	bootNs                        uint64
-	latencyEnable                 uint64
+	latencyEnable                 uint8
+	pad1                          uint8
+	maxPacketSize                 uint16
+	pad2                          uint32
 	latencySubnets                [maxLatencySubnets]SubnetSelector
 	latencyPorts                  [maxLatencyPorts]uint16
 	latBucket00                   uint32

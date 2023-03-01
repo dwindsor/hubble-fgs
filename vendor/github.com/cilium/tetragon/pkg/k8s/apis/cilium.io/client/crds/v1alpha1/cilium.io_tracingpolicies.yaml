@@ -811,6 +811,9 @@ spec:
                             description: Configures the expected Max Latency value
                             format: int32
                             type: integer
+                          maxPacketSize:
+                            description: Configures the maximum packet size
+                            type: integer
                           min:
                             description: Configures the expected Min Latency value
                             format: int32
