@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -18,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
+	"github.com/cilium/tetragon/pkg/idtable"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -25,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracepoint"
 	"github.com/sirupsen/logrus"
@@ -71,6 +74,9 @@ type genericTracepoint struct {
 
 	// index to access this on genericTracepointTable
 	tableIdx int
+
+	// for tracepoints that have a GetUrl or DnsLookup action, we store the table of arguments.
+	actionArgs idtable.Table
 
 	pinPathPrefix string
 }
@@ -361,6 +367,9 @@ func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (
 
 		argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), prog0)
 		maps = append(maps, argFilterMaps)
+
+		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), prog0)
+		maps = append(maps, selNamesMap)
 	}
 
 	return &sensors.Sensor{
@@ -405,7 +414,7 @@ func (tp *genericTracepoint) KernelSelectors() (*selectors.KernelSelectorState, 
 		}
 	}
 
-	return selectors.InitKernelSelectorState(selSelectors, selArgs)
+	return selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs)
 }
 
 func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
@@ -529,7 +538,23 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 	}
 	load.MapLoad = append(load.MapLoad, cfg)
 
-	return program.LoadTracepointProgram(bpfDir, mapDir, load, verbose)
+	if err := program.LoadTracepointProgram(bpfDir, mapDir, load, verbose); err == nil {
+		logger.GetLogger().Infof("Loaded generic tracepoint program: %s -> %s", load.Name, load.Attach)
+	} else {
+		return err
+	}
+
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, base.NamesMap.Name), nil)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	for i, path := range kernelSelectors.GetNewBinaryMappings() {
+		writeBinaryMap(m, i, path)
+	}
+
+	return err
 }
 
 func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
@@ -551,6 +576,24 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		logger.GetLogger().WithField("id", m.Id).WithError(err).Warnf("genericTracepoint info not found")
 		return []observer.Event{unix}, nil
+	}
+
+	switch m.ActionId {
+	case selectors.ActionTypeGetUrl, selectors.ActionTypeDnsLookup:
+		actionArgEntry, err := tp.actionArgs.GetEntry(idtable.EntryID{ID: int(m.ActionArgId)})
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Failed to find argument for id:%d", m.ActionArgId)
+			return nil, fmt.Errorf("Failed to find argument for id")
+		}
+		actionArg := actionArgEntry.(*selectors.ActionArgEntry).GetArg()
+		switch m.ActionId {
+		case selectors.ActionTypeGetUrl:
+			logger.GetLogger().WithField("URL", actionArg).Trace("Get URL Action")
+			getUrl(actionArg)
+		case selectors.ActionTypeDnsLookup:
+			logger.GetLogger().WithField("FQDN", actionArg).Trace("DNS lookup")
+			dnsLookup(actionArg)
+		}
 	}
 
 	unix.Subsys = tp.Info.Subsys

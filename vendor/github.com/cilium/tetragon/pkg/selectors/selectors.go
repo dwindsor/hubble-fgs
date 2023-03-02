@@ -5,6 +5,16 @@ package selectors
 
 import (
 	"encoding/binary"
+	"sync"
+)
+
+// as we use a single names_map for all kprobes, so we have to use
+// a global variable to assign values to binary names
+var (
+	binMu  sync.Mutex
+	binIdx uint32 = 1
+	// contains all entries for the names_map
+	binVals = make(map[string]uint32)
 )
 
 type KernelSelectorState struct {
@@ -13,6 +23,49 @@ type KernelSelectorState struct {
 
 	// valueMaps are used to populate value maps for InMap and NotInMap operators
 	valueMaps []map[[8]byte]struct{}
+
+	// matchBinaries mappings
+	op          uint32
+	newBinVals  map[uint32]string // these should be added in the names_map
+	selNamesMap map[uint32]uint32 // these will be used for the sel_names_map
+	initOnce    sync.Once
+}
+
+func (k *KernelSelectorState) SetBinaryOp(op uint32) {
+	k.op = op
+}
+
+func (k *KernelSelectorState) GetBinaryOp() uint32 {
+	return k.op
+}
+
+func (k *KernelSelectorState) AddBinaryName(binary string) {
+	k.initOnce.Do(func() {
+		k.newBinVals = make(map[uint32]string)
+		k.selNamesMap = make(map[uint32]uint32)
+	})
+
+	binMu.Lock()
+	defer binMu.Unlock()
+	idx, ok := binVals[binary]
+	if ok {
+		k.selNamesMap[idx] = 1
+		return
+	}
+
+	idx = binIdx
+	binIdx++
+	binVals[binary] = idx      // global map of all names_map entries
+	k.newBinVals[idx] = binary // new names_map entries that we should add
+	k.selNamesMap[idx] = 1     // value in the per-selector names_map (we ignore the value)
+}
+
+func (k *KernelSelectorState) GetNewBinaryMappings() map[uint32]string {
+	return k.newBinVals
+}
+
+func (k *KernelSelectorState) GetBinSelNamesMap() map[uint32]uint32 {
+	return k.selNamesMap
 }
 
 func (k *KernelSelectorState) Buffer() [4096]byte {

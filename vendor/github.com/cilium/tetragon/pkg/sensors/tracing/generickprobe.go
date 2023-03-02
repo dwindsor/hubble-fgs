@@ -5,6 +5,7 @@ package tracing
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -111,13 +112,8 @@ type genericKprobe struct {
 
 	tableId idtable.EntryID
 
-	// for kprobes that have a GetUrl action, we store the list of URLs
-	// to get.
-	urls []string
-
-	// for kprobes that have a DnsRequest action, we store the list of
-	// FQDNs to request.
-	fqdns []string
+	// for kprobes that have a GetUrl or DnsLookup action, we store the table of arguments.
+	actionArgs idtable.Table
 
 	pinPathPrefix string
 }
@@ -190,17 +186,6 @@ func getMetaValue(arg *v1alpha1.KProbeArg) (int, error) {
 	return meta, nil
 }
 
-var binaryNames []v1alpha1.BinarySelector
-
-func initBinaryNames(spec *v1alpha1.KProbeSpec) error {
-	for _, s := range spec.Selectors {
-		for _, b := range s.MatchBinaries {
-			binaryNames = append(binaryNames, b)
-		}
-	}
-	return nil
-}
-
 func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.EntryID) ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 	var maps []*program.Map
@@ -245,6 +230,9 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 	callHeap := program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), load)
 	maps = append(maps, callHeap)
 
+	selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
+	maps = append(maps, selNamesMap)
+
 	if len(multiRetIDs) != 0 {
 		loadret := program.Builder(
 			path.Join(option.Config.HubbleLib, loadProgRetName),
@@ -274,16 +262,7 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 	var useMulti bool
 
 	sensorPath := name
-
-	loadProgName := "bpf_generic_kprobe.o"
-	loadProgRetName := "bpf_generic_retkprobe.o"
-	if kernels.EnableV60Progs() {
-		loadProgName = "bpf_generic_kprobe_v60.o"
-		loadProgRetName = "bpf_generic_retkprobe_v60.o"
-	} else if kernels.EnableLargeProgs() {
-		loadProgName = "bpf_generic_kprobe_v53.o"
-		loadProgRetName = "bpf_generic_retkprobe_v53.o"
-	}
+	loadProgName, loadProgRetName := kernels.GenericKprobeObjs()
 
 	// use multi kprobe only if:
 	// - it's not disabled by user
@@ -396,17 +375,6 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 			}
 		}
 
-		// Parse Filters into kernel filter logic
-		kernelSelectorState, err := selectors.InitKernelSelectorState(f.Selectors, f.Args)
-		if err != nil {
-			return nil, err
-		}
-
-		// Parse Binary Name into kernel data structures
-		if err := initBinaryNames(f); err != nil {
-			return nil, err
-		}
-
 		hasOverride := selectors.HasOverride(f)
 		if hasOverride && !bpf.HasOverrideHelper() {
 			return nil, fmt.Errorf("Error override_return bpf helper not available")
@@ -443,17 +411,13 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 			config.Sigkill = 0
 		}
 
-		urls := selectors.GetUrls(f)
-		fqdns := selectors.GetDnsFQDNs(f)
-
 		// create a new entry on the table, and pass its id to BPF-side
 		// so that we can do the matching at event-generation time
 		kprobeEntry := genericKprobe{
 			loadArgs: kprobeLoadArgs{
-				selectors: kernelSelectorState,
-				retprobe:  setRetprobe,
-				syscall:   is_syscall,
-				config:    config,
+				retprobe: setRetprobe,
+				syscall:  is_syscall,
+				config:   config,
 			},
 			argSigPrinters:    argSigPrinters,
 			argReturnPrinters: argReturnPrinters,
@@ -461,8 +425,12 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 			funcName:          funcName,
 			pendingEvents:     nil,
 			tableId:           idtable.UninitializedEntryID,
-			urls:              urls,
-			fqdns:             fqdns,
+		}
+
+		// Parse Filters into kernel filter logic
+		kprobeEntry.loadArgs.selectors, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs)
+		if err != nil {
+			return nil, err
 		}
 
 		kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent](4096)
@@ -517,6 +485,9 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 		callHeap := program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), load)
 		maps = append(maps, callHeap)
 
+		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
+		maps = append(maps, selNamesMap)
+
 		if setRetprobe {
 			pinRetProg := sensors.PathJoin(pinPath, fmt.Sprintf("%s_ret_prog", kprobeEntry.funcName))
 			loadret := program.Builder(
@@ -560,7 +531,7 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 // This is intended for speeding up testing, so DO NOT USE elsewhere without
 // checking its implementation first because limitations may exist (e.g,. the
 // config map is not updated, the retprobe is not reloaded, userspace return filters are not updated, etc.).
-func ReloadGenericKprobeSelectors(kpSensor *sensors.Sensor, conf *v1alpha1.KProbeSpec) error {
+func ReloadGenericKprobeSelectors(kpSensor *sensors.Sensor, conf *v1alpha1.KProbeSpec, actionArgTable *idtable.Table) error {
 	// The first program should be the (entry) kprobe, and that's the only
 	// one we will reload. We could reload the retprobe, but the assumption
 	// is that we don't need to, because it will never be executed if the
@@ -579,7 +550,7 @@ func ReloadGenericKprobeSelectors(kpSensor *sensors.Sensor, conf *v1alpha1.KProb
 		return fmt.Errorf("unlinking %v failed: %s", kprobeProg, err)
 	}
 
-	kState, err := selectors.InitKernelSelectorState(conf.Selectors, conf.Args)
+	kState, err := selectors.InitKernelSelectorState(conf.Selectors, conf.Args, actionArgTable)
 	if err != nil {
 		return err
 	}
@@ -624,14 +595,14 @@ func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *pro
 		return err
 	}
 
-	m, err := bpf.OpenMap(filepath.Join(mapDir, base.NamesMap.Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, base.NamesMap.Name), nil)
 	if err != nil {
 		return err
 	}
-	for i, b := range binaryNames {
-		for _, path := range b.Values {
-			writeBinaryMap(i+1, path, m)
-		}
+	defer m.Close()
+
+	for i, path := range gk.loadArgs.selectors.GetNewBinaryMappings() {
+		writeBinaryMap(m, i, path)
 	}
 
 	return err
@@ -672,13 +643,17 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *p
 		return err
 	}
 
-	m, err := bpf.OpenMap(filepath.Join(mapDir, base.NamesMap.Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, base.NamesMap.Name), nil)
 	if err != nil {
 		return err
 	}
-	for i, b := range binaryNames {
-		for _, path := range b.Values {
-			writeBinaryMap(i+1, path, m)
+	defer m.Close()
+
+	for _, id := range ids {
+		if gk, err := genericKprobeTableGet(id); err == nil {
+			for i, path := range gk.loadArgs.selectors.GetNewBinaryMappings() {
+				writeBinaryMap(m, i, path)
+			}
 		}
 	}
 
@@ -767,7 +742,14 @@ func getUrl(url string) {
 
 func dnsLookup(fqdn string) {
 	// We fire and forget DNS lookups, and we don't care if they hit or not.
-	net.LookupIP(fqdn)
+	res := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			dial := net.Dialer{}
+			return dial.Dial("udp", "1.1.1.1:53")
+		},
+	}
+	res.LookupIP(context.Background(), "ip4", fqdn)
 }
 
 func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
@@ -785,15 +767,20 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	switch m.ActionId {
-	case selectors.ActionTypeGetUrl:
-		for _, url := range gk.urls {
-			logger.GetLogger().WithField("URL", url).Trace("Get URL Action")
-			getUrl(url)
+	case selectors.ActionTypeGetUrl, selectors.ActionTypeDnsLookup:
+		actionArgEntry, err := gk.actionArgs.GetEntry(idtable.EntryID{ID: int(m.ActionArgId)})
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Failed to find argument for id:%d", m.ActionArgId)
+			return nil, fmt.Errorf("Failed to find argument for id")
 		}
-	case selectors.ActionTypeDnsLookup:
-		for _, fqdn := range gk.fqdns {
-			logger.GetLogger().WithField("FQDN", fqdn).Trace("DNS lookup")
-			dnsLookup(fqdn)
+		actionArg := actionArgEntry.(*selectors.ActionArgEntry).GetArg()
+		switch m.ActionId {
+		case selectors.ActionTypeGetUrl:
+			logger.GetLogger().WithField("URL", actionArg).Trace("Get URL Action")
+			getUrl(actionArg)
+		case selectors.ActionTypeDnsLookup:
+			logger.GetLogger().WithField("FQDN", actionArg).Trace("DNS lookup")
+			dnsLookup(actionArg)
 		}
 	}
 

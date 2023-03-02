@@ -164,6 +164,8 @@ github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/multiplexer
 github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/policyfilter
+github.com/cilium/tetragon/pkg/policyfilter/rthooks
 github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/ratelimit
 github.com/cilium/tetragon/pkg/reader/bpf
