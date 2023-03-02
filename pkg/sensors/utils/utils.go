@@ -12,8 +12,6 @@ package utils
 
 import (
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/selectors"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -23,19 +21,4 @@ func SkSkbParserRequired() bool {
 	// After 5.10 we can run with only the skskb verdict programs
 	// improving performance.
 	return !kernels.MinKernelVersion("5.10.0")
-}
-
-// ParseMatchPorts parses the matchPorts portion of a policy into the
-// KernelSelectorState.
-func ParseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32, annotation uint32) error {
-	selectors.WriteSelectorUint32(k, uint32(len(matchPorts)))
-	for _, port := range matchPorts {
-		/* Some byte hackery here because ports are 16bits in packet, but
-		 * we use them as 32bit types (this helps code generation and verifier)
-		 * throughout BPF side. But we swap here to avoid doing the swap on data
-		 * read from sock/packet.
-		 */
-		selectors.WriteSelectorUint32(k, uint32(network.SwapByte(uint16(port)))|annotation)
-	}
-	return nil
 }

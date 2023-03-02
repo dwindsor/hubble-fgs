@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
@@ -43,6 +44,11 @@ var (
 	TlsFilterMap  = program.MapBuilder("tls_filter_map", SockopsEstablished)
 	HttpFilterMap = program.MapBuilder("http_filter_map", SockopsEstablished)
 	NopFilterMap  = program.MapBuilder("nop_filter_map", SockopsEstablished)
+)
+
+const (
+	// Needs to be in sync with TLS_MAX_PORTS from tls_map.h
+	TLS_MAX_PORTS = 512
 )
 
 func init() {
@@ -91,12 +97,25 @@ func (*sockopsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return AddSockopsSensors(spec.Parser)
 }
 
-func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
+func SetFilter(mapDir string, mapName string, filters []uint32) error {
 	selectorMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return fmt.Errorf("failed to open selector map '%s': %w", mapName, err)
 	}
 	defer selectorMap.Close()
 
-	return selectorMap.Update(uint32(0), selectors, ebpf.UpdateAny)
+	for _, filter := range filters {
+		var zero uint8
+		/* Some byte hackery here because ports are 16bits in packet, but
+		 * we use them as 32bit types (this helps code generation and verifier)
+		 * throughout BPF side. But we swap here to avoid doing the swap on data
+		 * read from sock/packet.
+		 */
+		filter = uint32(network.SwapByte(uint16(filter)))
+		if err := selectorMap.Update(filter, zero, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
@@ -44,7 +43,7 @@ import (
 )
 
 var (
-	filters [128]byte
+	filters []uint32
 
 	// Runtime aggregation of request/response
 	aggregate          *lru.Cache[api.HttpKey, *httpproto.MsgHttpEventUnix]
@@ -236,58 +235,26 @@ func EnableHTTPParser() *sensors.Sensor {
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func parseHTTPSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector) error {
-	return utils.ParseMatchPorts(k, s.MatchPorts, 0)
-}
-
 // ParseHTTPSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to run match logic.
-//
-// Http selector layout is the following.
-//
-//	#OfSelectors         uint32
-//	OffsetOfEachSelector uint32
-//	#OfMatchPorts        uint32
-//	Port1 .... PortN     uint32, uint32, ...
-func ParseHTTPSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
-	var match [128]byte
-	var e [4096]byte
-	k := &selectors.KernelSelectorState{}
+func ParseHTTPSpec(spec *v1alpha1.HttpSpec) []uint32 {
+	var ports []uint32
 
-	if len(spec.Selectors) == 0 {
-		selectors.WriteSelectorInt32(k, -1)
-	} else {
-		selectors.WriteSelectorUint32(k, uint32(len(spec.Selectors)))
-		soff := make([]uint32, len(spec.Selectors))
-		for i := range spec.Selectors {
-			soff[i] = selectors.AdvanceSelectorLength(k)
-		}
-
-		for i, s := range spec.Selectors {
-			selectors.WriteSelectorLength(k, soff[i])
-			loff := selectors.AdvanceSelectorLength(k)
-			if err := parseHTTPSelector(k, s); err != nil {
-				return match, err
-			}
-			selectors.WriteSelectorLength(k, loff)
-		}
+	for _, selector := range spec.Selectors {
+		ports = append(ports, selector.MatchPorts...)
 	}
 
-	e = k.Buffer()
-	copy(match[:], e[:128])
-	return match, nil
+	return ports
 }
 
 func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	var err error
-
 	if !parser.Http.Enable {
 		return nil, nil
 	}
 
-	filters, err = ParseHTTPSpec(&parser.Http)
-	if err != nil {
-		return nil, err
+	filters = ParseHTTPSpec(&parser.Http)
+	if len(filters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
 	}
 
 	if !kernels.MinKernelVersion("5.10") {

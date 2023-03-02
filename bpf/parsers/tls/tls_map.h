@@ -4,6 +4,9 @@
 #include "../bpf_sockops.h"
 #include "../../lib/tlsmsg.h"
 #include "../../lib/tlsmsg.h"
+#include "bpf_tracing.h"
+
+#define TLS_MAX_PORTS 512
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
@@ -54,29 +57,25 @@ static inline __attribute__((always_inline)) void del_tlsmap(__u64 *cookie)
 		*cntr = *cntr - 1;
 }
 
-struct filter_map {
-	char data[128];
-};
-
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct filter_map);
-	__uint(max_entries, 1);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u8);
+	__uint(max_entries, TLS_MAX_PORTS);
 } tls_filter_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct filter_map);
-	__uint(max_entries, 1);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u8);
+	__uint(max_entries, TLS_MAX_PORTS);
 } http_filter_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct filter_map);
-	__uint(max_entries, 1);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u8);
+	__uint(max_entries, TLS_MAX_PORTS);
 } nop_filter_map SEC(".maps");
 
 struct {
@@ -89,129 +88,39 @@ struct {
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
 
-#define TLS_MAX_PORTS	  10
-#define TLS_MAX_SELECTORS 2
-
-#define DO_TLS_PORT_FILTER_ONE(j)                                     \
-	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)];          \
-	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport) \
-		goto track;                                           \
-	if (++j >= ports)                                             \
-		goto skip;
-
-#define DO_TLS_PORT_FILTER                \
-	{                                 \
-		int j = 0;                \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-		DO_TLS_PORT_FILTER_ONE(j) \
-	}
-
 static inline __attribute__((always_inline)) int
-map_key_filter(u8 *filter, struct sock_key *key)
+map_key_filter(void *filter_map, struct sock_key *key)
 {
-	__u32 selectors, p = 0;
-	int i;
+	__u32 sport = key->sport;
+	__u32 dport = key->dport;
 
-	/* Supports upto 10 selectors any more and we simply
-	 * mark it as tracked so we fail open. Userspace should
-	 * catch this though. And also more than 1 selector
-	 * for ports is not useful. An empty filter map indicates
-	 * user zero'd filter so we skip the parser. User will
-	 * insert -1 to indicate always parse.
-	 */
-	selectors = (__u32)filter[0];
-	if (!selectors)
-		goto skip;
-	if (selectors < 0)
-		goto track;
-
-	/* More than a single selector is unlikely to work unless
-	 * we bump up element size.
-	 *
-	 * TLS selector layout is the following.
-	 *
-	 *    #OfSelectors         uint32
-	 *    OffsetOfEachSelector uint32
-	 *    #OfMatchPorts        uint32
-	 *    Port1 .... PortN     uint32, uint32, ...
-	 */
-	for (i = 0; i < 3 && i < (selectors & 0x3); i++) {
-		__u32 offset, ports;
-
-		i &= 0xf;
-		offset = filter[4 + i * 4];
-
-		offset &= 0x1f;
-		ports = filter[offset + 4 + 4]; // max 39
-		if (!ports)
-			goto track;
-
-		// Zero iteration of hand unrolled loop
-		DO_TLS_PORT_FILTER
+	if (map_lookup_elem(filter_map, &sport)) {
+		return PROTO_TRACK;
 	}
-skip:
+
+	if (map_lookup_elem(filter_map, &dport)) {
+		return PROTO_TRACK;
+	}
+
 	return PROTO_SKIP;
-track:
-	return p;
 }
 
 static inline __attribute__((always_inline)) int
 tls_filter(struct sock_key *key)
 {
-	int zero = 0;
-	u8 *filter;
-
-	filter = map_lookup_elem(&tls_filter_map, &zero);
-	if (!filter)
-		return PROTO_SKIP;
-
-	return map_key_filter(filter, key);
-}
-
-static inline __attribute__((always_inline)) bool tls_filter_is_populated()
-{
-	int zero = 0;
-	u8 *filter;
-
-	filter = map_lookup_elem(&tls_filter_map, &zero);
-	if (!filter)
-		return false;
-
-	return (*(__u32 *)filter) != 0;
+	return map_key_filter(&tls_filter_map, key);
 }
 
 static inline __attribute__((always_inline)) int
 http_filter(struct sock_key *key)
 {
-	int zero = 0;
-	u8 *filter;
-
-	filter = map_lookup_elem(&http_filter_map, &zero);
-	if (!filter)
-		return PROTO_SKIP;
-
-	return map_key_filter(filter, key);
+	return map_key_filter(&http_filter_map, key);
 }
 
 static inline __attribute__((always_inline)) int
 nop_filter(struct sock_key *key)
 {
-	int zero = 0;
-	u8 *filter;
-
-	filter = map_lookup_elem(&nop_filter_map, &zero);
-	if (!filter)
-		return PROTO_SKIP;
-
-	return map_key_filter(filter, key);
+	return map_key_filter(&nop_filter_map, key);
 }
 
 struct __tls_parser_stats {

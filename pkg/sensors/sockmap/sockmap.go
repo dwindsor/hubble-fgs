@@ -11,6 +11,8 @@
 package sockmap
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -99,8 +101,6 @@ var (
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	var err error
-
 	enableTLS := false
 	enableTLSCG := false
 
@@ -124,9 +124,13 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 		return nil, nil
 	}
 
-	tlsSelectors, err = ParseTLSSpec(&parser.Tls, parserHttps)
-	if err != nil {
-		return nil, err
+	tlsFilters = ParseTLSSpec(&parser.Tls, parserHttps)
+	if len(tlsFilters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(tlsFilters))
+	}
+
+	if !kernels.MinKernelVersion("5.4") {
+		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.4")
 	}
 
 	return enableTLSParser(enableTLS, enableTLSCG), nil
@@ -167,7 +171,7 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
+	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters); err != nil {
 		return err
 	}
 	return nil
@@ -320,7 +324,7 @@ func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	}
-	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
+	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters); err != nil {
 		return err
 	}
 

@@ -246,7 +246,7 @@ spec:
 		tus.SensorMap{Name: "tls_map", Progs: []uint{1, 2, 3}},
 
 		// all but base and bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1, 2}},
+		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1}},
 
 		// bpf_sockmap
 		tus.SensorMap{Name: "tls_sock_map", Progs: []uint{0}},

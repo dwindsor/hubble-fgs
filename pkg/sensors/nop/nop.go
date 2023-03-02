@@ -11,11 +11,12 @@
 package nop
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
@@ -31,7 +32,7 @@ const (
 )
 
 var (
-	Selectors [128]byte
+	filters []uint32
 )
 
 var (
@@ -151,58 +152,27 @@ func EnableNopParser() *sensors.Sensor {
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func parseNopSelector(k *selectors.KernelSelectorState, s v1alpha1.NopSelector) error {
-	return utils.ParseMatchPorts(k, s.MatchPorts, 0)
-}
-
 // ParseNopSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to run match logic.
-//
-// Nop selector layout is the following.
-//
-//	#OfSelectors         uint32
-//	OffsetOfEachSelector uint32
-//	#OfMatchPorts        uint32
-//	Port1 .... PortN     uint32, uint32, ...
-func ParseNopSpec(spec *v1alpha1.NopSpec) ([128]byte, error) {
-	var match [128]byte
-	var e [4096]byte
-	k := &selectors.KernelSelectorState{}
+func ParseNopSpec(spec *v1alpha1.NopSpec) []uint32 {
+	var ports []uint32
 
-	if len(spec.Selectors) == 0 {
-		selectors.WriteSelectorInt32(k, -1)
-	} else {
-		selectors.WriteSelectorUint32(k, uint32(len(spec.Selectors)))
-		soff := make([]uint32, len(spec.Selectors))
-		for i := range spec.Selectors {
-			soff[i] = selectors.AdvanceSelectorLength(k)
-		}
-
-		for i, s := range spec.Selectors {
-			selectors.WriteSelectorLength(k, soff[i])
-			loff := selectors.AdvanceSelectorLength(k)
-			if err := parseNopSelector(k, s); err != nil {
-				return match, err
-			}
-			selectors.WriteSelectorLength(k, loff)
-		}
+	for _, selector := range spec.Selectors {
+		ports = append(ports, selector.MatchPorts...)
 	}
 
-	e = k.Buffer()
-	copy(match[:], e[:128])
-	return match, nil
+	return ports
 }
 
 func AddNopSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	var err error
-
 	if !parser.Nop.Enable {
 		return nil, nil
 	}
 
-	Selectors, err = ParseNopSpec(&parser.Nop)
-	if err != nil {
-		return nil, err
+	filters = ParseNopSpec(&parser.Nop)
+	if len(filters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
 	}
+
 	return EnableNopParser(), nil
 }

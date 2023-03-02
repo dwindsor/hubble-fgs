@@ -12,81 +12,24 @@ package sockmap
 
 import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/selectors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
-
-var (
-	TLS_HTTPS = 1 << 16
-)
-
-func parseTLSSelector(k *selectors.KernelSelectorState, s v1alpha1.TlsSelector) error {
-	return utils.ParseMatchPorts(k, s.MatchPorts, 0)
-}
-
-func parseHttpsSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpsSelector) error {
-	return utils.ParseMatchPorts(k, s.MatchPorts, uint32(TLS_HTTPS))
-}
 
 // ParseTLSSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to run match logic.
-//
-// TLS selector layout is the following.
-//
-//	#OfSelectors         uint32
-//	OffsetOfEachSelector uint32
-//	#OfMatchPorts        uint32
-//	Port1 .... PortN     uint32, uint32, ...
-func ParseTLSSpec(spec *v1alpha1.TlsSpec, https *v1alpha1.HttpsSpec) ([128]byte, error) {
-	var match [128]byte
-	var e [4096]byte
-	k := &selectors.KernelSelectorState{}
+func ParseTLSSpec(spec *v1alpha1.TlsSpec, https *v1alpha1.HttpsSpec) []uint32 {
+	var ports []uint32
 
-	httpsLen := 0
+	if spec != nil {
+		for _, selector := range spec.Selectors {
+			ports = append(ports, selector.MatchPorts...)
+		}
+	}
+
 	if https != nil {
-		httpsLen = len(https.Selectors)
-	}
-	numSelectors := len(spec.Selectors) + httpsLen
-
-	if numSelectors == 0 {
-		selectors.WriteSelectorInt32(k, -1)
-	} else {
-		tlsSelOffset := len(spec.Selectors) - 1
-
-		selectors.WriteSelectorUint32(k, uint32(numSelectors))
-		soff := make([]uint32, numSelectors)
-		for i := range spec.Selectors {
-			soff[i] = selectors.AdvanceSelectorLength(k)
-		}
-
-		if https != nil {
-			for i := range https.Selectors {
-				soff[tlsSelOffset+i] = selectors.AdvanceSelectorLength(k)
-			}
-		}
-
-		for i, s := range spec.Selectors {
-			selectors.WriteSelectorLength(k, soff[i])
-			loff := selectors.AdvanceSelectorLength(k)
-			if err := parseTLSSelector(k, s); err != nil {
-				return match, err
-			}
-			selectors.WriteSelectorLength(k, loff)
-		}
-
-		if https != nil {
-			for i, s := range https.Selectors {
-				selectors.WriteSelectorLength(k, soff[tlsSelOffset+i])
-				loff := selectors.AdvanceSelectorLength(k)
-				if err := parseHttpsSelector(k, s); err != nil {
-					return match, err
-				}
-				selectors.WriteSelectorLength(k, loff)
-			}
+		for _, selector := range https.Selectors {
+			ports = append(ports, selector.MatchPorts...)
 		}
 	}
 
-	e = k.Buffer()
-	copy(match[:], e[:128])
-	return match, nil
+	return ports
 }
