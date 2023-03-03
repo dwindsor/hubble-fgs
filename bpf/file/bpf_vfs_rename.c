@@ -257,6 +257,10 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// resolve any paths (if needed) for items outside of watched path
 	resolve_missed_paths(v);
 
+	v->selector_match = 1;
+	if (!check_match_binaries())
+		v->selector_match = 0;
+
 	return 0;
 }
 
@@ -395,6 +399,7 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 	struct hash_map_file_val *file_val = 0;
 	struct bpf_lpm_trie_key *key = 0;
 	int zero = 0, action = 0;
+	__u32 selector_match = 0;
 
 	// rename failed
 	if (ret) {
@@ -507,8 +512,17 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 			msg->tc_id = file_val->action;
 	}
 
+	selector_match = val->selector_match;
+
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&rename_retprobe_map, &k);
+
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// In these events we have already updated any internal maps.
+	if (!selector_match)
+		return 0;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_rename_ops));

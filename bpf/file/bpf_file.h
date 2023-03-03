@@ -8,6 +8,7 @@
 #include "file.h"
 #include "iso_msg_types.h"
 #include "bpf_process_event.h"
+#include "types/operations.h"
 
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
@@ -155,6 +156,67 @@ struct {
 	__type(value, struct hash_map_file_val);
 	__uint(max_entries, 1);
 } file_val_map SEC(".maps");
+
+/*
+ * For matchBinaries we use two maps:
+ * 1. names_map: global (for all sensors) keeps a mapping from names -> ids
+ * 2. sel_names_map: per-sensor: keeps a mapping from id -> selector val
+ *
+ * At exec time, we check names_map and set ->binary in execve_map equal to
+ * the id stored in names_map. Assuming the binary name exists in the map,
+ * otherwise binary is 0.
+ *
+ * When we check the selectors, use ->binary to index sel_names_map and decide
+ * whether the selector matches or not.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 256);
+	__type(key, __u32);
+	__type(value, __u32);
+} file_names_map SEC(".maps");
+
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_binaries()
+{
+	__u32 max = 0xffffffff; // UINT32_MAX
+	__u32 *op;
+
+	op = map_lookup_elem(&file_names_map, &max);
+	if (op) {
+		struct execve_map_value *execve;
+		bool walker = 0;
+		__u32 ppid, bin_key, *bin_val;
+
+		execve = event_find_curr(&ppid, &walker);
+		if (!execve)
+			return 0;
+
+		bin_key = execve->binary;
+		bin_val = map_lookup_elem(&file_names_map, &bin_key);
+
+		/*
+		 * The following things may happen:
+		 * binary is not part of names_map, execve_map->binary will be `0` and `bin_val` will always be `0`
+		 * binary is part of `names_map`:
+		 *  if binary is not part of this selector, bin_val will be`0`
+		 *  if binary is part of this selector: `bin_val will be `!0`
+		 */
+		if (*op == op_filter_in) {
+			if (!bin_val)
+				return 0;
+		} else if (*op == op_filter_notin) {
+			if (bin_val)
+				return 0;
+		}
+
+		return 1;
+	}
+
+	// If 'max' not found in file_names_map this means that we don't have any
+	// matchBinaries selectors.
+	return 1;
+}
 
 static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 {
@@ -545,6 +607,13 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
 
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// At these events we don't need to update any internal maps.
+	if (!check_match_binaries())
+		return 0;
+
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
@@ -698,6 +767,14 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 
 	// add this new file to the map of files
 	map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
+
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// In these events we also have to update any internal maps,
+	// which is already done here.
+	if (!check_match_binaries())
+		return 0;
 
 	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));
 	msg->pad1 = msg->pad2 = 0;

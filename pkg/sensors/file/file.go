@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/selectors"
 
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
@@ -82,6 +83,8 @@ const (
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
+var mapLoadInit sync.Once
+var loadProbeInit sync.Once
 
 type FimFunc struct {
 	proto, progName, progSection string
@@ -141,6 +144,7 @@ var (
 		"lpm_trie_map_alloc",
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
+		"file_names_map",
 	}
 )
 
@@ -736,7 +740,11 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	return nil
 }
 
-func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg) (*sensors.Sensor, error) {
+type FimLoaderData struct {
+	s *selectors.KernelSelectorState
+}
+
+func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, sel *selectors.KernelSelectorState) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
@@ -857,11 +865,44 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
 			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", h.tp, h.name)),
-			"kprobe")
+			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
 		}
+		load.SetLoaderData(FimLoaderData{
+			s: sel,
+		})
 		progs = append(progs, load)
+
+		// apply MapLoad only once
+		mapLoadInit.Do(func() {
+			load.MapLoad = []*program.MapLoad{
+				{
+					Index: 0,
+					Name:  "file_names_map",
+					Load: func(m *ebpf.Map, index uint32) error {
+						entries := sel.GetBinSelNamesMap()
+						if len(entries) == 0 { // no matchBinaries selectors
+							return nil
+						}
+
+						// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
+						// if this is zero we don't have any matchBinaries selectors
+						if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(), ebpf.UpdateAny); err != nil {
+							return err
+						}
+
+						for idx, val := range entries {
+							if err := m.Update(idx, val, ebpf.UpdateAny); err != nil {
+								return err
+							}
+						}
+
+						return nil
+					},
+				},
+			}
+		})
 
 		for _, m := range SharedMaps {
 			maps = append(
@@ -937,6 +978,11 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 
+		selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring failed to parse selectors")
+		}
+
 		// start hubble-fgs-fs-scanner if it hasn't started yet
 		if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
 			var err error
@@ -945,7 +991,6 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 				logger.GetLogger().WithError(err).Warnf("Failed to start hubble-fgs-fs-scanner")
 				return nil, nil
 			}
-
 		}
 
 		progs, err := findHooks()
@@ -954,13 +999,27 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 			return nil, nil
 		}
 		tcID := atomic.AddUint32(&sensorCounter, 1)
-		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs)
+		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, selState)
 	}
 	return nil, nil
 }
 
 // LoadProbe() (called when the eBPF programs are actually loaded)
 func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	// all is done in SpecHandler
-	return nil
+	var err error
+
+	// this should be done after initializing the base sensor
+	loadProbeInit.Do(func() {
+		// get the pinPathPrefix
+		v, ok := args.Load.LoaderData.(FimLoaderData)
+		if ok {
+			err = fm.UpdateNamesMap(args.MapDir, v.s)
+		} else {
+			err = fmt.Errorf("type of LoaderData does not match FimLoaderData")
+		}
+	})
+	if err != nil {
+		return err
+	}
+	return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 }

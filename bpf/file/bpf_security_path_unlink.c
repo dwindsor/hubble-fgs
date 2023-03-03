@@ -47,6 +47,13 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	if (file_val->action == FILTER_IGNORE)
 		goto ignore_unlink;
 
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// In these events we will update any internal maps.
+	if (!check_match_binaries())
+		goto ignore_unlink;
+
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;

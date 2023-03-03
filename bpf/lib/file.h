@@ -96,6 +96,7 @@ struct vfs_mkdir_info {
 	struct dentry *dentry;
 	struct msg_file_ops msg;
 	int action;
+	__u32 selector_match;
 };
 
 struct msg_file_split_path {
@@ -136,6 +137,7 @@ struct vfs_rename_info {
 	const struct path *new_dir;
 	__u32 need_old, need_new;
 	struct msg_file_rename_ops msg;
+	__u32 selector_match;
 };
 
 #endif

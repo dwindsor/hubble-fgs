@@ -36,6 +36,13 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
 
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// At these events we don't need to update any internal maps.
+	if (!check_match_binaries())
+		return 0;
+
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
