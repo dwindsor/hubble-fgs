@@ -6,6 +6,7 @@ SSH_ARGS   ?=
 HOST_MOUNT ?= ../..
 MEMORY     ?= 4G
 CPU        ?= 2
+FG         ?=
 
 ifeq ($(KERNEL),)
 __kernel_flags =
@@ -13,9 +14,15 @@ else
 __kernel_flags = --kernel _data/kernels/${KERNEL}/tar-install/boot/vmlinuz*
 endif
 
+ifeq ($(FG),)
+__daemonize_flags = --daemonize
+else
+__daemonize_flags =
+endif
+
 .PHONY: run
 run:
-	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 --daemonize --host-mount ${HOST_MOUNT} ${__kernel_flags} --mem ${MEMORY} --cpu ${CPU}
+	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 ${__daemonize_flags} --host-mount ${HOST_MOUNT} ${__kernel_flags} --mem ${MEMORY} --cpu ${CPU}
 
 .PHONY: start
 start: run
