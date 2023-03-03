@@ -44,6 +44,27 @@ func UpdateNamesMap(mapDir string, sel *selectors.KernelSelectorState) error {
 	return nil
 }
 
+func GenerateFileNamesMap(m *ebpf.Map, sel *selectors.KernelSelectorState) error {
+	entries := sel.GetBinSelNamesMap()
+	if len(entries) == 0 { // no matchBinaries selectors
+		return nil
+	}
+
+	// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
+	// if this is zero we don't have any matchBinaries selectors
+	if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(), ebpf.UpdateAny); err != nil {
+		return err
+	}
+
+	for idx, val := range entries {
+		if err := m.Update(idx, val, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func parseSelector(k *selectors.KernelSelectorState, fileSel *v1alpha1.FileSelector) error {
 	if err := selectors.ParseMatchBinaries(k, fileSel.MatchBinaries); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)

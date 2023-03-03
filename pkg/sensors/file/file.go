@@ -446,6 +446,7 @@ func cleanupFIMMaps(id uint32) error {
 	cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.pinPathPrefix, "lpm_trie_map_alloc")
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_file_alloc")
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
+	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_map")
 
 	return nil
 }
@@ -467,6 +468,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
 	}
+	defer lpmMap.Close()
 
 	for _, str := range spec.Paths {
 		if err := addFilter(lpmMap, str, fm.FilterMatch); err != nil {
@@ -496,6 +498,26 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		Action: uint32(id),
 	}); err != nil {
 		return fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
+	}
+
+	selMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_names_map"))
+	selHandle, err := ebpf.LoadPinnedMap(selMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", selMapPath)
+	}
+	defer selHandle.Close()
+
+	sel, err := fm.InitKernelSelectorState(spec.Selectors)
+	if err != nil {
+		return fmt.Errorf("failed to initialize kernel selector state")
+	}
+
+	if err := fm.GenerateFileNamesMap(selHandle, sel); err != nil {
+		return fmt.Errorf("failed to populate file_names_map")
+	}
+
+	if err := fm.UpdateNamesMap(mapDir, sel); err != nil {
+		return fmt.Errorf("failed to update names_map")
 	}
 
 	return nil
@@ -881,24 +903,7 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 					Index: 0,
 					Name:  "file_names_map",
 					Load: func(m *ebpf.Map, index uint32) error {
-						entries := sel.GetBinSelNamesMap()
-						if len(entries) == 0 { // no matchBinaries selectors
-							return nil
-						}
-
-						// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
-						// if this is zero we don't have any matchBinaries selectors
-						if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(), ebpf.UpdateAny); err != nil {
-							return err
-						}
-
-						for idx, val := range entries {
-							if err := m.Update(idx, val, ebpf.UpdateAny); err != nil {
-								return err
-							}
-						}
-
-						return nil
+						return fm.GenerateFileNamesMap(m, sel)
 					},
 				},
 			}
