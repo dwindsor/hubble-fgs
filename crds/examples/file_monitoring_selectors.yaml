@@ -1,0 +1,23 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_config:
+      # Currently we have a check to load FIM only for kernels >= 4.19.
+      # By using this flag we provide the ability to load (and test) FIM
+      # on older kernels (i.e. openshift 4.18).
+      forceLoad: "false"
+    file_paths:
+    - "/etc/"
+    - "/var/testfile"
+    file_paths_exclude:
+    - "/etc/demo1"
+    - "/etc/demo2"
+    - "/etc/locale.alias"
+    selectors:
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "/usr/bin/cat"
