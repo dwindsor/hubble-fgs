@@ -53,6 +53,33 @@ spec:
                     items:
                       type: string
                     type: array
+                  selectors:
+                    description: Selectors to apply before producing trace output.
+                      Selectors are ORed.
+                    items:
+                      description: FileSelector selects file operations.
+                      properties:
+                        matchBinaries:
+                          description: A list of binary exec name filters.
+                          items:
+                            properties:
+                              operator:
+                                description: Filter operation.
+                                enum:
+                                - In
+                                type: string
+                              values:
+                                description: Value to compare the argument against.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - operator
+                            - values
+                            type: object
+                          type: array
+                      type: object
+                    type: array
                 type: object
               kprobes:
                 description: A list of kprobe specs.

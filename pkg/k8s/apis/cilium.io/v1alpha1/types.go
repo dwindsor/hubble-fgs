@@ -76,6 +76,13 @@ func (tp *TracingPolicy) TpName() string {
 	return tp.ObjectMeta.Name
 }
 
+// FileSelector selects file operations.
+type FileSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of binary exec name filters.
+	MatchBinaries []BinarySelector `json:"matchBinaries"`
+}
+
 type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// What paths to monitor
@@ -86,6 +93,9 @@ type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// Config flags to enable/disable specific functionality
 	Config map[string]string `json:"file_config"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply before producing trace output. Selectors are ORed.
+	Selectors []FileSelector `json:"selectors"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
