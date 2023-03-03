@@ -16,6 +16,34 @@ rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
 	pth->path.name_size = dlen_size;
 }
 
+static inline __attribute__((always_inline)) void
+resolve_missed_paths(struct vfs_rename_info *val)
+{
+	const struct path *res_path = 0;
+	int buflen = 0, error = 0;
+	char *buf;
+
+	// if none is 1 then res_path == 0 and we don't need to resolve any paths
+	// there will be no case where both (need_old == 1) && (need_new == 1)
+	if (val->need_old)
+		res_path = val->old_dir;
+	else if (val->need_new)
+		res_path = val->new_dir;
+
+	if (!res_path)
+		return;
+
+	buf = d_path_local(res_path, &buflen, &error);
+	if (buf == 0)
+		return;
+
+	struct msg_file_split_path *path =
+		val->need_old ? &val->msg.src.path : &val->msg.dst.path;
+	memcpy(path->dir, buf, 256);
+	path->dir_size = buflen;
+	path->flags = error;
+}
+
 static inline __attribute__((always_inline)) int
 kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		  struct dentry *old_dentry, struct inode *new_dir,
@@ -226,6 +254,9 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	v->msg.ktime = ktime_get_ns();
 	get_mnt_ns(&v->msg.mnt_ns);
 
+	// resolve any paths (if needed) for items outside of watched path
+	resolve_missed_paths(v);
+
 	return 0;
 }
 
@@ -256,34 +287,6 @@ BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry,
 {
 	return kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
 				 delegated_inode);
-}
-
-static inline __attribute__((always_inline)) void
-resolve_missed_paths(struct vfs_rename_info *val)
-{
-	const struct path *res_path = 0;
-	int buflen = 0, error = 0;
-	char *buf;
-
-	// if none is 1 then res_path == 0 and we don't need to resolve any paths
-	// there will be no case where both (need_old == 1) && (need_new == 1)
-	if (val->need_old)
-		res_path = val->old_dir;
-	else if (val->need_new)
-		res_path = val->new_dir;
-
-	if (!res_path)
-		return;
-
-	buf = d_path_local(res_path, &buflen, &error);
-	if (buf == 0)
-		return;
-
-	struct msg_file_split_path *path =
-		val->need_old ? &val->msg.src.path : &val->msg.dst.path;
-	memcpy(path->dir, buf, 256);
-	path->dir_size = buflen;
-	path->flags = error;
 }
 
 static inline __attribute__((always_inline)) void
@@ -403,9 +406,6 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 	val = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!val)
 		return 0;
-
-	// resolve any paths (if needed) for items outside of watched path
-	resolve_missed_paths(val);
 
 	if (val->msg.flags & SRC_REG_FILE) {
 		if (val->msg.flags & MOVE_INSIDE) {
