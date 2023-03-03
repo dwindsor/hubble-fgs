@@ -707,23 +707,23 @@ func TestLoadFileSensor(t *testing.T) {
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16}},
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 12, 14, 15, 16}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16}},
 
 		// shared maps
-		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 9, 13, 14}},
+		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14}},
 		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13, 14, 16}},
-		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 9, 12, 13, 14, 15}},
+		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 8, 9, 12, 13, 14, 15}},
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{9}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{8}},
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{13}},
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{14}},
 
 		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{6}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{9}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{8}},
 		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{14}},
 
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{0}},

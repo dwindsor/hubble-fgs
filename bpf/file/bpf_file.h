@@ -81,6 +81,13 @@ struct {
 } mkdir_retprobe_map SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct vfs_mkdir_info);
+	__uint(max_entries, 1);
+} vfs_mkdir_info_heap SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct retprobe_key);
 	__type(value, struct vfs_rename_info);

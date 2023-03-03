@@ -42,11 +42,6 @@ struct retprobe_key {
 	__u64 reg;
 };
 
-struct vfs_mkdir_info {
-	struct inode *inode;
-	struct dentry *dentry;
-};
-
 struct hash_map_file_key {
 	__u64 ino;
 	__u32 dev_major;
@@ -95,6 +90,12 @@ struct msg_file_ops {
 	__s64 offset;
 	__u32 size;
 	__u32 mnt_ns;
+};
+
+struct vfs_mkdir_info {
+	struct dentry *dentry;
+	struct msg_file_ops msg;
+	int action;
 };
 
 struct msg_file_split_path {
