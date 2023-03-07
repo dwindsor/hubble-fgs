@@ -21,3 +21,8 @@ spec:
       - operator: "In"
         values:
         - "/usr/bin/cat"
+      matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_DELETE"
+        - "FILE_WRITE"
