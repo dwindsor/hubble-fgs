@@ -1702,6 +1702,34 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testExactFileDelete(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	a := filepath.Join(out, "a")
+	createFileInDir(t, a) // create the file before starting FIM
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{a}, // monitor only a specific file
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	os.Remove(a)          // delete the file that we are monitoring
+	createFileInDir(t, a) // create a new file with the same name
+
+	ino, dev := getInodeInfo(t, a)
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(genericArgFilenameChecker(a, ino, dev))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -1869,5 +1897,8 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("readmatchoperation", func(lt *testing.T) {
 		testFileReadMatchOperation(t, lt)
+	})
+	t.Run("exactfiledelete", func(lt *testing.T) {
+		testExactFileDelete(t, lt)
 	})
 }
