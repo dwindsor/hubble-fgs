@@ -53,6 +53,8 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	// In these events we will update any internal maps.
 	if (!check_match_binaries())
 		goto ignore_unlink;
+	if (!check_match_operations(action_delete))
+		goto ignore_unlink;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;

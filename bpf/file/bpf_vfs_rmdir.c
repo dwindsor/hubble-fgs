@@ -40,6 +40,8 @@ kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	// In these events we will update any internal maps.
 	if (!check_match_binaries())
 		goto ignore_rmdir;
+	if (!check_match_operations(action_rmdir))
+		goto ignore_rmdir;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;

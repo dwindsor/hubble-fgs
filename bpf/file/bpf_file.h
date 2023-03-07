@@ -176,6 +176,13 @@ struct {
 	__type(value, __u32);
 } file_names_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 256);
+	__type(key, __u32);
+	__type(value, __u32);
+} file_ops_map SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries()
 {
@@ -215,6 +222,31 @@ static inline __attribute__((always_inline)) int check_match_binaries()
 
 	// If 'max' not found in file_names_map this means that we don't have any
 	// matchBinaries selectors.
+	return 1;
+}
+
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_operations(__u32 action)
+{
+	__u32 max = 0xffffffff; // UINT32_MAX
+	__u32 *op, *val;
+
+	op = map_lookup_elem(&file_ops_map, &max);
+	if (op) {
+		val = map_lookup_elem(&file_ops_map, &action);
+		if (*op == op_filter_in) {
+			if (!val)
+				return 0;
+		} else if (*op == op_filter_notin) {
+			if (val)
+				return 0;
+		}
+
+		return 1;
+	}
+
+	// If 'max' not found in file_ops_map this means that we don't have any
+	// matchOperations selectors.
 	return 1;
 }
 
@@ -613,6 +645,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	// At these events we don't need to update any internal maps.
 	if (!check_match_binaries())
 		return 0;
+	if (!check_match_operations(action))
+		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
@@ -774,6 +808,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	// In these events we also have to update any internal maps,
 	// which is already done here.
 	if (!check_match_binaries())
+		return 0;
+	if (!check_match_operations(action_create))
 		return 0;
 
 	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));

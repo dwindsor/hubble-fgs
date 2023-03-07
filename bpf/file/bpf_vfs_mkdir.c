@@ -118,6 +118,8 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	selector_match = 1;
 	if (!check_match_binaries())
 		selector_match = 0;
+	if (!check_match_operations(action_write))
+		selector_match = 0;
 
 	// create the mkdir_retprobe_map value and set it for the kretprobe
 	fill_mkdir_retprobe_map(ctx, dentry, msg, action, selector_match);

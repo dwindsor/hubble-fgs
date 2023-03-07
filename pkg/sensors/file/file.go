@@ -34,7 +34,6 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/selectors"
 
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
@@ -145,6 +144,7 @@ var (
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
 		"file_names_map",
+		"file_ops_map",
 	}
 )
 
@@ -447,6 +447,7 @@ func cleanupFIMMaps(id uint32) error {
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_file_alloc")
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_map")
+	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_map")
 
 	return nil
 }
@@ -518,6 +519,17 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 
 	if err := fm.UpdateNamesMap(mapDir, sel); err != nil {
 		return fmt.Errorf("failed to update names_map")
+	}
+
+	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_ops_map"))
+	selOpsHandle, err := ebpf.LoadPinnedMap(selOpsMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
+	}
+	defer selOpsHandle.Close()
+
+	if err := fm.GenerateFileOpsMap(selOpsHandle, sel); err != nil {
+		return fmt.Errorf("failed to populate file_ops_map")
 	}
 
 	return nil
@@ -763,10 +775,10 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 }
 
 type FimLoaderData struct {
-	s *selectors.KernelSelectorState
+	s *fm.KernelSelectorState
 }
 
-func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, sel *selectors.KernelSelectorState) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
@@ -904,6 +916,13 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 					Name:  "file_names_map",
 					Load: func(m *ebpf.Map, index uint32) error {
 						return fm.GenerateFileNamesMap(m, sel)
+					},
+				},
+				{
+					Index: 0,
+					Name:  "file_ops_map",
+					Load: func(m *ebpf.Map, index uint32) error {
+						return fm.GenerateFileOpsMap(m, sel)
 					},
 				},
 			}

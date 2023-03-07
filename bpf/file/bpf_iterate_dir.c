@@ -45,6 +45,8 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	// At these events we don't need to update any internal maps.
 	if (!check_match_binaries())
 		return 0;
+	if (!check_match_operations(action_readdir))
+		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;

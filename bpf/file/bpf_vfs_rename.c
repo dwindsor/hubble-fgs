@@ -260,6 +260,8 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	v->selector_match = 1;
 	if (!check_match_binaries())
 		v->selector_match = 0;
+	if (!check_match_operations(action_write))
+		v->selector_match = 0;
 
 	return 0;
 }

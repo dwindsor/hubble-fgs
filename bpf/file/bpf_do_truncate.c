@@ -42,6 +42,8 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	// At these events we don't need to update any internal maps.
 	if (!check_match_binaries())
 		return 0;
+	if (!check_match_operations(action_write))
+		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
