@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -473,13 +474,13 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	defer lpmMap.Close()
 
 	for _, str := range spec.Paths {
-		if err := addFilter(lpmMap, str, fm.FilterMatch); err != nil {
+		if err := addFilters(lpmMap, str, fm.FilterMatch); err != nil {
 			return fmt.Errorf("failed to add WatchPath: %w", err)
 		}
 	}
 
 	for _, str := range spec.PathsExclude {
-		if err := addFilter(lpmMap, str, fm.FilterIgnore); err != nil {
+		if err := addFilters(lpmMap, str, fm.FilterIgnore); err != nil {
 			return fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
 	}
@@ -772,11 +773,34 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	k.Prefixlen = uint32(len(filter)) * 8
 	copy(k.Data[:], filter)
 
+	var exVal fileapi.LPMMapValue
+	if err := handle.Lookup(k, &exVal); err == nil { // key already exists
+		// already exists with value FilterMatch, do not update to FilterIgnore.
+		if exVal == fm.FilterMatch {
+			return nil
+		}
+	}
+
 	err := handle.Update(k, val, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed handle.Update: %w", err)
 	}
 	return nil
+}
+
+func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
+	for { // iterate all path components
+		if err := addFilter(handle, str, val); err != nil {
+			return err
+		}
+
+		if str == "/" { // reached root fs - nothing more to do
+			return nil
+		}
+
+		// remove the rightmost path component
+		str, _ = filepath.Split(strings.TrimSuffix(str, "/"))
+	}
 }
 
 type FimLoaderData struct {
@@ -824,13 +848,13 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 	}
 
 	for _, str := range kprobes.Paths {
-		if err := addFilter(lpmMap, str, fm.FilterMatch); err != nil {
+		if err := addFilters(lpmMap, str, fm.FilterMatch); err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
 		}
 	}
 
 	for _, str := range kprobes.PathsExclude {
-		if err := addFilter(lpmMap, str, fm.FilterIgnore); err != nil {
+		if err := addFilters(lpmMap, str, fm.FilterIgnore); err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
 	}

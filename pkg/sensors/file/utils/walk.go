@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/cilium/ebpf"
@@ -228,7 +229,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 	totalFiles := 0
 	totalDirectories := 0
 
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			l.Infof("%s", err.Error())
 			return nil
@@ -305,7 +306,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 			if op == AddToMap {
 				var val fileapi.HashMapFileVal
 
-				// We should habe all directory names to end with "/"
+				// We should have all directory names to end with "/"
 				// Check if this is the case, otherwise add it.
 				if path[len(path)-1:] != "/" {
 					path += "/"
@@ -343,10 +344,80 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 		}
 
 		return nil
-	})
+	}
 
-	if err == nil {
+	if err := filepath.Walk(path, walkFn); err != nil {
+		return 0, 0, err
+	}
+
+	// we are doing a rename operation so no need to follow all
+	// path components
+	if checkPrefix {
 		return totalFiles, totalDirectories, nil
 	}
-	return 0, 0, err
+
+	// Once walk is done successfully, we should add other path components
+	// as well. As an example the user wants to monitor /dir/home/.
+	// filepath.Walk will add directories and files inside  /dir/home/.
+	// The next for loop will also add /dir/home/ and /dir/.
+	// This is need in the case where the user removes /dir/home/
+	// and creates that again.
+	for {
+		if path == "/" { // reached the root fs - nothing more to do
+			break
+		}
+
+		// remove the rightmost path component
+		path, _ = filepath.Split(strings.TrimSuffix(path, "/"))
+
+		flInfo, statErr := os.Lstat(path)
+		if statErr != nil {
+			l.Infof("%s", statErr.Error())
+			return 0, 0, statErr
+		}
+
+		if mode := flInfo.Mode(); !mode.IsDir() {
+			break
+		}
+
+		stat, ok := flInfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return 0, 0, fmt.Errorf("stat is not a syscall.Stat_t")
+		}
+
+		key := fileapi.HashMapFileKey{
+			Ino:      stat.Ino,
+			DevMajor: GetDevMajor(stat.Dev),
+			DevMinor: GetDevMinor(stat.Dev),
+		}
+
+		// We should have all directory names to end with "/"
+		// Check if this is the case, otherwise add it.
+		if path[len(path)-1:] != "/" {
+			path += "/"
+		}
+
+		val := fileapi.HashMapFileVal{
+			Action:   action,
+			PathSize: uint32(len(path)),
+		}
+		copy(val.FullPath[:], path)
+		locationFn(&val)
+
+		var exVal fileapi.HashMapFileVal
+		if err := maps.Dir.Lookup(key, &exVal); err == nil { // key already exists
+			// already exists with value FilterMatch, do not update to FilterIgnore.
+			if exVal.Action == FilterMatch {
+				continue
+			}
+		}
+
+		if err := AddFilePath(maps.Dir, key, val); err != nil {
+			return 0, 0, fmt.Errorf("failed to call addDirPath: %w", err)
+		}
+
+		totalDirectories++
+	}
+
+	return totalFiles, totalDirectories, nil
 }
