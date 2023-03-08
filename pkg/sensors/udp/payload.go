@@ -231,7 +231,7 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		latencyMin := spec.Parser.Udp.Latency.Min
 		latencyMax := spec.Parser.Udp.Latency.Max
 		if latencyMax <= latencyMin {
-			logger.GetLogger().Warn("Misconfigured UDP Latency Histogram: Min value must be less than Max")
+			logger.GetLogger().Warn("Misconfigured UDP latency Histogram: Min value must be less than Max")
 			config.latencyEnable = 0
 			return
 		}
@@ -276,7 +276,7 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 			config.latencySubnets[index].addr[0] = uint64(binary.LittleEndian.Uint32(ipv4))
 			config.latencySubnets[index].ipv6 = 0
 			config.latencySubnets[index].prefixLen = uint8(prefixLen)
-			logger.GetLogger().Infof("UDP latency subnet: IP(uint32)=0x%x, prefixLen=%d", config.latencySubnets[index].addr[0], config.latencySubnets[index].prefixLen)
+			logger.GetLogger().Infof("UDP latency subnet: IP=%s/%d", ipv4, config.latencySubnets[index].prefixLen)
 			index++
 		}
 		if index == 0 {
@@ -295,7 +295,7 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 			"bucket50": config.latBucket50,
 			"bucket75": config.latBucket75,
 			"bucket90": config.latBucket90,
-			"bucket99": config.latBucket99}).Info("Configured Latency buckets: ")
+			"bucket99": config.latBucket99}).Info("Configured UDP latency buckets: ")
 
 		clockCheckInterval = spec.Parser.Udp.Latency.ClockCheckInterval
 		clockMaxSkew = spec.Parser.Udp.Latency.ClockMaxSkew
