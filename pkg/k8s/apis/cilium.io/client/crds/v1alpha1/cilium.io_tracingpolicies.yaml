@@ -78,6 +78,36 @@ spec:
                             - values
                             type: object
                           type: array
+                        matchOperations:
+                          description: A list of operation filters.
+                          items:
+                            properties:
+                              operator:
+                                description: Filter operation.
+                                enum:
+                                - In
+                                - NotIn
+                                type: string
+                              values:
+                                description: Value to compare the argument against.
+                                enum:
+                                - FILE_INVALID
+                                - FILE_WRITE
+                                - FILE_READ
+                                - FILE_DELETE
+                                - FILE_CREATE
+                                - FILE_RMDIR
+                                - FILE_MKDIR
+                                - FILE_RENAME
+                                - FILE_READDIR
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - operator
+                            - values
+                            type: object
+                          type: array
                       type: object
                     type: array
                 type: object

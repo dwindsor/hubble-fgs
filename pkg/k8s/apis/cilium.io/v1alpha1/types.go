@@ -76,11 +76,23 @@ func (tp *TracingPolicy) TpName() string {
 	return tp.ObjectMeta.Name
 }
 
+type OperationSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR
+	// Value to compare the argument against.
+	Values []string `json:"values"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
 	MatchBinaries []BinarySelector `json:"matchBinaries"`
+	// +kubebuilder:validation:Optional
+	// A list of operation filters.
+	MatchOperations []OperationSelector `json:"matchOperations"`
 }
 
 type FileSpec struct {
