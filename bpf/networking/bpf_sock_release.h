@@ -28,6 +28,13 @@ __sock_release(struct pt_regs *ctx, bool lazy)
 	size_t size;
 
 	probe_read(&sk, sizeof(sk), _(&(socket->sk)));
+
+	if (!sk) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_SOCK_RELEASE_NO_SOCK);
+		return 0;
+	}
+
 	write_cookie_from_sk(&cookie, sk, lazy);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
