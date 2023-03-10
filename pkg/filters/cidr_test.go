@@ -14,9 +14,9 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/filters"
+	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

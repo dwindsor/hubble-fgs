@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/oldhubble/cilium"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"

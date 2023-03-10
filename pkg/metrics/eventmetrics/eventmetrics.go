@@ -22,7 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -31,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"

@@ -39,7 +39,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"google.golang.org/protobuf/proto"
 
-	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
+	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	corev1 "k8s.io/api/core/v1"
 
 	// Imported to allow sensors to be initialized inside init().
