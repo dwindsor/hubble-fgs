@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"regexp"
 
-	v1 "github.com/cilium/hubble/pkg/api/v1"
-	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	hubbleV1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
+	hubbleFilters "github.com/cilium/tetragon/pkg/oldhubble/filters"
 )
 
 func filterByArgumentsRegex(argumentsPatterns []string) (hubbleFilters.FilterFunc, error) {
@@ -22,7 +22,7 @@ func filterByArgumentsRegex(argumentsPatterns []string) (hubbleFilters.FilterFun
 		}
 		argsRegexList = append(argsRegexList, query)
 	}
-	return func(ev *v1.Event) bool {
+	return func(ev *hubbleV1.Event) bool {
 		process := GetProcess(ev)
 		if process == nil {
 			return false
