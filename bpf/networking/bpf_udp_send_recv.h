@@ -6,6 +6,7 @@
 #include "bpf_udp.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -282,8 +283,8 @@ static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 	if (!value)
 		return 0;
 
-	value->sk = (struct sock *)ctx->di;
-	value->msg = (struct msghdr *)ctx->si;
+	value->sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+	value->msg = (struct msghdr *)PT_REGS_PARM2_CORE(ctx);
 	add_to_retprobe_map(ctx, (u64)value->sk, &pid_tgid, value);
 	return 0;
 }
@@ -297,7 +298,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 	struct udp_info_value *value;
 	struct udp_info_key key;
 	int hasctx;
-	int ret = ctx->ax;
+	int ret = PT_REGS_RC(ctx);
 	u64 cookie = 0;
 	int zero = 0;
 
@@ -607,9 +608,9 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 {
 	struct udp_info_value *value;
 	int zero = 0;
-	struct sock *sk = (struct sock *)ctx->di;
-	struct sk_buff *skb = (struct sk_buff *)ctx->si;
-	int len = (int)ctx->dx;
+	struct sock *sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2_CORE(ctx);
+	int len = (int)PT_REGS_PARM3_CORE(ctx);
 	u64 cookie;
 	struct udp_info_key key;
 

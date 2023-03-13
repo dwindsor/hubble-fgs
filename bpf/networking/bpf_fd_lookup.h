@@ -3,6 +3,7 @@
 #include "cookie.h"
 #include "bpf_fd_to_sk.h"
 #include "../lib/address_family.h"
+#include "bpf_tracing.h"
 
 #define S_IFMT	 00170000
 #define S_IFSOCK 0140000
@@ -35,7 +36,7 @@ struct {
 static inline __attribute__((always_inline)) int
 __kprobe_proc_task_name(struct pt_regs *ctx)
 {
-	struct task_struct *p = (struct task_struct *)ctx->si;
+	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2_CORE(ctx);
 	struct fd_lookup_config *config;
 	int zero = 0;
 	uint32_t pid;

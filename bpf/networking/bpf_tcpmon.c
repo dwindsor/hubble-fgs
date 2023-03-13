@@ -9,6 +9,7 @@
 #include "tlsmsg.h"
 #include "../parsers/tls/tls_map.h"
 #include "bpf_fd_to_sk.h"
+#include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -45,7 +46,7 @@ event_tcp_connect(struct pt_regs *ctx)
 		return 0;
 	}
 
-	skp = (struct sock *)((ctx)->di);
+	skp = (struct sock *)PT_REGS_PARM1_CORE(ctx);
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;

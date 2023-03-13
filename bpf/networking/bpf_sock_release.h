@@ -6,6 +6,7 @@
 #include "bpf_udp.h"
 #include "cookie.h"
 #include "bpf_fd_lookup.h"
+#include "bpf_tracing.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -17,7 +18,7 @@ struct {
 static inline __attribute__((always_inline)) int
 __sk_free(struct pt_regs *ctx, bool lazy)
 {
-	struct sock *sk = (struct sock *)(ctx->di);
+	struct sock *sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
 	__u64 cookie;
 	u16 protocol;
 	int zero = 0;

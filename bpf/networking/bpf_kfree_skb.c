@@ -4,6 +4,7 @@
 #include "iso_msg_types.h"
 #include "bpf_events.h"
 #include "networkmsg.h"
+#include "bpf_tracing.h"
 
 /* set_tuple_from_skb(skb)
  *
@@ -72,7 +73,7 @@ event_kfree_skb(struct pt_regs *ctx)
 	struct msg_kfree_skb msg = { 0 };
 	bool emit;
 
-	struct sk_buff *skb = (void *)ctx->di;
+	struct sk_buff *skb = (void *)PT_REGS_PARM1_CORE(ctx);
 
 	emit = set_tuple_from_skb(&msg.tuple, skb);
 	if (!emit)

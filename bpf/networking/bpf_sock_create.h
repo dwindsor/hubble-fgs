@@ -7,12 +7,13 @@
 #include "cookie.h"
 #include "bpf_fd_lookup.h"
 #include "../lib/address_family.h"
+#include "bpf_tracing.h"
 
 static inline __attribute__((always_inline)) int
 __sk_allocret(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
-	u64 cookie = ctx->ax;
+	u64 cookie = PT_REGS_RC(ctx);
 	struct sock *sk = (struct sock *)cookie;
 	struct execve_map_value *value;
 	u16 family;
