@@ -80,23 +80,6 @@ type Arguments struct {
 	Baseline bool
 }
 
-func readConfig(file string) (*config.GenericTracingConf, error) {
-	if file == "" {
-		return nil, nil
-	}
-
-	yamlData, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", file, err)
-	}
-	cnf, err := config.ReadConfigYaml(string(yamlData))
-	if err != nil {
-		return nil, err
-	}
-
-	return cnf, nil
-}
-
 func (args *Arguments) String() string {
 	return fmt.Sprintf("sink=%s, source=%s, proxy=%s, source-args={%s}, fgs-tls=%v, json-encode=%v",
 		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
@@ -157,11 +140,11 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		}
 	}
 
-	cnf, err := readConfig(configFile)
+	tp, err := config.PolicyFromYamlFilename(configFile)
 	if err != nil {
 		log.Fatalf("readConfig error: %v", err)
 	}
-	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(tp)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}

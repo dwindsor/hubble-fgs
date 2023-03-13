@@ -99,23 +99,6 @@ func saveInitInfo() error {
 	return bugtool.SaveInitInfo(&info)
 }
 
-func readConfig(file string) (*config.GenericTracingConf, error) {
-	if file == "" {
-		return nil, nil
-	}
-
-	yamlData, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", configFile, err)
-	}
-	cnf, err := config.ReadConfigYaml(string(yamlData))
-	if err != nil {
-		return nil, err
-	}
-
-	return cnf, nil
-}
-
 func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -279,11 +262,11 @@ func hubbleFGSExecute() error {
 
 	if len(configFile) > 0 {
 		var sens *sensors.Sensor
-		cnf, err := readConfig(configFile)
+		tp, err := config.PolicyFromYamlFilename(configFile)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}
-		sens, err = sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
+		sens, err = sensors.GetMergedSensorFromParserPolicy(tp)
 		if err != nil {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}

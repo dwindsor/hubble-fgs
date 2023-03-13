@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -257,12 +258,12 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatal(err)
 	}
 
-	cnf, err := readConfig(f.Name())
+	tp, err := config.PolicyFromYamlFilename(f.Name())
 	if err != nil {
 		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
 	}
 
-	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.TpName(), &cnf.Spec)
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(tp)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}

@@ -21,18 +21,51 @@ import (
 const (
 	// Tracing Policy (TP)
 
-	// TPSingularName is the singular name of Cilium Egress NAT Policy
-	TPSingularName = "tracingpolicy"
-
-	// TPPluralName is the plural name of Cilium Egress NAT Policy
+	// TPPluralName is the plural name of Cilium Tracing Policy
 	TPPluralName = "tracingpolicies"
 
-	// TPKindDefinition is the kind name of Cilium Egress NAT Policy
+	// TPKindDefinition is the kind name of Cilium Tracing Policy
 	TPKindDefinition = "TracingPolicy"
 
 	// TPName is the full name of Cilium Egress NAT Policy
 	TPName = TPPluralName + "." + ciliumio.GroupName
+
+	// TPNamespacedPluralName is the plural name of Cilium Tracing Policy
+	TPNamespacedPluralName = "tracingpoliciesnamespaced"
+
+	// TPNamespacedName
+	TPNamespacedName = TPNamespacedPluralName + "." + ciliumio.GroupName
+
+	// TPKindDefinition is the kind name of Cilium Tracing Policy
+	TPNamespacedKindDefinition = "TracingPolicyNamespaced"
 )
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:singular="tracingpolicynamespaced",path="tracingpoliciesnamespaced",scope="Namespaced",shortName={}
+type TracingPolicyNamespaced struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Tracing policy specification.
+	Spec TracingPolicySpec `json:"spec"`
+}
+
+func (tp *TracingPolicyNamespaced) TpSpec() *TracingPolicySpec {
+	return &tp.Spec
+}
+
+func (tp *TracingPolicyNamespaced) TpInfo() string {
+	return fmt.Sprintf("%s (object:%d/%s) (type:%s/%s)", tp.ObjectMeta.Name, tp.ObjectMeta.Generation, tp.ObjectMeta.UID, tp.TypeMeta.Kind, tp.TypeMeta.APIVersion)
+}
+
+func (tp *TracingPolicyNamespaced) TpName() string {
+	return tp.ObjectMeta.Name
+}
+
+func (tp *TracingPolicyNamespaced) TpNamespace() string {
+	return tp.ObjectMeta.Namespace
+}
 
 // +genclient
 // +genclient:noStatus
@@ -44,6 +77,13 @@ type TracingPolicy struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// Tracing policy specification.
 	Spec TracingPolicySpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type TracingPolicyNamespacedList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []TracingPolicyNamespaced `json:"items"`
 }
 
 type TracingPolicySpec struct {

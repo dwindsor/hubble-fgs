@@ -4,6 +4,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -43,6 +45,21 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
 	Tracepoints []TracepointSpec `json:"tracepoints"`
+	// +kubebuilder:validation:Optional
+	// Enable loader events
+	Loader bool `json:"loader"`
+}
+
+func (tp *TracingPolicy) TpName() string {
+	return tp.ObjectMeta.Name
+}
+
+func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {
+	return &tp.Spec
+}
+
+func (tp *TracingPolicy) TpInfo() string {
+	return fmt.Sprintf("%s (object:%d/%s) (type:%s/%s)", tp.ObjectMeta.Name, tp.ObjectMeta.Generation, tp.ObjectMeta.UID, tp.TypeMeta.Kind, tp.TypeMeta.APIVersion)
 }
 
 type KProbeSpec struct {
@@ -71,7 +88,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;
+	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;
 	// Argument type.
 	Type string `json:"type"`
 	// +kubebuilder:validation:Optional
@@ -86,7 +103,7 @@ type KProbeArg struct {
 }
 
 type BinarySelector struct {
-	// +kubebuilder:validation:Enum=In
+	// +kubebuilder:validation:Enum=In;NotIn
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
@@ -189,7 +206,7 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD
+	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup
 	// Action to execute.
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
@@ -198,6 +215,12 @@ type ActionSelector struct {
 	// +kubebuilder:validation:Optional
 	// An arg index for the filename for fdInstall action
 	ArgName uint32 `json:"argName"`
+	// +kubebuilder:validation:Optional
+	// A URL for the getUrl action
+	ArgUrl string `json:"argUrl"`
+	// +kubebuilder:validation:Optional
+	// A FQDN to lookup for the dnsLookup action
+	ArgFqdn string `json:"argFqdn"`
 	// +kubebuilder:validation:Optional
 	// error value for override action
 	ArgError int32 `json:"argError"`

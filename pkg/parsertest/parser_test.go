@@ -14,9 +14,11 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
@@ -187,7 +189,11 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}
 
-	parserSensors, err := sensors.GetSensorsFromParserPolicy(&v1alpha1.TracingPolicySpec{Parser: spec})
+	tp := config.GenericTracingConf{
+		Metadata: config.Metadata{Name: "name"},
+		Spec:     v1alpha1.TracingPolicySpec{Parser: spec},
+	}
+	parserSensors, err := sensors.SensorsFromPolicy(&tp, policyfilter.PolicyID(0))
 	if err != nil {
 		t.Fatalf("GetSensorsFromParserPolicy: %s", err)
 	}

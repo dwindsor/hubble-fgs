@@ -40,14 +40,24 @@ endif
 generate:
 	find . -type f -name "*.go" -exec sed -i 's/cilium\/tetragon\/pkg\/k8s/isovalent\/hubble-fgs\/pkg\/k8s/g' {} +
 	./tools/controller-gen crd paths=./apis/... output:dir=apis/cilium.io/client/crds/v1alpha1
+	# Do two invocations of generate-groups.sh, one with --plural-exclude, one without
 	export GOPATH=$$(go env GOPATH); \
-	  bash vendor/k8s.io/code-generator/generate-groups.sh all \
+	  bash vendor/k8s.io/code-generator/generate-groups.sh deepcopy,defaulter \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  cilium.io:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt \
 	  -o . \
-	  --trim-prefix github.com/isovalent/hubble-fgs/pkg/k8s
+	  --trim-path-prefix github.com/isovalent/hubble-fgs/pkg/k8s \
+	 ; \
+	 bash vendor/k8s.io/code-generator/generate-groups.sh lister,informer,client \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
+	  cilium.io:v1alpha1 \
+	  --go-header-file hack/custom-boilerplate.go.txt \
+	  -o . \
+	  --trim-path-prefix github.com/isovalent/hubble-fgs/pkg/k8s \
+	  --plural-exceptions TracingPolicyNamespaced:TracingPoliciesNamespaced
 	find . -type f -name "*.go" -exec sed -i 's/isovalent\/hubble-fgs\/pkg\/k8s/cilium\/tetragon\/pkg\/k8s/g' {} +
 
 .PHONY: vendor
