@@ -782,7 +782,7 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 			SocketCookieStatsLazy,
 			FdLookupConfigMapLazy,
 		}
-		dns.LazyDns = true
+		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
 	}
 
