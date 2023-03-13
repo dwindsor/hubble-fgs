@@ -108,6 +108,7 @@ github.com/cilium/tetragon/pkg/api/processapi
 github.com/cilium/tetragon/pkg/api/readyapi
 github.com/cilium/tetragon/pkg/api/testapi
 github.com/cilium/tetragon/pkg/api/tracingapi
+github.com/cilium/tetragon/pkg/arch
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
