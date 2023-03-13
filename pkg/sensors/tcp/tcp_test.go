@@ -44,7 +44,8 @@ var (
 )
 
 const (
-	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
+	testConfigFile  = "/tmp/hubble-tetragon.gotest.yaml"
+	alpineCurlImage = "quay.io/cilium/alpine-curl:v1.6.0"
 )
 
 const tcpConfigLegacy = `
@@ -536,7 +537,7 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "0.0.0.0")
+	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
 	observer.WaitForProcess("nc -nvlp 8081 -s 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
@@ -594,9 +595,9 @@ func TestDockerListenConnect4(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "0.0.0.0")
+	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1428,7 +1429,7 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "[::]")
+	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
 	observer.WaitForProcess("nc -nvlp 8081 -s [::]")
 	time.Sleep(2 * time.Second)
 
@@ -1486,9 +1487,9 @@ func TestDockerListenConnect6(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "[::]")
+	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
