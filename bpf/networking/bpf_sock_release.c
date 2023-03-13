@@ -6,9 +6,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/inet_release"), used)) int
-sock_release(struct pt_regs *ctx)
+__attribute__((section("kprobe/__sk_free"), used)) int
+sk_free(struct pt_regs *ctx)
 {
-	__sock_release(ctx, false);
+	__sk_free(ctx, false);
 	return 0;
 }

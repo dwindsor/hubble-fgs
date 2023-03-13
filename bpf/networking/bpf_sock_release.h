@@ -15,10 +15,9 @@ struct {
 } udp_close_event_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-__sock_release(struct pt_regs *ctx, bool lazy)
+__sk_free(struct pt_regs *ctx, bool lazy)
 {
-	struct socket *socket = (struct socket *)((ctx)->di);
-	struct sock *sk;
+	struct sock *sk = (struct sock *)(ctx->di);
 	__u64 cookie;
 	u16 protocol;
 	int zero = 0;
@@ -26,8 +25,6 @@ __sock_release(struct pt_regs *ctx, bool lazy)
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
 	size_t size;
-
-	probe_read(&sk, sizeof(sk), _(&(socket->sk)));
 
 	if (!sk) {
 		emit_ip_error_event(ctx, 0, 0, false,

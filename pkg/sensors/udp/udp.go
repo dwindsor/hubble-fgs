@@ -92,16 +92,16 @@ var (
 
 	SockRelease = program.Builder(
 		"bpf_sock_release.o",
-		"inet_release",
-		"kprobe/inet_release",
-		"kprobe_sock_release",
+		"__sk_free",
+		"kprobe/__sk_free",
+		"kprobe___sk_free",
 		"kprobe")
 
 	SockReleaseLazy = program.Builder(
 		"bpf_sock_release_lazy.o",
-		"inet_release",
-		"kprobe/inet_release",
-		"kprobe_sock_release",
+		"__sk_free",
+		"kprobe/__sk_free",
+		"kprobe___sk_free",
 		"kprobe")
 
 	InetSend = program.Builder(
@@ -760,7 +760,7 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
-	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
+	} else {
 		progs = []*program.Program{
 			SkAllocRetLazy,
 			SockReleaseLazy,
@@ -784,29 +784,6 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
-	} else {
-		progs = []*program.Program{
-			SockCreate,
-			SockRelease,
-			InetSend,
-			InetRecv,
-			Udp4Send,
-			Udp4RetSend,
-			Udp6Send,
-			Udp6RetSend,
-			UdpRecv,
-		}
-		maps = []*program.Map{
-			UdpMap,
-			UdpRetprobeMap,
-			UdpRetprobeStats,
-			UdpConfigMap,
-			UdpPayloadMap,
-			SocketCookieMap,
-			SocketCookieStats,
-			FdLookupConfigMap,
-		}
-		versionStr = "__udp_sensor_cgroup__"
 	}
 
 	if timestampEnabled {
