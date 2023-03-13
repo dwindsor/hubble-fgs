@@ -45,7 +45,9 @@ generate:
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  cilium.io:v1alpha1 \
-	  --go-header-file hack/custom-boilerplate.go.txt
+	  --go-header-file hack/custom-boilerplate.go.txt \
+	  -o . \
+	  --trim-prefix github.com/isovalent/hubble-fgs/pkg/k8s
 	find . -type f -name "*.go" -exec sed -i 's/isovalent\/hubble-fgs\/pkg\/k8s/cilium\/tetragon\/pkg\/k8s/g' {} +
 
 .PHONY: vendor
