@@ -633,6 +633,10 @@
         [
             "--enable",
             "CONFIG_KVM_GUEST"
+        ],
+        [
+            "--disable",
+            "CONFIG_X86_KERNEL_IBT"
         ]
     ]
 }
