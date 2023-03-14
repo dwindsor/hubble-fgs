@@ -1,4 +1,4 @@
-FROM quay.io/cilium/clang:7ea8dd5b610a8864ce7b56e10ffeb61030a0c50e@sha256:02ad7cc1d08d85c027557099b88856945be5124b5c31aeabce326e7983e3913b as bpf-builder
+FROM quay.io/cilium/clang@sha256:b440ae7b3591a80ffef8120b2ac99e802bbd31dee10f5f15a48566832ae0866f as bpf-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN apt-get update
 RUN apt-get install -y linux-libc-dev
@@ -20,16 +20,16 @@ RUN apk add --no-cache binutils git \
  && go install \
  && strip /go/bin/gops
 
-# Mostly copied from https://github.com/cilium/image-tools/blob/master/images/bpftool
-FROM quay.io/cilium/image-compilers:c1ba0665b6f9f012d014a642d9882f7c38bdf365@sha256:01c7c957e9b0fc200644996c6bedac297c98b81dea502a3bc3047837e67a7fcb as bpftool-builder
-ENV REV "5e22dd18626726028a93ff1350a8a71a00fd843d"
-RUN curl --fail --show-error --silent --location "https://kernel.googlesource.com/pub/scm/linux/kernel/git/bpf/bpf-next/+archive/${REV}.tar.gz" --output /tmp/linux.tgz
-RUN mkdir -p /src/linux
-RUN tar -xf /tmp/linux.tgz -C /src/linux
-RUN rm -f /tmp/linux.tgz
-WORKDIR /src/linux/tools/bpf/bpftool
-RUN make -j $(nproc) LDFLAGS=-static
-RUN strip bpftool
+FROM quay.io/cilium/clang@sha256:b440ae7b3591a80ffef8120b2ac99e802bbd31dee10f5f15a48566832ae0866f as bpftool-builder
+WORKDIR /bpftool
+RUN apt-get update && apt-get install -y \
+    curl git \
+    llvm gcc pkg-config zlib1g-dev libelf-dev libcap-dev \
+    && rm -rf /var/lib/apt/lists/*
+# v7.1.0
+ENV BPFTOOL_REV "b01941c8f7890489f09713348a7d89567538504b"
+RUN git clone --recurse-submodules https://github.com/libbpf/bpftool.git . && git checkout ${BPFTOOL_REV}
+RUN make -C src EXTRA_CFLAGS=--static -j $(nproc) && strip src/bpftool
 
 FROM docker.io/library/alpine:3.17.2@sha256:69665d02cb32192e52e07644d76bc6f25abeb5410edc1c7a81a10ba3f0efb90a
 RUN apk add iproute2
@@ -38,7 +38,7 @@ RUN addgroup hubble	       && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
-COPY --from=bpftool-builder /src/linux/tools/bpf/bpftool/bpftool /usr/bin/bpftool
+COPY --from=bpftool-builder /bpftool/src/bpftool /usr/bin/bpftool
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=gops /go/bin/gops /bin /usr/bin/
