@@ -1,5 +1,4 @@
 GO := go
-export TARGET_ARCH ?= amd64
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
@@ -13,6 +12,25 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 # Extra flags to pass to test binary
 EXTRA_TESTFLAGS ?=
 SUDO ?= sudo
+
+# Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
+# or let uname detect the appropriate arch for native build
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	TARGET_ARCH ?= amd64
+endif
+ifeq ($(UNAME_M),aarch64)
+	TARGET_ARCH ?= arm64
+endif
+TARGET_ARCH ?= amd64
+
+ifeq ($(TARGET_ARCH),amd64)
+	BPF_TARGET_ARCH ?= x86
+endif
+ifeq ($(TARGET_ARCH),arm64)
+	BPF_TARGET_ARCH ?= arm64
+endif
+BPF_TARGET_ARCH ?= x86
 
 BUILD_PKG_DIR ?= $(shell pwd)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
@@ -105,14 +123,14 @@ GO_GCFLAGS = "all=-N -l"
 endif
 
 hubble-bpf-local:
-	$(MAKE) -C ./bpf
+	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH)
 
 hubble-bpf-verify: hubble-bpf
 	sudo contrib/fgs-verify-programs bpf/objs
 
 hubble-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang || true
-	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf
+	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH)
 	$(CONTAINER_ENGINE) rm hubble-clang
 
 hubble-fgs: hubble-fgs-fs-scanner
@@ -137,9 +155,9 @@ ksyms:
 	cp $(OSS_DIR)/ksyms ksyms
 
 hubble-fgs-image:
-	GOOS=linux $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
-	GOOS=linux $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
-	GOOS=linux $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
+	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
+	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
 
 hubble-enterprise-operator-image:
 	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator
@@ -168,10 +186,10 @@ fgs-bench:
 	$(GO) build -tags enterprise ./cmd/fgs-bench
 
 fgs-bench-image:
-	GOOS=linux $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
+	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
 
 parsertest-image:
-	GOOS=linux $(GO) test -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -c ./pkg/parsertest -o parsertest
+	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) test -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -c ./pkg/parsertest -o parsertest
 
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
