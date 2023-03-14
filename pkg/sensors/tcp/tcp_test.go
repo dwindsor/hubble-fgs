@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
@@ -116,6 +117,10 @@ func getBasicTcpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
