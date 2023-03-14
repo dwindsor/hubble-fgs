@@ -52,6 +52,8 @@ type FsScannerContainerInit struct {
 	Spec        []v1alpha1.FileSpec
 	PinPath     []string
 	ContainerID string
+	PodNs       string
+	PodName     string
 	RootDir     string
 	MapDir      string
 }

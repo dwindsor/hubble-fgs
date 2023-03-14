@@ -14,6 +14,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -148,6 +149,14 @@ type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []FileSelector `json:"selectors"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Do monitoring on host files
+	OnlyPodFiles bool `json:"onlyPodFiles"`
+	// +kubebuilder:validation:Optional
+	// This is a label selector which selects Pods. This field follows standard label
+	// selector semantics; if present but empty, it selects all pods.
+	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

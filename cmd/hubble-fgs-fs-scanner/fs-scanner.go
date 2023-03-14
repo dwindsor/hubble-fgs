@@ -226,6 +226,8 @@ func tracingPolicyInit(args *fm.FsScannerInit) error {
 	}
 	defer cleanup()
 
+	logger.GetLogger().Info("fim: Adding host files")
+
 	locFn := func(v *fileapi.HashMapFileVal) {
 		v.LocationFlags = fileapi.HOST_FILE
 	}
@@ -256,12 +258,15 @@ func renameDir(args *fm.FsScannerRename) error {
 	}
 	defer cleanup()
 
+	// this should always be prefix-free
+	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
+
 	locFn := func(v *fileapi.HashMapFileVal) {
-		if args.ContainerID == "" {
+		if containerID == "" {
 			v.LocationFlags = fileapi.HOST_FILE
 		} else {
 			var cid [64]byte
-			copy(cid[:], args.ContainerID)
+			copy(cid[:], containerID)
 			v.ContainerID = cid
 			v.LocationFlags = fileapi.CONTAINER_FILE
 		}
@@ -302,36 +307,52 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 	}
 
 	for i := 0; i < len(args.PinPath); i++ {
+		// check if we care about this namespace
+		if !fm.MatchPodSelector(args.Spec[i].PodSelector, args.PodNs, args.PodName) {
+			continue
+		}
+
+		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Info("fim: Adding container files")
+
 		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath[i])
 		if err != nil {
 			return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, args.PinPath[i], err)
 		}
 		defer cleanup()
 
+		rootDir := args.RootDir
+		if rootDir == "" {
+			rootDir, err = fm.ContainerIdToRootFs(args.ContainerID)
+			if err != nil {
+				return fmt.Errorf("failed to resolve container rootDir: %w", err)
+			}
+		}
+		containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
+
 		locFn := func(v *fileapi.HashMapFileVal) {
 			v.LocationFlags = fileapi.CONTAINER_FILE
-			copy(v.ContainerID[:], []byte(args.ContainerID))
+			copy(v.ContainerID[:], []byte(containerID))
 		}
 
 		// enter chroot
-		exit, err := chroot(args.RootDir)
+		exit, err := chroot(rootDir)
 		if err != nil {
-			return fmt.Errorf("chroot to %s: %w", args.RootDir, err)
+			return fmt.Errorf("chroot to %s: %w", rootDir, err)
 		}
 
 		for _, p := range args.Spec[i].Paths {
 			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
-				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).WithError(err).Warnf("Adding files/directories failed")
+				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Adding files/directories failed")
 			} else {
-				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
 			}
 		}
 
 		for _, p := range args.Spec[i].PathsExclude {
 			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
-				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).WithError(err).Warnf("Excluding files/directories failed")
+				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
 			} else {
-				logger.GetLogger().WithField("path", p).WithField("containerID", args.ContainerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
+				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
 			}
 		}
 
@@ -345,6 +366,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 }
 
 func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
+	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 	for _, pinPath := range args.PinPath {
 		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, pinPath)
 		if err != nil {
@@ -352,7 +374,7 @@ func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 		}
 		defer cleanup()
 
-		if err := fm.RemoveContainerEntries(maps, args.ContainerID); err != nil {
+		if err := fm.RemoveContainerEntries(maps, containerID); err != nil {
 			return err
 		}
 	}

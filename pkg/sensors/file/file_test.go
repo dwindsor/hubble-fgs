@@ -52,6 +52,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
+	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
@@ -1575,6 +1576,8 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 		Paths:        []string{"/etc/"},
 		PathsExclude: []string{},
 		Config:       make(map[string]string),
+		OnlyPodFiles: true, // check only container files here
+		PodSelector:  &slimv1.LabelSelector{},
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1585,7 +1588,7 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 	}
 
 	// now we apply the existing tracing policy (i.e. /etc/) for the root filesystem of a running container
-	if err := TracingPolicyInitContainerFsScanner(containerId, rootDir); err != nil {
+	if err := TracingPolicyInitContainerFsScanner(containerId, "", "", rootDir); err != nil {
 		t.Fatalf("failed to call TracingPolicyInitContainerFsScanner(%s, %s): %s", containerId, rootDir, err)
 	}
 

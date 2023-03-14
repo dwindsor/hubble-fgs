@@ -35,6 +35,9 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/podhooks"
+	"github.com/cilium/tetragon/pkg/rthooks"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
@@ -221,13 +224,15 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 	return nil
 }
 
-func TracingPolicyInitContainerFsScanner(containerID string, rootDir string) error {
+func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir string) error {
 	pinPath, spec := fileMonitoringTable.getValuesFIM()
 	f := fm.FsScannerContainerInit{
 		Spec:        spec,
 		PinPath:     pinPath,
 		MapDir:      option.Config.MapDir,
 		ContainerID: containerID,
+		PodNs:       podNs,
+		PodName:     podName,
 		RootDir:     rootDir,
 	}
 
@@ -485,8 +490,10 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		}
 	}
 
-	if err := TracingPolicyInitFsScanner(*spec, mapDir, tc.pinPathPrefix); err != nil {
-		return err
+	if !spec.OnlyPodFiles {
+		if err := TracingPolicyInitFsScanner(*spec, mapDir, tc.pinPathPrefix); err != nil {
+			return err
+		}
 	}
 
 	fileMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "hash_map_file_alloc"))
@@ -568,6 +575,20 @@ func init() {
 	sensors.RegisterSpecHandlerAtInit(file.name, file)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
+	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
+		CreateContainer: rthooksCreateContainer,
+	})
+	podhooks.RegisterCallbacksAtInit(podhooks.Callbacks{
+		PodCallbacks: func(podInformer cache.SharedIndexInformer) {
+			podInformer.AddEventHandler(
+				cache.ResourceEventHandlerFuncs{
+					AddFunc:    podhooksAddFunc,
+					UpdateFunc: podhooksUpdateFunc,
+					DeleteFunc: podhooksDeleteFunc,
+				},
+			)
+		},
+	})
 }
 
 func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
@@ -918,8 +939,30 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
 
-	if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
-		l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
+	if !kprobes.OnlyPodFiles {
+		if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
+			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
+		}
+	}
+
+	// check for existing pod files when we create a new tracing policy
+	allContainers := []ContInit{}
+	allPodsMu.Lock()
+	for _, p := range allPods {
+		for _, r := range p.containers {
+			allContainers = append(allContainers, ContInit{
+				cid:       r.ContainerID,
+				namespace: p.podNamespace,
+				name:      p.podName,
+				root:      r.RootDir,
+			})
+		}
+	}
+	allPodsMu.Unlock()
+	for _, i := range allContainers {
+		if err := TracingPolicyInitContainerFsScanner(i.cid, i.namespace, i.name, i.root); err != nil {
+			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
+		}
 	}
 
 	for _, h := range fimProgs {
