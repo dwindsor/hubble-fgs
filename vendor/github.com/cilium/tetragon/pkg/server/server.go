@@ -40,6 +40,8 @@ type observer interface {
 	// DelTracingPolicy deletes a tracing policy that was added with
 	// AddTracingPolicy as defined by  its name (policy.TpName()).
 	DelTracingPolicy(ctx context.Context, name string) error
+	// ListTracingPolicies lists active traing policies
+	ListTracingPolicies(ctx context.Context) (*tetragon.ListTracingPoliciesResponse, error)
 
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
@@ -217,11 +219,11 @@ func (s *Server) ListSensors(ctx context.Context, request *tetragon.ListSensorsR
 
 func (s *Server) AddTracingPolicy(ctx context.Context, req *tetragon.AddTracingPolicyRequest) (*tetragon.AddTracingPolicyResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received an AddTracingPolicy request")
-	conf, err := config.ReadConfigYaml(req.GetYaml())
+	tp, err := config.PolicyFromYaml(req.GetYaml())
 	if err != nil {
 		return nil, err
 	}
-	if err := s.observer.AddTracingPolicy(ctx, conf); err != nil {
+	if err := s.observer.AddTracingPolicy(ctx, tp); err != nil {
 		return nil, err
 	}
 	return &tetragon.AddTracingPolicyResponse{}, nil
@@ -229,15 +231,21 @@ func (s *Server) AddTracingPolicy(ctx context.Context, req *tetragon.AddTracingP
 
 func (s *Server) DelTracingPolicy(ctx context.Context, req *tetragon.DeleteTracingPolicyRequest) (*tetragon.DeleteTracingPolicyResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received an DeleteTracingPolicy request")
-	conf, err := config.ReadConfigYaml(req.GetYaml())
+	tp, err := config.PolicyFromYaml(req.GetYaml())
 	if err != nil {
 		return nil, err
 	}
-	if err := s.observer.DelTracingPolicy(ctx, conf.Metadata.Name); err != nil {
+	if err := s.observer.DelTracingPolicy(ctx, tp.TpName()); err != nil {
 		return nil, err
 	}
 	return &tetragon.DeleteTracingPolicyResponse{}, nil
 }
+
+func (s *Server) ListTracingPolicies(ctx context.Context, req *tetragon.ListTracingPoliciesRequest) (*tetragon.ListTracingPoliciesResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a ListTracingPolicies request")
+	return s.observer.ListTracingPolicies(ctx)
+}
+
 func (s *Server) RemoveSensor(ctx context.Context, req *tetragon.RemoveSensorRequest) (*tetragon.RemoveSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a RemoveTracingPolicy request")
 	if err := s.observer.RemoveSensor(ctx, req.GetName()); err != nil {

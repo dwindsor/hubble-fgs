@@ -10,9 +10,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"reflect"
 	"sync"
-	"sync/atomic"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/ops"
@@ -25,6 +23,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/base"
@@ -61,7 +60,6 @@ func init() {
 		name: "tracepoint sensor",
 	}
 	sensors.RegisterProbeType("generic_tracepoint", tp)
-	sensors.RegisterSpecHandlerAtInit(tp.name, tp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 
@@ -70,7 +68,8 @@ type genericTracepoint struct {
 	Info *tracepoint.Tracepoint
 	args []genericTracepointArg
 
-	Spec *v1alpha1.TracepointSpec
+	Spec     *v1alpha1.TracepointSpec
+	policyID policyfilter.PolicyID
 
 	// index to access this on genericTracepointTable
 	tableIdx int
@@ -294,7 +293,7 @@ func buildGenericTracepointArgs(info *tracepoint.Tracepoint, specArgs []v1alpha1
 
 // createGenericTracepoint creates the genericTracepoint information based on
 // the user-provided configuration
-func createGenericTracepoint(sensorName string, conf *GenericTracepointConf) (*genericTracepoint, error) {
+func createGenericTracepoint(sensorName string, conf *GenericTracepointConf, policyID policyfilter.PolicyID) (*genericTracepoint, error) {
 	tp := tracepoint.Tracepoint{
 		Subsys: conf.Subsystem,
 		Event:  conf.Event,
@@ -310,9 +309,10 @@ func createGenericTracepoint(sensorName string, conf *GenericTracepointConf) (*g
 	}
 
 	ret := &genericTracepoint{
-		Info: &tp,
-		Spec: conf,
-		args: tpArgs,
+		Info:     &tp,
+		Spec:     conf,
+		args:     tpArgs,
+		policyID: policyID,
 	}
 
 	genericTracepointTable.addTracepoint(ret)
@@ -321,11 +321,11 @@ func createGenericTracepoint(sensorName string, conf *GenericTracepointConf) (*g
 }
 
 // createGenericTracepointSensor will create a sensor that can be loaded based on a generic tracepoint configuration
-func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (*sensors.Sensor, error) {
+func createGenericTracepointSensor(name string, confs []GenericTracepointConf, policyID policyfilter.PolicyID) (*sensors.Sensor, error) {
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for i := range confs {
-		tp, err := createGenericTracepoint(name, &confs[i])
+		tp, err := createGenericTracepoint(name, &confs[i], policyID)
 		if err != nil {
 			return nil, err
 		}
@@ -424,6 +424,7 @@ func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
 	}
 
 	config := api.EventConfig{}
+	config.PolicyID = uint32(tp.policyID)
 	config.FuncId = uint32(tp.tableIdx)
 	// iterate over output arguments
 	for i := range tp.args {
@@ -667,26 +668,6 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 		}
 	}
 	return []observer.Event{unix}, nil
-}
-
-func (t *observerTracepointSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec, ok := raw.(*v1alpha1.TracingPolicySpec)
-	if !ok {
-		s, ok := reflect.Indirect(reflect.ValueOf(raw)).FieldByName("TracingPolicySpec").Interface().(v1alpha1.TracingPolicySpec)
-		if !ok {
-			return nil, nil
-		}
-		spec = &s
-	}
-	name := fmt.Sprintf("gtp-sensor-%d", atomic.AddUint64(&sensorCounter, 1))
-
-	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
-		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
-	}
-	if len(spec.Tracepoints) > 0 {
-		return createGenericTracepointSensor(name, spec.Tracepoints)
-	}
-	return nil, nil
 }
 
 func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) error {

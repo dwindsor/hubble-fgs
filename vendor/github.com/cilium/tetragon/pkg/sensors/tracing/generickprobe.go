@@ -7,15 +7,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strconv"
-	"sync/atomic"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/ops"
@@ -31,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/kprobemetrics"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/reader/network"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -51,7 +49,6 @@ func init() {
 		name: "kprobe sensor",
 	}
 	sensors.RegisterProbeType("generic_kprobe", kprobe)
-	sensors.RegisterSpecHandlerAtInit(kprobe.name, kprobe)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
@@ -256,7 +253,7 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 	return progs, maps
 }
 
-func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sensors.Sensor, error) {
+func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec, policyID policyfilter.PolicyID) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var multiIDs, multiRetIDs []idtable.EntryID
@@ -282,6 +279,7 @@ func createGenericKprobeSensor(name string, kprobes []v1alpha1.KProbeSpec) (*sen
 		var argsBTFSet [api.MaxArgsSupported]bool
 
 		config := &api.EventConfig{}
+		config.PolicyID = uint32(policyID)
 
 		argRetprobe = nil // holds pointer to arg for return handler
 
@@ -1200,26 +1198,6 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKpr
 		}
 	}
 	return enterEv, ret
-}
-
-func (k *observerKprobeSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec, ok := raw.(*v1alpha1.TracingPolicySpec)
-	if !ok {
-		s, ok := reflect.Indirect(reflect.ValueOf(raw)).FieldByName("TracingPolicySpec").Interface().(v1alpha1.TracingPolicySpec)
-		if !ok {
-			return nil, nil
-		}
-		spec = &s
-	}
-	name := fmt.Sprintf("gkp-sensor-%d", atomic.AddUint64(&sensorCounter, 1))
-
-	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
-		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
-	}
-	if len(spec.KProbes) > 0 {
-		return createGenericKprobeSensor(name, spec.KProbes)
-	}
-	return nil, nil
 }
 
 func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {

@@ -113,6 +113,7 @@ github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cgroups
+github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/defaults

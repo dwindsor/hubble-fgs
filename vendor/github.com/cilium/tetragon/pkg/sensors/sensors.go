@@ -7,7 +7,9 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	// load rthooks for policy filter
 	_ "github.com/cilium/tetragon/pkg/policyfilter/rthooks"
@@ -83,6 +85,12 @@ func SensorBuilder(name string, p []*program.Program, m []*program.Map) *Sensor 
 	}
 }
 
+type policyHandler interface {
+	// PolicyHandler returns a Sensor for a given policy
+	PolicyHandler(policy tracingpolicy.TracingPolicy, filterID policyfilter.PolicyID) (*Sensor, error)
+}
+
+// NB: deprecated, please use policyHandler
 type specHandler interface {
 	SpecHandler(interface{}) (*Sensor, error)
 }
@@ -92,13 +100,16 @@ type probeLoader interface {
 }
 
 var (
-	// list of registered Tracing handlers, see registerTracingHandler()
+	// list of registered policy handlers, see RegisterPolicyHandlerAtInit()
+	registeredPolicyHandlers = map[string]policyHandler{}
+	// list of registered Tracing handlers, see RegisterSpecHandlerAtInit()
 	registeredSpecHandlers = map[string]specHandler{}
 	// list of registers loaders, see registerProbeType()
 	registeredProbeLoad = map[string]probeLoader{}
 )
 
 // RegisterSpecHandlerAtInit registers a handler for Tracing policy.
+// NB: This is deprecated, please use RegisterPolicyHandlerAtInit for new code.
 //
 // This function is meant to be called in an init().
 // This will register a CRD or config file handler so that the config file
@@ -108,6 +119,14 @@ func RegisterSpecHandlerAtInit(name string, s specHandler) {
 		panic(fmt.Sprintf("RegisterTracingSensor called, but %s is already registered", name))
 	}
 	registeredSpecHandlers[name] = s
+}
+
+// RegisterPolicyHandlerAtInit registers a handler for a tracing policy.
+func RegisterPolicyHandlerAtInit(name string, h policyHandler) {
+	if _, exists := registeredPolicyHandlers[name]; exists {
+		panic(fmt.Sprintf("RegisterPolicyHandlerAtInit called, but %s is already registered", name))
+	}
+	registeredPolicyHandlers[name] = h
 }
 
 // RegisterProbeType registers a handler for a probe type string
@@ -129,25 +148,11 @@ type LoadProbeArgs struct {
 	Version, Verbose          int
 }
 
-func GetSensorsFromParserPolicy(spec interface{}) ([]*Sensor, error) {
-	var sensors []*Sensor
-	for _, s := range registeredSpecHandlers {
-		sensor, err := s.SpecHandler(spec)
-		if err != nil {
-			return nil, err
-		}
-		if sensor == nil {
-			continue
-		}
-		sensors = append(sensors, sensor)
-	}
-	return sensors, nil
-}
-
-func GetMergedSensorFromParserPolicy(name string, policy interface{}) (*Sensor, error) {
-	sensors, err := GetSensorsFromParserPolicy(policy)
+func GetMergedSensorFromParserPolicy(tp tracingpolicy.TracingPolicy) (*Sensor, error) {
+	// NB: use a filter id of 0, so no filtering will happen
+	sensors, err := SensorsFromPolicy(tp, policyfilter.PolicyID(0))
 	if err != nil {
 		return nil, err
 	}
-	return SensorCombine(name, sensors...), nil
+	return SensorCombine(tp.TpName(), sensors...), nil
 }
