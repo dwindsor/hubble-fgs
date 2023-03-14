@@ -198,6 +198,9 @@ func hubbleFGSExecute() error {
 		go metrics.EnableMetrics(metricsServer)
 	}
 
+	// Probe runtime configuration and do not fail on errors
+	obs.UpdateRuntimeConf(option.Config.MapDir)
+
 	watcher, err := getWatcher(option.Config.EnableK8s)
 	if err != nil {
 		return fmt.Errorf("failed to get k8s API watcher: %w", err)
