@@ -169,6 +169,18 @@ func TestFile(t *testing.T) {
 				return ctx
 			}
 
+			// read the /etc/shadow inside the Pod
+			_, err = helpers.ExecInPodCombinedOutput(ctx,
+				client,
+				namespace,
+				pod.Name,
+				"ubuntu",
+				strings.Fields("cat /etc/shadow"))
+			if !assert.NoError(t, err, "failed to run cat") {
+				klog.Errorf("cat failed with error: %w", err)
+				return ctx
+			}
+
 			return ctx
 		}).
 		Feature()
@@ -202,6 +214,11 @@ func FileChecker() ec.MultiEventChecker {
 		WithArguments(sm.Contains("/etc/passwd")).
 		WithPod(podChecker)
 
+	catPodCheckerEtc := ec.NewProcessChecker().
+		WithBinary(sm.Contains("cat")).
+		WithArguments(sm.Contains("/etc/shadow")).
+		WithPod(podChecker)
+
 	shellChecker := ec.NewProcessChecker().
 		WithBinary(sm.Contains("nsenter"))
 
@@ -214,7 +231,7 @@ func FileChecker() ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
-					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile"))),
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
 			WithHook(sm.Full("rw_verify_area")),
@@ -226,7 +243,18 @@ func FileChecker() ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
-					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd"))),
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
+				),
+			).
+			WithHook(sm.Full("rw_verify_area")),
+		ec.NewProcessExecChecker("catPodEtcExec").
+			WithProcess(catPodCheckerEtc),
+		ec.NewProcessFileChecker("catPodEtcRead").
+			WithProcess(catPodCheckerEtc).
+			WithAction(tetragon.FileAction_FILE_READ).
+			WithArgs(
+				ec.NewFileArgumentChecker().WithGenericArg(
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))),
 				),
 			).
 			WithHook(sm.Full("rw_verify_area")),

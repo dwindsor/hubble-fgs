@@ -12,4 +12,10 @@ spec:
     - "/etc/demo1"
     - "/etc/demo2"
     - "/etc/locale.alias"
-    host_files: true
+    onlyPodFiles: false
+    podSelector:
+      matchExpressions:
+      - key: "k8s:io.kubernetes.pod.namespace"
+        operator: "In"
+        values:
+        - "file"
