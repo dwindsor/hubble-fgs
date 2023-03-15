@@ -165,6 +165,7 @@ github.com/cilium/tetragon/pkg/oldhubble/parser/getters
 github.com/cilium/tetragon/pkg/oldhubble/servicecache
 github.com/cilium/tetragon/pkg/oldhubbleapi/v1/flow
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/podhooks
 github.com/cilium/tetragon/pkg/policyfilter
 github.com/cilium/tetragon/pkg/policyfilter/rthooks
 github.com/cilium/tetragon/pkg/process
