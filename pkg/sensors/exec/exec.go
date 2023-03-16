@@ -237,10 +237,6 @@ func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return err
 }
 
-func (e *execSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
-}
-
 func init() {
 	AddExec()
 }
