@@ -37,7 +37,7 @@ require (
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.2
 	k8s.io/client-go v0.26.2
-	k8s.io/code-generator v0.26.2
+	k8s.io/code-generator v0.26.3
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
 	sigs.k8s.io/controller-tools v0.6.2
