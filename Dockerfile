@@ -28,7 +28,6 @@ RUN apt-get update
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
     else apt-get install -y libelf-dev zlib1g-dev; fi
-RUN apt-get update && apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH
 RUN ldconfig /usr/local/
 COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
