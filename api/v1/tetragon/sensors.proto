@@ -133,4 +133,6 @@ service FineGuidanceSensors {
     rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
 
     rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
+
+    rpc RuntimeHook(RuntimeHookRequest) returns (RuntimeHookResponse) {}
 }

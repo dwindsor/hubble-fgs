@@ -1247,7 +1247,7 @@ var file_tetragon_sensors_proto_rawDesc = []byte{
 	0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x2e,
 	0x0a, 0x12, 0x47, 0x65, 0x74, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70,
 	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x32, 0x99,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x32, 0xe7,
 	0x08, 0x0a, 0x13, 0x46, 0x69, 0x6e, 0x65, 0x47, 0x75, 0x69, 0x64, 0x61, 0x6e, 0x63, 0x65, 0x53,
 	0x65, 0x6e, 0x73, 0x6f, 0x72, 0x73, 0x12, 0x48, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x45, 0x76, 0x65,
 	0x6e, 0x74, 0x73, 0x12, 0x1a, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47,
@@ -1313,8 +1313,12 @@ var file_tetragon_sensors_proto_rawDesc = []byte{
 	0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x56, 0x65, 0x72, 0x73,
 	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x74, 0x65, 0x74,
 	0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4c, 0x0a, 0x0b, 0x52, 0x75,
+	0x6e, 0x74, 0x69, 0x6d, 0x65, 0x48, 0x6f, 0x6f, 0x6b, 0x12, 0x1c, 0x2e, 0x74, 0x65, 0x74, 0x72,
+	0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x52, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x48, 0x6f, 0x6f, 0x6b,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67,
+	0x6f, 0x6e, 0x2e, 0x52, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x48, 0x6f, 0x6f, 0x6b, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1358,8 +1362,10 @@ var file_tetragon_sensors_proto_goTypes = []interface{}{
 	(*StackTraceNode)(nil),              // 24: tetragon.StackTraceNode
 	(*GetEventsRequest)(nil),            // 25: tetragon.GetEventsRequest
 	(*GetHealthStatusRequest)(nil),      // 26: tetragon.GetHealthStatusRequest
-	(*GetEventsResponse)(nil),           // 27: tetragon.GetEventsResponse
-	(*GetHealthStatusResponse)(nil),     // 28: tetragon.GetHealthStatusResponse
+	(*RuntimeHookRequest)(nil),          // 27: tetragon.RuntimeHookRequest
+	(*GetEventsResponse)(nil),           // 28: tetragon.GetEventsResponse
+	(*GetHealthStatusResponse)(nil),     // 29: tetragon.GetHealthStatusResponse
+	(*RuntimeHookResponse)(nil),         // 30: tetragon.RuntimeHookResponse
 }
 var file_tetragon_sensors_proto_depIdxs = []int32{
 	1,  // 0: tetragon.ListSensorsResponse.sensors:type_name -> tetragon.SensorStatus
@@ -1377,20 +1383,22 @@ var file_tetragon_sensors_proto_depIdxs = []int32{
 	17, // 12: tetragon.FineGuidanceSensors.GetSensorConfig:input_type -> tetragon.GetSensorConfigRequest
 	20, // 13: tetragon.FineGuidanceSensors.GetStackTraceTree:input_type -> tetragon.GetStackTraceTreeRequest
 	22, // 14: tetragon.FineGuidanceSensors.GetVersion:input_type -> tetragon.GetVersionRequest
-	27, // 15: tetragon.FineGuidanceSensors.GetEvents:output_type -> tetragon.GetEventsResponse
-	28, // 16: tetragon.FineGuidanceSensors.GetHealth:output_type -> tetragon.GetHealthStatusResponse
-	7,  // 17: tetragon.FineGuidanceSensors.AddTracingPolicy:output_type -> tetragon.AddTracingPolicyResponse
-	11, // 18: tetragon.FineGuidanceSensors.RemoveSensor:output_type -> tetragon.RemoveSensorResponse
-	5,  // 19: tetragon.FineGuidanceSensors.ListTracingPolicies:output_type -> tetragon.ListTracingPoliciesResponse
-	2,  // 20: tetragon.FineGuidanceSensors.ListSensors:output_type -> tetragon.ListSensorsResponse
-	13, // 21: tetragon.FineGuidanceSensors.EnableSensor:output_type -> tetragon.EnableSensorResponse
-	19, // 22: tetragon.FineGuidanceSensors.DisableSensor:output_type -> tetragon.DisableSensorResponse
-	16, // 23: tetragon.FineGuidanceSensors.SetSensorConfig:output_type -> tetragon.SetSensorConfigResponse
-	18, // 24: tetragon.FineGuidanceSensors.GetSensorConfig:output_type -> tetragon.GetSensorConfigResponse
-	21, // 25: tetragon.FineGuidanceSensors.GetStackTraceTree:output_type -> tetragon.GetStackTraceTreeResponse
-	23, // 26: tetragon.FineGuidanceSensors.GetVersion:output_type -> tetragon.GetVersionResponse
-	15, // [15:27] is the sub-list for method output_type
-	3,  // [3:15] is the sub-list for method input_type
+	27, // 15: tetragon.FineGuidanceSensors.RuntimeHook:input_type -> tetragon.RuntimeHookRequest
+	28, // 16: tetragon.FineGuidanceSensors.GetEvents:output_type -> tetragon.GetEventsResponse
+	29, // 17: tetragon.FineGuidanceSensors.GetHealth:output_type -> tetragon.GetHealthStatusResponse
+	7,  // 18: tetragon.FineGuidanceSensors.AddTracingPolicy:output_type -> tetragon.AddTracingPolicyResponse
+	11, // 19: tetragon.FineGuidanceSensors.RemoveSensor:output_type -> tetragon.RemoveSensorResponse
+	5,  // 20: tetragon.FineGuidanceSensors.ListTracingPolicies:output_type -> tetragon.ListTracingPoliciesResponse
+	2,  // 21: tetragon.FineGuidanceSensors.ListSensors:output_type -> tetragon.ListSensorsResponse
+	13, // 22: tetragon.FineGuidanceSensors.EnableSensor:output_type -> tetragon.EnableSensorResponse
+	19, // 23: tetragon.FineGuidanceSensors.DisableSensor:output_type -> tetragon.DisableSensorResponse
+	16, // 24: tetragon.FineGuidanceSensors.SetSensorConfig:output_type -> tetragon.SetSensorConfigResponse
+	18, // 25: tetragon.FineGuidanceSensors.GetSensorConfig:output_type -> tetragon.GetSensorConfigResponse
+	21, // 26: tetragon.FineGuidanceSensors.GetStackTraceTree:output_type -> tetragon.GetStackTraceTreeResponse
+	23, // 27: tetragon.FineGuidanceSensors.GetVersion:output_type -> tetragon.GetVersionResponse
+	30, // 28: tetragon.FineGuidanceSensors.RuntimeHook:output_type -> tetragon.RuntimeHookResponse
+	16, // [16:29] is the sub-list for method output_type
+	3,  // [3:16] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
