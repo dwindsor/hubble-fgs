@@ -140,4 +140,8 @@ struct vfs_rename_info {
 	__u32 selector_match;
 };
 
+struct file_config_map_value {
+	__u32 has_security_path_rename;
+};
+
 #endif

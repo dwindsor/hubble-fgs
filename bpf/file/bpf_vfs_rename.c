@@ -17,11 +17,27 @@ rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
 }
 
 static inline __attribute__((always_inline)) void
-resolve_missed_paths(struct vfs_rename_info *val)
+resolve_missed_paths(struct vfs_rename_info *val, struct file_config_map_value *conf)
 {
 	const struct path *res_path = 0;
 	int buflen = 0, error = 0;
 	char *buf;
+
+	if (!conf->has_security_path_rename) {
+		struct msg_file_split_path *path = 0;
+
+		if (val->need_old)
+			path = &val->msg.src.path;
+		else if (val->need_new)
+			path = &val->msg.dst.path;
+		else
+			return;
+
+		path->dir[0] = 0x00;
+		path->dir_size = 0xffffffff; // UINT32_MAX
+		path->flags = 0;
+		return;
+	}
 
 	// if none is 1 then res_path == 0 and we don't need to resolve any paths
 	// there will be no case where both (need_old == 1) && (need_new == 1)
@@ -58,12 +74,34 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	struct inode *d_inode;
 	bool walker = 0;
 	struct execve_map_value *enter;
-	__u32 ppid;
+	struct file_config_map_value *conf;
+	__u32 ppid, zero = 0;
 	umode_t i_mode;
 
-	v = map_lookup_elem(&rename_retprobe_map, &k);
-	if (!v) // If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
 		return 0;
+
+	v = map_lookup_elem(&rename_retprobe_map, &k);
+	// If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
+	// There is a case where we didn't manage to load security_path_rename due to missing CONFIG_SECURITY_PATH. In that case we can continue.
+	if (!v) {
+		if (conf->has_security_path_rename) {
+			return 0;
+		} else {
+			// we are here due to missing security_path_rename hook, so generate our entry in rename_retprobe_map
+			v = map_lookup_elem(&vfs_rename_info_heap, &zero);
+			if (!v)
+				return 0;
+
+			v->old_dir = v->new_dir = 0;
+			v->need_old = v->need_new = 0;
+			map_update_elem(&rename_retprobe_map, &k, v, 0);
+			v = map_lookup_elem(&rename_retprobe_map, &k);
+			if (!v) // this should never happen
+				return 0;
+		}
+	}
 
 	v->msg.common.op = ISO_MSG_OP_FILE_RENAME;
 	v->msg.common.flags = 0;
@@ -255,12 +293,12 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	get_mnt_ns(&v->msg.mnt_ns);
 
 	// resolve any paths (if needed) for items outside of watched path
-	resolve_missed_paths(v);
+	resolve_missed_paths(v, conf);
 
 	v->selector_match = 1;
 	if (!check_match_binaries())
 		v->selector_match = 0;
-	if (!check_match_operations(action_write))
+	if (!check_match_operations(action_rename))
 		v->selector_match = 0;
 
 	return 0;

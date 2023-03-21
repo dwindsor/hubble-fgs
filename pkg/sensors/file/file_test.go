@@ -90,14 +90,15 @@ func TestStructAlignments(t *testing.T) {
 	path := filepath.Join(runner.Conf().TetragonLib, "bpf_alignchecker.o")
 	// Validate alignments of C and Go equivalent structs
 	toCheck := map[string][]reflect.Type{
-		"hash_map_file_key":   {reflect.TypeOf(fileapi.HashMapFileKey{})},
-		"hash_map_file_val":   {reflect.TypeOf(fileapi.HashMapFileVal{})},
-		"msg_file_path":       {reflect.TypeOf(fileapi.MsgFilePath{})},
-		"msg_fs_info":         {reflect.TypeOf(fileapi.MsgFsInfo{})},
-		"msg_file_ops":        {reflect.TypeOf(fileapi.MsgFileEvent{})},
-		"msg_file_split_path": {reflect.TypeOf(fileapi.MsgFileSplitPath{})},
-		"msg_rename_elem":     {reflect.TypeOf(fileapi.MsgRenameElem{})},
-		"msg_file_rename_ops": {reflect.TypeOf(fileapi.MsgFileRenameEvent{})},
+		"hash_map_file_key":     {reflect.TypeOf(fileapi.HashMapFileKey{})},
+		"hash_map_file_val":     {reflect.TypeOf(fileapi.HashMapFileVal{})},
+		"msg_file_path":         {reflect.TypeOf(fileapi.MsgFilePath{})},
+		"msg_fs_info":           {reflect.TypeOf(fileapi.MsgFsInfo{})},
+		"msg_file_ops":          {reflect.TypeOf(fileapi.MsgFileEvent{})},
+		"msg_file_split_path":   {reflect.TypeOf(fileapi.MsgFileSplitPath{})},
+		"msg_rename_elem":       {reflect.TypeOf(fileapi.MsgRenameElem{})},
+		"msg_file_rename_ops":   {reflect.TypeOf(fileapi.MsgFileRenameEvent{})},
+		"file_config_map_value": {reflect.TypeOf(fileapi.FileConfigMapValue{})},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

@@ -87,7 +87,6 @@ const (
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
-var mapLoadInit sync.Once
 var loadProbeInit sync.Once
 
 type FimFunc struct {
@@ -153,6 +152,7 @@ var (
 		"hash_map_dir_alloc",
 		"file_names_map",
 		"file_ops_map",
+		"file_config_map",
 	}
 )
 
@@ -674,8 +674,11 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		filemetrics.FileTotalErrors().Inc()
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
+
 	srcDir := string(m.Src.Path.Dir[:])
-	if uint32(len(srcDir)) > m.Src.Path.DirSize {
+	if m.Src.Path.DirSize == 0xffffffff { // due to missing security_path_rename
+		srcDir = "<UNRESOLVED>"
+	} else if uint32(len(srcDir)) > m.Src.Path.DirSize {
 		srcDir = srcDir[:m.Src.Path.DirSize]
 	}
 
@@ -690,7 +693,9 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	dstDir := string(m.Dst.Path.Dir[:])
-	if uint32(len(dstDir)) > m.Dst.Path.DirSize {
+	if m.Dst.Path.DirSize == 0xffffffff { // due to missing security_path_rename
+		srcDir = "<UNRESOLVED>"
+	} else if uint32(len(dstDir)) > m.Dst.Path.DirSize {
 		dstDir = dstDir[:m.Dst.Path.DirSize]
 	}
 
@@ -831,7 +836,7 @@ type FimLoaderData struct {
 	s *fm.KernelSelectorState
 }
 
-func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
@@ -983,25 +988,29 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 		})
 		progs = append(progs, load)
 
-		// apply MapLoad only once
-		mapLoadInit.Do(func() {
-			load.MapLoad = []*program.MapLoad{
-				{
-					Index: 0,
-					Name:  "file_names_map",
-					Load: func(m *ebpf.Map, index uint32) error {
-						return fm.GenerateFileNamesMap(m, sel)
-					},
+		load.MapLoad = []*program.MapLoad{
+			{
+				Index: 0,
+				Name:  "file_names_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					return fm.GenerateFileNamesMap(m, sel)
 				},
-				{
-					Index: 0,
-					Name:  "file_ops_map",
-					Load: func(m *ebpf.Map, index uint32) error {
-						return fm.GenerateFileOpsMap(m, sel)
-					},
+			},
+			{
+				Index: 0,
+				Name:  "file_ops_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					return fm.GenerateFileOpsMap(m, sel)
 				},
-			}
-		})
+			},
+			{
+				Index: 0,
+				Name:  "file_config_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					return m.Update(uint32(0), config, ebpf.UpdateAny)
+				},
+			},
+		}
 
 		for _, m := range SharedMaps {
 			maps = append(
@@ -1029,7 +1038,7 @@ func fixProgName(p string) string {
 	return p
 }
 
-func findHooks() ([]FimProg, error) {
+func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
 	spec := ossBTF.GetCachedBTF()
 	if spec == nil {
 		return nil, fmt.Errorf("GetCachedBTF returns nil")
@@ -1040,7 +1049,12 @@ func findHooks() ([]FimProg, error) {
 		kretprobe := (h.tp == "kretprobe")
 		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
 		if err != nil {
-			return nil, fmt.Errorf("GetFuncProto failed: %w", err)
+			if h.name == "security_path_rename" {
+				logger.GetLogger().Warnf("failed to find %s/security_path_rename hook, will continue without it", h.tp)
+				config.HasSecurityPathRename = 0
+				continue
+			}
+			return nil, fmt.Errorf("fgsBTF.GetFuncProto failed: %w", err)
 		}
 
 		progFound := false
@@ -1092,13 +1106,16 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 			}
 		}
 
-		progs, err := findHooks()
+		config := fileapi.FileConfigMapValue{
+			HasSecurityPathRename: 1,
+		}
+		progs, err := findHooks(&config)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
 			return nil, nil
 		}
 		tcID := atomic.AddUint32(&sensorCounter, 1)
-		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, selState)
+		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, config, selState)
 	}
 	return nil, nil
 }

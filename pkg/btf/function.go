@@ -79,7 +79,6 @@ func getType(myType interface{}, fnName string, kretprobe bool) string {
 func GetFuncProto(spec *btf.Spec, fnName string, kretprobe bool) (string, error) {
 	var fnType *btf.Func
 	if err := spec.TypeByName(fnName, &fnType); err != nil {
-		logger.GetLogger().Errorf("LoadKernelSpec %w", err)
 		return "", err
 	}
 	fnProto := fnType.Type.(*btf.FuncProto)

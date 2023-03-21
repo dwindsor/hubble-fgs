@@ -106,3 +106,7 @@ type MsgFileRenameEvent struct {
 	TcId       uint32                  `align:"tc_id"`
 	Pad        uint32                  `align:"pad"`
 }
+
+type FileConfigMapValue struct {
+	HasSecurityPathRename uint32 `align:"has_security_path_rename"`
+}
