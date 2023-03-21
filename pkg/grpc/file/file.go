@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -225,9 +226,18 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Gid, groupStr)
 	}
 
+	filemetrics.FileTotalEvents().Inc()
+	act, ok := tetragon.FileAction_name[int32(tetragonEvent.Action)]
+	if ok {
+		filemetrics.FileTotalActionEvents().WithLabelValues(act).Inc()
+	} else {
+		filemetrics.FileTotalErrors().Inc()
+	}
+
 	ec := eventcache.Get()
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		filemetrics.FileTotalCacheInEvents().Inc()
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -278,6 +288,7 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 }
 
 func (msg *MsgFileEventUnix) Notify() bool {
+	filemetrics.FileTotalCacheOutEvents().Inc()
 	return true
 }
 
@@ -436,10 +447,19 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		Hook:    fileHookMap[event.Hook],
 	}
 
+	filemetrics.FileTotalEvents().Inc()
+	act, ok := tetragon.FileAction_name[int32(tetragonEvent.Action)]
+	if ok {
+		filemetrics.FileTotalActionEvents().WithLabelValues(act).Inc()
+	} else {
+		filemetrics.FileTotalErrors().Inc()
+	}
+
 	ec := eventcache.Get()
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		filemetrics.FileTotalCacheInEvents().Inc()
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -464,6 +484,7 @@ func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev n
 }
 
 func (msg *MsgFileRenameEventUnix) Notify() bool {
+	filemetrics.FileTotalCacheOutEvents().Inc()
 	return true
 }
 

@@ -44,6 +44,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 
@@ -599,6 +600,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
+		filemetrics.FileTotalErrors().Inc()
 		return nil, fmt.Errorf("Failed to read file operation: %w", err)
 	}
 
@@ -644,6 +646,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileRenameEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
+		filemetrics.FileTotalErrors().Inc()
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
 	srcDir := string(m.Src.Path.Dir[:])
@@ -691,6 +694,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 		s, err := fileMonitoringTable.getFIM(m.TcId)
 		if err != nil {
+			filemetrics.FileTotalErrors().Inc()
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
 		}
 
@@ -704,6 +708,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		}
 
 		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid); err != nil {
+			filemetrics.FileTotalErrors().Inc()
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
 	}
