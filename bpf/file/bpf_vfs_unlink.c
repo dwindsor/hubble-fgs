@@ -2,8 +2,8 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-__attribute__((section(("kprobe/security_path_unlink")), used)) int
-BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
+static inline __attribute__((always_inline)) int
+kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct dentry *parent_dentry;
 	struct inode *inode;
@@ -25,11 +25,13 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dir->dentry));
+	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
+
+	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return 0;
 
-	get_parent_ino_fs(msg, parent_dentry);
+	get_fs_info(&(msg->parent_fs), dir, parent_dentry);
 
 	// If inode->i_nlink == 1 (i.e. last link) we should also remove that
 	// from hash_map_file_alloc.
@@ -69,7 +71,7 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	msg->uid = msg->gid = 0;
 
 	msg->action = action_delete;
-	msg->hook = hook_security_path_unlink;
+	msg->hook = hook_vfs_unlink;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 
@@ -86,4 +88,16 @@ ignore_unlink:
 	}
 
 	return 0;
+}
+
+__attribute__((section(("kprobe/vfs_unlink/512")), used)) int
+BPF_KPROBE(vfs_unlink_v512, struct user_namespace *mnt_userns, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+{
+	return kprobe_vfs_unlink(ctx, dir, dentry);
+}
+
+__attribute__((section(("kprobe/vfs_unlink/419")), used)) int
+BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+{
+	return kprobe_vfs_unlink(ctx, dir, dentry);
 }

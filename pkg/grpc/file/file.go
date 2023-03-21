@@ -41,7 +41,7 @@ var (
 		3:  "filemap_fault",
 		4:  "filemap_map_pages",
 		5:  "filemap_page_mkwrite",
-		6:  "security_path_unlink",
+		6:  "vfs_unlink",
 		7:  "vfs_rmdir",
 		8:  "vfs_mkdir",
 		9:  "vfs_rename",
