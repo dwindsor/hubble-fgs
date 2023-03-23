@@ -26,6 +26,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220608195807-1a118fe229fc
+	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	github.com/yalue/native_endian v1.0.2
 	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.10.0
@@ -174,7 +175,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/vladimirvivien/gexe v0.1.1 // indirect
 	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	go.opencensus.io v0.24.0 // indirect

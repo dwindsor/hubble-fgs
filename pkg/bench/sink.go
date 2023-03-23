@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/vishvananda/netns"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -38,7 +39,7 @@ type SinkStats struct {
 type SinkName string
 
 type Sink interface {
-	Start(ctx context.Context) (int, chan SinkStats, error)
+	Start(ctx context.Context, ns bool) (int, chan SinkStats, error)
 }
 
 var (
@@ -84,7 +85,7 @@ type tcpOrTLSSink struct {
 	fuzz bool
 }
 
-func (sink tcpOrTLSSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+func (sink tcpOrTLSSink) Start(ctx context.Context, _ bool) (int, chan SinkStats, error) {
 	listener, port, err := tcpListen(ctx)
 	if err != nil {
 		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
@@ -151,7 +152,7 @@ func tcpListen(ctx context.Context) (net.Listener, int, error) {
 
 type goHTTPSink struct{}
 
-func (sink goHTTPSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+func (sink goHTTPSink) Start(ctx context.Context, _ bool) (int, chan SinkStats, error) {
 	l, port, err := tcpListen(ctx)
 	if err != nil {
 		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
@@ -181,7 +182,7 @@ func (sink goHTTPSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 
 type goHTTP2Sink struct{}
 
-func (sink goHTTP2Sink) Start(ctx context.Context) (int, chan SinkStats, error) {
+func (sink goHTTP2Sink) Start(ctx context.Context, _ bool) (int, chan SinkStats, error) {
 	l, port, err := tcpListen(ctx)
 	if err != nil {
 		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
@@ -215,7 +216,7 @@ func (sink goHTTP2Sink) Start(ctx context.Context) (int, chan SinkStats, error) 
 
 type nginxSink struct{}
 
-func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+func (sink nginxSink) Start(ctx context.Context, _ bool) (int, chan SinkStats, error) {
 	cmd := exec.Command(
 		"docker", "run", "--rm", "--network=host",
 		"--name=fgs-bench-nginx",
@@ -246,7 +247,7 @@ func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 	}()
 
 	// Wait for nginx to be ready.
-	if !ProbeTCPPort(80) {
+	if !ProbeTCPPort(80, nil) {
 		exec.Command("docker", "stop", "fgs-bench-nginx").Run()
 		return -1, nil, fmt.Errorf("nginx did not start up on time")
 	}
@@ -260,11 +261,14 @@ func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 
 type netperfSink struct{}
 
-func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+func (sink netperfSink) Start(ctx context.Context, ns bool) (int, chan SinkStats, error) {
+	var nsDocker *netns.NsHandle
+
 	port := findFreePort()
 
 	cmd := exec.Command(
-		"docker", "run", "--user=1", "--rm", "--network=host",
+		"docker", "run", "--rm", "--network=none",
+		"--detach", "--cap-add=NET_ADMIN",
 		"--name=fgs-bench-netserver",
 		"--entrypoint=/usr/bin/time",
 		"joamaki/netperf-docker",
@@ -272,20 +276,28 @@ func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) 
 		"-D", "-N", "-f", "-4", fmt.Sprintf("-p %d", port),
 	)
 
-	log.Printf("Spawning netserver on port %d\n", port)
-
 	statsCh := make(chan SinkStats, 1)
+	readyToProbe := make(chan bool, 1)
 	go func() {
 		stats := SinkStats{Forked: true}
 		var b bytes.Buffer
-		cmd.Stdout = io.Discard
-		cmd.Stderr = &b
-		cmd.Run()
 		var err error
+
+		res, _ := cmd.CombinedOutput()
 		stats.CPUUsage, err = CPUUsageFromTime(b.String(), func(line string) {})
 		if err != nil {
 			log.Printf("netserver CPU usage parsing failed: %s\n", err)
 		}
+		nsd, err := netns.GetFromDocker(string(res[:12]))
+		if err != nil {
+			log.Printf("netserver network namespace unknown: %s\n", err)
+			return
+		}
+		nsDocker = &nsd
+		if ns {
+			createInterface(nsDocker, receiverName, receiverIP)
+		}
+		readyToProbe <- true
 		statsCh <- stats
 	}()
 
@@ -295,8 +307,9 @@ func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) 
 		exec.Command("docker", "stop", "fgs-bench-netserver").Run()
 	}()
 
+	<-readyToProbe
 	// Wait for it to be ready.
-	if !ProbeTCPPort(port) {
+	if !ProbeTCPPort(port, nsDocker) {
 		return -1, nil, fmt.Errorf("netserver did not start up on time")
 	}
 

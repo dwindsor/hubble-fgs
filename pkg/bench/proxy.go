@@ -145,7 +145,7 @@ func (ep envoyProxy) Start(ctx context.Context, sinkPort int) (int, chan ProxySt
 	}
 	containerID := strings.TrimSpace(string(out))
 
-	if !ProbeTCPPort(envoyPort) {
+	if !ProbeTCPPort(envoyPort, nil) {
 		exec.Command("docker", "stop", "fgs-bench-envoy").Run()
 		f.Close()
 		return -1, nil, fmt.Errorf("envoy did not start up on time")

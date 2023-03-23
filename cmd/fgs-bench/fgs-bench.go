@@ -32,6 +32,7 @@ var (
 	requestSize *int
 	parsers     *string
 	printEvents *bool
+	netns       *bool
 
 	source *string
 	proxy  *string
@@ -53,6 +54,8 @@ func init() {
 	source = flag.String("source", "none", "source to use, one of: "+strings.Join(bench.SupportedSources(), ", "))
 	proxy = flag.String("proxy", "none", "proxy to use, one of: "+strings.Join(bench.SupportedProxies(), ", "))
 	sink = flag.String("sink", "tcp", "sink to use, one of: "+strings.Join(bench.SupportedSinks(), ", "))
+
+	netns = flag.Bool("netns", false, "run source and sink in different network namespaces")
 }
 
 func main() {
@@ -101,6 +104,7 @@ func main() {
 		FgsEnableHistogram: hist,
 		FgsDebug:           *debug,
 		FgsJSONEncode:      *jsonEncode || *printEvents,
+		Netns:              *netns,
 		PrintEvents:        *printEvents,
 		Baseline:           *baseline,
 		Source:             bench.SourceNameOrPanic(*source),

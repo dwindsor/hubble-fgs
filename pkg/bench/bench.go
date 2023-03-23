@@ -78,6 +78,7 @@ type Arguments struct {
 	FgsDebug           bool
 	FgsJSONEncode      bool
 	PrintEvents        bool
+	Netns              bool
 
 	SourceArgs SourceArgs
 	Source     SourceName
@@ -296,9 +297,22 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
 
+	if args.Netns {
+		if err := CreateVeth(); err != nil {
+			summary.Error = fmt.Sprintf("CreateInterface failed: %s", err)
+			cancel()
+			return
+		}
+		args.SourceArgs.NetNs = true
+		args.SourceArgs.DestinationIP = "15.0.0.2"
+	} else {
+		args.SourceArgs.NetNs = false
+		args.SourceArgs.DestinationIP = "127.0.0.1"
+	}
+
 	// Start the sink.
-	log.Printf("Starting sink '%s'...\n", args.Sink)
-	sinkPort, sinkStats, err := sinks[args.Sink].Start(ctx)
+	log.Printf("Starting sink %t '%s'...\n", args.Netns, args.Sink)
+	sinkPort, sinkStats, err := sinks[args.Sink].Start(ctx, args.Netns)
 	if err != nil {
 		summary.Error = fmt.Sprintf("Sink %s failed: %s", args.Sink, err)
 		cancel()

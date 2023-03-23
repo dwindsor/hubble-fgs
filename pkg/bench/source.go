@@ -30,14 +30,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vishvananda/netns"
 	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 )
 
 type SourceArgs struct {
-	Duration   time.Duration // The test duration
-	RatePerSec float64       // The number of steps per second to aim for
-	ReqSize    int           // The size of a request, if applicable to the source.
+	Duration      time.Duration // The test duration
+	RatePerSec    float64       // The number of steps per second to aim for
+	ReqSize       int           // The size of a request, if applicable to the source.
+	NetNs         bool          // Network Namespace to run test
+	DestinationIP string
 }
 
 func (args *SourceArgs) String() string {
@@ -496,38 +499,62 @@ type netperfSource struct {
 }
 
 func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+	var res []byte
+
 	if args.RatePerSec > 0.0 {
 		log.Printf("Netperf does not support fixed rate, ignoring requested rate.\n")
 	}
 
-	netperfArgs := []string{
-		"-H127.0.0.1",
+	port := findFreePort()
+
+	if args.NetNs {
+		cmdDocker := exec.Command(
+			"docker", "run", "--rm", "--network=none",
+			"--detach", "--cap-add=NET_ADMIN",
+			"--name=fgs-bench-netperf",
+			"--entrypoint=/usr/bin/time",
+			"joamaki/netperf-docker", // Custom build for the EAGAIN fix
+			"-p", "netserver",
+			"-D", "-N", "-f", "-4", fmt.Sprintf("-p %d", port),
+		)
+
+		res, _ = cmdDocker.CombinedOutput()
+
+		nsDocker, err := netns.GetFromDocker(string(res[:12]))
+		if err != nil {
+			return stats, fmt.Errorf("netserver network namespace unknown: %s", err)
+		}
+		createInterface(&nsDocker, senderName, senderIP)
+	} else {
+		cmdDocker := exec.Command(
+			"docker", "ps", "-aqf", "name=fgs-bench-netserver",
+		)
+		res, _ = cmdDocker.CombinedOutput()
+	}
+
+	cmdDockerKill := exec.Command(
+		"docker", "kill", string(res[:12]),
+	)
+	defer cmdDockerKill.CombinedOutput()
+
+	cmdNetperf := exec.Command(
+		"docker", "exec", string(res[:12]), "netperf",
+		fmt.Sprintf("-H%s", args.DestinationIP),
 		fmt.Sprintf("-p%d", sinkPort),
 		fmt.Sprintf("-l%d", args.Duration/time.Second),
 		"-P0", // No header
 		"-I 99,1",
 		"-c", "-C",
 		"-T 1,2",
-		"-t" + src.test,
+		"-t"+src.test,
 		"--",
 		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency,local_cpu_percent_user,local_cpu_percent_system,remote_cpu_percent_user,remote_cpu_percent_system",
-	}
-
-	cmdArgs := []string{
-		"run", "--rm", "--network=host",
-		"--name=fgs-bench-netperf",
-		"--entrypoint=/usr/bin/time",
-		"joamaki/netperf-docker", // Custom build for the EAGAIN fix
-		"-p", "netperf",
-	}
-
-	cmd := exec.Command("docker", append(cmdArgs, netperfArgs...)...)
+	)
 
 	// Read combined output as 'time' outputs to stderr.
-	out, err := cmd.CombinedOutput()
+	out, err := cmdNetperf.CombinedOutput()
 	if err != nil {
-		err = fmt.Errorf("starting netperf failed: %w, out: %s", err, out)
-		return
+		return stats, fmt.Errorf("starting netperf failed: %w, out: %s", err, out)
 	}
 
 	stats.CPUUsage, _ = CPUUsageFromTime(string(out),
@@ -554,7 +581,6 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 		})
 
 	stats.Forked = true
-
 	return
 }
 

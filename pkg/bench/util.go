@@ -15,10 +15,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/vishvananda/netns"
 )
 
 type CPUPercentages struct {
@@ -172,7 +175,20 @@ func (cw *CountingDiscardWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func ProbeTCPPort(port int) bool {
+func ProbeTCPPort(port int, ns *netns.NsHandle) bool {
+	if ns != nil {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+
+		origns, _ := netns.Get()
+		defer origns.Close()
+		defer netns.Set(origns)
+
+		if err := netns.Set(*ns); err != nil {
+			return false
+		}
+	}
+
 	probeTimeout := 30 * time.Second
 	attempts := 20
 	delay := probeTimeout / time.Duration(attempts)
