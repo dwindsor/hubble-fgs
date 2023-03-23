@@ -504,6 +504,7 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 		fmt.Sprintf("-p%d", sinkPort),
 		fmt.Sprintf("-l%d", args.Duration/time.Second),
 		"-P0", // No header
+		"-I 99,1",
 		"-t" + src.test,
 		"--",
 		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency",
