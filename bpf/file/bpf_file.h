@@ -663,9 +663,9 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	}
 	msg->path.flags |= file_val->location_flags;
 
-	msg->imode = 0;
-	msg->pad1 = msg->pad2 = 0;
-	msg->uid = msg->gid = 0;
+	msg->imode[0] = msg->imode[1] = 0;
+	msg->uid[0] = msg->uid[1] = 0;
+	msg->gid[0] = msg->gid[1] = 0;
 
 	msg->action = action;
 	msg->hook = hook_type;
@@ -819,10 +819,9 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	if (!check_match_operations(action_create))
 		return 0;
 
-	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));
-	msg->pad1 = msg->pad2 = 0;
-	probe_read(&(msg->uid), sizeof(msg->uid), _(&inode->i_uid));
-	probe_read(&(msg->gid), sizeof(msg->gid), _(&inode->i_gid));
+	probe_read(&(msg->imode[0]), sizeof(msg->imode[0]), _(&inode->i_mode));
+	probe_read(&(msg->uid[0]), sizeof(msg->uid[0]), _(&inode->i_uid));
+	probe_read(&(msg->gid[0]), sizeof(msg->gid[0]), _(&inode->i_gid));
 
 	msg->action = action_create;
 	msg->hook = hook;

@@ -162,6 +162,7 @@ enum FileAction {
     FILE_MKDIR = 6;
     FILE_RENAME = 7;
     FILE_READDIR = 8;
+    FILE_CHATTR = 9;
 }
 
 message FileSystem {
@@ -219,11 +220,29 @@ message ReadDirArg {
     tetragon.Namespace mnt_ns = 2;
 }
 
+message AttrChange {
+    string new = 1;
+    string old = 2;
+}
+
+message FileAttr {
+    AttrChange permissions = 1;
+    AttrChange uid = 2;
+    AttrChange gid = 3;
+}
+
+message AttrArg {
+    FileDetails file = 1;
+    FileAttr attr = 2;
+    tetragon.Namespace mnt_ns = 3;
+}
+
 message FileArgument {
     oneof arg {
         GenericFileArg generic_arg = 1;
         RenameFileArg rename_arg = 2;
         ReadDirArg readdir_arg = 3;
+        AttrArg attr_arg = 4;
     }
 }
 

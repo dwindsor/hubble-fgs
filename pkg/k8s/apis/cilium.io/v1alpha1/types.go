@@ -121,7 +121,7 @@ type OperationSelector struct {
 	// +kubebuilder:validation:Enum=In;NotIn
 	// Filter operation.
 	Operator string `json:"operator"`
-	// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR
+	// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR
 	// Value to compare the argument against.
 	Values []string `json:"values"`
 }

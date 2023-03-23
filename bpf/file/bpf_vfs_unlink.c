@@ -66,9 +66,9 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	}
 	msg->path.flags |= file_val->location_flags;
 
-	msg->imode = 0;
-	msg->pad1 = msg->pad2 = 0;
-	msg->uid = msg->gid = 0;
+	msg->imode[0] = msg->imode[1] = 0;
+	msg->uid[0] = msg->uid[1] = 0;
+	msg->gid[0] = msg->gid[1] = 0;
 
 	msg->action = action_delete;
 	msg->hook = hook_vfs_unlink;

@@ -18,6 +18,7 @@ enum { action_invalid = 0,
        action_mkdir = 6,
        action_rename = 7,
        action_readdir = 8,
+       action_chattr = 9,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -35,6 +36,7 @@ enum { hook_undef = 0,
        hook_vfs_open = 11,
        hook_iterate_dir = 12,
        hook_do_truncate = 13,
+       hook_chmod_common = 14,
 };
 
 struct retprobe_key {
@@ -78,11 +80,10 @@ struct msg_file_ops {
 	__u32 action;
 	__u32 hook;
 	__u64 ktime;
-	__u16 imode; // unsigned short
-	__u16 pad1;
-	__u32 pad2;
-	__u32 uid;
-	__u32 gid;
+	__u32 pad;
+	__u16 imode[2]; // index 0 is the old, index 1 is the new
+	__u32 uid[2];
+	__u32 gid[2];
 	__u64 ino;
 	struct msg_fs_info fs;
 	__u64 parent_ino;

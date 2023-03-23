@@ -49,6 +49,7 @@ var (
 		11: "vfs_open",
 		12: "iterate_dir",
 		13: "do_truncate",
+		14: "chmod_common",
 	}
 
 	renameFlagsString = map[uint32]string{
@@ -144,6 +145,7 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Number: event.ParentIno,
 			Fs:     createFileSystem(event.ParentFs),
 		},
+		Location: &tetragon.FileLocation{},
 	}
 	args := &tetragon.ReadDirArg{
 		File:  fileDetails,
@@ -151,6 +153,82 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_ReaddirArg{ReaddirArg: args}}
 
+}
+
+func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
+	fileDetails := &tetragon.FileDetails{
+		Filename: event.Path,
+		Inode: &tetragon.Inode{
+			Number: event.Ino,
+			Fs:     createFileSystem(event.Fs),
+		},
+		ParentInode: &tetragon.Inode{
+			Number: event.ParentIno,
+			Fs:     createFileSystem(event.ParentFs),
+		},
+		Location: &tetragon.FileLocation{},
+	}
+
+	var perm *tetragon.AttrChange
+	if event.Imode != event.NewImode {
+		new := fs.FileMode(event.NewImode) & fs.ModePerm
+		old := fs.FileMode(event.Imode) & fs.ModePerm
+		perm = &tetragon.AttrChange{
+			New: fmt.Sprintf("%v (%#o)", new, new),
+			Old: fmt.Sprintf("%v (%#o)", old, old),
+		}
+	}
+
+	var uid *tetragon.AttrChange
+	if event.Uid != event.NewUid {
+		uid = &tetragon.AttrChange{
+			New: fmt.Sprintf("%d", event.NewUid),
+			Old: fmt.Sprintf("%d", event.Uid),
+		}
+	}
+
+	var gid *tetragon.AttrChange
+	if event.Gid != event.NewGid {
+		gid = &tetragon.AttrChange{
+			New: fmt.Sprintf("%d", event.NewGid),
+			Old: fmt.Sprintf("%d", event.Gid),
+		}
+	}
+
+	attrs := &tetragon.FileAttr{
+		Permissions: perm,
+		Uid:         uid,
+		Gid:         gid,
+	}
+
+	args := &tetragon.AttrArg{
+		File:  fileDetails,
+		Attr:  attrs,
+		MntNs: createMntNs(event.MntNs),
+	}
+
+	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_AttrArg{AttrArg: args}}
+}
+
+func populateFileLocation(event *MsgFileEventUnix, tetragonProcess *tetragon.Process, fileLocation *tetragon.FileLocation) {
+	if event.ContainerID == "" {
+		fileLocation.Type = tetragon.FileScope_HOST_FILE
+	} else {
+		// We may truncate tetragonProcess.Docker in some places to fix
+		// some kernel buffers. event.ContainerID is user provided and
+		// can be the full container ID length. Thus we use HasPrefix
+		// to cover where they have different length.
+		if strings.HasPrefix(event.ContainerID, tetragonProcess.Docker) {
+			fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
+		} else {
+			fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
+			if option.Config.EnableK8s {
+				podInfo, _ := process.GetPodInfo(event.ContainerID, "", "", 0)
+				fileLocation.Pod = podInfo
+			}
+		}
+		fileLocation.ContainerId = event.ContainerID
+	}
 }
 
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
@@ -173,29 +251,16 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var args *tetragon.FileArgument
 	if action == tetragon.FileAction_FILE_READDIR {
 		args = createReadDirArgs(event)
+		fileLocation := args.GetReaddirArg().GetFile().GetLocation()
+		populateFileLocation(event, tetragonProcess, fileLocation)
+	} else if action == tetragon.FileAction_FILE_CHATTR {
+		args = createAttrArgs(event)
+		fileLocation := args.GetAttrArg().GetFile().GetLocation()
+		populateFileLocation(event, tetragonProcess, fileLocation)
 	} else {
 		args = createGenericArgs(event)
-
-		// setup file location
 		fileLocation := args.GetGenericArg().GetFile().GetLocation()
-		if event.ContainerID == "" {
-			fileLocation.Type = tetragon.FileScope_HOST_FILE
-		} else {
-			// We may truncate tetragonProcess.Docker in some places to fix
-			// some kernel buffers. event.ContainerID is user provided and
-			// can be the full container ID length. Thus we use HasPrefix
-			// to cover where they have different length.
-			if strings.HasPrefix(event.ContainerID, tetragonProcess.Docker) {
-				fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
-			} else {
-				fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
-				if option.Config.EnableK8s {
-					podInfo, _ := process.GetPodInfo(event.ContainerID, "", "", 0)
-					fileLocation.Pod = podInfo
-				}
-			}
-			fileLocation.ContainerId = event.ContainerID
-		}
+		populateFileLocation(event, tetragonProcess, fileLocation)
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
@@ -266,8 +331,11 @@ type MsgFileEventUnix struct {
 	Hook        uint32
 	Timestamp   uint64
 	Imode       uint32
+	NewImode    uint32
 	Uid         uint32
+	NewUid      uint32
 	Gid         uint32
+	NewGid      uint32
 	Ino         uint64
 	Fs          MsgFsInfoUnix
 	ParentIno   uint64

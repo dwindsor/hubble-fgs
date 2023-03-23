@@ -8084,11 +8084,239 @@ func (checker *ReadDirArgChecker) FromReadDirArg(event *tetragon.ReadDirArg) *Re
 	return checker
 }
 
+// AttrChangeChecker implements a checker struct to check a AttrChange field
+type AttrChangeChecker struct {
+	New *stringmatcher.StringMatcher `json:"new,omitempty"`
+	Old *stringmatcher.StringMatcher `json:"old,omitempty"`
+}
+
+// NewAttrChangeChecker creates a new AttrChangeChecker
+func NewAttrChangeChecker() *AttrChangeChecker {
+	return &AttrChangeChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *AttrChangeChecker) GetCheckerType() string {
+	return "AttrChangeChecker"
+}
+
+// Check checks a AttrChange field
+func (checker *AttrChangeChecker) Check(event *tetragon.AttrChange) error {
+	if event == nil {
+		return fmt.Errorf("%s: AttrChange field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.New != nil {
+			if err := checker.New.Match(event.New); err != nil {
+				return fmt.Errorf("New check failed: %w", err)
+			}
+		}
+		if checker.Old != nil {
+			if err := checker.Old.Match(event.Old); err != nil {
+				return fmt.Errorf("Old check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithNew adds a New check to the AttrChangeChecker
+func (checker *AttrChangeChecker) WithNew(check *stringmatcher.StringMatcher) *AttrChangeChecker {
+	checker.New = check
+	return checker
+}
+
+// WithOld adds a Old check to the AttrChangeChecker
+func (checker *AttrChangeChecker) WithOld(check *stringmatcher.StringMatcher) *AttrChangeChecker {
+	checker.Old = check
+	return checker
+}
+
+//FromAttrChange populates the AttrChangeChecker using data from a AttrChange field
+func (checker *AttrChangeChecker) FromAttrChange(event *tetragon.AttrChange) *AttrChangeChecker {
+	if event == nil {
+		return checker
+	}
+	checker.New = stringmatcher.Full(event.New)
+	checker.Old = stringmatcher.Full(event.Old)
+	return checker
+}
+
+// FileAttrChecker implements a checker struct to check a FileAttr field
+type FileAttrChecker struct {
+	Permissions *AttrChangeChecker `json:"permissions,omitempty"`
+	Uid         *AttrChangeChecker `json:"uid,omitempty"`
+	Gid         *AttrChangeChecker `json:"gid,omitempty"`
+}
+
+// NewFileAttrChecker creates a new FileAttrChecker
+func NewFileAttrChecker() *FileAttrChecker {
+	return &FileAttrChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *FileAttrChecker) GetCheckerType() string {
+	return "FileAttrChecker"
+}
+
+// Check checks a FileAttr field
+func (checker *FileAttrChecker) Check(event *tetragon.FileAttr) error {
+	if event == nil {
+		return fmt.Errorf("%s: FileAttr field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Permissions != nil {
+			if err := checker.Permissions.Check(event.Permissions); err != nil {
+				return fmt.Errorf("Permissions check failed: %w", err)
+			}
+		}
+		if checker.Uid != nil {
+			if err := checker.Uid.Check(event.Uid); err != nil {
+				return fmt.Errorf("Uid check failed: %w", err)
+			}
+		}
+		if checker.Gid != nil {
+			if err := checker.Gid.Check(event.Gid); err != nil {
+				return fmt.Errorf("Gid check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithPermissions adds a Permissions check to the FileAttrChecker
+func (checker *FileAttrChecker) WithPermissions(check *AttrChangeChecker) *FileAttrChecker {
+	checker.Permissions = check
+	return checker
+}
+
+// WithUid adds a Uid check to the FileAttrChecker
+func (checker *FileAttrChecker) WithUid(check *AttrChangeChecker) *FileAttrChecker {
+	checker.Uid = check
+	return checker
+}
+
+// WithGid adds a Gid check to the FileAttrChecker
+func (checker *FileAttrChecker) WithGid(check *AttrChangeChecker) *FileAttrChecker {
+	checker.Gid = check
+	return checker
+}
+
+//FromFileAttr populates the FileAttrChecker using data from a FileAttr field
+func (checker *FileAttrChecker) FromFileAttr(event *tetragon.FileAttr) *FileAttrChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Permissions != nil {
+		checker.Permissions = NewAttrChangeChecker().FromAttrChange(event.Permissions)
+	}
+	if event.Uid != nil {
+		checker.Uid = NewAttrChangeChecker().FromAttrChange(event.Uid)
+	}
+	if event.Gid != nil {
+		checker.Gid = NewAttrChangeChecker().FromAttrChange(event.Gid)
+	}
+	return checker
+}
+
+// AttrArgChecker implements a checker struct to check a AttrArg field
+type AttrArgChecker struct {
+	File  *FileDetailsChecker `json:"file,omitempty"`
+	Attr  *FileAttrChecker    `json:"attr,omitempty"`
+	MntNs *NamespaceChecker   `json:"mntNs,omitempty"`
+}
+
+// NewAttrArgChecker creates a new AttrArgChecker
+func NewAttrArgChecker() *AttrArgChecker {
+	return &AttrArgChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *AttrArgChecker) GetCheckerType() string {
+	return "AttrArgChecker"
+}
+
+// Check checks a AttrArg field
+func (checker *AttrArgChecker) Check(event *tetragon.AttrArg) error {
+	if event == nil {
+		return fmt.Errorf("%s: AttrArg field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.File != nil {
+			if err := checker.File.Check(event.File); err != nil {
+				return fmt.Errorf("File check failed: %w", err)
+			}
+		}
+		if checker.Attr != nil {
+			if err := checker.Attr.Check(event.Attr); err != nil {
+				return fmt.Errorf("Attr check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithFile adds a File check to the AttrArgChecker
+func (checker *AttrArgChecker) WithFile(check *FileDetailsChecker) *AttrArgChecker {
+	checker.File = check
+	return checker
+}
+
+// WithAttr adds a Attr check to the AttrArgChecker
+func (checker *AttrArgChecker) WithAttr(check *FileAttrChecker) *AttrArgChecker {
+	checker.Attr = check
+	return checker
+}
+
+// WithMntNs adds a MntNs check to the AttrArgChecker
+func (checker *AttrArgChecker) WithMntNs(check *NamespaceChecker) *AttrArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
+//FromAttrArg populates the AttrArgChecker using data from a AttrArg field
+func (checker *AttrArgChecker) FromAttrArg(event *tetragon.AttrArg) *AttrArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.File != nil {
+		checker.File = NewFileDetailsChecker().FromFileDetails(event.File)
+	}
+	if event.Attr != nil {
+		checker.Attr = NewFileAttrChecker().FromFileAttr(event.Attr)
+	}
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	return checker
+}
+
 // FileArgumentChecker implements a checker struct to check a FileArgument field
 type FileArgumentChecker struct {
 	GenericArg *GenericFileArgChecker `json:"genericArg,omitempty"`
 	RenameArg  *RenameFileArgChecker  `json:"renameArg,omitempty"`
 	ReaddirArg *ReadDirArgChecker     `json:"readdirArg,omitempty"`
+	AttrArg    *AttrArgChecker        `json:"attrArg,omitempty"`
 }
 
 // NewFileArgumentChecker creates a new FileArgumentChecker
@@ -8138,6 +8366,16 @@ func (checker *FileArgumentChecker) Check(event *tetragon.FileArgument) error {
 				return fmt.Errorf("FileArgumentChecker: ReaddirArg check failed: %T is not a ReaddirArg", event)
 			}
 		}
+		if checker.AttrArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_AttrArg:
+				if err := checker.AttrArg.Check(event.AttrArg); err != nil {
+					return fmt.Errorf("AttrArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: AttrArg check failed: %T is not a AttrArg", event)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -8164,6 +8402,12 @@ func (checker *FileArgumentChecker) WithReaddirArg(check *ReadDirArgChecker) *Fi
 	return checker
 }
 
+// WithAttrArg adds a AttrArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithAttrArg(check *AttrArgChecker) *FileArgumentChecker {
+	checker.AttrArg = check
+	return checker
+}
+
 //FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
 func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgument) *FileArgumentChecker {
 	if event == nil {
@@ -8185,6 +8429,12 @@ func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgumen
 	case *tetragon.FileArgument_ReaddirArg:
 		if event.ReaddirArg != nil {
 			checker.ReaddirArg = NewReadDirArgChecker().FromReadDirArg(event.ReaddirArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_AttrArg:
+		if event.AttrArg != nil {
+			checker.AttrArg = NewAttrArgChecker().FromAttrArg(event.AttrArg)
 		}
 	}
 	return checker

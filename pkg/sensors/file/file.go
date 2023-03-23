@@ -142,6 +142,7 @@ var (
 			{"do_truncate(struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o", "do_truncate/419"},
 			{"do_truncate(struct user_namespace*, struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o", "do_truncate/512"},
 		}},
+		{"kprobe", "chmod_common", []FimFunc{{"chmod_common(const struct path*, umode_t)", "bpf_chmod_common.o", "chmod_common"}}},
 	}
 
 	SharedMaps = [...]string{
@@ -646,9 +647,12 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		Action:      m.Action,
 		Hook:        m.Hook,
 		Timestamp:   m.Timestamp,
-		Imode:       uint32(m.Imode),
-		Uid:         m.Uid,
-		Gid:         m.Gid,
+		Imode:       uint32(m.Imode[0]),
+		NewImode:    uint32(m.Imode[1]),
+		Uid:         m.Uid[0],
+		NewUid:      m.Uid[1],
+		Gid:         m.Gid[0],
+		NewGid:      m.Gid[1],
 		Ino:         m.Ino,
 		Fs:          createFsInfoUnix(m.Fs),
 		ParentIno:   m.ParentIno,

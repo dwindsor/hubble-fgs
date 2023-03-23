@@ -49,9 +49,9 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
 
-	msg->imode = 0;
-	msg->pad1 = msg->pad2 = 0;
-	msg->uid = msg->gid = 0;
+	msg->imode[0] = msg->imode[1] = 0;
+	msg->uid[0] = msg->uid[1] = 0;
+	msg->gid[0] = msg->gid[1] = 0;
 
 	msg->action = action_write;
 	msg->hook = hook_do_truncate;

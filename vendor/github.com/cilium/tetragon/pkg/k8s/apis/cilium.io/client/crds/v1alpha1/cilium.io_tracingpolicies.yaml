@@ -159,6 +159,7 @@ spec:
                                 - FILE_MKDIR
                                 - FILE_RENAME
                                 - FILE_READDIR
+                                - FILE_CHATTR
                                 items:
                                   type: string
                                 type: array
