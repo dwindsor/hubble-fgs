@@ -37,13 +37,13 @@ var (
 	proxy  *string
 	sink   *string
 
-	supportedParsers = []string{"tls", "http"}
+	supportedParsers = []string{"tls", "http", "tcp", "udp", "histograms"}
 )
 
 func init() {
 	duration = flag.Duration("duration", 10*time.Second, "test duration")
 	rate = flag.Int("rate", 0, "connections/requests per second, use 0 for unlimited")
-	parsers = flag.String("parsers", "", "comma-separated list of FGS parsers to enable, one of:"+strings.Join(supportedParsers, ", "))
+	parsers = flag.String("parsers", "", "comma-separated list of FGS parsers to enable:"+strings.Join(supportedParsers, ", "))
 	debug = flag.Bool("debug", false, "enable FGS debugging")
 	jsonEncode = flag.Bool("json-encode", false, "JSON encode the events and measure overhead")
 	baseline = flag.Bool("baseline", false, "run a baseline benchmark without FGS")
@@ -68,13 +68,24 @@ func main() {
 	}
 
 	var tlsParser, httpParser bool
+	var tcp, udp, iface, hist bool
 
 	for _, p := range strings.Split(*parsers, ",") {
 		switch p {
 		case "http":
 			httpParser = true
+			tcp = true
 		case "tls":
 			tlsParser = true
+			tcp = true
+		case "udp":
+			udp = true
+		case "tcp":
+			tcp = true
+		case "histograms":
+			hist = true
+		case "interface":
+			iface = true
 		case "":
 		default:
 			log.Fatalf("Unknown parser: %s, use on of: %s", p, strings.Join(supportedParsers, ", "))
@@ -82,13 +93,17 @@ func main() {
 	}
 
 	args := &bench.Arguments{
-		FgsEnableTLS:  tlsParser,
-		FgsEnableHTTP: httpParser,
-		FgsDebug:      *debug,
-		FgsJSONEncode: *jsonEncode || *printEvents,
-		PrintEvents:   *printEvents,
-		Baseline:      *baseline,
-		Source:        bench.SourceNameOrPanic(*source),
+		FgsEnableTLS:       tlsParser,
+		FgsEnableHTTP:      httpParser,
+		FgsEnableTCP:       tcp,
+		FgsEnableUDP:       udp,
+		FgsEnableInterface: iface,
+		FgsEnableHistogram: hist,
+		FgsDebug:           *debug,
+		FgsJSONEncode:      *jsonEncode || *printEvents,
+		PrintEvents:        *printEvents,
+		Baseline:           *baseline,
+		Source:             bench.SourceNameOrPanic(*source),
 		SourceArgs: bench.SourceArgs{
 			Duration:   *duration,
 			RatePerSec: float64(*rate),

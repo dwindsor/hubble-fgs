@@ -117,6 +117,7 @@ func TestEnvoyOverhead(t *testing.T) {
 func TestFGSNoTLS(t *testing.T) {
 	benchmarkFgs(t, &Arguments{
 		FgsEnableTLS:  false,
+		FgsEnableTCP:  true,
 		FgsJSONEncode: true,
 	})
 }
@@ -124,6 +125,7 @@ func TestFGSNoTLS(t *testing.T) {
 func TestFGSTLS(t *testing.T) {
 	benchmarkFgs(t, &Arguments{
 		FgsEnableTLS:  true,
+		FgsEnableTCP:  true,
 		FgsJSONEncode: true,
 	})
 }
@@ -133,11 +135,13 @@ func TestFGSHTTP(t *testing.T) {
 	viper.Set("debug", false)
 	summary := RunBenchmark(
 		&Arguments{
-			TestName:   t.Name(),
-			SourceArgs: SourceArgs{Duration: benchmarkDuration},
-			Source:     SourceNameOrPanic("http-crr-go"),
-			Proxy:      ProxyNameOrPanic("none"),
-			Sink:       SinkNameOrPanic("http-nginx"),
+			FgsEnableTCP:  true,
+			FgsEnableHTTP: true,
+			TestName:      t.Name(),
+			SourceArgs:    SourceArgs{Duration: benchmarkDuration},
+			Source:        SourceNameOrPanic("http-crr-go"),
+			Proxy:         ProxyNameOrPanic("none"),
+			Sink:          SinkNameOrPanic("http-nginx"),
 		})
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)

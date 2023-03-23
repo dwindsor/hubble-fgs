@@ -53,7 +53,10 @@ import (
 
 	// Iinit sensors for benchmarking
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 )
 
 var (
@@ -64,13 +67,17 @@ var (
 )
 
 type Arguments struct {
-	TestName      string
-	Fgs           bool
-	FgsEnableTLS  bool
-	FgsEnableHTTP bool
-	FgsDebug      bool
-	FgsJSONEncode bool
-	PrintEvents   bool
+	TestName           string
+	Fgs                bool
+	FgsEnableTLS       bool
+	FgsEnableHTTP      bool
+	FgsEnableTCP       bool
+	FgsEnableUDP       bool
+	FgsEnableInterface bool
+	FgsEnableHistogram bool
+	FgsDebug           bool
+	FgsJSONEncode      bool
+	PrintEvents        bool
 
 	SourceArgs SourceArgs
 	Source     SourceName
@@ -284,6 +291,7 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 
 	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
 	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
+	args.FgsEnableTCP = args.FgsEnableTLS || args.FgsEnableHTTP || args.FgsEnableTCP
 
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
@@ -419,7 +427,13 @@ spec:
         - 443
         {{.MatchPortTLS}}
     tcp:
-      enable: true
+      enable: {{.FgsTcp}}
+      histogram:
+        enable: {{.FgsHistograms}}
+        min: 0
+        max: 100000
+    udp:
+      enable: {{.FgsUdp}}
 `
 
 	f, err := os.CreateTemp("/tmp", "fgs-bench-crd-*.yaml")
@@ -440,10 +454,17 @@ spec:
 	templateArgs :=
 		struct {
 			FgsHttp, FgsTls             bool
+			FgsTcp, FgsUdp              bool
+			FgsInterface                bool
+			FgsHistograms               bool
 			MatchPortHTTP, MatchPortTLS string
 		}{
 			FgsHttp:       args.FgsEnableHTTP,
 			FgsTls:        args.FgsEnableTLS,
+			FgsTcp:        args.FgsEnableTCP,
+			FgsUdp:        args.FgsEnableUDP,
+			FgsInterface:  args.FgsEnableInterface,
+			FgsHistograms: args.FgsEnableHistogram,
 			MatchPortHTTP: matchPortHTTP,
 			MatchPortTLS:  matchPortTLS,
 		}
