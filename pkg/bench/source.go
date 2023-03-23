@@ -56,6 +56,7 @@ type SourceStats struct {
 	LatencyP90 time.Duration
 	LatencyP99 time.Duration
 	CPUUsage   CPUUsage
+	CPUPercent CPUPercentages
 	Forked     bool // true if the source is a forked process, e.g. don't deduct its cpu usage
 }
 
@@ -505,9 +506,11 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 		fmt.Sprintf("-l%d", args.Duration/time.Second),
 		"-P0", // No header
 		"-I 99,1",
+		"-c", "-C",
+		"-T 1,2",
 		"-t" + src.test,
 		"--",
-		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency",
+		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency,local_cpu_percent_user,local_cpu_percent_system,remote_cpu_percent_user,remote_cpu_percent_system",
 	}
 
 	cmdArgs := []string{
@@ -529,10 +532,14 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 
 	stats.CPUUsage, _ = CPUUsageFromTime(string(out),
 		func(line string) {
+			var localCpuUser, localCpuSystem, remoteCpuUser, remoteCpuSystem float64
 			var elapsed, throughput float64
 			var l50us, l90us, l99us int
 
-			if _, err = fmt.Sscanf(line, "%f,%f,%d,%d,%d", &elapsed, &throughput, &l50us, &l90us, &l99us); err != nil {
+			if _, err = fmt.Sscanf(line, "%f,%f,%d,%d,%d,%f,%f,%f,%f",
+				&elapsed, &throughput, &l50us, &l90us, &l99us,
+				&localCpuUser, &localCpuSystem,
+				&remoteCpuUser, &remoteCpuSystem); err != nil {
 				err = fmt.Errorf("failed to parse netperf output '%s': %w", line, err)
 				return
 			}
@@ -540,6 +547,10 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 			stats.LatencyP50 = time.Duration(l50us) * time.Microsecond
 			stats.LatencyP90 = time.Duration(l90us) * time.Microsecond
 			stats.LatencyP99 = time.Duration(l99us) * time.Microsecond
+			stats.CPUPercent.SourceCpuUser = localCpuUser
+			stats.CPUPercent.SourceCpuSystem = localCpuSystem
+			stats.CPUPercent.RemoteCpuUser = remoteCpuUser
+			stats.CPUPercent.RemoteCpuSystem = remoteCpuSystem
 		})
 
 	stats.Forked = true

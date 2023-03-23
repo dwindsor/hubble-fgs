@@ -83,6 +83,10 @@ func (s *Summary) PrettyPrint() {
 	fmt.Printf("Latency 50th:      %s\n", s.SourceStats.LatencyP50)
 	fmt.Printf("Latency 90th:      %s\n", s.SourceStats.LatencyP90)
 	fmt.Printf("Latency 99th:      %s\n", s.SourceStats.LatencyP99)
+	fmt.Printf("Source User CPU:   %.2f\n", s.SourceStats.CPUPercent.SourceCpuUser)
+	fmt.Printf("Source System CPU: %.2f\n", s.SourceStats.CPUPercent.SourceCpuSystem)
+	fmt.Printf("Remote User CPU:   %.2f\n", s.SourceStats.CPUPercent.RemoteCpuUser)
+	fmt.Printf("Remote System CPU: %.2f\n", s.SourceStats.CPUPercent.RemoteCpuSystem)
 
 	if !s.Args.Baseline {
 		fmt.Printf("Events:            tls=%d, http=%d, tcp=%d, exit=%d, exec=%d\n",

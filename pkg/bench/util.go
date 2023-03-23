@@ -21,6 +21,13 @@ import (
 	"time"
 )
 
+type CPUPercentages struct {
+	SourceCpuUser   float64
+	SourceCpuSystem float64
+	RemoteCpuUser   float64
+	RemoteCpuSystem float64
+}
+
 type CPUUsage struct {
 	SystemTime      time.Duration
 	UserTime        time.Duration
