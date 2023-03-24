@@ -17,10 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/timer"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 )
 
 const (
@@ -188,7 +189,10 @@ type heartbeatSensor struct {
 	name string
 }
 
-func (hb *heartbeatSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+func (hb *heartbeatSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -198,7 +202,7 @@ func (hb *heartbeatSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error)
 		return nil, fmt.Errorf("heartbeat is already running")
 	}
 
-	spec := raw.(*v1alpha1.TracingPolicySpec)
+	spec := policy.TpSpec()
 	interval := heartbeatIntervalDefault
 	tcpPort := uint32(heartbeatTCPPortDefault)
 	udpPort := uint32(heartbeatUDPPortDefault)
@@ -206,6 +210,11 @@ func (hb *heartbeatSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error)
 	if !spec.Parser.Heartbeat.Enable {
 		return nil, nil
 	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("heartbeat sensor does not implement policy filtering")
+	}
+
 	if spec.Parser.Heartbeat.Interval > 0 {
 		interval = time.Duration(spec.Parser.Heartbeat.Interval) * time.Second
 	}
@@ -239,5 +248,5 @@ func AddHeartbeat() {
 		name: "Heartbeat",
 	}
 	sensors.RegisterProbeType("heartbeat", hb)
-	sensors.RegisterSpecHandlerAtInit(hb.name, hb)
+	sensors.RegisterPolicyHandlerAtInit(hb.name, hb)
 }
