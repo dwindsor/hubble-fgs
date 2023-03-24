@@ -25,12 +25,13 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/defaults"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -386,11 +387,19 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 	return sens
 }
 
-func (net *networkSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
+func (net *networkSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
 	if !spec.Parser.Interface.Enable {
 		return nil, nil
 	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("parser interface sensor does not implement policy filtering")
+	}
+
 	return EnableNetworkParser(spec.Parser.Interface.Packet, spec.Parser.Interface.StatsInterval), nil
 }
 
@@ -418,7 +427,7 @@ func AddNetwork() {
 		name: "Interface sensor",
 	}
 	sensors.RegisterProbeType("interface_sensor", net)
-	sensors.RegisterSpecHandlerAtInit(net.name, net)
+	sensors.RegisterPolicyHandlerAtInit(net.name, net)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_NETNS_EXIT, handleNetNsExit)
 }
 
