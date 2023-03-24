@@ -14,6 +14,8 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -77,9 +79,26 @@ func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap, args.Verbose)
 }
 
-func (nop *sensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
-	return AddNopSensor(spec.Parser)
+func (nop *sensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
+	nopParser := &spec.Parser.Nop
+	if !nopParser.Enable {
+		return nil, nil
+	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("nop parser sensor does not implement policy filtering")
+	}
+
+	filters = ParseNopSpec(nopParser)
+	if len(filters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
+	}
+
+	return EnableNopParser(), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -121,7 +140,7 @@ func AddNop() {
 
 	sensors.RegisterProbeType("nop_skskb_verdict", skskbVerdict)
 	sensors.RegisterProbeType("nop_skmsg", skmsg)
-	sensors.RegisterSpecHandlerAtInit(skmsg.name, skmsg)
+	sensors.RegisterPolicyHandlerAtInit(skmsg.name, skmsg)
 }
 
 /* Add sensor from CRD */
@@ -154,17 +173,4 @@ func ParseNopSpec(spec *v1alpha1.NopSpec) []uint32 {
 	}
 
 	return ports
-}
-
-func AddNopSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	if !parser.Nop.Enable {
-		return nil, nil
-	}
-
-	filters = ParseNopSpec(&parser.Nop)
-	if len(filters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
-	}
-
-	return EnableNopParser(), nil
 }
