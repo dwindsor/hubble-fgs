@@ -236,7 +236,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 		}
 
 		mode := info.Mode()
-		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) {
+		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) && !IsBlockDevice(mode) && !IsCharDevice(mode) {
 			CheckFileMode(mode, path)
 			return nil
 		}
@@ -261,7 +261,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 		}
 
 		switch mode := fileinfo.Mode(); {
-		case mode.IsRegular():
+		case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
 			key := fileapi.HashMapFileKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
