@@ -22,8 +22,10 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -132,10 +134,29 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return nil
 }
 
-func (http *httpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
+func (http *httpSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
+	httpParser := &spec.Parser.Http
+	if !httpParser.Enable {
+		return nil, nil
+	}
 
-	return AddHTTPSensor(spec.Parser)
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("http sensor does not implement policy filtering")
+	}
+	filters = ParseHTTPSpec(httpParser)
+	if len(filters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
+	}
+
+	if !kernels.MinKernelVersion("5.10") {
+		return nil, fmt.Errorf("HTTP parser requires kernel version >= 5.10")
+	}
+
+	return EnableHTTPParser(), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -196,7 +217,7 @@ func init() {
 	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 	sensors.RegisterProbeType("http_skmsg", http)
 
-	sensors.RegisterSpecHandlerAtInit(http.name, http)
+	sensors.RegisterPolicyHandlerAtInit(http.name, http)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_HTTP, handleHTTP)
 }
 
@@ -237,23 +258,6 @@ func ParseHTTPSpec(spec *v1alpha1.HttpSpec) []uint32 {
 	}
 
 	return ports
-}
-
-func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	if !parser.Http.Enable {
-		return nil, nil
-	}
-
-	filters = ParseHTTPSpec(&parser.Http)
-	if len(filters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
-	}
-
-	if !kernels.MinKernelVersion("5.10") {
-		return nil, fmt.Errorf("HTTP parser requires kernel version >= 5.10")
-	}
-
-	return EnableHTTPParser(), nil
 }
 
 var (
