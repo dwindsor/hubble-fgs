@@ -37,6 +37,7 @@ enum { hook_undef = 0,
        hook_iterate_dir = 12,
        hook_do_truncate = 13,
        hook_chmod_common = 14,
+       hook_chown_common = 15,
 };
 
 struct retprobe_key {

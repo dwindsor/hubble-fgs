@@ -143,6 +143,7 @@ var (
 			{"do_truncate(struct user_namespace*, struct dentry*, loff_t, int, struct file*)", "bpf_do_truncate.o", "do_truncate/512"},
 		}},
 		{"kprobe", "chmod_common", []FimFunc{{"chmod_common(const struct path*, umode_t)", "bpf_chmod_common.o", "chmod_common"}}},
+		{"kprobe", "chown_common", []FimFunc{{"chown_common(const struct path*, uid_t, gid_t)", "bpf_chown_common.o", "chown_common"}}},
 	}
 
 	SharedMaps = [...]string{

@@ -50,6 +50,7 @@ var (
 		12: "iterate_dir",
 		13: "do_truncate",
 		14: "chmod_common",
+		15: "chown_common",
 	}
 
 	renameFlagsString = map[uint32]string{
