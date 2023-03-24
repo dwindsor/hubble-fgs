@@ -13,12 +13,13 @@ package sockmap
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
@@ -100,50 +101,8 @@ var (
 	HTTPFilterMap = http.HTTPFilterMap
 )
 
-func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	enableTLS := false
-	enableTLSCG := false
-
-	if !parser.Tls.Enable {
-		return nil, nil
-	}
-
-	parserHttps := &parser.Https
-	if !parser.Https.Enable {
-		parserHttps = nil
-	}
-
-	switch parser.Tls.Mode {
-	case "socket":
-		enableTLS = true
-	case "tc":
-		enableTLSCG = true
-	case "cgroup":
-		enableTLSCG = true
-	default:
-		return nil, nil
-	}
-
-	tlsFilters = ParseTLSSpec(&parser.Tls, parserHttps)
-	if len(tlsFilters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(tlsFilters))
-	}
-
-	if !kernels.MinKernelVersion("5.4") {
-		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.4")
-	}
-
-	return enableTLSParser(enableTLS, enableTLSCG), nil
-}
-
 type tlsSensor struct {
 	name string
-}
-
-// AddParserSensors will add and combine the sensors that are enabled inside
-// the parser policy spec.
-func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	return AddTLSSensor(parser)
 }
 
 type skmsgTLSSensor struct {
@@ -231,7 +190,7 @@ func init() {
 	sensors.RegisterProbeType("tls_cgrp_egress", tls)
 	sensors.RegisterProbeType("cgrp_socketopt", socketopt)
 
-	sensors.RegisterSpecHandlerAtInit(tls.name, tls)
+	sensors.RegisterPolicyHandlerAtInit(tls.name, tls)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS, HandleTLS)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }
@@ -296,9 +255,48 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func (tls *tlsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
-	return AddParserSensors(spec.Parser)
+func (tls *tlsSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	parser := policy.TpSpec().Parser
+
+	enableTLS := false
+	enableTLSCG := false
+	if !parser.Tls.Enable {
+		return nil, nil
+	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("tls sensor does not implement policy filtering")
+	}
+
+	parserHttps := &parser.Https
+	if !parser.Https.Enable {
+		parserHttps = nil
+	}
+
+	switch parser.Tls.Mode {
+	case "socket":
+		enableTLS = true
+	case "tc":
+		enableTLSCG = true
+	case "cgroup":
+		enableTLSCG = true
+	default:
+		return nil, nil
+	}
+
+	tlsFilters = ParseTLSSpec(&parser.Tls, parserHttps)
+	if len(tlsFilters) > sockops.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(tlsFilters))
+	}
+
+	if !kernels.MinKernelVersion("5.4") {
+		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.4")
+	}
+
+	return enableTLSParser(enableTLS, enableTLSCG), nil
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
