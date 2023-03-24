@@ -146,20 +146,12 @@ func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) er
 	return nil
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
-}
-
 type skSkbParserSensor struct {
 	name string
 }
 
 func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return nil
-}
-
-func (skSkbParser *skSkbParserSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
 }
 
 func init() {
