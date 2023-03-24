@@ -1736,6 +1736,54 @@ func testExactFileDelete(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testFileChmod(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	oFile := filepath.Join(out, "test1")
+	createFileInDir(t, oFile)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	sb, err := os.Stat(oFile)
+	if err != nil {
+		t.Fatalf("os.Stat failed (%s)", err)
+	}
+
+	if err := os.Chmod(oFile, 0644); err != nil {
+		t.Fatalf("os.Chmod failed (%s)", err)
+	}
+
+	sa, err := os.Stat(oFile)
+	if err != nil {
+		t.Fatalf("os.Stat failed (%s)", err)
+	}
+
+	ino, dev := getInodeInfo(t, oFile)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	p := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%v (%#o)", sa.Mode(), sa.Mode()))).WithOld(sm.Full(fmt.Sprintf("%v (%#o)", sb.Mode(), sb.Mode())))
+	a := ec.NewFileAttrChecker().WithPermissions(p)
+	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_CHATTR).
+		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
+		WithHook(sm.Full("chmod_common"))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -1906,5 +1954,8 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("exactfiledelete", func(lt *testing.T) {
 		testExactFileDelete(t, lt)
+	})
+	t.Run("chmod", func(lt *testing.T) {
+		testFileChmod(t, lt)
 	})
 }
