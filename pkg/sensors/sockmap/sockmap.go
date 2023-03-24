@@ -177,20 +177,12 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return nil
 }
 
-func (skmsg *skmsgTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
-}
-
 type skSkbVerdictTLSSensor struct {
 	name string
 }
 
 func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return nil
-}
-
-func (skSkbVerdict *skSkbVerdictTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
 }
 
 type skSkbParserTLSSensor struct {
@@ -201,20 +193,12 @@ func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) e
 	return nil
 }
 
-func (skSkbParser *skSkbParserTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
-}
-
 type socketOptSensor struct {
 	name string
 }
 
 func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return nil
-}
-
-func (s *socketOptSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	return nil, nil
 }
 
 func init() {
