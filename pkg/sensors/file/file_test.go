@@ -705,20 +705,21 @@ func TestLoadFileSensor(t *testing.T) {
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
 		16: tus.SensorProg{Name: fmt.Sprintf("do_truncate_%s", verSuffix), Type: ebpf.Kprobe},
 		17: tus.SensorProg{Name: "chmod_common", Type: ebpf.Kprobe},
+		18: tus.SensorProg{Name: "chown_common", Type: ebpf.Kprobe},
 	}
 
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17}},
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17, 18}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
 
 		// shared maps
 		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14}},
-		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17}},
+		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17, 18}},
 		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 8, 9, 12, 13, 14, 15}},
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
-		tus.SensorMap{Name: "file_names_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "file_names_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -743,6 +744,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{15}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{16}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{17}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{18}},
 
 		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10}},
 
@@ -1784,6 +1786,55 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testFileChown(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	oFile := filepath.Join(out, "test1")
+	createFileInDir(t, oFile)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:        []string{out},
+		PathsExclude: []string{},
+		Config:       make(map[string]string),
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	var sb syscall.Stat_t
+	if err := syscall.Stat(oFile, &sb); err != nil {
+		t.Fatalf("syscall.Stat failed (%s)", err)
+	}
+
+	if err := os.Chown(oFile, 1, 1); err != nil {
+		t.Fatalf("os.Chmod failed (%s)", err)
+	}
+
+	var sa syscall.Stat_t
+	if err := syscall.Stat(oFile, &sa); err != nil {
+		t.Fatalf("syscall.Stat failed (%s)", err)
+	}
+
+	ino, dev := getInodeInfo(t, oFile)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	u := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Uid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Uid)))
+	g := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Gid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Gid)))
+	a := ec.NewFileAttrChecker().WithGid(g).WithUid(u)
+	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_CHATTR).
+		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
+		WithHook(sm.Full("chown_common"))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -1957,5 +2008,8 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("chmod", func(lt *testing.T) {
 		testFileChmod(t, lt)
+	})
+	t.Run("chown", func(lt *testing.T) {
+		testFileChown(t, lt)
 	})
 }
