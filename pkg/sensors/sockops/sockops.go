@@ -15,11 +15,12 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
@@ -56,7 +57,7 @@ func init() {
 		name: "sockops loader",
 	}
 	sensors.RegisterProbeType("sockops", sockops)
-	sensors.RegisterSpecHandlerAtInit(sockops.name, sockops)
+	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
 func builder(name string) (*sensors.Sensor, error) {
@@ -84,17 +85,22 @@ func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return err
 }
 
-func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
+func (*sockopsSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	parser := policy.TpSpec().Parser
 	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
 		parser.Http.Enable ||
 		parser.Nop.Enable {
+
+		if fid != policyfilter.NoFilterID {
+			return nil, fmt.Errorf("sockops sensor does not implement policy filtering")
+		}
+
 		return builder("__sockops__sensors__")
 	}
 	return nil, nil
-}
-func (*sockopsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
-	return AddSockopsSensors(spec.Parser)
 }
 
 func SetFilter(mapDir string, mapName string, filters []uint32) error {
