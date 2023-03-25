@@ -22,14 +22,15 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
@@ -801,13 +802,21 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 	return udpSensor
 }
 
-func (udp *udpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
-	var interval = time.Duration(UdpGCIntervalDefault)
+func (udp *udpSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
 
 	if !spec.Parser.Udp.Enable {
 		return nil, nil
 	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("udp sensor does not implement policy filtering")
+	}
+
+	var interval = time.Duration(UdpGCIntervalDefault)
 	if spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
 	}
@@ -919,7 +928,7 @@ func AddUDP() {
 		name: "UDP sensor",
 	}
 	sensors.RegisterProbeType("udp_sensor", udp)
-	sensors.RegisterSpecHandlerAtInit(udp.name, udp)
+	sensors.RegisterPolicyHandlerAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
