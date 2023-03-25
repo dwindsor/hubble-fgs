@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -180,13 +181,21 @@ type tcpSensor struct {
 	name string
 }
 
-func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
+func (tcp *tcpSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
 	tcpInterval = time.Duration(TcpIntervalDefault)
 
 	if !spec.Parser.Tcp.Enable {
 		return nil, nil
 	}
+
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("tcp sensor does not implement policy filtering")
+	}
+
 	if spec.Parser.Tcp.StatsInterval > 0 {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	}
@@ -378,7 +387,7 @@ func AddTCP() {
 	}
 
 	sensors.RegisterProbeType("tcp_sensor", tcp)
-	sensors.RegisterSpecHandlerAtInit(tcp.name, tcp)
+	sensors.RegisterPolicyHandlerAtInit(tcp.name, tcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPSTATS, handleTcpStats)
 
 	/* Core set of TCP events */
