@@ -262,7 +262,7 @@ github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
-# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230313115351-e17aebfdb750 => ./pkg/k8s
+# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230324152610-e7449cf7d1e5 => ./pkg/k8s
 ## explicit; go 1.18
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client

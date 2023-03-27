@@ -1132,7 +1132,6 @@ func (k *observerFileSensor) PolicyHandler(
 	}
 	tcID := atomic.AddUint32(&sensorCounter, 1)
 	return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, config, selState)
-	return nil, nil
 }
 
 // LoadProbe() (called when the eBPF programs are actually loaded)

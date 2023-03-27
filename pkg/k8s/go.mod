@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/cilium v1.9.16
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230313115351-e17aebfdb750
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230324152610-e7449cf7d1e5
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	k8s.io/apiextensions-apiserver v0.24.3

@@ -32,6 +32,12 @@ type KernelSelectorState struct {
 	selOpsMap sync.Map
 }
 
+func NewKernelSelectorState() *KernelSelectorState {
+	return &KernelSelectorState{
+		KernelSelectorState: *selectors.NewKernelSelectorState(),
+	}
+}
+
 func (k *KernelSelectorState) SetOperationOp(op uint32) {
 	k.selOpsOp = op
 }
@@ -77,14 +83,24 @@ func UpdateNamesMap(mapDir string, sel *KernelSelectorState) error {
 }
 
 func GenerateFileNamesMap(m *ebpf.Map, sel *KernelSelectorState) error {
-	entries := sel.GetBinSelNamesMap()
+	allEntries := sel.GetBinSelNamesMap()
+	if len(allEntries) == 0 {
+		return nil
+	}
+
+	binEntries, ok := allEntries[0] // we support only a single selector in FIM for now
+	if !ok {
+		return nil
+	}
+
+	entries := binEntries.GetBinSelNamesMap()
 	if len(entries) == 0 { // no matchBinaries selectors
 		return nil
 	}
 
 	// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
 	// if this is zero we don't have any matchBinaries selectors
-	if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(), ebpf.UpdateAny); err != nil {
+	if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(0), ebpf.UpdateAny); err != nil {
 		return err
 	}
 
@@ -150,7 +166,7 @@ func ParseMatchOperations(k *KernelSelectorState, ops []v1alpha1.OperationSelect
 }
 
 func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector) error {
-	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries); err != nil {
+	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries, 0); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
 	if err := ParseMatchOperations(k, fileSel.MatchOperations); err != nil {
@@ -164,7 +180,7 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 		return nil, fmt.Errorf("file monitoring supports up to 1 selector")
 	}
 
-	kernelSelectors := &KernelSelectorState{}
+	kernelSelectors := NewKernelSelectorState()
 	for _, s := range fileSel {
 		if err := parseSelector(kernelSelectors, &s); err != nil {
 			return nil, err

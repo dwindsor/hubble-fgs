@@ -303,13 +303,13 @@ func writeMatchValuesInMap(k *KernelSelectorState, values []string, ty uint32) e
 		case argTypeS64, argTypeInt:
 			i, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			binary.LittleEndian.PutUint64(val[:], uint64(i))
 		case argTypeU64:
 			i, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			binary.LittleEndian.PutUint64(val[:], uint64(i))
 		default:
@@ -337,25 +337,25 @@ func writeMatchValues(k *KernelSelectorState, values []string, ty uint32) error 
 		case argTypeS32, argTypeInt, argTypeSizet:
 			i, err := strconv.ParseInt(v, 10, 32)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			WriteSelectorInt32(k, int32(i))
 		case argTypeU32:
 			i, err := strconv.ParseUint(v, 10, 32)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			WriteSelectorUint32(k, uint32(i))
 		case argTypeS64:
 			i, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			WriteSelectorInt64(k, int64(i))
 		case argTypeU64:
 			i, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
-				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
 			WriteSelectorUint64(k, uint64(i))
 		case argTypeSock, argTypeSkb, argTypeCharIovec:
@@ -632,7 +632,7 @@ func ParseMatchCapabilityChanges(k *KernelSelectorState, actions []v1alpha1.Capa
 	return nil
 }
 
-func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector) error {
+func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector, selIdx int) error {
 	op, err := SelectorOp(b.Operator)
 	if err != nil {
 		return fmt.Errorf("matchBinary error: %w", err)
@@ -640,22 +640,22 @@ func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector) error 
 	if op != SelectorOpIn && op != SelectorOpNotIn {
 		return fmt.Errorf("matchBinary error: Only In and NotIn operators are supported")
 	}
-	k.SetBinaryOp(op)
+	k.SetBinaryOp(selIdx, op)
 	for _, s := range b.Values {
 		if len(s) > 255 {
 			return fmt.Errorf("matchBinary error: Binary names > 255 chars do not supported")
 		}
-		k.AddBinaryName(s)
+		k.AddBinaryName(selIdx, s)
 	}
 	return nil
 }
 
-func ParseMatchBinaries(k *KernelSelectorState, binarys []v1alpha1.BinarySelector) error {
+func ParseMatchBinaries(k *KernelSelectorState, binarys []v1alpha1.BinarySelector, selIdx int) error {
 	if len(binarys) > 1 {
 		return fmt.Errorf("Only support single binary selector")
 	}
 	for _, s := range binarys {
-		if err := ParseMatchBinary(k, &s); err != nil {
+		if err := ParseMatchBinary(k, &s, selIdx); err != nil {
 			return err
 		}
 	}
@@ -665,6 +665,7 @@ func ParseMatchBinaries(k *KernelSelectorState, binarys []v1alpha1.BinarySelecto
 func parseSelector(
 	k *KernelSelectorState,
 	selectors *v1alpha1.KProbeSelector,
+	selIdx int,
 	args []v1alpha1.KProbeArg,
 	actionArgTable *idtable.Table) error {
 	if err := ParseMatchPids(k, selectors.MatchPIDs); err != nil {
@@ -682,7 +683,7 @@ func parseSelector(
 	if err := ParseMatchCapabilityChanges(k, selectors.MatchCapabilityChanges); err != nil {
 		return fmt.Errorf("parseMatchCapabilityChanges error: %w", err)
 	}
-	if err := ParseMatchBinaries(k, selectors.MatchBinaries); err != nil {
+	if err := ParseMatchBinaries(k, selectors.MatchBinaries, selIdx); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
 	if err := ParseMatchArgs(k, selectors.MatchArgs, args); err != nil {
@@ -739,7 +740,7 @@ func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KP
 
 func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg,
 	actionArgTable *idtable.Table) (*KernelSelectorState, error) {
-	kernelSelectors := &KernelSelectorState{}
+	kernelSelectors := NewKernelSelectorState()
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
@@ -749,7 +750,7 @@ func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha
 	for i, s := range selectors {
 		WriteSelectorLength(kernelSelectors, soff[i])
 		loff := AdvanceSelectorLength(kernelSelectors)
-		if err := parseSelector(kernelSelectors, &s, args, actionArgTable); err != nil {
+		if err := parseSelector(kernelSelectors, &s, i, args, actionArgTable); err != nil {
 			return nil, err
 		}
 		WriteSelectorLength(kernelSelectors, loff)

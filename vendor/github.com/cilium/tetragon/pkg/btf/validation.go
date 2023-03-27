@@ -5,9 +5,11 @@ package btf
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cilium/ebpf/btf"
+	"github.com/cilium/tetragon/pkg/arch"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/syscallinfo"
@@ -70,7 +72,7 @@ func hasSigkillAction(kspec *v1alpha1.KProbeSpec) bool {
 // syscalls). We still keep this code in the btf package for now, and we can
 // move it once we found a better home for it.
 func ValidateKprobeSpec(bspec *btf.Spec, kspec *v1alpha1.KProbeSpec) error {
-	if hasSigkillAction(kspec) && !kernels.MinKernelVersion("5.3.0") {
+	if hasSigkillAction(kspec) && !kernels.EnableLargeProgs() {
 		return &ValidationFailed{s: "sigkill action requires kernel >= 5.3.0"}
 	}
 
@@ -78,7 +80,7 @@ func ValidateKprobeSpec(bspec *btf.Spec, kspec *v1alpha1.KProbeSpec) error {
 
 	err := bspec.TypeByName(kspec.Call, &fn)
 	if err != nil {
-		return fmt.Errorf("kprobe spec validation failed: call %s not found", kspec.Call)
+		return &ValidationFailed{s: fmt.Sprintf("call %q not found", kspec.Call)}
 	}
 
 	proto, ok := fn.Type.(*btf.FuncProto)
@@ -260,4 +262,62 @@ func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 	}
 
 	return nil
+}
+
+func GetSyscallsYaml(binary string) (string, error) {
+	crd := `apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "syscalls"
+spec:
+  kprobes:`
+
+	btfFile := "/sys/kernel/btf/vmlinux"
+
+	tetragonBtfEnv := os.Getenv("TETRAGON_BTF")
+	if tetragonBtfEnv != "" {
+		if _, err := os.Stat(tetragonBtfEnv); err != nil {
+			return "", fmt.Errorf("Failed to find BTF: %s", tetragonBtfEnv)
+		}
+		btfFile = tetragonBtfEnv
+	}
+
+	bspec, err := btf.LoadSpec(btfFile)
+	if err != nil {
+		return "", fmt.Errorf("BTF load failed: %v", err)
+	}
+
+	for _, key := range syscallinfo.SyscallsNames() {
+		var fn *btf.Func
+
+		if key == "" {
+			continue
+		}
+
+		sym, err := arch.AddSyscallPrefix(key)
+		if err != nil {
+			return "", err
+		}
+
+		err = bspec.TypeByName(sym, &fn)
+		if err != nil {
+			continue
+		}
+
+		crd = crd + "\n" + fmt.Sprintf("  - call: \"%s\"", key)
+		crd = crd + "\n" + fmt.Sprintf("    syscall: true")
+
+		if binary != "" {
+			filter := `
+    selectors:
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "` + binary + `"`
+
+			crd = crd + filter
+		}
+	}
+
+	return crd, nil
 }

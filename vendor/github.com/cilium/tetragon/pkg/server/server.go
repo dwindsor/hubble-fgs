@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/cilium/tetragon/pkg/version"
+	"github.com/sirupsen/logrus"
 )
 
 type Listener interface {
@@ -123,7 +124,12 @@ func (s *Server) GetEvents(request *tetragon.GetEventsRequest, server tetragon.F
 }
 
 func (s *Server) GetEventsWG(request *tetragon.GetEventsRequest, server tetragon.FineGuidanceSensors_GetEventsServer, closer io.Closer, readyWG *sync.WaitGroup) error {
-	logger.GetLogger().WithField("request", request).Debug("Received a GetEvents request")
+	logger.GetLogger().WithFields(logrus.Fields{
+		"events.allow_list":          request.GetAllowList(),
+		"events.deny_list":           request.GetDenyList(),
+		"events.field_filters":       request.GetFieldFilters(),
+		"events.aggregation_options": request.GetAggregationOptions(),
+	}).Debug("Received a GetEvents request")
 	allowList, err := filters.BuildFilterList(s.ctx, request.AllowList, filters.Filters)
 	if err != nil {
 		return err
@@ -200,42 +206,71 @@ func (s *Server) GetHealth(ctx context.Context, request *tetragon.GetHealthStatu
 
 func (s *Server) ListSensors(ctx context.Context, request *tetragon.ListSensorsRequest) (*tetragon.ListSensorsResponse, error) {
 	logger.GetLogger().Debug("Received a ListSensors request")
-	var ret *tetragon.ListSensorsResponse
 	list, err := s.observer.ListSensors(ctx)
-	if err == nil {
-		sensors := make([]*tetragon.SensorStatus, 0, len(*list))
-		for _, s := range *list {
-			sensors = append(sensors, &tetragon.SensorStatus{
-				Name:       s.Name,
-				Enabled:    s.Enabled,
-				Collection: s.Collection,
-			})
-		}
-		ret = &tetragon.ListSensorsResponse{Sensors: sensors}
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Server ListSensors request failed")
+		return nil, err
 	}
 
-	return ret, err
+	sensors := make([]*tetragon.SensorStatus, 0, len(*list))
+	for _, s := range *list {
+		sensors = append(sensors, &tetragon.SensorStatus{
+			Name:       s.Name,
+			Enabled:    s.Enabled,
+			Collection: s.Collection,
+		})
+	}
+
+	return &tetragon.ListSensorsResponse{Sensors: sensors}, nil
 }
 
 func (s *Server) AddTracingPolicy(ctx context.Context, req *tetragon.AddTracingPolicyRequest) (*tetragon.AddTracingPolicyResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received an AddTracingPolicy request")
 	tp, err := config.PolicyFromYaml(req.GetYaml())
 	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Server AddTracingPolicy request failed")
 		return nil, err
 	}
+	namespace := ""
+	if tpNs, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
+		namespace = tpNs.TpNamespace()
+	}
+
+	logger.GetLogger().WithFields(logrus.Fields{
+		"metadata.namespace": namespace,
+		"metadata.name":      tp.TpName(),
+	}).Debug("Received an AddTracingPolicy request")
+
 	if err := s.observer.AddTracingPolicy(ctx, tp); err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"metadata.namespace": namespace,
+			"metadata.name":      tp.TpName(),
+		}).WithError(err).Warn("Server AddTracingPolicy request failed")
 		return nil, err
 	}
 	return &tetragon.AddTracingPolicyResponse{}, nil
 }
 
 func (s *Server) DelTracingPolicy(ctx context.Context, req *tetragon.DeleteTracingPolicyRequest) (*tetragon.DeleteTracingPolicyResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received an DeleteTracingPolicy request")
 	tp, err := config.PolicyFromYaml(req.GetYaml())
 	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Server DeleteTracingPolicy request failed")
 		return nil, err
 	}
+	namespace := ""
+	if tpNs, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
+		namespace = tpNs.TpNamespace()
+	}
+
+	logger.GetLogger().WithFields(logrus.Fields{
+		"metadata.namespace": namespace,
+		"metadata.name":      tp.TpName(),
+	}).Debug("Received a DeleteTracingPolicy request")
+
 	if err := s.observer.DelTracingPolicy(ctx, tp.TpName()); err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"metadata.namespace": namespace,
+			"metadata.name":      tp.TpName(),
+		}).WithError(err).Warn("Server DeleteTracingPolicy request failed")
 		return nil, err
 	}
 	return &tetragon.DeleteTracingPolicyResponse{}, nil
@@ -243,31 +278,44 @@ func (s *Server) DelTracingPolicy(ctx context.Context, req *tetragon.DeleteTraci
 
 func (s *Server) ListTracingPolicies(ctx context.Context, req *tetragon.ListTracingPoliciesRequest) (*tetragon.ListTracingPoliciesResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a ListTracingPolicies request")
-	return s.observer.ListTracingPolicies(ctx)
+	ret, err := s.observer.ListTracingPolicies(ctx)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Server ListTracingPolicies request failed")
+	}
+	return ret, err
 }
 
 func (s *Server) RemoveSensor(ctx context.Context, req *tetragon.RemoveSensorRequest) (*tetragon.RemoveSensorResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a RemoveTracingPolicy request")
+	logger.GetLogger().WithField("sensor.name", req.GetName()).Debug("Received a RemoveSensor request")
 	if err := s.observer.RemoveSensor(ctx, req.GetName()); err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"sensor.name": req.GetName(),
+		}).WithError(err).Warn("Server RemoveSensor request failed")
 		return nil, err
 	}
 	return &tetragon.RemoveSensorResponse{}, nil
 }
 
 func (s *Server) EnableSensor(ctx context.Context, req *tetragon.EnableSensorRequest) (*tetragon.EnableSensorResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a EnableSensor request")
+	logger.GetLogger().WithField("sensor.name", req.GetName()).Debug("Received a EnableSensor request")
 	err := s.observer.EnableSensor(ctx, req.GetName())
-	var ret *tetragon.EnableSensorResponse
-	if err == nil {
-		ret = &tetragon.EnableSensorResponse{}
+	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"sensor.name": req.GetName(),
+		}).WithError(err).Warn("Server EnableSensor request failed")
+		return nil, err
 	}
-	return ret, err
+
+	return &tetragon.EnableSensorResponse{}, nil
 }
 
 func (s *Server) DisableSensor(ctx context.Context, req *tetragon.DisableSensorRequest) (*tetragon.DisableSensorResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a DisableSensor request")
+	logger.GetLogger().WithField("sensor.name", req.GetName()).Debug("Received a DisableSensor request")
 	err := s.observer.DisableSensor(ctx, req.GetName())
 	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"sensor.name": req.GetName(),
+		}).WithError(err).Warn("Server DisableSensor request failed")
 		return nil, err
 	}
 
@@ -275,9 +323,16 @@ func (s *Server) DisableSensor(ctx context.Context, req *tetragon.DisableSensorR
 }
 
 func (s *Server) GetSensorConfig(ctx context.Context, req *tetragon.GetSensorConfigRequest) (*tetragon.GetSensorConfigResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a GetSensorConfig request")
+	logger.GetLogger().WithFields(logrus.Fields{
+		"sensor.name":   req.GetName(),
+		"sensor.config": req.GetCfgkey(),
+	}).Debug("Received a GetSensorConfig request")
 	cfgval, err := s.observer.GetSensorConfig(ctx, req.GetName(), req.GetCfgkey())
 	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"sensor.name":   req.GetName(),
+			"sensor.config": req.GetCfgkey(),
+		}).WithError(err).Warn("Server GetSensorConfig request failed")
 		return nil, err
 	}
 
@@ -285,17 +340,27 @@ func (s *Server) GetSensorConfig(ctx context.Context, req *tetragon.GetSensorCon
 }
 
 func (s *Server) SetSensorConfig(ctx context.Context, req *tetragon.SetSensorConfigRequest) (*tetragon.SetSensorConfigResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a SetSensorConfig request")
+	logger.GetLogger().WithFields(logrus.Fields{
+		"sensor.name":         req.GetName(),
+		"sensor.config":       req.GetCfgkey(),
+		"sensor.config.value": req.GetCfgval(),
+	}).Debug("Received a SetSensorConfig request")
 	err := s.observer.SetSensorConfig(ctx, req.GetName(), req.GetCfgkey(), req.GetCfgval())
 	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"sensor.name":   req.GetName(),
+			"sensor.config": req.GetCfgkey(),
+		}).WithError(err).Warn("Server SetSensorConfig request failed")
 		return nil, err
 	}
 
 	return &tetragon.SetSensorConfigResponse{}, nil
 }
 func (s *Server) GetStackTraceTree(ctx context.Context, req *tetragon.GetStackTraceTreeRequest) (*tetragon.GetStackTraceTreeResponse, error) {
-	logger.GetLogger().WithField("request", req).Debug("Received a GetStackTraceTreee request")
-	return nil, fmt.Errorf("Unsupported GetStackTraceTree")
+	logger.GetLogger().WithField("request", req).Debug("Received a GetStackTraceTree request")
+	err := fmt.Errorf("Unsupported GetStackTraceTree")
+	logger.GetLogger().WithError(err).Warn("Server GetStackTraceTree failed")
+	return nil, err
 }
 
 func (s *Server) GetVersion(ctx context.Context, req *tetragon.GetVersionRequest) (*tetragon.GetVersionResponse, error) {
@@ -303,9 +368,10 @@ func (s *Server) GetVersion(ctx context.Context, req *tetragon.GetVersionRequest
 }
 
 func (s *Server) RuntimeHook(ctx context.Context, req *tetragon.RuntimeHookRequest) (*tetragon.RuntimeHookResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a RuntimeHook request")
 	err := s.hookRunner.RunHooks(ctx, req)
 	if err != nil {
-		logger.GetLogger().WithField("request", req).WithError(err).Warn("runtime hooks failure")
+		logger.GetLogger().WithField("request", req).WithError(err).Warn("Server RuntimeHook failed")
 	}
 	return &tetragon.RuntimeHookResponse{}, nil
 }

@@ -58,6 +58,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_LOADER.String(), nil
 	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
 		return tetragon.EventType_PROCESS_NETWORK_WATERMARK.String(), nil
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		return tetragon.EventType_PROCESS_UPROBE.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 
@@ -90,6 +92,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessKprobe.Process
 	case *tetragon.GetEventsResponse_ProcessTracepoint:
 		return ev.ProcessTracepoint.Process
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		return ev.ProcessUprobe.Process
 	case *tetragon.GetEventsResponse_ProcessLoader:
 		return ev.ProcessLoader.Process
 	case *tetragon.GetEventsResponse_ProcessConnect:
@@ -146,6 +150,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessKprobe.Parent
 	case *tetragon.GetEventsResponse_ProcessTracepoint:
 		return ev.ProcessTracepoint.Parent
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		return ev.ProcessUprobe.Parent
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Parent
 	case *tetragon.GetEventsResponse_ProcessClose:

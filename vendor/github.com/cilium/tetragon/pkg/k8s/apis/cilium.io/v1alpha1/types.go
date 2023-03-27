@@ -103,6 +103,9 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Enable loader events
 	Loader bool `json:"loader"`
+	// +kubebuilder:validation:Optional
+	// A list of uprobe specs.
+	UProbes []UProbeSpec `json:"uprobes"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {

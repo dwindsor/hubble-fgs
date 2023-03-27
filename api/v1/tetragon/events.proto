@@ -53,6 +53,7 @@ enum EventType {
 	PROCESS_IP_ERROR = 17;
 	PROCESS_LOADER = 18;
 	PROCESS_NETWORK_WATERMARK = 19;
+	PROCESS_UPROBE = 20;
 
 	TEST = 40000;
 }
@@ -188,6 +189,7 @@ message GetEventsResponse {
         ProcessIpError process_ip_error = 17;
         ProcessLoader process_loader = 18;
         ProcessNetworkWatermark process_network_watermark = 19;
+        ProcessUprobe process_uprobe = 20;
 
         Test test = 40000;
     }
