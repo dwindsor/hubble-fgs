@@ -580,6 +580,9 @@ func execute() error {
 	// disable.
 	flags.Bool(keyReleasePinnedBPF, true, "Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable")
 
+	// Allow to disable kprobe multi interface
+	flags.Bool(keyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

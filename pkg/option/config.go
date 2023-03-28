@@ -9,6 +9,7 @@ type config struct {
 	DnsCacheSize           int
 	NetNsCacheSize         int
 	FimFifoPath            string
+	DisableKprobeMulti     bool
 }
 
 const (

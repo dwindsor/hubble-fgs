@@ -76,6 +76,8 @@ const (
 	keyNetNsCacheSize = "net-ns-cache-size"
 
 	keyFimFifoPath = "fim-fifo-path"
+
+	keyDisableKprobeMulti = "disable-kprobe-multi"
 )
 
 var (
@@ -157,4 +159,6 @@ func readAndSetFlags() {
 	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
 
 	enterpriseOption.Config.FimFifoPath = viper.GetString(keyFimFifoPath)
+
+	option.Config.DisableKprobeMulti = viper.GetBool(keyDisableKprobeMulti)
 }
