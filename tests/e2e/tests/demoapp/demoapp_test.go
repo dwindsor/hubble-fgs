@@ -58,7 +58,7 @@ func installDemoApp() features.Func {
 		if err := manager.RunInstall(
 			helm.WithName("jobs-app"),
 			helm.WithChart("isovalent/jobs-app"),
-			helm.WithVersion("v0.1.1"),
+			helm.WithVersion("v0.7.0"),
 			helm.WithNamespace(namespace),
 			helm.WithArgs("--create-namespace"),
 		); err != nil {
@@ -108,7 +108,7 @@ func TestDemoApp(t *testing.T) {
 
 	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(6 * time.Minute)
 	testDemoApp := features.New("Test Demo App").
-		Assess("Run Event Checks", demoChecker.CheckInNamespace(30*time.Second, "demo-app")).
+		Assess("Run Event Checks", demoChecker.CheckInNamespace(30*time.Second, namespace)).
 		Feature()
 
 	run := features.New("Setup Demo App").
@@ -166,11 +166,13 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 				"app.kubernetes.io/managed-by":       *sm.Full("strimzi-cluster-operator"),
 				"app.kubernetes.io/name":             *sm.Full("kafka"),
 				"app.kubernetes.io/part-of":          *sm.Full("strimzi-jobs-app"),
-				"controller-revision-hash":           *sm.Regex("jobs-app-kafka-[a-f0-9]+"),
 				"statefulset.kubernetes.io/pod-name": *sm.Prefix("jobs-app-kafka"),
 				"strimzi.io/cluster":                 *sm.Full("jobs-app"),
+				"strimzi.io/controller":              *sm.Full("strimzipodset"),
+				"strimzi.io/controller-name":         *sm.Full("jobs-app-kafka"),
 				"strimzi.io/kind":                    *sm.Full("Kafka"),
 				"strimzi.io/name":                    *sm.Full("jobs-app-kafka"),
+				"strimzi.io/pod-name":                *sm.Prefix("jobs-app-kafka"),
 			})).
 		WithUid(1001)
 
@@ -212,11 +214,13 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 				"app.kubernetes.io/managed-by":       *sm.Full("strimzi-cluster-operator"),
 				"app.kubernetes.io/name":             *sm.Full("zookeeper"),
 				"app.kubernetes.io/part-of":          *sm.Full("strimzi-jobs-app"),
-				"controller-revision-hash":           *sm.Regex("jobs-app-zookeeper-[a-f0-9]+"),
 				"statefulset.kubernetes.io/pod-name": *sm.Prefix("jobs-app-zookeeper"),
 				"strimzi.io/cluster":                 *sm.Full("jobs-app"),
+				"strimzi.io/controller":              *sm.Full("strimzipodset"),
+				"strimzi.io/controller-name":         *sm.Full("jobs-app-zookeeper"),
 				"strimzi.io/kind":                    *sm.Full("Kafka"),
 				"strimzi.io/name":                    *sm.Full("jobs-app-zookeeper"),
+				"strimzi.io/pod-name":                *sm.Prefix("jobs-app-zookeeper"),
 			})).
 		WithUid(1001)
 
@@ -303,7 +307,7 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 					WithNames(ec.NewStringListMatcher().
 						WithOperator(listmatcher.Ordered).
 						WithValues(
-							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
+							sm.Full("jobs-app-kafka-brokers."+namespace+".svc.cluster.local."),
 						)).
 					WithResponse(true).
 					WithRcode(3)),
@@ -315,7 +319,7 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 					WithNames(ec.NewStringListMatcher().
 						WithOperator(listmatcher.Ordered).
 						WithValues(
-							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
+							sm.Full("jobs-app-kafka-brokers."+namespace+".svc.cluster.local."),
 						))),
 		)
 	}
