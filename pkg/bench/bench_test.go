@@ -40,6 +40,7 @@ var benchmarkSourceProxySinks = []sourceProxySink{
 	{"http-crr-go", "none", "http-nginx"},
 	{"netperf-crr", "none", "netperf"},
 	{"netperf-rr", "none", "netperf"},
+	{"netperf-stream", "none", "netperf"},
 	// FIXME: This benchmark is disabled for now due to what we think is a kernel bug in
 	// 5.15+ kernels. Need to come back here and re-enable it after investigating.
 	// {"tls-crr", "none", "tls-go"},

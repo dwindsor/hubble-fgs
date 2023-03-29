@@ -86,8 +86,9 @@ var (
 
 		"http2-rr-h2load": h2LoadSource{http2: true},
 
-		"netperf-rr":  netperfSource{test: "TCP_RR"},
-		"netperf-crr": netperfSource{test: "TCP_CRR"},
+		"netperf-rr":     netperfSource{test: "TCP_RR"},
+		"netperf-crr":    netperfSource{test: "TCP_CRR"},
+		"netperf-stream": netperfSource{test: "TCP_STREAM"},
 	}
 )
 
