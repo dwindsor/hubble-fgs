@@ -28,20 +28,6 @@ const (
 	receiverIP   = "15.0.0.2/24"
 )
 
-func vethInterfacesByName(hostVethName, containerVethName string) (*net.Interface, *net.Interface, error) {
-	hostVeth, err := net.InterfaceByName(hostVethName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	containerVeth, err := net.InterfaceByName(containerVethName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return hostVeth, containerVeth, nil
-}
-
 func linkUp(ns *netns.NsHandle, name, n string) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()

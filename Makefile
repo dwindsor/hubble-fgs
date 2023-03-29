@@ -190,12 +190,15 @@ clean: tarball-clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
 	rm -fr ./release
 
-.PHONY: fgs-bench fgs-bench-image
+.PHONY: fgs-bench fgs-bench-image fgs-bench-graph
 fgs-bench:
 	$(GO) build -tags enterprise ./cmd/fgs-bench
 
 fgs-bench-image:
 	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
+
+fgs-bench-graph:
+	$(GO) build -tags enterprise ./cmd/fgs-bench-graph
 
 parsertest-image:
 	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) test -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -c ./pkg/parsertest -o parsertest
