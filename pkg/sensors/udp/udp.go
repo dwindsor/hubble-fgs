@@ -587,14 +587,6 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
 
-	// This case handles kernels <5.10 where map will have udp stats
-	// that are not yet associated to a process between IP stack and
-	// socket handling of the UDP data.
-	if udpValue.Pid == 0 {
-		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypePidIsZero)
-		return
-	}
-
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
@@ -602,27 +594,36 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 		return
 	}
 
-	last, ok := stats.Get(*udpKey)
-	if ok {
-		if *udpValue != last {
-			diffValue, err := udpDiffValues(udpKey, &last, udpValue)
-			if err == nil {
-				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-				udpKey = k.DeepCopyMapKey().(*udpInfoKey)
-				stats.Add(*udpKey, *mapUpdate)
-				emitStatEvent(udpKey, &diffValue)
-			} else {
-				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
-			}
-		}
+	// This case handles kernels <5.10 where map will have udp stats
+	// that are not yet associated to a process between IP stack and
+	// socket handling of the UDP data.
+	if udpValue.Pid == 0 {
+		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypePidIsZero)
 	} else {
-		udpValue = v.DeepCopyMapValue().(*udpInfoValue)
-		stats.Add(*udpKey, *udpValue)
-		emitStatEvent(udpKey, udpValue)
+		last, ok := stats.Get(*udpKey)
+		if ok {
+			if *udpValue != last {
+				diffValue, err := udpDiffValues(udpKey, &last, udpValue)
+				if err == nil {
+					mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
+					udpKey = k.DeepCopyMapKey().(*udpInfoKey)
+					stats.Add(*udpKey, *mapUpdate)
+					emitStatEvent(udpKey, &diffValue)
+				} else {
+					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
+				}
+			}
+		} else {
+			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
+			stats.Add(*udpKey, *udpValue)
+			emitStatEvent(udpKey, udpValue)
+		}
 	}
 
 	if t > UdpDeleteInterval {
-		emitCloseEvent(udpKey, udpValue)
+		if udpValue.Pid != 0 {
+			emitCloseEvent(udpKey, udpValue)
+		}
 		stats.Remove(*udpKey)
 		pseudoSocketsUpdate.Lock()
 		if pseudoSockets[udpKey.Cookie] != nil {
