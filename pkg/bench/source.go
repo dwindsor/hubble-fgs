@@ -552,6 +552,8 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency,local_cpu_percent_user,local_cpu_percent_system,remote_cpu_percent_user,remote_cpu_percent_system",
 	)
 
+	log.Printf("netperf source command: %s\n", cmdNetperf)
+
 	// Read combined output as 'time' outputs to stderr.
 	out, err := cmdNetperf.CombinedOutput()
 	if err != nil {
