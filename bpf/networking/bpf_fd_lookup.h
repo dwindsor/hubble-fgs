@@ -34,6 +34,29 @@ struct {
 	__uint(max_entries, 1);
 } fd_lookup_config_map SEC(".maps");
 
+static inline __attribute__((always_inline)) struct execve_map_value *
+event_find_task(struct task_struct *task, __u32 *ppid, bool *walked)
+{
+	__u32 pid = get_current_pid_tgid() >> 32;
+	struct execve_map_value *value = 0;
+	int i;
+
+#pragma unroll
+	for (i = 0; i < 4; i++) {
+		value = execve_map_get_noinit(pid);
+		if (value && value->key.ktime != 0)
+			break;
+		value = 0;
+		*walked = 1;
+		probe_read(&task, sizeof(task), _(&task->parent));
+		if (!task)
+			break;
+		probe_read(&pid, sizeof(pid), _(&task->tgid));
+	}
+	*ppid = pid;
+	return value;
+}
+
 static inline __attribute__((always_inline)) int
 __kprobe_proc_task_name(struct pt_regs *ctx)
 {
@@ -49,6 +72,8 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	bool read_ok = false;
 	u16 family = 0;
 	int sk_err = 0;
+	u32 ppid;
+	bool walked;
 
 	config = (struct fd_lookup_config *)map_lookup_elem(
 		&fd_lookup_config_map, &zero);
@@ -110,7 +135,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 
 	cookie = (u64)sk;
 
-	value = execve_map_get_noinit(pid);
+	value = event_find_task(p, &ppid, &walked);
 	if (!value) {
 		emit_ip_error_event(ctx, 0, &cookie, 0,
 				    IP_ERROR_SOCKET_DISCOVERY_NO_PROCESS);
