@@ -18,6 +18,9 @@ __sk_allocret(struct pt_regs *ctx)
 	struct execve_map_value *value;
 	u16 family;
 	struct socketmap_value process = { 0 };
+	u32 ppid;
+	bool walked;
+	long family_ret;
 
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
@@ -25,12 +28,14 @@ __sk_allocret(struct pt_regs *ctx)
 		return 0;
 	}
 
-	if (pid <= 1) {
+	if (pid < 1) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_SOCK_CREATE_PID_0);
 		return 0;
 	}
 
-	probe_read(&family, sizeof(u16), _(&(sk->__sk_common.skc_family)));
-	if (family != AF_INET && family != AF_INET6)
+	family_ret = probe_read(&family, sizeof(u16), _(&(sk->__sk_common.skc_family)));
+	if (family_ret == 0 && family != AF_INET && family != AF_INET6)
 		return 0;
 
 	/* There is no guarantee that the protocol has been set so we cannot
@@ -46,10 +51,14 @@ __sk_allocret(struct pt_regs *ctx)
 	 * check if the entry exists but also that ktime!=0 which would
 	 * indicate its a stale entry that we are preparing to GC.
 	 */
-	value = execve_map_get_noinit(pid);
+	value = event_find_curr(&ppid, &walked);
 	if (value && value->key.ktime) {
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
+	} else {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_SOCK_CREATE_NO_PROCESS);
+		return 1;
 	}
 	process.create_time = ktime_get_ns();
 	add_socketmap(&cookie, 0, &process);

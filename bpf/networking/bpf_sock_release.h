@@ -52,13 +52,17 @@ __sk_free(struct pt_regs *ctx, bool lazy)
 		protocol >>= 8;
 	}
 
-	if (protocol != IPPROTO_UDP) {
-		return 0;
-	}
-
 	/* Look up socket */
 	process = lookup_socketmap(&cookie);
 	if (!process) {
+		return 0;
+	}
+
+	if (protocol != IPPROTO_UDP) {
+		/* We store sockets regardless of protocol in sk_alloc (because a socket
+		 * might not have a protocol assigned at time of creation) so let's remove
+		 * them here, seeing as they're closed. */
+		del_socketmap(&cookie, sk, 0, lazy);
 		return 0;
 	}
 
