@@ -53,7 +53,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 		if err != nil {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}
-		cookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), fd)
+		cookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), fd, 0, 0)
 		return fd, cookie, nil
 	}
 
@@ -87,7 +87,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
-	aCookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), aFD)
+	aCookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), aFD, 0, 0)
 	// cannot set cookie for accept from user-space
 	checker.AddChecks(ec.NewProcessAcceptChecker("accept"))
 

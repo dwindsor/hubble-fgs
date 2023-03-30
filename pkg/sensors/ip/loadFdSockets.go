@@ -659,7 +659,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 	}
 }
 
-func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
+func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int) uint64 {
 	loading.Lock()
 	defer loading.Unlock()
 
@@ -684,6 +684,8 @@ func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
 		Protocol:           protocol,
 		DiscoverProtoShift: 0,
 		SignalHit:          0,
+		Sockaddr:           cookie,
+		Family:             uint16(family),
 	}
 	if protocolShift {
 		v.ProtoShift = 1
