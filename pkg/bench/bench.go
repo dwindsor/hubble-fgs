@@ -146,6 +146,12 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		if err := startBenchmarkExporter(ctx, obs, summary); err != nil {
 			log.Fatalf("Starting exporter failed: %v", err)
 		}
+	} else {
+		dataCacheSize := 1024
+
+		if err := observer.InitDataCache(dataCacheSize); err != nil {
+			log.Fatalf("InitDataCache failed: %v", err)
+		}
 	}
 
 	tp, err := tracingpolicy.PolicyFromYAMLFilename(configFile)
