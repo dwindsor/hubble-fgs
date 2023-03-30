@@ -50,7 +50,7 @@ const (
 	refDec
 )
 
-var ipErrorToString = []string{
+var IpErrorToString = []string{
 	0:  "Header error",
 	1:  "No heap available",
 	2:  "Read IPv6 next failed (probe)",
@@ -79,9 +79,17 @@ var ipErrorToString = []string{
 	25: "UDP retprobe add failed",
 	26: "UDP retprobe delete failed",
 	27: "UDP sock release no sock",
+	28: "UDP send missing process",
+	29: "UDP recv missing process",
+	30: "Update socketmap no process",
+	31: "Socket discovery no process",
+	32: "Socket discovery read error",
+	33: "UDP sock create no process",
+	34: "Socket discovery no sk",
+	35: "UDP sock create PID=0",
 }
 
-const ipErrorMax = 27
+var IpErrorMax = int64(len(IpErrorToString) - 1)
 
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
@@ -622,8 +630,8 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 
 	// Lower 32 bits is error code, upper 32 bits is data if required.
 	errorCode := event.Return & 0xffffffff
-	if errorCode <= ipErrorMax {
-		details = ipErrorToString[errorCode]
+	if errorCode <= IpErrorMax {
+		details = IpErrorToString[errorCode]
 		// Populate the metrics here before we parameterize with any data, otherwise we
 		// risk cardinality exploding
 		iperrormetrics.ProcessIpErrors(details, version).Inc()
