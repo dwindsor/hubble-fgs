@@ -79,6 +79,7 @@ type Arguments struct {
 	FgsJSONEncode      bool
 	PrintEvents        bool
 	Netns              bool
+	FgsEnableBpfStats  bool
 
 	SourceArgs SourceArgs
 	Source     SourceName
@@ -290,6 +291,8 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 }
 
 func RunBenchmark(args *Arguments) (summary *Summary) {
+	var oldBpfStats map[int64]*BpfProgStats
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go sigHandler(ctx, cancel)
 
@@ -300,8 +303,10 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
 	args.FgsEnableTCP = args.FgsEnableTLS || args.FgsEnableHTTP || args.FgsEnableTCP
 
-	EnableBpfStats()
-	oldBpfStats := GetBpfStats()
+	if args.FgsEnableBpfStats {
+		EnableBpfStats()
+		oldBpfStats = GetBpfStats()
+	}
 
 	if args.Netns {
 		if err := CreateVeth(); err != nil {
@@ -364,7 +369,9 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
 
 	summary.SourceStats = sourceStats
-	summary.BpfStats = GetBpfStatsSince(oldBpfStats)
+	if args.FgsEnableBpfStats {
+		summary.BpfStats = GetBpfStatsSince(oldBpfStats)
+	}
 	summary.EndTime = time.Now()
 	summary.TestDurationNanos = summary.EndTime.Sub(summary.StartTime)
 

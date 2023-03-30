@@ -100,6 +100,7 @@ func doBenchmark(output string, tests []benchmarkNetworkTest) error {
 				FgsEnableHTTP:      http,
 				FgsEnableInterface: iface,
 				FgsEnableHistogram: hist,
+				FgsEnableBpfStats:  false,
 			})
 
 		fmt.Printf("%s: %f %f %f\n", t.name, t.summary.SourceStats.ActualRate, t.summary.SourceStats.CPUPercent.SourceCpuUser, t.summary.SourceStats.CPUPercent.SourceCpuSystem)

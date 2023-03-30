@@ -102,6 +102,7 @@ func main() {
 		FgsEnableUDP:       udp,
 		FgsEnableInterface: iface,
 		FgsEnableHistogram: hist,
+		FgsEnableBpfStats:  true,
 		FgsDebug:           *debug,
 		FgsJSONEncode:      *jsonEncode || *printEvents,
 		Netns:              *netns,

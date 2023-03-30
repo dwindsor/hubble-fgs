@@ -75,12 +75,13 @@ func TestBenchBaseline(t *testing.T) {
 		t.Run(srcProxySink.source, func(t *testing.T) {
 			summary := RunBenchmark(
 				&Arguments{
-					TestName:   t.Name(),
-					SourceArgs: SourceArgs{Duration: benchmarkDuration},
-					Source:     SourceNameOrPanic(srcProxySink.source),
-					Proxy:      ProxyNameOrPanic(srcProxySink.proxy),
-					Sink:       SinkNameOrPanic(srcProxySink.sink),
-					Baseline:   true,
+					TestName:          t.Name(),
+					SourceArgs:        SourceArgs{Duration: benchmarkDuration},
+					Source:            SourceNameOrPanic(srcProxySink.source),
+					Proxy:             ProxyNameOrPanic(srcProxySink.proxy),
+					Sink:              SinkNameOrPanic(srcProxySink.sink),
+					Baseline:          true,
+					FgsEnableBpfStats: true,
 				})
 			if err := summary.WriteFile(resultFilename(t)); err != nil {
 				t.Fatalf("summary.WriteFile failed: %s", err)
@@ -102,12 +103,13 @@ func TestEnvoyOverhead(t *testing.T) {
 	source, proxy, sink := "http-rr-go", "envoy", "http-nginx"
 	summary := RunBenchmark(
 		&Arguments{
-			TestName:   t.Name(),
-			SourceArgs: SourceArgs{Duration: benchmarkDuration},
-			Source:     SourceNameOrPanic(source),
-			Proxy:      ProxyNameOrPanic(proxy),
-			Sink:       SinkNameOrPanic(sink),
-			Baseline:   true,
+			TestName:          t.Name(),
+			SourceArgs:        SourceArgs{Duration: benchmarkDuration},
+			Source:            SourceNameOrPanic(source),
+			Proxy:             ProxyNameOrPanic(proxy),
+			Sink:              SinkNameOrPanic(sink),
+			Baseline:          true,
+			FgsEnableBpfStats: true,
 		})
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)
@@ -136,13 +138,14 @@ func TestFGSHTTP(t *testing.T) {
 	viper.Set("debug", false)
 	summary := RunBenchmark(
 		&Arguments{
-			FgsEnableTCP:  true,
-			FgsEnableHTTP: true,
-			TestName:      t.Name(),
-			SourceArgs:    SourceArgs{Duration: benchmarkDuration},
-			Source:        SourceNameOrPanic("http-crr-go"),
-			Proxy:         ProxyNameOrPanic("none"),
-			Sink:          SinkNameOrPanic("http-nginx"),
+			FgsEnableTCP:      true,
+			FgsEnableHTTP:     true,
+			FgsEnableBpfStats: true,
+			TestName:          t.Name(),
+			SourceArgs:        SourceArgs{Duration: benchmarkDuration},
+			Source:            SourceNameOrPanic("http-crr-go"),
+			Proxy:             ProxyNameOrPanic("none"),
+			Sink:              SinkNameOrPanic("http-nginx"),
 		})
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)
