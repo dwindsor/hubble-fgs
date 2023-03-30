@@ -24,7 +24,8 @@ struct fd_lookup_config {
 	uint8_t proto_shift;
 	uint8_t signal_hit;
 	uint8_t pad1;
-	uint32_t pad2;
+	uint16_t family;
+	uint16_t pad2;
 };
 
 struct {
@@ -94,43 +95,51 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	if (config->pid != pid)
 		return 0;
 
-	sk_err = fd_to_sk(&sk, p, config->fd, required_protocol, &read_ok, &family,
-			  config->discover_proto_shift, &config->proto_shift);
-	switch (sk_err) {
-	case FD_TO_SK_SUCCESS:
-		if (config->discover_proto_shift) {
-			/* Reset config->discover_proto_shift to indicate that we have
-				* at least attempted to discover the protocol shift. If we failed
-				* the proto_shift will be set to PROTO_SHIFT_UNKNOWN.
-				*/
-			config->discover_proto_shift = 0;
-			/* Nothing else to do! */
+	/* If the socket address (pseudo cookie) has been provided, then we don't need to look up,
+	 * we just need to store it. */
+	if (!config->sockaddr) {
+		sk_err = fd_to_sk(&sk, p, config->fd, required_protocol, &read_ok, &family,
+				  config->discover_proto_shift, &config->proto_shift);
+		switch (sk_err) {
+		case FD_TO_SK_SUCCESS:
+			if (config->discover_proto_shift) {
+				/* Reset config->discover_proto_shift to indicate that we have
+					* at least attempted to discover the protocol shift. If we failed
+					* the proto_shift will be set to PROTO_SHIFT_UNKNOWN.
+					*/
+				config->discover_proto_shift = 0;
+				/* Nothing else to do! */
+				return 0;
+			}
+			break;
+		case FD_TO_SK_INVALID_PTRS:
+			/* This should never happen. */
+			return 0;
+		case FD_TO_SK_READ_ERROR_OTHER:
+		case FD_TO_SK_READ_ERROR_FILE:
+		case FD_TO_SK_READ_ERROR_INODE: {
+			u64 reason = sk_err;
+			emit_ip_error_event(ctx, 0, &reason, 0, IP_ERROR_SOCKET_DISCOVERY_READ_ERROR);
 			return 0;
 		}
-		break;
-	case FD_TO_SK_INVALID_PTRS:
-		/* This should never happen. */
-		return 0;
-	case FD_TO_SK_READ_ERROR_OTHER:
-	case FD_TO_SK_READ_ERROR_FILE:
-	case FD_TO_SK_READ_ERROR_INODE: {
-		u64 reason = sk_err;
-		emit_ip_error_event(ctx, 0, &reason, 0, IP_ERROR_SOCKET_DISCOVERY_READ_ERROR);
-		return 0;
-	}
-	case FD_TO_SK_WRONG_FAMILY:
-	case FD_TO_SK_WRONG_PROTO:
-		/* An incorrect family or protocol does not mean a failure, but just
-			 * that the socket didn't meet our expectations.
-			*/
-		return 0;
-	case FD_TO_SK_NO_SK:
-		emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
-		return 0;
-	}
-	if (!sk) {
-		emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
-		return 0;
+		case FD_TO_SK_WRONG_FAMILY:
+		case FD_TO_SK_WRONG_PROTO:
+			/* An incorrect family or protocol does not mean a failure, but just
+				* that the socket didn't meet our expectations.
+				*/
+			return 0;
+		case FD_TO_SK_NO_SK:
+			emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
+			return 0;
+		}
+		if (!sk) {
+			emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
+			return 0;
+		}
+	} else {
+		sk = (struct sock *)config->sockaddr;
+		read_ok = 1;
+		family = config->family;
 	}
 
 	cookie = (u64)sk;

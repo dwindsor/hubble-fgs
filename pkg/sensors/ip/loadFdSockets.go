@@ -13,6 +13,7 @@ package ip
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,6 +30,8 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -59,7 +62,8 @@ type FdLookupValue struct {
 	ProtoShift         uint8
 	SignalHit          uint8
 	Pad1               uint8
-	Pad2               uint32
+	Family             uint16
+	Pad2               uint16
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -451,6 +455,126 @@ func openConfigMap() *bpf.Map {
 	return m
 }
 
+func getIpAddrPort(ipPort string, ipv6 bool) ([2]uint64, uint16, error) {
+	fields := strings.Split(ipPort, ":")
+	port, err := strconv.ParseUint(fields[1], 16, 16)
+	if err != nil {
+		return [2]uint64{0, 0}, 0, err
+	}
+	ip := fields[0]
+	var ipOut [2]uint64
+	if ipv6 {
+		ip1, err := strconv.ParseUint(ip[0:8], 16, 32)
+		if err != nil {
+			return ipOut, 0, err
+		}
+		ip2, err := strconv.ParseUint(ip[8:16], 16, 32)
+		if err != nil {
+			return ipOut, 0, err
+		}
+		ip3, err := strconv.ParseUint(ip[16:24], 16, 32)
+		if err != nil {
+			return ipOut, 0, err
+		}
+		ip4, err := strconv.ParseUint(ip[24:], 16, 32)
+		if err != nil {
+			return ipOut, 0, err
+		}
+
+		ipOut[0] = (ip2 << 32) | ip1
+		ipOut[1] = (ip4 << 32) | ip3
+	} else {
+		ip1, err := strconv.ParseUint(ip, 16, 32)
+		if err != nil {
+			return ipOut, 0, err
+		}
+		ipOut[0] = ip1
+	}
+	return ipOut, uint16(port), nil
+}
+
+func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, protocol uint16) error {
+	fileBytes, err := ioutil.ReadFile(netFile)
+	if err != nil {
+		return err
+	}
+	ipv6 := netFile[len(netFile)-1] == '6'
+	fileString := string(fileBytes)
+	fileLines := strings.Split(fileString, "\n")[1:]
+	for _, line := range fileLines {
+		entries := strings.Fields(line)
+		if len(entries) == 0 {
+			continue
+		}
+		if len(entries) < 12 {
+			logger.GetLogger().WithFields(logrus.Fields{"len": len(entries), "netFile": netFile}).Info("split")
+			return fmt.Errorf("net file does not contain pointer")
+		}
+		cookie, err := strconv.ParseUint(entries[11], 16, 64)
+		if err != nil {
+			return err
+		}
+		inode, err := strconv.ParseUint(entries[9], 10, 64)
+		if err != nil {
+			return err
+		}
+		state, err := strconv.ParseUint(entries[3], 16, 8)
+		if err != nil {
+			return err
+		}
+		if protocol == syscall.IPPROTO_TCP {
+			if state != unix.BPF_TCP_ESTABLISHED && state != unix.BPF_TCP_LISTEN {
+				continue
+			}
+		} else if protocol == syscall.IPPROTO_UDP {
+			if state != unix.BPF_TCP_CLOSE && state != unix.BPF_TCP_ESTABLISHED {
+				continue
+			}
+		}
+		saddr, sport, err := getIpAddrPort(entries[1], ipv6)
+		if err != nil {
+			return err
+		}
+		daddr, dport, err := getIpAddrPort(entries[2], ipv6)
+		if err != nil {
+			return err
+		}
+		var ipv6char uint8
+		if ipv6 {
+			ipv6char = 1
+		} else {
+			ipv6char = 0
+		}
+		(*sockets)[inode] = FdLookupValue{
+			Sockaddr: cookie,
+			State:    uint8(state),
+			Saddr:    saddr,
+			Sport:    sport,
+			Daddr:    daddr,
+			Dport:    dport,
+			Protocol: protocol,
+			IPv6:     ipv6char,
+		}
+	}
+	return nil
+}
+
+func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol uint16) error {
+	var socketFiles []string
+	if protocol == syscall.IPPROTO_TCP {
+		socketFiles = append(socketFiles, "tcp", "tcp6")
+	} else if protocol == syscall.IPPROTO_UDP {
+		socketFiles = append(socketFiles, "udp", "udp6")
+	}
+	for _, file := range socketFiles {
+		err := getSocketsForNsFromFile(sockets, filepath.Join(netPath, file), protocol)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
 	m := openConfigMap()
 	if m == nil {
@@ -486,6 +610,44 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				// Need a little wait to allow the probe to be attached (only
 				// applies to first iteration of outer loop).
 				time.Sleep(10 * time.Millisecond)
+			}
+
+			var socket FdLookupValue
+			if v.Protocol == 0 {
+				sockets := make(map[uint64]FdLookupValue)
+				err := getSocketsForNs(&sockets, filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "net"), protocol)
+				if err != nil {
+					continue
+				}
+				fdLink, err := os.Readlink(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d/fd/%d", pid, fd)))
+				if err != nil {
+					continue
+				}
+				fdInode := uint64(0)
+				if strings.HasPrefix(fdLink, "socket:[") {
+					fdInode, err = strconv.ParseUint(fdLink[8:len(fdLink)-1], 10, 64)
+					if err != nil {
+						continue
+					}
+				} else if strings.HasPrefix(fdLink, "[0000]:") {
+					fdInode, err = strconv.ParseUint(fdLink[7:], 10, 64)
+					if err != nil {
+						continue
+					}
+				}
+				var ok bool
+				socket, ok = sockets[fdInode]
+				if !ok {
+					continue
+				}
+				// Add the socket
+				v.Protocol = protocol
+				v.Sockaddr = socket.Sockaddr
+				v.Family = socket.Family
+				m.Update(k, v)
+				// See getProtocolShift() for details on how this works.
+				os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
+				v = &socket
 			}
 
 			if v.Protocol == protocol && callback != nil {
