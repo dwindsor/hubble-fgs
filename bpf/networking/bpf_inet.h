@@ -366,7 +366,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-udp_watermarks(void *ctx, u64 *cookie, int vol, u64 send)
+udp_watermarks(void *ctx, u64 *cookie, struct udp_packet_details *packet, u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_watermarks_config *c;
@@ -393,17 +393,17 @@ udp_watermarks(void *ctx, u64 *cookie, int vol, u64 send)
 	 * the socket cookie by __udp_send() already.
 	 */
 	if (!process) {
-		emit_ip_error_event(ctx, 0, cookie, 0,
+		emit_ip_error_event(ctx, &packet->ip, cookie, packet->ipv6,
 				    IP_ERROR_INET_WATERMARK_NO_PROCESS);
 		return;
 	}
 	if (!process->key.pid) {
-		emit_ip_error_event(ctx, 0, cookie, 0,
+		emit_ip_error_event(ctx, &packet->ip, cookie, packet->ipv6,
 				    IP_ERROR_INET_WATERMARK_NO_PID);
 		return;
 	}
 
-	process_network_watermarks(ctx, process, IPPROTO_UDP, send, vol, c);
+	process_network_watermarks(ctx, process, IPPROTO_UDP, send, packet->payload_sz, c);
 }
 
 static inline __attribute__((always_inline)) void
@@ -505,7 +505,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, ts_opt, &packet->udp,
 		 cookie, packet->payload_off, packet->payload_sz, send, true,
 		 false);
-	udp_watermarks(skb, cookie, packet->payload_sz, send);
+	udp_watermarks(skb, cookie, packet, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -617,7 +617,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
 		 send, true, true);
-	udp_watermarks(ctx, &cookie, packet->payload_sz, send);
+	udp_watermarks(ctx, &cookie, packet, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -732,7 +732,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 		return;
 	}
 
-	udp_watermarks(skb, &cookie, packet->payload_sz, send);
+	udp_watermarks(skb, &cookie, packet, send);
 }
 
 #endif //__BPF_INET_H_

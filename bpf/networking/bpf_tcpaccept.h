@@ -40,6 +40,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	bool walker;
 	u32 ppid;
 	struct fd_lookup_config *config;
+	int skp_err = 0;
 
 	fd = ctx->ret;
 	if (fd < 0)
@@ -50,13 +51,12 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	if (!config)
 		return 0;
 
-	skp = fd_to_sk(current, fd, IPPROTO_TCP, &read_ok, &family, 0,
-		       &config->proto_shift);
-	if (!skp)
+	skp_err = fd_to_sk(&skp, current, fd, IPPROTO_TCP, &read_ok, &family, 0,
+			   &config->proto_shift);
+	if (skp_err || !skp)
 		return 0;
 
-	/* In TCP we use the struct sock address as the socket cookie.
-	 */
+	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skp;
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,

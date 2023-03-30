@@ -127,7 +127,7 @@ add_socketmap(u64 *cookie, struct msg_tls_ip *t, struct socketmap_value *v)
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero))) {
+	if (!err && (cntr = (__s64 *)map_lookup_elem(&socket_map_stats, &zero))) {
 		*cntr = *cntr + 1;
 		if (t)
 			map_update_elem(&tls_socket_map, t, v, 0);
@@ -145,7 +145,7 @@ del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ip *t, bool lazy)
 		err = map_delete_elem(&socket_map, (u64 *)&sk);
 	}
 
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero))) {
+	if (!err && (cntr = (__s64 *)map_lookup_elem(&socket_map_stats, &zero))) {
 		*cntr = *cntr - 1;
 		if (t)
 			map_delete_elem(&tls_socket_map, t);
@@ -155,20 +155,20 @@ del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ip *t, bool lazy)
 static inline __attribute__((always_inline)) struct socketmap_value *
 lookup_socketmap(u64 *cookie)
 {
-	return map_lookup_elem(&socket_map, cookie);
+	return (struct socketmap_value *)map_lookup_elem(&socket_map, cookie);
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *
 lookup_tls_socketmap(struct msg_tls_ip *t)
 {
-	return map_lookup_elem(&tls_socket_map, t);
+	return (struct socketmap_value *)map_lookup_elem(&tls_socket_map, t);
 }
 
 /* Check if the cookie->process(pid) already exists, and if not,
  * or if the cookie maps to a different process, add/update a
  * mapping from cookie to process(pid).
  */
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) bool
 update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 {
 	struct execve_map_value *value;
@@ -176,19 +176,19 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 	int zero = 0;
 
 	if (!pid || !cookie || !*cookie)
-		return;
+		return false;
 
 	process = lookup_socketmap(cookie);
 	if (!process || process->key.pid != pid) {
 		value = execve_map_get_noinit(pid);
 		if (!value)
-			return;
+			return false;
 		if (!process) {
 			int i;
 
-			process = map_lookup_elem(&socket_map_heap, &zero);
+			process = (struct socketmap_value *)map_lookup_elem(&socket_map_heap, &zero);
 			if (!process)
-				return;
+				return false;
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
@@ -215,6 +215,7 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 			process->ack_finack = 0;
 		}
 	}
+	return true;
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *

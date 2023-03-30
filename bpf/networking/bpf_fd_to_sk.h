@@ -10,8 +10,17 @@
 #define PROTO_SHIFT_TRUE    1
 #define PROTO_SHIFT_UNKNOWN 2
 
-static inline __attribute__((always_inline)) struct sock *
-fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
+#define FD_TO_SK_SUCCESS	  0
+#define FD_TO_SK_INVALID_PTRS	  1
+#define FD_TO_SK_WRONG_FAMILY	  2
+#define FD_TO_SK_WRONG_PROTO	  3
+#define FD_TO_SK_READ_ERROR_OTHER 4
+#define FD_TO_SK_READ_ERROR_FILE  5
+#define FD_TO_SK_READ_ERROR_INODE 6
+#define FD_TO_SK_NO_SK		  7
+
+static inline __attribute__((always_inline)) int
+fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required_protocol,
 	 bool *read_ok, u16 *family, u8 discover_proto_shift, u8 *proto_shift)
 {
 	struct files_struct *files;
@@ -26,34 +35,34 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 	u16 read_protocol;
 	long proto_ret;
 
-	if (!read_ok || !family)
-		return 0;
+	if (!read_ok || !family || !sk_ret)
+		return FD_TO_SK_INVALID_PTRS;
 	*read_ok = false;
 	*family = 0;
 
 	if (probe_read(&files, sizeof(files), _(&(p->files))) < 0)
-		return 0;
+		return FD_TO_SK_READ_ERROR_OTHER;
 	if (probe_read(&fdt, sizeof(fdt), _(&(files->fdt))) < 0)
-		return 0;
+		return FD_TO_SK_READ_ERROR_OTHER;
 	if (probe_read(&fd, sizeof(fd), _(&(fdt->fd))) < 0)
-		return 0;
+		return FD_TO_SK_READ_ERROR_OTHER;
 	if (probe_read(&file, sizeof(file), fd + filedesc) < 0)
-		return 0;
-	if (probe_read(&f_inode, sizeof(f_inode), _(&(file->f_inode))) < 0)
-		return 0;
-	if (probe_read(&i_mode, sizeof(i_mode), _(&(f_inode->i_mode))) < 0)
-		return 0;
-	if ((i_mode & S_IFMT) != S_IFSOCK)
-		return 0;
+		return FD_TO_SK_READ_ERROR_FILE;
+	if (probe_read(&f_inode, sizeof(f_inode), _(&(file->f_inode))) == 0) {
+		if (probe_read(&i_mode, sizeof(i_mode), _(&(f_inode->i_mode))) == 0) {
+			if ((i_mode & S_IFMT) != S_IFSOCK)
+				return FD_TO_SK_READ_ERROR_INODE;
+		}
+	}
 
 	/* In a socket, the private_data in the struct file *is* the struct sock.
 	 * See sock_from_file() in net/socket.c for confirmation.
 	 */
 	if (probe_read(&sock, sizeof(sock), _(&(file->private_data))) < 0)
-		return 0;
+		return FD_TO_SK_READ_ERROR_FILE;
 
 	if (probe_read(&sk, sizeof(sk), _(&(sock->sk))) < 0)
-		return 0;
+		return FD_TO_SK_NO_SK;
 
 	/* We only care about IPv4 and IPv6, but we also return the socket even if
 	 * we can't read the family for some reason.
@@ -61,7 +70,7 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 	family_ret = probe_read(family, sizeof(*family),
 				_(&(sk->__sk_common.skc_family)));
 	if (family_ret == 0 && (*family != AF_INET && *family != AF_INET6))
-		return 0;
+		return FD_TO_SK_WRONG_FAMILY;
 
 	/* We only return the socket for the required protocol, but we also return
 	 * the socket if we can't read the protocol for some reason.
@@ -92,7 +101,7 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 			read_protocol &= 0xff;
 		}
 		if (proto_ret == 0 && read_protocol != required_protocol) {
-			return 0;
+			return FD_TO_SK_WRONG_PROTO;
 		}
 	} else if (proto_shift) {
 		// Check if we need to shift the protocol to match the required_protocol
@@ -108,5 +117,6 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 	if (family_ret == 0 && proto_ret == 0)
 		*read_ok = true;
 
-	return sk;
+	*sk_ret = sk;
+	return FD_TO_SK_SUCCESS;
 }

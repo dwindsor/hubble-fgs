@@ -374,6 +374,8 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 		update_submitted_value(value, ret);
 		if (hasctx) {
 			emit_udp_connect_event(ctx, &cookie, value);
+		} else {
+			emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 		}
 
 		map_update_elem(&udp_map, &key, value, 0);
@@ -383,12 +385,16 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, &cookie, value);
+			} else {
+				emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 			}
 		}
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
-	update_socketmap(&cookie, 0, value->pid);
+	if (!update_socketmap(&cookie, 0, value->pid)) {
+		emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
+	}
 
 	del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 	return 0;
@@ -538,11 +544,6 @@ udp_set_info(void *ctx, u64 *cookie, struct udp_info_value *value,
 	     struct sk_buff *skb)
 {
 	struct udp_info *info;
-	int hasctx = 1;
-
-	if (value->pid == 0) {
-		hasctx = add_process_ctx(value);
-	}
 
 	if (value->saddr[0] == 0 && value->saddr[1] == 0) {
 		info = udp_get_skb_info(ctx, cookie, skb);
@@ -571,7 +572,7 @@ udp_set_info(void *ctx, u64 *cookie, struct udp_info_value *value,
 		}
 	}
 
-	if (hasctx && (value->saddr[0] != 0 || value->saddr[1] != 0))
+	if (value->saddr[0] != 0 || value->saddr[1] != 0)
 		return true;
 
 	return false;
@@ -613,6 +614,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 	int len = (int)PT_REGS_PARM3_CORE(ctx);
 	u64 cookie;
 	struct udp_info_key key;
+	int hasctx = 1;
+	int valid_addr = 0;
 
 	/* Disregard peeks */
 	if (len <= 0)
@@ -647,7 +650,13 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		udp_info_consumed_reset(value, len);
 		value->skb_consume_misses = 0;
 
-		if (udp_set_info(ctx, &cookie, value, skb)) {
+		hasctx = add_process_ctx(value);
+		if (!hasctx) {
+			emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+		}
+		valid_addr = udp_set_info(ctx, &cookie, value, skb);
+
+		if (hasctx && valid_addr) {
 			emit_udp_connect_event(ctx, &cookie, value);
 		}
 		map_update_elem(&udp_map, &key, value, 0);
@@ -655,14 +664,24 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		update_consumed_value(value, len);
 		if ((value->saddr[0] == 0 && value->saddr[1] == 0) ||
 		    value->pid == 0) {
-			if (udp_set_info(ctx, &cookie, value, skb)) {
+			if (value->pid == 0) {
+				hasctx = add_process_ctx(value);
+				if (!hasctx) {
+					emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+				}
+			}
+			valid_addr = udp_set_info(ctx, &cookie, value, skb);
+
+			if (hasctx && valid_addr) {
 				emit_udp_connect_event(ctx, &cookie, value);
 			}
 		}
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
-	update_socketmap(&cookie, 0, value->pid);
+	if (!update_socketmap(&cookie, 0, value->pid)) {
+		emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
+	}
 
 	return 0;
 }
