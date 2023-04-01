@@ -36,11 +36,12 @@ import (
 )
 
 type SourceArgs struct {
-	Duration      time.Duration // The test duration
-	RatePerSec    float64       // The number of steps per second to aim for
-	ReqSize       int           // The size of a request, if applicable to the source.
-	NetNs         bool          // Network Namespace to run test
-	DestinationIP string
+	Duration       time.Duration // The test duration
+	RatePerSec     float64       // The number of steps per second to aim for
+	ReqSize        int           // The size of a request, if applicable to the source.
+	NetNs          bool          // Network Namespace to run test
+	DestinationIP  string
+	WithConfidence bool // Set confidence interval in netperf tests
 }
 
 func (args *SourceArgs) String() string {
@@ -538,20 +539,22 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 	)
 	defer cmdDockerKill.CombinedOutput()
 
-	cmdNetperf := exec.Command(
-		"docker", "exec", string(res[:12]), "netperf",
+	argsNetperf := []string{"exec", string(res[:12]), "netperf"}
+	if args.WithConfidence {
+		argsNetperf = append(argsNetperf, "-I 99,1")
+	}
+	argsNetperf = append(argsNetperf,
 		fmt.Sprintf("-H%s", args.DestinationIP),
 		fmt.Sprintf("-p%d", sinkPort),
 		fmt.Sprintf("-l%d", args.Duration/time.Second),
 		"-P0", // No header
-		"-I 99,1",
 		"-c", "-C",
 		"-T 1,2",
 		"-t"+src.test,
 		"--",
 		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency,local_cpu_percent_user,local_cpu_percent_system,remote_cpu_percent_user,remote_cpu_percent_system",
 	)
-
+	cmdNetperf := exec.Command("docker", argsNetperf...)
 	log.Printf("netperf source command: %s\n", cmdNetperf)
 
 	// Read combined output as 'time' outputs to stderr.

@@ -87,8 +87,11 @@ func doBenchmark(output string, tests []benchmarkNetworkTest) error {
 		}
 		t.summary = bench.RunBenchmark(
 			&bench.Arguments{
-				TestName:           t.name,
-				SourceArgs:         bench.SourceArgs{Duration: benchmarkDuration},
+				TestName: t.name,
+				SourceArgs: bench.SourceArgs{
+					Duration:       benchmarkDuration,
+					WithConfidence: true,
+				},
 				Source:             bench.SourceNameOrPanic(t.source),
 				Proxy:              "none",
 				Sink:               bench.SinkNameOrPanic(t.sink),
