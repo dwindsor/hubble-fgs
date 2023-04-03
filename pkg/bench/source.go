@@ -521,10 +521,20 @@ func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (
 		)
 
 		res, _ = cmdDocker.CombinedOutput()
+		/* Appears I need a retry here as the above output and GetFromDocker race. */
+		var nsDocker netns.NsHandle
+		retry := 0
 
-		nsDocker, err := netns.GetFromDocker(string(res[:12]))
-		if err != nil {
-			return stats, fmt.Errorf("netserver network namespace unknown: %s", err)
+		for {
+			nsDocker, err = netns.GetFromDocker(string(res[:12]))
+			if err == nil {
+				break
+			}
+			if retry > 10 {
+				return stats, fmt.Errorf("netserver network namespace unknown: %s result (%s)", err, res)
+			}
+			time.Sleep(5 * time.Second)
+			retry++
 		}
 		createInterface(&nsDocker, senderName, senderIP)
 	} else {

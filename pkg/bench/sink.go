@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vishvananda/netns"
 	"golang.org/x/net/http2"
@@ -288,12 +289,21 @@ func (sink netperfSink) Start(ctx context.Context, ns bool) (int, chan SinkStats
 		if err != nil {
 			log.Printf("netserver CPU usage parsing failed: %s\n", err)
 		}
-		nsd, err := netns.GetFromDocker(string(res[:12]))
-		if err != nil {
-			log.Printf("netserver network namespace unknown: %s\n", err)
-			return
+		retry := 0
+		for {
+			nsd, err := netns.GetFromDocker(string(res[:12]))
+			if err == nil {
+				nsDocker = &nsd
+				break
+			}
+			if retry > 10 {
+				log.Printf("netserver 'docker run' returned: %s\n", res)
+				log.Printf("netserver network namespace unknown: %s\n", err)
+				return
+			}
+			time.Sleep(5 * time.Second)
+			retry++
 		}
-		nsDocker = &nsd
 		if ns {
 			createInterface(nsDocker, receiverName, receiverIP)
 		}
