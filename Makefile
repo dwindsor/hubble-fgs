@@ -200,16 +200,16 @@ test: tester-progs hubble-bpf
 	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
 
 # Agent image to use for end-to-end tests
-E2E_AGENT ?= "isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+E2E_AGENT ?= isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)
 # Operator image to use for end-to-end tests
-E2E_OPERATOR ?= "isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
+E2E_OPERATOR ?= isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)
 # BTF file to use in the E2E test. Set to nothing to use system BTF.
-E2E_BTF ?= ""
+E2E_BTF ?=
 # Actual flags to use for BTF file in e2e test. Use E2E_BTF instead.
-ifneq ($(E2E_BTF), "")
-	E2E_BTF_FLAGS ?= "-tetragon.btf=$(shell readlink -f $(E2E_BTF))"
+ifneq ($(E2E_BTF),)
+	E2E_BTF_FLAGS ?= -tetragon.btf="$(shell readlink -f $(E2E_BTF))"
 else
-	E2E_BTF_FLAGS = ""
+	E2E_BTF_FLAGS =
 endif
 # Build image and operator images locally before running test. Set to 0 to disable.
 E2E_BUILD_IMAGES ?= 1
