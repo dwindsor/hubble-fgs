@@ -36,7 +36,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/podhooks"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/option"
@@ -577,7 +579,7 @@ func init() {
 		name: "file sensor",
 	}
 	sensors.RegisterProbeType("file_monitoring", file)
-	sensors.RegisterSpecHandlerAtInit(file.name, file)
+	sensors.RegisterPolicyHandlerAtInit(file.name, file)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
@@ -1078,50 +1080,58 @@ func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
 	return fimProgs, nil
 }
 
-// SpecHandler() (called on init)
-func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
-	spec := raw.(*v1alpha1.TracingPolicySpec)
-	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsExclude) > 0 {
-		logger.GetLogger().Warnf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
+// PolicyHandler (called on init)
+func (k *observerFileSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	spec := policy.TpSpec()
+	if len(spec.FileMonitoring.Paths) == 0 {
+		if len(spec.FileMonitoring.PathsExclude) > 0 {
+			logger.GetLogger().Warnf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
+		}
 		return nil, nil
 	}
-	if len(spec.FileMonitoring.Paths) > 0 {
-		forceLoad := false
-		if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
-			forceLoad = true
-		}
-		if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
-			logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
-			return nil, nil
-		}
-		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 
-		selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
-		if err != nil {
-			return nil, fmt.Errorf("FileMonitoring failed to parse selectors")
-		}
-
-		// start hubble-fgs-fs-scanner if it hasn't started yet
-		if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
-			var err error
-			fsScannerCmd, err = startFsScanner()
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Failed to start hubble-fgs-fs-scanner")
-				return nil, nil
-			}
-		}
-
-		config := fileapi.FileConfigMapValue{
-			HasSecurityPathRename: 1,
-		}
-		progs, err := findHooks(&config)
-		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
-			return nil, nil
-		}
-		tcID := atomic.AddUint32(&sensorCounter, 1)
-		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, config, selState)
+	if fid != policyfilter.NoFilterID {
+		return nil, fmt.Errorf("file sensor does not implement policy filtering")
 	}
+
+	forceLoad := false
+	if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
+		forceLoad = true
+	}
+	if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
+		logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
+		return nil, nil
+	}
+	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
+
+	selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
+	if err != nil {
+		return nil, fmt.Errorf("FileMonitoring failed to parse selectors")
+	}
+
+	// start hubble-fgs-fs-scanner if it hasn't started yet
+	if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
+		var err error
+		fsScannerCmd, err = startFsScanner()
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Failed to start hubble-fgs-fs-scanner")
+			return nil, nil
+		}
+	}
+
+	config := fileapi.FileConfigMapValue{
+		HasSecurityPathRename: 1,
+	}
+	progs, err := findHooks(&config)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
+		return nil, nil
+	}
+	tcID := atomic.AddUint32(&sensorCounter, 1)
+	return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, config, selState)
 	return nil, nil
 }
 
