@@ -78,6 +78,9 @@ const (
 	keyFimFifoPath = "fim-fifo-path"
 
 	keyDisableKprobeMulti = "disable-kprobe-multi"
+
+	keyRBSize      = "rb-size"
+	keyRBSizeTotal = "rb-size-total"
 )
 
 var (
@@ -161,4 +164,7 @@ func readAndSetFlags() {
 	enterpriseOption.Config.FimFifoPath = viper.GetString(keyFimFifoPath)
 
 	option.Config.DisableKprobeMulti = viper.GetBool(keyDisableKprobeMulti)
+
+	option.Config.RBSize = viper.GetInt(keyRBSize)
+	option.Config.RBSizeTotal = viper.GetInt(keyRBSizeTotal)
 }

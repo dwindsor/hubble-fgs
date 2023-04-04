@@ -111,6 +111,10 @@ func hubbleFGSExecute() error {
 		log.Fatal(err)
 	}
 
+	if option.Config.RBSize != 0 && option.Config.RBSizeTotal != 0 {
+		log.Fatalf("Can't specify --rb-size and --rb-size-total together")
+	}
+
 	log.WithField("version", version.Version).Info("Starting hubble-fgs")
 	log.WithField("config", viper.AllSettings()).Info("config settings")
 
@@ -582,6 +586,10 @@ func execute() error {
 
 	// Allow to disable kprobe multi interface
 	flags.Bool(keyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
+
+	// Allow to specify perf ring buffer size
+	flags.Int(keyRBSizeTotal, 0, "Set perf ring buffer size in total for all cpus (default 65k per cpu)")
+	flags.Int(keyRBSize, 0, "Set perf ring buffer size for single cpu (default 65k)")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
