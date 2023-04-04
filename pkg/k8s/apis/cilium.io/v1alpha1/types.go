@@ -120,13 +120,17 @@ func (tp *TracingPolicy) TpName() string {
 	return tp.ObjectMeta.Name
 }
 
+// OperationSelectorValue represents the value for MatchOperations.
+//
+// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR
+type OperationSelectorValue = string
+
 type OperationSelector struct {
 	// +kubebuilder:validation:Enum=In;NotIn
 	// Filter operation.
 	Operator string `json:"operator"`
-	// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR
 	// Value to compare the argument against.
-	Values []string `json:"values"`
+	Values []OperationSelectorValue `json:"values"`
 }
 
 // FileSelector selects file operations.

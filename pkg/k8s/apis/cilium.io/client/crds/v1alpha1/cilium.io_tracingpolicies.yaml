@@ -149,18 +149,20 @@ spec:
                                 type: string
                               values:
                                 description: Value to compare the argument against.
-                                enum:
-                                - FILE_INVALID
-                                - FILE_WRITE
-                                - FILE_READ
-                                - FILE_DELETE
-                                - FILE_CREATE
-                                - FILE_RMDIR
-                                - FILE_MKDIR
-                                - FILE_RENAME
-                                - FILE_READDIR
-                                - FILE_CHATTR
                                 items:
+                                  description: OperationSelectorValue represents the
+                                    value for MatchOperations.
+                                  enum:
+                                  - FILE_INVALID
+                                  - FILE_WRITE
+                                  - FILE_READ
+                                  - FILE_DELETE
+                                  - FILE_CREATE
+                                  - FILE_RMDIR
+                                  - FILE_MKDIR
+                                  - FILE_RENAME
+                                  - FILE_READDIR
+                                  - FILE_CHATTR
                                   type: string
                                 type: array
                             required:
