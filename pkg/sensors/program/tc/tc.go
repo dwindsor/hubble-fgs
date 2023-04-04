@@ -17,6 +17,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+type NamespaceInterface struct {
+	Ns uint64
+	If string
+}
+
 func getAllRouteLinks() ([]netlink.Link, error) {
 	allLinks, err := netlink.LinkList()
 	if err != nil {
@@ -118,7 +123,8 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) error {
 	return err
 }
 
-func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program, interfaces []string, nsNum uint64) error {
+func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program, interfaces []string, nsNum uint64,
+	existing map[NamespaceInterface]bool, allAttached map[NamespaceInterface]bool) error {
 	allLinks, err := getAllRouteLinks()
 	if err != nil {
 		return err
@@ -127,21 +133,26 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 
 	for _, link := range attachLinks {
 		// NOTE: Set outer 'err' and break on error to rewind.
-		logger.GetLogger().Infof("Attaching %s to device %s in net namespace %d", load.Type, link.Attrs().Name, nsNum)
-		isIngress := load.Type == "tc_ingress"
-		if err = QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
-			logger.GetLogger().WithError(err).Warn("QdiscTCInsert Failed")
-			break
+		attachment := NamespaceInterface{Ns: nsNum, If: link.Attrs().Name}
+		_, alreadyAttached := existing[attachment]
+		if !alreadyAttached {
+			logger.GetLogger().Infof("Attaching %s to device %s in net namespace %d", load.Type, link.Attrs().Name, nsNum)
+			isIngress := load.Type == "tc_ingress"
+			if err = QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+				logger.GetLogger().WithError(err).Warn("QdiscTCInsert Failed")
+				break
+			}
+			if err = AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
+				logger.GetLogger().WithError(err).Warn("AttachTC Failed")
+				break
+			}
+			un.Attachments = append(un.Attachments,
+				unloader.TcAttachment{
+					LinkName:  link.Attrs().Name,
+					IsIngress: isIngress,
+				})
 		}
-		if err = AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
-			logger.GetLogger().WithError(err).Warn("AttachTC Failed")
-			break
-		}
-		un.Attachments = append(un.Attachments,
-			unloader.TcAttachment{
-				LinkName:  link.Attrs().Name,
-				IsIngress: isIngress,
-			})
+		allAttached[attachment] = true
 	}
 	if err != nil {
 		if unloadErr := un.Unload(); unloadErr != nil {
@@ -155,10 +166,12 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 func LoadTC(
 	bpfDir, mapDir, ciliumDir string,
 	load *program.Program,
-	version, verbose int,
-	selectors [128]byte,
+	verbose int,
 	interfaces []string,
-) error {
+	attached map[NamespaceInterface]bool,
+) (map[NamespaceInterface]bool, error) {
+	allAttached := make(map[NamespaceInterface]bool)
+
 	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		seenNs := make(map[uint64]bool)
 
@@ -197,7 +210,7 @@ func LoadTC(
 			}
 
 			err = netns.Do(func(_ ns.NetNS) error {
-				err = doLoadTC(&un, load, prog, interfaces, nsNum)
+				err = doLoadTC(&un, load, prog, interfaces, nsNum, attached, allAttached)
 				if err != nil {
 					return err
 				}
@@ -217,5 +230,5 @@ func LoadTC(
 		}
 		return chainUn, nil
 	}
-	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
+	return allAttached, program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
 }

@@ -228,6 +228,7 @@ func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpe
 func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Latency.Enable {
 		config.latencyEnable = 1
+		tcCheckInterval = time.Duration(spec.Parser.Udp.Latency.InterfacesCheckInterval) * time.Second
 		latencyMin := spec.Parser.Udp.Latency.Min
 		latencyMax := spec.Parser.Udp.Latency.Max
 		if latencyMax <= latencyMin {

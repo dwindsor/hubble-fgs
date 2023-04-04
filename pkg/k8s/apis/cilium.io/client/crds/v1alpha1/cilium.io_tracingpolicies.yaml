@@ -914,6 +914,11 @@ spec:
                             items:
                               type: string
                             type: array
+                          interfacesCheckInterval:
+                            description: Configures the interfaces check interval
+                              in seconds
+                            format: int32
+                            type: integer
                           matchPorts:
                             description: Configures the ports to enable on
                             items:

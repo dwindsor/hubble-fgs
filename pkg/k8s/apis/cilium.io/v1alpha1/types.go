@@ -418,6 +418,9 @@ type UdpLatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the maximum packet size
 	MaxPacketSize uint16 `json:"maxPacketSize"`
+	// +kubebuilder:validation:Optional
+	// Configures the interfaces check interval in seconds
+	InterfacesCheckInterval uint32 `json:"interfacesCheckInterval"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {

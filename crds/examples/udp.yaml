@@ -24,6 +24,7 @@ spec:
         clockMaxSkew: 5
         interfaces: ["lo"]
         maxPacketSize: 1500
+        interfacesCheckInterval: 1
     networkWatermarksExitGen:
       enable: true
       interval: 1000

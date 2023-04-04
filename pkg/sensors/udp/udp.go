@@ -81,6 +81,12 @@ var (
 
 	pseudoSockets       = make(map[uint64](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex
+
+	tcAttachedInterfaces = make(map[*program.Program]map[tc.NamespaceInterface]bool)
+	tcAttaching          sync.Mutex
+	tcList               []sensors.LoadProbeArgs
+	tcCheckTimer         = timer.NewPeriodicTimer("UDP TC Check Timer", runUdpTcCheck, true)
+	tcCheckInterval      = 0 * time.Second
 )
 
 var (
@@ -664,6 +670,21 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
 }
 
+func runUdpTcCheck() {
+	tcAttaching.Lock()
+	defer tcAttaching.Unlock()
+	for _, program := range tcList {
+		attachedInterfaces, exists := tcAttachedInterfaces[program.Load]
+		if !exists {
+			attachedInterfaces = make(map[tc.NamespaceInterface]bool)
+		}
+		attachedInterfaces, err := tc.LoadTC(program.BPFDir, program.MapDir, program.CiliumDir, program.Load, program.Verbose, latencyInterfaces, attachedInterfaces)
+		if err == nil {
+			tcAttachedInterfaces[program.Load] = attachedInterfaces
+		}
+	}
+}
+
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
 		// As well as loading the existing UDP sockets, ip.LoadSockets will also set the
@@ -685,9 +706,19 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	} else if args.Load.Type == "tc_egress" {
-		err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, [128]byte{}, latencyInterfaces)
-		if err != nil {
+		tcAttaching.Lock()
+		attachedInterfaces := make(map[tc.NamespaceInterface]bool)
+		attachedInterfaces, err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose, latencyInterfaces, attachedInterfaces)
+		if err == nil {
+			tcAttachedInterfaces[args.Load] = attachedInterfaces
+			tcList = append(tcList, args)
+			tcAttaching.Unlock()
+		} else {
+			tcAttaching.Unlock()
 			return err
+		}
+		if tcCheckInterval != (0 * time.Second) {
+			tcCheckTimer.Start(tcCheckInterval)
 		}
 	}
 	if !configured {
@@ -725,6 +756,7 @@ func unloadUdpSensor() error {
 	configured = false
 
 	gcTimer.Stop()
+	tcCheckTimer.Stop()
 	if watermarkEnabled {
 		networkWatermarksEvents.Stop(IPPROTO_UDP)
 	}
