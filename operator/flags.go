@@ -15,23 +15,36 @@
 package main
 
 import (
-	"github.com/cilium/cilium/pkg/option"
+	"strings"
 
+	"github.com/isovalent/hubble-fgs/operator/option"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func init() {
-	cobra.OnInitialize()
+	initializeFlags()
+}
+
+func initializeFlags() {
+	cobra.OnInitialize(func() {
+		replacer := strings.NewReplacer("-", "_", ".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+		viper.SetEnvPrefix(option.TetragonOpEnvPrefix)
+		viper.AutomaticEnv()
+	})
 
 	flags := rootCmd.Flags()
 
 	flags.String(option.CMDRef, "", "Path to cmdref output directory")
 	flags.MarkHidden(option.CMDRef)
-	option.BindEnv(option.CMDRef)
 
 	flags.Bool(option.SkipCRDCreation, false, "When true, Kubernetes Custom Resource Definitions will not be created")
-	option.BindEnv(option.SkipCRDCreation)
 
 	viper.BindPFlags(flags)
+}
+
+// Populate sets all options with the values from viper.
+func configPopulate() {
+	option.Config.SkipCRDCreation = viper.GetBool(option.SkipCRDCreation)
 }

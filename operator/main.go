@@ -49,16 +49,10 @@ var (
 				os.Exit(0)
 			}
 
-			initEnv()
-			runOperator()
+			operatorExecute()
 		},
 	}
 )
-
-func initEnv() {
-	// Prepopulate option.Config with options from CLI.
-	operatorOption.Config.Populate()
-}
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -67,7 +61,9 @@ func main() {
 	}
 }
 
-func runOperator() {
+func operatorExecute() {
+	configPopulate()
+
 	restConfig, err := rest.InClusterConfig()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to check k8s configuration")
