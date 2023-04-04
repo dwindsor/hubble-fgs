@@ -72,7 +72,7 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
 
 # Final step runs on target platform (might need emulation) and retrieves
 # (cross-)compiled binaries from builders
-FROM docker.io/library/alpine:3.17.2@sha256:ff6bdca1701f3a8a67e328815ff2346b0e4067d32ec36b7992c1fdc001dc8517
+FROM docker.io/library/alpine:3.17.3@sha256:124c7d2707904eea7431fffe91522a01e5a861a624ee31d03372cc1d138a3126
 RUN apk add iproute2
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
