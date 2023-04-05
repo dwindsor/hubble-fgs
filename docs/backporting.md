@@ -7,12 +7,10 @@ https://docs.cilium.io/en/latest/contributing/release/backports/ as much as we c
 
 As of Tetragon EE 1.9, each EE version is in sync with an OSS version.
 
-```
-| EE    | OSS  |
-| ----- | ---- |
-| 1.9   | 0.8  |
-
-```
+| EE     | OSS  |
+| -----  | ---- |
+| 1.9    | 0.8  |
+| 1.10   | 0.9  |
 
 Hence, backporting PRs that are in OSS or have dependencies in PRs that _are_ in OSS needs to go via
 the correspodning OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
