@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/cilium/tetragon/cmd/tetra/version"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/file"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/getevents"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/record"
 	"github.com/sirupsen/logrus"
@@ -50,6 +51,7 @@ func new() *cobra.Command {
 	rootCmd.AddCommand(stacktracetree.New())
 	rootCmd.AddCommand(status.New())
 	rootCmd.AddCommand(tracingpolicy.New())
+	rootCmd.AddCommand(file.New())
 	rootCmd.AddCommand(record.New())
 	rootCmd.AddCommand(version.New())
 
