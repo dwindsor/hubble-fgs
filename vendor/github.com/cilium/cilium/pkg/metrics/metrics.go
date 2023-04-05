@@ -1,16 +1,5 @@
-// Copyright 2017-2019 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 // Package metrics holds prometheus metrics objects and related utility functions. It
 // does not abstract away the prometheus client but the caller rarely needs to
@@ -24,14 +13,14 @@ package metrics
 import (
 	"net/http"
 
-	"github.com/cilium/cilium/api/v1/models"
-	"github.com/cilium/cilium/pkg/version"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
-	"golang.org/x/sys/unix"
+	"github.com/sirupsen/logrus"
+
+	"github.com/cilium/cilium/api/v1/models"
+	"github.com/cilium/cilium/pkg/version"
 )
 
 const (
@@ -54,6 +43,9 @@ const (
 	// SubsystemAgent is the subsystem to scope metrics related to the cilium agent itself.
 	SubsystemAgent = "agent"
 
+	// SubsystemFQDN is the subsystem to scope metrics related to the FQDN proxy.
+	SubsystemIPCache = "ipcache"
+
 	// SubsystemK8s is the subsystem to scope metrics related to Kubernetes
 	SubsystemK8s = "k8s"
 
@@ -63,6 +55,9 @@ const (
 	// SubsystemKVStore is the subsystem to scope metrics related to the kvstore.
 	SubsystemKVStore = "kvstore"
 
+	// SubsystemFQDN is the subsystem to scope metrics related to the FQDN proxy.
+	SubsystemFQDN = "fqdn"
+
 	// SubsystemNodes is the subsystem to scope metrics related to the node manager.
 	SubsystemNodes = "nodes"
 
@@ -71,9 +66,6 @@ const (
 
 	// SubsystemAPILimiter is the subsystem to scope metrics related to the API limiter package.
 	SubsystemAPILimiter = "api_limiter"
-
-	// SubsystemNodeNeigh is the subsystem to scope metrics related to management of node neighbor.
-	SubsystemNodeNeigh = "node_neigh"
 
 	// Namespace is used to scope metrics from cilium. It is prepended to metric
 	// names and separated with a '_'
@@ -158,8 +150,12 @@ const (
 	// started by cilium (Envoy, monitor, etc..)
 	LabelSubsystem = "subsystem"
 
-	// LabelKind is the kind a label
+	// LabelKind is the kind of a label
 	LabelKind = "kind"
+
+	// LabelEventSource is the source of a label for event metrics
+	// i.e. k8s, containerd, api.
+	LabelEventSource = "source"
 
 	// LabelPath is the label for the API path
 	LabelPath = "path"
@@ -172,19 +168,54 @@ const (
 	// LabelOperation is the label for BPF maps operations
 	LabelOperation = "operation"
 
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// LabelMapNameDeprecated is the label for the BPF map name
-	// Deprecated: in favor of LabelMapName
-	LabelMapNameDeprecated = "mapName"
-
 	// LabelMapName is the label for the BPF map name
 	LabelMapName = "map_name"
 
 	// LabelVersion is the label for the version number
 	LabelVersion = "version"
 
+	// LabelVersionRevision is the label for the version revision
+	LabelVersionRevision = "revision"
+
+	// LabelArch is the label for the platform architecture (e.g. linux/amd64)
+	LabelArch = "arch"
+
 	// LabelDirection is the label for traffic direction
 	LabelDirection = "direction"
+
+	// LabelSourceCluster is the label for source cluster name
+	LabelSourceCluster = "source_cluster"
+
+	// LabelSourceNodeName is the label for source node name
+	LabelSourceNodeName = "source_node_name"
+
+	// LabelTargetCluster is the label for target cluster name
+	LabelTargetCluster = "target_cluster"
+
+	// LabelTargetNodeIP is the label for target node IP
+	LabelTargetNodeIP = "target_node_ip"
+
+	// LabelTargetNodeName is the label for target node name
+	LabelTargetNodeName = "target_node_name"
+
+	// LabelTargetNodeType is the label for target node type (local_node, remote_intra_cluster, vs remote_inter_cluster)
+	LabelTargetNodeType = "target_node_type"
+
+	LabelLocationLocalNode          = "local_node"
+	LabelLocationRemoteIntraCluster = "remote_intra_cluster"
+	LabelLocationRemoteInterCluster = "remote_inter_cluster"
+
+	// LabelType is the label for type in general (e.g. endpoint, node)
+	LabelType         = "type"
+	LabelPeerEndpoint = "endpoint"
+	LabelPeerNode     = "node"
+
+	LabelTrafficHTTP = "http"
+	LabelTrafficICMP = "icmp"
+
+	LabelAddressType          = "address_type"
+	LabelAddressTypePrimary   = "primary"
+	LabelAddressTypeSecondary = "secondary"
 )
 
 var (
@@ -194,23 +225,21 @@ var (
 	// to the cilium-agent
 	APIInteractions = NoOpObserverVec
 
+	// Status
+
+	// NodeConnectivityStatus is the connectivity status between local node to
+	// other node intra or inter cluster.
+	NodeConnectivityStatus = NoOpGaugeVec
+
+	// NodeConnectivityLatency is the connectivity latency between local node to
+	// other node intra or inter cluster.
+	NodeConnectivityLatency = NoOpGaugeVec
+
 	// Endpoint
 
 	// Endpoint is a function used to collect this metric.
 	// It must be thread-safe.
 	Endpoint prometheus.GaugeFunc
-
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// EndpointCount is a function used to collect this metric.
-	// It must be thread-safe.
-	// Deprecated: in favor of Endpoint
-	EndpointCount prometheus.GaugeFunc
-
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// EndpointRegenerationCount is a count of the number of times any endpoint
-	// has been regenerated and success/fail outcome
-	// Deprecated: in favor of EndpointRegenerationTotal
-	EndpointRegenerationCount = NoOpCounterVec
 
 	// EndpointRegenerationTotal is a count of the number of times any endpoint
 	// has been regenerated and success/fail outcome
@@ -223,15 +252,14 @@ var (
 	// endpoints, labeled by span name and status ("success" or "failure")
 	EndpointRegenerationTimeStats = NoOpObserverVec
 
-	// Policy
+	// EndpointPropagationDelay is the delay between creation of local CiliumEndpoint
+	// and update for that CiliumEndpoint received through CiliumEndpointSlice.
+	// Measure of local CEP roundtrip time with CiliumEndpointSlice feature enabled.
+	EndpointPropagationDelay = NoOpObserverVec
 
+	// Policy
 	// Policy is the number of policies loaded into the agent
 	Policy = NoOpGauge
-
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// PolicyCount is the number of policies loaded into the agent
-	// Deprecated: in favor of Policy
-	PolicyCount = NoOpGauge
 
 	// PolicyRegenerationCount is the total number of successful policy
 	// regenerations.
@@ -242,11 +270,6 @@ var (
 
 	// PolicyRevision is the current policy revision number for this agent
 	PolicyRevision = NoOpGauge
-
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// PolicyImportErrors is a count of failed policy imports
-	// Deprecated: in favor of PolicyImportErrorsTotal
-	PolicyImportErrors = NoOpCounter
 
 	// PolicyImportErrorsTotal is a count of failed policy imports
 	PolicyImportErrorsTotal = NoOpCounter
@@ -263,13 +286,8 @@ var (
 
 	// Identity
 
-	// Identity is the number of identities currently in use on the node
-	Identity = NoOpGauge
-
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// IdentityCount is the number of identities currently in use on the node
-	// Deprecated: in favor of Identity
-	IdentityCount = NoOpGauge
+	// Identity is the number of identities currently in use on the node by type
+	Identity = NoOpGaugeVec
 
 	// Events
 
@@ -277,17 +295,11 @@ var (
 	// event that we will handle
 	// source is one of k8s, docker or apia
 
-	// EventTSK8s is the timestamp of k8s events
-	EventTSK8s = NoOpGauge
+	// EventTS is the timestamp of k8s resource events.
+	EventTS = NoOpGaugeVec
 
 	// EventLagK8s is the lag calculation for k8s Pod events.
 	EventLagK8s = NoOpGauge
-
-	// EventTSContainerd is the timestamp of docker events
-	EventTSContainerd = NoOpGauge
-
-	// EventTSAPI is the timestamp of docker events
-	EventTSAPI = NoOpGauge
 
 	// L7 statistics
 
@@ -317,6 +329,10 @@ var (
 	// by error, protocol and span time
 	ProxyUpstreamTime = NoOpObserverVec
 
+	// ProxyDatapathUpdateTimeout is a count of all the timeouts encountered while
+	// updating the datapath due to an FQDN IP update
+	ProxyDatapathUpdateTimeout = NoOpCounter
+
 	// L3-L4 statistics
 
 	// DropCount is the total drop requests,
@@ -337,10 +353,6 @@ var (
 
 	// Datapath statistics
 
-	// DatapathErrors is the number of errors managing datapath components
-	// such as BPF maps.
-	DatapathErrors = NoOpCounterVec
-
 	// ConntrackGCRuns is the number of times that the conntrack GC
 	// process was run.
 	ConntrackGCRuns = NoOpCounterVec
@@ -356,6 +368,9 @@ var (
 
 	// ConntrackGCDuration the duration of the conntrack GC process in milliseconds.
 	ConntrackGCDuration = NoOpObserverVec
+
+	// ConntrackDumpReset marks the count for conntrack dump resets
+	ConntrackDumpResets = NoOpCounterVec
 
 	// Signals
 
@@ -397,12 +412,6 @@ var (
 	// to the kube-apiserver
 	KubernetesAPIInteractions = NoOpObserverVec
 
-	// TODO(sayboras): Remove deprecated metric in 1.10
-	// KubernetesAPICalls is the counter for all API calls made to
-	// kube-apiserver.
-	// Deprecated: Use KubernetesAPICallsTotal instead
-	KubernetesAPICalls = NoOpCounterVec
-
 	// KubernetesAPICallsTotal is the counter for all API calls made to
 	// kube-apiserver.
 	KubernetesAPICallsTotal = NoOpCounterVec
@@ -410,6 +419,9 @@ var (
 	// KubernetesCNPStatusCompletion is the number of seconds it takes to
 	// complete a CNP status update
 	KubernetesCNPStatusCompletion = NoOpObserverVec
+
+	// TerminatingEndpointsEvents is the number of terminating endpoint events received from kubernetes.
+	TerminatingEndpointsEvents = NoOpCounter
 
 	// IPAM events
 
@@ -432,6 +444,33 @@ var (
 	// FQDNGarbageCollectorCleanedTotal is the number of domains cleaned by the
 	// GC job.
 	FQDNGarbageCollectorCleanedTotal = NoOpCounter
+
+	// FQDNActiveNames is the number of domains inside the DNS cache that have
+	// not expired (by TTL), per endpoint.
+	FQDNActiveNames = NoOpGaugeVec
+
+	// FQDNActiveIPs is the number of IPs inside the DNS cache associated with
+	// a domain that has not expired (by TTL) and are currently active, per
+	// endpoint.
+	FQDNActiveIPs = NoOpGaugeVec
+
+	// FQDNAliveZombieConnections is the number IPs associated with domains
+	// that have expired (by TTL) yet still associated with an active
+	// connection (aka zombie), per endpoint.
+	FQDNAliveZombieConnections = NoOpGaugeVec
+
+	// FQDNSemaphoreRejectedTotal is the total number of DNS requests rejected
+	// by the DNS proxy because too many requests were in flight, as enforced by
+	// the admission semaphore.
+	FQDNSemaphoreRejectedTotal = NoOpCounter
+
+	// IPCacheErrorsTotal is the total number of IPCache events handled in
+	// the IPCache subsystem that resulted in errors.
+	IPCacheErrorsTotal = NoOpCounterVec
+
+	// IPCacheEventsTotal is the total number of IPCache events handled in
+	// the IPCache subsystem.
+	IPCacheEventsTotal = NoOpCounterVec
 
 	// BPFSyscallDuration is the metric for bpf syscalls duration.
 	BPFSyscallDuration = NoOpObserverVec
@@ -482,17 +521,16 @@ var (
 	// APILimiterProcessedRequests is the counter of the number of
 	// processed (successful and failed) requests
 	APILimiterProcessedRequests = NoOpCounterVec
-
-	// ArpingRequestsTotal is the counter of the number of sent
-	// (successful and failed) arping requests
-	ArpingRequestsTotal = NoOpCounterVec
 )
 
 type Configuration struct {
 	APIInteractionsEnabled                  bool
+	NodeConnectivityStatusEnabled           bool
+	NodeConnectivityLatencyEnabled          bool
 	EndpointRegenerationCountEnabled        bool
 	EndpointStateCountEnabled               bool
 	EndpointRegenerationTimeStatsEnabled    bool
+	EndpointPropagationDelayEnabled         bool
 	PolicyCountEnabled                      bool
 	PolicyRegenerationCountEnabled          bool
 	PolicyRegenerationTimeStatsEnabled      bool
@@ -501,7 +539,7 @@ type Configuration struct {
 	PolicyEndpointStatusEnabled             bool
 	PolicyImplementationDelayEnabled        bool
 	IdentityCountEnabled                    bool
-	EventTSK8sEnabled                       bool
+	EventTSEnabled                          bool
 	EventLagK8sEnabled                      bool
 	EventTSContainerdEnabled                bool
 	EventTSAPIEnabled                       bool
@@ -511,16 +549,17 @@ type Configuration struct {
 	ProxyForwardedEnabled                   bool
 	ProxyDeniedEnabled                      bool
 	ProxyReceivedEnabled                    bool
+	ProxyDatapathUpdateTimeoutEnabled       bool
 	NoOpObserverVecEnabled                  bool
 	DropCountEnabled                        bool
 	DropBytesEnabled                        bool
 	NoOpCounterVecEnabled                   bool
 	ForwardBytesEnabled                     bool
-	DatapathErrorsEnabled                   bool
 	ConntrackGCRunsEnabled                  bool
 	ConntrackGCKeyFallbacksEnabled          bool
 	ConntrackGCSizeEnabled                  bool
 	ConntrackGCDurationEnabled              bool
+	ConntrackDumpResetsEnabled              bool
 	SignalsHandledEnabled                   bool
 	ServicesCountEnabled                    bool
 	ErrorsWarningsEnabled                   bool
@@ -529,16 +568,25 @@ type Configuration struct {
 	SubprocessStartEnabled                  bool
 	KubernetesEventProcessedEnabled         bool
 	KubernetesEventReceivedEnabled          bool
+	KubernetesTimeBetweenEventsEnabled      bool
 	KubernetesAPIInteractionsEnabled        bool
 	KubernetesAPICallsEnabled               bool
 	KubernetesCNPStatusCompletionEnabled    bool
+	KubernetesTerminatingEndpointsEnabled   bool
 	IpamEventEnabled                        bool
+	IPCacheErrorsTotalEnabled               bool
+	IPCacheEventsTotalEnabled               bool
 	KVStoreOperationsDurationEnabled        bool
 	KVStoreEventsQueueDurationEnabled       bool
 	KVStoreQuorumErrorsEnabled              bool
 	FQDNGarbageCollectorCleanedTotalEnabled bool
+	FQDNActiveNames                         bool
+	FQDNActiveIPs                           bool
+	FQDNActiveZombiesConnections            bool
+	FQDNSemaphoreRejectedTotal              bool
 	BPFSyscallDurationEnabled               bool
 	BPFMapOps                               bool
+	BPFMapPressure                          bool
 	TriggerPolicyUpdateTotal                bool
 	TriggerPolicyUpdateFolds                bool
 	TriggerPolicyUpdateCallDuration         bool
@@ -550,27 +598,22 @@ type Configuration struct {
 	APILimiterRateLimit                     bool
 	APILimiterAdjustmentFactor              bool
 	APILimiterProcessedRequests             bool
-	ArpingRequestsTotalEnabled              bool
 }
 
 func DefaultMetrics() map[string]struct{} {
 	return map[string]struct{}{
 		Namespace + "_" + SubsystemAgent + "_api_process_time_seconds":               {},
-		Namespace + "_endpoint_regenerations":                                        {}, // TODO(sayboras): Remove deprecated metric in 1.10
 		Namespace + "_endpoint_regenerations_total":                                  {},
 		Namespace + "_endpoint_state":                                                {},
 		Namespace + "_endpoint_regeneration_time_stats_seconds":                      {},
 		Namespace + "_policy":                                                        {},
-		Namespace + "_policy_count":                                                  {}, // TODO(sayboras): Remove deprecated metric in 1.10
 		Namespace + "_policy_regeneration_total":                                     {},
 		Namespace + "_policy_regeneration_time_stats_seconds":                        {},
 		Namespace + "_policy_max_revision":                                           {},
-		Namespace + "_policy_import_errors":                                          {}, // TODO(sayboras): Remove deprecated metric in 1.10
 		Namespace + "_policy_import_errors_total":                                    {},
 		Namespace + "_policy_endpoint_enforcement_status":                            {},
 		Namespace + "_policy_implementation_delay":                                   {},
 		Namespace + "_identity":                                                      {},
-		Namespace + "_identity_count":                                                {}, // TODO(sayboras): Remove deprecated metric in 1.10
 		Namespace + "_event_ts":                                                      {},
 		Namespace + "_proxy_redirects":                                               {},
 		Namespace + "_policy_l7_total":                                               {},
@@ -583,7 +626,10 @@ func DefaultMetrics() map[string]struct{} {
 		Namespace + "_drop_bytes_total":                                              {},
 		Namespace + "_forward_count_total":                                           {},
 		Namespace + "_forward_bytes_total":                                           {},
-		Namespace + "_" + SubsystemDatapath + "_errors_total":                        {},
+		Namespace + "_endpoint_propagation_delay_seconds":                            {},
+		Namespace + "_node_connectivity_status":                                      {},
+		Namespace + "_node_connectivity_latency_seconds":                             {},
+		Namespace + "_" + SubsystemDatapath + "_conntrack_dump_resets_total":         {},
 		Namespace + "_" + SubsystemDatapath + "_conntrack_gc_runs_total":             {},
 		Namespace + "_" + SubsystemDatapath + "_conntrack_gc_key_fallbacks_total":    {},
 		Namespace + "_" + SubsystemDatapath + "_conntrack_gc_entries":                {},
@@ -597,14 +643,15 @@ func DefaultMetrics() map[string]struct{} {
 		Namespace + "_kubernetes_events_total":                                       {},
 		Namespace + "_kubernetes_events_received_total":                              {},
 		Namespace + "_" + SubsystemK8sClient + "_api_latency_time_seconds":           {},
-		Namespace + "_" + SubsystemK8sClient + "_api_calls_counter":                  {}, // TODO(sayboras): Remove deprecated metric in 1.10
 		Namespace + "_" + SubsystemK8sClient + "_api_calls_total":                    {},
 		Namespace + "_" + SubsystemK8s + "_cnp_status_completion_seconds":            {},
+		Namespace + "_" + SubsystemK8s + "_terminating_endpoints_events_total":       {},
 		Namespace + "_ipam_events_total":                                             {},
 		Namespace + "_" + SubsystemKVStore + "_operations_duration_seconds":          {},
 		Namespace + "_" + SubsystemKVStore + "_events_queue_seconds":                 {},
 		Namespace + "_" + SubsystemKVStore + "_quorum_errors_total":                  {},
-		Namespace + "_fqdn_gc_deletions_total":                                       {},
+		Namespace + "_" + SubsystemIPCache + "_errors_total":                         {},
+		Namespace + "_" + SubsystemFQDN + "_gc_deletions_total":                      {},
 		Namespace + "_" + SubsystemBPF + "_map_ops_total":                            {},
 		Namespace + "_" + SubsystemTriggers + "_policy_update_total":                 {},
 		Namespace + "_" + SubsystemTriggers + "_policy_update_folds":                 {},
@@ -616,7 +663,6 @@ func DefaultMetrics() map[string]struct{} {
 		Namespace + "_" + SubsystemAPILimiter + "_rate_limit":                        {},
 		Namespace + "_" + SubsystemAPILimiter + "_adjustment_factor":                 {},
 		Namespace + "_" + SubsystemAPILimiter + "_processed_requests_total":          {},
-		Namespace + "_" + SubsystemNodeNeigh + "_arping_requests_total":              {},
 	}
 }
 
@@ -640,17 +686,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, APIInteractions)
 			c.APIInteractionsEnabled = true
-
-		case Namespace + "_endpoint_regenerations":
-			EndpointRegenerationCount = prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Name:      "endpoint_regenerations",
-				Help: "Count of all endpoint regenerations that have completed, tagged by outcome" +
-					"(deprecated, use endpoint_regenerations_total instead)",
-			}, []string{"outcome"})
-
-			collectors = append(collectors, EndpointRegenerationCount)
-			c.EndpointRegenerationCountEnabled = true
 
 		case Namespace + "_endpoint_regenerations_total":
 			EndpointRegenerationTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -695,16 +730,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			collectors = append(collectors, Policy)
 			c.PolicyCountEnabled = true
 
-		case Namespace + "_policy_count":
-			PolicyCount = prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace: Namespace,
-				Name:      "policy_count",
-				Help:      "Number of policies currently loaded (deprecated, use policy instead)",
-			})
-
-			collectors = append(collectors, PolicyCount)
-			c.PolicyCountEnabled = true
-
 		case Namespace + "_policy_regeneration_total":
 			PolicyRegenerationCount = prometheus.NewCounter(prometheus.CounterOpts{
 				Namespace: Namespace,
@@ -734,17 +759,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, PolicyRevision)
 			c.PolicyRegenerationTimeStatsEnabled = true
-
-		case Namespace + "_policy_import_errors":
-			PolicyImportErrors = prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Name:      "policy_import_errors",
-				Help: "Number of times a policy import has failed" +
-					"(deprecated, use policy_import_errors_total instead)",
-			})
-
-			collectors = append(collectors, PolicyImportErrors)
-			c.PolicyImportErrorsEnabled = true
 
 		case Namespace + "_policy_import_errors_total":
 			PolicyImportErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -777,35 +791,24 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			c.PolicyImplementationDelayEnabled = true
 
 		case Namespace + "_identity":
-			Identity = prometheus.NewGauge(prometheus.GaugeOpts{
+			Identity = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: Namespace,
 				Name:      "identity",
 				Help:      "Number of identities currently allocated",
-			})
+			}, []string{LabelType})
 
 			collectors = append(collectors, Identity)
 			c.IdentityCountEnabled = true
 
-		case Namespace + "_identity_count":
-			IdentityCount = prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace: Namespace,
-				Name:      "identity_count",
-				Help:      "Number of identities currently allocated (deprecated, use identity instead)",
-			})
-
-			collectors = append(collectors, IdentityCount)
-			c.IdentityCountEnabled = true
-
 		case Namespace + "_event_ts":
-			EventTSK8s = prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace:   Namespace,
-				Name:        "event_ts",
-				Help:        "Last timestamp when we received an event",
-				ConstLabels: prometheus.Labels{"source": LabelEventSourceK8s},
-			})
+			EventTS = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Name:      "event_ts",
+				Help:      "Last timestamp when we received an event",
+			}, []string{LabelEventSource, LabelScope, LabelAction})
 
-			collectors = append(collectors, EventTSK8s)
-			c.EventTSK8sEnabled = true
+			collectors = append(collectors, EventTS)
+			c.EventTSEnabled = true
 
 			EventLagK8s = prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace:   Namespace,
@@ -816,26 +819,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, EventLagK8s)
 			c.EventLagK8sEnabled = true
-
-			EventTSContainerd = prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace:   Namespace,
-				Name:        "event_ts",
-				Help:        "Last timestamp when we received an event",
-				ConstLabels: prometheus.Labels{"source": LabelEventSourceContainerd},
-			})
-
-			collectors = append(collectors, EventTSContainerd)
-			c.EventTSContainerdEnabled = true
-
-			EventTSAPI = prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace:   Namespace,
-				Name:        "event_ts",
-				Help:        "Last timestamp when we received an event",
-				ConstLabels: prometheus.Labels{"source": LabelEventSourceAPI},
-			})
-
-			collectors = append(collectors, EventTSAPI)
-			c.EventTSAPIEnabled = true
 
 		case Namespace + "_proxy_redirects":
 			ProxyRedirects = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -907,6 +890,16 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			collectors = append(collectors, ProxyUpstreamTime)
 			c.NoOpObserverVecEnabled = true
 
+		case Namespace + "_proxy_datapath_update_timeout_total":
+			ProxyDatapathUpdateTimeout = prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Name:      "proxy_datapath_update_timeout_total",
+				Help:      "Number of total datapath update timeouts due to FQDN IP updates",
+			})
+
+			collectors = append(collectors, ProxyDatapathUpdateTimeout)
+			c.ProxyDatapathUpdateTimeoutEnabled = true
+
 		case Namespace + "_drop_count_total":
 			DropCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 				Namespace: Namespace,
@@ -950,17 +943,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, ForwardBytes)
 			c.ForwardBytesEnabled = true
-
-		case Namespace + "_" + SubsystemDatapath + "_errors_total":
-			DatapathErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: SubsystemDatapath,
-				Name:      "errors_total",
-				Help:      "Number of errors that occurred in the datapath or datapath management",
-			}, []string{LabelDatapathArea, LabelDatapathName, LabelDatapathFamily})
-
-			collectors = append(collectors, DatapathErrors)
-			c.DatapathErrorsEnabled = true
 
 		case Namespace + "_" + SubsystemDatapath + "_conntrack_gc_runs_total":
 			ConntrackGCRuns = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -1018,6 +1000,17 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, ConntrackGCDuration)
 			c.ConntrackGCDurationEnabled = true
+
+		case Namespace + "_" + SubsystemDatapath + "_conntrack_dump_resets_total":
+			ConntrackDumpResets = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemDatapath,
+				Name:      "conntrack_dump_resets_total",
+				Help:      "Number of conntrack dump resets. Happens when a BPF entry gets removed while dumping the map is in progress",
+			}, []string{LabelDatapathArea, LabelDatapathName, LabelDatapathFamily})
+
+			collectors = append(collectors, ConntrackDumpResets)
+			c.ConntrackDumpResetsEnabled = true
 
 		case Namespace + "_" + SubsystemDatapath + "_signals_handled_total":
 			SignalsHandled = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -1112,18 +1105,6 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			collectors = append(collectors, KubernetesAPIInteractions)
 			c.KubernetesAPIInteractionsEnabled = true
 
-		case Namespace + "_" + SubsystemK8sClient + "_api_calls_counter":
-			KubernetesAPICalls = prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: SubsystemK8sClient,
-				Name:      "api_calls_counter",
-				Help: "Number of API calls made to kube-apiserver labeled by host, method and return code." +
-					"(deprecated, use api_calls_total instead)",
-			}, []string{"host", LabelMethod, LabelAPIReturnCode})
-
-			collectors = append(collectors, KubernetesAPICalls)
-			c.KubernetesAPICallsEnabled = true
-
 		case Namespace + "_" + SubsystemK8sClient + "_api_calls_total":
 			KubernetesAPICallsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 				Namespace: Namespace,
@@ -1145,6 +1126,17 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 
 			collectors = append(collectors, KubernetesCNPStatusCompletion)
 			c.KubernetesCNPStatusCompletionEnabled = true
+
+		case Namespace + "_" + SubsystemK8s + "_terminating_endpoints_events_total":
+			TerminatingEndpointsEvents = prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemK8s,
+				Name:      "terminating_endpoints_events_total",
+				Help:      "Number of terminating endpoint events received from Kubernetes",
+			})
+
+			collectors = append(collectors, TerminatingEndpointsEvents)
+			c.KubernetesTerminatingEndpointsEnabled = true
 
 		case Namespace + "_ipam_events_total":
 			IpamEvent = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -1190,15 +1182,82 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			collectors = append(collectors, KVStoreQuorumErrors)
 			c.KVStoreQuorumErrorsEnabled = true
 
-		case Namespace + "_fqdn_gc_deletions_total":
+		case Namespace + "_" + SubsystemIPCache + "_errors_total":
+			IPCacheErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemIPCache,
+				Name:      "errors_total",
+				Help:      "Number of errors interacting with the IP to Identity cache",
+			}, []string{LabelType, LabelError})
+
+			collectors = append(collectors, IPCacheErrorsTotal)
+			c.IPCacheErrorsTotalEnabled = true
+
+		case Namespace + "_" + SubsystemIPCache + "_events_total":
+			IPCacheEventsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemIPCache,
+				Name:      "events_total",
+				Help:      "Number of events interacting with the IP to Identity cache",
+			}, []string{LabelType})
+
+			collectors = append(collectors, IPCacheEventsTotal)
+			c.IPCacheEventsTotalEnabled = true
+
+		case Namespace + "_" + SubsystemFQDN + "_gc_deletions_total":
 			FQDNGarbageCollectorCleanedTotal = prometheus.NewCounter(prometheus.CounterOpts{
 				Namespace: Namespace,
-				Name:      "fqdn_gc_deletions_total",
+				Subsystem: SubsystemFQDN,
+				Name:      "gc_deletions_total",
 				Help:      "Number of FQDNs that have been cleaned on FQDN Garbage collector job",
 			})
 
 			collectors = append(collectors, FQDNGarbageCollectorCleanedTotal)
 			c.FQDNGarbageCollectorCleanedTotalEnabled = true
+
+		case Namespace + "_" + SubsystemFQDN + "_active_names":
+			FQDNActiveNames = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemFQDN,
+				Name:      "active_names",
+				Help:      "Number of domains inside the DNS cache that have not expired (by TTL), per endpoint",
+			}, []string{LabelPeerEndpoint})
+
+			collectors = append(collectors, FQDNActiveNames)
+			c.FQDNActiveNames = true
+
+		case Namespace + "_" + SubsystemFQDN + "_active_ips":
+			FQDNActiveIPs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemFQDN,
+				Name:      "active_ips",
+				Help:      "Number of IPs inside the DNS cache associated with a domain that has not expired (by TTL), per endpoint",
+			}, []string{LabelPeerEndpoint})
+
+			collectors = append(collectors, FQDNActiveIPs)
+			c.FQDNActiveIPs = true
+
+		case Namespace + "_" + SubsystemFQDN + "_alive_zombie_connections":
+			FQDNAliveZombieConnections = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemFQDN,
+				Name:      "alive_zombie_connections",
+				Help:      "Number of IPs associated with domains that have expired (by TTL) yet still associated with an active connection (aka zombie), per endpoint",
+			}, []string{LabelPeerEndpoint})
+
+			collectors = append(collectors, FQDNAliveZombieConnections)
+			c.FQDNActiveZombiesConnections = true
+
+		case Namespace + "_" + SubsystemFQDN + "_semaphore_rejected_total":
+			FQDNSemaphoreRejectedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: Namespace,
+				Subsystem: SubsystemFQDN,
+				Name:      "semaphore_rejected_total",
+				Help:      "Number of DNS request rejected by the DNS Proxy's admission semaphore",
+			})
+
+			collectors = append(collectors, FQDNSemaphoreRejectedTotal)
+			c.FQDNSemaphoreRejectedTotal = true
 
 		case Namespace + "_" + SubsystemBPF + "_syscall_duration_seconds":
 			BPFSyscallDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -1217,10 +1276,13 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 				Subsystem: SubsystemBPF,
 				Name:      "map_ops_total",
 				Help:      "Total operations on map, tagged by map name",
-			}, []string{LabelMapName, LabelMapNameDeprecated, LabelOperation, LabelOutcome})
+			}, []string{LabelMapName, LabelOperation, LabelOutcome})
 
 			collectors = append(collectors, BPFMapOps)
 			c.BPFMapOps = true
+
+		case Namespace + "_" + SubsystemBPF + "_map_pressure":
+			c.BPFMapPressure = true
 
 		case Namespace + "_" + SubsystemTriggers + "_policy_update_total":
 			TriggerPolicyUpdateTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -1250,7 +1312,7 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 				Subsystem: SubsystemTriggers,
 				Name:      "policy_update_call_duration_seconds",
 				Help:      "Duration of policy update trigger",
-			}, []string{"type"})
+			}, []string{LabelType})
 
 			collectors = append(collectors, TriggerPolicyUpdateCallDuration)
 			c.TriggerPolicyUpdateCallDuration = true
@@ -1260,9 +1322,10 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 				Namespace: Namespace,
 				Name:      "version",
 				Help:      "Cilium version",
-			}, []string{LabelVersion})
+			}, []string{LabelVersion, LabelVersionRevision, LabelArch})
 
-			VersionMetric.WithLabelValues(version.GetCiliumVersion().Version)
+			v := version.GetCiliumVersion()
+			VersionMetric.WithLabelValues(v.Version, v.Revision, v.Arch)
 
 			collectors = append(collectors, VersionMetric)
 			c.VersionMetric = true
@@ -1344,27 +1407,130 @@ func CreateConfiguration(metricsEnabled []string) (Configuration, []prometheus.C
 			collectors = append(collectors, APILimiterProcessedRequests)
 			c.APILimiterProcessedRequests = true
 
-		case Namespace + "_arping_requests_total":
-			ArpingRequestsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		case Namespace + "_endpoint_propagation_delay_seconds":
+			EndpointPropagationDelay = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 				Namespace: Namespace,
-				Subsystem: SubsystemNodeNeigh,
-				Name:      "arping_requests_total",
-				Help:      "Number of arping requests sent labeled by status",
-			}, []string{LabelStatus})
+				Name:      "endpoint_propagation_delay_seconds",
+				Help:      "CiliumEndpoint roundtrip propagation delay in seconds",
+				Buckets:   []float64{.05, .1, 1, 5, 30, 60, 120, 240, 300, 600},
+			}, []string{})
 
-			collectors = append(collectors, ArpingRequestsTotal)
-			c.ArpingRequestsTotalEnabled = true
+			collectors = append(collectors, EndpointPropagationDelay)
+			c.EndpointPropagationDelayEnabled = true
+
+		case Namespace + "_node_connectivity_status":
+			NodeConnectivityStatus = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Name:      "node_connectivity_status",
+				Help:      "The last observed status of both ICMP and HTTP connectivity between the current Cilium agent and other Cilium nodes",
+			}, []string{
+				LabelSourceCluster,
+				LabelSourceNodeName,
+				LabelTargetCluster,
+				LabelTargetNodeName,
+				LabelTargetNodeType,
+				LabelType,
+			})
+
+			collectors = append(collectors, NodeConnectivityStatus)
+			c.NodeConnectivityStatusEnabled = true
+
+		case Namespace + "_node_connectivity_latency_seconds":
+			NodeConnectivityLatency = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: Namespace,
+				Name:      "node_connectivity_latency_seconds",
+				Help:      "The last observed latency between the current Cilium agent and other Cilium nodes in seconds",
+			}, []string{
+				LabelSourceCluster,
+				LabelSourceNodeName,
+				LabelTargetCluster,
+				LabelTargetNodeName,
+				LabelTargetNodeIP,
+				LabelTargetNodeType,
+				LabelType,
+				LabelProtocol,
+				LabelAddressType,
+			})
+
+			collectors = append(collectors, NodeConnectivityLatency)
+			c.NodeConnectivityLatencyEnabled = true
 		}
+
 	}
 
 	return c, collectors
 }
 
+// GaugeWithThreshold is a prometheus gauge that registers itself with
+// prometheus if over a threshold value and unregisters when under.
+type GaugeWithThreshold struct {
+	gauge     prometheus.Gauge
+	threshold float64
+	active    bool
+}
+
+// Set the value of the GaugeWithThreshold.
+func (gwt *GaugeWithThreshold) Set(value float64) {
+	overThreshold := value > gwt.threshold
+	if gwt.active && !overThreshold {
+		gwt.active = !Unregister(gwt.gauge)
+		if gwt.active {
+			logrus.WithField("metric", gwt.gauge.Desc().String()).Warning("Failed to unregister metric")
+		}
+	} else if !gwt.active && overThreshold {
+		err := Register(gwt.gauge)
+		gwt.active = err == nil
+		if err != nil {
+			logrus.WithField("metric", gwt.gauge.Desc().String()).WithError(err).Warning("Failed to register metric")
+		}
+	}
+
+	gwt.gauge.Set(value)
+}
+
+// NewGaugeWithThreshold creates a new GaugeWithThreshold.
+func NewGaugeWithThreshold(name string, subsystem string, desc string, labels map[string]string, threshold float64) *GaugeWithThreshold {
+	return &GaugeWithThreshold{
+		gauge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace:   Namespace,
+			Subsystem:   subsystem,
+			Name:        name,
+			Help:        desc,
+			ConstLabels: labels,
+		}),
+		threshold: threshold,
+		active:    false,
+	}
+}
+
+// NewBPFMapPressureGauge creates a new GaugeWithThreshold for the
+// cilium_bpf_map_pressure metric with the map name as constant label.
+func NewBPFMapPressureGauge(mapname string, threshold float64) *GaugeWithThreshold {
+	return NewGaugeWithThreshold(
+		"map_pressure",
+		SubsystemBPF,
+		"Fill percentage of map, tagged by map name",
+		map[string]string{
+			LabelMapName: mapname,
+		},
+		threshold,
+	)
+}
+
 func init() {
+	ResetMetrics()
+}
+
+func registerDefaultMetrics() {
 	MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{Namespace: Namespace}))
 	MustRegister(collectors.NewGoCollector())
 	MustRegister(newStatusCollector())
 	MustRegister(newbpfCollector())
+}
+
+func ResetMetrics() {
+	registry = prometheus.NewPedanticRegistry()
+	registerDefaultMetrics()
 }
 
 // MustRegister adds the collector to the registry, exposing this metric to
@@ -1501,11 +1667,9 @@ func Error2Outcome(err error) string {
 	return LabelValueOutcomeSuccess
 }
 
-// Errno2Outcome converts a unix.Errno to LabelOutcome
-func Errno2Outcome(errno unix.Errno) string {
-	if errno != 0 {
-		return LabelValueOutcomeFail
+func BoolToFloat64(v bool) float64 {
+	if v {
+		return 1
 	}
-
-	return LabelValueOutcomeSuccess
+	return 0
 }

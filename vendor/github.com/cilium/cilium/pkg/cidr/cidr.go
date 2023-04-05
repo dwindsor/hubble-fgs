@@ -1,16 +1,5 @@
-// Copyright 2019-2020 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 package cidr
 
@@ -60,15 +49,30 @@ func (n *CIDR) DeepCopy() *CIDR {
 	if n == nil {
 		return nil
 	}
-	out := &CIDR{
-		&net.IPNet{
-			IP:   make([]byte, len(n.IP)),
-			Mask: make([]byte, len(n.Mask)),
-		},
-	}
-	copy(out.IP, n.IP)
-	copy(out.Mask, n.Mask)
+	out := new(CIDR)
+	n.DeepCopyInto(out)
 	return out
+}
+
+// DeepCopyInto is a deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *CIDR) DeepCopyInto(out *CIDR) {
+	*out = *in
+	if in.IPNet == nil {
+		return
+	}
+	out.IPNet = new(net.IPNet)
+	*out.IPNet = *in.IPNet
+	if in.IPNet.IP != nil {
+		in, out := &in.IPNet.IP, &out.IPNet.IP
+		*out = make(net.IP, len(*in))
+		copy(*out, *in)
+	}
+	if in.IPNet.Mask != nil {
+		in, out := &in.IPNet.Mask, &out.IPNet.Mask
+		*out = make(net.IPMask, len(*in))
+		copy(*out, *in)
+	}
+	return
 }
 
 // AvailableIPs returns the number of IPs available in a CIDR
@@ -115,6 +119,25 @@ func Contains(ipNets []*net.IPNet, ipNet *net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+// RemoveAll removes all cidrs specified in 'toRemove' from 'ipNets'. ipNets
+// is clobbered (to ensure removed CIDRs can be garbage collected) and
+// must not be used after this function has been called.
+// Example usage:
+//
+//	cidrs = cidr.RemoveAll(cidrs, toRemove)
+func RemoveAll(ipNets, toRemove []*net.IPNet) []*net.IPNet {
+	newIPNets := ipNets[:0]
+	for _, n := range ipNets {
+		if !Contains(toRemove, n) {
+			newIPNets = append(newIPNets, n)
+		}
+	}
+	for i := len(newIPNets); i < len(ipNets); i++ {
+		ipNets[i] = nil // or the zero value of T
+	}
+	return newIPNets
 }
 
 // ParseCIDR parses the CIDR string using net.ParseCIDR

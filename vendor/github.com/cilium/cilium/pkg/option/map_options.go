@@ -1,16 +1,5 @@
-// Copyright 2016-2017 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 package option
 
@@ -57,7 +46,11 @@ func NewMapOpts(values map[string]string, validator Validator) *MapOptions {
 }
 
 func (opts *MapOptions) String() string {
-	return fmt.Sprintf("%v", opts.vals)
+	var kvs []string
+	for k, v := range opts.vals {
+		kvs = append(kvs, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(kvs, ",")
 }
 
 // Type returns a string name for this Option type

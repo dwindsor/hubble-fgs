@@ -1,25 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
+
 // Copyright 2015 The Kubernetes Authors.
-// Copyright 2020 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // Package v1 contains API types that are common to all versions.
 //
 // The package contains two categories of types:
-// - external (serialized) types that lack their own version (e.g TypeMeta)
-// - internal (never-serialized) types that are needed by several different
-//   api groups, and so live here, to avoid duplication and/or import loops
-//   (e.g. LabelSelector).
+//   - external (serialized) types that lack their own version (e.g TypeMeta)
+//   - internal (never-serialized) types that are needed by several different
+//     api groups, and so live here, to avoid duplication and/or import loops
+//     (e.g. LabelSelector).
+//
 // In the future, we will probably move these categories of objects into
 // separate packages.
 package v1
@@ -96,6 +87,21 @@ type ObjectMeta struct {
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 
+	// GenerateName is an optional prefix, used by the server, to generate a unique
+	// name ONLY IF the Name field has not been provided.
+	// If this field is used, the name returned to the client will be different
+	// than the name passed. This value will also be combined with a unique suffix.
+	// The provided value has the same validation rules as the Name field,
+	// and may be truncated by the length of the suffix required to make the value
+	// unique on the server.
+	//
+	// If this field is specified and the generated name exists, the server will return a 409.
+	//
+	// Applied only if Name is not specified.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency
+	// +optional
+	GenerateName string `json:"generateName,omitempty" protobuf:"bytes,2,opt,name=generateName"`
+
 	// Namespace defines the space within which each name must be unique. An empty namespace is
 	// equivalent to the "default" namespace, but "default" is the canonical representation.
 	// Not all objects are required to be scoped to a namespace - the value of this field for
@@ -131,6 +137,32 @@ type ObjectMeta struct {
 	// +deepequal-gen=false
 	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,6,opt,name=resourceVersion"`
 
+	// A sequence number representing a specific generation of the desired state.
+	// Populated by the system. Read-only.
+	// +optional
+	Generation int64 `json:"generation,omitempty" protobuf:"varint,7,opt,name=generation"`
+
+	// DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
+	// field is set by the server when a graceful deletion is requested by the user, and is not
+	// directly settable by a client. The resource is expected to be deleted (no longer visible
+	// from resource lists, and not reachable by name) after the time in this field, once the
+	// finalizers list is empty. As long as the finalizers list contains items, deletion is blocked.
+	// Once the deletionTimestamp is set, this value may not be unset or be set further into the
+	// future, although it may be shortened or the resource may be deleted prior to this time.
+	// For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react
+	// by sending a graceful termination signal to the containers in the pod. After that 30 seconds,
+	// the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup,
+	// remove the pod from the API. In the presence of network partitions, this object may still
+	// exist after this timestamp, until an administrator or automated process can determine the
+	// resource is fully terminated.
+	// If not set, graceful deletion of the object has not been requested.
+	//
+	// Populated by the system when a graceful deletion is requested.
+	// Read-only.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	DeletionTimestamp *Time `json:"deletionTimestamp,omitempty" protobuf:"bytes,9,opt,name=deletionTimestamp"`
+
 	// Map of string keys and values that can be used to organize and categorize
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
@@ -144,20 +176,45 @@ type ObjectMeta struct {
 	// More info: http://kubernetes.io/docs/user-guide/annotations
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
+
+	// List of objects depended by this object. If ALL objects in the list have
+	// been deleted, this object will be garbage collected. If this object is managed by a controller,
+	// then an entry in this list will point to this controller, with the controller field set to true.
+	// There cannot be more than one managing controller.
+	// +optional
+	// +patchMergeKey=uid
+	// +patchStrategy=merge
+	OwnerReferences []OwnerReference `json:"ownerReferences,omitempty" patchStrategy:"merge" patchMergeKey:"uid" protobuf:"bytes,13,rep,name=ownerReferences"`
 }
 
 const (
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
-	NamespaceDefault string = "default"
+	NamespaceDefault = "default"
 	// NamespaceAll is the default argument to specify on a context when you want to list or filter resources across all namespaces
-	NamespaceAll string = ""
+	NamespaceAll = ""
 	// NamespaceNone is the argument for a context when there is no namespace.
-	NamespaceNone string = ""
+	NamespaceNone = ""
 	// NamespaceSystem is the system namespace where we place system components.
-	NamespaceSystem string = "kube-system"
+	NamespaceSystem = "kube-system"
 	// NamespacePublic is the namespace where we place public info (ConfigMaps)
-	NamespacePublic string = "kube-public"
+	NamespacePublic = "kube-public"
 )
+
+// OwnerReference contains enough information to let you identify an owning
+// object. An owning object must be in the same namespace as the dependent, or
+// be cluster-scoped, so there is no namespace field.
+// +structType=atomic
+type OwnerReference struct {
+	// Kind of the referent.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind string `json:"kind" protobuf:"bytes,1,opt,name=kind"`
+	// Name of the referent.
+	// More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name" protobuf:"bytes,3,opt,name=name"`
+	// If true, this reference points to the managing controller.
+	// +optional
+	Controller *bool `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
+}
 
 // Note:
 // There are two different styles of label selectors used in versioned types:
@@ -168,16 +225,15 @@ const (
 // A label selector is a label query over a set of resources. The result of matchLabels and
 // matchExpressions are ANDed. An empty label selector matches all objects. A null
 // label selector matches no objects.
+// +structType=atomic
 type LabelSelector struct {
-	// MatchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+	// matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
 	// map is equivalent to an element of matchExpressions, whose key field is "key", the
 	// operator is "In", and the values array contains only "value". The requirements are ANDed.
 	//
 	// +kubebuilder:validation:Optional
 	MatchLabels map[string]MatchLabelsValue `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
-
-	// MatchExpressions is a list of label selector requirements. The requirements are ANDed.
-	//
+	// matchExpressions is a list of label selector requirements. The requirements are ANDed.
 	// +kubebuilder:validation:Optional
 	MatchExpressions []LabelSelectorRequirement `json:"matchExpressions,omitempty" protobuf:"bytes,2,rep,name=matchExpressions"`
 }
@@ -241,4 +297,79 @@ type PartialObjectMetadataList struct {
 
 	// items contains each of the included items.
 	Items []PartialObjectMetadata `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+type ConditionStatus string
+
+// These are valid condition statuses. "ConditionTrue" means a resource is in the condition.
+// "ConditionFalse" means a resource is not in the condition. "ConditionUnknown" means kubernetes
+// can't decide if a resource is in the condition or not. In the future, we could add other
+// intermediate conditions, e.g. ConditionDegraded.
+const (
+	ConditionTrue    ConditionStatus = "True"
+	ConditionFalse   ConditionStatus = "False"
+	ConditionUnknown ConditionStatus = "Unknown"
+)
+
+// Condition contains details for one aspect of the current state of this API Resource.
+// ---
+// This struct is intended for direct use as an array at the field path .status.conditions.  For example,
+//
+//	type FooStatus struct{
+//	    // Represents the observations of a foo's current state.
+//	    // Known .status.conditions.type are: "Available", "Progressing", and "Degraded"
+//	    // +patchMergeKey=type
+//	    // +patchStrategy=merge
+//	    // +listType=map
+//	    // +listMapKey=type
+//	    Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+//
+//	    // other fields
+//	}
+type Condition struct {
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	// ---
+	// Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+	// useful (see .node.status.conditions), the ability to deconflict is important.
+	// The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$`
+	// +kubebuilder:validation:MaxLength=316
+	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
+	// status of the condition, one of True, False, Unknown.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,3,opt,name=observedGeneration"`
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Format=date-time
+	LastTransitionTime Time `json:"lastTransitionTime" protobuf:"bytes,4,opt,name=lastTransitionTime"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxLength=1024
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:Pattern=`^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$`
+	Reason string `json:"reason" protobuf:"bytes,5,opt,name=reason"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxLength=32768
+	Message string `json:"message" protobuf:"bytes,6,opt,name=message"`
 }

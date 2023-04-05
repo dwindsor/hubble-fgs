@@ -1,18 +1,11 @@
-// Copyright 2016-2020 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 package types
+
+import (
+	"fmt"
+)
 
 const (
 	// ClusterIDMin is the minimum value of the cluster ID
@@ -21,3 +14,29 @@ const (
 	// ClusterIDMax is the maximum value of the cluster ID
 	ClusterIDMax = 255
 )
+
+type CiliumClusterConfig struct {
+	ID uint32 `json:"id,omitempty"`
+}
+
+func (c0 *CiliumClusterConfig) IsCompatible(c1 *CiliumClusterConfig) error {
+	if c1 == nil {
+		// When remote cluster doesn't have cluster config, we
+		// currently just bypass the validation for compatibility.
+		// Otherwise, we cannot connect with older cluster which
+		// doesn't support cluster config feature.
+		//
+		// When we introduce a new cluster config can't be ignored,
+		// we should properly check it here and return error. Now
+		// we only have ClusterID which used to be ignored.
+		return nil
+	} else {
+		// Remote cluster has cluster config. Do validations.
+
+		// ID shouldn't be duplicated
+		if c0.ID == c1.ID {
+			return fmt.Errorf("duplicated cluster id")
+		}
+	}
+	return nil
+}

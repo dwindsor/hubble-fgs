@@ -1,23 +1,11 @@
-// Copyright 2016-2020 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 package common
 
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -39,11 +27,11 @@ func C2GoArray(str string) []byte {
 	hexStr := strings.Split(str, ", ")
 	for _, hexDigit := range hexStr {
 		strDigit := strings.TrimPrefix(hexDigit, "0x")
-		digit, err := strconv.ParseInt(strDigit, 16, 9)
+		digitUint64, err := strconv.ParseUint(strDigit, 16, 8)
 		if err != nil {
 			return nil
 		}
-		ret = append(ret, byte(digit))
+		ret = append(ret, byte(digitUint64))
 	}
 	return ret
 }
@@ -102,7 +90,7 @@ func MapStringStructToSlice(m map[string]struct{}) []string {
 
 // GetNumPossibleCPUs returns a total number of possible CPUS, i.e. CPUs that
 // have been allocated resources and can be brought online if they are present.
-// The number is retrieved by parsing /sys/device/system/cpu/possible.
+// The number is retrieved by parsing /sys/devices/system/cpu/possible.
 //
 // See https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/cpumask.h?h=v4.19#n50
 // for more details.
@@ -118,7 +106,7 @@ func GetNumPossibleCPUs(log *logrus.Entry) int {
 }
 
 func getNumPossibleCPUsFromReader(log *logrus.Entry, r io.Reader) int {
-	out, err := ioutil.ReadAll(r)
+	out, err := io.ReadAll(r)
 	if err != nil {
 		log.WithError(err).Errorf("unable to read %q to get CPU count", PossibleCPUSysfsPath)
 		return 0

@@ -1,16 +1,5 @@
-// Copyright 2016-2020 Authors of Cilium
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
 
 package option
 
@@ -19,8 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"math"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,9 +19,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cast"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/pkg/cidr"
 	clustermeshTypes "github.com/cilium/cilium/pkg/clustermesh/types"
+	"github.com/cilium/cilium/pkg/command"
 	"github.com/cilium/cilium/pkg/common"
 	"github.com/cilium/cilium/pkg/defaults"
 	"github.com/cilium/cilium/pkg/ip"
@@ -39,28 +37,24 @@ import (
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/cilium/pkg/mac"
 	"github.com/cilium/cilium/pkg/metrics"
 	"github.com/cilium/cilium/pkg/version"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 var (
 	log = logging.DefaultLogger.WithField(logfields.LogSubsys, "config")
 )
 
-type FlagsSection struct {
-	Name  string   // short one-liner to describe the section
-	Desc  string   // optional paragraph to explain a section
-	Flags []string // names of flags to include in the section
-}
-
 const (
-	// AgentHealthPort is the TCP port for the agent health status API.
+	// AgentHealthPort is the TCP port for agent health status API
 	AgentHealthPort = "agent-health-port"
+
+	// ClusterHealthPort is the TCP port for cluster-wide network connectivity health API
+	ClusterHealthPort = "cluster-health-port"
+
+	// ClusterMeshHealthPort is the TCP port for ClusterMesh apiserver health API
+	ClusterMeshHealthPort = "clustermesh-health-port"
 
 	// AgentLabels are additional labels to identify this agent
 	AgentLabels = "agent-labels"
@@ -91,6 +85,10 @@ const (
 	// ARPPingRefreshPeriod is the ARP entries refresher period
 	ARPPingRefreshPeriod = "arping-refresh-period"
 
+	// EnableL2NeighDiscovery determines if cilium should perform L2 neighbor
+	// discovery.
+	EnableL2NeighDiscovery = "enable-l2-neigh-discovery"
+
 	// BPFRoot is the Path to BPF filesystem
 	BPFRoot = "bpf-root"
 
@@ -100,6 +98,9 @@ const (
 
 	// CGroupRoot is the path to Cgroup2 filesystem
 	CGroupRoot = "cgroup-root"
+
+	// CompilerFlags allow to specify extra compiler commands for advanced debugging
+	CompilerFlags = "cflags"
 
 	// ConfigFile is the Configuration file (default "$HOME/ciliumd.yaml")
 	ConfigFile = "config"
@@ -118,9 +119,6 @@ const (
 	// DebugVerbose is the argument enables verbose log message for particular subsystems
 	DebugVerbose = "debug-verbose"
 
-	// Device facing cluster/external network for attaching bpf_host
-	Device = "device"
-
 	// Devices facing cluster/external network for attaching bpf_host
 	Devices = "devices"
 
@@ -128,8 +126,9 @@ const (
 	// direct routing mode (only required by BPF NodePort)
 	DirectRoutingDevice = "direct-routing-device"
 
-	// DisableConntrack disables connection tracking
-	DisableConntrack = "disable-conntrack"
+	// LBDevInheritIPAddr is device name which IP addr is inherited by devices
+	// running BPF loadbalancer program
+	LBDevInheritIPAddr = "bpf-lb-dev-ip-addr-inherit"
 
 	// DisableEnvoyVersionCheck do not perform Envoy binary version check on startup
 	DisableEnvoyVersionCheck = "disable-envoy-version-check"
@@ -149,6 +148,9 @@ const (
 	// EnableTracing enables tracing mode in the agent.
 	EnableTracing = "enable-tracing"
 
+	// Add unreachable routes on pod deletion
+	EnableUnreachableRoutes = "enable-unreachable-routes"
+
 	// EncryptInterface enables encryption on specified interface
 	EncryptInterface = "encrypt-interface"
 
@@ -163,6 +165,12 @@ const (
 
 	// ProxyPrometheusPort specifies the port to serve Cilium host proxy metrics on.
 	ProxyPrometheusPort = "proxy-prometheus-port"
+
+	// ProxyMaxRequestsPerConnection specifies the max_requests_per_connection setting for the proxy
+	ProxyMaxRequestsPerConnection = "proxy-max-requests-per-connection"
+
+	// ProxyMaxConnectionDuration specifies the max_connection_duration setting for the proxy in seconds
+	ProxyMaxConnectionDuration = "proxy-max-connection-duration-seconds"
 
 	// FixedIdentityMapping is the key-value for the fixed identity mapping
 	// which allows to use reserved label for fixed identities
@@ -180,12 +188,6 @@ const (
 	// IPv6ServiceRange is the Kubernetes IPv6 services CIDR if not inside cluster prefix
 	IPv6ServiceRange = "ipv6-service-range"
 
-	// ModePreFilterNative for loading progs with xdpdrv
-	ModePreFilterNative = XDPModeNative
-
-	// ModePreFilterGeneric for loading progs with xdpgeneric
-	ModePreFilterGeneric = XDPModeGeneric
-
 	// IPv6ClusterAllocCIDRName is the name of the IPv6ClusterAllocCIDR option
 	IPv6ClusterAllocCIDRName = "ipv6-cluster-alloc-cidr"
 
@@ -194,10 +196,6 @@ const (
 
 	// K8sRequireIPv6PodCIDRName is the name of the K8sRequireIPv6PodCIDR option
 	K8sRequireIPv6PodCIDRName = "k8s-require-ipv6-pod-cidr"
-
-	// K8sForceJSONPatch when set, uses JSON Patch to update CNP and CEP
-	// status in kube-apiserver.
-	K8sForceJSONPatch = "k8s-force-json-patch"
 
 	// K8sWatcherEndpointSelector specifies the k8s endpoints that Cilium
 	// should watch for.
@@ -212,11 +210,11 @@ const (
 	// K8sServiceCacheSize is service cache size for cilium k8s package.
 	K8sServiceCacheSize = "k8s-service-cache-size"
 
-	// K8sSyncTimeout is the timeout to synchronize all resources with k8s.
+	// K8sSyncTimeout is the timeout since last event was received to synchronize all resources with k8s.
 	K8sSyncTimeoutName = "k8s-sync-timeout"
 
-	// K8sWatcherQueueSize is the queue size used to serialize each k8s event type
-	K8sWatcherQueueSize = "k8s-watcher-queue-size"
+	// AllocatorListTimeout is the timeout to list initial allocator state.
+	AllocatorListTimeoutName = "allocator-list-timeout"
 
 	// KeepConfig when restoring state, keeps containers' configuration in place
 	KeepConfig = "keep-config"
@@ -263,6 +261,18 @@ const (
 	// Alias to NodePortMode
 	LoadBalancerMode = "bpf-lb-mode"
 
+	// Alias to DSR dispatch method
+	LoadBalancerDSRDispatch = "bpf-lb-dsr-dispatch"
+
+	// Alias to DSR L4 translation method
+	LoadBalancerDSRL4Xlate = "bpf-lb-dsr-l4-xlate"
+
+	// Alias to DSR/IPIP IPv4 source CIDR
+	LoadBalancerRSSv4CIDR = "bpf-lb-rss-ipv4-src-cidr"
+
+	// Alias to DSR/IPIP IPv6 source CIDR
+	LoadBalancerRSSv6CIDR = "bpf-lb-rss-ipv6-src-cidr"
+
 	// Alias to NodePortAlg
 	LoadBalancerAlg = "bpf-lb-algorithm"
 
@@ -293,16 +303,34 @@ const (
 	// EnableSessionAffinity enables a support for service sessionAffinity
 	EnableSessionAffinity = "enable-session-affinity"
 
+	EnableServiceTopology = "enable-service-topology"
+
 	// EnableIdentityMark enables setting the mark field with the identity for
 	// local traffic. This may be disabled if chaining modes and Cilium use
 	// conflicting marks.
 	EnableIdentityMark = "enable-identity-mark"
 
+	// AddressScopeMax controls the maximum address scope for addresses to be
+	// considered local ones with HOST_ID in the ipcache
+	AddressScopeMax = "local-max-addr-scope"
+
 	// EnableBandwidthManager enables EDT-based pacing
 	EnableBandwidthManager = "enable-bandwidth-manager"
 
+	// EnableBBR enables BBR TCP congestion control for the node including Pods
+	EnableBBR = "enable-bbr"
+
+	// EnableRecorder enables the datapath pcap recorder
+	EnableRecorder = "enable-recorder"
+
 	// EnableLocalRedirectPolicy enables support for local redirect policy
 	EnableLocalRedirectPolicy = "enable-local-redirect-policy"
+
+	// EnableMKE enables MKE specific 'chaining' for kube-proxy replacement
+	EnableMKE = "enable-mke"
+
+	// CgroupPathMKE points to the cgroupv1 net_cls mount instance
+	CgroupPathMKE = "mke-cgroup-mount"
 
 	// LibDir enables the directory path to store runtime build environment
 	LibDir = "lib-dir"
@@ -316,11 +344,14 @@ const (
 	// Logstash enables logstash integration
 	Logstash = "logstash"
 
-	// NAT46Range is the IPv6 prefix to map IPv4 addresses to
-	NAT46Range = "nat46-range"
+	// EnableIPv4Masquerade masquerades IPv4 packets from endpoints leaving the host.
+	EnableIPv4Masquerade = "enable-ipv4-masquerade"
 
-	// Masquerade are the packets from endpoints leaving the host
-	Masquerade = "masquerade"
+	// EnableIPv6Masquerade masquerades IPv6 packets from endpoints leaving the host.
+	EnableIPv6Masquerade = "enable-ipv6-masquerade"
+
+	// EnableIPv6BIGTCP enables IPv6 BIG TCP (larger GSO/GRO limits) for the node including pods.
+	EnableIPv6BIGTCP = "enable-ipv6-big-tcp"
 
 	// EnableBPFClockProbe selects a more efficient source clock (jiffies vs ktime)
 	EnableBPFClockProbe = "enable-bpf-clock-probe"
@@ -328,14 +359,39 @@ const (
 	// EnableBPFMasquerade masquerades packets from endpoints leaving the host with BPF instead of iptables
 	EnableBPFMasquerade = "enable-bpf-masquerade"
 
+	// DeriveMasqIPAddrFromDevice is device name which IP addr is used for BPF masquerades
+	DeriveMasqIPAddrFromDevice = "derive-masquerade-ip-addr-from-device"
+
 	// EnableIPMasqAgent enables BPF ip-masq-agent
 	EnableIPMasqAgent = "enable-ip-masq-agent"
+
+	// EnableIPv4EgressGateway enables the IPv4 egress gateway
+	EnableIPv4EgressGateway = "enable-ipv4-egress-gateway"
+
+	// InstallEgressGatewayRoutes installs IP rules and routes required to steer traffic to the correct network interface
+	InstallEgressGatewayRoutes = "install-egress-gateway-routes"
+
+	// EnableIngressController enables Ingress Controller
+	EnableIngressController = "enable-ingress-controller"
+
+	// EnableGatewayAPI enables Gateway API support
+	EnableGatewayAPI = "enable-gateway-api"
+
+	// EnableEnvoyConfig enables processing of CiliumClusterwideEnvoyConfig and CiliumEnvoyConfig CRDs
+	EnableEnvoyConfig = "enable-envoy-config"
+
+	// EnvoyConfigTimeout determines how long to wait Envoy to N/ACK resources
+	EnvoyConfigTimeout = "envoy-config-timeout"
 
 	// IPMasqAgentConfigPath is the configuration file path
 	IPMasqAgentConfigPath = "ip-masq-agent-config-path"
 
 	// InstallIptRules sets whether Cilium should install any iptables in general
 	InstallIptRules = "install-iptables-rules"
+
+	// InstallNoConntrackIptRules instructs Cilium to install Iptables rules
+	// to skip netfilter connection tracking on all pod traffic.
+	InstallNoConntrackIptRules = "install-no-conntrack-iptables-rules"
 
 	IPTablesLockTimeout = "iptables-lock-timeout"
 
@@ -366,24 +422,19 @@ const (
 	// Version prints the version information
 	Version = "version"
 
-	// FlannelMasterDevice installs a BPF program to allow for policy
-	// enforcement in the given network interface. Allows to run Cilium on top
-	// of other CNI plugins that provide networking, e.g. flannel, where for
-	// flannel, this value should be set with 'cni0'. [EXPERIMENTAL]")
-	FlannelMasterDevice = "flannel-master-device"
-
-	// FlannelUninstallOnExit should be used along the flannel-master-device flag,
-	// it cleans up all BPF programs installed when Cilium agent is terminated.
-	FlannelUninstallOnExit = "flannel-uninstall-on-exit"
-
 	// PProf enables serving the pprof debugging API
 	PProf = "pprof"
 
-	// PrefilterDevice is the device facing external network for XDP prefiltering
-	PrefilterDevice = "prefilter-device"
+	// PProfAddress is the port that the pprof listens on
+	PProfAddress = "pprof-address"
 
-	// PrefilterMode { "+ModePreFilterNative+" | "+ModePreFilterGeneric+" } (default: "+option.ModePreFilterNative+")
-	PrefilterMode = "prefilter-mode"
+	// PProfPort is the port that the pprof listens on
+	PProfPort = "pprof-port"
+
+	// EnableXDPPrefilter enables XDP-based prefiltering
+	EnableXDPPrefilter = "enable-xdp-prefilter"
+
+	ProcFs = "procfs"
 
 	// PrometheusServeAddr IP:Port on which to serve prometheus metrics (pass ":Port" to bind on all interfaces, "" is off)
 	PrometheusServeAddr = "prometheus-serve-addr"
@@ -394,6 +445,9 @@ const (
 	// DNSMaxIPsPerRestoredRule defines the maximum number of IPs to maintain
 	// for each FQDN selector in endpoint's restored DNS rules
 	DNSMaxIPsPerRestoredRule = "dns-max-ips-per-restored-rule"
+
+	// DNSPolicyUnloadOnShutdown is the name of the dns-policy-unload-on-shutdown option.
+	DNSPolicyUnloadOnShutdown = "dns-policy-unload-on-shutdown"
 
 	// ToFQDNsMinTTL is the minimum time, in seconds, to use DNS data for toFQDNs policies.
 	ToFQDNsMinTTL = "tofqdns-min-ttl"
@@ -422,29 +476,45 @@ const (
 	// endpoints that are larger than 512 Bytes or the EDNS0 option, if present.
 	ToFQDNsEnableDNSCompression = "tofqdns-enable-dns-compression"
 
+	// DNSProxyConcurrencyLimit limits parallel processing of DNS messages in
+	// DNS proxy at any given point in time.
+	DNSProxyConcurrencyLimit = "dnsproxy-concurrency-limit"
+
+	// DNSProxyConcurrencyProcessingGracePeriod is the amount of grace time to
+	// wait while processing DNS messages when the DNSProxyConcurrencyLimit has
+	// been reached.
+	DNSProxyConcurrencyProcessingGracePeriod = "dnsproxy-concurrency-processing-grace-period"
+
+	// DNSProxyLockCount is the array size containing mutexes which protect
+	// against parallel handling of DNS response IPs.
+	DNSProxyLockCount = "dnsproxy-lock-count"
+
+	// DNSProxyLockTimeout is timeout when acquiring the locks controlled by
+	// DNSProxyLockCount.
+	DNSProxyLockTimeout = "dnsproxy-lock-timeout"
+
 	// MTUName is the name of the MTU option
 	MTUName = "mtu"
+
+	// RouteMetric is the name of the route-metric option
+	RouteMetric = "route-metric"
 
 	// DatapathMode is the name of the DatapathMode option
 	DatapathMode = "datapath-mode"
 
-	// IpvlanMasterDevice is the name of the IpvlanMasterDevice option
-	IpvlanMasterDevice = "ipvlan-master-device"
+	// EnableSocketLB is the name for the option to enable the socket LB
+	EnableSocketLB = "bpf-lb-sock"
 
-	// EnableHostReachableServices is the name of the EnableHostReachableServices option
-	EnableHostReachableServices = "enable-host-reachable-services"
+	// EnableSocketLBTracing is the name for the option to enable the socket LB tracing
+	EnableSocketLBTracing = "trace-sock"
 
-	// HostReachableServicesProtos is the name of the HostReachableServicesProtos option
-	HostReachableServicesProtos = "host-reachable-services-protos"
-
-	// HostServicesTCP is the name of EnableHostServicesTCP config
-	HostServicesTCP = "tcp"
-
-	// HostServicesUDP is the name of EnableHostServicesUDP config
-	HostServicesUDP = "udp"
+	// BPFSocketLBHostnsOnly is the name of the BPFSocketLBHostnsOnly option
+	BPFSocketLBHostnsOnly = "bpf-lb-sock-hostns-only"
 
 	// TunnelName is the name of the Tunnel option
 	TunnelName = "tunnel"
+	// TunnelPortName is the name of the TunnelPort option
+	TunnelPortName = "tunnel-port"
 
 	// SingleClusterRouteName is the name of the SingleClusterRoute option
 	//
@@ -476,8 +546,8 @@ const (
 	// ClusterMeshConfigName is the name of the ClusterMeshConfig option
 	ClusterMeshConfigName = "clustermesh-config"
 
-	// BPFCompileDebugName is the name of the option to enable BPF compiliation debugging
-	BPFCompileDebugName = "bpf-compile-debug"
+	// CNIChainingMode configures which CNI plugin Cilium is chained with.
+	CNIChainingMode = "cni-chaining-mode"
 
 	// CTMapEntriesGlobalTCPDefault is the default maximum number of entries
 	// in the TCP CT table.
@@ -496,12 +566,13 @@ const (
 	CTMapEntriesGlobalAnyName = "bpf-ct-global-any-max"
 
 	// CTMapEntriesTimeout* name option and default value mappings
-	CTMapEntriesTimeoutSYNName    = "bpf-ct-timeout-regular-tcp-syn"
-	CTMapEntriesTimeoutFINName    = "bpf-ct-timeout-regular-tcp-fin"
-	CTMapEntriesTimeoutTCPName    = "bpf-ct-timeout-regular-tcp"
-	CTMapEntriesTimeoutAnyName    = "bpf-ct-timeout-regular-any"
-	CTMapEntriesTimeoutSVCTCPName = "bpf-ct-timeout-service-tcp"
-	CTMapEntriesTimeoutSVCAnyName = "bpf-ct-timeout-service-any"
+	CTMapEntriesTimeoutSYNName         = "bpf-ct-timeout-regular-tcp-syn"
+	CTMapEntriesTimeoutFINName         = "bpf-ct-timeout-regular-tcp-fin"
+	CTMapEntriesTimeoutTCPName         = "bpf-ct-timeout-regular-tcp"
+	CTMapEntriesTimeoutAnyName         = "bpf-ct-timeout-regular-any"
+	CTMapEntriesTimeoutSVCTCPName      = "bpf-ct-timeout-service-tcp"
+	CTMapEntriesTimeoutSVCTCPGraceName = "bpf-ct-timeout-service-tcp-grace"
+	CTMapEntriesTimeoutSVCAnyName      = "bpf-ct-timeout-service-any"
 
 	// NATMapEntriesGlobalDefault holds the default size of the NAT map
 	// and is 2/3 of the full CT size as a heuristic
@@ -586,6 +657,10 @@ const (
 	// K8sNamespaceName is the name of the K8sNamespace option
 	K8sNamespaceName = "k8s-namespace"
 
+	// AgentNotReadyNodeTaintKeyName is the name of the option to set
+	// AgentNotReadyNodeTaintKey
+	AgentNotReadyNodeTaintKeyName = "agent-not-ready-taint-key"
+
 	// JoinClusterName is the name of the JoinCluster Option
 	JoinClusterName = "join-cluster"
 
@@ -597,6 +672,18 @@ const (
 
 	// EnableIPv6NDPName is the name of the option to enable IPv6 NDP support
 	EnableIPv6NDPName = "enable-ipv6-ndp"
+
+	// EnableSRv6 is the name of the option to enable SRv6 encapsulation support
+	EnableSRv6 = "enable-srv6"
+
+	// SRv6EncapModeName is the name of the option to specify the SRv6 encapsulation mode
+	SRv6EncapModeName = "srv6-encap-mode"
+
+	// EnableSCTPName is the name of the option to enable SCTP support
+	EnableSCTPName = "enable-sctp"
+
+	// EnableNat46X64Gateway enables L3 based NAT46 and NAT64 gateway
+	EnableNat46X64Gateway = "enable-nat46x64-gateway"
 
 	// IPv6MCastDevice is the name of the option to select IPv6 multicast device
 	IPv6MCastDevice = "ipv6-mcast-device"
@@ -623,6 +710,10 @@ const (
 	// FQDNProxyResponseMaxDelay is the maximum time the proxy holds back a response
 	FQDNProxyResponseMaxDelay = "tofqdns-proxy-response-max-delay"
 
+	// FQDNRegexCompileLRUSize is the size of the FQDN regex compilation LRU.
+	// Useful for heavy but repeated FQDN MatchName or MatchPattern use.
+	FQDNRegexCompileLRUSize = "fqdn-regex-compile-lru-size"
+
 	// PreAllocateMapsName is the name of the option PreAllocateMaps
 	PreAllocateMapsName = "preallocate-bpf-maps"
 
@@ -641,8 +732,18 @@ const (
 	// IPSecKeyFileName is the name of the option for ipsec key file
 	IPSecKeyFileName = "ipsec-key-file"
 
+	// EnableWireguard is the name of the option to enable wireguard
+	EnableWireguard = "enable-wireguard"
+
+	// EnableWireguardUserspaceFallback is the name of the option that enables the fallback to wireguard userspace mode
+	EnableWireguardUserspaceFallback = "enable-wireguard-userspace-fallback"
+
 	// KVstoreLeaseTTL is the time-to-live for lease in kvstore.
 	KVstoreLeaseTTL = "kvstore-lease-ttl"
+
+	// KVstoreMaxConsecutiveQuorumErrorsName is the maximum number of acceptable
+	// kvstore consecutive quorum errors before the agent assumes permanent failure
+	KVstoreMaxConsecutiveQuorumErrorsName = "kvstore-max-consecutive-quorum-errors"
 
 	// KVstorePeriodicSync is the time interval in which periodic
 	// synchronization with the kvstore occurs
@@ -657,6 +758,10 @@ const (
 	// IdentityChangeGracePeriod is the name of the
 	// IdentityChangeGracePeriod option
 	IdentityChangeGracePeriod = "identity-change-grace-period"
+
+	// IdentityRestoreGracePeriod is the name of the
+	// IdentityRestoreGracePeriod option
+	IdentityRestoreGracePeriod = "identity-restore-grace-period"
 
 	// EnableHealthChecking is the name of the EnableHealthChecking option
 	EnableHealthChecking = "enable-health-checking"
@@ -674,9 +779,9 @@ const (
 	// EndpointQueueSize is the size of the EventQueue per-endpoint.
 	EndpointQueueSize = "endpoint-queue-size"
 
-	// SelectiveRegeneration specifies whether only the endpoints which policy
-	// changes select should be regenerated upon policy changes.
-	SelectiveRegeneration = "enable-selective-regeneration"
+	// EndpointGCInterval interval to attempt garbage collection of
+	// endpoints that are no longer alive and healthy.
+	EndpointGCInterval = "endpoint-gc-interval"
 
 	// K8sEventHandover is the name of the K8sEventHandover option
 	K8sEventHandover = "enable-k8s-event-handover"
@@ -688,13 +793,11 @@ const (
 	// LoopbackIPv4 is the address to use for service loopback SNAT
 	LoopbackIPv4 = "ipv4-service-loopback-address"
 
-	// EndpointInterfaceNamePrefix is the prefix name of the interface
-	// names shared by all endpoints
-	EndpointInterfaceNamePrefix = "endpoint-interface-name-prefix"
+	// LocalRouterIPv4 is the link-local IPv4 address to use for Cilium router device
+	LocalRouterIPv4 = "local-router-ipv4"
 
-	// BlacklistConflictingRoutes removes all IPs from the IPAM block if a
-	// local route not owned by Cilium conflicts with it
-	BlacklistConflictingRoutes = "blacklist-conflicting-routes"
+	// LocalRouterIPv6 is the link-local IPv6 address to use for Cilium router device
+	LocalRouterIPv6 = "local-router-ipv6"
 
 	// ForceLocalPolicyEvalAtSource forces a policy decision at the source
 	// endpoint for all local communication
@@ -752,8 +855,11 @@ const (
 	// CiliumNode resource for the local node
 	AutoCreateCiliumNodeResource = "auto-create-cilium-node-resource"
 
-	// IPv4NativeRoutingCIDR describes a CIDR in which pod IPs are routable
-	IPv4NativeRoutingCIDR = "native-routing-cidr"
+	// IPv4NativeRoutingCIDR describes a v4 CIDR in which pod IPs are routable
+	IPv4NativeRoutingCIDR = "ipv4-native-routing-cidr"
+
+	// IPv6NativeRoutingCIDR describes a v6 CIDR in which pod IPs are routable
+	IPv6NativeRoutingCIDR = "ipv6-native-routing-cidr"
 
 	// EgressMasqueradeInterfaces is the selector used to select interfaces
 	// subject to egress masquerading
@@ -768,7 +874,7 @@ const (
 	IdentityAllocationMode = "identity-allocation-mode"
 
 	// IdentityAllocationModeKVstore enables use of a key-value store such
-	// as etcd or consul for identity allocation
+	// as etcd for identity allocation
 	IdentityAllocationModeKVstore = "kvstore"
 
 	// IdentityAllocationModeCRD enables use of Kubernetes CRDs for
@@ -803,6 +909,10 @@ const (
 	// HubbleListenAddress specifies address for Hubble server to listen to.
 	HubbleListenAddress = "hubble-listen-address"
 
+	// HubblePreferIpv6 controls whether IPv6 or IPv4 addresses should be preferred for
+	// communication to agents, if both are available.
+	HubblePreferIpv6 = "hubble-prefer-ipv6"
+
 	// HubbleTLSDisabled allows the Hubble server to run on the given listen
 	// address without TLS.
 	HubbleTLSDisabled = "hubble-disable-tls"
@@ -820,8 +930,8 @@ const (
 	// must contain PEM encoded data.
 	HubbleTLSClientCAFiles = "hubble-tls-client-ca-files"
 
-	// HubbleFlowBufferSize specifies the maximum number of flows in Hubble's buffer.
-	HubbleFlowBufferSize = "hubble-flow-buffer-size"
+	// HubbleEventBufferCapacity specifies the capacity of Hubble events buffer.
+	HubbleEventBufferCapacity = "hubble-event-buffer-capacity"
 
 	// HubbleEventQueueSize specifies the buffer size of the channel to receive monitor events.
 	HubbleEventQueueSize = "hubble-event-queue-size"
@@ -831,6 +941,36 @@ const (
 
 	// HubbleMetrics specifies enabled metrics and their configuration options.
 	HubbleMetrics = "hubble-metrics"
+
+	// HubbleExportFilePath specifies the filepath to write Hubble events to.
+	// e.g. "/var/run/cilium/hubble/events.log"
+	HubbleExportFilePath = "hubble-export-file-path"
+
+	// HubbleExportFileMaxSizeMB specifies the file size in MB at which to rotate
+	// the Hubble export file.
+	HubbleExportFileMaxSizeMB = "hubble-export-file-max-size-mb"
+
+	// HubbleExportFileMaxBacks specifies the number of rotated files to keep.
+	HubbleExportFileMaxBackups = "hubble-export-file-max-backups"
+
+	// HubbleExportFileCompress specifies whether rotated files are compressed.
+	HubbleExportFileCompress = "hubble-export-file-compress"
+
+	// EnableHubbleRecorderAPI specifies if the Hubble Recorder API should be served
+	EnableHubbleRecorderAPI = "enable-hubble-recorder-api"
+
+	// EnableHubbleOpenMetrics enables exporting hubble metrics in OpenMetrics format.
+	EnableHubbleOpenMetrics = "enable-hubble-open-metrics"
+
+	// HubbleRecorderStoragePath specifies the directory in which pcap files
+	// created via the Hubble Recorder API are stored
+	HubbleRecorderStoragePath = "hubble-recorder-storage-path"
+
+	// HubbleRecorderSinkQueueSize is the queue size for each recorder sink
+	HubbleRecorderSinkQueueSize = "hubble-recorder-sink-queue-size"
+
+	// HubbleSkipUnknownCGroupIDs specifies if events with unknown cgroup ids should be skipped
+	HubbleSkipUnknownCGroupIDs = "hubble-skip-unknown-cgroup-ids"
 
 	// DisableIptablesFeederRules specifies which chains will be excluded
 	// when installing the feeder rules
@@ -872,6 +1012,24 @@ const (
 	// LBMapEntriesName configures max entries for BPF lbmap.
 	LBMapEntriesName = "bpf-lb-map-max"
 
+	// LBServiceMapMaxEntries configures max entries of bpf map for services.
+	LBServiceMapMaxEntries = "bpf-lb-service-map-max"
+
+	// LBBackendMapMaxEntries configures max entries of bpf map for service backends.
+	LBBackendMapMaxEntries = "bpf-lb-service-backend-map-max"
+
+	// LBRevNatMapMaxEntries configures max entries of bpf map for reverse NAT.
+	LBRevNatMapMaxEntries = "bpf-lb-rev-nat-map-max"
+
+	// LBAffinityMapMaxEntries configures max entries of bpf map for session affinity.
+	LBAffinityMapMaxEntries = "bpf-lb-affinity-map-max"
+
+	// LBSourceRangeMapMaxEntries configures max entries of bpf map for service source ranges.
+	LBSourceRangeMapMaxEntries = "bpf-lb-source-range-map-max"
+
+	// LBMaglevMapMaxEntries configures max entries of bpf map for Maglev.
+	LBMaglevMapMaxEntries = "bpf-lb-maglev-map-max"
+
 	// K8sServiceProxyName instructs Cilium to handle service objects only when
 	// service.kubernetes.io/service-proxy-name label equals the provided value.
 	K8sServiceProxyName = "k8s-service-proxy-name"
@@ -888,287 +1046,83 @@ const (
 	// Otherwise, it will use the old scheme.
 	EgressMultiHomeIPRuleCompat = "egress-multi-home-ip-rule-compat"
 
+	// EnableCustomCallsName is the name of the option to enable tail calls
+	// for user-defined custom eBPF programs.
+	EnableCustomCallsName = "enable-custom-calls"
+
+	// BGPAnnounceLBIP announces service IPs of type LoadBalancer via BGP
+	BGPAnnounceLBIP = "bgp-announce-lb-ip"
+
+	// BGPAnnouncePodCIDR announces the node's pod CIDR via BGP
+	BGPAnnouncePodCIDR = "bgp-announce-pod-cidr"
+
+	// BGPConfigPath is the file path to the BGP configuration. It is
+	// compatible with MetalLB's configuration.
+	BGPConfigPath = "bgp-config-path"
+
+	// ExternalClusterIPName is the name of the option to enable
+	// cluster external access to ClusterIP services.
+	ExternalClusterIPName = "bpf-lb-external-clusterip"
+
+	// VLANBPFBypass instructs Cilium to bypass bpf logic for vlan tagged packets
+	VLANBPFBypass = "vlan-bpf-bypass"
+
+	// EnableICMPRules enables ICMP-based rule support for Cilium Network Policies.
+	EnableICMPRules = "enable-icmp-rules"
+
 	// BypassIPAvailabilityUponRestore bypasses the IP availability error
 	// within IPAM upon endpoint restore and allows the use of the restored IP
 	// regardless of whether it's available in the pool.
 	BypassIPAvailabilityUponRestore = "bypass-ip-availability-upon-restore"
-)
 
-// HelpFlagSections to format the Cilium Agent help template.
-// Developers please make sure to add the new flags to
-// the respective sections or create a new section.
-var HelpFlagSections = []FlagsSection{
-	{
-		Name: "BPF flags",
-		Flags: []string{
-			BPFRoot,
-			CTMapEntriesGlobalTCPName,
-			CTMapEntriesGlobalAnyName,
-			CTMapEntriesTimeoutSYNName,
-			CTMapEntriesTimeoutFINName,
-			CTMapEntriesTimeoutTCPName,
-			CTMapEntriesTimeoutAnyName,
-			CTMapEntriesTimeoutSVCTCPName,
-			CTMapEntriesTimeoutSVCAnyName,
-			NATMapEntriesGlobalName,
-			NeighMapEntriesGlobalName,
-			SockRevNatEntriesName,
-			PolicyMapEntriesName,
-			MapEntriesGlobalDynamicSizeRatioName,
-			PreAllocateMapsName,
-			BPFCompileDebugName,
-			FragmentsMapEntriesName,
-			EnableBPFClockProbe,
-			EnableBPFMasquerade,
-			EnableIdentityMark,
-			LBMapEntriesName,
-		},
-	},
-	{
-		Name: "DNS policy flags",
-		Flags: []string{
-			DNSMaxIPsPerRestoredRule,
-			FQDNRejectResponseCode,
-			ToFQDNsMaxIPsPerHost,
-			ToFQDNsMinTTL,
-			ToFQDNsPreCache,
-			ToFQDNsProxyPort,
-			FQDNProxyResponseMaxDelay,
-			ToFQDNsEnableDNSCompression,
-			ToFQDNsMaxDeferredConnectionDeletes,
-			ToFQDNsIdleConnectionGracePeriod,
-		},
-	},
-	{
-		Name: "Kubernetes flags",
-		Flags: []string{
-			K8sAPIServer,
-			K8sKubeConfigPath,
-			K8sNamespaceName,
-			K8sRequireIPv4PodCIDRName,
-			K8sRequireIPv6PodCIDRName,
-			K8sSyncTimeoutName,
-			K8sWatcherEndpointSelector,
-			K8sWatcherQueueSize,
-			K8sEventHandover,
-			AnnotateK8sNode,
-			K8sForceJSONPatch,
-			DisableCiliumEndpointCRDName,
-			K8sHeartbeatTimeout,
-			K8sEnableEndpointSlice,
-			K8sEnableAPIDiscovery,
-			EnableHostPort,
-			AutoCreateCiliumNodeResource,
-			DisableCNPStatusUpdates,
-			ReadCNIConfiguration,
-			WriteCNIConfigurationWhenReady,
-			EndpointStatus,
-			SkipCRDCreation,
-			FlannelMasterDevice,
-			FlannelUninstallOnExit,
-			EnableWellKnownIdentities,
-			K8sServiceProxyName,
-			JoinClusterName,
-		},
-	},
-	{
-		Name: "Clustermesh flags",
-		Flags: []string{
-			ClusterIDName,
-			ClusterName,
-			ClusterMeshConfigName,
-		},
-	},
-	{
-		Name: "Route flags",
-		Flags: []string{
-			SingleClusterRouteName,
-			EnableEndpointRoutes,
-			EnableLocalNodeRoute,
-			EnableAutoDirectRoutingName,
-		},
-	},
-	{
-		Name: "Proxy flags",
-		Flags: []string{
-			HTTPIdleTimeout,
-			HTTPMaxGRPCTimeout,
-			HTTPRequestTimeout,
-			HTTPRetryCount,
-			HTTPRetryTimeout,
-			ProxyConnectTimeout,
-			ProxyPrometheusPort,
-			SidecarIstioProxyImage,
-		},
-	},
-	{
-		Name: "Debug, logging and trace flags",
-		Flags: []string{
-			DebugArg,
-			DebugVerbose,
-			EnableTracing,
-			LogDriver,
-			LogOpt,
-			LogSystemLoadConfigName,
-			EnvoyLog,
-			EnableEndpointHealthChecking,
-			EnableHealthChecking,
-			TracePayloadlen,
-			PProf,
-		},
-	},
-	{
-		Name: "Metrics and monitoring flags",
-		Flags: []string{
-			Metrics,
-			MonitorAggregationName,
-			MonitorAggregationFlags,
-			MonitorAggregationInterval,
-			MonitorQueueSizeName,
-			PrometheusServeAddr,
-		},
-	},
-	{
-		Name: "IP flags",
-		Flags: []string{
-			EnableIPv4Name,
-			EnableIPv6Name,
-			EnableIPv6NDPName,
-			IPAllocationTimeout,
-			IPAM,
-			IPv4NodeAddr,
-			IPv6NodeAddr,
-			IPv4PodSubnets,
-			IPv6PodSubnets,
-			IPv4Range,
-			IPv6Range,
-			LoopbackIPv4,
-			IPv4ServiceRange,
-			IPv6ServiceRange,
-			IPv6ClusterAllocCIDRName,
-			IPv6MCastDevice,
-			MTUName,
-			NAT46Range,
-			EnableIPv4FragmentsTrackingName,
-		},
-	},
-	{
-		Name: "KVstore flags",
-		Flags: []string{
-			KVStore,
-			KVStoreOpt,
-			KVstoreConnectivityTimeout,
-			KVstorePeriodicSync,
-		},
-	},
-	{
-		Name: "Encryption flags",
-		Flags: []string{
-			EncryptInterface,
-			EncryptNode,
-			EnableIPSecName,
-			IPSecKeyFileName,
-		},
-	},
-	{
-		Name: "Policy flags",
-		Flags: []string{
-			AllowLocalhost,
-			AllowICMPFragNeeded,
-			EnablePolicy,
-			ExcludeLocalAddress,
-			ForceLocalPolicyEvalAtSource,
-			PolicyQueueSize,
-			PolicyAuditModeArg,
-			EnableL7Proxy,
-			IdentityAllocationMode,
-			IdentityChangeGracePeriod,
-			FixedIdentityMapping,
-			CertsDirectory,
-			EnableHostFirewall,
-		},
-	},
-	{
-		Name: "Hubble flags",
-		Flags: []string{
-			EnableHubble,
-			HubbleSocketPath,
-			HubbleListenAddress,
-			HubbleTLSDisabled,
-			HubbleTLSCertFile,
-			HubbleTLSKeyFile,
-			HubbleTLSClientCAFiles,
-			HubbleFlowBufferSize,
-			HubbleEventQueueSize,
-			HubbleMetricsServer,
-			HubbleMetrics,
-		},
-	},
-	{
-		Name: "Services and address translation flags",
-		Flags: []string{
-			EgressMasqueradeInterfaces,
-			Masquerade,
-			NodePortRange,
-			EnableHostReachableServices,
-			HostReachableServicesProtos,
-			EnableSessionAffinity,
-		},
-	},
-	{
-		Name: "IPtables flags",
-		Flags: []string{
-			PrependIptablesChainsName,
-			DisableIptablesFeederRules,
-			InstallIptRules,
-			IPTablesLockTimeout,
-			IPTablesRandomFully,
-		},
-	},
-	{
-		Name: "Networking flags",
-		Flags: []string{
-			Device,
-			DatapathMode,
-			ConntrackGCInterval,
-			DisableConntrack,
-			EnableAutoProtectNodePortRange,
-			TunnelName,
-			SockopsEnableName,
-			PrefilterDevice,
-			PrefilterMode,
-			EnableXTSocketFallbackName,
-			IpvlanMasterDevice,
-		},
-	},
-	{
-		Name: "KubeProxy free flags",
-		Flags: []string{
-			KubeProxyReplacement,
-			EnableNodePort,
-			EnableSVCSourceRangeCheck,
-			EnableHostReachableServices,
-			EnableExternalIPs,
-			HostReachableServicesProtos,
-			NodePortMode,
-			NodePortBindProtection,
-			NodePortAcceleration,
-		},
-	},
-	{
-		Name: "Path and config file flags",
-		Flags: []string{
-			ConfigFile,
-			ConfigDir,
-			CGroupRoot,
-			IPMasqAgentConfigPath,
-			LibDir,
-			StateDir,
-			SocketPath,
-			LabelPrefixFile,
-		},
-	},
-}
+	// EnableK8sTerminatingEndpoint enables the option to auto detect terminating
+	// state for endpoints in order to support graceful termination.
+	EnableK8sTerminatingEndpoint = "enable-k8s-terminating-endpoint"
+
+	// EnableVTEP enables cilium VXLAN VTEP integration
+	EnableVTEP = "enable-vtep"
+
+	// VTEP endpoint IPs
+	VtepEndpoint = "vtep-endpoint"
+
+	// VTEP CIDRs
+	VtepCIDR = "vtep-cidr"
+
+	// VTEP CIDR Mask applies to all VtepCIDR
+	VtepMask = "vtep-mask"
+
+	// VTEP MACs
+	VtepMAC = "vtep-mac"
+
+	// TCFilterPriority sets the priority of the cilium tc filter, enabling other
+	// filters to be inserted prior to the cilium filter.
+	TCFilterPriority = "bpf-filter-priority"
+
+	// Flag to enable BGP control plane features
+	EnableBGPControlPlane = "enable-bgp-control-plane"
+
+	// IngressSecretsNamespace is the namespace having tls secrets used by CEC.
+	IngressSecretsNamespace = "ingress-secrets-namespace"
+
+	// GatewayAPISecretsNamespace is the namespace having tls secrets used by CEC, originating from Gateway API.
+	GatewayAPISecretsNamespace = "gateway-api-secrets-namespace"
+
+	// EnableRuntimeDeviceDetection is the name of the option to enable detection
+	// of new and removed datapath devices during the agent runtime.
+	EnableRuntimeDeviceDetection = "enable-runtime-device-detection"
+
+	// EnablePMTUDiscovery enables path MTU discovery to send ICMP
+	// fragmentation-needed replies to the client (when needed).
+	EnablePMTUDiscovery = "enable-pmtu-discovery"
+
+	// BPFMapEventBuffers specifies what maps should have event buffers enabled,
+	// and the max size and TTL of events in the buffers should be.
+	BPFMapEventBuffers = "bpf-map-event-buffers"
+
+	// EnableStaleCiliumEndpointCleanup sets whether Cilium should perform cleanup of
+	// stale CiliumEndpoints during init.
+	EnableStaleCiliumEndpointCleanup = "enable-stale-cilium-endpoint-cleanup"
+)
 
 // Default string arguments
 var (
@@ -1238,6 +1192,16 @@ const (
 	// allows to keep a Kubernetes node NotReady until Cilium is up and
 	// running and able to schedule endpoints.
 	WriteCNIConfigurationWhenReady = "write-cni-conf-when-ready"
+
+	// CNIExclusive tells the agent to remove other CNI configuration files
+	CNIExclusive = "cni-exclusive"
+
+	// CNILogFile is the path to a log file (on the host) for the CNI plugin
+	// binary to use for logging.
+	CNILogFile = "cni-log-file"
+
+	// EnableCiliumEndpointSlice enables the cilium endpoint slicing feature.
+	EnableCiliumEndpointSlice = "enable-cilium-endpoint-slice"
 )
 
 const (
@@ -1262,6 +1226,18 @@ const (
 	// NodePortModeHybrid is a dual mode of the above, that is, DSR for TCP and SNAT for UDP
 	NodePortModeHybrid = "hybrid"
 
+	// DSR dispatch mode to encode service into IP option or extension header
+	DSRDispatchOption = "opt"
+
+	// DSR dispatch mode to encapsulate to IPIP
+	DSRDispatchIPIP = "ipip"
+
+	// DSR L4 translation to frontend port
+	DSRL4XlateFrontend = "frontend"
+
+	// DSR L4 translation to backend port
+	DSRL4XlateBackend = "backend"
+
 	// NodePortAccelerationDisabled means we do not accelerate NodePort via XDP
 	NodePortAccelerationDisabled = XDPModeDisabled
 
@@ -1270,10 +1246,6 @@ const (
 
 	// NodePortAccelerationNative means we accelerate NodePort via native XDP in the driver (preferred)
 	NodePortAccelerationNative = XDPModeNative
-
-	// KubeProxyReplacementProbe specifies to auto-enable available features for
-	// kube-proxy replacement
-	KubeProxyReplacementProbe = "probe"
 
 	// KubeProxyReplacementPartial specifies to enable only selected kube-proxy
 	// replacement features (might panic)
@@ -1303,15 +1275,11 @@ func getEnvName(option string) string {
 	return ciliumEnvPrefix + upper
 }
 
-// RegisteredOptions maps all options that are bind to viper.
-var RegisteredOptions = map[string]struct{}{}
-
-// BindEnv binds the option name with an deterministic generated environment
-// variable which s based on the given optName. If the same optName is bind
-// more than 1 time, this function panics.
-func BindEnv(optName string) {
-	registerOpt(optName)
-	viper.BindEnv(optName, getEnvName(optName))
+// BindEnv binds the option name with a deterministic generated environment
+// variable which is based on the given optName. If the same optName is bound
+// more than once, this function panics.
+func BindEnv(vp *viper.Viper, optName string) {
+	vp.BindEnv(optName, getEnvName(optName))
 }
 
 // BindEnvWithLegacyEnvFallback binds the given option name with either the same
@@ -1320,70 +1288,53 @@ func BindEnv(optName string) {
 // The function is used to work around the viper.BindEnv limitation that only
 // one environment variable can be bound for an option, and we need multiple
 // environment variables due to backward compatibility reasons.
-func BindEnvWithLegacyEnvFallback(optName, legacyEnvName string) {
-	registerOpt(optName)
-
+func BindEnvWithLegacyEnvFallback(vp *viper.Viper, optName, legacyEnvName string) {
 	envName := getEnvName(optName)
 	if os.Getenv(envName) == "" {
 		envName = legacyEnvName
 	}
-
-	viper.BindEnv(optName, envName)
+	vp.BindEnv(optName, envName)
 }
 
-func registerOpt(optName string) {
-	_, ok := RegisteredOptions[optName]
-	if ok || optName == "" {
-		panic(fmt.Errorf("option already registered: %s", optName))
-	}
-	RegisteredOptions[optName] = struct{}{}
-}
-
-// LogRegisteredOptions logs all options that where bind to viper.
-func LogRegisteredOptions(entry *logrus.Entry) {
-	keys := make([]string, 0, len(RegisteredOptions))
-	for k := range RegisteredOptions {
-		keys = append(keys, k)
-	}
+// LogRegisteredOptions logs all options that where bound to viper.
+func LogRegisteredOptions(vp *viper.Viper, entry *logrus.Entry) {
+	keys := vp.AllKeys()
 	sort.Strings(keys)
 	for _, k := range keys {
-		v := viper.GetStringSlice(k)
+		v := vp.GetStringSlice(k)
 		if len(v) > 0 {
 			entry.Infof("  --%s='%s'", k, strings.Join(v, ","))
 		} else {
-			entry.Infof("  --%s='%s'", k, viper.GetString(k))
+			entry.Infof("  --%s='%s'", k, vp.GetString(k))
 		}
 	}
-}
-
-// IpvlanConfig is the configuration used by Daemon when in ipvlan mode.
-type IpvlanConfig struct {
-	MasterDeviceIndex int
-	OperationMode     string
 }
 
 // DaemonConfig is the configuration used by Daemon.
 type DaemonConfig struct {
 	CreationTime        time.Time
-	BpfDir              string     // BPF template files directory
-	LibDir              string     // Cilium library files directory
-	RunDir              string     // Cilium runtime directory
-	NAT46Prefix         *net.IPNet // NAT46 IPv6 Prefix
-	Devices             []string   // bpf_host device
-	DirectRoutingDevice string     // Direct routing device (used only by NodePort BPF)
-	DevicePreFilter     string     // Prefilter device
-	ModePreFilter       string     // Prefilter mode
-	XDPDevice           string     // XDP device
-	XDPMode             string     // XDP mode, values: { xdpdrv | xdpgeneric | none }
-	HostV4Addr          net.IP     // Host v4 address of the snooping device
-	HostV6Addr          net.IP     // Host v6 address of the snooping device
-	EncryptInterface    []string   // Set of network facing interface to encrypt over
-	EncryptNode         bool       // Set to true for encrypting node IP traffic
+	BpfDir              string       // BPF template files directory
+	LibDir              string       // Cilium library files directory
+	RunDir              string       // Cilium runtime directory
+	devicesMu           lock.RWMutex // Protects devices
+	devices             []string     // bpf_host device
+	DirectRoutingDevice string       // Direct routing device (used by BPF NodePort and BPF Host Routing)
+	LBDevInheritIPAddr  string       // Device which IP addr used by bpf_host devices
+	EnableXDPPrefilter  bool         // Enable XDP-based prefiltering
+	XDPMode             string       // XDP mode, values: { xdpdrv | xdpgeneric | none }
+	HostV4Addr          net.IP       // Host v4 address of the snooping device
+	HostV6Addr          net.IP       // Host v6 address of the snooping device
+	EncryptInterface    []string     // Set of network facing interface to encrypt over
+	EncryptNode         bool         // Set to true for encrypting node IP traffic
 
-	Ipvlan IpvlanConfig // Ipvlan related configuration
+	// If set to true the daemon will detect new and deleted datapath devices
+	// at runtime and reconfigure the datapath to load programs onto the new
+	// devices.
+	EnableRuntimeDeviceDetection bool
 
 	DatapathMode string // Datapath mode
 	Tunnel       string // Tunnel mode
+	TunnelPort   int    // Tunnel port
 
 	DryMode bool // Do not create BPF maps, devices, ..
 
@@ -1412,8 +1363,14 @@ type DaemonConfig struct {
 	// Monitor contains the configuration for the node monitor.
 	Monitor *models.MonitorStatus
 
-	// AgentHealthPort is the TCP port for the agent health status API.
+	// AgentHealthPort is the TCP port for agent health status API
 	AgentHealthPort int
+
+	// ClusterHealthPort is the TCP port for cluster-wide network connectivity health API
+	ClusterHealthPort int
+
+	// ClusterMeshHealthPort is the TCP port for ClusterMesh apiserver health API
+	ClusterMeshHealthPort int
 
 	// AgentLabels contains additional labels to identify this agent in monitor events.
 	AgentLabels []string
@@ -1429,6 +1386,13 @@ type DaemonConfig struct {
 	// DaemonConfig.Validate()
 	IPv6ClusterAllocCIDRBase string
 
+	// IPv6NAT46x64CIDR is the private base CIDR for the NAT46x64 gateway
+	IPv6NAT46x64CIDR string
+
+	// IPv6NAT46x64CIDRBase is derived from IPv6NAT46x64CIDR and contains
+	// the IPv6 prefix with the masked bits zeroed out
+	IPv6NAT46x64CIDRBase netip.Addr
+
 	// K8sRequireIPv4PodCIDR requires the k8s node resource to specify the
 	// IPv4 PodCIDR. Cilium will block bootstrapping until the information
 	// is available.
@@ -1442,18 +1406,17 @@ type DaemonConfig struct {
 	// K8sServiceCacheSize is the service cache size for cilium k8s package.
 	K8sServiceCacheSize uint
 
-	// K8sForceJSONPatch when set, uses JSON Patch to update CNP and CEP
-	// status in kube-apiserver.
-	K8sForceJSONPatch bool
-
 	// MTU is the maximum transmission unit of the underlying network
 	MTU int
+
+	// RouteMetric is the metric used for the routes added to the cilium_host device
+	RouteMetric int
 
 	// ClusterName is the name of the cluster
 	ClusterName string
 
 	// ClusterID is the unique identifier of the cluster
-	ClusterID int
+	ClusterID uint32
 
 	// ClusterMeshConfig is the path to the clustermesh configuration directory
 	ClusterMeshConfig string
@@ -1467,12 +1430,13 @@ type DaemonConfig struct {
 	CTMapEntriesGlobalAny int
 
 	// CTMapEntriesTimeout* values configured by the user.
-	CTMapEntriesTimeoutTCP    time.Duration
-	CTMapEntriesTimeoutAny    time.Duration
-	CTMapEntriesTimeoutSVCTCP time.Duration
-	CTMapEntriesTimeoutSVCAny time.Duration
-	CTMapEntriesTimeoutSYN    time.Duration
-	CTMapEntriesTimeoutFIN    time.Duration
+	CTMapEntriesTimeoutTCP         time.Duration
+	CTMapEntriesTimeoutAny         time.Duration
+	CTMapEntriesTimeoutSVCTCP      time.Duration
+	CTMapEntriesTimeoutSVCTCPGrace time.Duration
+	CTMapEntriesTimeoutSVCAny      time.Duration
+	CTMapEntriesTimeoutSYN         time.Duration
+	CTMapEntriesTimeoutFIN         time.Duration
 
 	// EnableMonitor enables the monitor unix domain socket server
 	EnableMonitor bool
@@ -1560,9 +1524,11 @@ type DaemonConfig struct {
 	// ProxyPrometheusPort specifies the port to serve Envoy metrics on.
 	ProxyPrometheusPort int
 
-	// BPFCompilationDebug specifies whether to compile BPF programs compilation
-	// debugging enabled.
-	BPFCompilationDebug bool
+	// ProxyMaxRequestsPerConnection specifies the max_requests_per_connection setting for the proxy
+	ProxyMaxRequestsPerConnection int
+
+	// ProxyMaxConnectionDuration specifies the max_connection_duration setting for the proxy
+	ProxyMaxConnectionDuration time.Duration
 
 	// EnvoyLogPath specifies where to store the Envoy proxy logs when Envoy
 	// runs in the same container as Cilium.
@@ -1570,6 +1536,8 @@ type DaemonConfig struct {
 
 	// EnableSockOps specifies whether to enable sockops (socket lookup).
 	SockopsEnable bool
+
+	ProcFs string
 
 	// PrependIptablesChains is the name of the option to enable prepending
 	// iptables chains instead of appending
@@ -1587,6 +1555,12 @@ type DaemonConfig struct {
 	// deployed in when running in Kubernetes mode
 	K8sNamespace string
 
+	// AgentNotReadyNodeTaint is a node taint which prevents pods from being
+	// scheduled. Once cilium is setup it is removed from the node. Mostly
+	// used in cloud providers to prevent existing CNI plugins from managing
+	// pods.
+	AgentNotReadyNodeTaintKey string
+
 	// JoinCluster is 'true' if the agent should join a Cilium cluster via kvstore
 	// registration
 	JoinCluster bool
@@ -1597,8 +1571,23 @@ type DaemonConfig struct {
 	// EnableIPv6 is true when IPv6 is enabled
 	EnableIPv6 bool
 
+	// EnableNat46X64Gateway is true when L3 based NAT46 and NAT64 translation is enabled
+	EnableNat46X64Gateway bool
+
 	// EnableIPv6NDP is true when NDP is enabled for IPv6
 	EnableIPv6NDP bool
+
+	// EnableIPv6BIGTCP enables IPv6 BIG TCP (larger GSO/GRO limits) for the node including pods.
+	EnableIPv6BIGTCP bool
+
+	// EnableSRv6 is true when SRv6 encapsulation support is enabled
+	EnableSRv6 bool
+
+	// SRv6EncapMode is the encapsulation mode for SRv6
+	SRv6EncapMode string
+
+	// EnableSCTP is true when SCTP support is enabled.
+	EnableSCTP bool
 
 	// IPv6MCastDevice is the name of device that joins IPv6's solicitation multicast group
 	IPv6MCastDevice string
@@ -1612,25 +1601,32 @@ type DaemonConfig struct {
 	// IPSec key file for stored keys
 	IPSecKeyFile string
 
+	// EnableWireguard enables Wireguard encryption
+	EnableWireguard bool
+
+	// EnableWireguardUserspaceFallback enables the fallback to the userspace implementation
+	EnableWireguardUserspaceFallback bool
+
 	// MonitorQueueSize is the size of the monitor event queue
 	MonitorQueueSize int
 
 	// CLI options
 
 	BPFRoot                       string
+	BPFSocketLBHostnsOnly         bool
 	CGroupRoot                    string
 	BPFCompileDebug               string
+	CompilerFlags                 []string
 	ConfigFile                    string
 	ConfigDir                     string
 	Debug                         bool
 	DebugVerbose                  []string
-	DisableConntrack              bool
-	EnableHostReachableServices   bool
-	EnableHostServicesTCP         bool
-	EnableHostServicesUDP         bool
-	EnableHostServicesPeer        bool
+	EnableSocketLB                bool
+	EnableSocketLBTracing         bool
+	EnableSocketLBPeer            bool
 	EnablePolicy                  string
 	EnableTracing                 bool
+	EnableUnreachableRoutes       bool
 	EnvoyLog                      string
 	DisableEnvoyVersionCheck      bool
 	FixedIdentityMapping          map[string]string
@@ -1639,11 +1635,8 @@ type DaemonConfig struct {
 	IPv6Range                     string
 	IPv4ServiceRange              string
 	IPv6ServiceRange              string
-	K8sAPIServer                  string
-	K8sKubeConfigPath             string
-	K8sClientBurst                int
-	K8sClientQPSLimit             float64
 	K8sSyncTimeout                time.Duration
+	AllocatorListTimeout          time.Duration
 	K8sWatcherEndpointSelector    string
 	KVStore                       string
 	KVStoreOpt                    map[string]string
@@ -1653,31 +1646,44 @@ type DaemonConfig struct {
 	LogOpt                        map[string]string
 	Logstash                      bool
 	LogSystemLoadConfig           bool
-	NAT46Range                    string
 
 	// Masquerade specifies whether or not to masquerade packets from endpoints
 	// leaving the host.
-	Masquerade             bool
-	EnableBPFMasquerade    bool
-	EnableBPFClockProbe    bool
-	EnableIPMasqAgent      bool
-	IPMasqAgentConfigPath  string
-	InstallIptRules        bool
-	MonitorAggregation     string
-	PreAllocateMaps        bool
-	IPv6NodeAddr           string
-	IPv4NodeAddr           string
-	SidecarIstioProxyImage string
-	SocketPath             string
-	TracePayloadlen        int
-	Version                string
-	PProf                  bool
-	PrometheusServeAddr    string
-	ToFQDNsMinTTL          int
+	EnableIPv4Masquerade       bool
+	EnableIPv6Masquerade       bool
+	EnableBPFMasquerade        bool
+	DeriveMasqIPAddrFromDevice string
+	EnableBPFClockProbe        bool
+	EnableIPMasqAgent          bool
+	EnableIPv4EgressGateway    bool
+	InstallEgressGatewayRoutes bool
+	EnableEnvoyConfig          bool
+	EnableIngressController    bool
+	EnableGatewayAPI           bool
+	EnvoyConfigTimeout         time.Duration
+	IPMasqAgentConfigPath      string
+	InstallIptRules            bool
+	MonitorAggregation         string
+	PreAllocateMaps            bool
+	IPv6NodeAddr               string
+	IPv4NodeAddr               string
+	SidecarIstioProxyImage     string
+	SocketPath                 string
+	TracePayloadlen            int
+	Version                    string
+	PProf                      bool
+	PProfAddress               string
+	PProfPort                  int
+	PrometheusServeAddr        string
+	ToFQDNsMinTTL              int
 
 	// DNSMaxIPsPerRestoredRule defines the maximum number of IPs to maintain
 	// for each FQDN selector in endpoint's restored DNS rules
 	DNSMaxIPsPerRestoredRule int
+
+	// DNSPolicyUnloadOnShutdown defines whether DNS policy rules should be unloaded on
+	// graceful shutdown.
+	DNSPolicyUnloadOnShutdown bool
 
 	// ToFQDNsProxyPort is the user-configured global, shared, DNS listen port used
 	// by the DNS Proxy. Both UDP and TCP are handled on the same port. When it
@@ -1706,6 +1712,10 @@ type DaemonConfig struct {
 	// datapath is updated with the new IP information.
 	FQDNProxyResponseMaxDelay time.Duration
 
+	// FQDNRegexCompileLRUSize is the size of the FQDN regex compilation LRU.
+	// Useful for heavy but repeated FQDN MatchName or MatchPattern use.
+	FQDNRegexCompileLRUSize int
+
 	// Path to a file with DNS cache data to preload on startup
 	ToFQDNsPreCache string
 
@@ -1713,16 +1723,22 @@ type DaemonConfig struct {
 	// endpoints that are larger than 512 Bytes or the EDNS0 option, if present.
 	ToFQDNsEnableDNSCompression bool
 
-	// HostDevice will be device used by Cilium to connect to the outside world.
-	HostDevice string
+	// DNSProxyConcurrencyLimit limits parallel processing of DNS messages in
+	// DNS proxy at any given point in time.
+	DNSProxyConcurrencyLimit int
 
-	// FlannelMasterDevice installs a BPF program in the given interface
-	// to allow for policy enforcement mode on top of flannel.
-	FlannelMasterDevice string
+	// DNSProxyConcurrencyProcessingGracePeriod is the amount of grace time to
+	// wait while processing DNS messages when the DNSProxyConcurrencyLimit has
+	// been reached.
+	DNSProxyConcurrencyProcessingGracePeriod time.Duration
 
-	// FlannelUninstallOnExit removes the BPF programs that were installed by
-	// Cilium on all interfaces created by the flannel.
-	FlannelUninstallOnExit bool
+	// DNSProxyLockCount is the array size containing mutexes which protect
+	// against parallel handling of DNS response IPs.
+	DNSProxyLockCount int
+
+	// DNSProxyLockTimeout is timeout when acquiring the locks controlled by
+	// DNSProxyLockCount.
+	DNSProxyLockTimeout time.Duration
 
 	// EnableXTSocketFallback allows disabling of kernel's ip_early_demux
 	// sysctl option if `xt_socket` kernel module is not available.
@@ -1760,6 +1776,10 @@ type DaemonConfig struct {
 	// KVstoreLeaseTTL is the time-to-live for kvstore lease.
 	KVstoreLeaseTTL time.Duration
 
+	// KVstoreMaxConsecutiveQuorumErrors is the maximum number of acceptable
+	// kvstore consecutive quorum errors before the agent assumes permanent failure
+	KVstoreMaxConsecutiveQuorumErrors int
+
 	// KVstorePeriodicSync is the time interval in which periodic
 	// synchronization with the kvstore occurs
 	KVstorePeriodicSync time.Duration
@@ -1777,6 +1797,13 @@ type DaemonConfig struct {
 	// to whitelist the new upcoming identity of the endpoint.
 	IdentityChangeGracePeriod time.Duration
 
+	// IdentityRestoreGracePeriod is the grace period that needs to pass before CIDR identities
+	// restored during agent restart are released. If any of the restored identities remains
+	// unused after this time, they will be removed from the IP cache. Any of the restored
+	// identities that are used in network policies will remain in the IP cache until all such
+	// policies are removed.
+	IdentityRestoreGracePeriod time.Duration
+
 	// PolicyQueueSize is the size of the queues for the policy repository.
 	// A larger queue means that more events related to policy can be buffered.
 	PolicyQueueSize int
@@ -1787,12 +1814,9 @@ type DaemonConfig struct {
 	// events, specifically those which cause many regenerations.
 	EndpointQueueSize int
 
-	// SelectiveRegeneration, when true, enables the functionality to only
-	// regenerate endpoints which are selected by the policy rules that have
-	// been changed (added, deleted, or updated). If false, then all endpoints
-	// are regenerated upon every policy change regardless of the scope of the
-	// policy change.
-	SelectiveRegeneration bool
+	// EndpointGCInterval is interval to attempt garbage collection of
+	// endpoints that are no longer alive and healthy.
+	EndpointGCInterval time.Duration
 
 	// ConntrackGCInterval is the connection tracking garbage collection
 	// interval
@@ -1810,17 +1834,15 @@ type DaemonConfig struct {
 	// LoopbackIPv4 is the address to use for service loopback SNAT
 	LoopbackIPv4 string
 
-	// EndpointInterfaceNamePrefix is the prefix name of the interface
-	// names shared by all endpoints
-	EndpointInterfaceNamePrefix string
+	// LocalRouterIPv4 is the link-local IPv4 address used for Cilium's router device
+	LocalRouterIPv4 string
+
+	// LocalRouterIPv6 is the link-local IPv6 address used for Cilium's router device
+	LocalRouterIPv6 string
 
 	// ForceLocalPolicyEvalAtSource forces a policy decision at the source
 	// endpoint for all local communication
 	ForceLocalPolicyEvalAtSource bool
-
-	// SkipCRDCreation disables creation of the CustomResourceDefinition
-	// on daemon startup
-	SkipCRDCreation bool
 
 	// EnableEndpointRoutes enables use of per endpoint routes
 	EnableEndpointRoutes bool
@@ -1842,17 +1864,30 @@ type DaemonConfig struct {
 	// running and able to schedule endpoints.
 	WriteCNIConfigurationWhenReady string
 
+	// CNIExclusive, if true, directs the agent to remove all other CNI configuration files
+	CNIExclusive bool
+
+	// CNILogFile is a path on disk (on the host) for the CNI plugin binary to use
+	// for logging.
+	CNILogFile string
+
 	// EnableNodePort enables k8s NodePort service implementation in BPF
 	EnableNodePort bool
 
 	// EnableSVCSourceRangeCheck enables check of loadBalancerSourceRanges
 	EnableSVCSourceRangeCheck bool
 
+	// EnableHealthDatapath enables IPIP health probes data path
+	EnableHealthDatapath bool
+
 	// EnableHostPort enables k8s Pod's hostPort mapping through BPF
 	EnableHostPort bool
 
 	// EnableHostLegacyRouting enables the old routing path via stack.
 	EnableHostLegacyRouting bool
+
+	// NodePortNat46X64 indicates whether NAT46 / NAT64 can be used.
+	NodePortNat46X64 bool
 
 	// NodePortMode indicates in which mode NodePort implementation should run
 	// ("snat", "dsr" or "hybrid")
@@ -1861,6 +1896,27 @@ type DaemonConfig struct {
 	// NodePortAlg indicates which backend selection algorithm is used
 	// ("random" or "maglev")
 	NodePortAlg string
+
+	// LoadBalancerDSRDispatch indicates the method for pushing packets to
+	// backends under DSR ("opt" or "ipip")
+	LoadBalancerDSRDispatch string
+
+	// LoadBalancerDSRL4Xlate indicates the method for L4 DNAT translation
+	// under IPIP dispatch, that is, whether the inner packet will be
+	// translated to the frontend or backend port.
+	LoadBalancerDSRL4Xlate string
+
+	// LoadBalancerRSSv4CIDR defines the outer source IPv4 prefix for DSR/IPIP
+	LoadBalancerRSSv4CIDR string
+	LoadBalancerRSSv4     net.IPNet
+
+	// LoadBalancerRSSv4CIDR defines the outer source IPv6 prefix for DSR/IPIP
+	LoadBalancerRSSv6CIDR string
+	LoadBalancerRSSv6     net.IPNet
+
+	// EnablePMTUDiscovery indicates whether to send ICMP fragmentation-needed
+	// replies to the client (when needed).
+	EnablePMTUDiscovery bool
 
 	// Maglev backend table size (M) per service. Must be prime number.
 	MaglevTableSize int
@@ -1871,9 +1927,6 @@ type DaemonConfig struct {
 	// NodePortAcceleration indicates whether NodePort should be accelerated
 	// via XDP ("none", "generic" or "native")
 	NodePortAcceleration string
-
-	// NodePortHairpin indicates whether the setup is a one-legged LB
-	NodePortHairpin bool
 
 	// NodePortBindProtection rejects bind requests to NodePort service ports
 	NodePortBindProtection bool
@@ -1887,11 +1940,27 @@ type DaemonConfig struct {
 	// features in BPF datapath
 	KubeProxyReplacement string
 
+	// AddressScopeMax controls the maximum address scope for addresses to be
+	// considered local ones with HOST_ID in the ipcache
+	AddressScopeMax int
+
 	// EnableBandwidthManager enables EDT-based pacing
 	EnableBandwidthManager bool
 
+	// EnableBBR enables BBR TCP congestion control for the node including Pods
+	EnableBBR bool
+
 	// ResetQueueMapping resets the Pod's skb queue mapping
 	ResetQueueMapping bool
+
+	// EnableRecorder enables the datapath pcap recorder
+	EnableRecorder bool
+
+	// EnableMKE enables MKE specific 'chaining' for kube-proxy replacement
+	EnableMKE bool
+
+	// CgroupPathMKE points to the cgroupv1 net_cls mount instance
+	CgroupPathMKE string
 
 	// KubeProxyReplacementHealthzBindAddr is the KubeProxyReplacement healthz server bind addr
 	KubeProxyReplacementHealthzBindAddr string
@@ -1918,6 +1987,8 @@ type DaemonConfig struct {
 	// EnableSessionAffinity enables a support for service sessionAffinity
 	EnableSessionAffinity bool
 
+	EnableServiceTopology bool
+
 	// Selection of BPF main clock source (ktime vs jiffies)
 	ClockSource BPFClockSource
 
@@ -1929,9 +2000,9 @@ type DaemonConfig struct {
 	// KernelHz is the HZ rate the kernel is operating in
 	KernelHz int
 
-	// excludeLocalAddresses excludes certain addresses to be recognized as
+	// ExcludeLocalAddresses excludes certain addresses to be recognized as
 	// a local address
-	excludeLocalAddresses []*net.IPNet
+	ExcludeLocalAddresses []*net.IPNet
 
 	// IPv4PodSubnets available subnets to be assign IPv4 addresses to pods from
 	IPv4PodSubnets []*net.IPNet
@@ -1942,12 +2013,18 @@ type DaemonConfig struct {
 	// IPAM is the IPAM method to use
 	IPAM string
 
+	// Enable chaining with another CNI plugin.
+	CNIChainingMode string
+
 	// AutoCreateCiliumNodeResource enables automatic creation of a
 	// CiliumNode resource for the local node
 	AutoCreateCiliumNodeResource bool
 
-	// ipv4NativeRoutingCIDR describes a CIDR in which pod IPs are routable
-	ipv4NativeRoutingCIDR *cidr.CIDR
+	// IPv4NativeRoutingCIDR describes a CIDR in which pod IPs are routable
+	IPv4NativeRoutingCIDR *cidr.CIDR
+
+	// IPv6NativeRoutingCIDR describes a CIDR in which pod IPs are routable
+	IPv6NativeRoutingCIDR *cidr.CIDR
 
 	// EgressMasqueradeInterfaces is the selector used to select interfaces
 	// subject to egress masquerading
@@ -1997,6 +2074,10 @@ type DaemonConfig struct {
 	// HubbleListenAddress specifies address for Hubble to listen to.
 	HubbleListenAddress string
 
+	// HubblePreferIpv6 controls whether IPv6 or IPv4 addresses should be preferred for
+	// communication to agents, if both are available.
+	HubblePreferIpv6 bool
+
 	// HubbleTLSDisabled allows the Hubble server to run on the given listen
 	// address without TLS.
 	HubbleTLSDisabled bool
@@ -2014,8 +2095,8 @@ type DaemonConfig struct {
 	// must contain PEM encoded data.
 	HubbleTLSClientCAFiles []string
 
-	// HubbleFlowBufferSize specifies the maximum number of flows in Hubble's buffer.
-	HubbleFlowBufferSize int
+	// HubbleEventBufferCapacity specifies the capacity of Hubble events buffer.
+	HubbleEventBufferCapacity int
 
 	// HubbleEventQueueSize specifies the buffer size of the channel to receive monitor events.
 	HubbleEventQueueSize int
@@ -2026,8 +2107,35 @@ type DaemonConfig struct {
 	// HubbleMetrics specifies enabled metrics and their configuration options.
 	HubbleMetrics []string
 
-	// K8sHeartbeatTimeout configures the timeout for apiserver heartbeat
-	K8sHeartbeatTimeout time.Duration
+	// HubbleExportFilePath specifies the filepath to write Hubble events to.
+	// e.g. "/var/run/cilium/hubble/events.log"
+	HubbleExportFilePath string
+
+	// HubbleExportFileMaxSizeMB specifies the file size in MB at which to rotate
+	// the Hubble export file.
+	HubbleExportFileMaxSizeMB int
+
+	// HubbleExportFileMaxBacks specifies the number of rotated files to keep.
+	HubbleExportFileMaxBackups int
+
+	// HubbleExportFileCompress specifies whether rotated files are compressed.
+	HubbleExportFileCompress bool
+
+	// EnableHubbleRecorderAPI specifies if the Hubble Recorder API should be served
+	EnableHubbleRecorderAPI bool
+
+	// EnableHubbleOpenMetrics enables exporting hubble metrics in OpenMetrics format.
+	EnableHubbleOpenMetrics bool
+
+	// HubbleRecorderStoragePath specifies the directory in which pcap files
+	// created via the Hubble Recorder API are stored
+	HubbleRecorderStoragePath string
+
+	// HubbleRecorderSinkQueueSize is the queue size for each recorder sink
+	HubbleRecorderSinkQueueSize int
+
+	// HubbleSkipUnknownCGroupIDs specifies if events with unknown cgroup ids should be skipped
+	HubbleSkipUnknownCGroupIDs bool
 
 	// EndpointStatus enables population of information in the
 	// CiliumEndpoint.Status resource
@@ -2046,21 +2154,19 @@ type DaemonConfig struct {
 	// ports for all fragments.
 	FragmentsMapEntries int
 
-	// sizeofCTElement is the size of an element (key + value) in the CT map.
-	sizeofCTElement int
+	// SizeofCTElement is the size of an element (key + value) in the CT map.
+	SizeofCTElement int
 
-	// sizeofNATElement is the size of an element (key + value) in the NAT map.
-	sizeofNATElement int
+	// SizeofNATElement is the size of an element (key + value) in the NAT map.
+	SizeofNATElement int
 
-	// sizeofNeighElement is the size of an element (key + value) in the neigh
+	// SizeofNeighElement is the size of an element (key + value) in the neigh
 	// map.
-	sizeofNeighElement int
+	SizeofNeighElement int
 
-	// sizeofSockRevElement is the size of an element (key + value) in the neigh
+	// SizeofSockRevElement is the size of an element (key + value) in the neigh
 	// map.
-	sizeofSockRevElement int
-
-	k8sEnableAPIDiscovery bool
+	SizeofSockRevElement int
 
 	// k8sEnableLeasesFallbackDiscovery enables k8s to fallback to API probing to check
 	// for the support of Leases in Kubernetes when there is an error in discovering
@@ -2068,17 +2174,35 @@ type DaemonConfig struct {
 	// We require to check for Leases capabilities in operator only, which uses Leases for leader
 	// election purposes in HA mode.
 	// This is only enabled for cilium-operator
-	k8sEnableLeasesFallbackDiscovery bool
+	K8sEnableLeasesFallbackDiscovery bool
 
 	// LBMapEntries is the maximum number of entries allowed in BPF lbmap.
 	LBMapEntries int
 
-	// k8sServiceProxyName is the value of service.kubernetes.io/service-proxy-name label,
+	// LBServiceMapEntries is the maximum number of entries allowed in BPF lbmap for services.
+	LBServiceMapEntries int
+
+	// LBBackendMapEntries is the maximum number of entries allowed in BPF lbmap for service backends.
+	LBBackendMapEntries int
+
+	// LBRevNatEntries is the maximum number of entries allowed in BPF lbmap for reverse NAT.
+	LBRevNatEntries int
+
+	// LBAffinityMapEntries is the maximum number of entries allowed in BPF lbmap for session affinities.
+	LBAffinityMapEntries int
+
+	// LBSourceRangeMapEntries is the maximum number of entries allowed in BPF lbmap for source ranges.
+	LBSourceRangeMapEntries int
+
+	// LBMaglevMapEntries is the maximum number of entries allowed in BPF lbmap for maglev.
+	LBMaglevMapEntries int
+
+	// K8sServiceProxyName is the value of service.kubernetes.io/service-proxy-name label,
 	// that identifies the service objects Cilium should handle.
 	// If the provided value is an empty string, Cilium will manage service objects when
 	// the label is not present. For more details -
-	// https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0031-20181017-kube-proxy-services-optional.md
-	k8sServiceProxyName string
+	// https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/2447-Make-kube-proxy-service-abstraction-optional
+	K8sServiceProxyName string
 
 	// APIRateLimitName enables configuration of the API rate limits
 	APIRateLimit map[string]string
@@ -2087,23 +2211,94 @@ type DaemonConfig struct {
 	// available.
 	CRDWaitTimeout time.Duration
 
-	// NeedsRelaxVerifier enables the relax_verifier() helper which is used
-	// to introduce state pruning points for the verifier in the datapath
-	// program.
-	NeedsRelaxVerifier bool
-
 	// EgressMultiHomeIPRuleCompat instructs Cilium to use a new scheme to
 	// store rules and routes under ENI and Azure IPAM modes, if false.
 	// Otherwise, it will use the old scheme.
 	EgressMultiHomeIPRuleCompat bool
 
+	// InstallNoConntrackIptRules instructs Cilium to install Iptables rules to skip netfilter connection tracking on all pod traffic.
+	InstallNoConntrackIptRules bool
+
+	// EnableCustomCalls enables tail call hooks for user-defined custom
+	// eBPF programs, typically used to collect custom per-endpoint
+	// metrics.
+	EnableCustomCalls bool
+
+	// BGPAnnounceLBIP announces service IPs of type LoadBalancer via BGP.
+	BGPAnnounceLBIP bool
+
+	// BGPAnnouncePodCIDR announces the node's pod CIDR via BGP.
+	BGPAnnouncePodCIDR bool
+
+	// BGPConfigPath is the file path to the BGP configuration. It is
+	// compatible with MetalLB's configuration.
+	BGPConfigPath string
+
+	// ExternalClusterIP enables routing to ClusterIP services from outside
+	// the cluster. This mirrors the behaviour of kube-proxy.
+	ExternalClusterIP bool
+
 	// ARPPingRefreshPeriod is the ARP entries refresher period.
 	ARPPingRefreshPeriod time.Duration
+	// EnableCiliumEndpointSlice enables the cilium endpoint slicing feature.
+	EnableCiliumEndpointSlice bool
+
+	// ARPPingKernelManaged denotes whether kernel can auto-refresh Neighbor entries
+	ARPPingKernelManaged bool
+
+	// VLANBPFBypass list of explicitly allowed VLAN id's for bpf logic bypass
+	VLANBPFBypass []int
+	// EnableL2NeighDiscovery determines if cilium should perform L2 neighbor
+	// discovery.
+	EnableL2NeighDiscovery bool
+
+	// EnableICMPRules enables ICMP-based rule support for Cilium Network Policies.
+	EnableICMPRules bool
 
 	// BypassIPAvailabilityUponRestore bypasses the IP availability error
 	// within IPAM upon endpoint restore and allows the use of the restored IP
 	// regardless of whether it's available in the pool.
 	BypassIPAvailabilityUponRestore bool
+
+	// EnableK8sTerminatingEndpoint enables auto-detect of terminating state for
+	// Kubernetes service endpoints.
+	EnableK8sTerminatingEndpoint bool
+
+	// EnableVTEP enable Cilium VXLAN VTEP integration
+	EnableVTEP bool
+
+	// VtepEndpoints VTEP endpoint IPs
+	VtepEndpoints []net.IP
+
+	// VtepCIDRs VTEP CIDRs
+	VtepCIDRs []*cidr.CIDR
+
+	// VtepMask VTEP Mask
+	VtepCidrMask net.IP
+
+	// VtepMACs VTEP MACs
+	VtepMACs []mac.MAC
+
+	// TCFilterPriority sets the priority of the cilium tc filter, enabling other
+	// filters to be inserted prior to the cilium filter.
+	TCFilterPriority uint16
+
+	// Enables BGP control plane features.
+	EnableBGPControlPlane bool
+
+	// EnvoySecretNamespaces for TLS secrets. Used by CiliumEnvoyConfig via SDS.
+	EnvoySecretNamespaces []string
+
+	// BPFMapEventBuffers has configuration on what BPF map event buffers to enabled
+	// and configuration options for those.
+	BPFMapEventBuffers          map[string]string
+	BPFMapEventBuffersValidator func(val string) (string, error) `json:"-"`
+	bpfMapEventConfigs          BPFEventBufferConfigs
+
+	// EnableStaleCiliumEndpointCleanup enables cleanup routine during Cilium init.
+	// This will attempt to remove local CiliumEndpoints that are not managed by Cilium
+	// following Endpoint restoration.
+	EnableStaleCiliumEndpointCleanup bool
 }
 
 var (
@@ -2121,6 +2316,7 @@ var (
 		EnableIPv4:                   defaults.EnableIPv4,
 		EnableIPv6:                   defaults.EnableIPv6,
 		EnableIPv6NDP:                defaults.EnableIPv6NDP,
+		EnableSCTP:                   defaults.EnableSCTP,
 		EnableL7Proxy:                defaults.EnableL7Proxy,
 		EndpointStatus:               make(map[string]struct{}),
 		DNSMaxIPsPerRestoredRule:     defaults.DNSMaxIPsPerRestoredRule,
@@ -2129,12 +2325,11 @@ var (
 		KVstoreConnectivityTimeout:   defaults.KVstoreConnectivityTimeout,
 		IPAllocationTimeout:          defaults.IPAllocationTimeout,
 		IdentityChangeGracePeriod:    defaults.IdentityChangeGracePeriod,
+		IdentityRestoreGracePeriod:   defaults.IdentityRestoreGracePeriod,
 		FixedIdentityMapping:         make(map[string]string),
 		KVStoreOpt:                   make(map[string]string),
 		LogOpt:                       make(map[string]string),
-		SelectiveRegeneration:        defaults.SelectiveRegeneration,
 		LoopbackIPv4:                 defaults.LoopbackIPv4,
-		EndpointInterfaceNamePrefix:  defaults.EndpointInterfaceNamePrefix,
 		ForceLocalPolicyEvalAtSource: defaults.ForceLocalPolicyEvalAtSource,
 		EnableEndpointRoutes:         defaults.EnableEndpointRoutes,
 		AnnotateK8sNode:              defaults.AnnotateK8sNode,
@@ -2144,17 +2339,22 @@ var (
 		AllowICMPFragNeeded:          defaults.AllowICMPFragNeeded,
 		EnableWellKnownIdentities:    defaults.EnableWellKnownIdentities,
 		K8sEnableK8sEndpointSlice:    defaults.K8sEnableEndpointSlice,
-		k8sEnableAPIDiscovery:        defaults.K8sEnableAPIDiscovery,
+		AllocatorListTimeout:         defaults.AllocatorListTimeout,
+		EnableICMPRules:              defaults.EnableICMPRules,
 
-		k8sEnableLeasesFallbackDiscovery: defaults.K8sEnableLeasesFallbackDiscovery,
+		K8sEnableLeasesFallbackDiscovery: defaults.K8sEnableLeasesFallbackDiscovery,
 		APIRateLimit:                     make(map[string]string),
+
+		ExternalClusterIP:     defaults.ExternalClusterIP,
+		EnableVTEP:            defaults.EnableVTEP,
+		EnableBGPControlPlane: defaults.EnableBGPControlPlane,
 	}
 )
 
-// IPv4NativeRoutingCIDR returns the native routing CIDR if configured
-func (c *DaemonConfig) IPv4NativeRoutingCIDR() (cidr *cidr.CIDR) {
+// GetIPv4NativeRoutingCIDR returns the native routing CIDR if configured
+func (c *DaemonConfig) GetIPv4NativeRoutingCIDR() (cidr *cidr.CIDR) {
 	c.ConfigPatchMutex.RLock()
-	cidr = c.ipv4NativeRoutingCIDR
+	cidr = c.IPv4NativeRoutingCIDR
 	c.ConfigPatchMutex.RUnlock()
 	return
 }
@@ -2162,14 +2362,47 @@ func (c *DaemonConfig) IPv4NativeRoutingCIDR() (cidr *cidr.CIDR) {
 // SetIPv4NativeRoutingCIDR sets the native routing CIDR
 func (c *DaemonConfig) SetIPv4NativeRoutingCIDR(cidr *cidr.CIDR) {
 	c.ConfigPatchMutex.Lock()
-	c.ipv4NativeRoutingCIDR = cidr
+	c.IPv4NativeRoutingCIDR = cidr
 	c.ConfigPatchMutex.Unlock()
+}
+
+// GetIPv6NativeRoutingCIDR returns the native routing CIDR if configured
+func (c *DaemonConfig) GetIPv6NativeRoutingCIDR() (cidr *cidr.CIDR) {
+	c.ConfigPatchMutex.RLock()
+	cidr = c.IPv6NativeRoutingCIDR
+	c.ConfigPatchMutex.RUnlock()
+	return
+}
+
+// SetIPv6NativeRoutingCIDR sets the native routing CIDR
+func (c *DaemonConfig) SetIPv6NativeRoutingCIDR(cidr *cidr.CIDR) {
+	c.ConfigPatchMutex.Lock()
+	c.IPv6NativeRoutingCIDR = cidr
+	c.ConfigPatchMutex.Unlock()
+}
+
+func (c *DaemonConfig) SetDevices(devices []string) {
+	c.devicesMu.Lock()
+	c.devices = devices
+	c.devicesMu.Unlock()
+}
+
+func (c *DaemonConfig) GetDevices() []string {
+	c.devicesMu.RLock()
+	defer c.devicesMu.RUnlock()
+	return c.devices
+}
+
+func (c *DaemonConfig) AppendDevice(dev string) {
+	c.devicesMu.Lock()
+	c.devices = append(c.devices, dev)
+	c.devicesMu.Unlock()
 }
 
 // IsExcludedLocalAddress returns true if the specified IP matches one of the
 // excluded local IP ranges
 func (c *DaemonConfig) IsExcludedLocalAddress(ip net.IP) bool {
-	for _, ipnet := range c.excludeLocalAddresses {
+	for _, ipnet := range c.ExcludeLocalAddresses {
 		if ipnet.Contains(ip) {
 			return true
 		}
@@ -2210,10 +2443,60 @@ func (c *DaemonConfig) AlwaysAllowLocalhost() bool {
 	}
 }
 
-// TunnelingEnabled returns true if the remote-node identity feature
-// is enabled
+// TunnelingEnabled returns true if tunneling is enabled, i.e. not set to "disabled".
 func (c *DaemonConfig) TunnelingEnabled() bool {
 	return c.Tunnel != TunnelDisabled
+}
+
+// TunnelDevice returns cilium_{vxlan,geneve} depending on the config or "" if disabled.
+func (c *DaemonConfig) TunnelDevice() string {
+	if c.TunnelingEnabled() {
+		return fmt.Sprintf("cilium_%s", c.Tunnel)
+	} else {
+		return ""
+	}
+}
+
+// TunnelExists returns true if some traffic may go through a tunnel, including
+// if the primary mode is native routing. For example, in the egress gateway,
+// we may send such traffic to a gateway node via a tunnel.
+func (c *DaemonConfig) TunnelExists() bool {
+	return c.TunnelingEnabled() || c.EnableIPv4EgressGateway
+}
+
+// AreDevicesRequired returns true if the agent needs to attach to the native
+// devices to implement some features.
+func (c *DaemonConfig) AreDevicesRequired() bool {
+	return c.EnableNodePort || c.EnableHostFirewall || c.EnableBandwidthManager
+}
+
+// MasqueradingEnabled returns true if either IPv4 or IPv6 masquerading is enabled.
+func (c *DaemonConfig) MasqueradingEnabled() bool {
+	return c.EnableIPv4Masquerade || c.EnableIPv6Masquerade
+}
+
+// IptablesMasqueradingIPv4Enabled returns true if iptables-based
+// masquerading is enabled for IPv4.
+func (c *DaemonConfig) IptablesMasqueradingIPv4Enabled() bool {
+	return !c.EnableBPFMasquerade && c.EnableIPv4Masquerade
+}
+
+// IptablesMasqueradingIPv6Enabled returns true if iptables-based
+// masquerading is enabled for IPv6.
+func (c *DaemonConfig) IptablesMasqueradingIPv6Enabled() bool {
+	return !c.EnableBPFMasquerade && c.EnableIPv6Masquerade
+}
+
+// IptablesMasqueradingEnabled returns true if iptables-based
+// masquerading is enabled.
+func (c *DaemonConfig) IptablesMasqueradingEnabled() bool {
+	return c.IptablesMasqueradingIPv4Enabled() || c.IptablesMasqueradingIPv6Enabled()
+}
+
+// NodeIpsetNeeded returns true if a node ipsets should be used to skip
+// masquerading for traffic to cluster nodes.
+func (c *DaemonConfig) NodeIpsetNeeded() bool {
+	return c.Tunnel == TunnelDisabled && c.IptablesMasqueradingEnabled()
 }
 
 // RemoteNodeIdentitiesEnabled returns true if the remote-node identity feature
@@ -2247,6 +2530,11 @@ func (c *DaemonConfig) IPv6NDPEnabled() bool {
 	return c.EnableIPv6NDP
 }
 
+// SCTPEnabled returns true if SCTP support is enabled
+func (c *DaemonConfig) SCTPEnabled() bool {
+	return c.EnableSCTP
+}
+
 // HealthCheckingEnabled returns true if health checking is enabled
 func (c *DaemonConfig) HealthCheckingEnabled() bool {
 	return c.EnableHealthChecking
@@ -2263,9 +2551,9 @@ func (c *DaemonConfig) TracingEnabled() bool {
 	return c.Opts.IsEnabled(PolicyTracing)
 }
 
-// IsFlannelMasterDeviceSet returns if the flannel master device is set.
-func (c *DaemonConfig) IsFlannelMasterDeviceSet() bool {
-	return len(c.FlannelMasterDevice) != 0
+// UnreachableRoutesEnabled returns true if unreachable routes is enabled
+func (c *DaemonConfig) UnreachableRoutesEnabled() bool {
+	return c.EnableUnreachableRoutes
 }
 
 // EndpointStatusIsEnabled returns true if a particular EndpointStatus* feature
@@ -2280,11 +2568,16 @@ func (c *DaemonConfig) LocalClusterName() string {
 	return c.ClusterName
 }
 
+// LocalClusterID returns the ID of the cluster local to the Cilium agent.
+func (c *DaemonConfig) LocalClusterID() uint32 {
+	return c.ClusterID
+}
+
 // K8sServiceProxyName returns the required value for the
 // service.kubernetes.io/service-proxy-name label in order for services to be
 // handled.
-func (c *DaemonConfig) K8sServiceProxyName() string {
-	return c.k8sServiceProxyName
+func (c *DaemonConfig) K8sServiceProxyNameValue() string {
+	return c.K8sServiceProxyName
 }
 
 // CiliumNamespaceName returns the name of the namespace in which Cilium is
@@ -2293,23 +2586,33 @@ func (c *DaemonConfig) CiliumNamespaceName() string {
 	return c.K8sNamespace
 }
 
-// K8sAPIDiscoveryEnabled returns true if API discovery of API groups and
-// resources is enabled
-func (c *DaemonConfig) K8sAPIDiscoveryEnabled() bool {
-	return c.k8sEnableAPIDiscovery
+// AgentNotReadyNodeTaintValue returns the value of the taint key that cilium agents
+// will manage on their nodes
+func (c *DaemonConfig) AgentNotReadyNodeTaintValue() string {
+	if c.AgentNotReadyNodeTaintKey != "" {
+		return c.AgentNotReadyNodeTaintKey
+	} else {
+		return defaults.AgentNotReadyNodeTaint
+	}
 }
 
-// K8sLeasesFallbackDiscoveryEnabled returns true if we should fallback to direct API
-// probing when checking for support of Leases in case Discovery API fails to discover
-// required groups.
-func (c *DaemonConfig) K8sLeasesFallbackDiscoveryEnabled() bool {
-	return c.k8sEnableAPIDiscovery
+// K8sIngressControllerEnabled returns true if ingress controller feature is enabled in Cilium
+func (c *DaemonConfig) K8sIngressControllerEnabled() bool {
+	return c.EnableIngressController
 }
 
-// EnableK8sLeasesFallbackDiscovery enables using direct API probing as a fallback to check
-// for the support of Leases when discovering API groups is not possible.
-func (c *DaemonConfig) EnableK8sLeasesFallbackDiscovery() {
-	c.k8sEnableAPIDiscovery = true
+// K8sGatewayAPIEnabled returns true if Gateway API feature is enabled in Cilium
+func (c *DaemonConfig) K8sGatewayAPIEnabled() bool {
+	return c.EnableGatewayAPI
+}
+
+// DirectRoutingDeviceRequired return whether the Direct Routing Device is needed under
+// the current configuration.
+func (c *DaemonConfig) DirectRoutingDeviceRequired() bool {
+	// BPF NodePort and BPF Host Routing are using the direct routing device now.
+	// When tunneling is enabled, node-to-node redirection will be done by tunneling.
+	BPFHostRoutingEnabled := !c.EnableHostLegacyRouting
+	return (c.EnableNodePort || BPFHostRoutingEnabled) && !c.TunnelingEnabled()
 }
 
 func (c *DaemonConfig) validateIPv6ClusterAllocCIDR() error {
@@ -2318,12 +2621,8 @@ func (c *DaemonConfig) validateIPv6ClusterAllocCIDR() error {
 		return err
 	}
 
-	if cidr == nil {
-		return fmt.Errorf("ParseCIDR returned nil")
-	}
-
 	if ones, _ := cidr.Mask.Size(); ones != 64 {
-		return fmt.Errorf("CIDR length must be /64")
+		return fmt.Errorf("Prefix length must be /64")
 	}
 
 	c.IPv6ClusterAllocCIDRBase = ip.Mask(cidr.Mask).String()
@@ -2331,15 +2630,37 @@ func (c *DaemonConfig) validateIPv6ClusterAllocCIDR() error {
 	return nil
 }
 
+func (c *DaemonConfig) validateIPv6NAT46x64CIDR() error {
+	parsedPrefix, err := netip.ParsePrefix(c.IPv6NAT46x64CIDR)
+	if err != nil {
+		return err
+	}
+	if parsedPrefix.Bits() != 96 {
+		return fmt.Errorf("Prefix length must be /96")
+	}
+
+	c.IPv6NAT46x64CIDRBase = parsedPrefix.Masked().Addr()
+	return nil
+}
+
 // Validate validates the daemon configuration
-func (c *DaemonConfig) Validate() error {
+func (c *DaemonConfig) Validate(vp *viper.Viper) error {
 	if err := c.validateIPv6ClusterAllocCIDR(); err != nil {
 		return fmt.Errorf("unable to parse CIDR value '%s' of option --%s: %s",
 			c.IPv6ClusterAllocCIDR, IPv6ClusterAllocCIDRName, err)
 	}
 
+	if err := c.validateIPv6NAT46x64CIDR(); err != nil {
+		return fmt.Errorf("unable to parse internal CIDR value '%s': %s",
+			c.IPv6NAT46x64CIDR, err)
+	}
+
 	if c.MTU < 0 {
 		return fmt.Errorf("MTU '%d' cannot be negative", c.MTU)
+	}
+
+	if c.RouteMetric < 0 {
+		return fmt.Errorf("RouteMetric '%d' cannot be negative", c.RouteMetric)
 	}
 
 	if c.IPAM == ipamOption.IPAMENI && c.EnableIPv6 {
@@ -2350,7 +2671,7 @@ func (c *DaemonConfig) Validate() error {
 		if !c.EnableIPv6 {
 			return fmt.Errorf("IPv6NDP cannot be enabled when IPv6 is not enabled")
 		}
-		if len(c.IPv6MCastDevice) == 0 {
+		if len(c.IPv6MCastDevice) == 0 && !MightAutoDetectDevices() {
 			return fmt.Errorf("IPv6NDP cannot be enabled without %s", IPv6MCastDevice)
 		}
 	}
@@ -2386,6 +2707,14 @@ func (c *DaemonConfig) Validate() error {
 		return err
 	}
 
+	if err := c.checkIPv6NativeRoutingCIDR(); err != nil {
+		return err
+	}
+
+	if err := c.checkIPAMDelegatedPlugin(); err != nil {
+		return err
+	}
+
 	// Validate that the KVStore Lease TTL value lies between a particular range.
 	if c.KVstoreLeaseTTL > defaults.KVstoreLeaseMaxTTL || c.KVstoreLeaseTTL < defaults.LockLeaseTTL {
 		return fmt.Errorf("KVstoreLeaseTTL does not lie in required range(%ds, %ds)",
@@ -2393,19 +2722,17 @@ func (c *DaemonConfig) Validate() error {
 			int64(defaults.KVstoreLeaseMaxTTL.Seconds()))
 	}
 
-	if c.WriteCNIConfigurationWhenReady != "" && c.ReadCNIConfiguration == "" {
-		return fmt.Errorf("%s must be set when using %s", ReadCNIConfiguration, WriteCNIConfigurationWhenReady)
-	}
-
-	if c.EnableHostReachableServices && !c.EnableHostServicesUDP && !c.EnableHostServicesTCP {
-		return fmt.Errorf("%s must be at minimum one of [%s,%s]",
-			HostReachableServicesProtos, HostServicesTCP, HostServicesUDP)
-	}
-
 	allowedEndpointStatusValues := EndpointStatusValuesMap()
 	for enabledEndpointStatus := range c.EndpointStatus {
 		if _, ok := allowedEndpointStatusValues[enabledEndpointStatus]; !ok {
 			return fmt.Errorf("unknown endpoint-status option '%s'", enabledEndpointStatus)
+		}
+	}
+
+	if c.EnableVTEP {
+		err := c.validateVTEP(vp)
+		if err != nil {
+			return fmt.Errorf("Failed to validate VTEP configuration: %w", err)
 		}
 	}
 
@@ -2416,38 +2743,38 @@ func (c *DaemonConfig) Validate() error {
 // filename to the contents of that file.
 func ReadDirConfig(dirName string) (map[string]interface{}, error) {
 	m := map[string]interface{}{}
-	fi, err := ioutil.ReadDir(dirName)
+	files, err := os.ReadDir(dirName)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("unable to read configuration directory: %s", err)
 	}
-	for _, f := range fi {
-		if f.Mode().IsDir() {
+	for _, f := range files {
+		if f.IsDir() {
 			continue
 		}
 		fName := filepath.Join(dirName, f.Name())
 
 		// the file can still be a symlink to a directory
-		if f.Mode()&os.ModeSymlink == 0 {
+		if f.Type()&os.ModeSymlink == 0 {
 			absFileName, err := filepath.EvalSymlinks(fName)
 			if err != nil {
-				log.Warnf("Unable to read configuration file %q: %s", absFileName, err)
+				log.WithError(err).Warnf("Unable to read configuration file %q", absFileName)
 				continue
 			}
 			fName = absFileName
 		}
 
-		f, err = os.Stat(fName)
+		fi, err := os.Stat(fName)
 		if err != nil {
-			log.Warnf("Unable to read configuration file %q: %s", fName, err)
+			log.WithError(err).Warnf("Unable to read configuration file %q", fName)
 			continue
 		}
-		if f.Mode().IsDir() {
+		if fi.Mode().IsDir() {
 			continue
 		}
 
-		b, err := ioutil.ReadFile(fName)
+		b, err := os.ReadFile(fName)
 		if err != nil {
-			log.Warnf("Unable to read configuration file %q: %s", fName, err)
+			log.WithError(err).Warnf("Unable to read configuration file %q", fName)
 			continue
 		}
 		m[f.Name()] = string(bytes.TrimSpace(b))
@@ -2456,8 +2783,8 @@ func ReadDirConfig(dirName string) (map[string]interface{}, error) {
 }
 
 // MergeConfig merges the given configuration map with viper's configuration.
-func MergeConfig(m map[string]interface{}) error {
-	err := viper.MergeConfigMap(m)
+func MergeConfig(vp *viper.Viper, m map[string]interface{}) error {
+	err := vp.MergeConfigMap(m)
 	if err != nil {
 		return fmt.Errorf("unable to read merge directory configuration: %s", err)
 	}
@@ -2494,205 +2821,332 @@ func (c *DaemonConfig) parseExcludedLocalAddresses(s []string) error {
 			return fmt.Errorf("unable to parse excluded local address %s: %s", ipString, err)
 		}
 
-		c.excludeLocalAddresses = append(c.excludeLocalAddresses, ipnet)
+		c.ExcludeLocalAddresses = append(c.ExcludeLocalAddresses, ipnet)
 	}
 
 	return nil
 }
 
 // Populate sets all options with the values from viper
-func (c *DaemonConfig) Populate() {
+func (c *DaemonConfig) Populate(vp *viper.Viper) {
 	var err error
 
-	c.AgentHealthPort = viper.GetInt(AgentHealthPort)
-	c.AgentLabels = viper.GetStringSlice(AgentLabels)
-	c.AllowICMPFragNeeded = viper.GetBool(AllowICMPFragNeeded)
-	c.AllowLocalhost = viper.GetString(AllowLocalhost)
-	c.AnnotateK8sNode = viper.GetBool(AnnotateK8sNode)
-	c.ARPPingRefreshPeriod = viper.GetDuration(ARPPingRefreshPeriod)
-	c.AutoCreateCiliumNodeResource = viper.GetBool(AutoCreateCiliumNodeResource)
-	c.BPFCompilationDebug = viper.GetBool(BPFCompileDebugName)
-	c.BPFRoot = viper.GetString(BPFRoot)
-	c.CertDirectory = viper.GetString(CertsDirectory)
-	c.CGroupRoot = viper.GetString(CGroupRoot)
-	c.ClusterID = viper.GetInt(ClusterIDName)
-	c.ClusterName = viper.GetString(ClusterName)
-	c.ClusterMeshConfig = viper.GetString(ClusterMeshConfigName)
-	c.DatapathMode = viper.GetString(DatapathMode)
-	c.Debug = viper.GetBool(DebugArg)
-	c.DebugVerbose = viper.GetStringSlice(DebugVerbose)
-	c.DirectRoutingDevice = viper.GetString(DirectRoutingDevice)
-	c.DisableConntrack = viper.GetBool(DisableConntrack)
-	c.EnableIPv4 = viper.GetBool(EnableIPv4Name)
-	c.EnableIPv6 = viper.GetBool(EnableIPv6Name)
-	c.EnableIPv6NDP = viper.GetBool(EnableIPv6NDPName)
-	c.IPv6MCastDevice = viper.GetString(IPv6MCastDevice)
-	c.EnableIPSec = viper.GetBool(EnableIPSecName)
-	c.EnableWellKnownIdentities = viper.GetBool(EnableWellKnownIdentities)
-	c.EndpointInterfaceNamePrefix = viper.GetString(EndpointInterfaceNamePrefix)
-	c.DevicePreFilter = viper.GetString(PrefilterDevice)
-	c.DisableCiliumEndpointCRD = viper.GetBool(DisableCiliumEndpointCRDName)
-	c.EgressMasqueradeInterfaces = viper.GetString(EgressMasqueradeInterfaces)
-	c.EnableHostReachableServices = viper.GetBool(EnableHostReachableServices)
-	c.EnableRemoteNodeIdentity = viper.GetBool(EnableRemoteNodeIdentity)
-	c.K8sHeartbeatTimeout = viper.GetDuration(K8sHeartbeatTimeout)
-	c.EnableBPFTProxy = viper.GetBool(EnableBPFTProxy)
-	c.EnableXTSocketFallback = viper.GetBool(EnableXTSocketFallbackName)
-	c.EnableAutoDirectRouting = viper.GetBool(EnableAutoDirectRoutingName)
-	c.EnableEndpointRoutes = viper.GetBool(EnableEndpointRoutes)
-	c.EnableHealthChecking = viper.GetBool(EnableHealthChecking)
-	c.EnableEndpointHealthChecking = viper.GetBool(EnableEndpointHealthChecking)
-	c.EnableHealthCheckNodePort = viper.GetBool(EnableHealthCheckNodePort)
-	c.EnableLocalNodeRoute = viper.GetBool(EnableLocalNodeRoute)
-	c.EnablePolicy = strings.ToLower(viper.GetString(EnablePolicy))
-	c.EnableExternalIPs = viper.GetBool(EnableExternalIPs)
-	c.EnableL7Proxy = viper.GetBool(EnableL7Proxy)
-	c.EnableTracing = viper.GetBool(EnableTracing)
-	c.EnableNodePort = viper.GetBool(EnableNodePort)
-	c.EnableSVCSourceRangeCheck = viper.GetBool(EnableSVCSourceRangeCheck)
-	c.EnableHostPort = viper.GetBool(EnableHostPort)
-	c.EnableHostLegacyRouting = viper.GetBool(EnableHostLegacyRouting)
-	c.MaglevTableSize = viper.GetInt(MaglevTableSize)
-	c.MaglevHashSeed = viper.GetString(MaglevHashSeed)
-	c.NodePortBindProtection = viper.GetBool(NodePortBindProtection)
-	c.EnableAutoProtectNodePortRange = viper.GetBool(EnableAutoProtectNodePortRange)
-	c.KubeProxyReplacement = viper.GetString(KubeProxyReplacement)
-	c.EnableSessionAffinity = viper.GetBool(EnableSessionAffinity)
-	c.EnableBandwidthManager = viper.GetBool(EnableBandwidthManager)
-	c.EnableHostFirewall = viper.GetBool(EnableHostFirewall)
-	c.EnableLocalRedirectPolicy = viper.GetBool(EnableLocalRedirectPolicy)
-	c.EncryptInterface = viper.GetStringSlice(EncryptInterface)
-	c.EncryptNode = viper.GetBool(EncryptNode)
-	c.EnvoyLogPath = viper.GetString(EnvoyLog)
-	c.ForceLocalPolicyEvalAtSource = viper.GetBool(ForceLocalPolicyEvalAtSource)
-	c.HostDevice = getHostDevice()
-	c.HTTPNormalizePath = viper.GetBool(HTTPNormalizePath)
-	c.HTTPIdleTimeout = viper.GetInt(HTTPIdleTimeout)
-	c.HTTPMaxGRPCTimeout = viper.GetInt(HTTPMaxGRPCTimeout)
-	c.HTTPRequestTimeout = viper.GetInt(HTTPRequestTimeout)
-	c.HTTPRetryCount = viper.GetInt(HTTPRetryCount)
-	c.HTTPRetryTimeout = viper.GetInt(HTTPRetryTimeout)
-	c.IdentityChangeGracePeriod = viper.GetDuration(IdentityChangeGracePeriod)
-	c.IPAM = viper.GetString(IPAM)
-	c.IPv4Range = viper.GetString(IPv4Range)
-	c.IPv4NodeAddr = viper.GetString(IPv4NodeAddr)
-	c.IPv4ServiceRange = viper.GetString(IPv4ServiceRange)
-	c.IPv6ClusterAllocCIDR = viper.GetString(IPv6ClusterAllocCIDRName)
-	c.IPv6NodeAddr = viper.GetString(IPv6NodeAddr)
-	c.IPv6Range = viper.GetString(IPv6Range)
-	c.IPv6ServiceRange = viper.GetString(IPv6ServiceRange)
-	c.JoinCluster = viper.GetBool(JoinClusterName)
-	c.K8sAPIServer = viper.GetString(K8sAPIServer)
-	c.K8sClientBurst = viper.GetInt(K8sClientBurst)
-	c.K8sClientQPSLimit = viper.GetFloat64(K8sClientQPSLimit)
-	c.K8sEnableK8sEndpointSlice = viper.GetBool(K8sEnableEndpointSlice)
-	c.k8sEnableAPIDiscovery = viper.GetBool(K8sEnableAPIDiscovery)
-	c.K8sKubeConfigPath = viper.GetString(K8sKubeConfigPath)
-	c.K8sRequireIPv4PodCIDR = viper.GetBool(K8sRequireIPv4PodCIDRName)
-	c.K8sRequireIPv6PodCIDR = viper.GetBool(K8sRequireIPv6PodCIDRName)
-	c.K8sServiceCacheSize = uint(viper.GetInt(K8sServiceCacheSize))
-	c.K8sForceJSONPatch = viper.GetBool(K8sForceJSONPatch)
-	c.K8sEventHandover = viper.GetBool(K8sEventHandover)
-	c.K8sSyncTimeout = viper.GetDuration(K8sSyncTimeoutName)
-	c.K8sWatcherEndpointSelector = viper.GetString(K8sWatcherEndpointSelector)
-	c.KeepConfig = viper.GetBool(KeepConfig)
-	c.KVStore = viper.GetString(KVStore)
-	c.KVstoreLeaseTTL = viper.GetDuration(KVstoreLeaseTTL)
+	c.AgentHealthPort = vp.GetInt(AgentHealthPort)
+	c.ClusterHealthPort = vp.GetInt(ClusterHealthPort)
+	c.ClusterMeshHealthPort = vp.GetInt(ClusterMeshHealthPort)
+	c.AgentLabels = vp.GetStringSlice(AgentLabels)
+	c.AllowICMPFragNeeded = vp.GetBool(AllowICMPFragNeeded)
+	c.AllowLocalhost = vp.GetString(AllowLocalhost)
+	c.AnnotateK8sNode = vp.GetBool(AnnotateK8sNode)
+	c.ARPPingRefreshPeriod = vp.GetDuration(ARPPingRefreshPeriod)
+	c.EnableL2NeighDiscovery = vp.GetBool(EnableL2NeighDiscovery)
+	c.AutoCreateCiliumNodeResource = vp.GetBool(AutoCreateCiliumNodeResource)
+	c.BPFRoot = vp.GetString(BPFRoot)
+	c.CertDirectory = vp.GetString(CertsDirectory)
+	c.CGroupRoot = vp.GetString(CGroupRoot)
+	c.ClusterID = vp.GetUint32(ClusterIDName)
+	c.ClusterName = vp.GetString(ClusterName)
+	c.ClusterMeshConfig = vp.GetString(ClusterMeshConfigName)
+	c.CNIChainingMode = vp.GetString(CNIChainingMode)
+	c.DatapathMode = vp.GetString(DatapathMode)
+	c.Debug = vp.GetBool(DebugArg)
+	c.DebugVerbose = vp.GetStringSlice(DebugVerbose)
+	c.DirectRoutingDevice = vp.GetString(DirectRoutingDevice)
+	c.LBDevInheritIPAddr = vp.GetString(LBDevInheritIPAddr)
+	c.EnableIPv4 = vp.GetBool(EnableIPv4Name)
+	c.EnableIPv6 = vp.GetBool(EnableIPv6Name)
+	c.EnableIPv6NDP = vp.GetBool(EnableIPv6NDPName)
+	c.EnableIPv6BIGTCP = vp.GetBool(EnableIPv6BIGTCP)
+	c.EnableSRv6 = vp.GetBool(EnableSRv6)
+	c.SRv6EncapMode = vp.GetString(SRv6EncapModeName)
+	c.EnableSCTP = vp.GetBool(EnableSCTPName)
+	c.IPv6MCastDevice = vp.GetString(IPv6MCastDevice)
+	c.EnableIPSec = vp.GetBool(EnableIPSecName)
+	c.EnableWireguard = vp.GetBool(EnableWireguard)
+	c.EnableWireguardUserspaceFallback = vp.GetBool(EnableWireguardUserspaceFallback)
+	c.EnableWellKnownIdentities = vp.GetBool(EnableWellKnownIdentities)
+	c.EnableXDPPrefilter = vp.GetBool(EnableXDPPrefilter)
+	c.DisableCiliumEndpointCRD = vp.GetBool(DisableCiliumEndpointCRDName)
+	c.EgressMasqueradeInterfaces = vp.GetString(EgressMasqueradeInterfaces)
+	c.BPFSocketLBHostnsOnly = vp.GetBool(BPFSocketLBHostnsOnly)
+	c.EnableSocketLB = vp.GetBool(EnableSocketLB)
+	c.EnableSocketLBTracing = vp.GetBool(EnableSocketLBTracing)
+	c.EnableRemoteNodeIdentity = vp.GetBool(EnableRemoteNodeIdentity)
+	c.EnableBPFTProxy = vp.GetBool(EnableBPFTProxy)
+	c.EnableXTSocketFallback = vp.GetBool(EnableXTSocketFallbackName)
+	c.EnableAutoDirectRouting = vp.GetBool(EnableAutoDirectRoutingName)
+	c.EnableEndpointRoutes = vp.GetBool(EnableEndpointRoutes)
+	c.EnableHealthChecking = vp.GetBool(EnableHealthChecking)
+	c.EnableEndpointHealthChecking = vp.GetBool(EnableEndpointHealthChecking)
+	c.EnableHealthCheckNodePort = vp.GetBool(EnableHealthCheckNodePort)
+	c.EnableLocalNodeRoute = vp.GetBool(EnableLocalNodeRoute)
+	c.EnablePolicy = strings.ToLower(vp.GetString(EnablePolicy))
+	c.EnableExternalIPs = vp.GetBool(EnableExternalIPs)
+	c.EnableL7Proxy = vp.GetBool(EnableL7Proxy)
+	c.EnableTracing = vp.GetBool(EnableTracing)
+	c.EnableUnreachableRoutes = vp.GetBool(EnableUnreachableRoutes)
+	c.EnableNodePort = vp.GetBool(EnableNodePort)
+	c.EnableSVCSourceRangeCheck = vp.GetBool(EnableSVCSourceRangeCheck)
+	c.EnableHostPort = vp.GetBool(EnableHostPort)
+	c.EnableHostLegacyRouting = vp.GetBool(EnableHostLegacyRouting)
+	c.MaglevTableSize = vp.GetInt(MaglevTableSize)
+	c.MaglevHashSeed = vp.GetString(MaglevHashSeed)
+	c.NodePortBindProtection = vp.GetBool(NodePortBindProtection)
+	c.EnableAutoProtectNodePortRange = vp.GetBool(EnableAutoProtectNodePortRange)
+	c.KubeProxyReplacement = vp.GetString(KubeProxyReplacement)
+	c.EnableSessionAffinity = vp.GetBool(EnableSessionAffinity)
+	c.EnableServiceTopology = vp.GetBool(EnableServiceTopology)
+	c.EnableBandwidthManager = vp.GetBool(EnableBandwidthManager)
+	c.EnableBBR = vp.GetBool(EnableBBR)
+	c.EnableRecorder = vp.GetBool(EnableRecorder)
+	c.EnableMKE = vp.GetBool(EnableMKE)
+	c.CgroupPathMKE = vp.GetString(CgroupPathMKE)
+	c.EnableHostFirewall = vp.GetBool(EnableHostFirewall)
+	c.EnableLocalRedirectPolicy = vp.GetBool(EnableLocalRedirectPolicy)
+	c.EncryptInterface = vp.GetStringSlice(EncryptInterface)
+	c.EncryptNode = vp.GetBool(EncryptNode)
+	c.EnvoyLogPath = vp.GetString(EnvoyLog)
+	c.ForceLocalPolicyEvalAtSource = vp.GetBool(ForceLocalPolicyEvalAtSource)
+	c.HTTPNormalizePath = vp.GetBool(HTTPNormalizePath)
+	c.HTTPIdleTimeout = vp.GetInt(HTTPIdleTimeout)
+	c.HTTPMaxGRPCTimeout = vp.GetInt(HTTPMaxGRPCTimeout)
+	c.HTTPRequestTimeout = vp.GetInt(HTTPRequestTimeout)
+	c.HTTPRetryCount = vp.GetInt(HTTPRetryCount)
+	c.HTTPRetryTimeout = vp.GetInt(HTTPRetryTimeout)
+	c.IdentityChangeGracePeriod = vp.GetDuration(IdentityChangeGracePeriod)
+	c.IdentityRestoreGracePeriod = vp.GetDuration(IdentityRestoreGracePeriod)
+	c.IPAM = vp.GetString(IPAM)
+	c.IPv4Range = vp.GetString(IPv4Range)
+	c.IPv4NodeAddr = vp.GetString(IPv4NodeAddr)
+	c.IPv4ServiceRange = vp.GetString(IPv4ServiceRange)
+	c.IPv6ClusterAllocCIDR = vp.GetString(IPv6ClusterAllocCIDRName)
+	c.IPv6NodeAddr = vp.GetString(IPv6NodeAddr)
+	c.IPv6Range = vp.GetString(IPv6Range)
+	c.IPv6ServiceRange = vp.GetString(IPv6ServiceRange)
+	c.JoinCluster = vp.GetBool(JoinClusterName)
+	c.K8sEnableK8sEndpointSlice = vp.GetBool(K8sEnableEndpointSlice)
+	c.K8sRequireIPv4PodCIDR = vp.GetBool(K8sRequireIPv4PodCIDRName)
+	c.K8sRequireIPv6PodCIDR = vp.GetBool(K8sRequireIPv6PodCIDRName)
+	c.K8sServiceCacheSize = uint(vp.GetInt(K8sServiceCacheSize))
+	c.K8sEventHandover = vp.GetBool(K8sEventHandover)
+	c.K8sSyncTimeout = vp.GetDuration(K8sSyncTimeoutName)
+	c.AllocatorListTimeout = vp.GetDuration(AllocatorListTimeoutName)
+	c.K8sWatcherEndpointSelector = vp.GetString(K8sWatcherEndpointSelector)
+	c.KeepConfig = vp.GetBool(KeepConfig)
+	c.KVStore = vp.GetString(KVStore)
+	c.KVstoreLeaseTTL = vp.GetDuration(KVstoreLeaseTTL)
 	c.KVstoreKeepAliveInterval = c.KVstoreLeaseTTL / defaults.KVstoreKeepAliveIntervalFactor
-	c.KVstorePeriodicSync = viper.GetDuration(KVstorePeriodicSync)
-	c.KVstoreConnectivityTimeout = viper.GetDuration(KVstoreConnectivityTimeout)
-	c.IPAllocationTimeout = viper.GetDuration(IPAllocationTimeout)
-	c.LabelPrefixFile = viper.GetString(LabelPrefixFile)
-	c.Labels = viper.GetStringSlice(Labels)
-	c.LibDir = viper.GetString(LibDir)
-	c.LogDriver = viper.GetStringSlice(LogDriver)
-	c.LogSystemLoadConfig = viper.GetBool(LogSystemLoadConfigName)
-	c.Logstash = viper.GetBool(Logstash)
-	c.LoopbackIPv4 = viper.GetString(LoopbackIPv4)
-	c.Masquerade = viper.GetBool(Masquerade)
-	c.EnableBPFMasquerade = viper.GetBool(EnableBPFMasquerade)
-	c.EnableBPFClockProbe = viper.GetBool(EnableBPFClockProbe)
-	c.EnableIPMasqAgent = viper.GetBool(EnableIPMasqAgent)
-	c.IPMasqAgentConfigPath = viper.GetString(IPMasqAgentConfigPath)
-	c.InstallIptRules = viper.GetBool(InstallIptRules)
-	c.IPTablesLockTimeout = viper.GetDuration(IPTablesLockTimeout)
-	c.IPTablesRandomFully = viper.GetBool(IPTablesRandomFully)
-	c.IPSecKeyFile = viper.GetString(IPSecKeyFileName)
-	c.ModePreFilter = viper.GetString(PrefilterMode)
-	c.EnableMonitor = viper.GetBool(EnableMonitorName)
-	c.MonitorAggregation = viper.GetString(MonitorAggregationName)
-	c.MonitorAggregationInterval = viper.GetDuration(MonitorAggregationInterval)
-	c.MonitorQueueSize = viper.GetInt(MonitorQueueSizeName)
-	c.MTU = viper.GetInt(MTUName)
-	c.NAT46Range = viper.GetString(NAT46Range)
-	c.FlannelMasterDevice = viper.GetString(FlannelMasterDevice)
-	c.FlannelUninstallOnExit = viper.GetBool(FlannelUninstallOnExit)
-	c.PProf = viper.GetBool(PProf)
-	c.PreAllocateMaps = viper.GetBool(PreAllocateMapsName)
-	c.PrependIptablesChains = viper.GetBool(PrependIptablesChainsName)
-	c.PrometheusServeAddr = viper.GetString(PrometheusServeAddr)
-	c.ProxyConnectTimeout = viper.GetInt(ProxyConnectTimeout)
-	c.ProxyGID = viper.GetInt(ProxyGID)
-	c.ProxyPrometheusPort = viper.GetInt(ProxyPrometheusPort)
-	c.ReadCNIConfiguration = viper.GetString(ReadCNIConfiguration)
-	c.RestoreState = viper.GetBool(Restore)
-	c.RunDir = viper.GetString(StateDir)
-	c.SidecarIstioProxyImage = viper.GetString(SidecarIstioProxyImage)
-	c.UseSingleClusterRoute = viper.GetBool(SingleClusterRouteName)
-	c.SocketPath = viper.GetString(SocketPath)
-	c.SockopsEnable = viper.GetBool(SockopsEnableName)
-	c.TracePayloadlen = viper.GetInt(TracePayloadlen)
-	c.Tunnel = viper.GetString(TunnelName)
-	c.Version = viper.GetString(Version)
-	c.WriteCNIConfigurationWhenReady = viper.GetString(WriteCNIConfigurationWhenReady)
-	c.PolicyTriggerInterval = viper.GetDuration(PolicyTriggerInterval)
-	c.CTMapEntriesTimeoutTCP = viper.GetDuration(CTMapEntriesTimeoutTCPName)
-	c.CTMapEntriesTimeoutAny = viper.GetDuration(CTMapEntriesTimeoutAnyName)
-	c.CTMapEntriesTimeoutSVCTCP = viper.GetDuration(CTMapEntriesTimeoutSVCTCPName)
-	c.CTMapEntriesTimeoutSVCAny = viper.GetDuration(CTMapEntriesTimeoutSVCAnyName)
-	c.CTMapEntriesTimeoutSYN = viper.GetDuration(CTMapEntriesTimeoutSYNName)
-	c.CTMapEntriesTimeoutFIN = viper.GetDuration(CTMapEntriesTimeoutFINName)
-	c.PolicyAuditMode = viper.GetBool(PolicyAuditModeArg)
-	c.EnableIPv4FragmentsTracking = viper.GetBool(EnableIPv4FragmentsTrackingName)
-	c.FragmentsMapEntries = viper.GetInt(FragmentsMapEntriesName)
-	c.k8sServiceProxyName = viper.GetString(K8sServiceProxyName)
-	c.CRDWaitTimeout = viper.GetDuration(CRDWaitTimeout)
-	c.populateLoadBalancerSettings()
-	c.populateDevices()
-	c.EgressMultiHomeIPRuleCompat = viper.GetBool(EgressMultiHomeIPRuleCompat)
+	c.KVstorePeriodicSync = vp.GetDuration(KVstorePeriodicSync)
+	c.KVstoreConnectivityTimeout = vp.GetDuration(KVstoreConnectivityTimeout)
+	c.KVstoreMaxConsecutiveQuorumErrors = vp.GetInt(KVstoreMaxConsecutiveQuorumErrorsName)
+	c.IPAllocationTimeout = vp.GetDuration(IPAllocationTimeout)
+	c.LabelPrefixFile = vp.GetString(LabelPrefixFile)
+	c.Labels = vp.GetStringSlice(Labels)
+	c.LibDir = vp.GetString(LibDir)
+	c.LogDriver = vp.GetStringSlice(LogDriver)
+	c.LogSystemLoadConfig = vp.GetBool(LogSystemLoadConfigName)
+	c.Logstash = vp.GetBool(Logstash)
+	c.LoopbackIPv4 = vp.GetString(LoopbackIPv4)
+	c.LocalRouterIPv4 = vp.GetString(LocalRouterIPv4)
+	c.LocalRouterIPv6 = vp.GetString(LocalRouterIPv6)
+	c.EnableBPFClockProbe = vp.GetBool(EnableBPFClockProbe)
+	c.EnableIPMasqAgent = vp.GetBool(EnableIPMasqAgent)
+	c.EnableIPv4EgressGateway = vp.GetBool(EnableIPv4EgressGateway)
+	c.InstallEgressGatewayRoutes = vp.GetBool(InstallEgressGatewayRoutes)
+	c.EnableEnvoyConfig = vp.GetBool(EnableEnvoyConfig)
+	c.EnableIngressController = vp.GetBool(EnableIngressController)
+	c.EnableGatewayAPI = vp.GetBool(EnableGatewayAPI)
+	c.EnvoyConfigTimeout = vp.GetDuration(EnvoyConfigTimeout)
+	c.IPMasqAgentConfigPath = vp.GetString(IPMasqAgentConfigPath)
+	c.InstallIptRules = vp.GetBool(InstallIptRules)
+	c.IPTablesLockTimeout = vp.GetDuration(IPTablesLockTimeout)
+	c.IPTablesRandomFully = vp.GetBool(IPTablesRandomFully)
+	c.IPSecKeyFile = vp.GetString(IPSecKeyFileName)
+	c.EnableMonitor = vp.GetBool(EnableMonitorName)
+	c.MonitorAggregation = vp.GetString(MonitorAggregationName)
+	c.MonitorAggregationInterval = vp.GetDuration(MonitorAggregationInterval)
+	c.MonitorQueueSize = vp.GetInt(MonitorQueueSizeName)
+	c.MTU = vp.GetInt(MTUName)
+	c.PProf = vp.GetBool(PProf)
+	c.PProfAddress = vp.GetString(PProfAddress)
+	c.PProfPort = vp.GetInt(PProfPort)
+	c.PreAllocateMaps = vp.GetBool(PreAllocateMapsName)
+	c.PrependIptablesChains = vp.GetBool(PrependIptablesChainsName)
+	c.ProcFs = vp.GetString(ProcFs)
+	c.PrometheusServeAddr = vp.GetString(PrometheusServeAddr)
+	c.ProxyConnectTimeout = vp.GetInt(ProxyConnectTimeout)
+	c.ProxyGID = vp.GetInt(ProxyGID)
+	c.ProxyPrometheusPort = vp.GetInt(ProxyPrometheusPort)
+	c.ProxyMaxRequestsPerConnection = vp.GetInt(ProxyMaxRequestsPerConnection)
+	c.ProxyMaxConnectionDuration = time.Duration(vp.GetInt64(ProxyMaxConnectionDuration))
+	c.ReadCNIConfiguration = vp.GetString(ReadCNIConfiguration)
+	c.RestoreState = vp.GetBool(Restore)
+	c.RouteMetric = vp.GetInt(RouteMetric)
+	c.RunDir = vp.GetString(StateDir)
+	c.SidecarIstioProxyImage = vp.GetString(SidecarIstioProxyImage)
+	c.UseSingleClusterRoute = vp.GetBool(SingleClusterRouteName)
+	c.SocketPath = vp.GetString(SocketPath)
+	c.SockopsEnable = vp.GetBool(SockopsEnableName)
+	c.TracePayloadlen = vp.GetInt(TracePayloadlen)
+	c.Version = vp.GetString(Version)
+	c.WriteCNIConfigurationWhenReady = vp.GetString(WriteCNIConfigurationWhenReady)
+	c.CNIExclusive = vp.GetBool(CNIExclusive)
+	c.CNILogFile = vp.GetString(CNILogFile)
+	c.PolicyTriggerInterval = vp.GetDuration(PolicyTriggerInterval)
+	c.CTMapEntriesTimeoutTCP = vp.GetDuration(CTMapEntriesTimeoutTCPName)
+	c.CTMapEntriesTimeoutAny = vp.GetDuration(CTMapEntriesTimeoutAnyName)
+	c.CTMapEntriesTimeoutSVCTCP = vp.GetDuration(CTMapEntriesTimeoutSVCTCPName)
+	c.CTMapEntriesTimeoutSVCTCPGrace = vp.GetDuration(CTMapEntriesTimeoutSVCTCPGraceName)
+	c.CTMapEntriesTimeoutSVCAny = vp.GetDuration(CTMapEntriesTimeoutSVCAnyName)
+	c.CTMapEntriesTimeoutSYN = vp.GetDuration(CTMapEntriesTimeoutSYNName)
+	c.CTMapEntriesTimeoutFIN = vp.GetDuration(CTMapEntriesTimeoutFINName)
+	c.PolicyAuditMode = vp.GetBool(PolicyAuditModeArg)
+	c.EnableIPv4FragmentsTracking = vp.GetBool(EnableIPv4FragmentsTrackingName)
+	c.FragmentsMapEntries = vp.GetInt(FragmentsMapEntriesName)
+	c.K8sServiceProxyName = vp.GetString(K8sServiceProxyName)
+	c.CRDWaitTimeout = vp.GetDuration(CRDWaitTimeout)
+	c.LoadBalancerDSRDispatch = vp.GetString(LoadBalancerDSRDispatch)
+	c.LoadBalancerDSRL4Xlate = vp.GetString(LoadBalancerDSRL4Xlate)
+	c.LoadBalancerRSSv4CIDR = vp.GetString(LoadBalancerRSSv4CIDR)
+	c.LoadBalancerRSSv6CIDR = vp.GetString(LoadBalancerRSSv6CIDR)
+	c.InstallNoConntrackIptRules = vp.GetBool(InstallNoConntrackIptRules)
+	c.EnableCustomCalls = vp.GetBool(EnableCustomCallsName)
+	c.BGPAnnounceLBIP = vp.GetBool(BGPAnnounceLBIP)
+	c.BGPAnnouncePodCIDR = vp.GetBool(BGPAnnouncePodCIDR)
+	c.BGPConfigPath = vp.GetString(BGPConfigPath)
+	c.ExternalClusterIP = vp.GetBool(ExternalClusterIPName)
+	c.EnableNat46X64Gateway = vp.GetBool(EnableNat46X64Gateway)
+	c.EnableIPv4Masquerade = vp.GetBool(EnableIPv4Masquerade) && c.EnableIPv4
+	c.EnableIPv6Masquerade = vp.GetBool(EnableIPv6Masquerade) && c.EnableIPv6
+	c.EnableBPFMasquerade = vp.GetBool(EnableBPFMasquerade)
+	c.DeriveMasqIPAddrFromDevice = vp.GetString(DeriveMasqIPAddrFromDevice)
+	c.EnablePMTUDiscovery = vp.GetBool(EnablePMTUDiscovery)
+	c.IPv6NAT46x64CIDR = defaults.IPv6NAT46x64CIDR
 
-	if nativeCIDR := viper.GetString(IPv4NativeRoutingCIDR); nativeCIDR != "" {
-		c.ipv4NativeRoutingCIDR = cidr.MustParseCIDR(nativeCIDR)
+	c.populateLoadBalancerSettings(vp)
+	c.populateDevices(vp)
+	c.EnableRuntimeDeviceDetection = vp.GetBool(EnableRuntimeDeviceDetection)
+	c.EgressMultiHomeIPRuleCompat = vp.GetBool(EgressMultiHomeIPRuleCompat)
+
+	vlanBPFBypassIDs := vp.GetStringSlice(VLANBPFBypass)
+	c.VLANBPFBypass = make([]int, 0, len(vlanBPFBypassIDs))
+	for _, vlanIDStr := range vlanBPFBypassIDs {
+		vlanID, err := strconv.Atoi(vlanIDStr)
+		if err != nil {
+			log.WithError(err).Fatalf("Cannot parse vlan ID integer from --%s option", VLANBPFBypass)
+		}
+		c.VLANBPFBypass = append(c.VLANBPFBypass, vlanID)
 	}
 
-	if err := c.calculateBPFMapSizes(); err != nil {
+	tcFilterPrio := vp.GetUint32(TCFilterPriority)
+	if tcFilterPrio > math.MaxUint16 {
+		log.Fatalf("%s cannot be higher than %d", TCFilterPriority, math.MaxUint16)
+	}
+	c.TCFilterPriority = uint16(tcFilterPrio)
+
+	c.Tunnel = vp.GetString(TunnelName)
+	c.TunnelPort = vp.GetInt(TunnelPortName)
+
+	if c.TunnelPort == 0 {
+		switch c.Tunnel {
+		case TunnelDisabled:
+			// tunnel might still be used by eg. EgressGW
+			c.TunnelPort = defaults.TunnelPortVXLAN
+		case TunnelVXLAN:
+			c.TunnelPort = defaults.TunnelPortVXLAN
+		case TunnelGeneve:
+			c.TunnelPort = defaults.TunnelPortGeneve
+		}
+	}
+
+	if vp.IsSet(AddressScopeMax) {
+		c.AddressScopeMax, err = ip.ParseScope(vp.GetString(AddressScopeMax))
+		if err != nil {
+			log.WithError(err).Fatalf("Cannot parse scope integer from --%s option", AddressScopeMax)
+		}
+	} else {
+		c.AddressScopeMax = defaults.AddressScopeMax
+	}
+
+	if c.EnableNat46X64Gateway {
+		if !c.EnableIPv4 || !c.EnableIPv6 {
+			log.Fatalf("--%s requires both --%s and --%s enabled",
+				EnableNat46X64Gateway, EnableIPv4Name, EnableIPv6Name)
+		}
+	}
+
+	ipv4NativeRoutingCIDR := vp.GetString(IPv4NativeRoutingCIDR)
+
+	if ipv4NativeRoutingCIDR != "" {
+		c.IPv4NativeRoutingCIDR, err = cidr.ParseCIDR(ipv4NativeRoutingCIDR)
+		if err != nil {
+			log.WithError(err).Fatalf("Unable to parse CIDR '%s'", ipv4NativeRoutingCIDR)
+		}
+
+		if len(c.IPv4NativeRoutingCIDR.IP) != net.IPv4len {
+			log.Fatalf("%s must be an IPv4 CIDR", IPv4NativeRoutingCIDR)
+		}
+	}
+
+	if c.EnableIPv4 && ipv4NativeRoutingCIDR == "" && c.EnableAutoDirectRouting {
+		log.Warnf("If %s is enabled, then you are recommended to also configure %s. If %s is not configured, this may lead to pod to pod traffic being masqueraded, "+
+			"which can cause problems with performance, observability and policy", EnableAutoDirectRoutingName, IPv4NativeRoutingCIDR, IPv4NativeRoutingCIDR)
+	}
+
+	ipv6NativeRoutingCIDR := vp.GetString(IPv6NativeRoutingCIDR)
+
+	if ipv6NativeRoutingCIDR != "" {
+		c.IPv6NativeRoutingCIDR, err = cidr.ParseCIDR(ipv6NativeRoutingCIDR)
+		if err != nil {
+			log.WithError(err).Fatalf("Unable to parse CIDR '%s'", ipv6NativeRoutingCIDR)
+		}
+
+		if len(c.IPv6NativeRoutingCIDR.IP) != net.IPv6len {
+			log.Fatalf("%s must be an IPv6 CIDR", IPv6NativeRoutingCIDR)
+		}
+	}
+
+	if c.EnableIPv6 && ipv6NativeRoutingCIDR == "" && c.EnableAutoDirectRouting {
+		log.Warnf("If %s is enabled, then you are recommended to also configure %s. If %s is not configured, this may lead to pod to pod traffic being masqueraded, "+
+			"which can cause problems with performance, observability and policy", EnableAutoDirectRoutingName, IPv6NativeRoutingCIDR, IPv6NativeRoutingCIDR)
+	}
+
+	if err := c.calculateBPFMapSizes(vp); err != nil {
 		log.Fatal(err)
 	}
 
 	c.ClockSource = ClockSourceKtime
-	c.EnableIdentityMark = viper.GetBool(EnableIdentityMark)
+	c.EnableIdentityMark = vp.GetBool(EnableIdentityMark)
 
 	// toFQDNs options
-	c.DNSMaxIPsPerRestoredRule = viper.GetInt(DNSMaxIPsPerRestoredRule)
-	c.ToFQDNsMaxIPsPerHost = viper.GetInt(ToFQDNsMaxIPsPerHost)
-	if maxZombies := viper.GetInt(ToFQDNsMaxDeferredConnectionDeletes); maxZombies >= 0 {
-		c.ToFQDNsMaxDeferredConnectionDeletes = viper.GetInt(ToFQDNsMaxDeferredConnectionDeletes)
+	c.DNSMaxIPsPerRestoredRule = vp.GetInt(DNSMaxIPsPerRestoredRule)
+	c.DNSPolicyUnloadOnShutdown = vp.GetBool(DNSPolicyUnloadOnShutdown)
+	c.FQDNRegexCompileLRUSize = vp.GetInt(FQDNRegexCompileLRUSize)
+	c.ToFQDNsMaxIPsPerHost = vp.GetInt(ToFQDNsMaxIPsPerHost)
+	if maxZombies := vp.GetInt(ToFQDNsMaxDeferredConnectionDeletes); maxZombies >= 0 {
+		c.ToFQDNsMaxDeferredConnectionDeletes = vp.GetInt(ToFQDNsMaxDeferredConnectionDeletes)
 	} else {
 		log.Fatalf("%s must be positive, or 0 to disable deferred connection deletion",
 			ToFQDNsMaxDeferredConnectionDeletes)
 	}
 	switch {
-	case viper.IsSet(ToFQDNsMinTTL): // set by user
-		c.ToFQDNsMinTTL = viper.GetInt(ToFQDNsMinTTL)
+	case vp.IsSet(ToFQDNsMinTTL): // set by user
+		c.ToFQDNsMinTTL = vp.GetInt(ToFQDNsMinTTL)
 	default:
 		c.ToFQDNsMinTTL = defaults.ToFQDNsMinTTL
 	}
-	c.ToFQDNsProxyPort = viper.GetInt(ToFQDNsProxyPort)
-	c.ToFQDNsPreCache = viper.GetString(ToFQDNsPreCache)
-	c.ToFQDNsEnableDNSCompression = viper.GetBool(ToFQDNsEnableDNSCompression)
+	c.ToFQDNsProxyPort = vp.GetInt(ToFQDNsProxyPort)
+	c.ToFQDNsPreCache = vp.GetString(ToFQDNsPreCache)
+	c.ToFQDNsEnableDNSCompression = vp.GetBool(ToFQDNsEnableDNSCompression)
+	c.ToFQDNsIdleConnectionGracePeriod = vp.GetDuration(ToFQDNsIdleConnectionGracePeriod)
+	c.FQDNProxyResponseMaxDelay = vp.GetDuration(FQDNProxyResponseMaxDelay)
+	c.DNSProxyConcurrencyLimit = vp.GetInt(DNSProxyConcurrencyLimit)
+	c.DNSProxyConcurrencyProcessingGracePeriod = vp.GetDuration(DNSProxyConcurrencyProcessingGracePeriod)
+	c.DNSProxyLockCount = vp.GetInt(DNSProxyLockCount)
+	c.DNSProxyLockTimeout = vp.GetDuration(DNSProxyLockTimeout)
 
 	// Convert IP strings into net.IPNet types
-	subnets, invalid := ip.ParseCIDRs(viper.GetStringSlice(IPv4PodSubnets))
+	subnets, invalid := ip.ParseCIDRs(vp.GetStringSlice(IPv4PodSubnets))
 	if len(invalid) > 0 {
 		log.WithFields(
 			logrus.Fields{
@@ -2701,7 +3155,7 @@ func (c *DaemonConfig) Populate() {
 	}
 	c.IPv4PodSubnets = subnets
 
-	subnets, invalid = ip.ParseCIDRs(viper.GetStringSlice(IPv6PodSubnets))
+	subnets, invalid = ip.ParseCIDRs(vp.GetStringSlice(IPv6PodSubnets))
 	if len(invalid) > 0 {
 		log.WithFields(
 			logrus.Fields{
@@ -2710,20 +3164,14 @@ func (c *DaemonConfig) Populate() {
 	}
 	c.IPv6PodSubnets = subnets
 
-	c.XDPDevice = "undefined"
 	c.XDPMode = XDPModeLinkNone
 
-	err = c.populateNodePortRange()
+	err = c.populateNodePortRange(vp)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to populate NodePortRange")
 	}
 
-	err = c.populateHostServicesProtos()
-	if err != nil {
-		log.WithError(err).Fatal("Failed to populate HostReachableServicesProtos")
-	}
-
-	monitorAggregationFlags := viper.GetStringSlice(MonitorAggregationFlags)
+	monitorAggregationFlags := vp.GetStringSlice(MonitorAggregationFlags)
 	var ctMonitorReportFlags uint16
 	for i := 0; i < len(monitorAggregationFlags); i++ {
 		value := strings.ToLower(monitorAggregationFlags[i])
@@ -2737,25 +3185,41 @@ func (c *DaemonConfig) Populate() {
 	c.MonitorAggregationFlags = ctMonitorReportFlags
 
 	// Map options
-	if m := viper.GetStringMapString(FixedIdentityMapping); len(m) != 0 {
+	if m := command.GetStringMapString(vp, FixedIdentityMapping); err != nil {
+		log.Fatalf("unable to parse %s: %s", FixedIdentityMapping, err)
+	} else if len(m) != 0 {
 		c.FixedIdentityMapping = m
 	}
 
-	c.ConntrackGCInterval = viper.GetDuration(ConntrackGCInterval)
+	c.ConntrackGCInterval = vp.GetDuration(ConntrackGCInterval)
 
-	if m := viper.GetStringMapString(KVStoreOpt); len(m) != 0 {
+	if m, err := command.GetStringMapStringE(vp, KVStoreOpt); err != nil {
+		log.Fatalf("unable to parse %s: %s", KVStoreOpt, err)
+	} else {
 		c.KVStoreOpt = m
 	}
 
-	if m := viper.GetStringMapString(LogOpt); len(m) != 0 {
+	if m, err := command.GetStringMapStringE(vp, LogOpt); err != nil {
+		log.Fatalf("unable to parse %s: %s", LogOpt, err)
+	} else {
 		c.LogOpt = m
 	}
 
-	if m := viper.GetStringMapString(APIRateLimitName); len(m) != 0 {
+	if m, err := command.GetStringMapStringE(vp, APIRateLimitName); err != nil {
+		log.Fatalf("unable to parse %s: %s", APIRateLimitName, err)
+	} else {
 		c.APIRateLimit = m
 	}
 
-	for _, option := range viper.GetStringSlice(EndpointStatus) {
+	c.bpfMapEventConfigs = make(BPFEventBufferConfigs)
+	parseBPFMapEventConfigs(c.bpfMapEventConfigs, defaults.BPFEventBufferConfigs)
+	if m, err := command.GetStringMapStringE(vp, BPFMapEventBuffers); err != nil {
+		log.Fatalf("unable to parse %s: %s", BPFMapEventBuffers, err)
+	} else {
+		parseBPFMapEventConfigs(c.bpfMapEventConfigs, m)
+	}
+
+	for _, option := range vp.GetStringSlice(EndpointStatus) {
 		c.EndpointStatus[option] = struct{}{}
 	}
 
@@ -2764,8 +3228,10 @@ func (c *DaemonConfig) Populate() {
 	}
 
 	// Metrics Setup
+	metrics.ResetMetrics()
 	defaultMetrics := metrics.DefaultMetrics()
-	for _, metric := range viper.GetStringSlice(Metrics) {
+	flagMetrics := append(vp.GetStringSlice(Metrics), c.additionalMetrics()...)
+	for _, metric := range flagMetrics {
 		switch metric[0] {
 		case '+':
 			defaultMetrics[metric[1:]] = struct{}{}
@@ -2778,11 +3244,11 @@ func (c *DaemonConfig) Populate() {
 	c.MetricsConfig, collectors = metrics.CreateConfiguration(metricsSlice)
 	metrics.MustRegister(collectors...)
 
-	if err := c.parseExcludedLocalAddresses(viper.GetStringSlice(ExcludeLocalAddress)); err != nil {
+	if err := c.parseExcludedLocalAddresses(vp.GetStringSlice(ExcludeLocalAddress)); err != nil {
 		log.WithError(err).Fatalf("Unable to parse excluded local addresses")
 	}
 
-	c.IdentityAllocationMode = viper.GetString(IdentityAllocationMode)
+	c.IdentityAllocationMode = vp.GetString(IdentityAllocationMode)
 	switch c.IdentityAllocationMode {
 	// This is here for tests. Some call Populate without the normal init
 	case "":
@@ -2810,7 +3276,7 @@ func (c *DaemonConfig) Populate() {
 	}
 
 	switch c.IPAM {
-	case ipamOption.IPAMKubernetes, ipamOption.IPAMClusterPool:
+	case ipamOption.IPAMKubernetes, ipamOption.IPAMClusterPool, ipamOption.IPAMClusterPoolV2:
 		if c.EnableIPv4 {
 			c.K8sRequireIPv4PodCIDR = true
 		}
@@ -2820,101 +3286,139 @@ func (c *DaemonConfig) Populate() {
 		}
 	}
 
-	c.KubeProxyReplacementHealthzBindAddr = viper.GetString(KubeProxyReplacementHealthzBindAddr)
+	c.KubeProxyReplacementHealthzBindAddr = vp.GetString(KubeProxyReplacementHealthzBindAddr)
 
 	// Hubble options.
-	c.EnableHubble = viper.GetBool(EnableHubble)
-	c.HubbleSocketPath = viper.GetString(HubbleSocketPath)
-	c.HubbleListenAddress = viper.GetString(HubbleListenAddress)
-	c.HubbleTLSDisabled = viper.GetBool(HubbleTLSDisabled)
-	c.HubbleTLSCertFile = viper.GetString(HubbleTLSCertFile)
-	c.HubbleTLSKeyFile = viper.GetString(HubbleTLSKeyFile)
-	c.HubbleTLSClientCAFiles = viper.GetStringSlice(HubbleTLSClientCAFiles)
-	c.HubbleFlowBufferSize = viper.GetInt(HubbleFlowBufferSize)
-	c.HubbleEventQueueSize = viper.GetInt(HubbleEventQueueSize)
+	c.EnableHubble = vp.GetBool(EnableHubble)
+	c.EnableHubbleOpenMetrics = vp.GetBool(EnableHubbleOpenMetrics)
+	c.HubbleSocketPath = vp.GetString(HubbleSocketPath)
+	c.HubbleListenAddress = vp.GetString(HubbleListenAddress)
+	c.HubblePreferIpv6 = vp.GetBool(HubblePreferIpv6)
+	c.HubbleTLSDisabled = vp.GetBool(HubbleTLSDisabled)
+	c.HubbleTLSCertFile = vp.GetString(HubbleTLSCertFile)
+	c.HubbleTLSKeyFile = vp.GetString(HubbleTLSKeyFile)
+	c.HubbleTLSClientCAFiles = vp.GetStringSlice(HubbleTLSClientCAFiles)
+	c.HubbleEventBufferCapacity = vp.GetInt(HubbleEventBufferCapacity)
+	c.HubbleEventQueueSize = vp.GetInt(HubbleEventQueueSize)
 	if c.HubbleEventQueueSize == 0 {
 		c.HubbleEventQueueSize = getDefaultMonitorQueueSize(runtime.NumCPU())
 	}
-	c.HubbleMetricsServer = viper.GetString(HubbleMetricsServer)
-	c.HubbleMetrics = viper.GetStringSlice(HubbleMetrics)
-	c.DisableIptablesFeederRules = viper.GetStringSlice(DisableIptablesFeederRules)
+	c.HubbleMetricsServer = vp.GetString(HubbleMetricsServer)
+	c.HubbleMetrics = vp.GetStringSlice(HubbleMetrics)
+	c.HubbleExportFilePath = vp.GetString(HubbleExportFilePath)
+	c.HubbleExportFileMaxSizeMB = vp.GetInt(HubbleExportFileMaxSizeMB)
+	c.HubbleExportFileMaxBackups = vp.GetInt(HubbleExportFileMaxBackups)
+	c.HubbleExportFileCompress = vp.GetBool(HubbleExportFileCompress)
+	c.EnableHubbleRecorderAPI = vp.GetBool(EnableHubbleRecorderAPI)
+	c.HubbleRecorderStoragePath = vp.GetString(HubbleRecorderStoragePath)
+	c.HubbleRecorderSinkQueueSize = vp.GetInt(HubbleRecorderSinkQueueSize)
+	c.HubbleSkipUnknownCGroupIDs = vp.GetBool(HubbleSkipUnknownCGroupIDs)
+
+	c.DisableIptablesFeederRules = vp.GetStringSlice(DisableIptablesFeederRules)
+	c.EnableCiliumEndpointSlice = vp.GetBool(EnableCiliumEndpointSlice)
 
 	// Hidden options
-	c.ConfigFile = viper.GetString(ConfigFile)
-	c.HTTP403Message = viper.GetString(HTTP403Message)
-	c.DisableEnvoyVersionCheck = viper.GetBool(DisableEnvoyVersionCheck)
-	c.K8sNamespace = viper.GetString(K8sNamespaceName)
-	c.MaxControllerInterval = viper.GetInt(MaxCtrlIntervalName)
-	c.PolicyQueueSize = sanitizeIntParam(PolicyQueueSize, defaults.PolicyQueueSize)
-	c.EndpointQueueSize = sanitizeIntParam(EndpointQueueSize, defaults.EndpointQueueSize)
-	c.SelectiveRegeneration = viper.GetBool(SelectiveRegeneration)
-	c.SkipCRDCreation = viper.GetBool(SkipCRDCreation)
-	c.DisableCNPStatusUpdates = viper.GetBool(DisableCNPStatusUpdates)
-	c.BypassIPAvailabilityUponRestore = viper.GetBool(BypassIPAvailabilityUponRestore)
+	c.CompilerFlags = vp.GetStringSlice(CompilerFlags)
+	c.ConfigFile = vp.GetString(ConfigFile)
+	c.HTTP403Message = vp.GetString(HTTP403Message)
+	c.K8sNamespace = vp.GetString(K8sNamespaceName)
+	c.AgentNotReadyNodeTaintKey = vp.GetString(AgentNotReadyNodeTaintKeyName)
+	c.MaxControllerInterval = vp.GetInt(MaxCtrlIntervalName)
+	c.PolicyQueueSize = sanitizeIntParam(vp, PolicyQueueSize, defaults.PolicyQueueSize)
+	c.EndpointQueueSize = sanitizeIntParam(vp, EndpointQueueSize, defaults.EndpointQueueSize)
+	c.EndpointGCInterval = vp.GetDuration(EndpointGCInterval)
+	c.DisableCNPStatusUpdates = vp.GetBool(DisableCNPStatusUpdates)
+	c.EnableICMPRules = vp.GetBool(EnableICMPRules)
+	c.BypassIPAvailabilityUponRestore = vp.GetBool(BypassIPAvailabilityUponRestore)
+	c.EnableK8sTerminatingEndpoint = vp.GetBool(EnableK8sTerminatingEndpoint)
+	c.EnableStaleCiliumEndpointCleanup = vp.GetBool(EnableStaleCiliumEndpointCleanup)
+
+	// Disable Envoy version check if L7 proxy is disabled.
+	c.DisableEnvoyVersionCheck = vp.GetBool(DisableEnvoyVersionCheck)
+	if !c.EnableL7Proxy {
+		c.DisableEnvoyVersionCheck = true
+	}
+
+	// VTEP integration enable option
+	c.EnableVTEP = vp.GetBool(EnableVTEP)
+
+	// Enable BGP control plane features
+	c.EnableBGPControlPlane = vp.GetBool(EnableBGPControlPlane)
+
+	// Envoy secrets namespaces to watch
+	params := []string{IngressSecretsNamespace, GatewayAPISecretsNamespace}
+	var nsList = make([]string, 0, len(params))
+	for _, param := range params {
+		ns := vp.GetString(param)
+		if ns != "" {
+			nsList = append(nsList, ns)
+		}
+	}
+	c.EnvoySecretNamespaces = nsList
 }
 
-func (c *DaemonConfig) populateDevices() {
-	c.Devices = viper.GetStringSlice(Devices)
-	device := viper.GetString(Device)
-
-	if len(c.Devices) != 0 && device != "" {
-		log.Fatalf("--%s and --%s (deprecated) are mutually exclusive",
-			Devices, Device)
+func (c *DaemonConfig) additionalMetrics() []string {
+	addMetric := func(name string) string {
+		return "+" + metrics.Namespace + "_" + name
 	}
-
-	// For backward compatibility until the flag is completely deprecated
-	if device != "" {
-		c.Devices = []string{device}
+	var m []string
+	if c.DNSProxyConcurrencyLimit > 0 {
+		m = append(m, addMetric(metrics.SubsystemFQDN+"_semaphore_rejected_total"))
 	}
+	return m
+}
+
+func (c *DaemonConfig) populateDevices(vp *viper.Viper) {
+	c.devices = vp.GetStringSlice(Devices)
 
 	// Make sure that devices are unique
-	if len(c.Devices) <= 1 {
+	if len(c.devices) <= 1 {
 		return
 	}
 	devSet := map[string]struct{}{}
-	for _, dev := range c.Devices {
+	for _, dev := range c.devices {
 		devSet[dev] = struct{}{}
 	}
-	c.Devices = make([]string, 0, len(devSet))
+	c.devices = make([]string, 0, len(devSet))
 	for dev := range devSet {
-		c.Devices = append(c.Devices, dev)
+		c.devices = append(c.devices, dev)
 	}
 }
 
-func (c *DaemonConfig) populateLoadBalancerSettings() {
-	c.NodePortAcceleration = viper.GetString(LoadBalancerAcceleration)
-	c.NodePortMode = viper.GetString(LoadBalancerMode)
-	c.NodePortAlg = viper.GetString(LoadBalancerAlg)
+func (c *DaemonConfig) populateLoadBalancerSettings(vp *viper.Viper) {
+	c.NodePortAcceleration = vp.GetString(LoadBalancerAcceleration)
+	c.NodePortMode = vp.GetString(LoadBalancerMode)
+	c.NodePortAlg = vp.GetString(LoadBalancerAlg)
 	// If old settings were explicitly set by the user, then have them
 	// override the new ones in order to not break existing setups.
-	if viper.IsSet(NodePortAcceleration) {
+	if vp.IsSet(NodePortAcceleration) {
 		prior := c.NodePortAcceleration
-		c.NodePortAcceleration = viper.GetString(NodePortAcceleration)
-		if viper.IsSet(LoadBalancerAcceleration) && prior != c.NodePortAcceleration {
+		c.NodePortAcceleration = vp.GetString(NodePortAcceleration)
+		if vp.IsSet(LoadBalancerAcceleration) && prior != c.NodePortAcceleration {
 			log.Fatalf("Both --%s and --%s were set. Only use --%s instead.",
 				LoadBalancerAcceleration, NodePortAcceleration, LoadBalancerAcceleration)
 		}
 	}
-	if viper.IsSet(NodePortMode) {
+	if vp.IsSet(NodePortMode) {
 		prior := c.NodePortMode
-		c.NodePortMode = viper.GetString(NodePortMode)
-		if viper.IsSet(LoadBalancerMode) && prior != c.NodePortMode {
+		c.NodePortMode = vp.GetString(NodePortMode)
+		if vp.IsSet(LoadBalancerMode) && prior != c.NodePortMode {
 			log.Fatalf("Both --%s and --%s were set. Only use --%s instead.",
 				LoadBalancerMode, NodePortMode, LoadBalancerMode)
 		}
 	}
-	if viper.IsSet(NodePortAlg) {
+	if vp.IsSet(NodePortAlg) {
 		prior := c.NodePortAlg
-		c.NodePortAlg = viper.GetString(NodePortAlg)
-		if viper.IsSet(LoadBalancerAlg) && prior != c.NodePortAlg {
+		c.NodePortAlg = vp.GetString(NodePortAlg)
+		if vp.IsSet(LoadBalancerAlg) && prior != c.NodePortAlg {
 			log.Fatalf("Both --%s and --%s were set. Only use --%s instead.",
 				LoadBalancerAlg, NodePortAlg, LoadBalancerAlg)
 		}
 	}
 }
 
-func (c *DaemonConfig) populateNodePortRange() error {
-	nodePortRange := viper.GetStringSlice(NodePortRange)
+func (c *DaemonConfig) populateNodePortRange(vp *viper.Viper) error {
+	nodePortRange := vp.GetStringSlice(NodePortRange)
 	// When passed via configmap, we might not get a slice but single
 	// string instead, so split it if needed.
 	if len(nodePortRange) == 1 {
@@ -2936,37 +3440,11 @@ func (c *DaemonConfig) populateNodePortRange() error {
 			return errors.New("NodePort range min port must be smaller than max port")
 		}
 	case 0:
-		if viper.IsSet(NodePortRange) {
+		if vp.IsSet(NodePortRange) {
 			log.Warning("NodePort range was set but is empty.")
 		}
 	default:
 		return fmt.Errorf("Unable to parse min/max port value for NodePort range: %s", NodePortRange)
-	}
-
-	return nil
-}
-
-func (c *DaemonConfig) populateHostServicesProtos() error {
-	hostServicesProtos := viper.GetStringSlice(HostReachableServicesProtos)
-	// When passed via configmap, we might not get a slice but single
-	// string instead, so split it if needed.
-	if len(hostServicesProtos) == 1 {
-		hostServicesProtos = strings.Split(hostServicesProtos[0], ",")
-	}
-	if len(hostServicesProtos) > 2 {
-		return fmt.Errorf("More than two protocols for host reachable services not supported: %s",
-			hostServicesProtos)
-	}
-	for i := 0; i < len(hostServicesProtos); i++ {
-		switch strings.ToLower(hostServicesProtos[i]) {
-		case HostServicesTCP:
-			c.EnableHostServicesTCP = true
-		case HostServicesUDP:
-			c.EnableHostServicesUDP = true
-		default:
-			return fmt.Errorf("Protocol other than %s,%s not supported for host reachable services: %s",
-				HostServicesTCP, HostServicesUDP, hostServicesProtos[i])
-		}
 	}
 
 	return nil
@@ -3014,8 +3492,9 @@ func (c *DaemonConfig) checkMapSizeLimits() error {
 			c.PolicyMapEntries, PolicyMapMin)
 	}
 	if c.PolicyMapEntries > PolicyMapMax {
-		return fmt.Errorf("specified PolicyMap max entries %d must not exceed maximum %d",
+		log.Warnf("specified PolicyMap max entries %d must not exceed maximum %d, lowering it to the maximum value",
 			c.PolicyMapEntries, PolicyMapMax)
+		c.PolicyMapEntries = PolicyMapMax
 	}
 
 	if c.FragmentsMapEntries < FragmentsMapMin {
@@ -3031,56 +3510,108 @@ func (c *DaemonConfig) checkMapSizeLimits() error {
 		return fmt.Errorf("specified LBMap max entries %d must be a value greater than 0", c.LBMapEntries)
 	}
 
+	if c.LBServiceMapEntries < 0 ||
+		c.LBBackendMapEntries < 0 ||
+		c.LBRevNatEntries < 0 ||
+		c.LBAffinityMapEntries < 0 ||
+		c.LBSourceRangeMapEntries < 0 ||
+		c.LBMaglevMapEntries < 0 {
+		return fmt.Errorf("specified LB Service Map max entries must not be a negative value"+
+			"(Service Map: %d, Service Backend: %d, Reverse NAT: %d, Session Affinity: %d, Source Range: %d, Maglev: %d)",
+			c.LBServiceMapEntries,
+			c.LBBackendMapEntries,
+			c.LBRevNatEntries,
+			c.LBAffinityMapEntries,
+			c.LBSourceRangeMapEntries,
+			c.LBMaglevMapEntries)
+	}
 	return nil
 }
 
 func (c *DaemonConfig) checkIPv4NativeRoutingCIDR() error {
-	if c.IPv4NativeRoutingCIDR() == nil && c.Masquerade && c.Tunnel == TunnelDisabled &&
-		c.IPAMMode() != ipamOption.IPAMENI && c.EnableIPv4 {
+	if c.GetIPv4NativeRoutingCIDR() == nil && c.EnableIPv4Masquerade && c.Tunnel == TunnelDisabled &&
+		c.IPAMMode() != ipamOption.IPAMENI && c.EnableIPv4 && c.IPAMMode() != ipamOption.IPAMAlibabaCloud {
 		return fmt.Errorf(
 			"native routing cidr must be configured with option --%s "+
 				"in combination with --%s --%s=%s --%s=%s --%s=true",
-			IPv4NativeRoutingCIDR, Masquerade, TunnelName, c.Tunnel,
+			IPv4NativeRoutingCIDR, EnableIPv4Masquerade, TunnelName, c.Tunnel,
 			IPAM, c.IPAMMode(), EnableIPv4Name)
 	}
 
 	return nil
 }
 
-func (c *DaemonConfig) calculateBPFMapSizes() error {
+func (c *DaemonConfig) checkIPv6NativeRoutingCIDR() error {
+	if c.GetIPv6NativeRoutingCIDR() == nil && c.EnableIPv6Masquerade && c.Tunnel == TunnelDisabled &&
+		c.EnableIPv6 {
+		return fmt.Errorf(
+			"native routing cidr must be configured with option --%s "+
+				"in combination with --%s --%s=%s --%s=true",
+			IPv6NativeRoutingCIDR, EnableIPv6Masquerade, TunnelName, c.Tunnel,
+			EnableIPv6Name)
+	}
+
+	return nil
+}
+
+func (c *DaemonConfig) checkIPAMDelegatedPlugin() error {
+	if c.IPAM == ipamOption.IPAMDelegatedPlugin {
+		// When using IPAM delegated plugin, IP addresses are allocated by the CNI binary,
+		// not the daemon. Therefore, features which require the daemon to allocate IPs for itself
+		// must be disabled.
+		if c.EnableIPv4 && c.LocalRouterIPv4 == "" {
+			return fmt.Errorf("--%s must be provided when IPv4 is enabled with --%s=%s", LocalRouterIPv4, IPAM, ipamOption.IPAMDelegatedPlugin)
+		}
+		if c.EnableIPv6 && c.LocalRouterIPv6 == "" {
+			return fmt.Errorf("--%s must be provided when IPv6 is enabled with --%s=%s", LocalRouterIPv6, IPAM, ipamOption.IPAMDelegatedPlugin)
+		}
+		if c.EnableEndpointHealthChecking {
+			return fmt.Errorf("--%s must be disabled with --%s=%s", EnableEndpointHealthChecking, IPAM, ipamOption.IPAMDelegatedPlugin)
+		}
+	}
+	return nil
+}
+
+func (c *DaemonConfig) calculateBPFMapSizes(vp *viper.Viper) error {
 	// BPF map size options
 	// Any map size explicitly set via option will override the dynamic
 	// sizing.
-	c.CTMapEntriesGlobalTCP = viper.GetInt(CTMapEntriesGlobalTCPName)
-	c.CTMapEntriesGlobalAny = viper.GetInt(CTMapEntriesGlobalAnyName)
-	c.NATMapEntriesGlobal = viper.GetInt(NATMapEntriesGlobalName)
-	c.NeighMapEntriesGlobal = viper.GetInt(NeighMapEntriesGlobalName)
-	c.PolicyMapEntries = viper.GetInt(PolicyMapEntriesName)
-	c.SockRevNatEntries = viper.GetInt(SockRevNatEntriesName)
-	c.LBMapEntries = viper.GetInt(LBMapEntriesName)
+	c.CTMapEntriesGlobalTCP = vp.GetInt(CTMapEntriesGlobalTCPName)
+	c.CTMapEntriesGlobalAny = vp.GetInt(CTMapEntriesGlobalAnyName)
+	c.NATMapEntriesGlobal = vp.GetInt(NATMapEntriesGlobalName)
+	c.NeighMapEntriesGlobal = vp.GetInt(NeighMapEntriesGlobalName)
+	c.PolicyMapEntries = vp.GetInt(PolicyMapEntriesName)
+	c.SockRevNatEntries = vp.GetInt(SockRevNatEntriesName)
+	c.LBMapEntries = vp.GetInt(LBMapEntriesName)
+	c.LBServiceMapEntries = vp.GetInt(LBServiceMapMaxEntries)
+	c.LBBackendMapEntries = vp.GetInt(LBBackendMapMaxEntries)
+	c.LBRevNatEntries = vp.GetInt(LBRevNatMapMaxEntries)
+	c.LBAffinityMapEntries = vp.GetInt(LBAffinityMapMaxEntries)
+	c.LBSourceRangeMapEntries = vp.GetInt(LBSourceRangeMapMaxEntries)
+	c.LBMaglevMapEntries = vp.GetInt(LBMaglevMapMaxEntries)
 
 	// Don't attempt dynamic sizing if any of the sizeof members was not
 	// populated by the daemon (or any other caller).
-	if c.sizeofCTElement == 0 ||
-		c.sizeofNATElement == 0 ||
-		c.sizeofNeighElement == 0 ||
-		c.sizeofSockRevElement == 0 {
+	if c.SizeofCTElement == 0 ||
+		c.SizeofNATElement == 0 ||
+		c.SizeofNeighElement == 0 ||
+		c.SizeofSockRevElement == 0 {
 		return nil
 	}
 
 	// Allow the range (0.0, 1.0] because the dynamic size will anyway be
 	// clamped to the table limits. Thus, a ratio of e.g. 0.98 will not lead
 	// to 98% of the total memory being allocated for BPF maps.
-	dynamicSizeRatio := viper.GetFloat64(MapEntriesGlobalDynamicSizeRatioName)
+	dynamicSizeRatio := vp.GetFloat64(MapEntriesGlobalDynamicSizeRatioName)
 	if 0.0 < dynamicSizeRatio && dynamicSizeRatio <= 1.0 {
 		vms, err := mem.VirtualMemory()
 		if err != nil || vms == nil {
 			log.WithError(err).Fatal("Failed to get system memory")
 		}
-		c.calculateDynamicBPFMapSizes(vms.Total, dynamicSizeRatio)
+		c.calculateDynamicBPFMapSizes(vp, vms.Total, dynamicSizeRatio)
 		c.BPFMapsDynamicSizeRatio = dynamicSizeRatio
 	} else if dynamicSizeRatio < 0.0 {
-		return fmt.Errorf("specified dynamic map size ratio %f must be ≥ 0.0", dynamicSizeRatio)
+		return fmt.Errorf("specified dynamic map size ratio %f must be > 0.0", dynamicSizeRatio)
 	} else if dynamicSizeRatio > 1.0 {
 		return fmt.Errorf("specified dynamic map size ratio %f must be ≤ 1.0", dynamicSizeRatio)
 	}
@@ -3095,13 +3626,13 @@ func (c *DaemonConfig) SetMapElementSizes(
 	sizeofNeighElement,
 	sizeofSockRevElement int) {
 
-	c.sizeofCTElement = sizeofCTElement
-	c.sizeofNATElement = sizeofNATElement
-	c.sizeofNeighElement = sizeofNeighElement
-	c.sizeofSockRevElement = sizeofSockRevElement
+	c.SizeofCTElement = sizeofCTElement
+	c.SizeofNATElement = sizeofNATElement
+	c.SizeofNeighElement = sizeofNeighElement
+	c.SizeofSockRevElement = sizeofSockRevElement
 }
 
-func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSizeRatio float64) {
+func (c *DaemonConfig) calculateDynamicBPFMapSizes(vp *viper.Viper, totalMemory uint64, dynamicSizeRatio float64) {
 	// Heuristic:
 	// Distribute relative to map default entries among the different maps.
 	// Cap each map size by the maximum. Map size provided by the user will
@@ -3118,12 +3649,12 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	//   16GB  1060485  530242  1060485
 	memoryAvailableForMaps := int(float64(totalMemory) * dynamicSizeRatio)
 	log.Infof("Memory available for map entries (%.3f%% of %dB): %dB", dynamicSizeRatio, totalMemory, memoryAvailableForMaps)
-	totalMapMemoryDefault := CTMapEntriesGlobalTCPDefault*c.sizeofCTElement +
-		CTMapEntriesGlobalAnyDefault*c.sizeofCTElement +
-		NATMapEntriesGlobalDefault*c.sizeofNATElement +
+	totalMapMemoryDefault := CTMapEntriesGlobalTCPDefault*c.SizeofCTElement +
+		CTMapEntriesGlobalAnyDefault*c.SizeofCTElement +
+		NATMapEntriesGlobalDefault*c.SizeofNATElement +
 		// Neigh table has the same number of entries as NAT Map has.
-		NATMapEntriesGlobalDefault*c.sizeofNeighElement +
-		SockRevNATMapEntriesDefault*c.sizeofSockRevElement
+		NATMapEntriesGlobalDefault*c.SizeofNeighElement +
+		SockRevNATMapEntriesDefault*c.SizeofSockRevElement
 	log.Debugf("Total memory for default map entries: %d", totalMapMemoryDefault)
 
 	getEntries := func(entriesDefault, min, max int) int {
@@ -3140,7 +3671,7 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	// If value for a particular map was explicitly set by an
 	// option, disable dynamic sizing for this map and use the
 	// provided size.
-	if !viper.IsSet(CTMapEntriesGlobalTCPName) {
+	if !vp.IsSet(CTMapEntriesGlobalTCPName) {
 		c.CTMapEntriesGlobalTCP =
 			getEntries(CTMapEntriesGlobalTCPDefault, LimitTableAutoGlobalTCPMin, LimitTableMax)
 		log.Infof("option %s set by dynamic sizing to %v",
@@ -3148,7 +3679,7 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	} else {
 		log.Debugf("option %s set by user to %v", CTMapEntriesGlobalTCPName, c.CTMapEntriesGlobalTCP)
 	}
-	if !viper.IsSet(CTMapEntriesGlobalAnyName) {
+	if !vp.IsSet(CTMapEntriesGlobalAnyName) {
 		c.CTMapEntriesGlobalAny =
 			getEntries(CTMapEntriesGlobalAnyDefault, LimitTableAutoGlobalAnyMin, LimitTableMax)
 		log.Infof("option %s set by dynamic sizing to %v",
@@ -3156,7 +3687,7 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	} else {
 		log.Debugf("option %s set by user to %v", CTMapEntriesGlobalAnyName, c.CTMapEntriesGlobalAny)
 	}
-	if !viper.IsSet(NATMapEntriesGlobalName) {
+	if !vp.IsSet(NATMapEntriesGlobalName) {
 		c.NATMapEntriesGlobal =
 			getEntries(NATMapEntriesGlobalDefault, LimitTableAutoNatGlobalMin, LimitTableMax)
 		log.Infof("option %s set by dynamic sizing to %v",
@@ -3172,7 +3703,7 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	} else {
 		log.Debugf("option %s set by user to %v", NATMapEntriesGlobalName, c.NATMapEntriesGlobal)
 	}
-	if !viper.IsSet(NeighMapEntriesGlobalName) {
+	if !vp.IsSet(NeighMapEntriesGlobalName) {
 		// By default we auto-size it to the same value as the NAT map since we
 		// need to keep at least as many neigh entries.
 		c.NeighMapEntriesGlobal = c.NATMapEntriesGlobal
@@ -3181,7 +3712,7 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	} else {
 		log.Debugf("option %s set by user to %v", NeighMapEntriesGlobalName, c.NeighMapEntriesGlobal)
 	}
-	if !viper.IsSet(SockRevNatEntriesName) {
+	if !vp.IsSet(SockRevNatEntriesName) {
 		c.SockRevNatEntries =
 			getEntries(SockRevNATMapEntriesDefault, LimitTableAutoSockRevNatMin, LimitTableMax)
 		log.Infof("option %s set by dynamic sizing to %v",
@@ -3189,6 +3720,67 @@ func (c *DaemonConfig) calculateDynamicBPFMapSizes(totalMemory uint64, dynamicSi
 	} else {
 		log.Debugf("option %s set by user to %v", NATMapEntriesGlobalName, c.NATMapEntriesGlobal)
 	}
+}
+
+// Validate VTEP integration configuration
+func (c *DaemonConfig) validateVTEP(vp *viper.Viper) error {
+	vtepEndpoints := vp.GetStringSlice(VtepEndpoint)
+	vtepCIDRs := vp.GetStringSlice(VtepCIDR)
+	vtepCidrMask := vp.GetString(VtepMask)
+	vtepMACs := vp.GetStringSlice(VtepMAC)
+
+	if (len(vtepEndpoints) < 1) ||
+		len(vtepEndpoints) != len(vtepCIDRs) ||
+		len(vtepEndpoints) != len(vtepMACs) {
+		return fmt.Errorf("VTEP configuration must have the same number of Endpoint, VTEP and MAC configurations (Found %d endpoints, %d MACs, %d CIDR ranges)", len(vtepEndpoints), len(vtepMACs), len(vtepCIDRs))
+	}
+	if len(vtepEndpoints) > defaults.MaxVTEPDevices {
+		return fmt.Errorf("VTEP must not exceed %d VTEP devices (Found %d VTEPs)", defaults.MaxVTEPDevices, len(vtepEndpoints))
+	}
+	for _, ep := range vtepEndpoints {
+		endpoint := net.ParseIP(ep)
+		if endpoint == nil {
+			return fmt.Errorf("Invalid VTEP IP: %v", ep)
+		}
+		ip4 := endpoint.To4()
+		if ip4 == nil {
+			return fmt.Errorf("Invalid VTEP IPv4 address %v", ip4)
+		}
+		c.VtepEndpoints = append(c.VtepEndpoints, endpoint)
+
+	}
+	for _, v := range vtepCIDRs {
+		externalCIDR, err := cidr.ParseCIDR(v)
+		if err != nil {
+			return fmt.Errorf("Invalid VTEP CIDR: %v", v)
+		}
+		c.VtepCIDRs = append(c.VtepCIDRs, externalCIDR)
+
+	}
+	mask := net.ParseIP(vtepCidrMask)
+	if mask == nil {
+		return fmt.Errorf("Invalid VTEP CIDR Mask: %v", vtepCidrMask)
+	}
+	c.VtepCidrMask = mask
+	for _, m := range vtepMACs {
+		externalMAC, err := mac.ParseMAC(m)
+		if err != nil {
+			return fmt.Errorf("Invalid VTEP MAC: %v", m)
+		}
+		c.VtepMACs = append(c.VtepMACs, externalMAC)
+
+	}
+	return nil
+}
+
+// KubeProxyReplacementFullyEnabled returns true if Cilium is _effectively_
+// running in full KPR mode.
+func (c *DaemonConfig) KubeProxyReplacementFullyEnabled() bool {
+	return c.EnableHostPort &&
+		c.EnableNodePort &&
+		c.EnableExternalIPs &&
+		c.EnableSocketLB &&
+		c.EnableSessionAffinity
 }
 
 // StoreInFile stores the configuration in a the given directory under the file
@@ -3210,6 +3802,10 @@ func (c *DaemonConfig) StoreInFile(dir string) error {
 	e := json.NewEncoder(f)
 	e.SetIndent("", " ")
 	return e.Encode(c)
+}
+
+func (c *DaemonConfig) BGPControlPlaneEnabled() bool {
+	return c.EnableBGPControlPlane
 }
 
 // StoreViperInFile stores viper's configuration in a the given directory under
@@ -3243,10 +3839,10 @@ func backupFiles(dir string, backupFilenames []string) {
 	}
 }
 
-func sanitizeIntParam(paramName string, paramDefault int) int {
-	intParam := viper.GetInt(paramName)
+func sanitizeIntParam(vp *viper.Viper, paramName string, paramDefault int) int {
+	intParam := vp.GetInt(paramName)
 	if intParam <= 0 {
-		if viper.IsSet(paramName) {
+		if vp.IsSet(paramName) {
 			log.WithFields(
 				logrus.Fields{
 					"parameter":    paramName,
@@ -3258,29 +3854,81 @@ func sanitizeIntParam(paramName string, paramDefault int) int {
 	return intParam
 }
 
-func getHostDevice() string {
-	hostDevice := viper.GetString(FlannelMasterDevice)
-	if hostDevice == "" {
-		return defaults.HostDevice
+// validateConfigMap checks whether the flag exists and validate its value
+func validateConfigMap(cmd *cobra.Command, m map[string]interface{}) error {
+	flags := cmd.Flags()
+
+	for key, value := range m {
+		flag := flags.Lookup(key)
+		if flag == nil {
+			continue
+		}
+
+		var err error
+
+		switch t := flag.Value.Type(); t {
+		case "bool":
+			_, err = cast.ToBoolE(value)
+		case "duration":
+			_, err = cast.ToDurationE(value)
+		case "float32":
+			_, err = cast.ToFloat32E(value)
+		case "float64":
+			_, err = cast.ToFloat64E(value)
+		case "int":
+			_, err = cast.ToIntE(value)
+		case "int8":
+			_, err = cast.ToInt8E(value)
+		case "int16":
+			_, err = cast.ToInt16E(value)
+		case "int32":
+			_, err = cast.ToInt32E(value)
+		case "int64":
+			_, err = cast.ToInt64E(value)
+		case "map":
+			// custom type, see pkg/option/map_options.go
+			err = flag.Value.Set(fmt.Sprintf("%s", value))
+		case "stringSlice":
+			_, err = cast.ToStringSliceE(value)
+		case "string":
+			_, err = cast.ToStringE(value)
+		case "uint":
+			_, err = cast.ToUintE(value)
+		case "uint8":
+			_, err = cast.ToUint8E(value)
+		case "uint16":
+			_, err = cast.ToUint16E(value)
+		case "uint32":
+			_, err = cast.ToUint32E(value)
+		case "uint64":
+			_, err = cast.ToUint64E(value)
+		default:
+			log.Warnf("Unable to validate option %s value of type %s", key, t)
+		}
+
+		if err != nil {
+			return fmt.Errorf("option %s: %w", key, err)
+		}
 	}
-	return hostDevice
+
+	return nil
 }
 
 // InitConfig reads in config file and ENV variables if set.
-func InitConfig(programName, configName string) func() {
+func InitConfig(cmd *cobra.Command, programName, configName string, vp *viper.Viper) func() {
 	return func() {
-		if viper.GetBool("version") {
+		if vp.GetBool("version") {
 			fmt.Printf("%s %s\n", programName, version.Version)
 			os.Exit(0)
 		}
 
-		if viper.GetString(CMDRef) != "" {
+		if vp.GetString(CMDRef) != "" {
 			return
 		}
 
-		Config.ConfigFile = viper.GetString(ConfigFile) // enable ability to specify config file via flag
-		Config.ConfigDir = viper.GetString(ConfigDir)
-		viper.SetEnvPrefix("cilium")
+		Config.ConfigFile = vp.GetString(ConfigFile) // enable ability to specify config file via flag
+		Config.ConfigDir = vp.GetString(ConfigDir)
+		vp.SetEnvPrefix("cilium")
 
 		if Config.ConfigDir != "" {
 			if _, err := os.Stat(Config.ConfigDir); os.IsNotExist(err) {
@@ -3288,33 +3936,51 @@ func InitConfig(programName, configName string) func() {
 			}
 
 			if m, err := ReadDirConfig(Config.ConfigDir); err != nil {
-				log.Fatalf("Unable to read configuration directory %s: %s", Config.ConfigDir, err)
+				log.WithError(err).Fatalf("Unable to read configuration directory %s", Config.ConfigDir)
 			} else {
 				// replace deprecated fields with new fields
 				ReplaceDeprecatedFields(m)
-				err := MergeConfig(m)
-				if err != nil {
-					log.Fatalf("Unable to merge configuration: %s", err)
+
+				// validate the config-map
+				if err := validateConfigMap(cmd, m); err != nil {
+					log.WithError(err).Fatal("Incorrect config-map flag value")
+				}
+
+				if err := MergeConfig(vp, m); err != nil {
+					log.WithError(err).Fatal("Unable to merge configuration")
 				}
 			}
 		}
 
 		if Config.ConfigFile != "" {
-			viper.SetConfigFile(Config.ConfigFile)
+			vp.SetConfigFile(Config.ConfigFile)
 		} else {
-			viper.SetConfigName(configName) // name of config file (without extension)
-			viper.AddConfigPath("$HOME")    // adding home directory as first search path
+			vp.SetConfigName(configName) // name of config file (without extension)
+			vp.AddConfigPath("$HOME")    // adding home directory as first search path
+		}
+
+		// We need to check for the debug environment variable or CLI flag before
+		// loading the configuration file since on configuration file read failure
+		// we will emit a debug log entry.
+		if vp.GetBool(DebugArg) {
+			logging.SetLogLevelToDebug()
 		}
 
 		// If a config file is found, read it in.
-		if err := viper.ReadInConfig(); err == nil {
-			log.WithField(logfields.Path, viper.ConfigFileUsed()).
+		if err := vp.ReadInConfig(); err == nil {
+			log.WithField(logfields.Path, vp.ConfigFileUsed()).
 				Info("Using config from file")
 		} else if Config.ConfigFile != "" {
 			log.WithField(logfields.Path, Config.ConfigFile).
 				Fatal("Error reading config file")
 		} else {
-			log.WithField(logfields.Reason, err).Info("Skipped reading configuration file")
+			log.WithError(err).Debug("Skipped reading configuration file")
+		}
+
+		// Check for the debug flag again now that the configuration file may has
+		// been loaded, as it might have changed.
+		if vp.GetBool("debug") {
+			logging.SetLogLevelToDebug()
 		}
 	}
 }
@@ -3350,7 +4016,73 @@ func EndpointStatusValuesMap() (values map[string]struct{}) {
 // MightAutoDetectDevices returns true if the device auto-detection might take
 // place.
 func MightAutoDetectDevices() bool {
-	return (Config.EnableHostFirewall && len(Config.Devices) == 0) ||
+	devices := Config.GetDevices()
+	return (Config.EnableHostFirewall && len(devices) == 0) ||
 		(Config.KubeProxyReplacement != KubeProxyReplacementDisabled &&
-			(len(Config.Devices) == 0 || Config.DirectRoutingDevice == ""))
+			(len(devices) == 0 || Config.DirectRoutingDevice == ""))
+}
+
+// BPFEventBufferConfig contains parsed configuration for a bpf map event buffer.
+type BPFEventBufferConfig struct {
+	Enabled bool
+	MaxSize int
+	TTL     time.Duration
+}
+
+// BPFEventBufferConfigs contains parsed bpf event buffer configs, indexed but map name.
+type BPFEventBufferConfigs map[string]BPFEventBufferConfig
+
+// GetEventBufferConfig returns either the relevant config for a map name, or a default
+// one with enabled=false otherwise.
+func (d *DaemonConfig) GetEventBufferConfig(name string) BPFEventBufferConfig {
+	return d.bpfMapEventConfigs.get(name)
+}
+
+func (cs BPFEventBufferConfigs) get(name string) BPFEventBufferConfig {
+	return cs[name]
+}
+
+// ParseEventBufferTupleString parses a event buffer configuration tuple string.
+// For example: true,100,24h
+// Which refers to enabled=true, maxSize=100, ttl=24hours.
+func ParseEventBufferTupleString(optsStr string) (BPFEventBufferConfig, error) {
+	opts := strings.Split(optsStr, ",")
+	enabled := false
+	conf := BPFEventBufferConfig{}
+	if len(opts) != 3 {
+		return conf, fmt.Errorf("unexpected event buffer config value format, should be in format 'mapname=enabled,100,24h'")
+	}
+
+	if opts[0] != "enabled" && opts[0] != "disabled" {
+		return conf, fmt.Errorf("could not parse event buffer enabled: must be either 'enabled' or 'disabled'")
+	}
+	if opts[0] == "enabled" {
+		enabled = true
+	}
+	size, err := strconv.Atoi(opts[1])
+	if err != nil {
+		return conf, fmt.Errorf("could not parse event buffer maxSize int: %w", err)
+	}
+	ttl, err := time.ParseDuration(opts[2])
+	if err != nil {
+		return conf, fmt.Errorf("could not parse event buffer ttl duration: %w", err)
+	}
+	if size < 0 {
+		return conf, fmt.Errorf("event buffer max size cannot be less than zero (%d)", conf.MaxSize)
+	}
+	conf.TTL = ttl
+	conf.Enabled = enabled && size != 0
+	conf.MaxSize = size
+	return conf, nil
+}
+
+func parseBPFMapEventConfigs(confs BPFEventBufferConfigs, confMap map[string]string) error {
+	for name, confStr := range confMap {
+		conf, err := ParseEventBufferTupleString(confStr)
+		if err != nil {
+			return fmt.Errorf("unable to parse %s: %s", BPFMapEventBuffers, err)
+		}
+		confs[name] = conf
+	}
+	return nil
 }
