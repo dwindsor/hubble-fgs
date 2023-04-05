@@ -4,61 +4,38 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "parsers/http/http.h"
+#include "generic.h"
 #include "lib/file.h"
+#include "networking/bpf_udp.h"
 
-/* DECLARE declares a unique usage of the union or struct 'x' on the stack.
- *
- * To prevent compiler from optimizing away the var, we pass a reference
- * to the var to a BPF helper function which accepts a reference as
- * an argument.
- *
- * We make the variable here pointer in order to fit all structs
- * even in this case object files contain all the required information
- */
-#define DECLARE(datatype, x, iter)               \
-	{                                        \
-		datatype x *s##iter = 0;         \
-		trace_printk("%p", 1, &s##iter); \
-		iter++;                          \
-	}
+// from perf_event_output
+struct msg_generic_kprobe _1;
+struct msg_execve_event _2;
+struct msg_exit _3;
+struct msg_http_event _4;
+struct msg_tls_cont_event _5;
+struct msg_tls_event _6;
+struct msg_test _7;
+// Old, unused event.
+// struct msg_ipv4_tcp_connect _8;
+struct msg_ip_event _9;
+struct msg_kfree_skb _10;
+struct msg_udp_event _11;
 
-/* This function is a placeholder for C struct definitions shared with Go,
- * it is never executed.
- */
-int main(void)
-{
-	int iter = 0;
+// from maps
+struct event _12;
+struct msg_execve_key _13;
+struct execve_map_value _14;
+struct msg_tls_ip _15;
+struct socketmap_value _16;
 
-	// from perf_event_output
-	DECLARE(struct, msg_generic_kprobe, iter);
-	DECLARE(struct, msg_execve_event, iter);
-	DECLARE(struct, msg_exit, iter);
-	DECLARE(struct, msg_http_event, iter);
-	DECLARE(struct, msg_tls_cont_event, iter);
-	DECLARE(struct, msg_tls_event, iter);
-	DECLARE(struct, msg_test, iter);
-	DECLARE(struct, msg_ipv4_tcp_connect, iter);
-	DECLARE(struct, msg_ip_event, iter);
-	DECLARE(struct, msg_kfree_skb, iter);
-	DECLARE(struct, msg_udp_event, iter);
-
-	// from maps
-	DECLARE(struct, event, iter);
-	DECLARE(struct, msg_execve_key, iter);
-	DECLARE(struct, execve_map_value, iter);
-	DECLARE(struct, msg_tls_ip, iter);
-	DECLARE(struct, socketmap_value, iter);
-
-	// from FIM
-	DECLARE(struct, hash_map_file_key, iter);
-	DECLARE(struct, hash_map_file_val, iter);
-	DECLARE(struct, msg_file_path, iter);
-	DECLARE(struct, msg_fs_info, iter);
-	DECLARE(struct, msg_file_ops, iter);
-	DECLARE(struct, msg_file_split_path, iter);
-	DECLARE(struct, msg_rename_elem, iter);
-	DECLARE(struct, msg_file_rename_ops, iter);
-	DECLARE(struct, file_config_map_value, iter);
-
-	return 0;
-}
+// from FIM
+struct hash_map_file_key _17;
+struct hash_map_file_val _18;
+struct msg_file_path _19;
+struct msg_fs_info _20;
+struct msg_file_ops _21;
+struct msg_file_split_path _22;
+struct msg_rename_elem _23;
+struct msg_file_rename_ops _24;
+struct file_config_map_value _25;
