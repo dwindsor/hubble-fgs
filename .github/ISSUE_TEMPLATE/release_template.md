@@ -39,6 +39,8 @@ git checkout $BRANCH && git pull origin $BRANCH
 git tag -a $RELEASE -m "$RELEASE release" -s
 git push origin $RELEASE
 ```
+- [ ] Create standalone tarball release
+- [ ] Upload standalone tarball to the S3 bucket
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Choose the tag you just generated as the tag
   - [ ] Click "generate release notes"
