@@ -148,16 +148,16 @@ udp_port_info(struct udphdr *udp, bool send)
  * socket_map.
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
-__udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
-	   struct iphdr *ip, bool ipv6, s64 latency, struct udphdr *udp,
-	   int payload_sz, struct udp_sensor_config *config,
-	   struct latency_protocol_config *latency_config, bool send,
-	   bool lazy)
+__udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
+	   s64 latency, struct udphdr *udp, int payload_sz,
+	   struct udp_sensor_config *config,
+	   struct latency_protocol_config *latency_config, bool send, bool lazy)
 {
 	struct udp_info_value *value;
 	struct socketmap_value *process;
 	int zero = 0;
 	struct udp_info_key key;
+	struct udp_info *info;
 
 	key.cookie = *cookie;
 	udp_key(&key, ip, ipv6, udp, send);
@@ -180,22 +180,22 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		/* Store the info in the entry for later use,
 		 * and potentially for searching from userland
 		 * in case we ever need to locate a socket */
-		*info = udp_info(ip, ipv6, udp, send);
-		if (!*info)
+		info = udp_info(ip, ipv6, udp, send);
+		if (!info)
 			return 0;
 		if (!ipv6) {
 			set_ipv6_addr_from_ipv4(value->saddr,
-						(*info)->saddr.ipv4);
+						info->saddr.ipv4);
 			set_ipv6_addr_from_ipv4(value->daddr,
-						(*info)->daddr.ipv4);
+						info->daddr.ipv4);
 			value->ipv6 = false;
 		} else {
-			copy_ipv6_addr(value->saddr, (*info)->saddr.ipv6);
-			copy_ipv6_addr(value->daddr, (*info)->daddr.ipv6);
+			copy_ipv6_addr(value->saddr, info->saddr.ipv6);
+			copy_ipv6_addr(value->daddr, info->daddr.ipv6);
 			value->ipv6 = true;
 		}
-		value->sport = (*info)->sport;
-		value->dport = (*info)->dport;
+		value->sport = info->sport;
+		value->dport = info->dport;
 
 		/* socket create time is when we see the first datagram, as a socket can
 		 * support multiple pseudo-connections (using sendto()) and we shouldn't
@@ -219,22 +219,22 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			udp_info_rx_reset(value, payload_sz);
 			add_latency(latency_config, value->buckets, latency);
 		}
-		*info = udp_info(ip, ipv6, udp, send);
-		if (!*info)
+		info = udp_info(ip, ipv6, udp, send);
+		if (!info)
 			return 0;
 		if (!ipv6) {
 			set_ipv6_addr_from_ipv4(value->saddr,
-						(*info)->saddr.ipv4);
+						info->saddr.ipv4);
 			set_ipv6_addr_from_ipv4(value->daddr,
-						(*info)->daddr.ipv4);
+						info->daddr.ipv4);
 			value->ipv6 = false;
 		} else {
-			copy_ipv6_addr(value->saddr, (*info)->saddr.ipv6);
-			copy_ipv6_addr(value->daddr, (*info)->daddr.ipv6);
+			copy_ipv6_addr(value->saddr, info->saddr.ipv6);
+			copy_ipv6_addr(value->daddr, info->daddr.ipv6);
 			value->ipv6 = true;
 		}
-		value->sport = (*info)->sport;
-		value->dport = (*info)->dport;
+		value->sport = info->sport;
+		value->dport = info->dport;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 		/* socket create time is when we see the first datagram, as a socket can
@@ -269,7 +269,6 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	 int payload_off, int payload_sz, bool send, bool lazy, bool kp)
 {
 	struct udp_info_value *value;
-	struct udp_info *info = 0;
 	struct udp_sensor_config *config;
 	struct latency_config *latency_config = 0;
 	struct latency_protocol_config *udp_latency = 0;
@@ -293,20 +292,13 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		}
 	}
 
-	value = __udp_send(skb, &info, cookie, ip, ipv6, latency, udp,
-			   payload_sz, config, udp_latency, send, lazy);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, config, udp_latency, send, lazy);
 	if (!value)
 		return 1;
 
 	if (config->dnsPorts[0] != 0) {
-		/* info may have been filled in for us by __udp_send() */
-		if (!info) {
-			info = udp_port_info(udp, send);
-			if (!info)
-				return 1;
-		}
-		if (dns_port_match(config->dnsPorts, info->sport,
-				   bpf_ntohs(info->dport))) {
+		if (dns_port_match(config->dnsPorts, value->sport,
+				   bpf_ntohs(value->dport))) {
 			if (!lazy && value->pid) {
 				/* We subtract 1 from payload_sz because we need to +1 it
 				 * later to sat verifier constraint that skb_load_bytes
