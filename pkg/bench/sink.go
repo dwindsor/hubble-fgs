@@ -267,6 +267,12 @@ func (sink netperfSink) Start(ctx context.Context, ns bool) (int, chan SinkStats
 
 	port := findFreePort()
 
+	pull := exec.Command(
+		"docker", "image", "pull",
+		"joamaki/netperf-docker",
+	)
+	pull.CombinedOutput()
+
 	cmd := exec.Command(
 		"docker", "run", "--rm", "--network=none",
 		"--detach", "--cap-add=NET_ADMIN",
