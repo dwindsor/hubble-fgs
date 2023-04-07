@@ -1,0 +1,217 @@
+name: ConformanceEKS
+
+on:
+  pull_request:
+    paths-ignore:
+    - "**.md"
+  push:
+    branches:
+      - master
+env:
+  CILIUM_CLI_VERSION: v0.12.11
+  CILIUM_VERSION: v1.12.4
+  EKSCTL_VERSION: v0.136.0
+
+jobs:
+  install-and-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    strategy:
+      matrix:
+        arch:
+          - arm64
+          - amd64
+        k8s_version:
+          - "1.25"
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: hubble-fgs
+          submodules: true
+
+      # install dependencies
+      # helm, kubectl and awscli are already installed on GitHub ubuntu-22.04 runner
+      # See https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.18.3'
+      - name: Install eksctl
+        run: |
+          DOWNLOAD_URL=https://github.com/weaveworks/eksctl/releases/download/$EKSCTL_VERSION/eksctl_Linux_amd64.tar.gz
+          curl -s -L $DOWNLOAD_URL | tar xz -C /usr/local/bin
+      - name: Install Cilium CLI
+        run: |
+          GOOS=$(go env GOOS)
+          GOARCH=$(go env GOARCH)
+          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.CILIUM_CLI_VERSION }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+          sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+          sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
+          rm cilium-linux-amd64.tar.gz{,.sha256sum}
+          cilium version
+
+      - name: Set up job variables
+        id: vars
+        run: |
+          if [ ${{ github.event.issue.pull_request || github.event.pull_request }} ]; then
+            PR_API_JSON=$(curl \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
+            SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
+          else
+            SHA=${{ github.sha }}
+          fi
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agent_image=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operator_image=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+
+          # retrieve only minor number on k8s version for the name to be valid
+          K8S_VERSION=$(echo ${{ matrix.k8s_version }} | awk -F'[.]' '{print $NF}')
+          echo "cluster_name=fgs-cli-ci-${{ github.run_id }}-$K8S_VERSION-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+
+          case "${{ matrix.arch }}" in
+            "arm64")
+              # c7g are powered by AWS Graviton3 processors.
+              echo "node_type=c7g.xlarge" >> $GITHUB_OUTPUT
+              ;;
+            "amd64")
+              # c6a are powered by 3rd generation AMD EPYC processors.
+              echo "node_type=c6a.xlarge" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Selected architecture is not supported"
+              exit 1
+              ;;
+          esac
+
+      - name: Login to AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Create EKS cluster
+        id: cluster
+        run: |
+          eksctl create cluster                                             \
+            --name ${{ steps.vars.outputs.cluster_name }}                   \
+            --tags "usage=pr,owner=${{ github.event.pull_request.number }}" \
+            --version ${{ matrix.k8s_version }}                             \
+            --nodes 1                                                       \
+            --node-type ${{ steps.vars.outputs.node_type }}                 \
+            --spot
+
+      - name: Install Amazon EKS EBS CSI Driver on cluster
+        env:
+          CLUSTER_NAME: ${{ steps.vars.outputs.cluster_name }}
+          ROLE_NAME: AmazonEKS_EBS_CSI_DriverRole_${{ steps.vars.outputs.cluster_name }}
+        run: |
+          eksctl utils associate-iam-oidc-provider --cluster $CLUSTER_NAME --approve
+
+          OIDC_ID=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f5)
+          echo OIDC_ID=$OIDC_ID
+          REGION_CODE=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f3 | cut -d '.' -f3)
+          echo REGION_CODE=$REGION_CODE
+          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+
+          aws iam create-role --role-name $ROLE_NAME --no-cli-pager                          \
+            --tags Key=usage,Value=pr Key=owner,Value=${{ github.event.pull_request.number }} \
+            --assume-role-policy-document "{
+            \"Version\": \"2012-10-17\",
+            \"Statement\": [
+              {
+                \"Effect\": \"Allow\",
+                \"Principal\": {
+                  \"Federated\": \"arn:aws:iam::$ACCOUNT_ID:oidc-provider/oidc.eks.$REGION_CODE.amazonaws.com/id/$OIDC_ID\"
+                },
+                \"Action\": \"sts:AssumeRoleWithWebIdentity\",
+                \"Condition\": {
+                  \"StringEquals\": {
+                    \"oidc.eks.$REGION_CODE.amazonaws.com/id/$OIDC_ID:aud\": \"sts.amazonaws.com\",
+                    \"oidc.eks.$REGION_CODE.amazonaws.com/id/$OIDC_ID:sub\": \"system:serviceaccount:kube-system:ebs-csi-controller-sa\"
+                  }
+                }
+              }
+            ]
+          }"
+
+          aws iam attach-role-policy                                                     \
+              --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy \
+              --role-name $ROLE_NAME
+
+          eksctl create addon --name aws-ebs-csi-driver                                                 \
+              --cluster $CLUSTER_NAME                                                                   \
+              --service-account-role-arn $(aws iam get-role --role-name $ROLE_NAME | jq -r '.Role.Arn') \
+              --force
+
+      - name: Attempt to pull the FGS image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            docker pull ${{ steps.vars.outputs.agent_image }}
+            docker pull ${{ steps.vars.outputs.operator_image }}
+
+      - name: Run end-to-end tests
+        timeout-minutes: 30
+        run: |
+          cd hubble-fgs
+          export HOST_PROC=/proc
+          # in the following command, the flag "-tetragon.helm.set
+          # enterprise.btf=/sys/kernel/btf/vmlinux" prevents the init container
+          # with the BTF files to be deployed. It does not contain BTF files
+          # for arm64 kernels and the container image is not multi-arch.
+          go test -p 1 -parallel 1 -timeout 20m -failfast -cover ./tests/e2e/tests/...                         \
+            -tetragon.helm.set enterprise.btf=/sys/kernel/btf/vmlinux                                          \
+            -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agent_image }}                  \
+            -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operator_image }} \
+            -tetragon.keep-export=true                                                                         \
+            -tetragon.cilium-version=${{ env.CILIUM_VERSION }}                                                 \
+            -cluster-name ${{ steps.vars.outputs.cluster_name }}                                                \
+            -kubeconfig ~/.kube/config
+
+      - name: Cleanup resources
+        id: cleanup
+        if: ${{ always() }}
+        env:
+          CLUSTER_TO_DELETE: ${{ steps.vars.outputs.cluster_name }}
+          ROLE_TO_DELETE: AmazonEKS_EBS_CSI_DriverRole_${{ steps.vars.outputs.cluster_name }}
+        run: |
+          echo "kernel_version=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')" >> $GITHUB_OUTPUT
+
+          # delete the cluster
+          eksctl delete cluster --name=$CLUSTER_TO_DELETE
+
+          # delete the role for the EBS CSI Driver
+          # remove the role from any instance profiles it is associated with
+          for instance_profile in $(aws iam list-instance-profiles-for-role --role-name $ROLE_TO_DELETE --query 'InstanceProfiles[].InstanceProfileName' --output text); do
+              aws iam remove-role-from-instance-profile --role-name $ROLE_TO_DELETE --instance-profile-name $instance_profile
+          done
+          # remove any policies attached to the role
+          for policy in $(aws iam list-attached-role-policies --role-name $ROLE_TO_DELETE --query 'AttachedPolicies[].PolicyArn' --output text); do
+              aws iam detach-role-policy --role-name $ROLE_TO_DELETE --policy-arn $policy
+          done
+          # delete the role
+          aws iam delete-role --role-name $ROLE_TO_DELETE
+
+          # remove eventual cloudformation stack remainings when creation failed
+          aws cloudformation delete-stack --stack-name eksctl-$CLUSTER_TO_DELETE-cluster
+
+          echo "All resources deleted!"
+        shell: bash {0}
+
+      - name: Upload Tetragon test artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          name: tetragon-artifacts
+          path: /tmp/tetragon.e2e.*
+          retention-days: 5
