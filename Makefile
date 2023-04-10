@@ -60,6 +60,7 @@ all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-com
 .PHONY: help
 help:
 	@echo 'OSS submodule helpers: '
+	@echo '    oss-sync     - sync OSS submodule and create an oss-sync commit'
 	@echo '    oss-init     - initialize the OSS submodule'
 	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
 	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
@@ -71,6 +72,14 @@ help:
 	@echo 'Packages:'
 	@echo '    tarball           - build Tetragon Enterprise compressed tarball'
 	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
+
+# Branch in the OSS repo we want to sync with. Default is origin/main
+OSS_SYNC_TARGET ?= origin/main
+
+.PHONY: oss-sync
+oss-sync:
+	@echo Syncing OSS submodule...
+	@./contrib/oss-chores/oss-sync.sh "$(OSS_SYNC_TARGET)"
 
 .PHONY: oss-init
 oss-init:
