@@ -24,9 +24,6 @@ fi
 git diff --quiet || (echo "There are pending changes, bailing out" && false)
 git diff --quiet --cached || (echo "There are pending changes in the cache, bailing out" && false)
 
-# checkout a new branch
-git checkout -b oss-sync-$(date +%Y%m%d.%H%M%S)
-
 # get the current (old) sha of OSS
 old_sha=$(git submodule status modules/tetragon-oss | awk '{ print $1 }')
 
