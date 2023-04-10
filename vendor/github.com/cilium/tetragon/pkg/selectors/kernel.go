@@ -136,6 +136,7 @@ const (
 	argTypeS32 = 12
 	argTypeU32 = 13
 
+	argTypePath = 15
 	argTypeFile = 16
 	argTypeFd   = 17
 
@@ -155,6 +156,7 @@ var argTypeTable = map[string]uint32{
 	"skb":        argTypeSkb,
 	"string":     argTypeString,
 	"fd":         argTypeFd,
+	"path":       argTypePath,
 	"file":       argTypeFile,
 	"sock":       argTypeSock,
 	"url":        argTypeUrl,
@@ -174,6 +176,7 @@ var argTypeStringTable = map[uint32]string{
 	argTypeString:    "string",
 	argTypeFd:        "fd",
 	argTypeFile:      "file",
+	argTypePath:      "path",
 	argTypeSock:      "sock",
 	argTypeUrl:       "url",
 	argTypeFqdn:      "fqdn",
@@ -326,7 +329,7 @@ func writeMatchValuesInMap(k *KernelSelectorState, values []string, ty uint32) e
 func writeMatchValues(k *KernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
-		case argTypeFd, argTypeFile:
+		case argTypeFd, argTypeFile, argTypePath:
 			value, size := ArgSelectorValue(v)
 			WriteSelectorUint32(k, size)
 			WriteSelectorByteArray(k, value, size)
@@ -395,9 +398,24 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 	WriteSelectorLength(k, moff)
 	return nil
 }
+
 func ParseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
+	max_args := 1
+	if kernels.EnableLargeProgs() {
+		max_args = 5 // we support up 5 argument filters under matchArgs with kernels >= 5.3, otherwise 1 argument
+	}
+	if len(args) > max_args {
+		return fmt.Errorf("parseMatchArgs: supports up to %d filters (%d provided)", max_args, len(args))
+	}
+	actionOffset := GetCurrentOffset(k)
 	loff := AdvanceSelectorLength(k)
-	for _, a := range args {
+	argOff := make([]uint32, 5)
+	for i := 0; i < 5; i++ {
+		argOff[i] = AdvanceSelectorLength(k)
+		WriteSelectorOffsetUint32(k, argOff[i], 0)
+	}
+	for i, a := range args {
+		WriteSelectorOffsetUint32(k, argOff[i], GetCurrentOffset(k)-actionOffset)
 		if err := ParseMatchArg(k, &a, sig); err != nil {
 			return err
 		}
@@ -442,8 +460,7 @@ func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 		}
 	}
 
-	// Zero length value is also default ActionTypePost action
-	// that bpf program reads when no other action is specified.
+	// No action (size value 4) defaults to post action.
 	WriteSelectorLength(k, loff)
 	return nil
 }
@@ -766,6 +783,26 @@ func HasOverride(spec *v1alpha1.KProbeSpec) bool {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func HasEarlyBinaryFilter(selectors []v1alpha1.KProbeSelector) bool {
+	if len(selectors) == 0 {
+		return false
+	}
+	for _, s := range selectors {
+		if len(s.MatchPIDs) > 0 ||
+			len(s.MatchNamespaces) > 0 ||
+			len(s.MatchCapabilities) > 0 ||
+			len(s.MatchNamespaceChanges) > 0 ||
+			len(s.MatchCapabilityChanges) > 0 ||
+			len(s.MatchArgs) > 0 {
+			return false
+		}
+	}
+	if len(selectors) == 1 && len(selectors[0].MatchBinaries) > 0 {
+		return true
 	}
 	return false
 }
