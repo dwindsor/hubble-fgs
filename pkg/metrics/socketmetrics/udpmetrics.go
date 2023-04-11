@@ -137,6 +137,14 @@ var (
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "bucket"})
 )
 
+// UDP Sequence Check errors
+var (
+	SocketStatsUDPSeqCheckErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_sequence_check_errors",
+		Help: "UDP socket sequence check errors statistics",
+	}, []string{"namespace", "pod", "binary"})
+)
+
 type UDPGCType int
 
 const (

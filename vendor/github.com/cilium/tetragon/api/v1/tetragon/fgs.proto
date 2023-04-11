@@ -391,3 +391,13 @@ message ProcessNetworkWatermark {
     uint64 hist_dip_trigger = 10;
     uint64 window_avg = 11;
 }
+
+message ProcessUdpSeqCheckError {
+    tetragon.Process process = 1;
+    tetragon.Process parent = 2;
+    tetragon.SockInfo socket = 3;
+    uint64 application_id = 4;
+    uint64 app_specific_id = 5;
+    uint64 seq_num_expected = 6;
+    uint64 seq_num_received = 7;
+}

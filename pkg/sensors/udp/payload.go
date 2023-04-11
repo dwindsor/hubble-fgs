@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	defaultDnsPort = 53
-	maxDnsPorts    = 4
+	defaultDnsPort   = 53
+	maxDnsPorts      = 4
+	maxSeqCheckPorts = 8
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
@@ -137,6 +138,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (ConfigValue, networklatency
 	ParseDnsSpec(&config, spec)
 	ParseUdpWatermarksSpec(&config, spec)
 	latencyConfig, _ := networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
+	ParseSeqCheckSpec(&config, spec)
 
 	return config, latencyConfig
 }
@@ -205,5 +207,26 @@ func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpe
 		config.watermarksWindowSize = 0
 		config.watermarksBurstTriggerPercent = 0
 		config.watermarksDipTriggerPercent = 0
+	}
+}
+
+// ParseSeqCheckSpec parses the input yaml/crd and outputs the kernel selectors
+// needed for BPF to identify applications with sequence numbers and the ports
+// associated with it.
+//
+// The maximum number of ports is fixed to maxSeqCheckPorts. Changing this requires changing
+// the map in bpf_inet.h.
+func ParseSeqCheckSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
+	if spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
+		// Only consider the first maxSeqCheckPorts ports that are specified
+		if len(spec.Parser.Udp.SeqCheck.Ports) <= maxSeqCheckPorts {
+			copy(config.seqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports)
+		} else {
+			copy(config.seqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:maxSeqCheckPorts])
+		}
+		config.seqCheckAppId = spec.Parser.Udp.SeqCheck.AppId
+		logger.GetLogger().WithField("Application ID", spec.Parser.Udp.SeqCheck.AppId).Info("Enable UDP sequence checking")
+	} else {
+		config.seqCheckAppId = 0
 	}
 }

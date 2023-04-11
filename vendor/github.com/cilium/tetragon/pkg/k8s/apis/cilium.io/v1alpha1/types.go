@@ -374,6 +374,9 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// UDP latency observability policy specification
 	Latency LatencyPolicySpec `json:"latency"`
+	// +kubebuilder:validation:Optional
+	// UDP sequence check observability policy specification
+	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
 }
 
 type UdpWatermarksPolicySpec struct {
@@ -432,6 +435,19 @@ type LatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the interfaces check interval in seconds
 	InterfacesCheckInterval uint32 `json:"interfacesCheckInterval"`
+}
+
+type UdpSeqCheckPolicySpec struct {
+	// Enable UDP sequence check observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the UDP sequence checker application
+	AppId uint64 `json:"appId"`
+	// +kubebuilder:validation:Optional
+	// Configures the ports to enable on
+	Ports []uint16 `json:"ports"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {

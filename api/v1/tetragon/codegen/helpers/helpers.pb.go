@@ -60,6 +60,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_NETWORK_WATERMARK.String(), nil
 	case *tetragon.GetEventsResponse_ProcessUprobe:
 		return tetragon.EventType_PROCESS_UPROBE.String(), nil
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return tetragon.EventType_PROCESS_UDP_SEQ_CHECK_ERROR.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 
@@ -118,6 +120,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessNetworkBurst.Process
 	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
 		return ev.ProcessNetworkWatermark.Process
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return ev.ProcessUdpSeqCheckError.Process
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Process
 
@@ -174,6 +178,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessNetworkBurst.Parent
 	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
 		return ev.ProcessNetworkWatermark.Parent
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return ev.ProcessUdpSeqCheckError.Parent
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Parent
 

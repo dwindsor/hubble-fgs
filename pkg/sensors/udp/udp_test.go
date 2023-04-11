@@ -55,8 +55,9 @@ import (
 )
 
 var (
-	client bool
-	server bool
+	watermarksClient bool
+	layer7Client     bool
+	server           bool
 )
 
 const (
@@ -64,7 +65,8 @@ const (
 )
 
 func init() {
-	flag.BoolVar(&client, "client", false, "internal")
+	flag.BoolVar(&watermarksClient, "watermarksClient", false, "internal")
+	flag.BoolVar(&layer7Client, "layer7Client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
 }
 
@@ -81,10 +83,15 @@ func TestMain(m *testing.M) {
 		udpServer()
 		os.Exit(0)
 	}
-	if client {
-		udpClient()
+	if watermarksClient {
+		udpWatermarksClient()
 		os.Exit(0)
 	}
+	if layer7Client {
+		udpLayer7Client()
+		os.Exit(0)
+	}
+
 	ec := runner.TestSensorsRun(m, "SensorUdp")
 	os.Exit(ec)
 }
@@ -138,6 +145,27 @@ spec:
       ports: [53]
 `
 
+const udpL7Config = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 20
+      deleteIdleSocketInterval: 60
+      seqCheck:
+        enable: true
+        appId: 1
+        ports: [31337]
+    dns:
+      enable: true
+      ports: [53]
+`
+
 const BUFSIZE, BUFVAR = 1024, 256
 const hostname = "127.0.0.1"
 const portno = 31337
@@ -177,7 +205,7 @@ func sendData(socket net.Conn, buf []byte) {
 	}
 }
 
-func udpClient() {
+func udpWatermarksClient() {
 	baselineRate := 5
 	burstRate := 10
 	baselineDuration := 1
@@ -229,7 +257,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-client"))
+		WithArguments(sm.Full("-watermarksClient"))
 
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
@@ -379,7 +407,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	err = m.Lookup(processKey, &processValue)
 	assert.Error(t, err, "server process in watermarks map before traffic")
 
-	clientCmd := exec.Command(os.Args[0], "-client")
+	clientCmd := exec.Command(os.Args[0], "-watermarksClient")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -420,6 +448,202 @@ func TestUdpBurst(t *testing.T) {
 
 func TestUdpWatermarks(t *testing.T) {
 	testUdpWatermarks(t, false)
+}
+
+func storeMSB(buf []byte, index uint, size uint, value uint) {
+	if size == 0 {
+		return
+	}
+	for i := uint(0); i < size; i++ {
+		buf[index+i] = byte((value >> ((size - i - 1) * 8)) & 0xff)
+	}
+}
+
+func sendSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
+	if lineIdSize > 2 || seqNumSize < 2 || seqNumSize > 3 {
+		return
+	}
+
+	flags := byte(0) | (byte(lineIdSize&0x3) << 2) | (byte(seqNumSize-2) << 1)
+	buf[0] = flags
+	storeMSB(buf, 1, lineIdSize, lineId)
+	storeMSB(buf, 1+lineIdSize, seqNumSize, seqNum)
+	sendData(socket, buf)
+	time.Sleep(10 * time.Millisecond)
+}
+
+func udpLayer7Client() {
+	randFile, err := os.Open("/dev/urandom")
+	if err != nil {
+		fmt.Printf("ERROR opening urandom\n")
+		panic(err)
+	}
+
+	buf := make([]byte, BUFSIZE+BUFVAR)
+	randReader := bufio.NewReader(randFile)
+	_, err = randReader.Read(buf)
+	if err != nil {
+		fmt.Printf("ERROR reading urandom\n")
+		panic(err)
+	}
+	randFile.Close()
+
+	socket, err := net.Dial(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	if err != nil {
+		fmt.Printf("ERROR dialing socket\n")
+		panic(err)
+	}
+
+	sendSeqData(socket, buf, 1, 5, 2, 0)
+	sendSeqData(socket, buf, 1, 6, 2, 0)
+	sendSeqData(socket, buf, 1, 6, 2, 1)
+	sendSeqData(socket, buf, 1, 6, 2, 2)
+	sendSeqData(socket, buf, 1, 5, 2, 1)
+	sendSeqData(socket, buf, 1, 5, 2, 2)
+	sendSeqData(socket, buf, 1, 5, 2, 4)
+	sendSeqData(socket, buf, 1, 5, 2, 3)
+	sendSeqData(socket, buf, 1, 5, 2, 5)
+	sendSeqData(socket, buf, 1, 6, 2, 3)
+	sendSeqData(socket, buf, 1, 6, 2, 5)
+	sendSeqData(socket, buf, 1, 6, 2, 6)
+	sendSeqData(socket, buf, 2, 7, 2, 0)
+	sendSeqData(socket, buf, 2, 8, 3, 0)
+	sendSeqData(socket, buf, 2, 7, 2, 1)
+	sendSeqData(socket, buf, 2, 8, 3, 1)
+	sendSeqData(socket, buf, 2, 7, 2, 2)
+	sendSeqData(socket, buf, 2, 8, 3, 2)
+	sendSeqData(socket, buf, 2, 7, 2, 3)
+	sendSeqData(socket, buf, 2, 8, 3, 4)
+	sendSeqData(socket, buf, 2, 7, 2, 4)
+	sendSeqData(socket, buf, 2, 8, 3, 3)
+	sendSeqData(socket, buf, 2, 7, 2, 5)
+	sendSeqData(socket, buf, 2, 8, 3, 5)
+	sendSeqData(socket, buf, 2, 7, 2, 6)
+	sendSeqData(socket, buf, 2, 8, 3, 6)
+	sendSeqData(socket, buf, 0, 0, 3, 5)
+	sendSeqData(socket, buf, 0, 0, 3, 6)
+	sendSeqData(socket, buf, 0, 0, 3, 7)
+	sendSeqData(socket, buf, 0, 0, 3, 9)
+	sendSeqData(socket, buf, 0, 0, 3, 10)
+	sendSeqData(socket, buf, 0, 0, 3, 11)
+	sendSeqData(socket, buf, 0, 0, 3, 12)
+}
+
+func TestUdpSeqCheck(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	clientProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-layer7Client"))
+
+	serverProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-server"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(clientProcess),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(serverProcess),
+		ec.NewProcessUdpSeqCheckErrorChecker("lineId5Seq3Got4").
+			WithProcess(serverProcess).
+			WithApplicationId(1).
+			WithAppSpecificId(5).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSeqNumExpected(3).
+			WithSeqNumReceived(4),
+		ec.NewProcessUdpSeqCheckErrorChecker("lineId6Seq4Got5").
+			WithProcess(serverProcess).
+			WithApplicationId(1).
+			WithAppSpecificId(6).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSeqNumExpected(4).
+			WithSeqNumReceived(5),
+		ec.NewProcessUdpSeqCheckErrorChecker("lineId8Seq3Got4").
+			WithProcess(serverProcess).
+			WithApplicationId(1).
+			WithAppSpecificId(8).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSeqNumExpected(3).
+			WithSeqNumReceived(4),
+		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq0Got5").
+			WithProcess(serverProcess).
+			WithApplicationId(1).
+			WithAppSpecificId(65536).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSeqNumExpected(0).
+			WithSeqNumReceived(5),
+		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq8Got9").
+			WithProcess(serverProcess).
+			WithApplicationId(1).
+			WithAppSpecificId(65536).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSeqNumExpected(8).
+			WithSeqNumReceived(9),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(serverProcess).
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
+				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+		ec.NewProcessExitChecker("serverExit").
+			WithProcess(serverProcess),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	serverCmd := exec.Command(os.Args[0], "-server")
+	serverOutput, err := serverCmd.StdoutPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	serverCmd.Stderr = os.Stderr
+
+	err = serverCmd.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverOutput)
+	serverBuf.ReadLine()
+
+	serverPid := uint32(serverCmd.Process.Pid)
+
+	clientCmd := exec.Command(os.Args[0], "-layer7Client")
+	clientCmd.Stdout = os.Stderr
+	clientCmd.Stderr = os.Stderr
+	err = clientCmd.Run()
+	assert.NoError(t, err, "cannot start client")
+
+	killAndWaitCommand(t, serverCmd)
+
+	quit := false
+	for !quit {
+		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
+		if err != nil {
+			quit = true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, clientCmd)
 }
 
 // Note 20.0.0.0/8 is the DoD and isn't routable on the Internet

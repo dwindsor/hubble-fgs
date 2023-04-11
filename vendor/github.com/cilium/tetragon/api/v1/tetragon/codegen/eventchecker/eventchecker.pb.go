@@ -303,6 +303,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessNetworkBurstChecker("").FromProcessNetworkBurst(ev), nil
 	case *tetragon.ProcessNetworkWatermark:
 		return NewProcessNetworkWatermarkChecker("").FromProcessNetworkWatermark(ev), nil
+	case *tetragon.ProcessUdpSeqCheckError:
+		return NewProcessUdpSeqCheckErrorChecker("").FromProcessUdpSeqCheckError(ev), nil
 	case *tetragon.ProcessDns:
 		return NewProcessDnsChecker("").FromProcessDns(ev), nil
 
@@ -387,6 +389,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessNetworkBurst, nil
 	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
 		return ev.ProcessNetworkWatermark, nil
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return ev.ProcessUdpSeqCheckError, nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns, nil
 
@@ -4199,6 +4203,175 @@ func (checker *ProcessNetworkWatermarkChecker) FromProcessNetworkWatermark(event
 	{
 		val := event.WindowAvg
 		checker.WindowAvg = &val
+	}
+	return checker
+}
+
+// ProcessUdpSeqCheckErrorChecker implements a checker struct to check a ProcessUdpSeqCheckError event
+type ProcessUdpSeqCheckErrorChecker struct {
+	CheckerName    string           `json:"checkerName"`
+	Process        *ProcessChecker  `json:"process,omitempty"`
+	Parent         *ProcessChecker  `json:"parent,omitempty"`
+	Socket         *SockInfoChecker `json:"socket,omitempty"`
+	ApplicationId  *uint64          `json:"applicationId,omitempty"`
+	AppSpecificId  *uint64          `json:"appSpecificId,omitempty"`
+	SeqNumExpected *uint64          `json:"seqNumExpected,omitempty"`
+	SeqNumReceived *uint64          `json:"seqNumReceived,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessUdpSeqCheckErrorChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessUdpSeqCheckError); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessUdpSeqCheckError event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessUdpSeqCheckErrorChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessUdpSeqCheckErrorChecker creates a new ProcessUdpSeqCheckErrorChecker
+func NewProcessUdpSeqCheckErrorChecker(name string) *ProcessUdpSeqCheckErrorChecker {
+	return &ProcessUdpSeqCheckErrorChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessUdpSeqCheckErrorChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessUdpSeqCheckErrorChecker) GetCheckerType() string {
+	return "ProcessUdpSeqCheckErrorChecker"
+}
+
+// Check checks a ProcessUdpSeqCheckError event
+func (checker *ProcessUdpSeqCheckErrorChecker) Check(event *tetragon.ProcessUdpSeqCheckError) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessUdpSeqCheckError event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Socket != nil {
+			if err := checker.Socket.Check(event.Socket); err != nil {
+				return fmt.Errorf("Socket check failed: %w", err)
+			}
+		}
+		if checker.ApplicationId != nil {
+			if *checker.ApplicationId != event.ApplicationId {
+				return fmt.Errorf("ApplicationId has value %d which does not match expected value %d", event.ApplicationId, *checker.ApplicationId)
+			}
+		}
+		if checker.AppSpecificId != nil {
+			if *checker.AppSpecificId != event.AppSpecificId {
+				return fmt.Errorf("AppSpecificId has value %d which does not match expected value %d", event.AppSpecificId, *checker.AppSpecificId)
+			}
+		}
+		if checker.SeqNumExpected != nil {
+			if *checker.SeqNumExpected != event.SeqNumExpected {
+				return fmt.Errorf("SeqNumExpected has value %d which does not match expected value %d", event.SeqNumExpected, *checker.SeqNumExpected)
+			}
+		}
+		if checker.SeqNumReceived != nil {
+			if *checker.SeqNumReceived != event.SeqNumReceived {
+				return fmt.Errorf("SeqNumReceived has value %d which does not match expected value %d", event.SeqNumReceived, *checker.SeqNumReceived)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithProcess(check *ProcessChecker) *ProcessUdpSeqCheckErrorChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithParent(check *ProcessChecker) *ProcessUdpSeqCheckErrorChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSocket adds a Socket check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithSocket(check *SockInfoChecker) *ProcessUdpSeqCheckErrorChecker {
+	checker.Socket = check
+	return checker
+}
+
+// WithApplicationId adds a ApplicationId check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithApplicationId(check uint64) *ProcessUdpSeqCheckErrorChecker {
+	checker.ApplicationId = &check
+	return checker
+}
+
+// WithAppSpecificId adds a AppSpecificId check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithAppSpecificId(check uint64) *ProcessUdpSeqCheckErrorChecker {
+	checker.AppSpecificId = &check
+	return checker
+}
+
+// WithSeqNumExpected adds a SeqNumExpected check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithSeqNumExpected(check uint64) *ProcessUdpSeqCheckErrorChecker {
+	checker.SeqNumExpected = &check
+	return checker
+}
+
+// WithSeqNumReceived adds a SeqNumReceived check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) WithSeqNumReceived(check uint64) *ProcessUdpSeqCheckErrorChecker {
+	checker.SeqNumReceived = &check
+	return checker
+}
+
+//FromProcessUdpSeqCheckError populates the ProcessUdpSeqCheckErrorChecker using data from a ProcessUdpSeqCheckError event
+func (checker *ProcessUdpSeqCheckErrorChecker) FromProcessUdpSeqCheckError(event *tetragon.ProcessUdpSeqCheckError) *ProcessUdpSeqCheckErrorChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	if event.Socket != nil {
+		checker.Socket = NewSockInfoChecker().FromSockInfo(event.Socket)
+	}
+	{
+		val := event.ApplicationId
+		checker.ApplicationId = &val
+	}
+	{
+		val := event.AppSpecificId
+		checker.AppSpecificId = &val
+	}
+	{
+		val := event.SeqNumExpected
+		checker.SeqNumExpected = &val
+	}
+	{
+		val := event.SeqNumReceived
+		checker.SeqNumReceived = &val
 	}
 	return checker
 }

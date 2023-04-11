@@ -156,4 +156,15 @@ type MsgProcessNetworkWatermarkEvent struct {
 	WindowAvg        uint64 // Bytes seen in WindowSize
 }
 
+type MsgUdpSeqCheckErrorEvent struct {
+	Common         processapi.MsgCommon
+	ProcessKey     processapi.MsgExecveKey
+	Tuple          MsgIPTuple
+	SockCookie     uint64
+	ApplicationId  uint64
+	AppSpecificId  uint64
+	SeqNumExpected uint64
+	SeqNumReceived uint64
+}
+
 type MsgProcessNetworkWatermarksEventUnix = MsgProcessNetworkWatermarkEvent

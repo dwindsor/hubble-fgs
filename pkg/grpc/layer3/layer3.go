@@ -87,6 +87,8 @@ var IpErrorToString = []string{
 	33: "UDP sock create no process",
 	34: "Socket discovery no sk",
 	35: "UDP sock create PID=0",
+	36: "UDP sequence check read payload flags",
+	37: "UDP sequence check read payload data",
 }
 
 var IpErrorMax = int64(len(IpErrorToString) - 1)
@@ -107,6 +109,18 @@ type MsgIPEventUnix struct {
 	RefCntDone  [2]bool
 	Rtt         networkapi.Histogram
 	Duration    time.Duration
+}
+
+type MsgUdpSeqCheckErrorEventUnix struct {
+	Common         processapi.MsgCommon
+	ProcessKey     processapi.MsgExecveKey
+	Tuple          networkapi.MsgIPTuple
+	Kube           processapi.MsgK8sUnix
+	SockCookie     uint64
+	ApplicationId  uint64
+	AppSpecificId  uint64
+	SeqNumExpected uint64
+	SeqNumReceived uint64
 }
 
 func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {

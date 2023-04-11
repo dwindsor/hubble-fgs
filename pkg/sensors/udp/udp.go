@@ -40,6 +40,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -298,6 +299,8 @@ type ConfigValue struct {
 	watermarksWindowSize          uint64
 	watermarksBurstTriggerPercent uint64
 	watermarksDipTriggerPercent   uint64
+	seqCheckAppId                 uint64
+	seqCheckPorts                 [maxSeqCheckPorts]uint16
 }
 
 func (v *ConfigValue) String() string {
@@ -867,6 +870,32 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
+func MsgToUdpSeqErrorUnix(m *api.MsgUdpSeqCheckErrorEvent) *udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix {
+	unix := &udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix{}
+
+	unix.Common = m.Common
+	unix.ProcessKey = m.ProcessKey
+	unix.Tuple = m.Tuple
+	unix.SockCookie = m.SockCookie
+	unix.ApplicationId = m.ApplicationId
+	unix.AppSpecificId = m.AppSpecificId
+	unix.SeqNumExpected = m.SeqNumExpected
+	unix.SeqNumReceived = m.SeqNumReceived
+
+	return unix
+}
+
+func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
+	m := api.MsgUdpSeqCheckErrorEvent{}
+	err := binary.Read(r, native_endian.NativeEndian(), &m)
+	if err != nil {
+		return nil, err
+	}
+	msgUnix := MsgToUdpSeqErrorUnix(&m)
+
+	return []observer.Event{msgUnix}, nil
+}
+
 func init() {
 	AddUDP()
 }
@@ -891,6 +920,7 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDP_SEQ_ERROR, handleUdpSeqError)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)

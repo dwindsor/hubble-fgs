@@ -456,6 +456,15 @@ func HandleProcessWatermarksEvent(res *tetragon.ProcessNetworkWatermark) {
 	postProcessNetworkWatermarksEventStats(res)
 }
 
+func postProcessUdpSeqCheckErrors(res *tetragon.ProcessUdpSeqCheckError) {
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
+	socketmetrics.SocketStatsUDPSeqCheckErrors.WithLabelValues(ns, pod, binary).Inc()
+}
+
+func HandleProcessUdpSeqCheckError(res *tetragon.ProcessUdpSeqCheckError) {
+	postProcessUdpSeqCheckErrors(res)
+}
+
 func postHttpStats(res *tetragon.ProcessHttp) {
 	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()

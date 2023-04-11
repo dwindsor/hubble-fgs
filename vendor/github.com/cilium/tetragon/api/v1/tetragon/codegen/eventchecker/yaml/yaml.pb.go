@@ -159,6 +159,7 @@ type eventCheckerHelper struct {
 	ProcessHttp             *eventchecker.ProcessHttpChecker             `json:"http,omitempty"`
 	ProcessNetworkBurst     *eventchecker.ProcessNetworkBurstChecker     `json:"networkBurst,omitempty"`
 	ProcessNetworkWatermark *eventchecker.ProcessNetworkWatermarkChecker `json:"networkWatermark,omitempty"`
+	ProcessUdpSeqCheckError *eventchecker.ProcessUdpSeqCheckErrorChecker `json:"udpSeqCheckError,omitempty"`
 	ProcessDns              *eventchecker.ProcessDnsChecker              `json:"dns,omitempty"`
 }
 
@@ -288,6 +289,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessNetworkWatermark
 	}
+	if helper.ProcessUdpSeqCheckError != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessUdpSeqCheckError, eventChecker)
+		}
+		eventChecker = helper.ProcessUdpSeqCheckError
+	}
 	if helper.ProcessDns != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessDns, eventChecker)
@@ -340,6 +347,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessNetworkBurst = c
 	case *eventchecker.ProcessNetworkWatermarkChecker:
 		helper.ProcessNetworkWatermark = c
+	case *eventchecker.ProcessUdpSeqCheckErrorChecker:
+		helper.ProcessUdpSeqCheckError = c
 	case *eventchecker.ProcessDnsChecker:
 		helper.ProcessDns = c
 	default:

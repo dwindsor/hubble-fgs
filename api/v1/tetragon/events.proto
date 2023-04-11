@@ -54,6 +54,7 @@ enum EventType {
 	PROCESS_LOADER = 18;
 	PROCESS_NETWORK_WATERMARK = 19;
 	PROCESS_UPROBE = 20;
+	PROCESS_UDP_SEQ_CHECK_ERROR = 21;
 
 	TEST = 40000;
 }
@@ -190,6 +191,7 @@ message GetEventsResponse {
         ProcessLoader process_loader = 18;
         ProcessNetworkWatermark process_network_watermark = 19;
         ProcessUprobe process_uprobe = 20;
+        ProcessUdpSeqCheckError process_udp_seq_check_error = 21;
 
         Test test = 40000;
     }

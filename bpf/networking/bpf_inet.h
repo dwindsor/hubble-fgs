@@ -10,6 +10,7 @@
 #include "bpf_process_network_watermarks.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
+#include "bpf_udp_seq_error.h"
 #include "bpf_tracing.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
@@ -151,10 +152,10 @@ static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   s64 latency, struct udphdr *udp, int payload_sz,
 	   struct udp_sensor_config *config,
-	   struct latency_protocol_config *latency_config, bool send, bool lazy)
+	   struct latency_protocol_config *latency_config, bool send, bool lazy,
+	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
-	struct socketmap_value *process;
 	int zero = 0;
 	struct udp_info_key key;
 	struct udp_info *info;
@@ -163,7 +164,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	udp_key(&key, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
-	process = lookup_socketmap(cookie);
 
 	if (!value) {
 		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
@@ -270,6 +270,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 {
 	struct udp_info_value *value;
 	struct udp_sensor_config *config;
+	struct socketmap_value *process;
 	struct latency_config *latency_config = 0;
 	struct latency_protocol_config *udp_latency = 0;
 	int zero = 0;
@@ -292,9 +293,16 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		}
 	}
 
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, config, udp_latency, send, lazy);
+	process = lookup_socketmap(cookie);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, config, udp_latency, send, lazy, process);
 	if (!value)
 		return 1;
+
+	/* Only check sequence numbers on recevied packets. */
+	if (!send && !kp && config->seq_check_app_id) {
+		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
+				  payload_sz, process, value, config);
+	}
 
 	if (config->dnsPorts[0] != 0) {
 		if (dns_port_match(config->dnsPorts, value->sport,
