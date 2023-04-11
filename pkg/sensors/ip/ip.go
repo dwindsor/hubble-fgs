@@ -19,6 +19,7 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
 )
 
@@ -228,6 +229,20 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		if err == nil {
 			GetSocketForFD(syscall.IPPROTO_UDP, pid, fd, m.SockCookie, family)
 		}
+	}
+
+	if m.Return >= 0 && m.Return <= layer3.IpErrorMax &&
+		(layer3.IpErrorToString[m.Return] == "UDP stack burst no process" ||
+			layer3.IpErrorToString[m.Return] == "Socket discovery read error") {
+		// Just increment the metric and don't report the event.
+		var version string
+		if m.Tuple.IPv6 == 0 {
+			version = "IPv4"
+		} else {
+			version = "IPv6"
+		}
+		iperrormetrics.ProcessIpErrors(layer3.IpErrorToString[m.Return], version).Inc()
+		return nil, fmt.Errorf("IP Error handled as metric only")
 	}
 
 	msgUnix := MsgToIPUnix(&m, false, false)
