@@ -39,8 +39,14 @@ git checkout $BRANCH && git pull origin $BRANCH
 git tag -a $RELEASE -m "$RELEASE release" -s
 git push origin $RELEASE
 ```
-- [ ] Create standalone tarball release
-- [ ] Upload standalone tarball to the S3 bucket
+- [ ] Create standalone tarball release:
+```
+make tarball
+```
+- [ ] Upload standalone tarball to the S3 bucket (for this step, you need to configure the `aws` CLI, for more information see [here](https://docs.aws.amazon.com/cli/latest/reference/configure/#examples))
+```
+aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isovalent-tetragon-enterprise-public/hubble-enterprise-standalone-tarball/
+```
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Choose the tag you just generated as the tag
   - [ ] Click "generate release notes"
