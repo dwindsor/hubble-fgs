@@ -189,6 +189,10 @@ the cutting edge consider using a similar policy linked here,
 
  https://github.com/isovalent/cilium-enterprise-dogfooding/blob/main/flux/bases/tracing-policies/trace-all.yaml
 
+### Running on EKS
+
+See the [AWS EKS guide](docs/aws-eks-guide.md).
+
 ### Running on minikube on Mac
 
 #### 1. Check minikube version
