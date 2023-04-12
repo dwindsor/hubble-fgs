@@ -29,7 +29,7 @@ RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs -
 FROM --platform=${BUILDPLATFORM} ${ALPINE_IMAGE} as certs
 RUN apk --update add ca-certificates
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} as release
 # TARGETOS is an automatic platform ARG enabled by Docker BuildKit.
 ARG TARGETOS
 # TARGETARCH is an automatic platform ARG enabled by Docker BuildKit.

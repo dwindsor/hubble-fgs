@@ -43,12 +43,12 @@ RUN apk add --no-cache binutils git \
  && git checkout -b v0.3.22 v0.3.22 \
  && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
 
-# Fourth builder (cross-)compile a stripped static version of bpftool
-# This part should be a separated image, this is way too complicated
+# This builder (cross-)compile a stripped static version of bpftool.
+# This step was kept because the downloaded version includes LLVM libs with the
+# disassembler that makes the static binary grow from ~2Mo to ~30Mo.
 FROM --platform=$BUILDPLATFORM quay.io/cilium/clang@sha256:b440ae7b3591a80ffef8120b2ac99e802bbd31dee10f5f15a48566832ae0866f as bpftool-builder
 WORKDIR /bpftool
 ARG TARGETARCH BUILDARCH
-RUN echo $BUILDARCH
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get update && echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse\n\
 deb [arch=amd64] http://security.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse\n\
@@ -70,16 +70,21 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then make -C src EXTRA_CFLAGS=--static CC=aarch64-linux-gnu-gcc -j $(nproc) && aarch64-linux-gnu-strip src/bpftool; \
     else make -C src EXTRA_CFLAGS=--static -j $(nproc) && strip src/bpftool; fi
 
-# Final step runs on target platform (might need emulation) and retrieves
-# (cross-)compiled binaries from builders
-FROM docker.io/library/alpine:3.17.3@sha256:124c7d2707904eea7431fffe91522a01e5a861a624ee31d03372cc1d138a3126
+# This stage downloads a stripped static version of bpftool with LLVM disassembler
+FROM --platform=$BUILDPLATFORM quay.io/cilium/alpine-curl@sha256:408430f548a8390089b9b83020148b0ef80b0be1beb41a98a8bfe036709c196e as bpftool-downloader
+ARG TARGETARCH
+ARG BPFTOOL_TAG=v7.2.0-snapshot.0
+RUN curl -L https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_TAG}/bpftool-${BPFTOOL_TAG}-${TARGETARCH}.tar.gz | tar xz && chmod +x bpftool
+
+# Almost final step runs on target platform (might need emulation) and
+# retrieves (cross-)compiled binaries from builders
+FROM docker.io/library/alpine:3.17.2@sha256:ff6bdca1701f3a8a67e328815ff2346b0e4067d32ec36b7992c1fdc001dc8517 as base-build
 RUN apk add iproute2
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
-COPY --from=bpftool-builder /bpftool/src/bpftool /usr/bin/bpftool
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
@@ -87,3 +92,12 @@ COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /va
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
 RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
 CMD ["sh", "-c", "/usr/bin/hubble-fgs"]
+
+# This target only builds with the `--target release` option and reduces the
+# size of the final image with a static build of bpftool without the LLVM
+# disassembler
+FROM base-build as release
+COPY --from=bpftool-builder bpftool/src/bpftool /usr/bin/bpftool
+
+FROM base-build
+COPY --from=bpftool-downloader /bpftool /usr/bin/bpftool
