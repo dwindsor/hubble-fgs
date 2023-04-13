@@ -94,6 +94,9 @@ func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) 
 }
 
 func TestHttp(t *testing.T) {
+	// FIXME: re-enable this when the kernel patches are merged
+	t.Skipf("Test temporarily disabled pending kernel fixes.")
+
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
