@@ -13,45 +13,7 @@ env:
   ciliumVersion: v1.12.4
 
 jobs:
-  ensure-image-available:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          path: hubble-fgs
-          submodules: true
-
-      - name: Set up job variables
-        id: vars
-        run: |
-          if [ ${{ github.event.issue.pull_request || github.event.pull_request }} ]; then
-            PR_API_JSON=$(curl \
-              -H "Accept: application/vnd.github.v3+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
-            SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
-          else
-            SHA=${{ github.sha }}
-          fi
-          echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
-
-      - name: Attempt To Pull Docker Images
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 2
-          max_attempts: 30
-          retry_wait_seconds: 30
-          command: |
-            set -e
-            docker pull ${{ steps.vars.outputs.agentImage }}
-            docker pull ${{ steps.vars.outputs.operatorImage }}
-
-  installation-and-connectivity:
-    needs: ensure-image-available
+  install-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     strategy:
