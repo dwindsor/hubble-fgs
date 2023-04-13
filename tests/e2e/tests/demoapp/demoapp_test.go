@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/third_party/helm"
@@ -69,16 +70,22 @@ func installDemoApp() features.Func {
 	}
 }
 
-func uninstallDemoApp() features.Func {
-	return func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-		manager := helm.New(c.KubeconfigFile())
+func uninstallDemoApp() env.Func {
+	return func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		manager := helm.New(cfg.KubeconfigFile())
 		if err := manager.RunUninstall(
 			helm.WithName("jobs-app"),
 			helm.WithNamespace(namespace),
 		); err != nil {
-			t.Fatalf("failed to uninstall demo app. run with `-args -v=4` for more context from helm: %s", err)
+			return ctx, fmt.Errorf("failed to uninstall demo app. run with `-args -v=4` for more context from helm: %s", err)
 		}
-		return ctx
+
+		ctx, err := helpers.DeleteNamespace(namespace, true)(ctx, cfg)
+		if err != nil {
+			return ctx, err
+		}
+
+		return ctx, nil
 	}
 }
 
@@ -100,6 +107,8 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
+	runner.Finish(uninstallDemoApp())
+
 	runner.Run(m)
 }
 
@@ -116,12 +125,7 @@ func TestDemoApp(t *testing.T) {
 		Assess("Run Workload", installDemoApp()).
 		Feature()
 
-	cleanup := features.New("Cleanup").
-		Assess("Uninstall Demo App", uninstallDemoApp()).
-		Feature()
-
 	runner.TestInParallel(t, testDemoApp, run)
-	runner.Test(t, cleanup)
 }
 
 func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
