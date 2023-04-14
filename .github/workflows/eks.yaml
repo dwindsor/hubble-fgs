@@ -99,12 +99,12 @@ jobs:
       - name: Create EKS cluster
         id: cluster
         run: |
-          eksctl create cluster                                             \
-            --name ${{ steps.vars.outputs.cluster_name }}                   \
-            --tags "usage=pr,owner=${{ github.event.pull_request.number }}" \
-            --version ${{ matrix.k8s_version }}                             \
-            --nodes 1                                                       \
-            --node-type ${{ steps.vars.outputs.node_type }}                 \
+          eksctl create cluster                                                                          \
+            --name ${{ steps.vars.outputs.cluster_name }}                                                \
+            --tags "usage=${{ github.ref }},owner=${{ github.event.pull_request.number || github.sha }}" \
+            --version ${{ matrix.k8s_version }}                                                          \
+            --nodes 1                                                                                    \
+            --node-type ${{ steps.vars.outputs.node_type }}                                              \
             --spot
 
       - name: Install Amazon EKS EBS CSI Driver on cluster
@@ -121,7 +121,7 @@ jobs:
           ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 
           aws iam create-role --role-name $ROLE_NAME --no-cli-pager                          \
-            --tags Key=usage,Value=pr Key=owner,Value=${{ github.event.pull_request.number }} \
+            --tags Key=usage,Value=${{ github.ref }} Key=owner,Value=${{ github.event.pull_request.number || github.sha }} \
             --assume-role-policy-document "{
             \"Version\": \"2012-10-17\",
             \"Statement\": [
