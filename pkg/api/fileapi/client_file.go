@@ -68,8 +68,6 @@ type MsgFileEvent struct {
 	Fs         MsgFsInfo               `align:"fs"`
 	ParentIno  uint64                  `align:"parent_ino"`
 	ParentFs   MsgFsInfo               `align:"parent_fs"`
-	Offset     int64                   `align:"offset"`
-	Size       uint32                  `align:"size"`
 	MntNs      uint32                  `align:"mnt_ns"`
 }
 

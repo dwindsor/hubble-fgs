@@ -197,7 +197,7 @@ message FileIO {
 
 message GenericFileArg {
     FileDetails file = 1;
-    FileIO io = 2;
+    FileIO io = 2 [deprecated=true];
     tetragon.Namespace mnt_ns = 3;
 }
 

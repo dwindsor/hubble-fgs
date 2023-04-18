@@ -234,7 +234,7 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
-			WithHook(sm.Full("rw_verify_area")),
+			WithHook(sm.Full("security_file_permission")),
 		ec.NewProcessExecChecker("catEtcExec").
 			WithProcess(catCheckerEtc).
 			WithParent(shellChecker),
@@ -246,7 +246,7 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
-			WithHook(sm.Full("rw_verify_area")),
+			WithHook(sm.Full("security_file_permission")),
 		ec.NewProcessExecChecker("catPodEtcExec").
 			WithProcess(catPodCheckerEtc),
 		ec.NewProcessFileChecker("catPodEtcRead").
@@ -257,7 +257,7 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))),
 				),
 			).
-			WithHook(sm.Full("rw_verify_area")),
+			WithHook(sm.Full("security_file_permission")),
 	)
 
 	return fileChecker

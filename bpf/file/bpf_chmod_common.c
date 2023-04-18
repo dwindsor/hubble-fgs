@@ -62,7 +62,6 @@ BPF_KPROBE(chmod_common, const struct path *path, umode_t mode)
 	msg->action = action_chattr;
 	msg->hook = hook_chmod_common;
 	msg->ktime = ktime_get_ns();
-	msg->offset = msg->size = 0;
 	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,

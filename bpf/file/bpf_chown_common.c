@@ -63,7 +63,6 @@ BPF_KPROBE(chown_common, const struct path *path, uid_t user, gid_t group)
 	msg->action = action_chattr;
 	msg->hook = hook_chown_common;
 	msg->ktime = ktime_get_ns();
-	msg->offset = msg->size = 0;
 	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,

@@ -59,7 +59,6 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	msg->action = action_readdir;
 	msg->hook = hook_iterate_dir;
 	msg->ktime = ktime_get_ns();
-	msg->offset = msg->size = 0;
 	get_mnt_ns(&msg->mnt_ns);
 
 	return perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));

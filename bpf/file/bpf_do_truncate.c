@@ -56,8 +56,6 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	msg->action = action_write;
 	msg->hook = hook_do_truncate;
 	msg->ktime = ktime_get_ns();
-	msg->offset = 0;
-	msg->size = len;
 	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,

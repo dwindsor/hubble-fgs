@@ -691,7 +691,7 @@ func TestLoadFileSensor(t *testing.T) {
 		1:  tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
 		2:  tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
 		3:  tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
-		4:  tus.SensorProg{Name: "rw_verify_area", Type: ebpf.Kprobe},
+		4:  tus.SensorProg{Name: "security_file_permission", Type: ebpf.Kprobe},
 		5:  tus.SensorProg{Name: fmt.Sprintf("vfs_unlink_%s", verSuffix), Type: ebpf.Kprobe},
 		6:  tus.SensorProg{Name: "finish_open", Type: ebpf.Kprobe},
 		7:  tus.SensorProg{Name: fmt.Sprintf("vfs_rmdir_%s", verSuffix), Type: ebpf.Kprobe},
@@ -795,8 +795,7 @@ func renameDeleteChecker(f string) *ec.ProcessFileChecker {
 func renameReadChecker(f string) *ec.ProcessFileChecker {
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
 	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f)).WithLocation(l)
-	i := ec.NewFileIOChecker().WithOffset(sm.Full("0")).WithSize(sm.Full("8"))
-	g := ec.NewGenericFileArgChecker().WithFile(d).WithIo(i)
+	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
 	return ec.NewProcessFileChecker(fmt.Sprintf("renameRead(%s)", f)).
@@ -1519,8 +1518,7 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
 	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
-	o := ec.NewFileIOChecker().WithOffset(sm.Full("0")).WithSize(sm.Full("222"))
-	c := ec.NewGenericFileArgChecker().WithFile(f).WithIo(o)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
 
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_WRITE).
@@ -1657,7 +1655,7 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("rw_verify_area"))
+		WithHook(sm.Full("security_file_permission"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1703,7 +1701,7 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("rw_verify_area"))
+		WithHook(sm.Full("security_file_permission"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err := jsonchecker.JsonTestCheck(gt, checker)

@@ -37,7 +37,7 @@ var (
 	fileHookMap = map[uint32]string{
 		0:  "undef",
 		1:  "vfs_fallocate",
-		2:  "rw_verify_area",
+		2:  "security_file_permission",
 		3:  "filemap_fault",
 		4:  "filemap_map_pages",
 		5:  "filemap_page_mkwrite",
@@ -105,16 +105,6 @@ func createMntNs(inum uint32) *tetragon.Namespace {
 }
 
 func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
-	var ioDetails *tetragon.FileIO
-
-	action := tetragon.FileAction(event.Action)
-	ioDetails = nil
-	if action == tetragon.FileAction_FILE_WRITE || action == tetragon.FileAction_FILE_READ {
-		ioDetails = &tetragon.FileIO{
-			Offset: strconv.FormatInt(event.Offset, 10),
-			Size:   strconv.FormatUint(uint64(event.Size), 10),
-		}
-	}
 	fileDetails := &tetragon.FileDetails{
 		Filename: event.Path,
 		Inode: &tetragon.Inode{
@@ -129,7 +119,6 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 	args := &tetragon.GenericFileArg{
 		File:  fileDetails,
-		Io:    ioDetails,
 		MntNs: createMntNs(event.MntNs),
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
@@ -342,8 +331,6 @@ type MsgFileEventUnix struct {
 	ParentIno   uint64
 	ParentFs    MsgFsInfoUnix
 	ContainerID string
-	Offset      int64
-	Size        uint32
 	MntNs       uint32
 }
 

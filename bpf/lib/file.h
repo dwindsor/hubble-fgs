@@ -24,7 +24,7 @@ enum { action_invalid = 0,
 // this should match the map in pkg/grpc/file/file.go
 enum { hook_undef = 0,
        hook_vfs_fallocate = 1,
-       hook_rw_verify_area = 2,
+       hook_security_file_permission = 2,
        hook_filemap_fault = 3,
        hook_filemap_map_pages = 4,
        hook_filemap_page_mkwrite = 5,
@@ -89,8 +89,6 @@ struct msg_file_ops {
 	struct msg_fs_info fs;
 	__u64 parent_ino;
 	struct msg_fs_info parent_fs;
-	__s64 offset;
-	__u32 size;
 	__u32 mnt_ns;
 };
 

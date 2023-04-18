@@ -110,7 +110,7 @@ var (
 		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault"}}},
 		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages"}}},
 		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite"}}},
-		{"kprobe", "rw_verify_area", []FimFunc{{"rw_verify_area(int, struct file*, const loff_t*, size_t)", "bpf_rw_verify_area.o", "rw_verify_area"}}},
+		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission"}}},
 		{"kprobe", "vfs_unlink", []FimFunc{
 			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419"},
 			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512"},
@@ -661,8 +661,6 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		ParentIno:   m.ParentIno,
 		ParentFs:    createFsInfoUnix(m.ParentFs),
 		ContainerID: cid,
-		Offset:      m.Offset,
-		Size:        m.Size,
 		MntNs:       m.MntNs,
 	}
 

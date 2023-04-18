@@ -18,6 +18,9 @@
 #define READ  0
 #define WRITE 1
 
+#define MAY_WRITE 0x00000002
+#define MAY_READ  0x00000004
+
 #define FAULT_FLAG_WRITE   0x01
 #define FAULT_FLAG_MKWRITE 0x02
 
@@ -601,8 +604,7 @@ find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
 }
 
 static inline __attribute__((always_inline)) int
-handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
-			   int hook_type, __s64 offset, __u32 iosize)
+handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action, int hook_type)
 {
 	struct inode *inode;
 	struct dentry *dentry, *parent_dentry;
@@ -670,30 +672,12 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	msg->action = action;
 	msg->hook = hook_type;
 	msg->ktime = ktime_get_ns();
-	msg->offset = offset;
-	msg->size = iosize;
 	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
 
 	return 0;
-}
-
-static inline __attribute__((always_inline)) int
-handle_generic_file_write(struct pt_regs *ctx, struct file *file, int hook_type,
-			  __s64 offset, __u32 size)
-{
-	return handle_generic_file_access(ctx, file, action_write, hook_type,
-					  offset, size);
-}
-
-static inline __attribute__((always_inline)) int
-handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type,
-			 __s64 offset, __u32 size)
-{
-	return handle_generic_file_access(ctx, file, action_read, hook_type,
-					  offset, size);
 }
 
 static inline __attribute__((always_inline)) int

@@ -74,7 +74,7 @@ A FIM generated event looks like (we omit ```process``` and ```parent``` fields 
       }
     },
     "time": "2022-09-26T08:42:23.724452552Z",
-    "hook": "rw_verify_area"
+    "hook": "security_file_permission"
   },
   "node_name": "fgs-cli-ci-control-plane",
   "time": "2022-09-26T08:42:23.724449792Z"

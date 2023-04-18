@@ -22,13 +22,9 @@ BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
 
 	// generate both events as after a write pgfault we can read
 	if (flags & VM_WRITE) {
-		handle_generic_file_write(ctx, file, hook_filemap_map_pages,
-					  start_pgoff * PAGE_SIZE,
-					  (end_pgoff * PAGE_SIZE) + PAGE_SIZE);
+		handle_generic_file_access(ctx, file, action_write, hook_filemap_map_pages);
 	}
-	handle_generic_file_read(ctx, file, hook_filemap_map_pages,
-				 start_pgoff * PAGE_SIZE,
-				 (end_pgoff * PAGE_SIZE) + PAGE_SIZE);
+	handle_generic_file_access(ctx, file, action_read, hook_filemap_map_pages);
 
 	return 0;
 }
