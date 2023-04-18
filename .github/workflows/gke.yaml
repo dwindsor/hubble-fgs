@@ -21,7 +21,7 @@ jobs:
         release-channel:
           - 'stable'
           - 'regular'
-          # - 'rapid' # Temporarily disabled pending cilium bugfix
+          - 'rapid'
     env:
       USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
     steps:
