@@ -25,6 +25,8 @@ const (
 	ActionTypeCopyFd     = 5
 	ActionTypeGetUrl     = 6
 	ActionTypeDnsLookup  = 7
+	ActionTypeNoPost     = 8
+	ActionTypeSignal     = 9
 )
 
 var actionTypeTable = map[string]uint32{
@@ -36,6 +38,8 @@ var actionTypeTable = map[string]uint32{
 	"copyfd":     ActionTypeCopyFd,
 	"geturl":     ActionTypeGetUrl,
 	"dnslookup":  ActionTypeDnsLookup,
+	"nopost":     ActionTypeNoPost,
+	"signal":     ActionTypeSignal,
 }
 
 var actionTypeStringTable = map[uint32]string{
@@ -47,6 +51,8 @@ var actionTypeStringTable = map[uint32]string{
 	ActionTypeCopyFd:     "copyfd",
 	ActionTypeGetUrl:     "geturl",
 	ActionTypeDnsLookup:  "dnslookup",
+	ActionTypeNoPost:     "nopost",
+	ActionTypeSignal:     "signal",
 }
 
 // Action argument table entry (for URL and FQDN arguments)
@@ -448,11 +454,16 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 		}
 		actionArgTable.AddEntry(&actionArg)
 		WriteSelectorUint32(k, uint32(actionArg.tableId.ID))
+	case ActionTypeSignal:
+		WriteSelectorUint32(k, action.ArgSig)
 	}
 	return nil
 }
 
 func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector, actionArgTable *idtable.Table) error {
+	if len(actions) > 3 {
+		return fmt.Errorf("only %d actions are support for selector (current number of values is %d)", 3, len(actions))
+	}
 	loff := AdvanceSelectorLength(k)
 	for _, a := range actions {
 		if err := ParseMatchAction(k, &a, actionArgTable); err != nil {

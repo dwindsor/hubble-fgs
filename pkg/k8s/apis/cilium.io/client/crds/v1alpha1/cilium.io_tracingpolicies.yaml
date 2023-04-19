@@ -298,6 +298,7 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - NoPost
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -315,6 +316,10 @@ spec:
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
+                                  format: int32
+                                  type: integer
+                                argSig:
+                                  description: A signal number for signal action
                                   format: int32
                                   type: integer
                                 argUrl:
@@ -1058,6 +1063,7 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - NoPost
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1075,6 +1081,10 @@ spec:
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
+                                  format: int32
+                                  type: integer
+                                argSig:
+                                  description: A signal number for signal action
                                   format: int32
                                   type: integer
                                 argUrl:
@@ -1357,6 +1367,7 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - NoPost
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1374,6 +1385,10 @@ spec:
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
+                                  format: int32
+                                  type: integer
+                                argSig:
+                                  description: A signal number for signal action
                                   format: int32
                                   type: integer
                                 argUrl:
