@@ -241,7 +241,7 @@ func podhooksAddFunc(obj interface{}) {
 
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner(c, pod.Namespace, pod.Name, ""); err != nil {
-			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
+			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
 }
@@ -304,12 +304,12 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
-			logger.GetLogger().WithError(err).Warnf("TracingPolicyDestroyContainerFsScanner failed")
+			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner(c, pod1.Namespace, pod1.Name, ""); err != nil {
-			logger.GetLogger().WithError(err).Warnf("TracingPolicyDestroyContainerFsScanner failed")
+			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
 }
@@ -352,7 +352,7 @@ func podhooksDeleteFunc(obj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
-			logger.GetLogger().WithError(err).Warnf("TracingPolicyDestroyContainerFsScanner failed")
+			logger.GetLogger().WithError(err).Warnf("delete: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}
 }
