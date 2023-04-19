@@ -618,7 +618,11 @@ func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
 	uuid_str := "<failed to parse uuid>"
 	u, err := uuid.FromBytes(fs.SUuid[:])
 	if err == nil {
-		uuid_str = u.String()
+		if u == uuid.Nil {
+			uuid_str = "" // avoid printing UUID full of 0s
+		} else {
+			uuid_str = u.String()
+		}
 	}
 	sidIndex := bytes.IndexByte(fs.SId[:], 0)
 	snameIndex := bytes.IndexByte(fs.SName[:], 0)
