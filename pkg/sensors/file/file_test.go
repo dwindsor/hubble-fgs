@@ -694,7 +694,7 @@ func TestLoadFileSensor(t *testing.T) {
 		4:  tus.SensorProg{Name: "security_file_permission", Type: ebpf.Kprobe},
 		5:  tus.SensorProg{Name: fmt.Sprintf("vfs_unlink_%s", verSuffix), Type: ebpf.Kprobe},
 		6:  tus.SensorProg{Name: "finish_open", Type: ebpf.Kprobe},
-		7:  tus.SensorProg{Name: fmt.Sprintf("vfs_rmdir_%s", verSuffix), Type: ebpf.Kprobe},
+		7:  tus.SensorProg{Name: "security_inode_rmdir", Type: ebpf.Kprobe},
 		8:  tus.SensorProg{Name: fmt.Sprintf("vfs_mkdir_%s", verSuffix), Type: ebpf.Kprobe},
 		9:  tus.SensorProg{Name: "vfs_mkdir_exit", Type: ebpf.Kprobe},
 		10: tus.SensorProg{Name: "security_path_rename", Type: ebpf.Kprobe},

@@ -42,7 +42,7 @@ var (
 		4:  "filemap_map_pages",
 		5:  "filemap_page_mkwrite",
 		6:  "vfs_unlink",
-		7:  "vfs_rmdir",
+		7:  "security_inode_rmdir",
 		8:  "vfs_mkdir",
 		9:  "vfs_rename",
 		10: "finish_open",

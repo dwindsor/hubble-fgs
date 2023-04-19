@@ -369,7 +369,7 @@ func FileChecker() ec.MultiEventChecker {
 		ec.NewProcessFileChecker("rmdir").
 			WithAction(tetragon.FileAction_FILE_RMDIR).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/")))).
-			WithHook(sm.Full("vfs_rmdir")),
+			WithHook(sm.Full("security_inode_rmdir")),
 	)
 
 	return fileChecker

@@ -117,10 +117,7 @@ var (
 		}},
 		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
 		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
-		{"kprobe", "vfs_rmdir", []FimFunc{
-			{"vfs_rmdir(struct inode*, struct dentry*)", "bpf_vfs_rmdir.o", "vfs_rmdir/419"},
-			{"vfs_rmdir(struct user_namespace*, struct inode*, struct dentry*)", "bpf_vfs_rmdir.o", "vfs_rmdir/512"},
-		}},
+		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir"}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},

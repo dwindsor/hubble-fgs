@@ -3,7 +3,7 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) int
-kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
+kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct inode *d_inode;
 	struct hash_map_file_key file_key;
@@ -52,7 +52,7 @@ kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	msg->path.flags |= file_val->location_flags;
 
 	msg->action = action_rmdir;
-	msg->hook = hook_vfs_rmdir;
+	msg->hook = hook_security_inode_rmdir;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 
@@ -71,15 +71,8 @@ ignore_rmdir:
 	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_rmdir/512")), used)) int
-BPF_KPROBE(vfs_rmdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
-	   struct dentry *dentry)
+__attribute__((section(("kprobe/security_inode_rmdir")), used)) int
+BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 {
-	return kprobe_vfs_rmdir(ctx, dir, dentry);
-}
-
-__attribute__((section(("kprobe/vfs_rmdir/419")), used)) int
-BPF_KPROBE(vfs_rmdir_v419, struct inode *dir, struct dentry *dentry)
-{
-	return kprobe_vfs_rmdir(ctx, dir, dentry);
+	return kprobe_security_inode_rmdir(ctx, dir, dentry);
 }
