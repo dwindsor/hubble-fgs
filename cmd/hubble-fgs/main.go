@@ -161,11 +161,22 @@ func hubbleFGSExecute() error {
 		cancel()
 	}()
 
-	if err := obs.InitSensorManager(); err != nil {
+	// start sensor manager, and have it wait on sensorMgWait until we load
+	// the base sensor. note that this means that calling methods on the
+	// manager will block so they will have to either be executed in a
+	// goroutine or after we close the sensorMgWait channel to avoid
+	// deadlock.
+	sensorMgWait := make(chan struct{})
+	defer func() {
+		// if we fail before closing the channel, close it so that
+		// the sensor manager routine is unblocked.
+		if sensorMgWait != nil {
+			close(sensorMgWait)
+		}
+	}()
+	if err := obs.InitSensorManager(sensorMgWait); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
-
-	observer.SensorManager.LogSensorsAndProbes(ctx)
 
 	// Remove old tcpmon BPF directory
 	//
@@ -266,6 +277,11 @@ func hubbleFGSExecute() error {
 	if err := base.LoadDefault(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
 		return err
 	}
+
+	// now that the base sensor was loaded, we can start the sensor manager
+	close(sensorMgWait)
+	sensorMgWait = nil
+	observer.SensorManager.LogSensorsAndProbes(ctx)
 
 	if len(configFile) > 0 {
 		var sens *sensors.Sensor

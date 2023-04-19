@@ -118,7 +118,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	option.Config.CiliumDir = ""
 	obs := observer.NewObserver(configFile)
 
-	if err := obs.InitSensorManager(); err != nil {
+	if err := obs.InitSensorManager(nil); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
 	}
 

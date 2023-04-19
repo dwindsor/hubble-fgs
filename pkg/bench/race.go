@@ -243,7 +243,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	option.Config.CiliumDir = ""
 	obs := observer.NewObserver(f.Name())
 
-	if err := obs.InitSensorManager(); err != nil {
+	if err := obs.InitSensorManager(nil); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
 	}
 
