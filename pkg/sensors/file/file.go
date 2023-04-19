@@ -275,6 +275,27 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 	return nil
 }
 
+func checkRunningFsScanner(scannerFifo string) error {
+	matches, err := filepath.Glob("/proc/*/exe")
+	if err != nil {
+		return fmt.Errorf("checkRunningFsScanner: %w", err)
+	}
+
+	for _, file := range matches {
+		target, _ := os.Readlink(file)
+		if len(target) > 0 && strings.Contains(target, "hubble-fgs-fs-scanner") {
+			logger.GetLogger().Warn("Found a running instance of hubble-fgs-fs-scanner on clean start. Killing it.")
+			exec.Command("killall", "-9", "hubble-fgs-fs-scanner").Run()
+			break
+		}
+	}
+
+	// There is a case where fs-scanner is killed and the FIFO is not removed. Remove that here just to be sure.
+	os.Remove(scannerFifo)
+
+	return nil
+}
+
 func startFsScanner() (*exec.Cmd, error) {
 	if fm.ScannerFifoPath == "" {
 		if option.Config.EnableK8s {
@@ -299,6 +320,13 @@ func startFsScanner() (*exec.Cmd, error) {
 		args = append([]string{"-logFormat", format}, args...)
 	}
 
+	// After an agent crash, hubble-fgs-fs-scanner may be still running.
+	// This is the point of a clean start, so we expect no fs-scanner running
+	// or the FIFO to exist. We do this check and cleanup appropriately if needed.
+	if err := checkRunningFsScanner(fm.ScannerFifoPath); err != nil {
+		logger.GetLogger().WithError(err).Warn("checkRunningFsScanner fails")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner"), args...)
 	fsScannerCancelFnMtx.Lock()
@@ -312,7 +340,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	fsScannerCmd.Stderr = os.Stderr
 
 	if err := fsScannerCmd.Start(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fsScannerCmd.Start(): %w", err)
 	}
 
 	// wait for fifo to appear
@@ -332,7 +360,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	// We should wait here for the process to stop. Otherwise the FsScanner becomes a zombie.
 	go func() {
 		if err := fsScannerCmd.Wait(); err != nil {
-			logger.GetLogger().WithError(err).Warnf("fsScannerCmd.Wait() failed with '%s'", err)
+			logger.GetLogger().WithError(err).Warnf("fsScannerCmd.Wait(): failed with '%s'", err)
 		}
 	}()
 
