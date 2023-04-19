@@ -480,6 +480,11 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 				action = filter_match(key);
 				file_val->action = action;
 
+				if (val->msg.src.path.flags & CONTAINER_FILE) {
+					memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
+				}
+				file_val->location_flags = val->msg.src.path.flags;
+
 				update_inode_rename(&(val->msg.src), file_val);
 			}
 		} else if (val->msg.flags & MOVE_INTERNALLY) {
@@ -508,6 +513,11 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 
 				action = filter_match(key);
 				file_val->action = action;
+
+				if (val->msg.src.path.flags & CONTAINER_FILE) {
+					memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
+				}
+				file_val->location_flags = val->msg.src.path.flags;
 
 				update_inode_rename(&(val->msg.src), file_val);
 			}
