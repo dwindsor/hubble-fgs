@@ -790,6 +790,13 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 		     :);
 	probe_read(file_val->path, path_size, msg->path.str);
 
+	if (msg->path.flags & CONTAINER_FILE) {
+		file_val->location_flags = CONTAINER_FILE;
+		memcpy(file_val->container_id, msg->path.container_id, CONTAINER_ID_LEN);
+	} else {
+		file_val->location_flags = HOST_FILE;
+	}
+
 	// add this new file to the map of files
 	map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
 
