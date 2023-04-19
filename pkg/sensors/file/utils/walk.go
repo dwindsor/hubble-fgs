@@ -220,7 +220,9 @@ func RemoveContainerEntries(maps FimMaps, containerID string) error {
 		ret = multierr.Append(ret, err)
 	}
 
-	logger.GetLogger().Warnf("Deleted %d files and %d directories for container %s", fNum, dNum, containerID)
+	if fNum != 0 || dNum != 0 {
+		logger.GetLogger().Warnf("Deleted %d files and %d directories for container %s", fNum, dNum, containerID)
+	}
 	return ret
 }
 
