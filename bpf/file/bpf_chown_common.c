@@ -53,6 +53,10 @@ BPF_KPROBE(chown_common, const struct path *path, uid_t user, gid_t group)
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
 
 	msg->imode[0] = msg->imode[1] = 0;
 	msg->uid[0] = BPF_CORE_READ(inode, i_uid).val;
