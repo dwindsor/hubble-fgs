@@ -3,7 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.18
 
 require (
-	github.com/cilium/cilium v1.13.1
+	github.com/cilium/cilium v1.13.2
 	github.com/cilium/ebpf v0.9.4-0.20221102092914-a9cf21df64c2
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -34,10 +34,10 @@ require (
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.26.3
-	k8s.io/apiextensions-apiserver v0.26.3
-	k8s.io/client-go v0.26.3
-	k8s.io/code-generator v0.26.3
+	k8s.io/api v0.26.4
+	k8s.io/apiextensions-apiserver v0.26.4
+	k8s.io/client-go v0.26.4
+	k8s.io/code-generator v0.26.4
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
 	sigs.k8s.io/controller-tools v0.7.0
@@ -191,7 +191,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
-	k8s.io/apimachinery v0.26.3 // indirect
+	k8s.io/apimachinery v0.26.4 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	sigs.k8s.io/controller-runtime v0.13.1-0.20221201045826-d9912251cd81 // indirect
