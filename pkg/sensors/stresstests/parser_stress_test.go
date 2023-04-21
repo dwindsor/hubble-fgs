@@ -192,8 +192,11 @@ func TestTlsConnectionsSucceed(t *testing.T) {
 		},
 		{
 			name: "tls with tetragon base sensor",
-			tracingPolicy: &tracingPolicy{
-				``,
+			tracingPolicy: &tracingPolicy{`
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "base"`,
 			},
 			numConnections: 10_000,
 		},
@@ -220,21 +223,21 @@ spec:
 			name: "tls with tetragon tls sensor parser running",
 			tracingPolicy: &tracingPolicy{
 				fmt.Sprintf(`
-			apiVersion: cilium.io/v1alpha1
-			kind: TracingPolicy
-			metadata:
-			  name: "tls"
-			spec:
-			  parser:
-			    tls:
-			      enable: true
-			      mode: "socket"
-			      selectors:
-			      - matchPorts:
-			        - {{ .port }}
-			    tcp:
-			      enable: true
-			                `),
+            apiVersion: cilium.io/v1alpha1
+            kind: TracingPolicy
+            metadata:
+              name: "tls"
+            spec:
+              parser:
+                tls:
+                  enable: true
+                  mode: "socket"
+                  selectors:
+                  - matchPorts:
+                    - {{ .port }}
+                tcp:
+                  enable: true
+                            `),
 			},
 			numConnections: 10_000,
 		},
@@ -250,7 +253,6 @@ spec:
   parser:
     nop:
       enable: true
-      mode: "socket"
       selectors:
       - matchPorts:
         - {{ .port }}
@@ -272,7 +274,6 @@ spec:
   parser:
     http:
       enable: true
-      mode: "socket"
       selectors:
       - matchPorts:
         - {{ .port }}
