@@ -320,6 +320,9 @@ type TcpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Rtt Histogram
 	RttHistogram TcpRttHistogram `json:"histogram"`
+	// +kubebuilder:validation:Optional
+	// TCP latency observability policy specification
+	Latency LatencyPolicySpec `json:"latency"`
 }
 
 type TcpWatermarksPolicySpec struct {

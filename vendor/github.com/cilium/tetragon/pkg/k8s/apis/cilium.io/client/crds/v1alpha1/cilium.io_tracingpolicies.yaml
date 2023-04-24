@@ -791,6 +791,54 @@ spec:
                         required:
                         - enable
                         type: object
+                      latency:
+                        description: TCP latency observability policy specification
+                        properties:
+                          clockCheckInterval:
+                            description: Configures the clock check interval in seconds
+                            format: int32
+                            type: integer
+                          clockMaxSkew:
+                            description: Configures the maximum acceptable clock skew
+                              before updating in microseconds
+                            format: int32
+                            type: integer
+                          enable:
+                            default: false
+                            description: Enable UDP latency observability
+                            type: boolean
+                          interfaces:
+                            description: Configures the interfaces to enable on
+                            items:
+                              type: string
+                            type: array
+                          interfacesCheckInterval:
+                            description: Configures the interfaces check interval
+                              in seconds
+                            format: int32
+                            type: integer
+                          matchPorts:
+                            description: Configures the ports to enable on
+                            items:
+                              type: integer
+                            type: array
+                          matchSubnets:
+                            description: Configures the subnets to enable on
+                            items:
+                              type: string
+                            type: array
+                          max:
+                            description: Configures the expected Max Latency value
+                            format: int32
+                            type: integer
+                          maxPacketSize:
+                            description: Configures the maximum packet size
+                            type: integer
+                          min:
+                            description: Configures the expected Min Latency value
+                            format: int32
+                            type: integer
+                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32

@@ -265,6 +265,24 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 		c = float64(s.Rtt.Buckets[7].Count)
 		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
 	}
+	if s.Latency != nil && s.Latency.Buckets != nil {
+		c = float64(s.Latency.Buckets[0].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B00").Add(c)
+		c = float64(s.Latency.Buckets[1].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B01").Add(c)
+		c = float64(s.Latency.Buckets[2].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B10").Add(c)
+		c = float64(s.Latency.Buckets[3].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B25").Add(c)
+		c = float64(s.Latency.Buckets[4].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B50").Add(c)
+		c = float64(s.Latency.Buckets[5].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B75").Add(c)
+		c = float64(s.Latency.Buckets[6].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B90").Add(c)
+		c = float64(s.Latency.Buckets[7].Count)
+		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
+	}
 }
 
 func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {

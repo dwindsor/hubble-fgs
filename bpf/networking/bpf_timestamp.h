@@ -100,7 +100,10 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	struct latency_config *latency_config;
 	struct latency_protocol_config *config;
 	struct iphdr *newiph;
+	u16 source = 0;
+	u16 dest = 0;
 	struct udphdr *udph;
+	struct tcphdr *tcph;
 	u16 tot_len;
 	int zero = 0;
 	long ret;
@@ -108,14 +111,23 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	u16 *pkt_words;
 	u64 timestamp;
 
-	if (iph->protocol != IPPROTO_UDP)
+	if (iph->protocol != IPPROTO_UDP && iph->protocol != IPPROTO_TCP)
 		return true;
 
 	latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
 	if (!latency_config)
 		return true;
 
-	config = &latency_config->udp;
+	switch (iph->protocol) {
+	case IPPROTO_UDP:
+		config = &latency_config->udp;
+		break;
+	case IPPROTO_TCP:
+		config = &latency_config->tcp;
+		break;
+	default:
+		return true;
+	}
 
 	if (!config->enable)
 		return true;
@@ -123,16 +135,32 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	if (config->maxPacketSize && ((u64)data_end - (u64)data - sizeof(*eth) + IPO_LEN > config->maxPacketSize))
 		return true;
 
-	if (data + sizeof(*eth) + sizeof(*iph) + sizeof(*udph) > data_end)
-		return true;
+	switch (iph->protocol) {
+	case IPPROTO_UDP:
+		if (data + sizeof(*eth) + (iph->ihl * 4) + sizeof(*udph) > data_end)
+			return true;
+		udph = (struct udphdr *)(data + sizeof(*eth) + (iph->ihl * 4));
+		source = udph->source;
+		dest = udph->dest;
+		break;
+	case IPPROTO_TCP:
+		if (data + sizeof(*eth) + (iph->ihl * 4) + sizeof(*tcph) > data_end)
+			return true;
+		tcph = (struct tcphdr *)(data + sizeof(*eth) + (iph->ihl * 4));
 
-	udph = (struct udphdr *)(data + sizeof(*eth) + sizeof(*iph));
+		// We won't add timestamps to SYN or SYN/ACK packets.
+		if (tcph->syn)
+			return true;
+
+		source = tcph->source;
+		dest = tcph->dest;
+		break;
+	}
 
 	/* Check if port is permitted. Can be source or destination so latency can be measured
 	 * in both directions.
 	 */
-	if (!port_permitted(config, bpf_ntohs(udph->dest),
-			    bpf_ntohs(udph->source))) {
+	if (!port_permitted(config, bpf_ntohs(dest), bpf_ntohs(source))) {
 		return true;
 	}
 

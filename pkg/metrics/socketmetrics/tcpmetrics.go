@@ -87,4 +87,8 @@ var (
 		Name: consts.MetricNamePrefix + "socket_stats_rtt",
 		Help: "TCP socket RTT bucket counter",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
+	SocketStatsLatency = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_latency",
+		Help: "TCP socket latency bucket counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
 )

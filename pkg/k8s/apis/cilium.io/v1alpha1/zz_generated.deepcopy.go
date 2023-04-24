@@ -615,7 +615,7 @@ func (in *ParserPolicySpec) DeepCopyInto(out *ParserPolicySpec) {
 	out.Interface = in.Interface
 	in.Dns.DeepCopyInto(&out.Dns)
 	in.Nop.DeepCopyInto(&out.Nop)
-	out.Tcp = in.Tcp
+	in.Tcp.DeepCopyInto(&out.Tcp)
 	out.BurstExitGen = in.BurstExitGen
 	out.NetworkWatermarksExitGen = in.NetworkWatermarksExitGen
 	out.Heartbeat = in.Heartbeat
@@ -638,6 +638,7 @@ func (in *TcpPolicySpec) DeepCopyInto(out *TcpPolicySpec) {
 	out.Burst = in.Burst
 	out.Watermarks = in.Watermarks
 	out.RttHistogram = in.RttHistogram
+	in.Latency.DeepCopyInto(&out.Latency)
 	return
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
@@ -14,13 +15,15 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -37,6 +40,10 @@ var (
 
 	stats          *lru.Cache[tcpStatsKey, networkapi.MsgSocketStatsUnix]
 	stataCacheSize = 32000
+	LatencyConfig  networklatency.ProtocolConfig
+
+	configured       = false
+	timestampEnabled = false
 )
 
 var (
@@ -104,6 +111,24 @@ var (
 		"kprobe_tcp_ack_snd_check",
 		"kprobe")
 
+	// Latency uses TC egress to add timestamp and cgroup skb ingress to calculate
+	// datagram latency.
+	Latency = program.Builder(
+		"bpf_tcp_recv.o",
+		"tcp_recv",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+		"cgrp_tcp_ingress",
+	)
+
+	LatencyLazy = program.Builder(
+		"bpf_tcp_recv_lazy.o",
+		"tcp_recv",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+		"cgrp_tcp_ingress",
+	)
+
 	// Maps for TCP Sockets
 	SocketMap         = program.MapBuilder("socket_map", Connect)
 	TlsSocketMap      = program.MapBuilder("tls_socket_map", Connect)
@@ -120,6 +145,10 @@ var (
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
+
+	// Map for latency
+	LatencyConfigMap     = program.MapBuilder(networklatency.ConfigMapName, Latency)
+	LatencyConfigMapLazy = program.MapBuilder(networklatency.ConfigMapName, LatencyLazy)
 )
 
 type tcpStatsKey struct {
@@ -128,14 +157,23 @@ type tcpStatsKey struct {
 }
 
 func unloadTcpSensor() error {
+	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	configured = false
+	timestampEnabled = false
+
+	networklatency.Stop(unix.IPPROTO_TCP)
 	if watermarksEnabled {
 		networkWatermarksEvents.Stop(IPPROTO_TCP)
 	}
 	return nil
 }
 
-func EnableTcp() *sensors.Sensor {
+func EnableTcp(timestampEnable bool) *sensors.Sensor {
 	var progs []*program.Program
+
+	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	configured = false
+	timestampEnabled = false
 
 	progs = []*program.Program{
 		Connect,
@@ -164,6 +202,25 @@ func EnableTcp() *sensors.Sensor {
 		ProcessNetworkWatermarksMap,
 		FdLookupConfigMap,
 	}
+
+	if timestampEnable && kernels.MinKernelVersion("5.4.0") {
+		logger.GetLogger().Info("Enabling TCP latency")
+		timestampEnabled = true
+		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
+		if err == nil {
+			progs = append(progs, timestampProg)
+		} else {
+			logger.GetLogger().Warn("TCP unsupported by network latency")
+		}
+		if !kernels.MinKernelVersion("5.10.0") {
+			progs = append(progs, LatencyLazy)
+			maps = append(maps, LatencyConfigMapLazy)
+		} else {
+			progs = append(progs, Latency)
+			maps = append(maps, LatencyConfigMap)
+		}
+	}
+
 	logger.GetLogger().WithFields(logrus.Fields{
 		"statsInterval":              tcpInterval,
 		"watermarksEnable":           tcpWatermarksEnable,
@@ -228,11 +285,12 @@ func (tcp *tcpSensor) PolicyHandler(
 	} else {
 		tcpRttHistogramMax = 0
 	}
-	return EnableTcp(), nil
+	LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
+	return EnableTcp(spec.Parser.Tcp.Latency.Enable), nil
 }
 
-func tcpDiffRtt(last, curr *api.Histogram) api.Histogram {
-	return api.Histogram{
+func tcpDiffRtt(last, curr *networkapi.Histogram) networkapi.Histogram {
+	return networkapi.Histogram{
 		B99: curr.B99 - last.B99,
 		B90: curr.B90 - last.B90,
 		B75: curr.B75 - last.B75,
@@ -244,7 +302,7 @@ func tcpDiffRtt(last, curr *api.Histogram) api.Histogram {
 	}
 }
 
-func tcpDiffValues(last, curr *api.MsgSocketStatsUnix, tuple *api.MsgIPTuple) (api.MsgSocketStatsUnix, error) {
+func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStatsUnix, error) {
 	source, dest := network.TupleAddrString(tuple, ops.MSG_OP_TCPSTATS)
 	if curr.BytesReceived < last.BytesReceived {
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -260,7 +318,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix, tuple *api.MsgIPTuple) (a
 		}).Warnf("TX TCP stats underflow: %d < %d", curr.BytesSent, last.BytesSent)
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
-	return api.MsgSocketStatsUnix{
+	return networkapi.MsgSocketStatsUnix{
 		BytesSubmitted:   0,
 		BytesSent:        curr.BytesSent - last.BytesSent,
 		BytesConsumed:    0,
@@ -307,12 +365,12 @@ func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, er
 }
 
 func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true, false))
+	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true, true))
 	if err != nil {
 		return nil, nil
 	}
@@ -320,12 +378,12 @@ func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	tcp := ip.MsgToIPUnix(&m, true, false)
+	tcp := ip.MsgToIPUnix(&m, true, true)
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
@@ -342,7 +400,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
@@ -353,20 +411,42 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	var err error
-
-	err = nil
-
 	getRunningSockets(true, true)
 	if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
 		return err
 	}
 
-	if tcpInterval > 0 {
-		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
-		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	if args.Load.Type == "cgrp_tcp_ingress" {
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose)
+		if err != nil {
+			return err
+		}
+	} else if args.Load.Type == "tcp_tc_egress" {
+		err := networklatency.AttachTc(args)
+		if err != nil {
+			return err
+		}
+	} else {
+		if tcpInterval > 0 {
+			configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
+			err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+			if err != nil {
+				return err
+			}
+		}
 	}
-	return err
+
+	if !configured {
+		if timestampEnabled {
+			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_TCP, LatencyConfig); err != nil {
+				return err
+			}
+			networklatency.Start()
+		}
+		configured = true
+	}
+
+	return nil
 }
 
 func init() {
@@ -398,4 +478,7 @@ func AddTCP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
+
+	sensors.RegisterProbeType("cgrp_tcp_ingress", tcp)
+	sensors.RegisterProbeType("tcp_tc_egress", tcp)
 }
