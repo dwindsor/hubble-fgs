@@ -22,6 +22,10 @@ type NamespaceInterface struct {
 	If string
 }
 
+var (
+	progMap = make(map[*program.Program]*ebpf.Program)
+)
+
 func getAllRouteLinks() ([]netlink.Link, error) {
 	allLinks, err := netlink.LinkList()
 	if err != nil {
@@ -175,6 +179,8 @@ func LoadTC(
 	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		seenNs := make(map[uint64]bool)
 
+		progMap[load] = prog
+
 		procDir, err := os.ReadDir(option.Config.ProcFS)
 		if err != nil {
 			return nil, err
@@ -230,5 +236,15 @@ func LoadTC(
 		}
 		return chainUn, nil
 	}
+
+	p, exists := progMap[load]
+	if exists {
+		if p.FD() != -1 {
+			_, err := attach(p, nil)
+			return allAttached, err
+		}
+		delete(progMap, load)
+	}
+
 	return allAttached, program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
 }
