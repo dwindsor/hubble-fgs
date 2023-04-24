@@ -39,6 +39,7 @@ git checkout $BRANCH && git pull origin $BRANCH
 git tag -a $RELEASE -m "$RELEASE release" -s
 git push origin $RELEASE
 ```
+- [ ] Only for major release, update `dependabot.yml` to include the new branch. Example [here](https://github.com/isovalent/hubble-fgs/pull/2677/commits/f910b6663e8314fe0f5d1e1b87fae1bdbc0173d6).
 - [ ] Create standalone tarball release:
 ```
 make tarball
