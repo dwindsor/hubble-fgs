@@ -13,7 +13,8 @@ struct socketmap_value {
 	__u64 last_time;
 	__u64 sent;
 	__u64 received;
-	__u64 buckets[8];
+	__u64 rtt_buckets[8];
+	__u64 latency_buckets[8];
 	__u8 ack_finack;
 	__u8 pad[7];
 };
@@ -166,12 +167,11 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 
 	process = lookup_socketmap(cookie);
 	if (!process || process->key.pid != pid) {
+		int i;
 		value = execve_map_get_noinit(pid);
 		if (!value)
 			return false;
 		if (!process) {
-			int i;
-
 			process = (struct socketmap_value *)map_lookup_elem(&socket_map_heap, &zero);
 			if (!process)
 				return false;
@@ -186,7 +186,8 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 			process->ack_finack = 0;
 #pragma unroll
 			for (i = 0; i < 8; i++) {
-				process->buckets[i] = 0;
+				process->rtt_buckets[i] = 0;
+				process->latency_buckets[i] = 0;
 			}
 			add_socketmap(cookie, t, process);
 		} else {
@@ -199,6 +200,11 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 			process->socket_flags = 0;
 			process->zero_window = 0;
 			process->ack_finack = 0;
+#pragma unroll
+			for (i = 0; i < 8; i++) {
+				process->rtt_buckets[i] = 0;
+				process->latency_buckets[i] = 0;
+			}
 		}
 	}
 	return true;

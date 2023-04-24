@@ -88,8 +88,10 @@ get_socket_stats(struct sock *sk, struct net *net,
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->tozerowin = process->zero_window;
 #pragma unroll
-	for (i = 0; i < 8; i++)
-		stats->buckets[i] = process->buckets[i];
+	for (i = 0; i < 8; i++) {
+		stats->rtt_buckets[i] = process->rtt_buckets[i];
+		stats->latency_buckets[i] = process->latency_buckets[i];
+	}
 }
 
 static inline __attribute__((always_inline)) void

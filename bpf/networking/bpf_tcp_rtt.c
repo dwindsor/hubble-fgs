@@ -53,20 +53,20 @@ tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 
 	if (cfg->bucket00 > rtt_us)
-		process->buckets[0]++;
+		process->rtt_buckets[0]++;
 	else if (cfg->bucket01 > rtt_us)
-		process->buckets[1]++;
+		process->rtt_buckets[1]++;
 	else if (cfg->bucket10 > rtt_us)
-		process->buckets[2]++;
+		process->rtt_buckets[2]++;
 	else if (cfg->bucket25 > rtt_us)
-		process->buckets[3]++;
+		process->rtt_buckets[3]++;
 	else if (cfg->bucket50 > rtt_us)
-		process->buckets[4]++;
+		process->rtt_buckets[4]++;
 	else if (cfg->bucket75 > rtt_us)
-		process->buckets[5]++;
+		process->rtt_buckets[5]++;
 	else if (cfg->bucket90 > rtt_us)
-		process->buckets[6]++;
+		process->rtt_buckets[6]++;
 	else
-		process->buckets[7]++;
+		process->rtt_buckets[7]++;
 	return 0;
 }

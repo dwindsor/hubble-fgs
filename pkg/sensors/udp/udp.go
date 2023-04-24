@@ -34,6 +34,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
+	"golang.org/x/sys/unix"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -42,11 +43,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 )
 
 const (
@@ -59,7 +59,6 @@ const (
 	SocketMapName        = "socket_map"
 
 	stataCacheSize = 32000
-	IPPROTO_UDP    = 17
 )
 
 type udpPseudoSocket struct {
@@ -73,7 +72,8 @@ var (
 
 	stats *lru.Cache[udpInfoKey, udpInfoValue]
 
-	Config           *ConfigValue
+	Config           ConfigValue
+	LatencyConfig    networklatency.ProtocolConfig
 	configured       = false
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
@@ -82,11 +82,7 @@ var (
 	pseudoSockets       = make(map[uint64](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex
 
-	tcAttachedInterfaces = make(map[*program.Program]map[tc.NamespaceInterface]bool)
-	tcAttaching          sync.Mutex
-	tcList               []sensors.LoadProbeArgs
-	tcCheckTimer         = timer.NewPeriodicTimer("UDP TC Check Timer", runUdpTcCheck, true)
-	tcCheckInterval      = 0 * time.Second
+	timestampEnabled = false
 )
 
 var (
@@ -185,31 +181,26 @@ var (
 		"kprobe",
 	)
 
-	TCEgressTimestamp = program.Builder(
-		"bpf_udp_timestamp.o",
-		"udp_egress_timestamp",
-		"classifier/udp_egress_timestamp",
-		"classifier_udp_egress_timestamp",
-		"tc_egress",
-	)
-
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, Udp4Send)
 	SocketCookieStats = program.MapBuilder("socket_map_stats", Udp4Send)
 
 	// UDP maps
-	UdpMap                  = program.MapBuilder(UdpMapName, InetSend)
-	UdpMapLazy              = program.MapBuilder(UdpMapName, InetSendLazy)
-	UdpMapLazyKprobe        = program.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
-	UdpRetprobeStats        = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
-	UdpConfigMap            = program.MapBuilder(UdpConfigMapName, InetSend)
-	UdpConfigLazyMap        = program.MapBuilder(UdpConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe  = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
-	UdpPayloadMap           = program.MapBuilder(UdpPayloadMapName, InetSend)
-	UdpPayloadLazyMap       = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
-	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	FdLookupConfigMap       = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
+	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)
+	UdpMapLazy                 = program.MapBuilder(UdpMapName, InetSendLazy)
+	UdpMapLazyKprobe           = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpRetprobeMap             = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
+	UdpRetprobeStats           = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
+	UdpConfigMap               = program.MapBuilder(UdpConfigMapName, InetSend)
+	UdpConfigLazyMap           = program.MapBuilder(UdpConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe     = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpPayloadMap              = program.MapBuilder(UdpPayloadMapName, InetSend)
+	UdpPayloadLazyMap          = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
+	UdpPayloadLazyMapKprobe    = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
+	FdLookupConfigMap          = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
+	LatencyConfigMap           = program.MapBuilder(networklatency.ConfigMapName, InetRecv)
+	LatencyConfigMapLazy       = program.MapBuilder(networklatency.ConfigMapName, InetRecvLazy)
+	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
 
 type udpInfoKey struct {
@@ -300,13 +291,6 @@ func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &ConfigValue{}
 func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
 
-type SubnetSelector struct {
-	addr      [2]uint64
-	ipv6      uint8
-	prefixLen uint8
-	Padding   [6]uint8
-}
-
 type ConfigValue struct {
 	dnsPorts                      [maxDnsPorts]uint16
 	watermarksEnable              uint64
@@ -314,21 +298,6 @@ type ConfigValue struct {
 	watermarksWindowSize          uint64
 	watermarksBurstTriggerPercent uint64
 	watermarksDipTriggerPercent   uint64
-	bootNs                        uint64
-	latencyEnable                 uint8
-	pad1                          uint8
-	maxPacketSize                 uint16
-	pad2                          uint32
-	latencySubnets                [maxLatencySubnets]SubnetSelector
-	latencyPorts                  [maxLatencyPorts]uint16
-	latBucket00                   uint32
-	latBucket01                   uint32
-	latBucket10                   uint32
-	latBucket25                   uint32
-	latBucket50                   uint32
-	latBucket75                   uint32
-	latBucket90                   uint32
-	latBucket99                   uint32
 }
 
 func (v *ConfigValue) String() string {
@@ -381,7 +350,7 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 		SegsOut:          uint32(v.SegsOut),
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
-		UdpLatency: api.Histogram{
+		Latency: api.Histogram{
 			B00: v.Buckets[0],
 			B01: v.Buckets[1],
 			B10: v.Buckets[2],
@@ -606,24 +575,9 @@ type udpSensor struct {
 }
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
-	saddr := reader.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
-	daddr := reader.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
+	saddr := network.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
+	daddr := network.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
-}
-
-func runUdpTcCheck() {
-	tcAttaching.Lock()
-	defer tcAttaching.Unlock()
-	for _, program := range tcList {
-		attachedInterfaces, exists := tcAttachedInterfaces[program.Load]
-		if !exists {
-			attachedInterfaces = make(map[tc.NamespaceInterface]bool)
-		}
-		attachedInterfaces, err := tc.LoadTC(program.BPFDir, program.MapDir, program.CiliumDir, program.Load, program.Verbose, latencyInterfaces, attachedInterfaces)
-		if err == nil {
-			tcAttachedInterfaces[program.Load] = attachedInterfaces
-		}
-	}
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
@@ -633,7 +587,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		// protocol field of struct sock needs shifting or not.
 		// If ip.LoadSockets is disabled or moved, then add a call to ip.ProtocolShift
 		// to cause the proto_shift field to be set.
-		ip.LoadSockets(FdCallback, IPPROTO_UDP)
+		ip.LoadSockets(FdCallback, unix.IPPROTO_UDP)
 	}
 
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
@@ -646,20 +600,10 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		if err != nil {
 			return err
 		}
-	} else if args.Load.Type == "tc_egress" {
-		tcAttaching.Lock()
-		attachedInterfaces := make(map[tc.NamespaceInterface]bool)
-		attachedInterfaces, err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose, latencyInterfaces, attachedInterfaces)
-		if err == nil {
-			tcAttachedInterfaces[args.Load] = attachedInterfaces
-			tcList = append(tcList, args)
-			tcAttaching.Unlock()
-		} else {
-			tcAttaching.Unlock()
+	} else if args.Load.Type == "udp_tc_egress" {
+		err := networklatency.AttachTc(args)
+		if err != nil {
 			return err
-		}
-		if tcCheckInterval != (0 * time.Second) {
-			tcCheckTimer.Start(tcCheckInterval)
 		}
 	}
 	if !configured {
@@ -669,12 +613,19 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
 			return err
 		}
+		logger.GetLogger().WithField("timestampEnabled", timestampEnabled).Debug("UDP Loader")
+		if timestampEnabled {
+			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_UDP, LatencyConfig); err != nil {
+				return err
+			}
+			networklatency.Start()
+		}
 		configured = true
 	}
 	return nil
 }
 
-func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) error {
+func configureUdpSensor(mapDir string, mapName string, config ConfigValue) error {
 	m, err := bpf.OpenMap(filepath.Join(mapDir, mapName))
 	if err != nil {
 		return err
@@ -684,11 +635,8 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 	key := &udpSensorConfigKey{
 		Zero: uint32(0),
 	}
-	m.Update(key, config)
+	m.Update(key, &config)
 	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
-	if config.latencyEnable == 1 && clockCheckInterval > 0 && clockMaxSkew > 0 {
-		clockUpdateTimer.Start(time.Duration(clockCheckInterval) * time.Second)
-	}
 	return nil
 }
 
@@ -697,14 +645,14 @@ func unloadUdpSensor() error {
 	configured = false
 
 	gcTimer.Stop()
-	tcCheckTimer.Stop()
+	networklatency.Stop(unix.IPPROTO_UDP)
 	if watermarkEnabled {
-		networkWatermarksEvents.Stop(IPPROTO_UDP)
+		networkWatermarksEvents.Stop(unix.IPPROTO_UDP)
 	}
 	return nil
 }
 
-func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sensors.Sensor {
+func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 	var versionStr string
@@ -732,6 +680,7 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 			SocketCookieMap,
 			SocketCookieStats,
 			FdLookupConfigMap,
+			LatencyConfigMapLazyKprobe,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -756,6 +705,7 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 			SocketCookieMap,
 			SocketCookieStats,
 			FdLookupConfigMap,
+			LatencyConfigMapLazy,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
@@ -780,13 +730,20 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 			SocketCookieMap,
 			SocketCookieStats,
 			FdLookupConfigMap,
+			LatencyConfigMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
 	}
 
-	if timestampEnabled {
-		progs = append(progs, TCEgressTimestamp)
+	if timestampEnable {
+		timestampEnabled = true
+		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_UDP)
+		if err == nil {
+			progs = append(progs, timestampProg)
+		} else {
+			logger.GetLogger().Warn("UDP unsupported by network latency")
+		}
 	}
 
 	gcTimer.Start(interval)
@@ -821,7 +778,8 @@ func (udp *udpSensor) PolicyHandler(
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
-	Config, _ = ParseUdpSpec(spec)
+	Config, LatencyConfig = ParseUdpSpec(spec)
+	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
 }
 
@@ -937,5 +895,5 @@ func AddUDP() {
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
 	sensors.RegisterProbeType("kprobe_udp", udp)
-	sensors.RegisterProbeType("tc_egress", udp)
+	sensors.RegisterProbeType("udp_tc_egress", udp)
 }

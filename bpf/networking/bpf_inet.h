@@ -6,6 +6,7 @@
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_udp.h"
+#include "bpf_latency.h"
 #include "bpf_process_network_watermarks.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
@@ -119,36 +120,6 @@ udp_port_info(struct udphdr *udp, bool send)
 	return info;
 }
 
-/* Allocate the latency to a histogram bucket.
- */
-static inline __attribute__((always_inline)) void
-add_latency(struct udp_sensor_config *cfg, struct udp_info_value *value,
-	    s64 latency)
-{
-	/* Negative latency is a clock sync error.
-	 * Zero latency indicates latency wasn't provided.
-	 */
-	if (latency <= 0)
-		return;
-
-	if (cfg->bucket00 > latency)
-		value->buckets[0]++;
-	else if (cfg->bucket01 > latency)
-		value->buckets[1]++;
-	else if (cfg->bucket10 > latency)
-		value->buckets[2]++;
-	else if (cfg->bucket25 > latency)
-		value->buckets[3]++;
-	else if (cfg->bucket50 > latency)
-		value->buckets[4]++;
-	else if (cfg->bucket75 > latency)
-		value->buckets[5]++;
-	else if (cfg->bucket90 > latency)
-		value->buckets[6]++;
-	else
-		value->buckets[7]++;
-}
-
 /* This logic is a bit racy, but we can handle it. Thinking through the
  * cases. Multiple sends may happen concurrently on the same key. If
  * the key is not in the map we may have multiple cores in the !value
@@ -179,7 +150,8 @@ add_latency(struct udp_sensor_config *cfg, struct udp_info_value *value,
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	   struct iphdr *ip, bool ipv6, s64 latency, struct udphdr *udp,
-	   int payload_sz, struct udp_sensor_config *config, bool send,
+	   int payload_sz, struct udp_sensor_config *config,
+	   struct latency_protocol_config *latency_config, bool send,
 	   bool lazy)
 {
 	struct udp_info_value *value;
@@ -200,9 +172,10 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 
 		if (send)
 			udp_info_tx_reset(value, payload_sz);
-		else
+		else {
 			udp_info_rx_reset(value, payload_sz);
-		add_latency(config, value, latency);
+			add_latency(latency_config, value->buckets, latency);
+		}
 
 		/* Store the info in the entry for later use,
 		 * and potentially for searching from userland
@@ -242,9 +215,10 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		/* PID doesn't match, so this must be a new socket */
 		if (send)
 			udp_info_tx_reset(value, payload_sz);
-		else
+		else {
 			udp_info_rx_reset(value, payload_sz);
-		add_latency(config, value, latency);
+			add_latency(latency_config, value->buckets, latency);
+		}
 		*info = udp_info(ip, ipv6, udp, send);
 		if (!*info)
 			return 0;
@@ -273,23 +247,12 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	} else {
 		if (send)
 			update_tx_value(value, payload_sz);
-		else
+		else {
 			update_rx_value(value, payload_sz);
-		add_latency(config, value, latency);
+			add_latency(latency_config, value->buckets, latency);
+		}
 	}
 	return value;
-}
-
-/* Calculate latency from packet send time stamp.
- */
-static inline __attribute__((always_inline)) s64
-calc_latency(u64 bootns, u64 ts_low, u64 ts_high)
-{
-	/* Get time in microseconds. */
-	u64 curr_time = (ktime_get_ns() + bootns + 500) / 1000;
-	/* Clear bit 31 on both timestamps. High needs shifting by 31 bits */
-	u64 ts = (ts_low & 0x7fffffff) | ((ts_high & 0x7fffffff) << 31);
-	return curr_time - ts;
 }
 
 /* Lazy versions of udp send do not support copying the payload to
@@ -308,6 +271,8 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	struct udp_info_value *value;
 	struct udp_info *info = 0;
 	struct udp_sensor_config *config;
+	struct latency_config *latency_config = 0;
+	struct latency_protocol_config *udp_latency = 0;
 	int zero = 0;
 	s64 latency = 0;
 
@@ -315,14 +280,21 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	if (!config)
 		return 1;
 
-	if (ts_opt) {
-		latency = calc_latency(config->boot_ns,
-				       bpf_ntohl(ts_opt->timestamp_low),
-				       bpf_ntohl(ts_opt->timestamp_high));
+	if (!send) {
+		latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
+		if (!latency_config)
+			return 1;
+
+		if (ts_opt) {
+			latency = calc_latency(latency_config->boot_ns,
+					       bpf_ntohl(ts_opt->timestamp_low),
+					       bpf_ntohl(ts_opt->timestamp_high));
+			udp_latency = &latency_config->udp;
+		}
 	}
 
 	value = __udp_send(skb, &info, cookie, ip, ipv6, latency, udp,
-			   payload_sz, config, send, lazy);
+			   payload_sz, config, udp_latency, send, lazy);
 	if (!value)
 		return 1;
 

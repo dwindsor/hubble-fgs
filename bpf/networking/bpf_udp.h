@@ -4,6 +4,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "bpf_network_helpers.h"
+#include "bpf_latency.h"
 #include "bpf_tracing.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
@@ -22,42 +23,6 @@
  * process info (should be much smaller that MAX_UDP_ENDPOINTS).
  */
 #define MAX_UDP_PAYLOADS 512
-/* The number of buckets in the related bloom map */
-#define UDP_BLOOM_BUCKETS  4096
-#define UDP_BLOOM_KEY_MASK 0xFFF
-
-struct timestamp_option {
-	unsigned char type;
-	unsigned char len;
-	unsigned char pointer;
-	unsigned char flag;
-	__u32 magic;
-	__u32 timestamp_low;
-	__u32 magic2;
-	__u32 timestamp_high;
-};
-
-/* Define our magic number that we place in the timestamp IP option in place of
- * an IP address. We use this magic number to check the timestamp value is one
- * that we placed rather than a genuine timestamp IP option. Note, it translates
- * to 0.85.170.129 which is an invalid IP address.
- * We define this in terms of bytes and in network order so that the compiler
- * can optimise all of this to a fixed calculation when we calculate the
- * checksum.
- */
-#define IPO_MAGIC_B0 0x00
-#define IPO_MAGIC_B1 0x55
-#define IPO_MAGIC_B2 0xAA
-#define IPO_MAGIC_B3 0x81
-
-#define IPO_MAGIC_H1 ((IPO_MAGIC_B0 << 8) | IPO_MAGIC_B1) // network order
-#define IPO_MAGIC_H2 ((IPO_MAGIC_B2 << 8) | IPO_MAGIC_B3) // network order
-#define IPO_MAGIC_W  ((IPO_MAGIC_H1 << 16) | IPO_MAGIC_H2) // network order
-
-#define IPO_TYPE 0x44 // 68
-#define IPO_LEN	 sizeof(struct timestamp_option)
-#define IPO_PTR	 (IPO_LEN + 1)
-#define IPO_FLAG 3 // IP address fields are prespecified
 
 struct udp_info_key {
 	u64 cookie;
@@ -129,13 +94,6 @@ struct udp_packet_details {
 	bool ipv6;
 };
 
-struct subnet_selector {
-	u64 addr[2];
-	u8 ipv6;
-	u8 prefix_len;
-	u8 pad[6];
-};
-
 struct udp_sensor_config {
 	u16 dnsPorts[4];
 	u64 watermarks_enable;
@@ -143,21 +101,6 @@ struct udp_sensor_config {
 	u64 watermarks_window_size;
 	u64 watermarks_burst_trigger_percent;
 	u64 watermarks_dip_trigger_percent;
-	u64 boot_ns;
-	u8 latency_enable;
-	u8 pad1;
-	u16 maxPacketSize;
-	u32 pad2;
-	struct subnet_selector latency_subnets[4];
-	u16 latency_ports[4];
-	u32 bucket00;
-	u32 bucket01;
-	u32 bucket10;
-	u32 bucket25;
-	u32 bucket50;
-	u32 bucket75;
-	u32 bucket90;
-	u32 bucket99;
 };
 
 struct {
@@ -215,10 +158,6 @@ struct {
 	__type(value, struct udp_packet_details);
 	__uint(max_entries, 1);
 } udp_header_heap SEC(".maps");
-
-struct payload_bloom_value {
-	u16 data[UDP_BLOOM_BUCKETS];
-};
 
 static inline __attribute__((always_inline)) void
 copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,

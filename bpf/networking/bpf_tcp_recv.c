@@ -1,0 +1,15 @@
+#include "vmlinux.h"
+#include "bpf_tcp_recv.h"
+
+char _license[] __attribute__((section("license"), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
+#endif
+
+__attribute__((section("cgroup_skb/ingress"), used)) int
+tcp_recv(struct __sk_buff *skb)
+{
+	tcp_handler(skb);
+	return SK_PASS;
+}

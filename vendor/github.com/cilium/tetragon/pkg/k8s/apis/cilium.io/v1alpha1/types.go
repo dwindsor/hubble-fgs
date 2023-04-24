@@ -370,7 +370,7 @@ type UdpPolicySpec struct {
 	Watermarks UdpWatermarksPolicySpec `json:"watermarks"`
 	// +kubebuilder:validation:Optional
 	// UDP latency observability policy specification
-	Latency UdpLatencyPolicySpec `json:"latency"`
+	Latency LatencyPolicySpec `json:"latency"`
 }
 
 type UdpWatermarksPolicySpec struct {
@@ -397,7 +397,7 @@ type UdpWatermarksPolicySpec struct {
 	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
 }
 
-type UdpLatencyPolicySpec struct {
+type LatencyPolicySpec struct {
 	// Enable UDP latency observability
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional

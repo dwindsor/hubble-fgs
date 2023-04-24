@@ -33,5 +33,5 @@ func LoadCgroupProgram(
 		}
 		fgsCgroupFD = fd
 	}
-	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, program.RawAttach(fgsCgroupFD), verbose)
+	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
 }

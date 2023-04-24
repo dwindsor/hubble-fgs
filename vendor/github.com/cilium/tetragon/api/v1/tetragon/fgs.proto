@@ -73,8 +73,8 @@ message SocketStats {
     // TCP RTT Histogram:
     Histogram rtt = 15;
 
-    // UDP Latency Histogram:
-    Histogram udp_latency = 16;
+    // TCP/UDP Latency Histogram:
+    Histogram latency = 16;
 }
 
 enum SocketProtocol {

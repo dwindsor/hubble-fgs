@@ -1,11 +1,12 @@
 #include "vmlinux.h"
 #include "api.h"
-#include "bpf_udp_timestamp.h"
+#include "bpf_timestamp.h"
+#include "bpf_network_helpers.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-__attribute__((section("classifier/udp_egress_timestamp"), used)) int
-udp_egress_timestamp(struct __sk_buff *skb)
+__attribute__((section("classifier/egress_timestamp"), used)) int
+egress_timestamp(struct __sk_buff *skb)
 {
 	void *data = (void *)(long)skb->data;
 	void *data_end = (void *)(long)skb->data_end;
@@ -27,14 +28,14 @@ udp_egress_timestamp(struct __sk_buff *skb)
 	iph = data + sizeof(*eth);
 	switch (iph->version) {
 	case 4:
-		if (udp_egress_timestamp4(skb, data, data_end, eth, iph)) {
+		if (egress_timestamp4(skb, data, data_end, eth, iph)) {
 			return TC_ACT_PIPE;
 		} else {
 			return TC_ACT_SHOT;
 		}
 		break;
 	case 6:
-		if (udp_egress_timestamp6(skb, data, data_end, eth)) {
+		if (egress_timestamp6(skb, data, data_end, eth)) {
 			return TC_ACT_PIPE;
 		} else {
 			return TC_ACT_SHOT;

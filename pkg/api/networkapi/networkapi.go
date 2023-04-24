@@ -72,7 +72,7 @@ type MsgSocketStatsUnix struct {
 	ToZeroWindow     uint32
 	SkDrop           uint32
 	SkbConsumeMisses uint32
-	UdpLatency       Histogram
+	Latency          Histogram
 	Rtt              Histogram
 }
 
@@ -93,7 +93,8 @@ type MsgSocketStats struct {
 	SkDrop           uint32
 	SkbConsumeMisses uint32
 	Pad              uint32
-	Buckets          [8]uint64
+	RttBuckets       [8]uint64
+	LatencyBuckets   [8]uint64
 }
 
 type MsgIPEventUnix struct {

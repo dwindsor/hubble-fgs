@@ -4,22 +4,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
-func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, udpLatency bool) api.MsgSocketStatsUnix {
-	var histogram api.Histogram
-
-	if rtt || udpLatency {
-		histogram = api.Histogram{
-			B00: m.Buckets[0],
-			B01: m.Buckets[1],
-			B10: m.Buckets[2],
-			B25: m.Buckets[3],
-			B50: m.Buckets[4],
-			B75: m.Buckets[5],
-			B90: m.Buckets[6],
-			B99: m.Buckets[7],
-		}
-	}
-
+func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, latency bool) api.MsgSocketStatsUnix {
 	message := api.MsgSocketStatsUnix{
 		BytesSubmitted:   m.BytesSubmitted,
 		BytesSent:        m.BytesSent,
@@ -39,9 +24,30 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, udpLatency bool) api.
 	}
 
 	if rtt {
+		histogram := api.Histogram{
+			B00: m.RttBuckets[0],
+			B01: m.RttBuckets[1],
+			B10: m.RttBuckets[2],
+			B25: m.RttBuckets[3],
+			B50: m.RttBuckets[4],
+			B75: m.RttBuckets[5],
+			B90: m.RttBuckets[6],
+			B99: m.RttBuckets[7],
+		}
 		message.Rtt = histogram
-	} else if udpLatency {
-		message.UdpLatency = histogram
+	}
+	if latency {
+		histogram := api.Histogram{
+			B00: m.LatencyBuckets[0],
+			B01: m.LatencyBuckets[1],
+			B10: m.LatencyBuckets[2],
+			B25: m.LatencyBuckets[3],
+			B50: m.LatencyBuckets[4],
+			B75: m.LatencyBuckets[5],
+			B90: m.LatencyBuckets[6],
+			B99: m.LatencyBuckets[7],
+		}
+		message.Latency = histogram
 	}
 
 	return message

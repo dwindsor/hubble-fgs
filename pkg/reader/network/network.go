@@ -78,58 +78,58 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
 		}
 	}
 
-	udpLatencyHist := &tetragon.Histogram{}
+	latencyHist := &tetragon.Histogram{}
 
-	if stats.UdpLatency.B99 > 0 ||
-		stats.UdpLatency.B90 > 0 ||
-		stats.UdpLatency.B75 > 0 ||
-		stats.UdpLatency.B50 > 0 ||
-		stats.UdpLatency.B25 > 0 ||
-		stats.UdpLatency.B10 > 0 ||
-		stats.UdpLatency.B01 > 0 ||
-		stats.UdpLatency.B00 > 0 {
+	if stats.Latency.B99 > 0 ||
+		stats.Latency.B90 > 0 ||
+		stats.Latency.B75 > 0 ||
+		stats.Latency.B50 > 0 ||
+		stats.Latency.B25 > 0 ||
+		stats.Latency.B10 > 0 ||
+		stats.Latency.B01 > 0 ||
+		stats.Latency.B00 > 0 {
 		bucket99 := &tetragon.HistogramBucket{
 			Percentile: 99,
 			Size:       1,
-			Count:      stats.UdpLatency.B99,
+			Count:      stats.Latency.B99,
 		}
 		bucket90 := &tetragon.HistogramBucket{
 			Percentile: 90,
 			Size:       9,
-			Count:      stats.UdpLatency.B90,
+			Count:      stats.Latency.B90,
 		}
 		bucket75 := &tetragon.HistogramBucket{
 			Percentile: 75,
 			Size:       15,
-			Count:      stats.UdpLatency.B75,
+			Count:      stats.Latency.B75,
 		}
 		bucket50 := &tetragon.HistogramBucket{
 			Percentile: 50,
 			Size:       25,
-			Count:      stats.UdpLatency.B50,
+			Count:      stats.Latency.B50,
 		}
 		bucket25 := &tetragon.HistogramBucket{
 			Percentile: 25,
 			Size:       25,
-			Count:      stats.UdpLatency.B25,
+			Count:      stats.Latency.B25,
 		}
 		bucket10 := &tetragon.HistogramBucket{
 			Percentile: 10,
 			Size:       15,
-			Count:      stats.UdpLatency.B10,
+			Count:      stats.Latency.B10,
 		}
 		bucket01 := &tetragon.HistogramBucket{
 			Percentile: 1,
 			Size:       9,
-			Count:      stats.UdpLatency.B01,
+			Count:      stats.Latency.B01,
 		}
 		bucket00 := &tetragon.HistogramBucket{
 			Percentile: 0,
 			Size:       1,
-			Count:      stats.UdpLatency.B00,
+			Count:      stats.Latency.B00,
 		}
 
-		udpLatencyHist.Buckets = []*tetragon.HistogramBucket{
+		latencyHist.Buckets = []*tetragon.HistogramBucket{
 			bucket00,
 			bucket01,
 			bucket10,
@@ -157,7 +157,7 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
 		SkDrop:           stats.SkDrop,
 		SkbConsumeMisses: stats.SkbConsumeMisses,
 		Rtt:              rttHist,
-		UdpLatency:       udpLatencyHist,
+		Latency:          latencyHist,
 	}
 }
 

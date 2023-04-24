@@ -827,7 +827,7 @@ func TestDetectLatency4(t *testing.T) {
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081)).
 		WithStats(ec.NewSocketStatsChecker().
-			WithUdpLatency(ec.NewHistogramChecker().
+			WithLatency(ec.NewHistogramChecker().
 				WithBuckets(ec.NewHistogramBucketListMatcher().
 					WithValues(ec.NewHistogramBucketChecker().
 						WithPercentile(1).
@@ -890,7 +890,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			5: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
 			6: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
-			8: tus.SensorProg{Name: "udp_egress_timestamp", Type: ebpf.SchedCLS},
+			8: tus.SensorProg{Name: "egress_timestamp", Type: ebpf.SchedCLS},
 		}
 		sensorMaps = []tus.SensorMap{
 			// sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -907,7 +907,9 @@ func TestLoadUdpSensor(t *testing.T) {
 			// inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 4, 6, 7}},
-			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 8}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2}},
+
+			tus.SensorMap{Name: "latency_config_map", Progs: []uint{2, 8}},
 
 			// sk_allocret, sk_free_lazy, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -932,7 +934,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			6: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
 			8: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
-			9: tus.SensorProg{Name: "udp_egress_timestamp", Type: ebpf.SchedCLS},
+			9: tus.SensorProg{Name: "egress_timestamp", Type: ebpf.SchedCLS},
 		}
 		sensorMaps = []tus.SensorMap{
 			// sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -949,7 +951,9 @@ func TestLoadUdpSensor(t *testing.T) {
 			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
-			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 9}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3}},
+
+			tus.SensorMap{Name: "latency_config_map", Progs: []uint{3, 9}},
 
 			// sk_allocret, sk_free_lazy, inet_lazy_send (not stats), inet_lazy_recv (not stats),
 			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -974,7 +978,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			6: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
 			8: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
-			9: tus.SensorProg{Name: "udp_egress_timestamp", Type: ebpf.SchedCLS},
+			9: tus.SensorProg{Name: "egress_timestamp", Type: ebpf.SchedCLS},
 		}
 		sensorMaps = []tus.SensorMap{
 			// sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -991,7 +995,9 @@ func TestLoadUdpSensor(t *testing.T) {
 			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
-			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 9}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3}},
+
+			tus.SensorMap{Name: "latency_config_map", Progs: []uint{3, 9}},
 
 			// sk_allocret, sk_free_lazy, inet_lazy_send (not stats), inet_lazy_recv (not stats),
 			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe

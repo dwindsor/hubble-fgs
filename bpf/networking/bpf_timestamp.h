@@ -2,7 +2,7 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
-#include "bpf_udp.h"
+#include "bpf_latency.h"
 #include "bpf_tracing.h"
 
 #define ETH_IP_P 0x0800
@@ -21,20 +21,20 @@ struct {
 } packet_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) bool
-port_permitted(struct udp_sensor_config *config, u16 dport, u16 sport)
+port_permitted(struct latency_protocol_config *config, u16 dport, u16 sport)
 {
 	/* If no ports specified, then all ports permitted. */
-	if (config->latency_ports[0] == 0) {
+	if (config->ports[0] == 0) {
 		return true;
 	}
-	if (config->latency_ports[0] == sport ||
-	    config->latency_ports[0] == dport ||
-	    config->latency_ports[1] == sport ||
-	    config->latency_ports[1] == dport ||
-	    config->latency_ports[2] == sport ||
-	    config->latency_ports[2] == dport ||
-	    config->latency_ports[3] == sport ||
-	    config->latency_ports[3] == dport) {
+	if (config->ports[0] == sport ||
+	    config->ports[0] == dport ||
+	    config->ports[1] == sport ||
+	    config->ports[1] == dport ||
+	    config->ports[2] == sport ||
+	    config->ports[2] == dport ||
+	    config->ports[3] == sport ||
+	    config->ports[3] == dport) {
 		return true;
 	}
 	return false;
@@ -53,34 +53,34 @@ check_subnet4(u32 addr, u8 prefix_len, u32 daddr)
 
 /* daddr is in network order */
 static inline __attribute__((always_inline)) bool
-ip4_permitted(struct udp_sensor_config *config, u32 daddr)
+ip4_permitted(struct latency_protocol_config *config, u32 daddr)
 {
-	if (config->latency_subnets[0].addr[0] == 0) {
+	if (config->subnets[0].addr[0] == 0) {
 		return false;
 	}
-	if (check_subnet4(config->latency_subnets[0].addr[0],
-			  config->latency_subnets[0].prefix_len, daddr)) {
+	if (check_subnet4(config->subnets[0].addr[0],
+			  config->subnets[0].prefix_len, daddr)) {
 		return true;
 	}
-	if (config->latency_subnets[1].addr[0] == 0) {
+	if (config->subnets[1].addr[0] == 0) {
 		return false;
 	}
-	if (check_subnet4(config->latency_subnets[1].addr[0],
-			  config->latency_subnets[1].prefix_len, daddr)) {
+	if (check_subnet4(config->subnets[1].addr[0],
+			  config->subnets[1].prefix_len, daddr)) {
 		return true;
 	}
-	if (config->latency_subnets[2].addr[0] == 0) {
+	if (config->subnets[2].addr[0] == 0) {
 		return false;
 	}
-	if (check_subnet4(config->latency_subnets[2].addr[0],
-			  config->latency_subnets[2].prefix_len, daddr)) {
+	if (check_subnet4(config->subnets[2].addr[0],
+			  config->subnets[2].prefix_len, daddr)) {
 		return true;
 	}
-	if (config->latency_subnets[3].addr[0] == 0) {
+	if (config->subnets[3].addr[0] == 0) {
 		return false;
 	}
-	if (check_subnet4(config->latency_subnets[3].addr[0],
-			  config->latency_subnets[3].prefix_len, daddr)) {
+	if (check_subnet4(config->subnets[3].addr[0],
+			  config->subnets[3].prefix_len, daddr)) {
 		return true;
 	}
 	return false;
@@ -91,13 +91,14 @@ ip4_permitted(struct udp_sensor_config *config, u32 daddr)
  * partially modified and then something failed.
  */
 static inline __attribute__((always_inline)) bool
-udp_egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
-		      struct ethhdr *eth, struct iphdr *iph)
+egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
+		  struct ethhdr *eth, struct iphdr *iph)
 {
 	void *buffer;
 	u32 len;
 	struct timestamp_option *opt;
-	struct udp_sensor_config *config;
+	struct latency_config *latency_config;
+	struct latency_protocol_config *config;
 	struct iphdr *newiph;
 	struct udphdr *udph;
 	u16 tot_len;
@@ -110,21 +111,22 @@ udp_egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	if (iph->protocol != IPPROTO_UDP)
 		return true;
 
-	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map,
-							     &zero);
-	if (!config)
+	latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
+	if (!latency_config)
 		return true;
 
-	if (!config->latency_enable)
+	config = &latency_config->udp;
+
+	if (!config->enable)
 		return true;
 
-	if (config->maxPacketSize && (data_end - data - sizeof(*eth) + IPO_LEN > config->maxPacketSize))
+	if (config->maxPacketSize && ((u64)data_end - (u64)data - sizeof(*eth) + IPO_LEN > config->maxPacketSize))
 		return true;
 
 	if (data + sizeof(*eth) + sizeof(*iph) + sizeof(*udph) > data_end)
 		return true;
 
-	udph = data + sizeof(*eth) + sizeof(*iph);
+	udph = (struct udphdr *)(data + sizeof(*eth) + sizeof(*iph));
 
 	/* Check if port is permitted. Can be source or destination so latency can be measured
 	 * in both directions.
@@ -184,13 +186,13 @@ udp_egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	}
 
 	/* Add our timestamp IP option. */
-	opt = buffer + sizeof(*eth) + sizeof(*iph);
+	opt = (struct timestamp_option *)(buffer + sizeof(*eth) + sizeof(*iph));
 	opt->type = IPO_TYPE;
 	opt->len = IPO_LEN;
 	opt->pointer = IPO_PTR;
 	opt->flag = IPO_FLAG;
 	opt->magic = bpf_ntohl(IPO_MAGIC_W);
-	timestamp = ((ktime_get_ns() + config->boot_ns) + 500) /
+	timestamp = ((ktime_get_ns() + latency_config->boot_ns) + 500) /
 		    1000; // rounded microseconds
 	opt->timestamp_low = bpf_ntohl(
 		(timestamp & 0x7fffffff) |
@@ -245,8 +247,8 @@ udp_egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 }
 
 static inline __attribute__((always_inline)) bool
-udp_egress_timestamp6(struct __sk_buff *skb, void *data, void *data_end,
-		      struct ethhdr *eth)
+egress_timestamp6(struct __sk_buff *skb, void *data, void *data_end,
+		  struct ethhdr *eth)
 {
 	return true;
 }
