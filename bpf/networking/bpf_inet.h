@@ -191,7 +191,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	udp_key(&key, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
-	process = locate_socketmap(cookie, (struct sock *)skb->sk, lazy);
+	process = lookup_socketmap(cookie);
 
 	if (!value) {
 		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
@@ -419,7 +419,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	cookie = (u64 *)map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
 		return;
-	write_cookie_from_sk(cookie, (struct sock *)skb->sk, true);
+	write_cookie(cookie, (u64)skb->sk);
 	if (!*cookie) {
 		emit_ip_error_event(skb, 0, cookie, false,
 				    IP_ERROR_INET_NO_COOKIE);
@@ -518,7 +518,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
 
-	cookie = (u64)sk;
+	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false, IP_ERROR_INET_NO_COOKIE);
 		return;
@@ -634,7 +634,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
 
-	cookie = get_socket_cookie(skb);
+	write_cookie(&cookie, (u64)skb->sk);
 	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;

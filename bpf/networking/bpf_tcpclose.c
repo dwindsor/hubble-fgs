@@ -152,7 +152,7 @@ event_tcp_close(struct pt_regs *ctx)
 
 		if (is_tuple_local(&tuple))
 			tuple.uid = sock_netns(skp);
-		del_socketmap(&cookie, skp, &tuple, false);
+		del_socketmap(&cookie, &tuple);
 
 		del_tlsmap(&cookie);
 		map_delete_elem(&http_map, &tuple);
@@ -160,7 +160,7 @@ event_tcp_close(struct pt_regs *ctx)
 		map_delete_elem(&http_map, &tuple);
 		bottle_drop(&cookie);
 	} else {
-		del_socketmap(&cookie, skp, 0, false);
+		del_socketmap(&cookie, 0);
 	}
 
 	return 1;

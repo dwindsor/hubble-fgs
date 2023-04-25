@@ -290,7 +290,7 @@ static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 }
 
 static inline __attribute__((always_inline)) int
-udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
+udp_sendret(struct pt_regs *ctx, bool ipv6)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *sock_info;
@@ -325,7 +325,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 		return 0;
 	}
 
-	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
+	write_cookie(&cookie, (u64)sock_info->sk);
 	if (!cookie) {
 		del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 		emit_ip_error_event(ctx, 0, 0, false,
@@ -604,8 +604,7 @@ udp_set_info(void *ctx, u64 *cookie, struct udp_info_value *value,
  * Aside from this impassioned argument, there is no more accurate place
  * to hook!
  */
-static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
-							  bool lazy)
+static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 {
 	struct udp_info_value *value;
 	int zero = 0;
@@ -622,7 +621,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		return 0;
 
 	/* We need a cookie to attach this datagram to */
-	write_cookie_from_sk(&cookie, sk, lazy);
+	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
 				    IP_ERROR_UDP_RECV_NO_COOKIE);

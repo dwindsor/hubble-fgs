@@ -16,7 +16,7 @@ struct {
 } udp_close_event_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-__sk_free(struct pt_regs *ctx, bool lazy)
+__sk_free(struct pt_regs *ctx)
 {
 	struct sock *sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
 	__u64 cookie;
@@ -33,7 +33,7 @@ __sk_free(struct pt_regs *ctx, bool lazy)
 		return 0;
 	}
 
-	write_cookie_from_sk(&cookie, sk, lazy);
+	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
 				    IP_ERROR_SOCK_RELEASE_NO_COOKIE);
@@ -62,7 +62,7 @@ __sk_free(struct pt_regs *ctx, bool lazy)
 		/* We store sockets regardless of protocol in sk_alloc (because a socket
 		 * might not have a protocol assigned at time of creation) so let's remove
 		 * them here, seeing as they're closed. */
-		del_socketmap(&cookie, sk, 0, lazy);
+		del_socketmap(&cookie, 0);
 		return 0;
 	}
 
@@ -110,6 +110,6 @@ __sk_free(struct pt_regs *ctx, bool lazy)
 	size = sizeof(struct msg_ip_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 
-	del_socketmap(&cookie, sk, 0, lazy);
+	del_socketmap(&cookie, 0);
 	return 1;
 }

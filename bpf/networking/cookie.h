@@ -111,16 +111,6 @@ static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
 }
 
 static inline __attribute__((always_inline)) void
-write_cookie_from_sk(u64 *cookie, struct sock *sk, bool lazy)
-{
-	if (lazy) {
-		write_cookie(cookie, (u64)sk);
-	} else {
-		*cookie = get_cookie(sk);
-	}
-}
-
-static inline __attribute__((always_inline)) void
 add_socketmap(u64 *cookie, struct msg_tls_ip *t, struct socketmap_value *v)
 {
 	int err = map_update_elem(&socket_map, cookie, v, 0);
@@ -135,21 +125,17 @@ add_socketmap(u64 *cookie, struct msg_tls_ip *t, struct socketmap_value *v)
 }
 
 static inline __attribute__((always_inline)) void
-del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ip *t, bool lazy)
+del_socketmap(u64 *cookie, struct msg_tls_ip *t)
 {
 	int err = map_delete_elem(&socket_map, cookie);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (err && !lazy) {
-		err = map_delete_elem(&socket_map, (u64 *)&sk);
-	}
-
 	if (!err && (cntr = (__s64 *)map_lookup_elem(&socket_map_stats, &zero))) {
 		*cntr = *cntr - 1;
-		if (t)
-			map_delete_elem(&tls_socket_map, t);
 	}
+	if (t)
+		map_delete_elem(&tls_socket_map, t);
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *
@@ -216,22 +202,6 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 		}
 	}
 	return true;
-}
-
-static inline __attribute__((always_inline)) struct socketmap_value *
-locate_socketmap(u64 *cookie, struct sock *sk, bool lazy)
-{
-	u64 sk_cookie;
-	struct socketmap_value *process = lookup_socketmap(cookie);
-	if (!process && !lazy) {
-		sk_cookie = (u64)sk;
-		process = lookup_socketmap(&sk_cookie);
-		if (process) {
-			add_socketmap(cookie, 0, process);
-			del_socketmap(&sk_cookie, 0, 0, true);
-		}
-	}
-	return process;
 }
 
 #endif

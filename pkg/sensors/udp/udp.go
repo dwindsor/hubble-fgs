@@ -90,22 +90,16 @@ var (
 )
 
 var (
-	SockCreate = program.Builder(
-		"bpf_sock.o",
-		"sock_create",
-		"cgroup/sock_create",
-		"cgroup_sock_create",
-		"cgrp_socket")
+	SkAllocRet = program.Builder(
+		"bpf_sock_create.o",
+		"sk_alloc",
+		"kretprobe/sk_alloc",
+		"kretprobe_sk_alloc",
+		"kprobe",
+	).SetRetProbe(true)
 
 	SockRelease = program.Builder(
 		"bpf_sock_release.o",
-		"__sk_free",
-		"kprobe/__sk_free",
-		"kprobe___sk_free",
-		"kprobe")
-
-	SockReleaseLazy = program.Builder(
-		"bpf_sock_release_lazy.o",
 		"__sk_free",
 		"kprobe/__sk_free",
 		"kprobe___sk_free",
@@ -126,14 +120,6 @@ var (
 		"cgroup_skb_ingress",
 		"cgrp_ingress",
 	)
-
-	SkAllocRetLazy = program.Builder(
-		"bpf_sock_create.o",
-		"sk_alloc",
-		"kretprobe/sk_alloc",
-		"kretprobe_sk_alloc",
-		"kprobe",
-	).SetRetProbe(true)
 
 	InetSendLazy = program.Builder(
 		"bpf_inet_send_lazy.o",
@@ -199,46 +185,6 @@ var (
 		"kprobe",
 	)
 
-	Udp4SendLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"udp_sendmsg",
-		"kprobe/udp_sendmsg",
-		"kprobe_udp_sendmsg",
-		"kprobe",
-	)
-
-	Udp4RetSendLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"udp_sendmsg",
-		"kretprobe/udp_sendmsg",
-		"kretprobe_udp_sendmsg",
-		"kprobe",
-	).SetRetProbe(true)
-
-	Udp6SendLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"udpv6_sendmsg",
-		"kprobe/udpv6_sendmsg",
-		"kprobe_udpv6_sendmsg",
-		"kprobe",
-	)
-
-	Udp6RetSendLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"udpv6_sendmsg",
-		"kretprobe/udpv6_sendmsg",
-		"kretprobe_udpv6_sendmsg",
-		"kprobe",
-	).SetRetProbe(true)
-
-	UdpRecvLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"skb_consume_udp",
-		"kprobe/skb_consume_udp",
-		"kprobe_skb_consume_udp",
-		"kprobe",
-	)
-
 	TCEgressTimestamp = program.Builder(
 		"bpf_udp_timestamp.o",
 		"udp_egress_timestamp",
@@ -248,19 +194,15 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap       = program.MapBuilder(SocketMapName, Udp4Send)
-	SocketCookieStats     = program.MapBuilder("socket_map_stats", Udp4Send)
-	SocketCookieMapLazy   = program.MapBuilder(SocketMapName, Udp4SendLazy)
-	SocketCookieStatsLazy = program.MapBuilder("socket_map_stats", Udp4SendLazy)
+	SocketCookieMap   = program.MapBuilder(SocketMapName, Udp4Send)
+	SocketCookieStats = program.MapBuilder("socket_map_stats", Udp4Send)
 
 	// UDP maps
 	UdpMap                  = program.MapBuilder(UdpMapName, InetSend)
 	UdpMapLazy              = program.MapBuilder(UdpMapName, InetSendLazy)
 	UdpMapLazyKprobe        = program.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
-	UdpRetprobeMapLazy      = program.MapBuilder(UdpRetprobeMapName, Udp4SendLazy)
 	UdpRetprobeStats        = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
-	UdpRetprobeStatsLazy    = program.MapBuilder(UdpRetprobeStatsName, Udp4SendLazy)
 	UdpConfigMap            = program.MapBuilder(UdpConfigMapName, InetSend)
 	UdpConfigLazyMap        = program.MapBuilder(UdpConfigMapName, InetSendLazy)
 	UdpConfigLazyMapKprobe  = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
@@ -268,7 +210,6 @@ var (
 	UdpPayloadLazyMap       = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
 	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
 	FdLookupConfigMap       = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
-	FdLookupConfigMapLazy   = program.MapBuilder(ip.FdLookupConfigMapName, SockReleaseLazy)
 )
 
 type udpInfoKey struct {
@@ -773,48 +714,72 @@ func EnableUdpParser(cgroup, timestampEnabled bool, interval time.Duration) *sen
 
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*program.Program{
-			SkAllocRetLazy,
-			SockReleaseLazy,
+			SkAllocRet,
+			SockRelease,
 			InetSendRecvLazy,
-			Udp4SendLazy,
-			Udp4RetSendLazy,
-			Udp6SendLazy,
-			Udp6RetSendLazy,
-			UdpRecvLazy,
+			Udp4Send,
+			Udp4RetSend,
+			Udp6Send,
+			Udp6RetSend,
+			UdpRecv,
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
-			UdpRetprobeMapLazy,
-			UdpRetprobeStatsLazy,
+			UdpRetprobeMap,
+			UdpRetprobeStats,
 			UdpConfigLazyMapKprobe,
 			UdpPayloadLazyMapKprobe,
-			SocketCookieMapLazy,
-			SocketCookieStatsLazy,
-			FdLookupConfigMapLazy,
+			SocketCookieMap,
+			SocketCookieStats,
+			FdLookupConfigMap,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
-	} else {
+	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
-			SkAllocRetLazy,
-			SockReleaseLazy,
+			SkAllocRet,
+			SockRelease,
 			InetSendLazy,
 			InetRecvLazy,
-			Udp4SendLazy,
-			Udp4RetSendLazy,
-			Udp6SendLazy,
-			Udp6RetSendLazy,
-			UdpRecvLazy,
+			Udp4Send,
+			Udp4RetSend,
+			Udp6Send,
+			Udp6RetSend,
+			UdpRecv,
 		}
 		maps = []*program.Map{
 			UdpMapLazy,
-			UdpRetprobeMapLazy,
-			UdpRetprobeStatsLazy,
+			UdpRetprobeMap,
+			UdpRetprobeStats,
 			UdpConfigLazyMap,
 			UdpPayloadLazyMap,
-			SocketCookieMapLazy,
-			SocketCookieStatsLazy,
-			FdLookupConfigMapLazy,
+			SocketCookieMap,
+			SocketCookieStats,
+			FdLookupConfigMap,
+		}
+		dns.LazyDns = false
+		versionStr = "__udp_sensor_probe__"
+	} else {
+		progs = []*program.Program{
+			SkAllocRet,
+			SockRelease,
+			InetSend,
+			InetRecv,
+			Udp4Send,
+			Udp4RetSend,
+			Udp6Send,
+			Udp6RetSend,
+			UdpRecv,
+		}
+		maps = []*program.Map{
+			UdpMap,
+			UdpRetprobeMap,
+			UdpRetprobeStats,
+			UdpConfigMap,
+			UdpPayloadMap,
+			SocketCookieMap,
+			SocketCookieStats,
+			FdLookupConfigMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
