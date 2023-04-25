@@ -180,7 +180,7 @@ func TestTls(t *testing.T) {
 	runner.TestInParallel(t, checkTls, testTls)
 }
 
-func TlsChecker(kernelVersion string) ec.MultiEventChecker {
+func TlsChecker(_ string) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("curl")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))
@@ -238,7 +238,7 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 	return tlsChecker
 }
 
-func HttpChecker(kernelVersion string) ec.MultiEventChecker {
+func HttpChecker(_ string) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("curl")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))

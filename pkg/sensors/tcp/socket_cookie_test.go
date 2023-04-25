@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
+func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 	checker := ec.NewUnorderedEventChecker()
 
 	// initialize listen, connect, and accept file descriptors, and ensure that they

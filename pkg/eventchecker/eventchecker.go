@@ -128,7 +128,7 @@ func (c *OrderedMultiResponseChecker) NextCheck(r *tetragon.GetEventsResponse, l
 }
 
 // FinalCheck verifies that all checks in the chain have succeeded
-func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
+func (c *OrderedMultiResponseChecker) FinalCheck(_ Logger) error {
 	if c.idx >= len(c.checkers) {
 		return nil
 	}
@@ -253,7 +253,7 @@ func (c *UnorderedMultiResponseChecker) NextCheck(ev *tetragon.GetEventsResponse
 }
 
 // FinalCheck verifies that all checkers succeeded
-func (c *UnorderedMultiResponseChecker) FinalCheck(log Logger) error {
+func (c *UnorderedMultiResponseChecker) FinalCheck(_ Logger) error {
 	if l := c.pendingCheckers.Len(); l == 0 {
 		return nil
 	}
@@ -387,7 +387,7 @@ func (e EventTypeError) Error() string {
 	return e.Err.Error()
 }
 
-func checkEvent(r *tetragon.GetEventsResponse, l Logger, types ...tetragon.EventType) (fgsEvent, error) {
+func checkEvent(r *tetragon.GetEventsResponse, _ Logger, types ...tetragon.EventType) (fgsEvent, error) {
 
 	checkTypes := func(ty tetragon.EventType) error {
 		for i := range types {

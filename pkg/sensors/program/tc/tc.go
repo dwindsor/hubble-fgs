@@ -53,7 +53,7 @@ func filterLinks(links []netlink.Link, interfaces []string) []netlink.Link {
 	return filtered
 }
 
-func QdiscTCInsert(linkName string, ingress bool) error {
+func QdiscTCInsert(linkName string, _ bool) error {
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
 		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err)

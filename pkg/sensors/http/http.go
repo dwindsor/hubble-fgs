@@ -128,10 +128,7 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if err != nil {
 		return err
 	}
-	if err := sockops.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
-		return err
-	}
-	return nil
+	return sockops.SetFilter(args.MapDir, "http_filter_map", filters)
 }
 
 func (http *httpSensor) PolicyHandler(
@@ -163,7 +160,7 @@ type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 
@@ -171,7 +168,7 @@ type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (skSkbParser *skSkbParserSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 

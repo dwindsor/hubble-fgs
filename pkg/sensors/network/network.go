@@ -287,7 +287,7 @@ type networkSensor struct {
 	name string
 }
 
-func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (net *networkSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 

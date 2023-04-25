@@ -180,6 +180,6 @@ func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgHttpEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgHttpEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgHttpEventUnix{}
 }

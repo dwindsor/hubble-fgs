@@ -125,7 +125,7 @@ func podContainerDiff(oldPod *v1.Pod, newPod *v1.Pod) ([]string, []string) {
 	return addContIDs, delContIDs
 }
 
-func rthooksCreateContainer(ctx context.Context, arg *rthooks.CreateContainerArg) error {
+func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) error {
 	cgPath := arg.Req.CgroupsPath
 	cgRoot, err := cgroups.HostCgroupRoot()
 	if err != nil {

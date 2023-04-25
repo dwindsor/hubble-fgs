@@ -409,7 +409,7 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 	return genGoSource(ctx, sinkPort, args, act)
 }
 
-func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() error) (stats SourceStats, err error) {
+func genGoSource(ctx context.Context, _ int, args SourceArgs, act func() error) (stats SourceStats, err error) {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
 	nthreads := runtime.NumCPU()
@@ -494,7 +494,7 @@ type netperfSource struct {
 	test string
 }
 
-func (src netperfSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+func (src netperfSource) Run(_ context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
 	if args.RatePerSec > 0.0 {
 		log.Printf("Netperf does not support fixed rate, ignoring requested rate.\n")
 	}
@@ -555,7 +555,7 @@ type h2LoadSource struct {
 	http2 bool
 }
 
-func (src h2LoadSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+func (src h2LoadSource) Run(_ context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
 	nCPU := runtime.NumCPU()
 	nClients := 5 * nCPU
 

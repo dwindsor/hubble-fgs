@@ -203,10 +203,7 @@ func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error
 	}
 	defer client.Close()
 
-	if err := client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{}); err != nil {
-		return err
-	}
-	return nil
+	return client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{})
 }
 
 func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid string) error {
@@ -225,10 +222,7 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 	}
 	defer client.Close()
 
-	if err := client.Call("FsScannerRpc.RenameDir", &f, &struct{}{}); err != nil {
-		return err
-	}
-	return nil
+	return client.Call("FsScannerRpc.RenameDir", &f, &struct{}{})
 }
 
 func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir string) error {
@@ -249,10 +243,7 @@ func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir st
 	}
 	defer client.Close()
 
-	if err := client.Call("FsScannerRpc.TracingPolicyContainerInit", &f, &struct{}{}); err != nil {
-		return err
-	}
-	return nil
+	return client.Call("FsScannerRpc.TracingPolicyContainerInit", &f, &struct{}{})
 }
 
 func TracingPolicyDestroyContainerFsScanner(containerID string) error {
@@ -269,10 +260,7 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 	}
 	defer client.Close()
 
-	if err := client.Call("FsScannerRpc.TracingPolicyContainerDestroy", &f, &struct{}{}); err != nil {
-		return err
-	}
-	return nil
+	return client.Call("FsScannerRpc.TracingPolicyContainerDestroy", &f, &struct{}{})
 }
 
 func checkRunningFsScanner(scannerFifo string) error {
@@ -869,7 +857,7 @@ type FimLoaderData struct {
 	s *fm.KernelSelectorState
 }
 
-func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error

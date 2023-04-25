@@ -312,7 +312,7 @@ type TestStepAssert struct {
 	Count    int
 }
 
-func (a *TestStepAssert) Exec(ctx *TestContext) *TestStepError {
+func (a *TestStepAssert) Exec(_ *TestContext) *TestStepError {
 	m, err := bpf.OpenMap(path.Join(bpf.MapPrefixPath(), a.MapName))
 	if err != nil {
 		return &TestStepError{a.Position, "ASSERT MAP", err}

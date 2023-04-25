@@ -225,7 +225,7 @@ func loadFdLookup(bpfDir, mapDir, ciliumDir string) (*sensors.Sensor, error) {
 	return fdLoadSensor, nil
 }
 
-func unloadFdLookup(fdLoadSensor *sensors.Sensor, bpfDir, mapDir, ciliumDir string) error {
+func unloadFdLookup(fdLoadSensor *sensors.Sensor, _, _, _ string) error {
 	if fdLoadSensor == nil {
 		return fmt.Errorf("hubble-fgs, could not unload BPF programs: fdLoadSensor")
 	}

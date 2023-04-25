@@ -504,10 +504,7 @@ func resizeCaches() error {
 	if err := dns.ResizeCache(enterpriseOption.Config.DnsCacheSize); err != nil {
 		return err
 	}
-	if err := nscache.ResizeCache(enterpriseOption.Config.NetNsCacheSize); err != nil {
-		return err
-	}
-	return nil
+	return nscache.ResizeCache(enterpriseOption.Config.NetNsCacheSize)
 }
 
 func execute() error {

@@ -239,13 +239,15 @@ type DummyNotifier struct {
 	t *testing.T
 }
 
-func (n DummyNotifier) AddListener(listener server.Listener) {}
+func (n DummyNotifier) AddListener(_ server.Listener) {}
 
-func (n DummyNotifier) RemoveListener(listener server.Listener) {}
+func (n DummyNotifier) RemoveListener(_ server.Listener) {}
 
 func (n DummyNotifier) NotifyListener(original interface{}, processed *tetragon.GetEventsResponse) {
 	switch v := original.(type) {
-	case *exec.MsgExecveEventUnix, *exec.MsgExitEventUnix, *MsgIPEventUnix:
+	case *exec.MsgExecveEventUnix:
+	case *exec.MsgExitEventUnix:
+	case *MsgIPEventUnix:
 		if processed != nil {
 			execOSS.AllEvents = append(execOSS.AllEvents, processed)
 		} else {

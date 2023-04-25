@@ -130,17 +130,14 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters); err != nil {
-		return err
-	}
-	return nil
+	return sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters)
 }
 
 type skSkbVerdictTLSSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 
@@ -148,7 +145,7 @@ type skSkbParserTLSSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (skSkbParser *skSkbParserTLSSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 
@@ -156,7 +153,7 @@ type socketOptSensor struct {
 	name string
 }
 
-func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (s *socketOptSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 
@@ -306,9 +303,5 @@ func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	}
-	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters); err != nil {
-		return err
-	}
-
-	return nil
+	return sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters)
 }

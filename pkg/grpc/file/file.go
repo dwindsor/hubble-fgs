@@ -161,11 +161,11 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 
 	var perm *tetragon.AttrChange
 	if event.Imode != event.NewImode {
-		new := fs.FileMode(event.NewImode) & fs.ModePerm
-		old := fs.FileMode(event.Imode) & fs.ModePerm
+		n := fs.FileMode(event.NewImode) & fs.ModePerm
+		o := fs.FileMode(event.Imode) & fs.ModePerm
 		perm = &tetragon.AttrChange{
-			New: fmt.Sprintf("%v (%#o)", new, new),
-			Old: fmt.Sprintf("%v (%#o)", old, old),
+			New: fmt.Sprintf("%v (%#o)", n, n),
+			Old: fmt.Sprintf("%v (%#o)", o, o),
 		}
 	}
 
@@ -360,7 +360,7 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgFileEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgFileEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgFileEventUnix{}
 }
 
@@ -556,6 +556,6 @@ func (msg *MsgFileRenameEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgFileRenameEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgFileRenameEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgFileRenameEventUnix{}
 }

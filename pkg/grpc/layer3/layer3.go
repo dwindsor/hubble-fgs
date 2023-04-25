@@ -596,7 +596,7 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgIPEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgIPEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgIPEventUnix{}
 }
 

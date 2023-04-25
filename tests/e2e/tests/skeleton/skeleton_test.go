@@ -135,7 +135,7 @@ func TestSkeletonBasic(t *testing.T) {
 	runner.TestInParallel(t, runEventChecker, runWorkload)
 }
 
-func curlEventChecker(kernelVersion string) *checker.RPCChecker {
+func curlEventChecker(_ string) *checker.RPCChecker {
 	curlEventChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("checkerNameHere").
 			WithProcess(

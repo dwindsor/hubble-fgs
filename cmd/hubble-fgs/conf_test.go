@@ -1069,7 +1069,7 @@ var (
 	}
 )
 
-func writeDropInConf(t *testing.T, testPath string, fullDir string, options map[string]interface{}) error {
+func writeDropInConf(_ *testing.T, _ string, fullDir string, options map[string]interface{}) error {
 	for k, v := range options {
 		data := []byte(fmt.Sprint(v))
 		file := filepath.Join(fullDir, k)
@@ -1139,7 +1139,7 @@ func setupConfig(t *testing.T, testPath string, test testCase) error {
 	return nil
 }
 
-func cleanupConfig(t *testing.T, root string, test testCase) {
+func cleanupConfig(_ *testing.T, root string, test testCase) {
 	for _, c := range test.confs {
 		if c.path != "" {
 			os.RemoveAll(filepath.Join(root, c.path))

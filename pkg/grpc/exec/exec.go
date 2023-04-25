@@ -130,7 +130,7 @@ type MsgExecveEventUnix struct {
 	processapi.MsgExecveEventUnix
 }
 
-func (msg *MsgExecveEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+func (msg *MsgExecveEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
 	return nil, fmt.Errorf("Unreachable state: MsgExecveEventUnix with missing internal")
 }
 
@@ -232,11 +232,11 @@ func (msg *MsgCloneEventUnix) Notify() bool {
 	return false
 }
 
-func (msg *MsgCloneEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+func (msg *MsgCloneEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
 	return nil, process.AddCloneEvent(&msg.MsgCloneEvent)
 }
 
-func (msg *MsgCloneEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+func (msg *MsgCloneEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) error {
 	return nil
 }
 
@@ -385,7 +385,7 @@ func (msg *MsgProcessCleanupEventUnix) Notify() bool {
 	return false
 }
 
-func (msg *MsgProcessCleanupEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+func (msg *MsgProcessCleanupEventUnix) RetryInternal(_ notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	internal, parent := process.GetParentProcessInternal(msg.PID, timestamp)
 	var err error
 
@@ -413,7 +413,7 @@ func (msg *MsgProcessCleanupEventUnix) RetryInternal(ev notify.Event, timestamp 
 	return nil, err
 }
 
-func (msg *MsgProcessCleanupEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+func (msg *MsgProcessCleanupEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) error {
 	return nil
 }
 
@@ -430,6 +430,6 @@ func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsRespon
 	return nil
 }
 
-func (msg *MsgProcessCleanupEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgProcessCleanupEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgProcessCleanupEventUnix{}
 }

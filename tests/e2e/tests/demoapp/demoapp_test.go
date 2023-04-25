@@ -128,7 +128,7 @@ func TestDemoApp(t *testing.T) {
 	runner.TestInParallel(t, testDemoApp, run)
 }
 
-func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
+func DemoAppChecker(_ string) ec.MultiEventChecker {
 	jobpostingChecker := ec.NewProcessChecker().
 		WithBinary(sm.Full("/usr/local/bin/node")).
 		WithArguments(sm.Full("server.js")).

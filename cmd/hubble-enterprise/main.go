@@ -25,13 +25,13 @@ var (
 )
 
 func main() {
-	if err := new().Execute(); err != nil {
+	if err := New().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }
 
-func new() *cobra.Command {
+func New() *cobra.Command {
 	rootCmd = &cobra.Command{
 		Use:   "hubble-enterprise",
 		Short: "Hubble Enterprise CLI",

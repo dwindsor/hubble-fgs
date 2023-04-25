@@ -59,7 +59,7 @@ func SupportedProxies() []string {
 
 type noneProxy struct{}
 
-func (np noneProxy) Start(ctx context.Context, sinkPort int) (int, chan ProxyStats, error) {
+func (np noneProxy) Start(_ context.Context, sinkPort int) (int, chan ProxyStats, error) {
 	return sinkPort, nil, nil
 }
 

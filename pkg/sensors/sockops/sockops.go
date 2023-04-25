@@ -60,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(name string) (*sensors.Sensor, error) {
+func builder(_ string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 

@@ -84,7 +84,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	}
 }
 
-func getRunningSockets(writeMaps, pushEvents bool) {
+func getRunningSockets(_, pushEvents bool) {
 	/* Lock is required to prevent concurrent access to object vars,
 	 * just in case this gets called twice at once.
 	 */

@@ -99,7 +99,7 @@ func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	return &corev1.Pod{}, nil
 }
 
-func (r *raceK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
+func (r *raceK8sWatcher) GetPodInfo(_, _, _ string, _ uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 	return nil, nil
 }
 

@@ -65,8 +65,8 @@ func listenerTcp(addr string) {
 	buffer := make([]byte, 1)
 
 	for {
-		len, err := accept.Read(buffer)
-		if len == 0 || err != nil {
+		n, err := accept.Read(buffer)
+		if n == 0 || err != nil {
 			// socket was closed or error occurred
 			logger.GetLogger().Info("Heartbeat stopping TCP listener")
 			return
@@ -235,7 +235,7 @@ func (hb *heartbeatSensor) PolicyHandler(
 	return hbSensor, nil
 }
 
-func (hb *heartbeatSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func (hb *heartbeatSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 	return nil
 }
 

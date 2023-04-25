@@ -538,7 +538,7 @@ func udpDiffLatency(last, curr *[8]uint64) [8]uint64 {
 	}
 }
 
-func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
+func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
 	// unlucky timing but here we go.

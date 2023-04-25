@@ -188,14 +188,14 @@ func findPidFdForCookie(cookie uint64) (int, int, int, error) {
 			if err != nil {
 				wrongNs[netNs] = true
 				continue
+			}
+
+			foundInode = inode
+			foundNs = netNs
+			if ipv6 {
+				foundFamily = syscall.AF_INET6
 			} else {
-				foundInode = inode
-				foundNs = netNs
-				if ipv6 {
-					foundFamily = syscall.AF_INET6
-				} else {
-					foundFamily = syscall.AF_INET
-				}
+				foundFamily = syscall.AF_INET
 			}
 		}
 

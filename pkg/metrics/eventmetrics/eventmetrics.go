@@ -170,7 +170,7 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	}
 }
 
-func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, res *tetragon.ProcessSockStats) {
+func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *tetragon.ProcessSockStats) {
 	source := res.Socket.SourceIp
 	sip := net.ParseIP(source)
 	dest := res.Socket.DestinationIp
