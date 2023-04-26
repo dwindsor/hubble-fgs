@@ -1,0 +1,150 @@
+name: ConformanceAKS
+
+on:
+  pull_request:
+    paths-ignore:
+    - "**.md"
+  push:
+    branches:
+      - master
+
+# By specifying the access of one of the scopes, all of those that are not
+# specified are set to 'none'.
+permissions:
+  # To be able to access the repository with actions/checkout
+  contents: read
+  # To allow retrieving information from the PR API
+  pull-requests: read
+  # So that Sibz/github-status-action can write into the status API
+  statuses: write
+  # Required to generate OIDC tokens for `az` authentication
+  id-token: write
+
+env:
+  ciliumCliVersion: v0.12.11
+  ciliumVersion: v1.12.4
+  name: "${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.run_id }}"
+  location: westus
+  costReduction: --node-vm-size Standard_B2s --node-osdisk-size 30
+  check_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+jobs:
+  install-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: hubble-fgs
+          submodules: true
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.18.3'
+
+      - name: Set up job variables
+        id: vars
+        run: |
+          if [ ${{ github.event.issue.pull_request || github.event.pull_request }} ]; then
+            PR_API_JSON=$(curl \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
+            SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
+          else
+            SHA=${{ github.sha }}
+          fi
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Install Cilium CLI
+        run: |
+          GOOS=$(go env GOOS)
+          GOARCH=$(go env GOARCH)
+          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.ciliumCliVersion }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+          sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+          sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
+          rm cilium-linux-amd64.tar.gz{,.sha256sum}
+          cilium version
+
+      - name: Login to Azure
+        uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2 # v1.4.7
+        with:
+          client-id: ${{ secrets.AZURE_PR_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_PR_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_PR_SUBSCRIPTION_ID }}
+
+      - name: Install aks-preview CLI extension
+        run: |
+            az extension add --name aks-preview
+            az extension update --name aks-preview
+            az version
+
+      - name: Create AKS cluster
+        run: |
+          # Create group
+          az group create \
+            --name ${{ env.name }} \
+            --location ${{ env.location }} \
+            --tags usage=${{ github.repository_owner }}-${{ github.event.repository.name }} owner=${{ steps.vars.outputs.owner }}
+
+          # Create AKS cluster
+          az aks create \
+            --resource-group ${{ env.name }} \
+            --name ${{ env.name }} \
+            --location ${{ env.location }} \
+            --network-plugin none \
+            --node-count 2 \
+            ${{ env.costReduction }} \
+            --generate-ssh-keys
+
+      - name: Get cluster credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.name }} \
+            --name ${{ env.name }}
+
+      # Temporary workaround while we don't have proper AKS options for installing Cilium
+      # via e2e-framework
+      - name: Install Cilium
+        run: |
+          cilium install --version "${{ env.ciliumVersion }}" --azure-resource-group ${{ env.name }}
+
+      - name: Attempt to pull the FGS image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            docker pull ${{ steps.vars.outputs.agentImage }}
+            docker pull ${{ steps.vars.outputs.operatorImage }}
+
+      - name: Run end-to-end tests
+        timeout-minutes: 30
+        run: |
+          cd hubble-fgs
+          export HOST_PROC=/proc
+          go test -p 1 -parallel 1 -timeout 20m -failfast -cover ./tests/e2e/tests/... \
+            -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
+            -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
+            -tetragon.keep-export=true \
+            -tetragon.install-cilium=false \
+            -cluster-name ${{ env.name }} \
+            -kubeconfig ~/.kube/config
+
+      - name: Clean up AKS
+        if: ${{ always() }}
+        run: |
+          az group delete --name ${{ env.name }} --yes --no-wait
+        shell: bash {0} # Disable default fail-fast behaviour so that all commands run independently
+
+      - name: Upload Tetragon test artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          name: tetragon-artifacts
+          path: /tmp/tetragon.e2e.*
+          retention-days: 5
