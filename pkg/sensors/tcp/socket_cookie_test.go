@@ -54,6 +54,13 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}
 		cookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), fd, 0, 0)
+		if cookie == 0 {
+			socket, err := ip.GetAndAddSocketViaProc(uint32(os.Getpid()), uint32(fd), unix.IPPROTO_TCP, nil)
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to get socket from proc")
+			}
+			cookie = socket.Sockaddr
+		}
 		return fd, cookie, nil
 	}
 

@@ -575,6 +575,55 @@ func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol
 	return nil
 }
 
+func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *bpf.Map) (FdLookupValue, error) {
+	if m == nil {
+		m = openConfigMap()
+		if m == nil {
+			return FdLookupValue{}, fmt.Errorf("could not open fd lookup config map")
+		}
+		defer m.Close()
+	}
+
+	sockets := make(map[uint64]FdLookupValue)
+	err := getSocketsForNs(&sockets, filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "net"), protocol)
+	if err != nil {
+		return FdLookupValue{}, err
+	}
+	fdLink, err := os.Readlink(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d/fd/%d", pid, fd)))
+	if err != nil {
+		return FdLookupValue{}, err
+	}
+	fdInode := uint64(0)
+	if strings.HasPrefix(fdLink, "socket:[") {
+		fdInode, err = strconv.ParseUint(fdLink[8:len(fdLink)-1], 10, 64)
+		if err != nil {
+			return FdLookupValue{}, err
+		}
+	} else if strings.HasPrefix(fdLink, "[0000]:") {
+		fdInode, err = strconv.ParseUint(fdLink[7:], 10, 64)
+		if err != nil {
+			return FdLookupValue{}, err
+		}
+	}
+	var ok bool
+	socket, ok := sockets[fdInode]
+	if !ok {
+		return FdLookupValue{}, fmt.Errorf("socket not found in process namespace")
+	}
+	// Add the socket
+	socket.Pid = pid
+	socket.Fd = fd
+	if protocolShift {
+		socket.ProtoShift = 1
+	}
+
+	k := &FdLookupKey{Zero: 0}
+	m.Update(k, &socket)
+	// See getProtocolShift() for details on how this works.
+	os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
+	return socket, nil
+}
+
 func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
 	m := openConfigMap()
 	if m == nil {
@@ -614,39 +663,11 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 
 			var socket FdLookupValue
 			if v.Protocol == 0 {
-				sockets := make(map[uint64]FdLookupValue)
-				err := getSocketsForNs(&sockets, filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "net"), protocol)
+				var err error
+				socket, err = GetAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {
 					continue
 				}
-				fdLink, err := os.Readlink(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d/fd/%d", pid, fd)))
-				if err != nil {
-					continue
-				}
-				fdInode := uint64(0)
-				if strings.HasPrefix(fdLink, "socket:[") {
-					fdInode, err = strconv.ParseUint(fdLink[8:len(fdLink)-1], 10, 64)
-					if err != nil {
-						continue
-					}
-				} else if strings.HasPrefix(fdLink, "[0000]:") {
-					fdInode, err = strconv.ParseUint(fdLink[7:], 10, 64)
-					if err != nil {
-						continue
-					}
-				}
-				var ok bool
-				socket, ok = sockets[fdInode]
-				if !ok {
-					continue
-				}
-				// Add the socket
-				v.Protocol = protocol
-				v.Sockaddr = socket.Sockaddr
-				v.Family = socket.Family
-				m.Update(k, v)
-				// See getProtocolShift() for details on how this works.
-				os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
 				v = &socket
 			}
 
