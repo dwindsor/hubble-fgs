@@ -92,17 +92,12 @@ get_netns(struct net_device *dev)
 {
 	struct ns_common nscommon;
 	possible_net_t nd_net;
-	struct net *net;
 
 	probe_read(&nd_net, sizeof(nd_net), _(&(dev->nd_net)));
 	if (!nd_net.net)
 		return 0;
 
-	probe_read(&net, sizeof(net), _(&(nd_net.net)));
-	if (!net)
-		return 0;
-
-	probe_read(&nscommon, sizeof(nscommon), _(&(net->ns)));
+	probe_read(&nscommon, sizeof(nscommon), _(&(nd_net.net->ns)));
 	return nscommon.inum;
 }
 
