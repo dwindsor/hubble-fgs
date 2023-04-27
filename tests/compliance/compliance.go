@@ -52,11 +52,7 @@ func (ct *Test) BuildAndRun(t *testing.T) error {
 	}
 
 	// Run the compliance test.
-	if err := ct.Run(t, ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return ct.Run(t, ctx)
 }
 
 // Run the compliance test.
