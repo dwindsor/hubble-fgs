@@ -256,6 +256,12 @@ type NopSpec struct {
 	Selectors []NopSelector `json:"selectors"`
 }
 
+type PromMetrics struct {
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+}
+
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
@@ -323,6 +329,9 @@ type TcpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// TCP latency observability policy specification
 	Latency LatencyPolicySpec `json:"latency"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics"`
 }
 
 type TcpWatermarksPolicySpec struct {
@@ -377,6 +386,9 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// UDP sequence check observability policy specification
 	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics"`
 }
 
 type UdpWatermarksPolicySpec struct {

@@ -839,6 +839,13 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      metrics:
+                        description: Metrics Configuration
+                        properties:
+                          enable:
+                            default: true
+                            type: boolean
+                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32
@@ -1005,6 +1012,13 @@ spec:
                             description: Configures the expected Min Latency value
                             format: int32
                             type: integer
+                        type: object
+                      metrics:
+                        description: Metrics Configuration
+                        properties:
+                          enable:
+                            default: true
+                            type: boolean
                         type: object
                       seqCheck:
                         description: UDP sequence check observability policy specification

@@ -17,6 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -247,6 +248,12 @@ func (tcp *tcpSensor) PolicyHandler(
 
 	if !spec.Parser.Tcp.Enable {
 		return nil, nil
+	}
+
+	if spec.Parser.Tcp.Metrics != nil {
+		eventmetrics.TcpMetricsEnabled = spec.Parser.Tcp.Metrics.Enable
+	} else {
+		eventmetrics.TcpMetricsEnabled = true
 	}
 
 	if fid != policyfilter.NoFilterID {

@@ -41,6 +41,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -772,6 +773,12 @@ func (udp *udpSensor) PolicyHandler(
 
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("udp sensor does not implement policy filtering")
+	}
+
+	if spec.Parser.Udp.Metrics != nil {
+		eventmetrics.UdpMetricsEnabled = spec.Parser.Udp.Metrics.Enable
+	} else {
+		eventmetrics.UdpMetricsEnabled = true
 	}
 
 	var interval = time.Duration(UdpGCIntervalDefault)

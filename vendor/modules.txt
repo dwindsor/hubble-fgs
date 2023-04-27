@@ -175,7 +175,7 @@ github.com/cilium/cilium/pkg/types
 github.com/cilium/cilium/pkg/u8proto
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.9.4-0.20221102092914-a9cf21df64c2 => github.com/cilium/ebpf v0.9.4-0.20221026141156-bcf6c12e189d
+# github.com/cilium/ebpf v0.10.0 => github.com/cilium/ebpf v0.9.4-0.20221026141156-bcf6c12e189d
 ## explicit; go 1.18
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
