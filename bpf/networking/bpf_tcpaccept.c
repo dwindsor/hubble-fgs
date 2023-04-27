@@ -2,9 +2,6 @@
 
 #include "api.h"
 #include "hubble_msg.h"
-#include "../parsers/tls/tls_map.h"
-#include "../parsers/bottle.h"
-#include "../parsers/http/http.h"
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"

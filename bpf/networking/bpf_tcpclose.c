@@ -3,8 +3,6 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "../parsers/tls/tls_map.h"
-#include "../parsers/bottle.h"
-#include "../parsers/http/http.h"
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
@@ -12,6 +10,8 @@
 #include "bpf_fd_to_sk.h"
 #include "bpf_tcp_send_check.h"
 #include "bpf_tracing.h"
+#include "../parsers/http/http.h"
+#include "../parsers/bottle.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
