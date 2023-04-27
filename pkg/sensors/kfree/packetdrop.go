@@ -17,6 +17,8 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/api/calltraceapi"
+	"github.com/cilium/tetragon/pkg/ksyms"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/vtuple"
@@ -65,6 +67,9 @@ func createPacketDropSensor() *sensors.Sensor {
 }
 
 func (pd *PacketdropSensorImpl) Loaded(arg sensors.LoadArg) {
+	if ksym == nil {
+		ksym, _ = ksyms.NewKsyms(option.Config.ProcFS)
+	}
 	arg.STTManagerHandle.CreateTree("packet-drop")
 }
 

@@ -17,7 +17,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/vtuple"
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -58,5 +57,4 @@ func init() {
 
 func AddKfree() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_KFREE_SKB, handleKfreeSkb)
-	ksym, _ = ksyms.NewKsyms(option.Config.ProcFS)
 }
