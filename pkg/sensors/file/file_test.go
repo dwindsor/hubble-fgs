@@ -152,12 +152,12 @@ func fallocateFileInDir(t *testing.T, filename string) {
 	file.Close()
 }
 
-func createSpecFile(t *testing.T, test_path string) string {
+func newSpecFile(t *testing.T, test_path string, template string) string {
 	specData := map[string]string{
 		"MatchedPath": test_path,
 	}
 
-	specFname, err := testutils.GetSpecFromTemplate("file_monitoring.yaml.tmpl", specData)
+	specFname, err := testutils.GetSpecFromTemplate(template, specData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,6 +169,10 @@ func createSpecFile(t *testing.T, test_path string) string {
 	})
 
 	return specFname
+}
+
+func createSpecFile(t *testing.T, test_path string) string {
+	return newSpecFile(t, test_path, "file_monitoring.yaml.tmpl")
 }
 
 func getInodeInfo(t *testing.T, fileName string) (uint64, string) {
@@ -759,6 +763,132 @@ func TestLoadFileSensor(t *testing.T) {
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensors.UnloadAll()
+}
+
+func createSpecEnforceFile(t *testing.T, test_path string, operation string) string {
+	specData := map[string]string{
+		"MatchedPath":      test_path,
+		"MatchedOperation": operation,
+	}
+
+	specFname, err := testutils.GetSpecFromTemplate("file_monitoring_enforce.yaml.tmpl", specData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		if err := os.Remove(specFname); err != nil {
+			t.Log(err)
+		}
+	})
+
+	return specFname
+}
+
+func TestFileEnforceCreate(t *testing.T) {
+	if !SupportEnforcement() {
+		t.Skip("Kernel does not support file enforcement")
+	}
+
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_CREATE")
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	oFile := filepath.Join(out, "test1")
+	_, err = os.Create(oFile) // we expect this to fail
+	assert.Error(t, err)
+
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile))
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
+		)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_CREATE).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("hook_security_inode_create")).
+		WithOperation(o)
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileEnforceWrite(t *testing.T) {
+	if !SupportEnforcement() {
+		t.Skip("Kernel does not support file enforcement")
+	}
+
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_WRITE")
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	oFile := filepath.Join(out, "test1")
+	file, err := os.Create(oFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("some random test data here")
+	assert.Error(t, err) // we expect this to fail
+
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile))
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
+		)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("security_file_permission")).
+		WithOperation(o)
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }
 
 func fileRead(t *testing.T, f string) {

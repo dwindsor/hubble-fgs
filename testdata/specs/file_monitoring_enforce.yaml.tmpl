@@ -1,0 +1,15 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-enforce"
+spec:
+  file:
+    file_paths:
+    - {{.MatchedPath}}
+    selectors:
+    - matchOperations:
+      - operator: "In"
+        values:
+        - {{.MatchedOperation}}
+      matchActions:
+      - action: Block

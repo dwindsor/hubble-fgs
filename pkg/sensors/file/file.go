@@ -29,7 +29,9 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/features"
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -40,6 +42,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"golang.org/x/sys/unix"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/option"
@@ -1198,18 +1201,104 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode) ([]FimProg, error)
 	return fimProgs, nil
 }
 
-func probeFileMode(s *fm.KernelSelectorState) Mode {
-	supportTracing := (features.HaveProgramType(ebpf.Tracing) == nil)
-	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", supportTracing)
+func probeTracingModifyReturn() error {
+	spec := &ebpf.ProgramSpec{
+		Type:       ebpf.Tracing,
+		AttachType: ebpf.AttachModifyReturn,
+		AttachTo:   "security_file_mprotect",
+		License:    "GPL",
+		Instructions: asm.Instructions{
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+	}
 
-	supportLSM := (features.HaveProgramType(ebpf.LSM) == nil)
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: true,
+	})
+	if err == nil {
+		if lnk, err = link.AttachTracing(link.TracingOptions{Program: prog}); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+
+	switch {
+	// EINVAL occurs when attempting to create a program with an unknown type.
+	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
+	// of the struct known by the running kernel, meaning the kernel is too old
+	// to support the given prog type.
+	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
+		err = ebpf.ErrNotSupported
+	}
+	return err
+}
+
+func probeLSM() error {
+	spec := &ebpf.ProgramSpec{
+		Type:       ebpf.LSM,
+		AttachType: ebpf.AttachLSMMac,
+		AttachTo:   "file_mprotect",
+		License:    "GPL",
+		Instructions: asm.Instructions{
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+	}
+
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: true,
+	})
+	if err == nil {
+		if lnk, err = link.AttachLSM(link.LSMOptions{Program: prog}); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+
+	switch {
+	// EINVAL occurs when attempting to create a program with an unknown type.
+	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
+	// of the struct known by the running kernel, meaning the kernel is too old
+	// to support the given prog type.
+	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
+		err = ebpf.ErrNotSupported
+	}
+	return err
+}
+
+func SupportEnforcement() bool {
+	if probeTracingModifyReturn() == nil {
+		return true
+	}
+	if probeLSM() == nil {
+		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
+			return strings.Contains(string(lsm), "bpf")
+		}
+	}
+	return false
+}
+
+func probeFileMode(s *fm.KernelSelectorState) Mode {
+	supportTracing := (probeTracingModifyReturn() == nil)
+	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
+	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
+
+	supportLSM := (probeLSM() == nil)
 	enabledLSM := false
 	if supportLSM {
 		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
 			enabledLSM = strings.Contains(string(lsm), "bpf")
 		}
 	}
-	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t (enabled = %t)", supportLSM, enabledLSM)
+	logger.GetLogger().Infof("probeLSM() = %t (enabled = %t)", supportLSM, enabledLSM)
+	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
 	if !s.NeedEnforcement() {
 		return Observe
