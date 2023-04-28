@@ -2,8 +2,14 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) int
-kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
+/*
+ * This function handles all rmdir operations.
+ * Returns:
+ * -1 on error
+ *  0 if there is no need to take any further actions
+ *  1 if we need to block the operation
+ */
+static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(void *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct inode *d_inode;
 	struct hash_map_file_key file_key;
@@ -13,12 +19,12 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 
 	msg = get_msg_init();
 	if (!msg)
-		return 0;
+		return -1;
 
 	// get current inode and fs info
 	probe_read(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
 	if (!d_inode)
-		return 0;
+		return -1;
 
 	get_ino_fs(msg, d_inode, dentry);
 
@@ -46,9 +52,8 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
-	if (file_val->location_flags == CONTAINER_FILE) {
+	if (file_val->location_flags == CONTAINER_FILE)
 		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
-	}
 	msg->path.flags |= file_val->location_flags;
 
 	msg->action = action_rmdir;
@@ -59,6 +64,9 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
+
+	if (operation & FILE_OP_BLOCK)
+		return 1;
 
 ignore_rmdir:
 	// delete this directory from the map with directories
@@ -72,8 +80,29 @@ ignore_rmdir:
 	return 0;
 }
 
-__attribute__((section(("kprobe/security_inode_rmdir")), used)) int
-BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
+SEC("kprobe/security_inode_rmdir")
+int BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 {
-	return kprobe_security_inode_rmdir(ctx, dir, dentry);
+	kprobe_security_inode_rmdir(ctx, dir, dentry);
+	return 0;
+}
+
+SEC("lsm/inode_rmdir")
+int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
+{
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (kprobe_security_inode_rmdir(ctx, dir, dentry) == 1)
+		return -EPERM;
+	return 0;
+}
+
+SEC("fmod_ret/security_inode_rmdir")
+int BPF_PROG(security_inode_rmdir_fmod, struct inode *dir, struct dentry *dentry, int ret)
+{
+	if (ret != 0)
+		return ret;
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (kprobe_security_inode_rmdir(ctx, dir, dentry) == 1)
+		return -EPERM;
+	return 0;
 }
