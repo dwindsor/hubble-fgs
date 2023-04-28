@@ -106,6 +106,10 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of uprobe specs.
 	UProbes []UProbeSpec `json:"uprobes"`
+
+	// +kubebuilder:validation:Optional
+	// PodSelector selects pods that this policy applies to
+	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {
