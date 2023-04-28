@@ -47,11 +47,16 @@ enum { hook_undef = 0,
        hook_security_inode_unlink = 17,
        hook_security_inode_setattr = 18,
        hook_security_inode_create = 19,
+       hook_security_inode_mkdir = 20,
 };
+
+#define KRETPROBE_KEY 0
+#define LSM_FMOD_KEY  1
 
 struct retprobe_key {
 	__u64 pid_tgid;
 	__u64 reg;
+	__u64 flags; // KRETPROBE_KEY or LSM_FMOD_KEY
 };
 
 struct hash_map_file_key {

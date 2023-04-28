@@ -9,6 +9,7 @@ fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_f
 	struct retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
 	};
 	int zero = 0;
 
@@ -21,6 +22,22 @@ fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_f
 	value->action = action;
 	value->operation = op;
 
+	map_update_elem(&mkdir_retprobe_map, &rkey, value, 0);
+	/*
+	 * We will use 2 keys:
+	 * 1. To be used by kretprobe and indexed by pid_tgid, PT_REGS_FP_CORE, and flags == KRETPROBE_KEY
+	 * 2. To be used by lsm/fmod_ret program and indexed by pid_tgid, dentry, and flags == LSM_FMOD_KEY
+	 * 
+	 * The reason is that we don't have access to pt_regs inside lsm/fmod_ret
+	 * programs and thus we can only get the second key. On the other hand, we 
+	 * also don't have access to the arguments (dentry) in the kretprobe.
+	 * 
+	 * In all cases, both will be deleted by the kretprobe. The kretprobe can first 
+	 * delete key1 and get dentry to delete key2. kretprobe will be called even in 
+	 * the case where we block the operation.
+	 */
+	rkey.reg = (__u64)dentry;
+	rkey.flags = LSM_FMOD_KEY;
 	map_update_elem(&mkdir_retprobe_map, &rkey, value, 0);
 }
 
@@ -123,25 +140,28 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_mkdir/512")), used)) int
-BPF_KPROBE(vfs_mkdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
-	   struct dentry *dentry, umode_t mode)
+SEC("kprobe/vfs_mkdir/512")
+int BPF_KPROBE(vfs_mkdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
+	       struct dentry *dentry, umode_t mode)
 {
-	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_mkdir/419")), used)) int
-BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t mode)
+SEC("kprobe/vfs_mkdir/419")
+int BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	return 0;
 }
 
-__attribute__((section(("kretprobe/vfs_mkdir")), used)) int
-BPF_KRETPROBE(vfs_mkdir_exit, long ret)
+SEC("kretprobe/vfs_mkdir")
+int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 {
 	struct retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_mkdir_info *val;
 	struct inode *d_inode;
@@ -154,6 +174,14 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	__u32 operation = 0;
 
 	if (ret) {
+		if ((val = map_lookup_elem(&mkdir_retprobe_map, &rkey))) {
+			struct retprobe_key dkey = {
+				.pid_tgid = rkey.pid_tgid,
+				.reg = (__u64)val->dentry,
+				.flags = LSM_FMOD_KEY,
+			};
+			map_delete_elem(&mkdir_retprobe_map, &dkey);
+		}
 		map_delete_elem(&mkdir_retprobe_map, &rkey);
 		return 0;
 	}
@@ -172,6 +200,9 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	operation = val->operation;
 
 	// we are done with 'val' so we can delete than entry
+	map_delete_elem(&mkdir_retprobe_map, &rkey);
+	rkey.reg = (__u64)dentry;
+	rkey.flags = LSM_FMOD_KEY;
 	map_delete_elem(&mkdir_retprobe_map, &rkey);
 
 	// get current inode and fs info
@@ -216,10 +247,59 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// In these events have already updated any internal maps.
 	if (!(operation & FILE_OP_POST))
 		return 0;
-	msg->operation = operation;
+
+	/* operation cannot be FILE_OP_BLOCK here as this operation will 
+	 * be block by lsm/fmod_ret programs */
+	msg->operation = FILE_OP_POST;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
 
 	return 0;
+}
+
+static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx, struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	struct retprobe_key rkey = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = (__u64)dentry,
+		.flags = LSM_FMOD_KEY,
+	};
+	struct vfs_mkdir_info *val;
+
+	val = map_lookup_elem(&mkdir_retprobe_map, &rkey);
+	if (!val)
+		return 0;
+
+	if (val->operation & FILE_OP_BLOCK) {
+		int zero = 0;
+		struct msg_file_ops *msg = map_lookup_elem(&file_heap_map, &zero);
+		if (!msg)
+			return 0;
+
+		memcpy(msg, &val->msg, sizeof(struct msg_file_ops));
+		map_delete_elem(&mkdir_retprobe_map, &rkey);
+
+		msg->hook = hook_security_inode_mkdir;
+		msg->operation = FILE_OP_BLOCK;
+
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+		return -EPERM;
+	}
+	return 0;
+}
+
+SEC("lsm/inode_mkdir")
+int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	return security_inode_mkdir(ctx, dir, dentry, mode);
+}
+
+SEC("fmod_ret/security_inode_mkdir")
+int BPF_PROG(security_inode_mkdir_fmod, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
+{
+	if (ret != 0)
+		return ret;
+	return security_inode_mkdir(ctx, dir, dentry, mode);
 }
