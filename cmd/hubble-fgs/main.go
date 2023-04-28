@@ -607,6 +607,7 @@ func execute() error {
 	// Provide option to enable policy filtering. Because the code is new,
 	// this is set to false by default.
 	flags.Bool(keyEnablePolicyFilter, false, "Enable policy filter (beta) code")
+	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
