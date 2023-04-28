@@ -43,6 +43,7 @@ enum { hook_undef = 0,
        hook_do_truncate = 13,
        hook_chmod_common = 14,
        hook_chown_common = 15,
+       hook_security_mmap_file = 16,
 };
 
 struct retprobe_key {

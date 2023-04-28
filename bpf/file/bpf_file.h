@@ -21,6 +21,13 @@
 #define MAY_WRITE 0x00000002
 #define MAY_READ  0x00000004
 
+#define PROT_READ  0x1 /* page can be read */
+#define PROT_WRITE 0x2 /* page can be written */
+
+#define MAP_SHARED	    0x01 /* Share changes */
+#define MAP_PRIVATE	    0x02 /* Changes are private */
+#define MAP_SHARED_VALIDATE 0x03 /* share + validate extension flags */
+
 #define FAULT_FLAG_WRITE   0x01
 #define FAULT_FLAG_MKWRITE 0x02
 

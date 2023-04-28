@@ -51,6 +51,7 @@ var (
 		13: "do_truncate",
 		14: "chmod_common",
 		15: "chown_common",
+		16: "hook_security_mmap_file",
 	}
 
 	renameFlagsString = map[uint32]string{
