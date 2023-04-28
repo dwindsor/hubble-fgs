@@ -229,7 +229,7 @@ func createExitEvent(Pid uint32, Ktime uint64) *exec.MsgExitEventUnix {
 		},
 		Info: tetragonAPI.MsgExitInfo{
 			Code: 0,
-			Pad1: 0,
+			Tid:  0,
 		},
 	}
 	return &exec.MsgExitEventUnix{MsgExitEvent: tmpEv}
