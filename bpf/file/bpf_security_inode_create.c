@@ -91,7 +91,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	memcpy(key->data, msg->path.str, 256);
 
 	action = filter_match(key);
-	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE)
+	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
 		return 0; // we don't care
 
 	// At this point we know that we care about this access.

@@ -240,6 +240,8 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	if (action == FILTER_IGNORE) // due to path_file_exclude
 		return 0;
+	if (action == FILTER_MONITOR)
+		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

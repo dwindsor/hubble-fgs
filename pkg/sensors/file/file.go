@@ -900,11 +900,14 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	k.Prefixlen = uint32(len(filter)) * 8
 	copy(k.Data[:], filter)
 
+	var exKey fileapi.LPMMapKey
 	var exVal fileapi.LPMMapValue
-	if err := handle.Lookup(k, &exVal); err == nil { // key already exists
-		// already exists with value FilterMatch, do not update to FilterIgnore.
-		if exVal == fm.FilterMatch {
-			return nil
+	entries := handle.Iterate()
+	for entries.Next(&exKey, &exVal) {
+		if k.Prefixlen == exKey.Prefixlen && k.Data == exKey.Data { // key already exists
+			if exVal == fm.FilterMatch {
+				return nil
+			}
 		}
 	}
 
@@ -920,6 +923,8 @@ func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
 		if err := addFilter(handle, str, val); err != nil {
 			return err
 		}
+
+		val = fm.FilterMonitor // after the first iteration everything is in monitor state
 
 		if str == "/" { // reached root fs - nothing more to do
 			return nil

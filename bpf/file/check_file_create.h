@@ -93,7 +93,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	memcpy(key->data, msg->path.str, 256);
 
 	action = filter_match(key);
-	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE)
+	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
 		return 0; // we don't care
 
 	// and insert that inode to the hash_map_file_alloc

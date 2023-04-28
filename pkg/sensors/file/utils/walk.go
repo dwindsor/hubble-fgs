@@ -400,7 +400,7 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 		}
 
 		val := fileapi.HashMapFileVal{
-			Action:   action,
+			Action:   FilterMonitor,
 			PathSize: uint32(len(path)),
 		}
 		copy(val.FullPath[:], path)

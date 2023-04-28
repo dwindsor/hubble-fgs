@@ -22,6 +22,8 @@ func actToStr(act uint32) string {
 		return fmt.Sprintf("ignore(%d)", act)
 	} else if act == FilterMatch {
 		return fmt.Sprintf("match(%d)", act)
+	} else if act == FilterMonitor {
+		return fmt.Sprintf("monitor(%d)", act)
 	}
 	return fmt.Sprintf("unknown(%d)", act)
 }

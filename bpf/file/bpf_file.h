@@ -13,6 +13,7 @@
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
 #define FILTER_MATCH	1
+#define FILTER_MONITOR	2
 
 /* generic data direction definitions */
 #define READ  0

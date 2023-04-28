@@ -45,6 +45,8 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 		return 0;
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
+	if (file_val->action == FILTER_MONITOR)
+		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

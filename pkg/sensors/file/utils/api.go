@@ -26,8 +26,9 @@ var (
 )
 
 const (
-	FilterIgnore = 0
-	FilterMatch  = 1
+	FilterIgnore  = 0
+	FilterMatch   = 1
+	FilterMonitor = 2
 
 	AddToMap      = 0
 	RemoveFromMap = 1
