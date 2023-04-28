@@ -118,6 +118,26 @@ spec:
                     items:
                       description: FileSelector selects file operations.
                       properties:
+                        matchActions:
+                          description: A list of actions to execute when this selector
+                            matches. For now we only support a single action and users
+                            can select either Post or Block. We use an array to potentially
+                            support additional actions in the future.
+                          items:
+                            properties:
+                              action:
+                                description: Action to Execute. Post will post an
+                                  event; Block will also post an event, and additionally
+                                  block the operation (application will receive an
+                                  error).
+                                enum:
+                                - Post
+                                - Block
+                                type: string
+                            required:
+                            - action
+                            type: object
+                          type: array
                         matchBinaries:
                           description: A list of binary exec name filters.
                           items:
