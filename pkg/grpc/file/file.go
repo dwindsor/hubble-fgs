@@ -54,6 +54,7 @@ var (
 		16: "hook_security_mmap_file",
 		17: "hook_security_inode_unlink",
 		18: "hook_security_inode_setattr",
+		19: "hook_security_inode_create",
 	}
 
 	renameFlagsString = map[uint32]string{

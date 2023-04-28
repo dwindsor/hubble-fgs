@@ -54,7 +54,7 @@ FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o 
 	  bpf_security_file_permission.o  bpf_vfs_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
 	  bpf_vfs_mkdir.o bpf_security_inode_rmdir.o bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v419.o \
 	  bpf_iterate_dir.o bpf_do_truncate.o bpf_chmod_common.o bpf_chown_common.o bpf_security_mmap_file.o \
-	  bpf_security_inode_setattr.o
+	  bpf_security_inode_setattr.o bpf_security_inode_create.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 
