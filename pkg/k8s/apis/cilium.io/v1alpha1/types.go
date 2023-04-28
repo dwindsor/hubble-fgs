@@ -137,6 +137,12 @@ type OperationSelector struct {
 	Values []OperationSelectorValue `json:"values"`
 }
 
+type FileActionSelector struct {
+	// +kubebuilder:validation:Enum=Post;Block
+	// Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).
+	Action string `json:"action"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -145,6 +151,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
 	MatchOperations []OperationSelector `json:"matchOperations"`
+	// +kubebuilder:validation:Optional
+	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
+	MatchActions []FileActionSelector `json:"matchActions"`
 }
 
 type FileSpec struct {
