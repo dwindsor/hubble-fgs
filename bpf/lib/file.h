@@ -12,6 +12,8 @@
 
 #define CONTAINER_ID_LEN 64
 
+#define EPERM 1 /* Operation not permitted */
+
 enum { action_invalid = 0,
        action_write = 1,
        action_read = 2,

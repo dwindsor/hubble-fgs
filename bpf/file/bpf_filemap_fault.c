@@ -1,9 +1,10 @@
 #include "bpf_file.h"
+#include "generic_file_access.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-__attribute__((section("kprobe/filemap_fault"), used)) int
-BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
+SEC("kprobe/filemap_fault")
+int BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma;
 	struct file *file;
