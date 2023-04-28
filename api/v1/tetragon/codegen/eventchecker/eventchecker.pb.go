@@ -2904,6 +2904,7 @@ type ProcessFileChecker struct {
 	Gid         *stringmatcher.StringMatcher       `json:"gid,omitempty"`
 	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
 	Hook        *stringmatcher.StringMatcher       `json:"hook,omitempty"`
+	Operation   *FileOperationListMatcher          `json:"operation,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2990,6 +2991,11 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 				return fmt.Errorf("Hook check failed: %w", err)
 			}
 		}
+		if checker.Operation != nil {
+			if err := checker.Operation.Check(event.Operation); err != nil {
+				return fmt.Errorf("Operation check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3053,6 +3059,12 @@ func (checker *ProcessFileChecker) WithHook(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
+// WithOperation adds a Operation check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithOperation(check *FileOperationListMatcher) *ProcessFileChecker {
+	checker.Operation = check
+	return checker
+}
+
 //FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
@@ -3074,7 +3086,118 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 	// NB: We don't want to match timestamps for now
 	checker.Time = nil
 	checker.Hook = stringmatcher.Full(event.Hook)
+	{
+		var checks []*FileOperationChecker
+		for _, check := range event.Operation {
+			var convertedCheck *FileOperationChecker
+			convertedCheck = NewFileOperationChecker(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewFileOperationListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Operation = lm
+	}
 	return checker
+}
+
+// FileOperationListMatcher checks a list of tetragon.FileOperation fields
+type FileOperationListMatcher struct {
+	Operator listmatcher.Operator    `json:"operator"`
+	Values   []*FileOperationChecker `json:"values"`
+}
+
+// NewFileOperationListMatcher creates a new FileOperationListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
+func NewFileOperationListMatcher() *FileOperationListMatcher {
+	return &FileOperationListMatcher{
+		Operator: listmatcher.Subset,
+	}
+}
+
+// WithOperator sets the match kind for the FileOperationListMatcher
+func (checker *FileOperationListMatcher) WithOperator(operator listmatcher.Operator) *FileOperationListMatcher {
+	checker.Operator = operator
+	return checker
+}
+
+// WithValues sets the checkers that the FileOperationListMatcher should use
+func (checker *FileOperationListMatcher) WithValues(values ...*FileOperationChecker) *FileOperationListMatcher {
+	checker.Values = values
+	return checker
+}
+
+// Check checks a list of tetragon.FileOperation fields
+func (checker *FileOperationListMatcher) Check(values []tetragon.FileOperation) error {
+	switch checker.Operator {
+	case listmatcher.Ordered:
+		return checker.orderedCheck(values)
+	case listmatcher.Unordered:
+		return checker.unorderedCheck(values)
+	case listmatcher.Subset:
+		return checker.subsetCheck(values)
+	default:
+		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
+	}
+}
+
+// orderedCheck checks a list of ordered tetragon.FileOperation fields
+func (checker *FileOperationListMatcher) orderedCheck(values []tetragon.FileOperation) error {
+	innerCheck := func(check *FileOperationChecker, value tetragon.FileOperation) error {
+		if err := check.Check(&value); err != nil {
+			return fmt.Errorf("Operation check failed: %w", err)
+		}
+		return nil
+	}
+
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("FileOperationListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	for i, check := range checker.Values {
+		value := values[i]
+		if err := innerCheck(check, value); err != nil {
+			return fmt.Errorf("FileOperationListMatcher: Check failed on element %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// unorderedCheck checks a list of unordered tetragon.FileOperation fields
+func (checker *FileOperationListMatcher) unorderedCheck(values []tetragon.FileOperation) error {
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("FileOperationListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	return checker.subsetCheck(values)
+}
+
+// subsetCheck checks a subset of tetragon.FileOperation fields
+func (checker *FileOperationListMatcher) subsetCheck(values []tetragon.FileOperation) error {
+	innerCheck := func(check *FileOperationChecker, value tetragon.FileOperation) error {
+		if err := check.Check(&value); err != nil {
+			return fmt.Errorf("Operation check failed: %w", err)
+		}
+		return nil
+	}
+
+	numDesired := len(checker.Values)
+	numMatched := 0
+
+nextCheck:
+	for _, check := range checker.Values {
+		for _, value := range values {
+			if err := innerCheck(check, value); err == nil {
+				numMatched += 1
+				continue nextCheck
+			}
+		}
+	}
+
+	if numMatched < numDesired {
+		return fmt.Errorf("FileOperationListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
+	}
+
+	return nil
 }
 
 // ProcessSockStatsChecker implements a checker struct to check a ProcessSockStats event
@@ -10209,6 +10332,58 @@ func (enum *FileScopeChecker) Check(val *tetragon.FileScope) error {
 	}
 	if *enum != FileScopeChecker(*val) {
 		return fmt.Errorf("FileScopeChecker: FileScope has value %s which does not match expected value %s", (*val), tetragon.FileScope(*enum))
+	}
+	return nil
+}
+
+// FileOperationChecker checks a tetragon.FileOperation
+type FileOperationChecker tetragon.FileOperation
+
+// MarshalJSON implements json.Marshaler interface
+func (enum FileOperationChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.FileOperation_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "FILE_OP_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown FileOperation %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *FileOperationChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.FileOperation_value[str]; ok {
+		*enum = FileOperationChecker(n)
+	} else if n, ok := tetragon.FileOperation_value["FILE_OP_"+str]; ok {
+		*enum = FileOperationChecker(n)
+	} else {
+		return fmt.Errorf("Unknown FileOperation %s", str)
+	}
+
+	return nil
+}
+
+// NewFileOperationChecker creates a new FileOperationChecker
+func NewFileOperationChecker(val tetragon.FileOperation) *FileOperationChecker {
+	enum := FileOperationChecker(val)
+	return &enum
+}
+
+// Check checks a FileOperation against the checker
+func (enum *FileOperationChecker) Check(val *tetragon.FileOperation) error {
+	if val == nil {
+		return fmt.Errorf("FileOperationChecker: FileOperation is nil and does not match expected value %s", tetragon.FileOperation(*enum))
+	}
+	if *enum != FileOperationChecker(*val) {
+		return fmt.Errorf("FileOperationChecker: FileOperation has value %s which does not match expected value %s", (*val), tetragon.FileOperation(*enum))
 	}
 	return nil
 }

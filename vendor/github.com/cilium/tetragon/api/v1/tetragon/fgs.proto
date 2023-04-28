@@ -239,6 +239,12 @@ message FileArgument {
     }
 }
 
+enum FileOperation {
+    FILE_OP_UNKNOWN = 0x00;
+    FILE_OP_POST = 0x01;
+    FILE_OP_BLOCK = 0x02;
+}
+
 message ProcessFile {
     tetragon.Process process = 1;
     tetragon.Process parent = 2;
@@ -249,6 +255,7 @@ message ProcessFile {
     string gid = 7;
     google.protobuf.Timestamp time = 8;
     string hook = 9;
+    repeated FileOperation operation = 10;
 }
 
 message SockInfo {
