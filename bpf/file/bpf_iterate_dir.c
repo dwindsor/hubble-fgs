@@ -2,8 +2,14 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-__attribute__((section("kprobe/iterate_dir"), used)) int
-BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
+/*
+ * This function handles all listdir operations.
+ * Returns:
+ * -1 on error
+ *  0 if there is no need to take any further actions
+ *  1 if we need to block the operation
+ */
+static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, struct file *file)
 {
 	struct inode *inode;
 	struct dentry *dentry, *parent_dentry;
@@ -13,21 +19,21 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 
 	msg = get_msg_init();
 	if (!msg)
-		return 0;
+		return -1;
 
 	dentry = BPF_CORE_READ(file, f_path.dentry);
 	if (!dentry)
-		return 0;
+		return -1;
 
 	inode = BPF_CORE_READ(dentry, d_inode);
 	if (!inode)
-		return 0;
+		return -1;
 
 	get_ino_fs(msg, inode, dentry);
 
 	parent_dentry = BPF_CORE_READ(dentry, d_parent);
 	if (!parent_dentry)
-		return 0;
+		return -1;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -51,9 +57,8 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
-	if (file_val->location_flags == CONTAINER_FILE) {
+	if (file_val->location_flags == CONTAINER_FILE)
 		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
-	}
 	msg->path.flags |= file_val->location_flags;
 
 	msg->imode[0] = msg->imode[1] = 0;
@@ -66,5 +71,38 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
 
-	return perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+	return (operation & FILE_OP_BLOCK) != 0;
+}
+
+SEC("kprobe/iterate_dir")
+int BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
+{
+	handle_iterate_dir(ctx, file);
+	return 0;
+}
+
+SEC("lsm/file_permission")
+int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
+{
+	if (mask != MAY_READ)
+		return 0;
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (handle_iterate_dir(ctx, file) == 1)
+		return -EPERM;
+	return 0;
+}
+
+SEC("fmod_ret/security_file_permission")
+int BPF_PROG(security_file_permission_fmod, struct file *file, int mask, int ret)
+{
+	if (ret != 0)
+		return ret;
+	if (mask != MAY_READ)
+		return 0;
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (handle_iterate_dir(ctx, file) == 1)
+		return -EPERM;
+	return 0;
 }
