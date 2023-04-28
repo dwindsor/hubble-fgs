@@ -260,6 +260,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	return 0;
 }
 
+#ifdef __FILE_ENFORCE
 static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	struct retprobe_key rkey = {
@@ -305,3 +306,4 @@ int BPF_PROG(security_inode_mkdir_fmod, struct inode *dir, struct dentry *dentry
 		return ret;
 	return security_inode_mkdir(ctx, dir, dentry, mode);
 }
+#endif

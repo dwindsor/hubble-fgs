@@ -607,6 +607,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	return 0;
 }
 
+#ifdef __FILE_ENFORCE
 static inline __attribute__((always_inline)) int security_inode_rename(void *ctx, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
 {
 	struct retprobe_key rkey = {
@@ -665,3 +666,4 @@ int BPF_PROG(security_inode_rename_fmod, struct inode *old_dir, struct dentry *o
 		return ret;
 	return security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
 }
+#endif

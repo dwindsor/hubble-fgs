@@ -85,6 +85,7 @@ int BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	return 0;
 }
 
+#ifdef __FILE_ENFORCE
 SEC("lsm/file_permission")
 int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
 {
@@ -108,3 +109,4 @@ int BPF_PROG(security_file_permission_fmod, struct file *file, int mask, int ret
 		return -EPERM;
 	return 0;
 }
+#endif
