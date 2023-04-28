@@ -81,6 +81,8 @@ const (
 
 	keyRBSize      = "rb-size"
 	keyRBSizeTotal = "rb-size-total"
+
+	keyEnablePolicyFilter = "enable-policy-filter"
 )
 
 var (
@@ -167,4 +169,6 @@ func readAndSetFlags() {
 
 	option.Config.RBSize = viper.GetInt(keyRBSize)
 	option.Config.RBSizeTotal = viper.GetInt(keyRBSizeTotal)
+
+	option.Config.EnablePolicyFilter = viper.GetBool(keyEnablePolicyFilter)
 }

@@ -604,6 +604,10 @@ func execute() error {
 	flags.Int(keyRBSizeTotal, 0, "Set perf ring buffer size in total for all cpus (default 65k per cpu)")
 	flags.Int(keyRBSize, 0, "Set perf ring buffer size for single cpu (default 65k)")
 
+	// Provide option to enable policy filtering. Because the code is new,
+	// this is set to false by default.
+	flags.Bool(keyEnablePolicyFilter, false, "Enable policy filter (beta) code")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }
