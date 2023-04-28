@@ -40,3 +40,5 @@ spec:
         values:
         - "FILE_DELETE"
         - "FILE_WRITE"
+      matchActions:
+      - action: Block # Possible values: Block or Post (default).
