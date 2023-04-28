@@ -24,12 +24,25 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
 
+const (
+	FileOperationTypePost  = uint32(tetragon.FileOperation_FILE_OP_POST)
+	FileOperationTypeBlock = uint32(tetragon.FileOperation_FILE_OP_BLOCK)
+)
+
+var fileActionTypeTable = map[string]uint32{
+	"post":  FileOperationTypePost,
+	"block": FileOperationTypeBlock,
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
 	// matchBinaries mappings
 	selOpsOp  uint32
 	selOpsMap sync.Map
+
+	// matchActions value
+	action uint32
 }
 
 func NewKernelSelectorState() *KernelSelectorState {
@@ -44,6 +57,10 @@ func (k *KernelSelectorState) SetOperationOp(op uint32) {
 
 func (k *KernelSelectorState) GetOperationOp() uint32 {
 	return k.selOpsOp
+}
+
+func (k *KernelSelectorState) GetAction() uint32 {
+	return k.action
 }
 
 func (k *KernelSelectorState) GetOpsSelMap() map[uint32]uint32 {
@@ -165,12 +182,29 @@ func ParseMatchOperations(k *KernelSelectorState, ops []v1alpha1.OperationSelect
 	return nil
 }
 
+func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector) error {
+	if len(actions) > 1 {
+		return fmt.Errorf("only support single actions selector")
+	}
+	for _, a := range actions {
+		act, ok := fileActionTypeTable[strings.ToLower(a.Action)]
+		if !ok {
+			return fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
+		}
+		k.action |= act
+	}
+	return nil
+}
+
 func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector) error {
 	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries, 0); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
 	if err := ParseMatchOperations(k, fileSel.MatchOperations); err != nil {
 		return fmt.Errorf("parseMatchOperations error: %w", err)
+	}
+	if err := ParseMatchActions(k, fileSel.MatchActions); err != nil {
+		return fmt.Errorf("parseMatchActions error: %w", err)
 	}
 	return nil
 }

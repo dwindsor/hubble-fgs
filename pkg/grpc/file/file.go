@@ -221,6 +221,15 @@ func populateFileLocation(event *MsgFileEventUnix, tetragonProcess *tetragon.Pro
 	}
 }
 
+func normalizeOp(op uint32) tetragon.FileOperation {
+	if op&uint32(tetragon.FileOperation_FILE_OP_BLOCK) != 0 {
+		return tetragon.FileOperation_FILE_OP_BLOCK
+	} else if op&uint32(tetragon.FileOperation_FILE_OP_POST) != 0 {
+		return tetragon.FileOperation_FILE_OP_POST
+	}
+	return tetragon.FileOperation_FILE_OP_UNKNOWN
+}
+
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -254,12 +263,13 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
-		Process: tetragonProcess,
-		Parent:  tetragonParent,
-		Action:  action,
-		Args:    args,
-		Time:    ktime.ToProto(event.Timestamp),
-		Hook:    fileHookMap[event.Hook],
+		Process:   tetragonProcess,
+		Parent:    tetragonParent,
+		Action:    action,
+		Args:      args,
+		Time:      ktime.ToProto(event.Timestamp),
+		Hook:      fileHookMap[event.Hook],
+		Operation: []tetragon.FileOperation{normalizeOp(event.Operation)},
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
@@ -332,6 +342,7 @@ type MsgFileEventUnix struct {
 	ParentFs    MsgFsInfoUnix
 	ContainerID string
 	MntNs       uint32
+	Operation   uint32
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -430,6 +441,7 @@ type MsgFileRenameEventUnix struct {
 	Dst        MsgRenameElemUnix
 	MntNs      uint32
 	Flags      uint32
+	Operation  uint32
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
@@ -495,12 +507,13 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
-		Process: tetragonProcess,
-		Parent:  tetragonParent,
-		Action:  action,
-		Args:    args,
-		Time:    ktime.ToProto(event.Timestamp),
-		Hook:    fileHookMap[event.Hook],
+		Process:   tetragonProcess,
+		Parent:    tetragonParent,
+		Action:    action,
+		Args:      args,
+		Time:      ktime.ToProto(event.Timestamp),
+		Hook:      fileHookMap[event.Hook],
+		Operation: []tetragon.FileOperation{normalizeOp(event.Operation)},
 	}
 
 	filemetrics.FileTotalEvents().Inc()

@@ -3,7 +3,7 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) void
-fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_file_ops *msg, int action, __u32 sel)
+fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_file_ops *msg, int action, __u32 op)
 {
 	struct vfs_mkdir_info *value;
 	struct retprobe_key rkey = {
@@ -19,7 +19,7 @@ fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_f
 	value->dentry = dentry;
 	memcpy(&value->msg, msg, sizeof(struct msg_file_ops));
 	value->action = action;
-	value->selector_match = sel;
+	value->operation = op;
 
 	map_update_elem(&mkdir_retprobe_map, &rkey, value, 0);
 }
@@ -37,7 +37,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	__u32 path_size = 0;
 	__u32 dir_size = 0, dir_offset = 0;
 	__u32 dlen_size = 0, dlen_offset = 0;
-	__u32 selector_match = 0;
+	__u32 operation = 0;
 	struct qstr d_name;
 
 	msg = get_msg_init();
@@ -115,14 +115,10 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 
-	selector_match = 1;
-	if (!check_match_binaries())
-		selector_match = 0;
-	if (!check_match_operations(action_write))
-		selector_match = 0;
+	operation = eval_selectors(action_mkdir);
 
 	// create the mkdir_retprobe_map value and set it for the kretprobe
-	fill_mkdir_retprobe_map(ctx, dentry, msg, action, selector_match);
+	fill_mkdir_retprobe_map(ctx, dentry, msg, action, operation);
 
 	return 0;
 }
@@ -155,7 +151,7 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	struct msg_file_ops *msg;
 	int zero = 0, action = 0;
 	__u32 path_size = 0;
-	__u32 selector_match = 0;
+	__u32 operation = 0;
 
 	if (ret) {
 		map_delete_elem(&mkdir_retprobe_map, &rkey);
@@ -173,7 +169,7 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	dentry = val->dentry;
 	action = val->action;
 	memcpy(msg, &val->msg, sizeof(struct msg_file_ops));
-	selector_match = val->selector_match;
+	operation = val->operation;
 
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&mkdir_retprobe_map, &rkey);
@@ -218,8 +214,9 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// Now we can check for the selectors, if they do not match
 	// we can avoid sending the message.
 	// In these events have already updated any internal maps.
-	if (!selector_match)
+	if (!(operation & FILE_OP_POST))
 		return 0;
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

@@ -7,6 +7,9 @@
 #define HOST_FILE      (1 << 0)
 #define CONTAINER_FILE (1 << 1)
 
+#define FILE_OP_POST  (1 << 0) // 0x1
+#define FILE_OP_BLOCK (1 << 1) // 0x2
+
 #define CONTAINER_ID_LEN 64
 
 enum { action_invalid = 0,
@@ -81,7 +84,7 @@ struct msg_file_ops {
 	__u32 action;
 	__u32 hook;
 	__u64 ktime;
-	__u32 pad;
+	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
 	__u16 imode[2]; // index 0 is the old, index 1 is the new
 	__u32 uid[2];
 	__u32 gid[2];
@@ -96,7 +99,7 @@ struct vfs_mkdir_info {
 	struct dentry *dentry;
 	struct msg_file_ops msg;
 	int action;
-	__u32 selector_match;
+	__u32 operation;
 };
 
 struct msg_file_split_path {
@@ -129,7 +132,7 @@ struct msg_file_rename_ops {
 	__u32 mnt_ns;
 	__u32 flags;
 	__u32 tc_id;
-	__u32 pad;
+	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
 };
 
 struct vfs_rename_info {
@@ -137,11 +140,12 @@ struct vfs_rename_info {
 	const struct path *new_dir;
 	__u32 need_old, need_new;
 	struct msg_file_rename_ops msg;
-	__u32 selector_match;
+	__u32 operation;
 };
 
 struct file_config_map_value {
 	__u32 has_security_path_rename;
+	__u32 action_value;
 };
 
 #endif

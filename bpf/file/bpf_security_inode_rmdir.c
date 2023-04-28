@@ -9,6 +9,7 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 	struct hash_map_file_key file_key;
 	struct hash_map_file_val *file_val = 0;
 	struct msg_file_ops *msg;
+	__u32 operation = 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -38,9 +39,8 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	if (!check_match_binaries())
-		goto ignore_rmdir;
-	if (!check_match_operations(action_rmdir))
+	operation = eval_selectors(action_rmdir);
+	if (!(operation & FILE_OP_POST))
 		goto ignore_rmdir;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -55,6 +55,7 @@ kprobe_security_inode_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentr
 	msg->hook = hook_security_inode_rmdir;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

@@ -9,6 +9,7 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
+	__u32 operation = 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -40,9 +41,8 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	if (!check_match_binaries())
-		return 0;
-	if (!check_match_operations(action_write))
+	operation = eval_selectors(action_write);
+	if (!(operation & FILE_OP_POST))
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -61,6 +61,7 @@ kprobe_do_truncate(struct pt_regs *ctx, struct dentry *dentry, loff_t len)
 	msg->hook = hook_do_truncate;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

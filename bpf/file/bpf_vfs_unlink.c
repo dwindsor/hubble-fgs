@@ -12,6 +12,7 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	struct hash_map_file_val *file_val = 0;
 	unsigned int i_nlink = 0;
 	bool remove_entry = false;
+	__u32 operation = 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -53,9 +54,8 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	if (!check_match_binaries())
-		goto ignore_unlink;
-	if (!check_match_operations(action_delete))
+	operation = eval_selectors(action_delete);
+	if (!(operation & FILE_OP_POST))
 		goto ignore_unlink;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -74,6 +74,7 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	msg->hook = hook_vfs_unlink;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

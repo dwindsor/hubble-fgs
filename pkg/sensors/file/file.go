@@ -679,6 +679,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		ParentFs:    createFsInfoUnix(m.ParentFs),
 		ContainerID: cid,
 		MntNs:       m.MntNs,
+		Operation:   m.Operation,
 	}
 
 	return []observer.Event{unix}, nil
@@ -811,8 +812,9 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			ParentFs:    createFsInfoUnix(m.Dst.ParentFs),
 			ContainerID: dstCid,
 		},
-		MntNs: m.MntNs,
-		Flags: m.Flags,
+		MntNs:     m.MntNs,
+		Flags:     m.Flags,
+		Operation: m.Operation,
 	}
 
 	return []observer.Event{unix}, nil
@@ -995,6 +997,7 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, f
 		}
 	}
 
+	config.ActionValue = sel.GetAction() // set action_value to config
 	for _, h := range fimProgs {
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),

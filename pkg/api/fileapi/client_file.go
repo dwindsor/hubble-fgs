@@ -60,7 +60,7 @@ type MsgFileEvent struct {
 	Action     uint32                  `align:"action"`
 	Hook       uint32                  `align:"hook"`
 	Timestamp  uint64                  `align:"ktime"`
-	Pad        uint32                  `align:"pad"`
+	Operation  uint32                  `align:"operation"`
 	Imode      [2]uint16               `align:"imode"`
 	Uid        [2]uint32               `align:"uid"`
 	Gid        [2]uint32               `align:"gid"`
@@ -101,9 +101,10 @@ type MsgFileRenameEvent struct {
 	MntNs      uint32                  `align:"mnt_ns"`
 	Flags      uint32                  `align:"flags"`
 	TcId       uint32                  `align:"tc_id"`
-	Pad        uint32                  `align:"pad"`
+	Operation  uint32                  `align:"operation"`
 }
 
 type FileConfigMapValue struct {
 	HasSecurityPathRename uint32 `align:"has_security_path_rename"`
+	ActionValue           uint32 `align:"action_value"`
 }

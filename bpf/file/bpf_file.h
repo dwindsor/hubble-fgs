@@ -260,6 +260,33 @@ static inline __attribute__((always_inline)) int check_match_operations(__u32 ac
 	return 1;
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_enforcement()
+{
+	__u32 zero = 0;
+	struct file_config_map_value *conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return 0;
+	return (conf->action_value & FILE_OP_BLOCK) != 0;
+}
+
+static inline __attribute__((always_inline)) __u32
+eval_selectors(__u32 action)
+{
+	if (!check_match_binaries())
+		goto nopost;
+	if (!check_match_operations(action))
+		goto nopost;
+	if (!check_enforcement())
+		goto post;
+
+	return FILE_OP_POST | FILE_OP_BLOCK;
+post:
+	return FILE_OP_POST;
+nopost:
+	return 0;
+}
+
 static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 {
 	struct msg_file_ops *msg;
@@ -611,6 +638,7 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action, i
 	struct path path;
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
+	__u32 operation = 0;
 
 	if (!file)
 		return 0;
@@ -652,9 +680,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action, i
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	if (!check_match_binaries())
-		return 0;
-	if (!check_match_operations(action))
+	operation = eval_selectors(action);
+	if (!(operation & FILE_OP_POST))
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -673,6 +700,7 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action, i
 	msg->hook = hook_type;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
@@ -695,6 +723,7 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	int zero = 0, action = 0;
 	struct qstr d_name;
 	char *buffer;
+	__u32 operation = 0;
 
 	probe_read(&f_mode, sizeof(f_mode), _(&f->f_mode));
 	if ((f_mode & FMODE_CREATED) == 0)
@@ -805,9 +834,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	if (!check_match_binaries())
-		return 0;
-	if (!check_match_operations(action_create))
+	operation = eval_selectors(action_create);
+	if (!(operation & FILE_OP_POST))
 		return 0;
 
 	probe_read(&(msg->imode[0]), sizeof(msg->imode[0]), _(&inode->i_mode));
@@ -818,6 +846,7 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

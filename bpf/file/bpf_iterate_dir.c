@@ -9,6 +9,7 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	struct dentry *dentry, *parent_dentry;
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
+	__u32 operation = 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -43,9 +44,8 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	if (!check_match_binaries())
-		return 0;
-	if (!check_match_operations(action_readdir))
+	operation = eval_selectors(action_readdir);
+	if (!(operation & FILE_OP_POST))
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -64,6 +64,7 @@ BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 	msg->hook = hook_iterate_dir;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
 
 	return perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 }
