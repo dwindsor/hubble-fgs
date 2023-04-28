@@ -29,6 +29,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/features"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -86,6 +87,15 @@ const (
 	DST_INVALID     = (1 << 19)
 )
 
+type Mode uint32
+
+const (
+	Observe Mode = iota
+	EnforceNotSupported
+	EnforceFmodRet
+	EnforceLSM
+)
+
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
@@ -105,7 +115,7 @@ type FimProg struct {
 }
 
 var (
-	FimHooks = [...]FimHook{
+	FimHooksObserve = [...]FimHook{
 		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate"}}},
 		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault"}}},
 		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages"}}},
@@ -143,6 +153,70 @@ var (
 		}},
 		{"kprobe", "chmod_common", []FimFunc{{"chmod_common(const struct path*, umode_t)", "bpf_chmod_common.o", "chmod_common"}}},
 		{"kprobe", "chown_common", []FimFunc{{"chown_common(const struct path*, uid_t, gid_t)", "bpf_chown_common.o", "chown_common"}}},
+	}
+
+	FimHooksFmodRet = [...]FimHook{
+		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file.o", "security_mmap_file"}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission"}}},
+		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink.o", "security_inode_unlink"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
+		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create.o", "security_inode_create"}}},
+		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir"}}},
+		{"kprobe", "vfs_mkdir", []FimFunc{
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
+		}},
+		{"kretprobe", "vfs_mkdir", []FimFunc{
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+		}},
+		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "security_inode_mkdir"}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kprobe", "vfs_rename", []FimFunc{
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
+		}},
+		{"kretprobe", "vfs_rename", []FimFunc{
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
+		}},
+		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename.o", "security_inode_rename"}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir.o", "security_file_permission"}}},
+		{"fmod_ret", "security_inode_setattr", []FimFunc{{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr"}}},
+	}
+
+	FimHooksLsm = [...]FimHook{
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file.o", "mmap_file"}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "file_permission"}}},
+		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink.o", "inode_unlink"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
+		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create.o", "inode_create"}}},
+		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "inode_rmdir"}}},
+		{"kprobe", "vfs_mkdir", []FimFunc{
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
+		}},
+		{"kretprobe", "vfs_mkdir", []FimFunc{
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+		}},
+		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "inode_mkdir"}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kprobe", "vfs_rename", []FimFunc{
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
+		}},
+		{"kretprobe", "vfs_rename", []FimFunc{
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
+		}},
+		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename.o", "inode_rename"}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir.o", "file_permission"}}},
+		{"lsm", "security_inode_setattr", []FimFunc{{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "inode_setattr"}}},
 	}
 
 	SharedMaps = [...]string{
@@ -857,7 +931,8 @@ func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
 }
 
 type FimLoaderData struct {
-	s *fm.KernelSelectorState
+	s  *fm.KernelSelectorState
+	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
 }
 
 func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
@@ -1009,7 +1084,8 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, f
 			load = load.SetRetProbe(true)
 		}
 		load.SetLoaderData(FimLoaderData{
-			s: sel,
+			s:  sel,
+			tp: h.tp,
 		})
 		progs = append(progs, load)
 
@@ -1063,7 +1139,7 @@ func fixProgName(p string) string {
 	return p
 }
 
-func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
+func findHooks(config *fileapi.FileConfigMapValue, mode Mode) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
@@ -1072,8 +1148,24 @@ func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
 		return nil, fmt.Errorf("GetCachedBTF returns nil")
 	}
 
+	var hooks []FimHook
+	m := ""
+	if mode == Observe {
+		hooks = FimHooksObserve[:]
+		m = "observe"
+	} else if mode == EnforceFmodRet {
+		hooks = FimHooksFmodRet[:]
+		m = "enforce with fmod_ret"
+	} else if mode == EnforceLSM {
+		hooks = FimHooksLsm[:]
+		m = "enforce with lsm"
+	} else {
+		return nil, fmt.Errorf("unknown mode in findHooks [%d]", mode)
+	}
+	logger.GetLogger().Infof("Loading file hooks for %s", m)
+
 	fimProgs := make([]FimProg, 0)
-	for _, h := range FimHooks {
+	for _, h := range hooks {
 		kretprobe := (h.tp == "kretprobe")
 		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
 		if err != nil {
@@ -1099,6 +1191,33 @@ func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
 	}
 
 	return fimProgs, nil
+}
+
+func probeFileMode(s *fm.KernelSelectorState) Mode {
+	supportTracing := (features.HaveProgramType(ebpf.Tracing) == nil)
+	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", supportTracing)
+
+	supportLSM := (features.HaveProgramType(ebpf.LSM) == nil)
+	enabledLSM := false
+	if supportLSM {
+		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
+			enabledLSM = strings.Contains(string(lsm), "bpf")
+		}
+	}
+	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t (enabled = %t)", supportLSM, enabledLSM)
+
+	if !s.NeedEnforcement() {
+		return Observe
+	}
+
+	// If we have support for lsm and fmod_ret we prefer to use lsm.
+	// For lsm we should also check that this is enabled.
+	if supportLSM && enabledLSM {
+		return EnforceLSM
+	} else if supportTracing {
+		return EnforceFmodRet
+	}
+	return EnforceNotSupported
 }
 
 // PolicyHandler (called on init)
@@ -1146,7 +1265,7 @@ func (k *observerFileSensor) PolicyHandler(
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 	}
-	progs, err := findHooks(&config)
+	progs, err := findHooks(&config, probeFileMode(selState))
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
 		return nil, nil
@@ -1157,20 +1276,28 @@ func (k *observerFileSensor) PolicyHandler(
 
 // LoadProbe() (called when the eBPF programs are actually loaded)
 func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	var err error
+	v, ok := args.Load.LoaderData.(FimLoaderData)
+	if !ok {
+		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
+	}
 
 	// this should be done after initializing the base sensor
+	var err error
 	loadProbeInit.Do(func() {
 		// get the pinPathPrefix
-		v, ok := args.Load.LoaderData.(FimLoaderData)
-		if ok {
-			err = fm.UpdateNamesMap(args.MapDir, v.s)
-		} else {
-			err = fmt.Errorf("type of LoaderData does not match FimLoaderData")
-		}
+		err = fm.UpdateNamesMap(args.MapDir, v.s)
 	})
 	if err != nil {
 		return err
 	}
-	return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+
+	if v.tp == "kprobe" || v.tp == "kretprobe" {
+		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else if v.tp == "fentry" || v.tp == "fexit" || v.tp == "fmod_ret" {
+		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else if v.tp == "lsm" {
+		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else {
+		return fmt.Errorf("file: %s programs are not supported", v.tp)
+	}
 }

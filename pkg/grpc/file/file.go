@@ -94,6 +94,11 @@ func getDevMinor(dev uint32) uint32 {
 }
 
 func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
+	// In the case where we block a create/mkdir operation we don't have
+	// file system information. So there is no need to print zero field.
+	if fs.SDev == 0 {
+		return nil
+	}
 	return &tetragon.FileSystem{
 		Dev:  fmt.Sprintf("%d:%d", getDevMajor(fs.SDev), getDevMinor(fs.SDev)),
 		Name: fs.SName,

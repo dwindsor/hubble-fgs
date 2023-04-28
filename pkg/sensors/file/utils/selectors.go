@@ -209,6 +209,10 @@ func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector) error
 	return nil
 }
 
+func (k *KernelSelectorState) NeedEnforcement() bool {
+	return (k.action & FileOperationTypeBlock) != 0
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > 1 {
 		return nil, fmt.Errorf("file monitoring supports up to 1 selector")
