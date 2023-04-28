@@ -52,6 +52,7 @@ var (
 		14: "chmod_common",
 		15: "chown_common",
 		16: "hook_security_mmap_file",
+		17: "hook_security_inode_unlink",
 	}
 
 	renameFlagsString = map[uint32]string{

@@ -2,8 +2,14 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) int
-kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
+/*
+ * This function handles all unlink operations.
+ * Returns:
+ * -1 on error
+ *  0 if there is no need to take any further actions
+ *  1 if we need to block the operation
+ */
+static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, struct inode *dir, struct dentry *dentry, __u32 hook)
 {
 	struct dentry *parent_dentry;
 	struct inode *inode;
@@ -16,12 +22,12 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 
 	msg = get_msg_init();
 	if (!msg)
-		return 0;
+		return -1;
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
 	if (!inode)
-		return 0;
+		return -1;
 
 	get_ino_fs(msg, inode, dentry);
 
@@ -30,7 +36,7 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
-		return 0;
+		return -1;
 
 	get_fs_info(&(msg->parent_fs), dir, parent_dentry);
 
@@ -61,9 +67,8 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
-	if (file_val->location_flags == CONTAINER_FILE) {
+	if (file_val->location_flags == CONTAINER_FILE)
 		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
-	}
 	msg->path.flags |= file_val->location_flags;
 
 	msg->imode[0] = msg->imode[1] = 0;
@@ -71,13 +76,16 @@ kprobe_vfs_unlink(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	msg->gid[0] = msg->gid[1] = 0;
 
 	msg->action = action_delete;
-	msg->hook = hook_vfs_unlink;
+	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
+
+	if (operation & FILE_OP_BLOCK)
+		return 1;
 
 ignore_unlink:
 	if (remove_entry) {
@@ -91,14 +99,36 @@ ignore_unlink:
 	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_unlink/512")), used)) int
-BPF_KPROBE(vfs_unlink_v512, struct user_namespace *mnt_userns, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+SEC("kprobe/vfs_unlink/512")
+int BPF_KPROBE(vfs_unlink_v512, struct user_namespace *mnt_userns, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {
-	return kprobe_vfs_unlink(ctx, dir, dentry);
+	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_unlink/419")), used)) int
-BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+SEC("kprobe/vfs_unlink/419")
+int BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {
-	return kprobe_vfs_unlink(ctx, dir, dentry);
+	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	return 0;
+}
+
+SEC("lsm/inode_unlink")
+int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry)
+{
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink) == 1)
+		return -EPERM;
+	return 0;
+}
+
+SEC("fmod_ret/security_inode_unlink")
+int BPF_PROG(security_inode_unlink_fmod, struct inode *dir, struct dentry *dentry, int ret)
+{
+	if (ret != 0)
+		return ret;
+	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
+	if (kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink) == 1)
+		return -EPERM;
+	return 0;
 }
