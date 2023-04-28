@@ -31,6 +31,7 @@ func New() *cobra.Command {
 
 	ret.AddCommand(
 		printInodeMapCmd(),
+		printLpmMapCmd(),
 	)
 
 	return ret
@@ -83,4 +84,19 @@ func printInodeMapCmd() *cobra.Command {
 	viper.BindPFlags(flags)
 
 	return ret
+}
+
+func printLpmMapCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "lpm-map [path]",
+		Short: "dump lpm-map contents",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			path := args[0]
+			err := fm.PrintLPMMap(path)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Printing failed!")
+			}
+		},
+	}
 }
