@@ -30,14 +30,15 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
  *      (https://elixir.bootlin.com/linux/v5.10/source/fs/overlayfs/dir.c#L1072 and
  *      https://elixir.bootlin.com/linux/v5.10/source/fs/overlayfs/overlayfs.h#L210)
  */
-__attribute__((section(("kprobe/security_path_rename")), used)) int
-BPF_KPROBE(security_path_rename, const struct path *old_dir,
-	   struct dentry *old_dentry, const struct path *new_dir,
-	   struct dentry *new_dentry, unsigned int flags)
+SEC("kprobe/security_path_rename")
+int BPF_KPROBE(security_path_rename, const struct path *old_dir,
+	       struct dentry *old_dentry, const struct path *new_dir,
+	       struct dentry *new_dentry, unsigned int flags)
 {
 	struct retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
 	int zero = 0;
@@ -55,13 +56,14 @@ BPF_KPROBE(security_path_rename, const struct path *old_dir,
 	return 0;
 }
 
-__attribute__((section(("kretprobe/security_path_rename")), used)) int
-BPF_KRETPROBE(security_path_rename_exit, long ret)
+SEC("kretprobe/security_path_rename")
+int BPF_KRETPROBE(security_path_rename_exit, long ret)
 {
 	if (ret) {
 		struct retprobe_key k = {
 			.pid_tgid = get_current_pid_tgid(),
 			.reg = PT_REGS_FP_CORE(ctx),
+			.flags = KRETPROBE_KEY,
 		};
 		map_delete_elem(&rename_retprobe_map, &k);
 	}

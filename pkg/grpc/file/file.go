@@ -56,6 +56,7 @@ var (
 		18: "hook_security_inode_setattr",
 		19: "hook_security_inode_create",
 		20: "hook_security_inode_mkdir",
+		21: "hook_security_inode_rename",
 	}
 
 	renameFlagsString = map[uint32]string{

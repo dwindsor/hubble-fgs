@@ -48,6 +48,7 @@ enum { hook_undef = 0,
        hook_security_inode_setattr = 18,
        hook_security_inode_create = 19,
        hook_security_inode_mkdir = 20,
+       hook_security_inode_rename = 21,
 };
 
 #define KRETPROBE_KEY 0

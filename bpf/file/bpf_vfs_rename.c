@@ -69,6 +69,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	struct retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
 	struct inode *d_inode;
@@ -297,6 +298,23 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 	v->operation = eval_selectors(action_rename);
 
+	/*
+	 * We will use 2 keys:
+	 * 1. To be used by kretprobe and indexed by pid_tgid, PT_REGS_FP_CORE, and flags == KRETPROBE_KEY
+	 * 2. To be used by lsm/fmod_ret program and indexed by pid_tgid, old_dir, and flags == LSM_FMOD_KEY
+	 * 
+	 * The reason is that we don't have access to pt_regs inside lsm/fmod_ret
+	 * programs and thus we can only get the second key. On the other hand, we 
+	 * also don't have access to the arguments (old_dir) in the kretprobe.
+	 * 
+	 * In all cases, both will be deleted by the kretprobe. The kretprobe can first 
+	 * delete key1 and get old_dir to delete key2. kretprobe will be called even in 
+	 * the case where we block the operation.
+	 */
+	k.reg = (__u64)old_dir;
+	k.flags = LSM_FMOD_KEY;
+	map_update_elem(&rename_retprobe_map, &k, v, 0);
+
 	return 0;
 }
 
@@ -311,22 +329,24 @@ struct renamedata {
 	unsigned int flags;
 } __randomize_layout;
 
-__attribute__((section(("kprobe/vfs_rename/512")), used)) int
-BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
+SEC("kprobe/vfs_rename/512")
+int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 {
 	struct renamedata d;
 	probe_read(&d, sizeof(struct renamedata), rd);
-	return kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
-				 d.new_dentry, d.delegated_inode);
+	kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
+			  d.new_dentry, d.delegated_inode);
+	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_rename/419")), used)) int
-BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry,
-	   struct inode *new_dir, struct dentry *new_dentry,
-	   struct inode **delegated_inode /*, unsigned int flags */)
+SEC("kprobe/vfs_rename/419")
+int BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry,
+	       struct inode *new_dir, struct dentry *new_dentry,
+	       struct inode **delegated_inode /*, unsigned int flags */)
 {
-	return kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
-				 delegated_inode);
+	kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
+			  delegated_inode);
+	return 0;
 }
 
 static inline __attribute__((always_inline)) void
@@ -423,21 +443,31 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 // SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE       // remove src.inode from hash_map_file_alloc
 // SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS  // add add src.inode to hash_map_file_alloc to update the path
 // SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE    // remove dst.inode from hash_map_file_alloc *and* src.inode to hash_map_file_alloc to update the path
-__attribute__((section(("kretprobe/vfs_rename")), used)) int
-BPF_KRETPROBE(vfs_rename_exit, long ret)
+SEC("kretprobe/vfs_rename")
+int BPF_KRETPROBE(vfs_rename_exit, long ret)
 {
 	struct retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *val;
 	struct msg_file_rename_ops *msg;
 	struct hash_map_file_val *file_val = 0;
 	struct bpf_lpm_trie_key *key = 0;
 	int zero = 0, action = 0;
+	__u64 old_dir = 0;
 
 	// rename failed
 	if (ret) {
+		if ((val = map_lookup_elem(&rename_retprobe_map, &k))) {
+			struct retprobe_key dkey = {
+				.pid_tgid = k.pid_tgid,
+				.reg = (__u64)val->old_dir,
+				.flags = LSM_FMOD_KEY,
+			};
+			map_delete_elem(&rename_retprobe_map, &dkey);
+		}
 		map_delete_elem(&rename_retprobe_map, &k);
 		return 0;
 	}
@@ -446,6 +476,7 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 	val = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!val)
 		return 0;
+	old_dir = (__u64)val->old_dir;
 
 	if (val->msg.flags & SRC_REG_FILE) {
 		if (val->msg.flags & MOVE_INSIDE) {
@@ -559,6 +590,9 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&rename_retprobe_map, &k);
+	k.reg = old_dir;
+	k.flags = LSM_FMOD_KEY;
+	map_delete_elem(&rename_retprobe_map, &k);
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
@@ -571,4 +605,63 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 			  sizeof(struct msg_file_rename_ops));
 
 	return 0;
+}
+
+static inline __attribute__((always_inline)) int security_inode_rename(void *ctx, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+	struct retprobe_key rkey = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = (__u64)old_dir,
+		.flags = LSM_FMOD_KEY,
+	};
+	struct vfs_rename_info *val;
+
+	val = map_lookup_elem(&rename_retprobe_map, &rkey);
+	if (!val)
+		return 0;
+
+	if (val->operation & FILE_OP_BLOCK) {
+		int zero = 0;
+		struct msg_file_rename_ops *msg = map_lookup_elem(&file_rename_heap_map, &zero);
+		if (!msg)
+			return 0;
+
+		// a single memcpy does not work
+		// "in function event_vfs_rename_ret i32 (%struct.pt_regs*): A call to built-in function 'memcpy' is not supported."
+		// memcpy(msg, &(val->msg), sizeof(struct msg_file_rename_ops));
+		memcpy(&(msg->common), &(val->msg.common), sizeof(struct msg_common));
+		memcpy(&(msg->current), &(val->msg.current),
+		       sizeof(struct msg_execve_key));
+		msg->action = val->msg.action;
+		msg->ktime = val->msg.ktime;
+		memcpy(&(msg->src), &(val->msg.src), sizeof(struct msg_rename_elem));
+		memcpy(&(msg->dst), &(val->msg.dst), sizeof(struct msg_rename_elem));
+		msg->mnt_ns = val->msg.mnt_ns;
+		msg->flags = val->msg.flags;
+		msg->tc_id = 0xffffffff; // default value (UINT32_MAX)
+		msg->hook = hook_security_inode_rename;
+		msg->operation = FILE_OP_BLOCK;
+
+		map_delete_elem(&rename_retprobe_map, &rkey);
+
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+				  sizeof(struct msg_file_rename_ops));
+
+		return -EPERM;
+	}
+	return 0;
+}
+
+SEC("lsm/inode_rename")
+int BPF_PROG(security_inode_rename_lsm, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+	return security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
+}
+
+SEC("fmod_ret/security_inode_rename")
+int BPF_PROG(security_inode_rename_fmod, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags, int ret)
+{
+	if (ret != 0)
+		return ret;
+	return security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
 }
