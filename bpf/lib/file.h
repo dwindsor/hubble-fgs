@@ -45,6 +45,7 @@ enum { hook_undef = 0,
        hook_chown_common = 15,
        hook_security_mmap_file = 16,
        hook_security_inode_unlink = 17,
+       hook_security_inode_setattr = 18,
 };
 
 struct retprobe_key {
