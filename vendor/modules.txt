@@ -234,6 +234,7 @@ github.com/cilium/tetragon/pkg/jsonchecker
 github.com/cilium/tetragon/pkg/kernels
 github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/ktime
+github.com/cilium/tetragon/pkg/labels
 github.com/cilium/tetragon/pkg/lock
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/matchers/bytesmatcher

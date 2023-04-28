@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	hubble "github.com/cilium/tetragon/pkg/oldhubble/cilium"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api"
@@ -153,6 +154,25 @@ func (pi *ProcessInternal) RefGet() uint32 {
 	return ref
 }
 
+// UpdateEventProcessTID Updates the Process.Tid of the event on the fly.
+//
+// From BPF side as we track processes by their TGID we do not cache TIDs,
+// this is done on purpose since we only track clone and execve where
+// TGID == TID, and also to simplify things. From user space perspective
+// this works in general without any problem especially for execve events.
+// A cached process (user space procCache) will always have its TGID == TID.
+//
+// However for other events we want to be precise and report the right
+// thread that triggered an event. For such cases call this helper to
+// set the Process.Tid to the corresponding thread ID that was reported
+// from BPF side.
+//
+// There is no point on calling this helper on clone or execve events,
+// however on all other events it is perfectly fine.
+func UpdateEventProcessTid(process *tetragon.Process, tid uint32) {
+	process.Tid = &wrapperspb.UInt32Value{Value: tid}
+}
+
 func GetProcessID(pid uint32, ktime uint64) string {
 	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%d:%d", nodeName, ktime, pid)))
 }
@@ -186,6 +206,7 @@ func GetProcess(
 	return &ProcessInternal{
 		process: &tetragon.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
+			Tid:          &wrapperspb.UInt32Value{Value: process.TID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
 			Cwd:          cwd,
 			Binary:       path.GetBinaryAbsolutePath(process.Filename, cwd),
@@ -239,7 +260,21 @@ func AddExecEvent(event *tetragonAPI.MsgExecveEventUnix) *ProcessInternal {
 	} else {
 		proc, _ = GetProcess(event.Process, event.Kube.Docker, event.CleanupProcess, event.Capabilities, event.Namespaces)
 	}
-	procCache.Add(proc)
+
+	// Ensure that exported events have the TID set. For events from Kernel
+	// we usually use PID == 0, so instead of checking against 0, assert that
+	// TGID == TID
+	if proc.process.Pid.GetValue() != proc.process.Tid.GetValue() {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"event.name":            "Execve",
+			"event.process.pid":     proc.process.Pid.GetValue(),
+			"event.process.tid":     proc.process.Tid.GetValue(),
+			"event.process.exec_id": proc.process.ExecId,
+			"event.process.binary":  proc.process.Binary,
+		}).Warn("ExecveEvent: process PID and TID mismatch")
+	}
+
+	procCache.add(proc)
 	return proc
 }
 
@@ -248,7 +283,11 @@ func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) error {
 	parentExecId := GetProcessID(event.Parent.Pid, event.Parent.Ktime)
 	parent, err := Get(parentExecId)
 	if err != nil {
-		logger.GetLogger().WithField("parent-exec-id", parentExecId).Debug("AddCloneEvent: process not found in cache")
+		logger.GetLogger().WithFields(logrus.Fields{
+			"event.name":           "Clone",
+			"event.parent.pid":     event.Parent.Pid,
+			"event.parent.exec_id": parentExecId,
+		}).Debug("CloneEvent: process not found in cache")
 		return err
 	}
 	parent.RefInc()
@@ -257,6 +296,21 @@ func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) error {
 		pi.process.ParentExecId = parentExecId
 		pi.process.ExecId = GetProcessID(event.PID, event.Ktime)
 		pi.process.Pid = &wrapperspb.UInt32Value{Value: event.PID}
+		// Since from BPF side we only generate one clone event per
+		// thread group that is for the leader, assert on that.
+		if event.PID != event.TID {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"event.name":            "Clone",
+				"event.process.pid":     event.PID,
+				"event.process.tid":     event.TID,
+				"event.process.exec_id": pi.process.ExecId,
+				"event.parent.exec_id":  parentExecId,
+			}).Debug("CloneEvent: process PID and TID mismatch")
+		}
+		// This TID will be updated by the TID of the bpf execve event later,
+		// so set it to zero here and ensure that it will be updated later.
+		// Exported events must always be generated with a non zero TID.
+		pi.process.Tid = &wrapperspb.UInt32Value{Value: 0}
 		pi.process.Flags = strings.Join(exec.DecodeCommonFlags(event.Flags), " ")
 		pi.process.StartTime = ktime.ToProto(event.Ktime)
 		pi.process.Refcnt = 1
@@ -269,7 +323,7 @@ func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) error {
 				pi.AddPodInfo(podInfo)
 			}
 		}
-		procCache.Add(pi)
+		procCache.add(pi)
 	}
 	return nil
 }
