@@ -1061,7 +1061,10 @@ func fixProgName(p string) string {
 }
 
 func findHooks(config *fileapi.FileConfigMapValue) ([]FimProg, error) {
-	spec := ossBTF.GetCachedBTF()
+	spec, err := ossBTF.NewBTF()
+	if err != nil {
+		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
+	}
 	if spec == nil {
 		return nil, fmt.Errorf("GetCachedBTF returns nil")
 	}
