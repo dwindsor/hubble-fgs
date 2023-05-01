@@ -48,6 +48,6 @@ echo "" >> $outf
 git -C modules/tetragon-oss log --pretty=' * %h (%s)'  $old_sha..$new_sha >> $outf
 
 make generate && make codegen && make vendor
-git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss
+git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss api
 
 git commit -s -F $outf
