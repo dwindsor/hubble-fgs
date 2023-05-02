@@ -113,6 +113,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestDemoApp(t *testing.T) {
+	// Must be called at the beginning of every test
+	runner.SetupExport(t)
+
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(6 * time.Minute)

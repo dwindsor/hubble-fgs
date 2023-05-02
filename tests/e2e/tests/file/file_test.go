@@ -98,6 +98,9 @@ func getUbuntuPod(ctx context.Context, client klient.Client) (*corev1.Pod, error
 }
 
 func TestFile(t *testing.T) {
+	// Must be called at the beginning of every test
+	runner.SetupExport(t)
+
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.4.0") {

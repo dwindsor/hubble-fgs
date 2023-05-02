@@ -97,6 +97,9 @@ func TestHttp(t *testing.T) {
 	// FIXME: re-enable this when the kernel patches are merged
 	t.Skipf("Test temporarily disabled pending kernel fixes.")
 
+	// Must be called at the beginning of every test
+	runner.SetupExport(t)
+
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
@@ -139,6 +142,9 @@ func TestHttp(t *testing.T) {
 }
 
 func TestTls(t *testing.T) {
+	// Must be called at the beginning of every test
+	runner.SetupExport(t)
+
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
