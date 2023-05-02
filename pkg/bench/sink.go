@@ -298,14 +298,20 @@ func (sink netperfSink) Start(ctx context.Context, ns bool) (int, chan SinkStats
 		retry := 0
 		for {
 			strres := string(res)
-			strres = strings.TrimSpace(strres[:12]);
+			strres = strings.TrimSpace(strres[:12])
 			nsd, err := netns.GetFromDocker(strres)
 			if err == nil {
 				nsDocker = &nsd
 				break
 			}
 			if retry > 10 {
+				help := exec.Command(
+					"docker", "ps",
+				)
+
+				helpLog, _ := help.CombinedOutput()
 				log.Printf("netserver 'docker run' returned: %s\n", strres)
+				log.Printf("docker ps: %s\n", helpLog)
 				log.Printf("netserver network namespace unknown: %s\n", err)
 				return
 			}
