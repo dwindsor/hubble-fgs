@@ -12,19 +12,26 @@ package file
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"path"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/containerd/containerd"
+	crTypes "github.com/cri-o/cri-o/pkg/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
 
-// we only support containerd and docker engines for now
+// we support containerd, docker, and cri-o engines
 const (
 	ContainerdPrefix = "containerd://"
 	DockerPrefix     = "docker://"
+	CrioPrefix       = "cri-o://"
 )
 
 // ths removes the prefix from a container ID (i.e. "containerd://")
@@ -33,6 +40,8 @@ func RemoveContainerIdPrefix(cId string) string {
 		return strings.TrimPrefix(cId, ContainerdPrefix)
 	} else if strings.HasPrefix(cId, DockerPrefix) {
 		return strings.TrimPrefix(cId, DockerPrefix)
+	} else if strings.HasPrefix(cId, CrioPrefix) {
+		return strings.TrimPrefix(cId, CrioPrefix)
 	}
 	return cId
 }
@@ -145,6 +154,91 @@ func DockerIdToRootFs(cid string) (string, error) {
 	return "", fmt.Errorf("cannot find container with ID %s", cid)
 }
 
+// Mainly inspired by https://github.com/cri-o/cri-o/blob/7d45aa0eb8460d72b441f17e4921b622513651cd/internal/client/client.go
+// CrioClient is an interface to get information from crio daemon endpoint.
+type CrioClient interface {
+	ContainerInfo(string) (*crTypes.ContainerInfo, error)
+}
+
+type crioClientImpl struct {
+	client         *http.Client
+	crioSocketPath string
+}
+
+func configureUnixTransport(tr *http.Transport, proto, addr string) error {
+	if len(addr) > len(syscall.RawSockaddrUnix{}.Path) {
+		return fmt.Errorf("unix socket path %q is too long", addr)
+	}
+	// No need for compression in local communications.
+	tr.DisableCompression = true
+	tr.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
+		return net.DialTimeout(proto, addr, 32*time.Second)
+	}
+	return nil
+}
+
+// New returns a crio client
+func NewCrioClient(crioSocketPath string) (CrioClient, error) {
+	tr := new(http.Transport)
+	if err := configureUnixTransport(tr, "unix", crioSocketPath); err != nil {
+		return nil, err
+	}
+	c := &http.Client{
+		Transport: tr,
+	}
+	return &crioClientImpl{
+		client:         c,
+		crioSocketPath: crioSocketPath,
+	}, nil
+}
+
+func (c *crioClientImpl) getRequest(path string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, path, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	// For local communications over a unix socket, it doesn't matter what
+	// the host is. We just need a valid and meaningful host name.
+	req.Host = "crio"
+	req.URL.Host = c.crioSocketPath
+	req.URL.Scheme = "http"
+	return req, nil
+}
+
+// ContainerInfo returns container info by querying
+// the cri-o container endpoint.
+func (c *crioClientImpl) ContainerInfo(id string) (*crTypes.ContainerInfo, error) {
+	inspectContainersEndpoint := "/containers"
+	req, err := c.getRequest(inspectContainersEndpoint + "/" + id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	cInfo := crTypes.ContainerInfo{}
+	if err := json.NewDecoder(resp.Body).Decode(&cInfo); err != nil {
+		return nil, err
+	}
+	return &cInfo, nil
+}
+
+// returns the root directory of a container on docker runtime
+// expect container ID without any prefix
+func CrioIdToRootFs(cid string) (string, error) {
+	defaultSocket := "/var/run/crio/crio.sock"
+	client, err := NewCrioClient(defaultSocket)
+	if err != nil {
+		return "", err
+	}
+	if cnt, err := client.ContainerInfo(cid); err == nil {
+		return fmt.Sprintf("/proc/%d/root/", cnt.Pid), nil
+	}
+	return "", fmt.Errorf("cannot find container with ID %s", cid)
+}
+
 // returns the root directory of a container
 // it check the prefix of cid argument in order to determine
 // the container runtime
@@ -159,6 +253,13 @@ func ContainerIdToRootFs(cid string) (string, error) {
 	} else if strings.HasPrefix(cid, DockerPrefix) {
 		c := strings.TrimPrefix(cid, DockerPrefix)
 		rootDir, err := DockerIdToRootFs(c)
+		if err != nil {
+			return "", err
+		}
+		return rootDir, nil
+	} else if strings.HasPrefix(cid, CrioPrefix) {
+		c := strings.TrimPrefix(cid, CrioPrefix)
+		rootDir, err := CrioIdToRootFs(c)
 		if err != nil {
 			return "", err
 		}
