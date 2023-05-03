@@ -229,6 +229,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		"watermarksBurstTriggerMult": tcpWatermarksBurstTriggerMult,
 		"maxRttHistogram":            tcpRttHistogramMax,
 		"minRttHistogram":            tcpRttHistogramMin,
+		"metrics":                    eventmetrics.TcpMetricsEnabled,
 	}).Infof("Enable TCP")
 	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
 	tcpSensor.UnloadHook = unloadTcpSensor

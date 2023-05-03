@@ -755,6 +755,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		"sensorName":     versionStr,
 		"statsInterval":  interval,
 		"deleteInterval": UdpDeleteInterval,
+		"metrics":        eventmetrics.UdpMetricsEnabled,
 	}).Infof("Enable UDP")
 	udpSensor := sensors.SensorBuilder(versionStr, progs, maps)
 	udpSensor.UnloadHook = unloadUdpSensor
