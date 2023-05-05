@@ -21,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         kernel:
-          - '5.15'
-          - '5.10'
-          - '5.4'
-          - '4.19'
+          - '5.15-main'
+          - '5.10-main'
+          - '5.4-main'
+          - '4.19-main'
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@v3

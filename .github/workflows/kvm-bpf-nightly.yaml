@@ -22,7 +22,7 @@ env:
   # Version of the little-vm-helper image
   lvh-version: 'v0.0.2'
   # Version of the root filesystem image
-  root-image-version: '5.15'
+  root-image-version: '5.15-main'
 
 jobs:
   # Build the latest BPF nightly master kernel. We run this part of the workflow on the
