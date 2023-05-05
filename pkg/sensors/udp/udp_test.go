@@ -1248,7 +1248,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll(tus.Conf().TetragonLib)
+	sensors.UnloadAll()
 }
 
 func TestConnectEvent6(t *testing.T) {

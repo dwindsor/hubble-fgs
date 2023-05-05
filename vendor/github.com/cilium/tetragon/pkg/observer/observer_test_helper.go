@@ -172,7 +172,7 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 	}
 }
 
-func newDefaultTestOptions(t *testing.T, opts ...TestOption) *TestOptions {
+func newDefaultTestOptions(opts ...TestOption) *TestOptions {
 	ciliumState, _ := cilium.InitCiliumState(context.Background(), false)
 	// default values
 	options := &TestOptions{
@@ -195,7 +195,7 @@ func newDefaultTestOptions(t *testing.T, opts ...TestOption) *TestOptions {
 	return options
 }
 
-func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
+func newDefaultObserver(oo *testObserverOptions) *Observer {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	option.Config.MapDir = bpf.MapPrefixPath()
 	option.Config.CiliumDir = ""
@@ -208,7 +208,7 @@ func getDefaultObserverSensors(t *testing.T, ctx context.Context, base *sensors.
 
 	testutils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
 
-	o := newDefaultTestOptions(t, opts...)
+	o := newDefaultTestOptions(opts...)
 
 	option.Config.HubbleLib = os.Getenv("TETRAGON_LIB")
 	if option.Config.HubbleLib == "" {
@@ -219,7 +219,7 @@ func getDefaultObserverSensors(t *testing.T, ctx context.Context, base *sensors.
 		option.Config.ProcFS = procfs
 	}
 
-	obs := newDefaultObserver(t, &o.observer)
+	obs := newDefaultObserver(&o.observer)
 	if testing.Verbose() {
 		option.Config.Verbosity = 1
 	}
@@ -245,7 +245,7 @@ func getDefaultObserverSensors(t *testing.T, ctx context.Context, base *sensors.
 		ret = append(ret, cnfSensor)
 	}
 
-	if err := loadObserver(t, ctx, base, cnfSensor, o.observer.notestfail); err != nil {
+	if err := loadObserver(t, base, cnfSensor, o.observer.notestfail); err != nil {
 		return nil, ret, err
 	}
 
@@ -332,11 +332,11 @@ func loadExporter(t *testing.T, ctx context.Context, obs *Observer, opts *testEx
 		crd.WatchTracePolicy(ctx, SensorManager)
 	}
 
-	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {
 		return err
 	}
 
-	if err := process.InitCache(ctx, watcher, false, processCacheSize); err != nil {
+	if err := process.InitCache(watcher, processCacheSize); err != nil {
 		return err
 	}
 
@@ -390,12 +390,12 @@ func loadExporter(t *testing.T, ctx context.Context, obs *Observer, opts *testEx
 	return nil
 }
 
-func loadObserver(t *testing.T, ctx context.Context, base *sensors.Sensor, sens *sensors.Sensor, notestfail bool) error {
-	if err := base.Load(ctx, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
+func loadObserver(t *testing.T, base *sensors.Sensor, sens *sensors.Sensor, notestfail bool) error {
+	if err := base.Load(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
 		t.Fatalf("Load base error: %s\n", err)
 	}
 
-	if err := sens.Load(ctx, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
+	if err := sens.Load(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
 		if notestfail {
 			return err
 		}

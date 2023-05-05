@@ -144,7 +144,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	}
 
 	watcher := &raceK8sWatcher{}
-	if err := process.InitCache(ctx, watcher, option.Config.EnableCilium, processCacheSize); err != nil {
+	if err := process.InitCache(watcher, processCacheSize); err != nil {
 		return err
 	}
 
@@ -169,7 +169,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	req := tetragon.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
 
-	if err := base.LoadDefault(ctx,
+	if err := base.LoadDefault(
 		option.Config.BpfDir,
 		option.Config.MapDir,
 		option.Config.CiliumDir); err != nil {
@@ -247,7 +247,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
 	}
 
-	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {
 		logger.GetLogger().Fatal(err)
 	}
 
@@ -268,7 +268,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
 
-	if err := startSensors.Load(ctx,
+	if err := startSensors.Load(
 		option.Config.BpfDir,
 		option.Config.MapDir,
 		option.Config.CiliumDir); err != nil {

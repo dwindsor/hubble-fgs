@@ -336,6 +336,14 @@ func flagsString(flags uint32) string {
 	return s
 }
 
+func isGTOperator(op string) bool {
+	return op == "GT" || op == "GreaterThan"
+}
+
+func isLTOperator(op string) bool {
+	return op == "LT" || op == "LessThan"
+}
+
 func createGenericKprobeSensor(
 	name string,
 	kprobes []v1alpha1.KProbeSpec,
@@ -460,6 +468,19 @@ func createGenericKprobeSensor(
 		var userReturnFilters []v1alpha1.ArgSelector
 		for _, s := range f.Selectors {
 			for _, returnArg := range s.MatchReturnArgs {
+				// we allow integer values so far
+				for _, v := range returnArg.Values {
+					if _, err := strconv.Atoi(v); err != nil {
+						return nil, fmt.Errorf("ReturnArg value supports only integer values, got %s", v)
+					}
+				}
+				// only single value for GT,LT operators
+				if isGTOperator(returnArg.Operator) || isLTOperator(returnArg.Operator) {
+					if len(returnArg.Values) > 1 {
+						return nil, fmt.Errorf("ReturnArg operater '%s' supports only single value, got %d",
+							returnArg.Operator, len(returnArg.Values))
+					}
+				}
 				userReturnFilters = append(userReturnFilters, returnArg)
 			}
 		}
@@ -642,7 +663,7 @@ func ReloadGenericKprobeSelectors(kpSensor *sensors.Sensor, conf *v1alpha1.KProb
 	return nil
 }
 
-func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *program.Program, version, verbose int) error {
+func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *program.Program, verbose int) error {
 	gk, err := genericKprobeTableGet(id)
 	if err != nil {
 		return err
@@ -684,7 +705,7 @@ func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *pro
 	return err
 }
 
-func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *program.Program, version, verbose int) error {
+func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *program.Program, verbose int) error {
 	sensors.AllPrograms = append(sensors.AllPrograms, load)
 
 	bin_buf := make([]bytes.Buffer, len(ids))
@@ -740,12 +761,12 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *p
 	return err
 }
 
-func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) error {
+func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
 	if id, ok := load.LoaderData.(idtable.EntryID); ok {
-		return loadSingleKprobeSensor(id, bpfDir, mapDir, load, version, verbose)
+		return loadSingleKprobeSensor(id, bpfDir, mapDir, load, verbose)
 	}
 	if ids, ok := load.LoaderData.([]idtable.EntryID); ok {
-		return loadMultiKprobeSensor(ids, bpfDir, mapDir, load, version, verbose)
+		return loadMultiKprobeSensor(ids, bpfDir, mapDir, load, verbose)
 	}
 	return fmt.Errorf("invalid loadData type: expecting idtable.EntryID/[] and got: %T (%v)",
 		load.LoaderData, load.LoaderData)
@@ -1018,8 +1039,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Len = skb.Len
 			arg.Priority = skb.Priority
 			arg.Mark = skb.Mark
-			arg.Saddr = network.GetIP(skb.Saddr, 0).String()
-			arg.Daddr = network.GetIP(skb.Daddr, 0).String()
+			arg.Saddr = network.GetIP(skb.Saddr).String()
+			arg.Daddr = network.GetIP(skb.Daddr).String()
 			arg.Sport = uint32(network.SwapByte(uint16(skb.Sport)))
 			arg.Dport = uint32(network.SwapByte(uint16(skb.Dport)))
 			arg.Proto = skb.Proto
@@ -1041,8 +1062,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Protocol = sock.Protocol
 			arg.Mark = sock.Mark
 			arg.Priority = sock.Priority
-			arg.Saddr = network.GetIP(sock.Daddr, 0).String()
-			arg.Daddr = network.GetIP(sock.Saddr, 0).String()
+			arg.Saddr = network.GetIP(sock.Daddr).String()
+			arg.Daddr = network.GetIP(sock.Saddr).String()
 			arg.Sport = uint32(network.SwapByte(sock.Sport))
 			arg.Dport = uint32(network.SwapByte(sock.Dport))
 			unix.Args = append(unix.Args, arg)
@@ -1229,7 +1250,30 @@ func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGe
 				return false
 			}
 		}
-
+		if isGTOperator(uFilter.Operator) {
+			for _, v := range uFilter.Values {
+				if vint, err := strconv.Atoi(v); err == nil {
+					switch compare := (*retArg).(type) {
+					case api.MsgGenericKprobeArgInt:
+						if vint < int(compare.Value) {
+							return false
+						}
+					}
+				}
+			}
+		}
+		if isLTOperator(uFilter.Operator) {
+			for _, v := range uFilter.Values {
+				if vint, err := strconv.Atoi(v); err == nil {
+					switch compare := (*retArg).(type) {
+					case api.MsgGenericKprobeArgInt:
+						if vint > int(compare.Value) {
+							return false
+						}
+					}
+				}
+			}
+		}
 	}
 	// We walked all selectors and no selectors matched, eat the event.
 	return true
@@ -1294,5 +1338,5 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKpr
 }
 
 func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	return loadGenericKprobeSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
+	return loadGenericKprobeSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 }

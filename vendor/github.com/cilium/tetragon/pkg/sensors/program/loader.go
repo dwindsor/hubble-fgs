@@ -159,12 +159,52 @@ func UprobeAttach(load *Program) AttachFunc {
 	}
 }
 
-func NoAttach(load *Program) AttachFunc {
+func NoAttach() AttachFunc {
 	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		return unloader.ChainUnloader{
 			unloader.PinUnloader{
 				Prog: prog,
 			},
+		}, nil
+	}
+}
+
+func TracingAttach() AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+		linkFn := func() (link.Link, error) {
+			return link.AttachTracing(link.TracingOptions{
+				Program: prog,
+			})
+		}
+		lnk, err := linkFn()
+		if err != nil {
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return &unloader.RelinkUnloader{
+			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			IsLinked:   true,
+			Link:       lnk,
+			RelinkFn:   linkFn,
+		}, nil
+	}
+}
+
+func LSMAttach() AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+		linkFn := func() (link.Link, error) {
+			return link.AttachLSM(link.LSMOptions{
+				Program: prog,
+			})
+		}
+		lnk, err := linkFn()
+		if err != nil {
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return &unloader.RelinkUnloader{
+			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			IsLinked:   true,
+			Link:       lnk,
+			RelinkFn:   linkFn,
 		}, nil
 	}
 }
@@ -240,12 +280,20 @@ func LoadUprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error 
 }
 
 func LoadTailCallProgram(bpfDir, mapDir string, load *Program, verbose int) error {
-	return loadProgram(bpfDir, []string{mapDir}, load, NoAttach(load), nil, verbose)
+	return loadProgram(bpfDir, []string{mapDir}, load, NoAttach(), nil, verbose)
 }
 
 func LoadMultiKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
 	ci := &customInstall{fmt.Sprintf("%s-kp_calls", load.PinPath), "kprobe"}
 	return loadProgram(bpfDir, []string{mapDir}, load, MultiKprobeAttach(load), ci, verbose)
+}
+
+func LoadTracingProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+	return loadProgram(bpfDir, []string{mapDir}, load, TracingAttach(), nil, verbose)
+}
+
+func LoadLSMProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+	return loadProgram(bpfDir, []string{mapDir}, load, LSMAttach(), nil, verbose)
 }
 
 func slimVerifierError(errStr string) string {

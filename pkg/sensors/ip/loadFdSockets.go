@@ -11,7 +11,6 @@
 package ip
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -219,7 +218,7 @@ func getFdLookupSensor() *sensors.Sensor {
 // LoadFdLookup loads the kernel oracle.
 func loadFdLookup(bpfDir, mapDir, ciliumDir string) (*sensors.Sensor, error) {
 	fdLoadSensor := getFdLookupSensor()
-	if err := fdLoadSensor.Load(context.TODO(), bpfDir, mapDir, ciliumDir); err != nil {
+	if err := fdLoadSensor.Load(bpfDir, mapDir, ciliumDir); err != nil {
 		return nil, fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	return fdLoadSensor, nil

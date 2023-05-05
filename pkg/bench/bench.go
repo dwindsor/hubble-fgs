@@ -122,7 +122,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
 	}
 
-	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {
 		log.Fatal(err)
 	}
 
@@ -149,14 +149,14 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
 
-	if err := base.LoadDefault(ctx,
+	if err := base.LoadDefault(
 		option.Config.BpfDir,
 		option.Config.MapDir,
 		option.Config.CiliumDir); err != nil {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
-	if err := startSensors.Load(ctx,
+	if err := startSensors.Load(
 		option.Config.BpfDir,
 		option.Config.MapDir,
 		option.Config.CiliumDir); err != nil {
@@ -234,7 +234,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}
 
 	fakeWatcher := watcher.NewFakeK8sWatcher(nil)
-	if err := process.InitCache(ctx, fakeWatcher, option.Config.EnableCilium, processCacheSize); err != nil {
+	if err := process.InitCache(fakeWatcher, processCacheSize); err != nil {
 		return err
 	}
 

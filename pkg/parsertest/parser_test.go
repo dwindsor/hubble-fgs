@@ -72,7 +72,7 @@ func init() {
 	}
 
 	// Setup BTF cache
-	btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, "")
+	btf.InitCachedBTF(option.Config.HubbleLib, "")
 
 	// Probe for the testdata. Changing the working directory
 	// to keep the test-case filenames short.
@@ -128,7 +128,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	// Load the initial sensor.
 	initSensor := base.GetInitialSensor()
 
-	err := initSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
+	err := initSensor.Load(bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}
@@ -199,7 +199,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	}
 	parserSensor := sensors.SensorCombine("parser", parserSensors...)
 
-	err = parserSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
+	err = parserSensor.Load(bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}

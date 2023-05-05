@@ -262,7 +262,7 @@ spec:
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll(tus.Conf().TetragonLib)
+	sensors.UnloadAll()
 	assert.NoError(t, err)
 }
 
@@ -319,7 +319,7 @@ spec:
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll(tus.Conf().TetragonLib)
+	sensors.UnloadAll()
 	assert.NoError(t, err)
 }
 

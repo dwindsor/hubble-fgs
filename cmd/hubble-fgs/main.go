@@ -200,7 +200,7 @@ func hubbleFGSExecute() error {
 	obs.RemovePrograms()
 	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
 
-	err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, option.Config.BTF)
+	err := btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
@@ -225,7 +225,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
 
-	if err := process.InitCache(ctx, watcher, option.Config.EnableCilium, processCacheSize); err != nil {
+	if err := process.InitCache(watcher, processCacheSize); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 
@@ -274,7 +274,7 @@ func hubbleFGSExecute() error {
 	obs.LogPinnedBpf(observerDir)
 
 	// Load default base sensors
-	if err := base.LoadDefault(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
+	if err := base.LoadDefault(observerDir, observerDir, option.Config.CiliumDir); err != nil {
 		return err
 	}
 
@@ -294,7 +294,7 @@ func hubbleFGSExecute() error {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}
 
-		if err := sens.Load(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
+		if err := sens.Load(observerDir, observerDir, option.Config.CiliumDir); err != nil {
 			return err
 		}
 

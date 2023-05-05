@@ -758,7 +758,7 @@ func TestLoadFileSensor(t *testing.T) {
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll(tus.Conf().TetragonLib)
+	sensors.UnloadAll()
 }
 
 func fileRead(t *testing.T, f string) {

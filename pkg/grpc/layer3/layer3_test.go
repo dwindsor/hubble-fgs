@@ -266,7 +266,7 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 		t.Fatalf("failed to call cilium.InitCiliumState %s", err)
 	}
 
-	if err := process.InitCache(ctx, watcher, false, 65536); err != nil {
+	if err := process.InitCache(watcher, 65536); err != nil {
 		t.Fatalf("failed to call process.InitCache %s", err)
 	}
 
