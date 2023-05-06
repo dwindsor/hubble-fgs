@@ -69,6 +69,7 @@ const (
 	keyEventQueueSize = "event-queue-size"
 
 	keyReleasePinnedBPF = "release-pinned-bpf"
+	keyDetatchOldBPF    = "detach-old-bpf"
 
 	keyProtocolShift = "protocol-shift"
 
@@ -155,6 +156,7 @@ func readAndSetFlags() {
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 
 	option.Config.ReleasePinned = viper.GetBool(keyReleasePinnedBPF)
+	enterpriseOption.Config.DetachOldBpf = viper.GetBool(keyDetatchOldBPF)
 
 	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
 	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)

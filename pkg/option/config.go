@@ -10,6 +10,7 @@ type config struct {
 	FimFifoPath            string
 	DisableKprobeMulti     bool
 	FimRuntimeEndpoint     string
+	DetachOldBpf           bool
 }
 
 var (

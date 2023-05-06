@@ -7,11 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -19,6 +22,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -100,6 +104,186 @@ func saveInitInfo() error {
 	return bugtool.SaveInitInfo(&info)
 }
 
+var (
+	fgsCgroupPath = "/run/tetragon/cgroup2"
+)
+
+func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
+	httpSockfd := int(0)
+	tlsSockfd := int(0)
+	nopSockfd := int(0)
+
+	cgrpfd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
+	if err != nil {
+		return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err)
+	}
+	defer unix.Close(cgrpfd)
+
+	// walk maps to find sockmap so we can detach skmsg skskb and nop
+	mapID := ebpf.MapID(0)
+	for {
+		mapID, err = ebpf.MapGetNextID(mapID)
+		if err != nil {
+			break
+		}
+		m, err := ebpf.NewMapFromID(mapID)
+		if err != nil {
+			break
+		}
+		defer m.Close()
+		if m.Type() == ebpf.SockHash {
+			n := m.String()
+			if strings.Contains(n, "http_sock_map") {
+				httpSockfd = m.FD()
+			}
+			if strings.Contains(n, "tls_sock_map") {
+				tlsSockfd = m.FD()
+			}
+			if strings.Contains(n, "nop_sock_map") {
+				nopSockfd = m.FD()
+			}
+		}
+	}
+
+	// Finds a specific map associated with the program protocol type
+	findSockFD := func(n string) int {
+		fd := int(0)
+		if strings.Contains(n, "http") {
+			fd = httpSockfd
+		} else if strings.Contains(n, "tls") {
+			fd = tlsSockfd
+		} else if strings.Contains(n, "nop") {
+			fd = nopSockfd
+		} else {
+			log.WithField("mapName", n).Warn("Discovered SkMsg program with unknown name")
+		}
+		return fd
+	}
+
+	progID := ebpf.ProgramID(0)
+	for {
+		progID, err = ebpf.ProgramGetNextID(progID)
+		if err != nil {
+			break
+		}
+
+		prog, err := ebpf.NewProgramFromID(progID)
+		if err != nil {
+			continue
+		}
+		defer prog.Close()
+
+		n := prog.String()
+		// For now do the dumb thing and just attempt to detach from
+		// things we know we could be attached to. With some guardrails
+		// to only work on programs with names  we recognize.
+		switch prog.Type() {
+		case ebpf.CGroupSKB:
+			if bestEffort {
+				if !strings.Contains(n, "inet_send") &&
+					!strings.Contains(n, "inet_recv") &&
+					!strings.Contains(n, "inet_lazy_recv") &&
+					!strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else if tgTypes {
+				if !strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else {
+				break
+			}
+			opts := link.RawDetachProgramOptions{
+				Target:  cgrpfd,
+				Program: prog,
+				Attach:  ebpf.AttachCGroupInetIngress,
+			}
+			link.RawDetachProgram(opts)
+			opts.Attach = ebpf.AttachCGroupInetEgress
+			link.RawDetachProgram(opts)
+		case ebpf.SkMsg:
+			if bestEffort {
+				if !strings.Contains(n, "http_skmsg") &&
+					!strings.Contains(n, "tls_skmsg") &&
+					!strings.Contains(n, "nop_skmsg") &&
+					!strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else if tgTypes {
+				if !strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else {
+				break
+			}
+
+			sockfd := findSockFD(n)
+			if sockfd == 0 {
+				break
+			}
+
+			opts := link.RawDetachProgramOptions{
+				Target:  sockfd,
+				Program: prog,
+				Attach:  ebpf.AttachSkMsgVerdict,
+			}
+			link.RawDetachProgram(opts)
+		case ebpf.SkSKB:
+			if bestEffort {
+				if !strings.Contains(n, "bpf_http_parser") &&
+					!strings.Contains(n, "bpf_http_verdict") &&
+					!strings.Contains(n, "bpf_tls_skskb") &&
+					!strings.Contains(n, "bpf_nop_") &&
+					!strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else if tgTypes {
+				if !strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else {
+				break
+			}
+
+			sockfd := findSockFD(n)
+			if sockfd == 0 {
+				break
+			}
+
+			opts := link.RawDetachProgramOptions{
+				Target:  sockfd,
+				Program: prog,
+				Attach:  ebpf.AttachSkSKBStreamVerdict,
+			}
+			link.RawDetachProgram(opts)
+			opts.Attach = ebpf.AttachSkSKBStreamParser
+			link.RawDetachProgram(opts)
+			opts.Attach = ebpf.AttachSkSKBVerdict
+			link.RawDetachProgram(opts)
+		case ebpf.SockOps:
+			if bestEffort {
+				if !strings.Contains(n, "fgs") &&
+					!strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else if tgTypes {
+				if !strings.HasPrefix(n, "tg_") {
+					break
+				}
+			} else {
+				break
+			}
+			opts := link.RawDetachProgramOptions{
+				Target:  cgrpfd,
+				Program: prog,
+				Attach:  ebpf.AttachCGroupSockOps,
+			}
+			link.RawDetachProgram(opts)
+		}
+	}
+	return nil
+}
+
 func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -139,8 +323,15 @@ func hubbleFGSExecute() error {
 
 	// Check if option to remove old BPF and maps is enabled.
 	if option.Config.ReleasePinned {
-		err := os.RemoveAll(observerDir)
-		if err != nil {
+		// Always release tg_ prefix as we are relatively sure these belong to us
+		// but, do more aggressive detach op to clean up old versioned programs when
+		// told.
+		if err := DetachTetragonCgroups(true, enterpriseOption.Config.DetachOldBpf); err != nil {
+			log.WithError(err).Warn("Failed to detach cgroups, Consider removing it manually")
+		} else {
+			log.Info("Successfully released attched cgroups.")
+		}
+		if err := os.RemoveAll(observerDir); err != nil {
 			log.WithField("bpf-dir", observerDir).WithError(err).Warn("Failed to release pinned BPF programs and map, Consider removing it manually")
 		} else {
 			log.WithField("bpf-dir", observerDir).Info("Successfully released pinned BPF programs and maps")
@@ -624,6 +815,13 @@ func execute() error {
 	// observer dir on startup. Useful for doing upgrades/downgrades. Set to false to
 	// disable.
 	flags.Bool(keyReleasePinnedBPF, true, "Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable")
+
+	// Provide option to detach old programs even when using old names that make it
+	// hard to find Tetragon specific programs. Use with some caution because we
+	// could remove progs associated with other agents. But this is necessary in
+	// cases where upgrading from older versions to fix bug where we failed to
+	// detach programs and left stale progs attached at cgroups and tc hooks.
+	flags.Bool(keyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
 
 	// Allow to disable kprobe multi interface
 	flags.Bool(keyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
