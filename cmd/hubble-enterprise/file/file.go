@@ -11,6 +11,7 @@
 package file
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -32,6 +34,7 @@ func New() *cobra.Command {
 	ret.AddCommand(
 		printInodeMapCmd(),
 		printLpmMapCmd(),
+		supportEnforcementCmd(),
 	)
 
 	return ret
@@ -96,6 +99,21 @@ func printLpmMapCmd() *cobra.Command {
 			err := fm.PrintLPMMap(path)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("Printing failed!")
+			}
+		},
+	}
+}
+
+func supportEnforcementCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "support-enforcement",
+		Short: "1 if host supports file enforcement, 0 otherwise",
+		Args:  cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			if file.SupportEnforcement() {
+				fmt.Print("1")
+			} else {
+				fmt.Print("0")
 			}
 		},
 	}

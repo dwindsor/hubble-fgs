@@ -1,0 +1,25 @@
+# do now allow to delete any files inside "/etc/" for all pods in "file" namespace
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-enforcement"
+spec:
+  file:
+    file_paths:
+    - "/etc/"
+    file_paths_exclude:
+    - "/etc/test_dir/"
+    onlyPodFiles: true
+    podSelector:
+      matchExpressions:
+      - key: "k8s:io.kubernetes.pod.namespace"
+        operator: "In"
+        values:
+        - "file"
+    selectors:
+    - matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_DELETE"
+      matchActions:
+      - action: Block

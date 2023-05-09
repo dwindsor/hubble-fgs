@@ -13,7 +13,10 @@ package file_test
 
 import (
 	// Fix up OSS configuration defaults.
+
+	"bytes"
 	"os"
+	"strconv"
 
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 
@@ -34,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
+	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
@@ -52,6 +56,38 @@ var ubuntulYaml string
 
 //go:embed file-tracingpolicy.yaml
 var tracingPolicyYaml string
+
+//go:embed file-enforcement-tracingpolicy.yaml
+var tracingEnforcePolicyYaml string
+
+var supportEnforcement = false
+
+// This function checks if all hubble-enterprise pods support file enforcement.
+// We use that to run file enforcement e2e tests only in supported platforms.
+func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error) {
+	namespace := "kube-system"
+	r := client.Resources(namespace)
+	podList := &corev1.PodList{}
+	r.List(ctx, podList)
+	for _, pod := range podList.Items {
+		if strings.HasPrefix(pod.Name, "hubble-enterprise") {
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "enterprise", stdout, stderr, strings.Fields("hubble-enterprise file-debug support-enforcement"))
+			if err != nil {
+				return false, err
+			}
+			val, err := strconv.ParseInt(stdout.String(), 10, 0)
+			if err != nil {
+				return false, err
+			}
+			if val == 0 {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
 
 func TestMain(m *testing.M) {
 	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
@@ -81,6 +117,28 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		client, err := cfg.NewClient()
+		if err != nil {
+			klog.Info("Failed to get client")
+			return ctx, nil
+		}
+
+		supportEnforcement, err = testFileEnforcement(ctx, client)
+		if err != nil {
+			klog.Infof("Failed to run testFileEnforcement [%s]", err)
+			return ctx, nil
+		}
+
+		if supportEnforcement {
+			klog.Info("Kernel supports file enforcement")
+			ctx, _ = helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
+		} else {
+			klog.Info("Kernel does not support file enforcement")
+		}
+		return ctx, nil
+	})
+
 	runner.Run(m)
 }
 
@@ -102,12 +160,11 @@ func TestFile(t *testing.T) {
 	runner.SetupExport(t)
 
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
-
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.4.0") {
 		t.Skipf("File monitoring tests need kernel >= 5.4, got %s", kversion)
 	}
 
-	fileChecker := checker.NewRPCChecker(FileChecker(), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
+	fileChecker := checker.NewRPCChecker(FileChecker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkFile := features.New("Check File Events").
 		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, namespace)).
 		Feature()
@@ -216,6 +273,20 @@ func TestFile(t *testing.T) {
 				}
 			}
 
+			if supportEnforcement {
+				// try to delete /etc/shadow in order to check enforcement
+				_, err = helpers.ExecInPodCombinedOutput(ctx,
+					client,
+					namespace,
+					pod.Name,
+					"ubuntu",
+					strings.Fields("rm -f /etc/shadow"))
+				if !assert.Error(t, err, "run 'rm -f /etc/shadow' successfully") {
+					klog.Error("'rm -f /etc/shadow' should fail due to enforcement")
+					return ctx
+				}
+			}
+
 			return ctx
 		}).
 		Feature()
@@ -227,7 +298,15 @@ func createChecker(file string) *ec.FileDetailsChecker {
 	return ec.NewFileDetailsChecker().WithFilename(sm.Full(file)).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))
 }
 
-func FileChecker() ec.MultiEventChecker {
+func createOpChecker(val tetragon.FileOperation) *ec.FileOperationListMatcher {
+	return ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(val),
+		)
+}
+
+func FileChecker(enforcement bool) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("ubuntu")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/library/ubuntu:20.04")))
@@ -261,7 +340,7 @@ func FileChecker() ec.MultiEventChecker {
 	shellChecker := ec.NewProcessChecker().
 		WithBinary(sm.Contains("nsenter"))
 
-	fileChecker := ec.NewUnorderedEventChecker(
+	obsChecks := []ec.EventChecker{
 		// 1st test
 		ec.NewProcessExecChecker("catTmpExec").
 			WithProcess(catCheckerTmp).
@@ -274,7 +353,8 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		// 2nd test
 		ec.NewProcessExecChecker("catEtcExec").
 			WithProcess(catCheckerEtc).
@@ -287,7 +367,8 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		// 3rd test
 		ec.NewProcessExecChecker("catPodEtcExec").
 			WithProcess(catPodCheckerEtc),
@@ -299,81 +380,112 @@ func FileChecker() ec.MultiEventChecker {
 					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))),
 				),
 			).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		// 4th test
 		ec.NewProcessFileChecker("mkdir").
 			WithAction(tetragon.FileAction_FILE_MKDIR).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/")))).
-			WithHook(sm.Full("vfs_mkdir")),
+			WithHook(sm.Full("vfs_mkdir")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("touch").
 			WithAction(tetragon.FileAction_FILE_CREATE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/a")))).
-			WithHook(sm.Full("vfs_open")),
+			WithHook(sm.Full("vfs_open")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("dd1").
 			WithAction(tetragon.FileAction_FILE_WRITE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/a")))).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("mv1").
 			WithAction(tetragon.FileAction_FILE_RENAME).
 			WithArgs(ec.NewFileArgumentChecker().WithRenameArg(ec.NewRenameFileArgChecker().WithSrc(createChecker("/etc/test_dir/a")).WithDst(createChecker("/etc/test_dir/b")))).
-			WithHook(sm.Full("vfs_rename")),
+			WithHook(sm.Full("vfs_rename")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("cat1").
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/b")))).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("mv2").
 			WithAction(tetragon.FileAction_FILE_RENAME).
 			WithArgs(ec.NewFileArgumentChecker().WithRenameArg(ec.NewRenameFileArgChecker().WithSrc(createChecker("/etc/test_dir/b")).WithDst(createChecker("/etc/test_dir/c")))).
-			WithHook(sm.Full("vfs_rename")),
+			WithHook(sm.Full("vfs_rename")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("dd2").
 			WithAction(tetragon.FileAction_FILE_WRITE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/c")))).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("mv3").
 			WithAction(tetragon.FileAction_FILE_RENAME).
 			WithArgs(ec.NewFileArgumentChecker().WithRenameArg(ec.NewRenameFileArgChecker().WithSrc(createChecker("/etc/test_dir/c")).WithDst(createChecker("/etc/test_dir/d")))).
-			WithHook(sm.Full("vfs_rename")),
+			WithHook(sm.Full("vfs_rename")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("cat2").
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/d")))).
-			WithHook(sm.Full("security_file_permission")),
+			WithHook(sm.Full("security_file_permission")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("truncate").
 			WithAction(tetragon.FileAction_FILE_WRITE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/d")))).
-			WithHook(sm.Full("do_truncate")),
+			WithHook(sm.Full("do_truncate")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("ls").
 			WithAction(tetragon.FileAction_FILE_READDIR).
 			WithArgs(ec.NewFileArgumentChecker().WithReaddirArg(ec.NewReadDirArgChecker().WithFile(createChecker("/etc/test_dir/")))).
-			WithHook(sm.Full("iterate_dir")),
+			WithHook(sm.Full("iterate_dir")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("fallocateCreate").
 			WithAction(tetragon.FileAction_FILE_CREATE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("vfs_open")),
+			WithHook(sm.Full("vfs_open")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("fallocateWrite").
 			WithAction(tetragon.FileAction_FILE_WRITE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("vfs_fallocate")),
+			WithHook(sm.Full("vfs_fallocate")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("chmod").
 			WithAction(tetragon.FileAction_FILE_CHATTR).
 			WithArgs(ec.NewFileArgumentChecker().WithAttrArg(ec.NewAttrArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("chmod_common")),
+			WithHook(sm.Full("chmod_common")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("chown").
 			WithAction(tetragon.FileAction_FILE_CHATTR).
 			WithArgs(ec.NewFileArgumentChecker().WithAttrArg(ec.NewAttrArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("chown_common")),
+			WithHook(sm.Full("chown_common")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("rm1").
 			WithAction(tetragon.FileAction_FILE_DELETE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("vfs_unlink")),
+			WithHook(sm.Full("vfs_unlink")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("rm2").
 			WithAction(tetragon.FileAction_FILE_DELETE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/d")))).
-			WithHook(sm.Full("vfs_unlink")),
+			WithHook(sm.Full("vfs_unlink")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("rmdir").
 			WithAction(tetragon.FileAction_FILE_RMDIR).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/")))).
-			WithHook(sm.Full("security_inode_rmdir")),
-	)
+			WithHook(sm.Full("security_inode_rmdir")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
+	}
 
-	return fileChecker
+	enfChecks := []ec.EventChecker{
+		// 5th test (enforcement)
+		ec.NewProcessFileChecker("rm-enforce").
+			WithAction(tetragon.FileAction_FILE_DELETE).
+			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/shadow")))).
+			WithHook(sm.Full("hook_security_inode_unlink")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_BLOCK)),
+	}
+
+	if !enforcement {
+		return ec.NewUnorderedEventChecker(obsChecks...)
+	}
+	return ec.NewUnorderedEventChecker(append(obsChecks, enfChecks...)...)
 }
