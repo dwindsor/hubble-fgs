@@ -10,7 +10,7 @@ require (
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230324152610-e7449cf7d1e5
 	github.com/containernetworking/plugins v1.2.0
-	github.com/cri-o/cri-o v1.24.5
+	github.com/cri-o/cri-o v1.26.3
 	github.com/docker/docker v23.0.5+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
@@ -37,7 +37,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver v0.26.4
-	k8s.io/client-go v0.26.4
+	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.26.4
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
@@ -92,9 +92,9 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.6 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.6 // indirect
-	go.etcd.io/etcd/client/v3 v3.5.6 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 // indirect
+	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
@@ -113,7 +113,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.4.1-0.20210727194412-58542c764a11 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -153,7 +153,7 @@ require (
 	github.com/mennanov/fmutils v0.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
-	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
+	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -176,10 +176,10 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/vladimirvivien/gexe v0.1.1 // indirect
-	go.mongodb.org/mongo-driver v1.10.0 // indirect
+	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
@@ -217,6 +217,9 @@ replace (
 
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
 	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
+
+	// due to CRI-O, otherwise it fails to build hubble-fgs
+	k8s.io/client-go => k8s.io/client-go v0.26.4
 
 	// Using private fork of controller-tools. See commit msg for more context
 	// as to why we are using a private fork.

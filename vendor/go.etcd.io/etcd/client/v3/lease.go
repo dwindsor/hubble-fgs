@@ -397,7 +397,7 @@ func (l *lessor) closeRequireLeader() {
 	}
 }
 
-func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (karesp *LeaseKeepAliveResponse, ferr error) {
+func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error) {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -405,15 +405,6 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (karesp *LeaseKe
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-
-	defer func() {
-		if err := stream.CloseSend(); err != nil {
-			if ferr == nil {
-				ferr = toErr(ctx, err)
-			}
-			return
-		}
-	}()
 
 	err = stream.Send(&pb.LeaseKeepAliveRequest{ID: int64(id)})
 	if err != nil {
@@ -425,7 +416,7 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (karesp *LeaseKe
 		return nil, toErr(ctx, rerr)
 	}
 
-	karesp = &LeaseKeepAliveResponse{
+	karesp := &LeaseKeepAliveResponse{
 		ResponseHeader: resp.GetHeader(),
 		ID:             LeaseID(resp.ID),
 		TTL:            resp.TTL,
@@ -448,6 +439,9 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 	for {
 		stream, err := l.resetRecv()
 		if err != nil {
+			l.lg.Warn("error occurred during lease keep alive loop",
+				zap.Error(err),
+			)
 			if canceledByCaller(l.stopCtx, err) {
 				return err
 			}
@@ -580,7 +574,9 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 		for _, id := range tosend {
 			r := &pb.LeaseKeepAliveRequest{ID: int64(id)}
 			if err := stream.Send(r); err != nil {
-				// TODO do something with this error?
+				l.lg.Warn("error occurred during lease keep alive request sending",
+					zap.Error(err),
+				)
 				return
 			}
 		}
