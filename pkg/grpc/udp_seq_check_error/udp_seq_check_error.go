@@ -136,11 +136,9 @@ func createProcessUdpSeqCheckError(
 		return nil
 	}
 	if process != nil {
-		process.RefInc()
 		fgsEvent.Process = process.GetProcessCopy()
 	}
 	if parent != nil {
-		parent.RefInc()
 		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
