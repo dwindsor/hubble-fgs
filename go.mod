@@ -227,5 +227,3 @@ replace (
 	// Pull in support for helm uninstall. TODO: remove this when 0.0.8 comes out.
 	sigs.k8s.io/e2e-framework => github.com/kubernetes-sigs/e2e-framework v0.0.0-20220527132303-bc7888d1b4f0
 )
-
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.9.4-0.20221026141156-bcf6c12e189d
