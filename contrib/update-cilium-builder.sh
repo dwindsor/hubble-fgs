@@ -3,8 +3,11 @@
 # script to update cilium builder images, and effectively the go version with which we build our
 # images.
 
+# Make sure the OSS repo has been set up
+make oss-init
+
 # get latest image from cilium repo
-new_image=$(wget https://raw.githubusercontent.com/cilium/cilium/master/images/cilium/Dockerfile -q -O - | sed -ne 's/^ARG CILIUM_BUILDER_IMAGE=//p')
+new_image=$(wget https://raw.githubusercontent.com/cilium/cilium/main/images/cilium/Dockerfile -q -O - | sed -ne 's/^ARG CILIUM_BUILDER_IMAGE=//p')
 
 # find files that we need to update, and update them.
 myname=$(basename $0)
