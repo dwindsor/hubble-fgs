@@ -8,7 +8,7 @@ require (
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230324152610-e7449cf7d1e5
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
 	github.com/containernetworking/plugins v1.2.0
 	github.com/cri-o/cri-o v1.26.3
 	github.com/docker/docker v23.0.6+incompatible
