@@ -1,4 +1,4 @@
-FROM quay.io/cilium/cilium-builder:2460ae43ce9ab3ab0ff3a8b6e3bc434e6b58e9c0@sha256:97a6aa77af7f8fd5b2cff11ce2049a57e7debec4684652bd368f5911279da4bc
+FROM quay.io/cilium/cilium-builder:988a34b268fab8f4083d2432317f083e42b18c59@sha256:1d2d07c603d3f01ddb02fcf81cd82f977262e10eeb21b9798a84158c59275149
 RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs cd /go/src/github.com/isovalent/hubble-fgs/modules/tetragon-oss && go install -buildvcs=false ./cmd/protoc-gen-go-tetragon
 
 #- vi:ft=dockerfile -#
