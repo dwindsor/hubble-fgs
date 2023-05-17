@@ -11,6 +11,8 @@
 package socketmetrics
 
 import (
+	"sync"
+
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -154,6 +156,7 @@ const (
 	UDPGCTypePidIsZero
 	UDPGCTypeNanoTimeSinceFailure
 	UDPGCTypeDiffValuesFailure
+	UDPGCTypeDiffValuesFailureGC
 )
 
 var UDPGCTypeStrings = map[UDPGCType]string{
@@ -163,9 +166,20 @@ var UDPGCTypeStrings = map[UDPGCType]string{
 	UDPGCTypePidIsZero:            "Pid Is Zero",
 	UDPGCTypeNanoTimeSinceFailure: "NanoTimeSince Failure",
 	UDPGCTypeDiffValuesFailure:    "DiffValues Failure",
+	UDPGCTypeDiffValuesFailureGC:  "DiffValues GC Failure",
 }
+
+var (
+	statsUpdate sync.Mutex
+)
 
 // Increment a UDP GC metric for a retrieval type
 func UDPGCMetricInc(ty UDPGCType) {
+	statsUpdate.Lock()
+	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
+	statsUpdate.Unlock()
+}
+
+func UDPGCMetricIncNoLock(ty UDPGCType) {
 	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
 }

@@ -79,7 +79,6 @@ var (
 	configured       = false
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
-	statsUpdate      sync.Mutex
 
 	pseudoSockets       = make(map[uint64](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex
@@ -502,10 +501,26 @@ func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error
 	}, nil
 }
 
+var (
+	deleteLastKey *udpInfoKey
+)
+
 func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
-	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTotalRetrieve)
+	// Access to TypeTotalRetrieve metrics is serialized by UdpGC.
+	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTotalRetrieve)
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
+
+	// If we delete the key out from under the walker it can't find the
+	// next key and the result is we start walking from the first element
+	// again. Giving us something like O(n!) for walking a list with lots
+	// of deletes.
+	if deleteLastKey != nil {
+		if err := m.DeleteKey(deleteLastKey); err != nil {
+			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
+		}
+		deleteLastKey = nil
+	}
 
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
@@ -530,7 +545,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 					stats.Add(*udpKey, *mapUpdate)
 					emitStatEvent(udpKey, &diffValue)
 				} else {
-					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
+					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailureGC)
 				}
 			}
 		} else {
@@ -550,20 +565,21 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 			delete(pseudoSockets[udpKey.Cookie], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
-		m.DeleteKey(k)
+		deleteLastKey = udpKey
 	}
 	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 }
 
 func runUdpGC() {
-	statsUpdate.Lock()
-	defer statsUpdate.Unlock()
-	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTicker)
+	// Access to UDPGCTypeTicker is serialized by UdpGC
+	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTicker)
+
 	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
 	m, err := bpf.OpenMap(file)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("UDP GC failed to open file")
+		// lock is safe only done here inside GC
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeFailedToOpenMap)
 		return
 	}
@@ -817,10 +833,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		// sockets. Then we send a stats event and a close event for each one,
 		// before deleting them from the maps.
 
-		// Access to stats is protected by a lock to prevent corruption.
-		statsUpdate.Lock()
-		defer statsUpdate.Unlock()
-
+		// Access to stats is protected by atomic operations we don't want to
+		// serialize handlers on this lock. For mostly error cases.
 		pseudoSocketsUpdate.Lock()
 		pseudoSocketList := pseudoSockets[m.SockCookie]
 		pseudoSocketsUpdate.Unlock()
