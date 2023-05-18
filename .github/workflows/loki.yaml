@@ -3,7 +3,6 @@ name: Push to Loki
 on:
   workflow_run:
     workflows:
-      - "HubbleFGS Benchmark"
       - "Image CI Build"
       - "Image CI Latest"
       - "Image CI Releases"
