@@ -1,7 +1,7 @@
 #ifndef __BPF_SETATTR__
 #define __BPF_SETATTR__
 
-static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr(struct dentry *dentry)
+static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr(struct dentry *dentry, __u32 action)
 {
 	struct inode *inode;
 	struct dentry *parent_dentry;
@@ -39,7 +39,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_write);
+	operation = eval_selectors(action);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
@@ -58,6 +58,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
+	msg->action = action;
 
 	return msg;
 }
@@ -67,11 +68,10 @@ kprobe_do_truncate(void *ctx, struct dentry *dentry, loff_t len, __u32 hook)
 {
 	struct msg_file_ops *msg;
 
-	msg = generic_chattr(dentry);
+	msg = generic_chattr(dentry, action_write);
 	if (!msg)
 		return -1;
 
-	msg->action = action_write;
 	msg->hook = hook;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
@@ -86,7 +86,7 @@ kprobe_chmod_common(void *ctx, struct dentry *dentry, umode_t mode, __u32 hook)
 	struct msg_file_ops *msg;
 	struct inode *inode;
 
-	msg = generic_chattr(dentry);
+	msg = generic_chattr(dentry, action_chattr);
 	if (!msg)
 		return -1;
 
@@ -97,7 +97,6 @@ kprobe_chmod_common(void *ctx, struct dentry *dentry, umode_t mode, __u32 hook)
 	msg->imode[0] = BPF_CORE_READ(inode, i_mode);
 	msg->imode[1] = mode;
 
-	msg->action = action_chattr;
 	msg->hook = hook;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
@@ -111,7 +110,7 @@ kprobe_chown_common(void *ctx, struct dentry *dentry, uid_t curr_user, uid_t new
 {
 	struct msg_file_ops *msg;
 
-	msg = generic_chattr(dentry);
+	msg = generic_chattr(dentry, action_chattr);
 	if (!msg)
 		return -1;
 
@@ -120,7 +119,6 @@ kprobe_chown_common(void *ctx, struct dentry *dentry, uid_t curr_user, uid_t new
 	msg->gid[0] = curr_group;
 	msg->gid[1] = new_group;
 
-	msg->action = action_chattr;
 	msg->hook = hook;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
