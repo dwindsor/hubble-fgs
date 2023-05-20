@@ -71,6 +71,7 @@ type udpPseudoSocket struct {
 
 var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
+	udpStatsEnable    = false
 
 	stats *lru.Cache[udpInfoKey, udpInfoValue]
 
@@ -535,23 +536,25 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	if udpValue.Pid == 0 {
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypePidIsZero)
 	} else {
-		last, ok := stats.Get(*udpKey)
-		if ok {
-			if *udpValue != last {
-				diffValue, err := udpDiffValues(udpKey, &last, udpValue)
-				if err == nil {
-					mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-					udpKey = k.DeepCopyMapKey().(*udpInfoKey)
-					stats.Add(*udpKey, *mapUpdate)
-					emitStatEvent(udpKey, &diffValue)
-				} else {
-					socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailureGC)
+		if udpStatsEnable {
+			last, ok := stats.Get(*udpKey)
+			if ok {
+				if *udpValue != last {
+					diffValue, err := udpDiffValues(udpKey, &last, udpValue)
+					if err == nil {
+						mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
+						udpKey = k.DeepCopyMapKey().(*udpInfoKey)
+						stats.Add(*udpKey, *mapUpdate)
+						emitStatEvent(udpKey, &diffValue)
+					} else {
+						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailureGC)
+					}
 				}
+			} else {
+				udpValue = v.DeepCopyMapValue().(*udpInfoValue)
+				stats.Add(*udpKey, *udpValue)
+				emitStatEvent(udpKey, udpValue)
 			}
-		} else {
-			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
-			stats.Add(*udpKey, *udpValue)
-			emitStatEvent(udpKey, udpValue)
 		}
 	}
 
@@ -790,12 +793,26 @@ func (udp *udpSensor) PolicyHandler(
 		eventmetrics.UdpMetricsEnabled = true
 	}
 
+	/* UDP GC interval tracks UDP stats events and UDP delete events. If
+	 * stats interval is 0 indicating no stats are wanted then we program
+	 * the timer using the Delete interval and disable stats. Otherwise
+	 * we use the stats interval and expect users will program this so that
+	 * statsInterval < deleteIntervaInterval. This is a bit squishy, to be
+	 * cleaned up and clarrified in docs at some point.
+	 */
 	var interval = time.Duration(UdpGCIntervalDefault)
 	if spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
+		udpStatsEnable = true
+	} else {
+		udpStatsEnable = false
 	}
+
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
+		if !udpStatsEnable {
+			interval = UdpDeleteInterval
+		}
 	}
 	Config, LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")

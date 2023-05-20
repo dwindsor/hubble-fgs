@@ -28,8 +28,12 @@ import (
 )
 
 var (
-	TcpIntervalDefault            = time.Duration(60 * time.Second)
+	// There is no TCP stats interval default. Building a reasonable
+	// default for random env is very difficult and users expected
+	// setting the interval to zero would disable it.
+	//TcpIntervalDefault            = time.Duration(60 * time.Second)
 	tcpInterval                   time.Duration
+	tcpStatsEnabled               bool
 	tcpWatermarksEnable           bool
 	tcpWatermarksWindowSize       uint64
 	tcpWatermarksBurstTriggerMult uint64
@@ -245,7 +249,6 @@ func (tcp *tcpSensor) PolicyHandler(
 	fid policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
-	tcpInterval = time.Duration(TcpIntervalDefault)
 
 	if !spec.Parser.Tcp.Enable {
 		return nil, nil
@@ -263,6 +266,9 @@ func (tcp *tcpSensor) PolicyHandler(
 
 	if spec.Parser.Tcp.StatsInterval > 0 {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
+		tcpStatsEnabled = true
+	} else {
+		tcpStatsEnabled = false
 	}
 	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		watermarksEnabled = true
@@ -392,7 +398,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	tcp := ip.MsgToIPUnix(&m, true, true)
-	if tcpInterval > 0 {
+	if tcpStatsEnabled {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
 		if err != nil {
@@ -432,12 +438,10 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	} else {
-		if tcpInterval > 0 {
-			configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
-			err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-			if err != nil {
-				return err
-			}
+		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
+		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		if err != nil {
+			return err
 		}
 	}
 

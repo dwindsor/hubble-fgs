@@ -110,6 +110,10 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			&tcp_send_check_sampler, &zero);
 		if (!cfg)
 			return 0;
+
+		if (!cfg->ktime)
+			goto out;
+
 		if (!process->last_time) {
 			process->last_time = current_time_ns;
 			goto out;
