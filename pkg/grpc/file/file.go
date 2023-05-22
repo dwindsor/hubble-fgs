@@ -171,7 +171,7 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 
 	var perm *tetragon.AttrChange
-	if event.Imode != event.NewImode {
+	if event.Imode != 0xFFFF { // UINT16_MAX
 		n := fs.FileMode(event.NewImode) & fs.ModePerm
 		o := fs.FileMode(event.Imode) & fs.ModePerm
 		perm = &tetragon.AttrChange{
@@ -181,7 +181,7 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 
 	var uid *tetragon.AttrChange
-	if event.Uid != event.NewUid {
+	if event.Uid != 0xFFFFFFFF { // UINT32_MAX
 		uid = &tetragon.AttrChange{
 			New: fmt.Sprintf("%d", event.NewUid),
 			Old: fmt.Sprintf("%d", event.Uid),
@@ -189,7 +189,7 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 
 	var gid *tetragon.AttrChange
-	if event.Gid != event.NewGid {
+	if event.Gid != 0xFFFFFFFF { // UINT32_MAX
 		gid = &tetragon.AttrChange{
 			New: fmt.Sprintf("%d", event.NewGid),
 			Old: fmt.Sprintf("%d", event.Gid),

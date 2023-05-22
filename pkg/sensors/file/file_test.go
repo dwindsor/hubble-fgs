@@ -707,23 +707,21 @@ func TestLoadFileSensor(t *testing.T) {
 		13: tus.SensorProg{Name: "vfs_rename_exit", Type: ebpf.Kprobe},
 		14: tus.SensorProg{Name: "vfs_open", Type: ebpf.Kprobe},
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
-		16: tus.SensorProg{Name: fmt.Sprintf("do_truncate_%s", verSuffix), Type: ebpf.Kprobe},
-		17: tus.SensorProg{Name: "chmod_common", Type: ebpf.Kprobe},
-		18: tus.SensorProg{Name: "chown_common", Type: ebpf.Kprobe},
+		16: tus.SensorProg{Name: "security_inode_setattr", Type: ebpf.Kprobe},
 	}
 
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17, 18}},
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16}},
 
 		// shared maps
 		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14}},
-		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17, 18}},
+		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13, 14, 16}},
 		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 8, 9, 12, 13, 14, 15}},
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
-		tus.SensorMap{Name: "file_names_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
+		tus.SensorMap{Name: "file_names_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -747,8 +745,6 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{14}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{15}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{16}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{17}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{18}},
 
 		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10}},
 
@@ -1653,7 +1649,7 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("do_truncate"))
+		WithHook(sm.Full("hook_security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1886,7 +1882,7 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 		t.Fatalf("os.Stat failed (%s)", err)
 	}
 
-	if err := os.Chmod(oFile, 0644); err != nil {
+	if err := os.Chmod(oFile, 0666); err != nil {
 		t.Fatalf("os.Chmod failed (%s)", err)
 	}
 
@@ -1907,7 +1903,7 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
-		WithHook(sm.Full("chmod_common"))
+		WithHook(sm.Full("hook_security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -1934,7 +1930,7 @@ func testFileChown(gt *testing.T, t *testing.T) {
 		t.Fatalf("syscall.Stat failed (%s)", err)
 	}
 
-	if err := os.Chown(oFile, 1, 1); err != nil {
+	if err := os.Chown(oFile, 99, 99); err != nil {
 		t.Fatalf("os.Chmod failed (%s)", err)
 	}
 
@@ -1950,13 +1946,13 @@ func testFileChown(gt *testing.T, t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
 	u := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Uid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Uid)))
 	g := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Gid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Gid)))
-	a := ec.NewFileAttrChecker().WithGid(g).WithUid(u)
+	a := ec.NewFileAttrChecker().WithUid(u).WithGid(g)
 	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
 
 	fileChecker := ec.NewProcessFileChecker("").
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
-		WithHook(sm.Full("chown_common"))
+		WithHook(sm.Full("hook_security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
