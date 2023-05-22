@@ -358,7 +358,7 @@ type MsgFileEventUnix struct {
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, nil, timestamp)
 }
 
 func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -556,7 +556,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 
 func (msg *MsgFileRenameEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, nil, timestamp)
 }
 
 func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

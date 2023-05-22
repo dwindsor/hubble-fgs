@@ -37,7 +37,7 @@ type MsgProcessNetworkWatermarksEventUnix struct {
 
 func (msg *MsgProcessNetworkWatermarksEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, nil, timestamp)
 }
 
 func (msg *MsgProcessNetworkWatermarksEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
