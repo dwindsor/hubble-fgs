@@ -217,19 +217,19 @@ FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
 
 The FGS container is called `enterprise`. If everything went well, you should see something like:
 
-    kubectl logs -n cilium ds/hubble-enterprise -c enterprise
+    kubectl logs -n kube-system ds/hubble-enterprise -c enterprise
     ...
     time="2020-11-11T03:45:23Z" level=info msg="Listening for events..."
 
 There is `export-stdout` container that prints FGS events to stdout:
 
-    kubectl logs -n cilium ds/hubble-enterprise -c export-stdout -f
+    kubectl logs -n kube-system ds/hubble-enterprise -c export-stdout -f
 
 Note that the default installation comes with pre-defined event filters that exclude
 certain events. If you don't see any events in `export-stdout` log, you might need to
 edit `EXPORT_{ALLOW,DENY}_LIST` environment variables:
 
-    kubectl edit ds -n cilium hubble-enterprise
+    kubectl edit ds -n kube-system hubble-enterprise
 
 ### Running on minikube with 5.4 Kernel
 
