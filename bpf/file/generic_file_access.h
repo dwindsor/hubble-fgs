@@ -78,6 +78,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
+	msg->tp_id = get_tp_id();
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

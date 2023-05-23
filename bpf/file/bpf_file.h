@@ -317,6 +317,15 @@ nopost:
 	return 0;
 }
 
+static inline __attribute__((always_inline)) int get_tp_id()
+{
+	__u32 zero = 0;
+	struct file_config_map_value *conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return 0;
+	return conf->tp_id;
+}
+
 static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 {
 	struct msg_file_ops *msg;

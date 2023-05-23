@@ -241,7 +241,7 @@ func normalizeOp(op uint32) tetragon.FileOperation {
 	return tetragon.FileOperation_FILE_OP_UNKNOWN
 }
 
-func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile) {
+func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName string) {
 	if tetragonEvent == nil || tetragonEvent.Process == nil { // we don't expect these
 		filemetrics.FileTotalErrors().Inc()
 		return
@@ -272,6 +272,7 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile) {
 	filemetrics.FileTotalActionEventsInc(
 		nodeName,
 		namespace,
+		tpName,
 		act,
 		opr,
 	)
@@ -354,7 +355,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
 	}
-	handleFileTotalActionEvents(tetragonEvent)
+	handleFileTotalActionEvents(tetragonEvent, event.TpName)
 	return tetragonEvent
 }
 
@@ -385,13 +386,14 @@ type MsgFileEventUnix struct {
 	ContainerID string
 	MntNs       uint32
 	Operation   uint32
+	TpName      string
 }
 
-func handleFileEventCacheRetryMetrics(ev notify.Event) {
+func handleFileEventCacheRetryMetrics(ev notify.Event, tpName string) {
 	event := ev.Encapsulate()
 	switch e := event.(type) {
 	case *tetragon.GetEventsResponse_ProcessFile:
-		handleFileTotalActionEvents(e.ProcessFile)
+		handleFileTotalActionEvents(e.ProcessFile, tpName)
 	default:
 		filemetrics.FileTotalErrors().Inc()
 	}
@@ -406,7 +408,7 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 	if err := eventcache.HandleGenericEvent(internal, ev); err != nil {
 		return err
 	}
-	handleFileEventCacheRetryMetrics(ev)
+	handleFileEventCacheRetryMetrics(ev, msg.TpName)
 	return nil
 }
 
@@ -498,6 +500,7 @@ type MsgFileRenameEventUnix struct {
 	MntNs      uint32
 	Flags      uint32
 	Operation  uint32
+	TpName     string
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
@@ -589,7 +592,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
 	}
-	handleFileTotalActionEvents(tetragonEvent)
+	handleFileTotalActionEvents(tetragonEvent, event.TpName)
 	return tetragonEvent
 
 }
@@ -603,7 +606,7 @@ func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev n
 	if err := eventcache.HandleGenericEvent(internal, ev); err != nil {
 		return err
 	}
-	handleFileEventCacheRetryMetrics(ev)
+	handleFileEventCacheRetryMetrics(ev, msg.TpName)
 	return nil
 }
 

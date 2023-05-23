@@ -69,6 +69,8 @@ type MsgFileEvent struct {
 	ParentIno  uint64                  `align:"parent_ino"`
 	ParentFs   MsgFsInfo               `align:"parent_fs"`
 	MntNs      uint32                  `align:"mnt_ns"`
+	TpId       uint32                  `align:"tp_id"`
+	Pad        uint32                  `align:"pad"`
 }
 
 type MsgFileSplitPath struct {
@@ -100,11 +102,12 @@ type MsgFileRenameEvent struct {
 	Dst        MsgRenameElem           `align:"dst"`
 	MntNs      uint32                  `align:"mnt_ns"`
 	Flags      uint32                  `align:"flags"`
-	TcId       uint32                  `align:"tc_id"`
+	TpId       uint32                  `align:"tp_id"`
 	Operation  uint32                  `align:"operation"`
 }
 
 type FileConfigMapValue struct {
 	HasSecurityPathRename uint32 `align:"has_security_path_rename"`
 	ActionValue           uint32 `align:"action_value"`
+	TpId                  uint32 `align:"tp_id"`
 }

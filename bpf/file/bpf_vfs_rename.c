@@ -574,19 +574,8 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	memcpy(&(msg->dst), &(val->msg.dst), sizeof(struct msg_rename_elem));
 	msg->mnt_ns = val->msg.mnt_ns;
 	msg->flags = val->msg.flags;
-	msg->tc_id = 0xffffffff; // default value (UINT32_MAX)
+	msg->tp_id = get_tp_id();
 	msg->operation = val->operation;
-
-	{
-		// find and assign the table index in the sensor that
-		// keeps information about this specific tracing policy
-		// using a special (zero) value
-		struct hash_map_file_key file_key = { 0 };
-
-		file_val = map_lookup_elem(&hash_map_file_alloc, &file_key);
-		if (file_val)
-			msg->tc_id = file_val->action;
-	}
 
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&rename_retprobe_map, &k);
@@ -639,7 +628,7 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 		memcpy(&(msg->dst), &(val->msg.dst), sizeof(struct msg_rename_elem));
 		msg->mnt_ns = val->msg.mnt_ns;
 		msg->flags = val->msg.flags;
-		msg->tc_id = 0xffffffff; // default value (UINT32_MAX)
+		msg->tp_id = get_tp_id();
 		msg->hook = hook_security_inode_rename;
 		msg->operation = FILE_OP_BLOCK;
 

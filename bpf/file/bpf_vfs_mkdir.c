@@ -131,6 +131,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	msg->hook = hook_vfs_mkdir;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
+	msg->tp_id = get_tp_id();
 
 	operation = eval_selectors(action_mkdir);
 

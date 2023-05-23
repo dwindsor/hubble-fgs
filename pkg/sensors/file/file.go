@@ -453,6 +453,7 @@ var (
 type fileMonitoring struct {
 	Spec          *v1alpha1.FileSpec
 	pinPathPrefix string
+	tpName        string
 }
 
 type fimTable struct {
@@ -473,6 +474,15 @@ func (t *fimTable) getFIM(id uint32) (*fileMonitoring, error) {
 		return val, nil
 	}
 	return nil, fmt.Errorf("fim table: invalid id:%d", id)
+}
+
+func (t *fimTable) getTpName(id uint32) string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if val, ok := t.mp[id]; ok {
+		return val.tpName
+	}
+	return "<unresolved_policy>"
 }
 
 func (t *fimTable) rmFIM(id uint32) {
@@ -594,13 +604,6 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("cannot open pinned map %s", fileMapPath)
 	}
 	defer fileHandle.Close()
-
-	// special (zero) value to store the policy index
-	if err := fm.AddFilePath(fileHandle, fileapi.HashMapFileKey{}, fileapi.HashMapFileVal{
-		Action: uint32(id),
-	}); err != nil {
-		return fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
-	}
 
 	selMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_names_map"))
 	selHandle, err := ebpf.LoadPinnedMap(selMapPath, nil)
@@ -752,6 +755,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		ContainerID: cid,
 		MntNs:       m.MntNs,
 		Operation:   m.Operation,
+		TpName:      fileMonitoringTable.getTpName(m.TpId),
 	}
 
 	return []observer.Event{unix}, nil
@@ -817,7 +821,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			action = fm.FilterIgnore
 		}
 
-		s, err := fileMonitoringTable.getFIM(m.TcId)
+		s, err := fileMonitoringTable.getFIM(m.TpId)
 		if err != nil {
 			filemetrics.FileTotalErrors().Inc()
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
@@ -887,6 +891,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		MntNs:     m.MntNs,
 		Flags:     m.Flags,
 		Operation: m.Operation,
+		TpName:    fileMonitoringTable.getTpName(m.TpId),
 	}
 
 	return []observer.Event{unix}, nil
@@ -938,17 +943,19 @@ type FimLoaderData struct {
 	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
 }
 
-func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
 
-	name := fmt.Sprintf("fim_sensor_%d", tcID)
+	config.TpId = atomic.AddUint32(&sensorCounter, 1)
+	name := fmt.Sprintf("fim_sensor_%d", config.TpId)
 	e := &fileMonitoring{
 		Spec:          &kprobes,
 		pinPathPrefix: name,
+		tpName:        policy.TpName(),
 	}
-	fileMonitoringTable.addFIM(tcID, e)
+	fileMonitoringTable.addFIM(config.TpId, e)
 
 	l := logger.GetLogger()
 	mapDir := bpf.MapPrefixPath()
@@ -1012,17 +1019,6 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, f
 	}
 	if err := fileHandle.Pin(filePinPath); err != nil {
 		return nil, fmt.Errorf("failed fileHandle.Pin: %w", err)
-	}
-
-	// special (zero) value to store the policy index
-	tableKey := fileapi.HashMapFileKey{}
-
-	tableVal := fileapi.HashMapFileVal{
-		Action: uint32(tcID),
-	}
-
-	if err := fm.AddFilePath(fileHandle, tableKey, tableVal); err != nil {
-		return nil, fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
 	}
 
 	ds := &ebpf.MapSpec{
@@ -1129,7 +1125,7 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, _ string, f
 		Progs: progs,
 		Maps:  maps,
 		UnloadHook: func() error {
-			fileMonitoringTable.rmFIM(tcID)
+			fileMonitoringTable.rmFIM(config.TpId)
 			return nil
 		},
 	}, nil
@@ -1359,8 +1355,7 @@ func (k *observerFileSensor) PolicyHandler(
 		logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
 		return nil, nil
 	}
-	tcID := atomic.AddUint32(&sensorCounter, 1)
-	return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs, config, selState)
+	return addFileMonitoringSensor(policy, spec.FileMonitoring, progs, config, selState)
 }
 
 // LoadProbe() (called when the eBPF programs are actually loaded)

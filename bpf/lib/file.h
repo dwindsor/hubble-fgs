@@ -105,6 +105,8 @@ struct msg_file_ops {
 	__u64 parent_ino;
 	struct msg_fs_info parent_fs;
 	__u32 mnt_ns;
+	__u32 tp_id;
+	__u32 pad;
 };
 
 struct vfs_mkdir_info {
@@ -143,7 +145,7 @@ struct msg_file_rename_ops {
 	struct msg_rename_elem dst;
 	__u32 mnt_ns;
 	__u32 flags;
-	__u32 tc_id;
+	__u32 tp_id;
 	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
 };
 
@@ -158,6 +160,7 @@ struct vfs_rename_info {
 struct file_config_map_value {
 	__u32 has_security_path_rename;
 	__u32 action_value;
+	__u32 tp_id;
 };
 
 #endif
