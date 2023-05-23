@@ -253,6 +253,17 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile) {
 		return
 	}
 
+	if len(tetragonEvent.Operation) != 1 { // for now we will always have a single operation
+		filemetrics.FileTotalErrors().Inc()
+		return
+	}
+
+	opr, ok := tetragon.FileOperation_name[int32(tetragonEvent.Operation[0])]
+	if !ok {
+		filemetrics.FileTotalErrors().Inc()
+		return
+	}
+
 	namespace := "<host>" // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
 	if tetragonEvent.Process.Pod != nil {
 		namespace = tetragonEvent.Process.Pod.Namespace
@@ -262,6 +273,7 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile) {
 		nodeName,
 		namespace,
 		act,
+		opr,
 	)
 }
 
