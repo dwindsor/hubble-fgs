@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	tpConfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/tests/compliance"
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +27,8 @@ func testCases() []compliance.Test {
 	return []compliance.Test{
 		{
 			Name: "nginx",
-			TracingPolicy: &tpConfig.GenericTracingConf{
-				Metadata: tpConfig.Metadata{
+			TracingPolicy: &tracingpolicy.GenericTracingPolicy{
+				Metadata: tracingpolicy.Metadata{
 					Name: "http",
 				},
 				Spec: v1alpha1.TracingPolicySpec{

@@ -30,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
-	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -40,6 +39,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/cilium/tetragon/pkg/watcher"
 
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
@@ -140,7 +140,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		}
 	}
 
-	tp, err := config.PolicyFromYamlFilename(configFile)
+	tp, err := tracingpolicy.PolicyFromYAMLFilename(configFile)
 	if err != nil {
 		log.Fatalf("readConfig error: %v", err)
 	}

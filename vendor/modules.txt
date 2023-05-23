@@ -217,7 +217,6 @@ github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cilium
-github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/eventcache

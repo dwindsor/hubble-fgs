@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	tpConfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -37,7 +37,7 @@ type Test struct {
 	// Name of the compliance test. Should match the directory name in tests/compliance/tests.
 	Name string
 	// Tracing policy that should be loaded when performing the test.
-	TracingPolicy *tpConfig.GenericTracingConf
+	TracingPolicy *tracingpolicy.GenericTracingPolicy
 	// Steps to run the test.
 	Steps []Stepper
 }

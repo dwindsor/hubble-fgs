@@ -13,8 +13,8 @@ import (
 	"time"
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
-	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
@@ -285,7 +285,7 @@ func hubbleFGSExecute() error {
 
 	if len(configFile) > 0 {
 		var sens *sensors.Sensor
-		tp, err := config.PolicyFromYamlFilename(configFile)
+		tp, err := tracingpolicy.PolicyFromYAMLFilename(configFile)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}

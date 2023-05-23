@@ -29,7 +29,6 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
-	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -38,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"google.golang.org/protobuf/proto"
 
 	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
@@ -258,7 +258,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatal(err)
 	}
 
-	tp, err := config.PolicyFromYamlFilename(f.Name())
+	tp, err := tracingpolicy.PolicyFromYAMLFilename(f.Name())
 	if err != nil {
 		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
 	}
