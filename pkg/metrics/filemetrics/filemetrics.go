@@ -41,8 +41,8 @@ var (
 	})
 )
 
-func FileTotalEvents() prometheus.Counter {
-	return fileTotalEvents
+func FileTotalEventsInc() {
+	fileTotalEvents.Inc()
 }
 
 func FileTotalCacheInEventsInc() {

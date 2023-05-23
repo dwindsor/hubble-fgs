@@ -302,7 +302,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Gid, groupStr)
 	}
 
-	filemetrics.FileTotalEvents().Inc()
+	filemetrics.FileTotalEventsInc()
 	act, ok := tetragon.FileAction_name[int32(tetragonEvent.Action)]
 	if ok {
 		filemetrics.FileTotalActionEvents().WithLabelValues(act).Inc()
@@ -527,7 +527,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		Operation: []tetragon.FileOperation{normalizeOp(event.Operation)},
 	}
 
-	filemetrics.FileTotalEvents().Inc()
+	filemetrics.FileTotalEventsInc()
 	act, ok := tetragon.FileAction_name[int32(tetragonEvent.Action)]
 	if ok {
 		filemetrics.FileTotalActionEvents().WithLabelValues(act).Inc()
