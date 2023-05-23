@@ -683,7 +683,7 @@ func TestLoadFileSensor(t *testing.T) {
 	specFname := createSpecFile(t, test_path)
 
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib)
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -804,7 +804,7 @@ func TestFileEnforceCreate(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_CREATE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -854,7 +854,7 @@ func TestFileEnforceWrite(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_WRITE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -2000,7 +2000,9 @@ func TestFileOps(t *testing.T) {
 
 	specFname := createSpecFile(t, "/sample/file") // this file does not exist -- we only need to initialize all fim progs and maps
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	// Can't use observer.WithMyPid() here because we are also checking events from
+	// a spawned container here.
+	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
