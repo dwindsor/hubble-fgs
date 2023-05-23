@@ -57,7 +57,7 @@ func TestNopSensorSmoke(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err := observer.GetDefaultObserverWithLib(t, context.Background(), testConfigFile, runner.Conf().TetragonLib)
+	_, err := observer.GetDefaultObserverWithConfig(t, context.Background(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
 	assert.NoError(t, err, "nop sensor should load")
 }
 
@@ -66,7 +66,7 @@ func TestLoadNopSensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
