@@ -33,7 +33,7 @@ var (
 	fileTotalActionEvents = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "file_total_actions",
 		Help: "Total file events per action",
-	}, []string{"node", "action"})
+	}, []string{"node", "namespace", "action"})
 
 	fileTotalErrors = promauto.NewCounter(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "file_total_errors",
@@ -53,8 +53,8 @@ func FileTotalCacheOutEventsInc() {
 	fileTotalCacheEvents.WithLabelValues("out").Inc()
 }
 
-func FileTotalActionEventsInc(node, action string) {
-	fileTotalActionEvents.WithLabelValues(node, action).Inc()
+func FileTotalActionEventsInc(node, namespace, action string) {
+	fileTotalActionEvents.WithLabelValues(node, namespace, action).Inc()
 }
 
 func FileTotalErrors() prometheus.Counter {
