@@ -25,15 +25,10 @@ var (
 		Help: "Total number of process_file events (independently of going through the eventcache).",
 	})
 
-	fileTotalCacheInEvents = promauto.NewCounter(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_total_cache_in_events",
-		Help: "Total number of process_file events (that go in the eventcache).",
-	})
-
-	fileTotalCacheOutEvents = promauto.NewCounter(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_total_cache_out_events",
-		Help: "Total number of process_file events (that go out the eventcache).",
-	})
+	fileTotalCacheEvents = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "file_total_cache_events",
+		Help: "Total number of process_file events (that go in/out the eventcache).",
+	}, []string{"direction"})
 
 	fileTotalActionEvents = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "file_total_actions",
@@ -50,12 +45,12 @@ func FileTotalEvents() prometheus.Counter {
 	return fileTotalEvents
 }
 
-func FileTotalCacheInEvents() prometheus.Counter {
-	return fileTotalCacheInEvents
+func FileTotalCacheInEventsInc() {
+	fileTotalCacheEvents.WithLabelValues("in").Inc()
 }
 
-func FileTotalCacheOutEvents() prometheus.Counter {
-	return fileTotalCacheOutEvents
+func FileTotalCacheOutEventsInc() {
+	fileTotalCacheEvents.WithLabelValues("out").Inc()
 }
 
 func FileTotalActionEvents() *prometheus.CounterVec {

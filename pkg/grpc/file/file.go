@@ -313,7 +313,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	ec := eventcache.Get()
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		filemetrics.FileTotalCacheInEvents().Inc()
+		filemetrics.FileTotalCacheInEventsInc()
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -366,7 +366,7 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 }
 
 func (msg *MsgFileEventUnix) Notify() bool {
-	filemetrics.FileTotalCacheOutEvents().Inc()
+	filemetrics.FileTotalCacheOutEventsInc()
 	return true
 }
 
@@ -539,7 +539,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		filemetrics.FileTotalCacheInEvents().Inc()
+		filemetrics.FileTotalCacheInEventsInc()
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -564,7 +564,7 @@ func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev n
 }
 
 func (msg *MsgFileRenameEventUnix) Notify() bool {
-	filemetrics.FileTotalCacheOutEvents().Inc()
+	filemetrics.FileTotalCacheOutEventsInc()
 	return true
 }
 
