@@ -243,24 +243,24 @@ func normalizeOp(op uint32) tetragon.FileOperation {
 
 func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName, tpRule string) {
 	if tetragonEvent == nil || tetragonEvent.Process == nil { // we don't expect these
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("grpc_nil_ev_proc")
 		return
 	}
 
 	act, ok := tetragon.FileAction_name[int32(tetragonEvent.Action)]
 	if !ok {
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("grpc_not_valid_action")
 		return
 	}
 
 	if len(tetragonEvent.Operation) != 1 { // for now we will always have a single operation
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("grpc_op_gt_one")
 		return
 	}
 
 	opr, ok := tetragon.FileOperation_name[int32(tetragonEvent.Operation[0])]
 	if !ok {
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("grpc_not_valid_op")
 		return
 	}
 
@@ -397,7 +397,7 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {
 	case *tetragon.GetEventsResponse_ProcessFile:
 		handleFileTotalActionEvents(e.ProcessFile, tpName, tpRule)
 	default:
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("grpc_eventcache_retry")
 	}
 }
 

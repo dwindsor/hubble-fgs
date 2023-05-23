@@ -35,10 +35,10 @@ var (
 		Help: "Total file events per action",
 	}, []string{"node", "namespace", "policy", "rule", "action", "operation"})
 
-	fileTotalErrors = promauto.NewCounter(prometheus.CounterOpts{
+	fileTotalErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "file_total_errors",
 		Help: "Total number of process_file event errors (can be from the grpc or sensor).",
-	})
+	}, []string{"reason"})
 )
 
 func FileTotalEventsInc() {
@@ -57,6 +57,6 @@ func FileTotalActionEventsInc(node, namespace, policy, rule, action, operation s
 	fileTotalActionEvents.WithLabelValues(node, namespace, policy, rule, action, operation).Inc()
 }
 
-func FileTotalErrors() prometheus.Counter {
-	return fileTotalErrors
+func FileTotalErrorsInc(reason string) {
+	fileTotalErrors.WithLabelValues(reason).Inc()
 }

@@ -232,6 +232,7 @@ var (
 func TerminateFsScanner() error {
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
+		filemetrics.FileTotalErrorsInc("sensor_file_rpc_terminate")
 		return err
 	}
 	defer client.Close()
@@ -268,6 +269,7 @@ func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
+		filemetrics.FileTotalErrorsInc("sensor_file_rpc_init_host")
 		return err
 	}
 	defer client.Close()
@@ -288,6 +290,7 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
+		filemetrics.FileTotalErrorsInc("sensor_file_rpc_scanner")
 		return err
 	}
 	defer client.Close()
@@ -309,6 +312,7 @@ func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir st
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
+		filemetrics.FileTotalErrorsInc("sensor_file_rpc_init_cont")
 		return err
 	}
 	defer client.Close()
@@ -326,6 +330,7 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
+		filemetrics.FileTotalErrorsInc("sensor_file_rpc_destroy_cont")
 		return err
 	}
 	defer client.Close()
@@ -735,7 +740,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("sensor_file_op")
 		return nil, fmt.Errorf("Failed to read file operation: %w", err)
 	}
 
@@ -785,7 +790,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileRenameEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		filemetrics.FileTotalErrors().Inc()
+		filemetrics.FileTotalErrorsInc("sensor_file_mv")
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
 
@@ -838,7 +843,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 		s, err := fileMonitoringTable.getFIM(m.TpId)
 		if err != nil {
-			filemetrics.FileTotalErrors().Inc()
+			filemetrics.FileTotalErrorsInc("sensor_file_mv_tcid")
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
 		}
 
@@ -852,7 +857,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		}
 
 		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid, m.RuleID); err != nil {
-			filemetrics.FileTotalErrors().Inc()
+			filemetrics.FileTotalErrorsInc("sensor_file_mv_scanner")
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
 	}
@@ -1069,6 +1074,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 
 	if !kprobes.OnlyPodFiles {
 		if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		}
 	}
@@ -1089,6 +1095,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
 		if err := TracingPolicyInitContainerFsScanner(i.cid, i.namespace, i.name, i.root); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_init_container_scanner")
 			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
 		}
 	}

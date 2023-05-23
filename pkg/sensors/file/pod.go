@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/google/uuid"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	v1 "k8s.io/api/core/v1"
 )
@@ -241,6 +242,7 @@ func podhooksAddFunc(obj interface{}) {
 
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner(c, pod.Namespace, pod.Name, ""); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_init_podAdd_scanner")
 			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
@@ -304,11 +306,13 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_destroy_podUpdate_scanner")
 			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner(c, pod1.Namespace, pod1.Name, ""); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_init_podUpdate_scanner")
 			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
@@ -352,6 +356,7 @@ func podhooksDeleteFunc(obj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
+			filemetrics.FileTotalErrorsInc("sensor_file_destroy_podDelete_scanner")
 			logger.GetLogger().WithError(err).Warnf("delete: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}
