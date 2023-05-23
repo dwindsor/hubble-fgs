@@ -241,6 +241,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 				memcpy(v->msg.src.path.container_id, fval->container_id, CONTAINER_ID_LEN);
 			}
 			v->msg.src.path.flags |= fval->location_flags;
+			v->msg.rule_id = fval->rule_id;
 		}
 
 		rename_copy_dname(old_dentry, &(v->msg.src));
@@ -270,6 +271,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 				memcpy(v->msg.dst.path.container_id, fval->container_id, CONTAINER_ID_LEN);
 			}
 			v->msg.dst.path.flags |= fval->location_flags;
+			v->msg.rule_id = fval->rule_id; // if we watch both src and dst we report dst as rule_id
 		}
 
 		rename_copy_dname(new_dentry, &(v->msg.dst));
@@ -457,6 +459,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	struct bpf_lpm_trie_key *key = 0;
 	int zero = 0, action = 0;
 	__u64 old_dir = 0;
+	__u32 rule_id = 0;
 
 	// rename failed
 	if (ret) {
@@ -503,13 +506,14 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				key->prefixlen = file_val->size * 8;
 				memcpy(key->data, file_val->path, 256);
 
-				action = filter_match(key);
+				action = filter_match(key, &rule_id);
 				file_val->action = action;
 
 				if (val->msg.src.path.flags & CONTAINER_FILE) {
 					memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
 				}
 				file_val->location_flags = val->msg.src.path.flags;
+				file_val->rule_id = rule_id;
 
 				update_inode_rename(&(val->msg.src), file_val);
 			}
@@ -537,13 +541,14 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				key->prefixlen = file_val->size * 8;
 				memcpy(key->data, file_val->path, 256);
 
-				action = filter_match(key);
+				action = filter_match(key, &rule_id);
 				file_val->action = action;
 
 				if (val->msg.src.path.flags & CONTAINER_FILE) {
 					memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
 				}
 				file_val->location_flags = val->msg.src.path.flags;
+				file_val->rule_id = rule_id;
 
 				update_inode_rename(&(val->msg.src), file_val);
 			}
@@ -576,6 +581,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	msg->flags = val->msg.flags;
 	msg->tp_id = get_tp_id();
 	msg->operation = val->operation;
+	msg->rule_id = val->msg.rule_id;
 
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&rename_retprobe_map, &k);
@@ -631,6 +637,7 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 		msg->tp_id = get_tp_id();
 		msg->hook = hook_security_inode_rename;
 		msg->operation = FILE_OP_BLOCK;
+		msg->rule_id = val->msg.rule_id;
 
 		map_delete_elem(&rename_retprobe_map, &rkey);
 

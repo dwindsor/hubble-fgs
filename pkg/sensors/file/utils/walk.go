@@ -124,7 +124,7 @@ func lookupFilter(handle *ebpf.Map, filter string) fileapi.LPMMapValue {
 
 	err := handle.Lookup(k, &v)
 	if err != nil { // key does not exist so ignore
-		return FilterIgnore
+		return fileapi.LPMMapValue{Action: FilterIgnore}
 	}
 	return v
 }
@@ -226,7 +226,7 @@ func RemoveContainerEntries(maps FimMaps, containerID string) error {
 	return ret
 }
 
-func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
+func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -277,10 +277,11 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 				val.PathSize = uint32(len(path))
 				copy(val.FullPath[:], path)
 				locationFn(&val)
+				val.RuleID = rule
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(maps.Lpm, path) == FilterIgnore {
+					if lookupFilter(maps.Lpm, path).Action == FilterIgnore {
 						addToMap = false
 					}
 				}
@@ -318,10 +319,11 @@ func WalkPathRaw(path string, maps FimMaps, op uint32, action uint32, checkPrefi
 				val.PathSize = uint32(len(path))
 				copy(val.FullPath[:], path)
 				locationFn(&val)
+				val.RuleID = rule
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(maps.Lpm, path) == FilterIgnore {
+					if lookupFilter(maps.Lpm, path).Action == FilterIgnore {
 						addToMap = false
 					}
 				}

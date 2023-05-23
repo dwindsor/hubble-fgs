@@ -60,6 +60,16 @@ struct retprobe_key {
 	__u64 flags; // KRETPROBE_KEY or LSM_FMOD_KEY
 };
 
+struct lpm_key {
+	struct bpf_lpm_trie_key key;
+	char data[256];
+};
+
+struct lpm_val {
+	__u32 action;
+	__u32 rule;
+};
+
 struct hash_map_file_key {
 	__u64 ino;
 	__u32 dev_major;
@@ -72,6 +82,8 @@ struct hash_map_file_val {
 	char path[256];
 	char container_id[CONTAINER_ID_LEN];
 	__u64 location_flags;
+	__u32 rule_id;
+	__u32 pad;
 };
 
 struct msg_file_path {
@@ -106,6 +118,7 @@ struct msg_file_ops {
 	struct msg_fs_info parent_fs;
 	__u32 mnt_ns;
 	__u32 tp_id;
+	__u32 rule_id;
 	__u32 pad;
 };
 
@@ -147,6 +160,8 @@ struct msg_file_rename_ops {
 	__u32 flags;
 	__u32 tp_id;
 	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
+	__u32 rule_id;
+	__u32 pad;
 };
 
 struct vfs_rename_info {

@@ -22,7 +22,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	int zero = 0, action = 0;
 	struct qstr d_name;
 	char *buffer;
-	__u32 operation = 0;
+	__u32 operation = 0, rule_id = 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -90,7 +90,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	key->prefixlen = msg->path.size * 8;
 	memcpy(key->data, msg->path.str, 256);
 
-	action = filter_match(key);
+	action = filter_match(key, &rule_id);
 	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
 		return 0; // we don't care
 
@@ -109,6 +109,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
+	msg->rule_id = rule_id;
 
 	if (operation & FILE_OP_BLOCK) { // otherwise we will get the event after the actual create to have the inode info
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));

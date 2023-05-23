@@ -13,11 +13,14 @@ package fileapi
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
 type LPMMapKey struct {
-	Prefixlen uint32
-	Data      [256]byte
+	Prefixlen uint32    `align:"key"`
+	Data      [256]byte `align:"data"`
 }
 
-type LPMMapValue uint32
+type LPMMapValue struct {
+	Action uint32 `align:"action"`
+	Rule   uint32 `align:"rule"`
+}
 
 type HashMapFileKey struct {
 	Ino      uint64 `align:"ino"`
@@ -36,6 +39,8 @@ type HashMapFileVal struct {
 	FullPath      [256]byte `align:"path"`
 	ContainerID   [64]byte  `align:"container_id"`
 	LocationFlags uint64    `align:"location_flags"` // HOST_FILE or CONTAINER_FILE
+	RuleID        uint32    `align:"rule_id"`
+	Pad           uint32    `align:"pad"`
 }
 
 type MsgFilePath struct {
@@ -70,6 +75,7 @@ type MsgFileEvent struct {
 	ParentFs   MsgFsInfo               `align:"parent_fs"`
 	MntNs      uint32                  `align:"mnt_ns"`
 	TpId       uint32                  `align:"tp_id"`
+	RuleID     uint32                  `align:"rule_id"`
 	Pad        uint32                  `align:"pad"`
 }
 
@@ -104,6 +110,8 @@ type MsgFileRenameEvent struct {
 	Flags      uint32                  `align:"flags"`
 	TpId       uint32                  `align:"tp_id"`
 	Operation  uint32                  `align:"operation"`
+	RuleID     uint32                  `align:"rule_id"`
+	Pad        uint32                  `align:"pad"`
 }
 
 type FileConfigMapValue struct {

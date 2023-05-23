@@ -61,6 +61,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 	msg->tp_id = get_tp_id();
+	msg->rule_id = file_val->rule_id;
 
 	return msg;
 }

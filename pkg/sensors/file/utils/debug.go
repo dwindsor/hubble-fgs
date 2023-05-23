@@ -68,7 +68,7 @@ func PrintLPMMap(path string) error {
 	var val fileapi.LPMMapValue
 	entries := handle.Iterate()
 	for entries.Next(&key, &val) {
-		fmt.Printf("path[%s],action[%s]\n", string(key.Data[:(key.Prefixlen/8)]), actToStr(uint32(val)))
+		fmt.Printf("path[%s],action[%s]\n", string(key.Data[:(key.Prefixlen/8)]), actToStr(uint32(val.Action)))
 	}
 
 	return nil

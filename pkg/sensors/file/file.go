@@ -275,7 +275,7 @@ func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error
 	return client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{})
 }
 
-func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid string) error {
+func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid string, r uint32) error {
 	f := fm.FsScannerRename{
 		Path:        p,
 		MapDir:      m,
@@ -283,6 +283,7 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 		Action:      a,
 		PinPath:     pin,
 		ContainerID: cid,
+		RuleID:      r,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
@@ -454,6 +455,7 @@ type fileMonitoring struct {
 	Spec          *v1alpha1.FileSpec
 	pinPathPrefix string
 	tpName        string
+	tpRules       map[int]string
 }
 
 type fimTable struct {
@@ -483,6 +485,18 @@ func (t *fimTable) getTpName(id uint32) string {
 		return val.tpName
 	}
 	return "<unresolved_policy>"
+}
+
+func (t *fimTable) getTpRule(tpID, ruleID uint32) string {
+	val, err := t.getFIM(tpID)
+	if err != nil {
+		return "<unresolved_policy>"
+	}
+	rl, ok := val.tpRules[int(ruleID)]
+	if !ok {
+		return "<unresolved_rule>"
+	}
+	return rl
 }
 
 func (t *fimTable) rmFIM(id uint32) {
@@ -581,13 +595,13 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	defer lpmMap.Close()
 
 	for _, str := range spec.Paths {
-		if err := addFilters(lpmMap, str, fm.FilterMatch); err != nil {
+		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterMatch}); err != nil {
 			return fmt.Errorf("failed to add WatchPath: %w", err)
 		}
 	}
 
 	for _, str := range spec.PathsExclude {
-		if err := addFilters(lpmMap, str, fm.FilterIgnore); err != nil {
+		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
 			return fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
 	}
@@ -756,6 +770,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		MntNs:       m.MntNs,
 		Operation:   m.Operation,
 		TpName:      fileMonitoringTable.getTpName(m.TpId),
+		TpRule:      fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
 	}
 
 	return []observer.Event{unix}, nil
@@ -836,7 +851,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			renameCid = dstCid // both not empty -- use destination containerID
 		}
 
-		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid); err != nil {
+		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid, m.RuleID); err != nil {
 			filemetrics.FileTotalErrors().Inc()
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
@@ -892,6 +907,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		Flags:     m.Flags,
 		Operation: m.Operation,
 		TpName:    fileMonitoringTable.getTpName(m.TpId),
+		TpRule:    fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
 	}
 
 	return []observer.Event{unix}, nil
@@ -908,7 +924,7 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	entries := handle.Iterate()
 	for entries.Next(&exKey, &exVal) {
 		if k.Prefixlen == exKey.Prefixlen && k.Data == exKey.Data { // key already exists
-			if exVal == fm.FilterMatch {
+			if exVal.Action == fm.FilterMatch {
 				return nil
 			}
 		}
@@ -927,7 +943,7 @@ func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
 			return err
 		}
 
-		val = fm.FilterMonitor // after the first iteration everything is in monitor state
+		val = fileapi.LPMMapValue{Action: fm.FilterMonitor} // after the first iteration everything is in monitor state
 
 		if str == "/" { // reached root fs - nothing more to do
 			return nil
@@ -954,6 +970,12 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Spec:          &kprobes,
 		pinPathPrefix: name,
 		tpName:        policy.TpName(),
+		tpRules:       make(map[int]string),
+	}
+	// Add rules from file_paths with a unique number assosciated to each of them.
+	// No need to add file_paths_exclude as we will never get an event from these.
+	for i, p := range kprobes.Paths {
+		e.tpRules[i] = p
 	}
 	fileMonitoringTable.addFIM(config.TpId, e)
 
@@ -965,7 +987,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Name:       "lpm_trie_map_alloc",
 		Type:       bpf.BPF_MAP_TYPE_LPM_TRIE,
 		KeySize:    uint32(unsafe.Sizeof(fileapi.LPMMapKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.LPMMapValue(0))),
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.LPMMapValue{})),
 		MaxEntries: maxLPMpaths,
 		Flags:      bpf.BPF_F_NO_PREALLOC,
 	}
@@ -986,13 +1008,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	for _, str := range kprobes.Paths {
-		if err := addFilters(lpmMap, str, fm.FilterMatch); err != nil {
+		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterMatch}); err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
 		}
 	}
 
 	for _, str := range kprobes.PathsExclude {
-		if err := addFilters(lpmMap, str, fm.FilterIgnore); err != nil {
+		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
 	}

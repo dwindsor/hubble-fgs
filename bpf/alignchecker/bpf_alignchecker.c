@@ -39,3 +39,5 @@ struct msg_file_split_path _22;
 struct msg_rename_elem _23;
 struct msg_file_rename_ops _24;
 struct file_config_map_value _25;
+struct lpm_key _26;
+struct lpm_val _27;

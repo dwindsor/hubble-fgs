@@ -232,8 +232,8 @@ func tracingPolicyInit(args *fm.FsScannerInit) error {
 		v.LocationFlags = fileapi.HOST_FILE
 	}
 
-	for _, p := range args.Spec.Paths {
-		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
+	for i, p := range args.Spec.Paths {
+		if fNum, dNum, err := fm.WalkPathRaw(p, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Adding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
@@ -241,7 +241,7 @@ func tracingPolicyInit(args *fm.FsScannerInit) error {
 	}
 
 	for _, p := range args.Spec.PathsExclude {
-		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Excluding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
@@ -272,7 +272,7 @@ func renameDir(args *fm.FsScannerRename) error {
 		}
 	}
 
-	if fNum, dNum, err := fm.WalkPathRaw(args.Path, maps, args.Op, args.Action, true, locFn); err != nil {
+	if fNum, dNum, err := fm.WalkPathRaw(args.Path, args.RuleID, maps, args.Op, args.Action, true, locFn); err != nil {
 		logger.GetLogger().WithField("path", args.Path).WithError(err).Warnf("Renaming files/directories failed")
 	} else {
 		logger.GetLogger().WithField("path", args.Path).Infof("Renamed %d file(s) and %d directorie(s)", fNum, dNum)
@@ -340,8 +340,8 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 			return fmt.Errorf("chroot to %s: %w", rootDir, err)
 		}
 
-		for _, p := range args.Spec[i].Paths {
-			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
+		for i, p := range args.Spec[i].Paths {
+			if fNum, dNum, err := fm.WalkPathRaw(p, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Adding files/directories failed")
 			} else {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
@@ -349,7 +349,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 		}
 
 		for _, p := range args.Spec[i].PathsExclude {
-			if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
+			if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
 			} else {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)

@@ -149,15 +149,10 @@ struct {
 	__uint(max_entries, 1);
 } file_heap_map SEC(".maps");
 
-struct lpm_data {
-	struct bpf_lpm_trie_key key;
-	char data[256];
-};
-
 struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
-	__type(key, struct lpm_data);
-	__type(value, uint32_t);
+	__type(key, struct lpm_key);
+	__type(value, struct lpm_val);
 	__uint(max_entries, 4096);
 	__uint(map_flags, BPF_F_NO_PREALLOC);
 } lpm_trie_map_alloc SEC(".maps");
@@ -165,7 +160,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, struct lpm_data);
+	__type(value, struct lpm_key);
 	__uint(max_entries, 1);
 } lpm_trie_heap_key SEC(".maps");
 
@@ -359,11 +354,14 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 }
 
 static inline __attribute__((always_inline)) int
-filter_match(struct bpf_lpm_trie_key *key)
+filter_match(struct bpf_lpm_trie_key *key, __u32 *rule_id)
 {
-	uint32_t *retval = map_lookup_elem(&lpm_trie_map_alloc, key);
-	if (retval)
-		return *retval;
+	struct lpm_val *retval = map_lookup_elem(&lpm_trie_map_alloc, key);
+	if (retval) {
+		if (rule_id)
+			*rule_id = retval->rule;
+		return retval->action;
+	}
 	return FILTER_NOTFOUND;
 }
 

@@ -54,7 +54,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	__u32 path_size = 0;
 	__u32 dir_size = 0, dir_offset = 0;
 	__u32 dlen_size = 0, dlen_offset = 0;
-	__u32 operation = 0;
+	__u32 operation = 0, rule_id = 0;
 	struct qstr d_name;
 
 	msg = get_msg_init();
@@ -117,7 +117,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	key->prefixlen = msg->path.size * 8;
 	memcpy(key->data, msg->path.str, 256); // need the rest to be zero-ed
 
-	action = filter_match(key);
+	action = filter_match(key, &rule_id);
 	if (action == FILTER_NOTFOUND) // we don't care
 		return 0;
 
@@ -132,6 +132,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 	msg->tp_id = get_tp_id();
+	msg->rule_id = rule_id;
 
 	operation = eval_selectors(action_mkdir);
 

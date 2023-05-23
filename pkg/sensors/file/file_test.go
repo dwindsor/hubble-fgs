@@ -99,6 +99,8 @@ func TestStructAlignments(t *testing.T) {
 		"msg_rename_elem":       {reflect.TypeOf(fileapi.MsgRenameElem{})},
 		"msg_file_rename_ops":   {reflect.TypeOf(fileapi.MsgFileRenameEvent{})},
 		"file_config_map_value": {reflect.TypeOf(fileapi.FileConfigMapValue{})},
+		"lpm_key":               {reflect.TypeOf(fileapi.LPMMapKey{})},
+		"lpm_val":               {reflect.TypeOf(fileapi.LPMMapValue{})},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

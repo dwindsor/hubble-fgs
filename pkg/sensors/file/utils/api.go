@@ -47,6 +47,7 @@ type FsScannerRename struct {
 	Action      uint32
 	PinPath     string
 	ContainerID string
+	RuleID      uint32
 }
 
 type FsScannerContainerInit struct {
