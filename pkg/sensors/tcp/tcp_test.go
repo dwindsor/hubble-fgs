@@ -139,11 +139,17 @@ func init() {
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getTcpObserver(t *testing.T, ctx context.Context, config string) *observer.Observer {
+func getTcpObserver(t *testing.T, ctx context.Context, config string, docker bool) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := observer.GetDefaultObserverWithLib(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+	var obs *observer.Observer
+	var err error
+	if docker {
+		obs, err = observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+	} else {
+		obs, err = observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -154,12 +160,12 @@ func getTcpObserver(t *testing.T, ctx context.Context, config string) *observer.
 	return obs
 }
 
-func getBasicTcpObserver(t *testing.T, ctx context.Context) *observer.Observer {
-	return getTcpObserver(t, ctx, tcpBasicConfig)
+func getBasicTcpObserver(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
+	return getTcpObserver(t, ctx, tcpBasicConfig, docker)
 }
 
-func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context) *observer.Observer {
-	return getTcpObserver(t, ctx, tcpBasicConfigWithLatencyDetection)
+func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
+	return getTcpObserver(t, ctx, tcpBasicConfigWithLatencyDetection, docker)
 }
 
 func TestMain(m *testing.M) {
@@ -237,7 +243,7 @@ func TestConnectEvent4(t *testing.T) {
 			WithSocketType(sm.Full("connect")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -302,7 +308,7 @@ func TestExecEventClone4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -351,7 +357,7 @@ func TestExistingListenEvent4(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO())
+	getBasicTcpObserver(t, context.TODO(), false)
 	killAndWaitCommand(t, cmdServer)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -402,7 +408,7 @@ func TestExistingAcceptEvent4(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -456,7 +462,7 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO())
+	getBasicTcpObserver(t, context.TODO(), false)
 	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -519,7 +525,7 @@ func TestListenAcceptClose4(t *testing.T) {
 			WithSignal(sm.Full("SIGKILL")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -558,7 +564,7 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, true)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
@@ -607,7 +613,7 @@ func TestDockerListenConnect4(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, true)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -911,7 +917,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	}
 
 	dfltBase := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -1035,7 +1041,7 @@ func TestNamespaces(t *testing.T) {
 			WithParent(ec.NewProcessChecker()),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -1102,7 +1108,7 @@ func TestDetectLatency4(t *testing.T) {
 							WithPercentile(1))))), // Don't check count as it can vary unfortunately
 	)
 
-	obs := getTcpObserverWithLatencyDetection(t, ctx)
+	obs := getTcpObserverWithLatencyDetection(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1130,7 +1136,7 @@ func TestLoadTcpSensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -1208,7 +1214,7 @@ func TestConnectEvent6(t *testing.T) {
 			WithSocketType(sm.Full("connect")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "[::1]")
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -1273,7 +1279,7 @@ func TestExecEventClone6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1322,7 +1328,7 @@ func TestExistingListenEvent6(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO())
+	getBasicTcpObserver(t, context.TODO(), false)
 	killAndWaitCommand(t, cmdServer)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -1373,7 +1379,7 @@ func TestExistingAcceptEvent6(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1427,7 +1433,7 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO())
+	getBasicTcpObserver(t, context.TODO(), false)
 	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -1490,7 +1496,7 @@ func TestListenAcceptClose6(t *testing.T) {
 			WithSignal(sm.Full("SIGKILL")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1529,7 +1535,7 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, true)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
@@ -1578,7 +1584,7 @@ func TestDockerListenConnect6(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getBasicTcpObserver(t, ctx)
+	obs := getBasicTcpObserver(t, ctx, true)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
