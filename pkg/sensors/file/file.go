@@ -776,6 +776,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		Operation:   m.Operation,
 		TpName:      fileMonitoringTable.getTpName(m.TpId),
 		TpRule:      fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
+		Tid:         m.Tid,
 	}
 
 	return []observer.Event{unix}, nil
@@ -913,6 +914,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		Operation: m.Operation,
 		TpName:    fileMonitoringTable.getTpName(m.TpId),
 		TpRule:    fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
+		Tid:       m.Tid,
 	}
 
 	return []observer.Event{unix}, nil

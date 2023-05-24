@@ -294,6 +294,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	v->msg.hook = hook_vfs_rename;
 	v->msg.ktime = ktime_get_ns();
 	get_mnt_ns(&v->msg.mnt_ns);
+	v->msg.tid = (__u32)get_current_pid_tgid();
 
 	// resolve any paths (if needed) for items outside of watched path
 	resolve_missed_paths(v, conf);
@@ -582,6 +583,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	msg->tp_id = get_tp_id();
 	msg->operation = val->operation;
 	msg->rule_id = val->msg.rule_id;
+	msg->tid = val->msg.tid;
 
 	// we are done with 'val' so we can delete than entry
 	map_delete_elem(&rename_retprobe_map, &k);
@@ -638,6 +640,7 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 		msg->hook = hook_security_inode_rename;
 		msg->operation = FILE_OP_BLOCK;
 		msg->rule_id = val->msg.rule_id;
+		msg->tid = val->msg.tid;
 
 		map_delete_elem(&rename_retprobe_map, &rkey);
 

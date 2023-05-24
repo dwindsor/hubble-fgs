@@ -119,7 +119,7 @@ struct msg_file_ops {
 	__u32 mnt_ns;
 	__u32 tp_id;
 	__u32 rule_id;
-	__u32 pad;
+	__u32 tid;
 };
 
 struct vfs_mkdir_info {
@@ -161,7 +161,7 @@ struct msg_file_rename_ops {
 	__u32 tp_id;
 	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
 	__u32 rule_id;
-	__u32 pad;
+	__u32 tid;
 };
 
 struct vfs_rename_info {

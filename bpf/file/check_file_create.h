@@ -142,6 +142,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	msg->operation = FILE_OP_POST;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->tid = (__u32)get_current_pid_tgid();
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

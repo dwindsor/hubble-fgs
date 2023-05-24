@@ -355,6 +355,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
 	}
 	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
 	return tetragonEvent
@@ -389,6 +390,7 @@ type MsgFileEventUnix struct {
 	Operation   uint32
 	TpName      string
 	TpRule      string
+	Tid         uint32
 }
 
 func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {
@@ -403,7 +405,7 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, nil, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Tid, timestamp)
 }
 
 func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -504,6 +506,7 @@ type MsgFileRenameEventUnix struct {
 	Operation  uint32
 	TpName     string
 	TpRule     string
+	Tid        uint32
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
@@ -594,6 +597,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	}
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
 	}
 	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
 	return tetragonEvent
@@ -602,7 +606,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 
 func (msg *MsgFileRenameEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, nil, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Tid, timestamp)
 }
 
 func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

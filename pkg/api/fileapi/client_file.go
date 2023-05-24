@@ -76,7 +76,7 @@ type MsgFileEvent struct {
 	MntNs      uint32                  `align:"mnt_ns"`
 	TpId       uint32                  `align:"tp_id"`
 	RuleID     uint32                  `align:"rule_id"`
-	Pad        uint32                  `align:"pad"`
+	Tid        uint32                  `align:"tid"`
 }
 
 type MsgFileSplitPath struct {
@@ -111,7 +111,7 @@ type MsgFileRenameEvent struct {
 	TpId       uint32                  `align:"tp_id"`
 	Operation  uint32                  `align:"operation"`
 	RuleID     uint32                  `align:"rule_id"`
-	Pad        uint32                  `align:"pad"`
+	Tid        uint32                  `align:"tid"`
 }
 
 type FileConfigMapValue struct {

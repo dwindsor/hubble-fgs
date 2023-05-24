@@ -110,6 +110,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->tid = (__u32)get_current_pid_tgid();
 
 	if (operation & FILE_OP_BLOCK) { // otherwise we will get the event after the actual create to have the inode info
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));

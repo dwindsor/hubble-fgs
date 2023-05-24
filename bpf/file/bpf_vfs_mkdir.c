@@ -133,6 +133,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	get_mnt_ns(&msg->mnt_ns);
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->tid = (__u32)get_current_pid_tgid();
 
 	operation = eval_selectors(action_mkdir);
 
