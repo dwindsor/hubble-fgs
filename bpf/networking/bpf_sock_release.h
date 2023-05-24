@@ -22,7 +22,6 @@ __sk_free(struct pt_regs *ctx)
 	__u64 cookie;
 	u16 protocol;
 	int zero = 0;
-	struct fd_lookup_config *config;
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
 	size_t size;
@@ -43,12 +42,8 @@ __sk_free(struct pt_regs *ctx)
 	/* We only want to release sockets for UDP as TCP is handled via
 	 * calls to tcp_set_state.
 	 */
-	config = (struct fd_lookup_config *)map_lookup_elem(
-		&fd_lookup_config_map, &zero);
-	if (!config)
-		return 0;
 	probe_read(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
-	if (config->proto_shift) {
+	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
 		protocol >>= 8;
 	}
 

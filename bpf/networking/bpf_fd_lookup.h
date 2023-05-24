@@ -20,8 +20,6 @@ struct fd_lookup_config {
 	uint16_t protocol;
 	uint8_t state;
 	uint8_t ipv6;
-	uint8_t discover_proto_shift;
-	uint8_t proto_shift;
 	uint8_t signal_hit;
 	uint8_t pad1;
 	uint16_t family;
@@ -98,19 +96,9 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	/* If the socket address (pseudo cookie) has been provided, then we don't need to look up,
 	 * we just need to store it. */
 	if (!config->sockaddr) {
-		sk_err = fd_to_sk(&sk, p, config->fd, required_protocol, &read_ok, &family,
-				  config->discover_proto_shift, &config->proto_shift);
+		sk_err = fd_to_sk(&sk, p, config->fd, required_protocol, &read_ok, &family);
 		switch (sk_err) {
 		case FD_TO_SK_SUCCESS:
-			if (config->discover_proto_shift) {
-				/* Reset config->discover_proto_shift to indicate that we have
-					* at least attempted to discover the protocol shift. If we failed
-					* the proto_shift will be set to PROTO_SHIFT_UNKNOWN.
-					*/
-				config->discover_proto_shift = 0;
-				/* Nothing else to do! */
-				return 0;
-			}
 			break;
 		case FD_TO_SK_INVALID_PTRS:
 			/* This should never happen. */
@@ -125,8 +113,8 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		case FD_TO_SK_WRONG_FAMILY:
 		case FD_TO_SK_WRONG_PROTO:
 			/* An incorrect family or protocol does not mean a failure, but just
-				* that the socket didn't meet our expectations.
-				*/
+			 * that the socket didn't meet our expectations.
+			 */
 			return 0;
 		case FD_TO_SK_NO_SK:
 			emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
@@ -159,8 +147,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	// how we found this create time in case we want to exclude these.
 	sockmap_process.create_time = ktime_get_ns();
 
-	/* Store the socket even if family or protocol couldn't be read.
-	*/
+	/* Store the socket even if family or protocol couldn't be read. */
 	add_socketmap(&cookie, 0, &sockmap_process);
 
 	/* If we can't read the address family or protocol, then we can't

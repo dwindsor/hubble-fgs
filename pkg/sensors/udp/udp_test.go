@@ -41,7 +41,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -739,30 +738,6 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 	}
 }
 
-func TestGetProtocolShift(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getBasicUdpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	readyWG.Wait()
-
-	protocolShift, err := ip.ProtocolShift()
-	assert.NoError(t, err)
-	protocolShift2, err := ip.ProtocolShift()
-	assert.NoError(t, err)
-	assert.Equal(t, protocolShift, protocolShift2)
-	if !kernels.MinKernelVersion("5.6.0") {
-		assert.Equal(t, protocolShift, true)
-	} else {
-		assert.Equal(t, protocolShift, false)
-	}
-}
-
 func TestConnectEvent4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -1143,9 +1118,6 @@ func TestLoadUdpSensor(t *testing.T) {
 			// sk_allocret, sk_free_lazy, inet_lazy_send_kp, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
-
-			// sk_free_lazy
-			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},
 		}
 	} else if !kernels.MinKernelVersion("5.10.0") { // 5.4 - <5.10
 		sensorProgs = []tus.SensorProg{
@@ -1187,9 +1159,6 @@ func TestLoadUdpSensor(t *testing.T) {
 			// sk_allocret, sk_free_lazy, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-
-			// sk_free_lazy
-			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},
 		}
 	} else { // 5.10+
 		sensorProgs = []tus.SensorProg{
@@ -1231,9 +1200,6 @@ func TestLoadUdpSensor(t *testing.T) {
 			// sk_allocret, sk_free_lazy, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-
-			// sk_free_lazy
-			tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{1}},
 		}
 	}
 

@@ -602,11 +602,6 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
-		// As well as loading the existing UDP sockets, ip.LoadSockets will also set the
-		// proto_shift field in the fd_lookup_config_map which indicates whether the
-		// protocol field of struct sock needs shifting or not.
-		// If ip.LoadSockets is disabled or moved, then add a call to ip.ProtocolShift
-		// to cause the proto_shift field to be set.
 		ip.LoadSockets(FdCallback, unix.IPPROTO_UDP)
 	}
 
@@ -628,9 +623,6 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 	if !configured {
 		if err := configureUdpSensor(args.MapDir, UdpConfigMapName, Config); err != nil {
-			return err
-		}
-		if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
 			return err
 		}
 		logger.GetLogger().WithField("timestampEnabled", timestampEnabled).Debug("UDP Loader")

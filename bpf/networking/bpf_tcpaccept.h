@@ -51,8 +51,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	if (!config)
 		return 0;
 
-	skp_err = fd_to_sk(&skp, current, fd, IPPROTO_TCP, &read_ok, &family, 0,
-			   &config->proto_shift);
+	skp_err = fd_to_sk(&skp, current, fd, IPPROTO_TCP, &read_ok, &family);
 	if (skp_err || !skp)
 		return 0;
 
@@ -111,7 +110,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	if (!process)
 		return 0;
 
-	acc_process = map_lookup_elem(&socket_map_heap, &zero);
+	acc_process = (struct socketmap_value *)map_lookup_elem(&socket_map_heap, &zero);
 	if (!acc_process)
 		return 0;
 

@@ -152,15 +152,6 @@ func readAndSetFlags() {
 
 	option.Config.ReleasePinned = viper.GetBool(keyReleasePinnedBPF)
 
-	protocolShift := viper.GetString(keyProtocolShift)
-	if protocolShift == "false" {
-		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftFalse
-	} else if protocolShift == "true" {
-		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftTrue
-	} else {
-		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftAuto
-	}
-
 	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
 	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
 

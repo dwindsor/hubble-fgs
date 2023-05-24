@@ -28,7 +28,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -47,22 +46,20 @@ type FdLookupKey struct {
 }
 
 type FdLookupValue struct {
-	Pid                uint32
-	Fd                 uint32
-	Sockaddr           uint64
-	Saddr              [2]uint64
-	Daddr              [2]uint64
-	Sport              uint16
-	Dport              uint16
-	Protocol           uint16
-	State              uint8
-	IPv6               uint8
-	DiscoverProtoShift uint8
-	ProtoShift         uint8
-	SignalHit          uint8
-	Pad1               uint8
-	Family             uint16
-	Pad2               uint16
+	Pid       uint32
+	Fd        uint32
+	Sockaddr  uint64
+	Saddr     [2]uint64
+	Daddr     [2]uint64
+	Sport     uint16
+	Dport     uint16
+	Protocol  uint16
+	State     uint8
+	IPv6      uint8
+	SignalHit uint8
+	Pad1      uint8
+	Family    uint16
+	Pad2      uint16
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -87,11 +84,6 @@ var (
 	SocketCookieMap    = program.MapBuilder(SocketMapName, FdLookup)
 	SocketCookieStats  = program.MapBuilder(SocketMapStatsName, FdLookup)
 	TlsSocketCookieMap = program.MapBuilder(TlsSocketMapName, FdLookup)
-
-	// Detection of protocol shift
-	protocolShiftDetected = false
-	protocolShift         = false
-	gettingProtocolShift  = false
 )
 
 func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
@@ -178,16 +170,6 @@ func getFdLookupPrograms() []*program.Program {
 
 	progs = append(progs, FdLookup)
 
-	if !gettingProtocolShift {
-		// Ensure we have already got the protocol shift value, or use this
-		// opportunity to go and get it before doing anything else.
-		_, err := getProtocolShift()
-
-		if err != nil {
-			logger.GetLogger().Warn("Could not detect protocol shift")
-		}
-	}
-
 	return progs
 }
 
@@ -263,176 +245,6 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 	}
 
 	return nil
-}
-
-func ProtocolShift() (bool, error) {
-	/* Detects whether the protocol field in struct sock needs shifting or not.
-	 * This is detected by loading the FD lookup on a specific known FD.
-	 */
-	loading.Lock()
-	defer loading.Unlock()
-
-	return getProtocolShift()
-}
-
-/* getHostPid() reads option.Config.ProcFS (/procRoot) to obtain the host OS PID for
- * the current process (the un-namespaced PID).
- */
-func getHostPid() (int, error) {
-	filename := filepath.Join(option.Config.ProcFS, "self", "status")
-	file, err := os.ReadFile(filename)
-	if err != nil {
-		return 0, err
-	}
-	statuslines := strings.Split(string(file), "\n")
-	for _, line := range statuslines {
-		if !strings.HasPrefix(line, "NSpid:") {
-			continue
-		}
-		fields := strings.Fields(line)
-
-		if len(fields) < 2 {
-			return 0, fmt.Errorf("status NSpid has no entries")
-		}
-
-		pid, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return 0, err
-		}
-
-		return pid, nil
-	}
-
-	return 0, fmt.Errorf("status file missing NSpid field")
-}
-
-func getProtocolShift() (bool, error) {
-	/* Detects whether the protocol field in struct sock needs shifting or not.
-	 * This is detected by loading the FD lookup on a specific known FD.
-	 * Internal version that doesn't need a lock because we should already be
-	 * locked. ONLY call from a function that gets the loading.Lock()
-	 */
-
-	/* First, has it already been detected?
-	 */
-	if protocolShiftDetected {
-		return protocolShift, nil
-	}
-
-	/* Next, check if we have overridden the discovery.
-	 */
-	if enterpriseOption.Config.ProtocolShift == enterpriseOption.ShiftTrue {
-		protocolShift = true
-		protocolShiftDetected = true
-		return true, nil
-	} else if enterpriseOption.Config.ProtocolShift == enterpriseOption.ShiftFalse {
-		protocolShift = false
-		protocolShiftDetected = true
-		return false, nil
-	}
-
-	gettingProtocolShift = true
-
-	logger.GetLogger().Info("Detecting protocol shift with FD Lookup")
-
-	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
-		return false, fmt.Errorf("unable to load FD Lookup program")
-	}
-
-	defer unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
-
-	m := openConfigMap()
-	if m == nil {
-		return false, fmt.Errorf("unable to open FD Lookup map")
-	}
-
-	// Create a listener
-	syscall.ForkLock.Lock()
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
-	syscall.ForkLock.Unlock()
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to create socket for FD Lookup")
-		return false, fmt.Errorf("unable to create socket for FD Lookup")
-	}
-	defer syscall.Close(fd)
-
-	sa := &syscall.SockaddrInet4{Port: 7112, Addr: [4]byte{0, 0, 0, 0}}
-	err = syscall.Bind(fd, sa)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to bind socket for FD Lookup")
-		return false, fmt.Errorf("unable to bind socket for FD Lookup")
-	}
-
-	// Get host OS PID for our own process
-	pid, err := getHostPid()
-	if err != nil {
-		pid = os.Getpid()
-	}
-
-	k := &FdLookupKey{Zero: 0}
-	v := &FdLookupValue{
-		Pid:                uint32(pid),
-		Fd:                 uint32(fd),
-		Protocol:           syscall.IPPROTO_UDP,
-		DiscoverProtoShift: 1,
-		SignalHit:          0,
-	}
-	m.Update(k, v)
-
-	for loadWait := 0; loadWait < 10; loadWait++ {
-		/* Trigger BPF FD Lookup program.
-		 * The approach taken here (and later in writeSocketCookies and GetSocketForFD) is to hook
-		 * proc_task_name, which is called whenever user space accesses the /proc/PID/comm pseudo-files.
-		 * This hook receives a pointer to the target task_struct as an argument, and this task_struct
-		 * can be mined for the provided file descriptor. In this case that is so we can discover
-		 * whether the protocol field in the struct sock needs shifting or not – we do this here by
-		 * creating a socket with a known protocol (UDP) and triggering the hook. In the hook we can
-		 * then detect if the protocol field needs shifting or not (it's a BTF bug on some kernels).
-		 * Later in writeSocketCookies and GetSocketForFD we use the same approach to obtain the socket
-		 * details, including the pseudo socket cookie (used for linking a socket to a process).
-		 *
-		 * We make the assumption that /procRoot (option.Config.ProcFS) is bound to the host's /proc
-		 * so the PIDs in it are host-wide PIDs, rather than namespaced PIDs. This is important so we
-		 * can match up the process in /procRoot with the process in BPF (the PIDs will match).
-		 *
-		 * For protocol shift discovery, we use our own process (/procRoot/self) and identify our
-		 * PID using getHostPid() which obtains our own host-wide PID.
-		 */
-		os.ReadFile(filepath.Join(option.Config.ProcFS, "self", "comm"))
-		ret, err := m.Lookup(k)
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("FD Lookup could not access config map")
-			return false, fmt.Errorf("fd lookup could not access config map")
-		}
-		v = ret.(*FdLookupValue)
-
-		if v.SignalHit == 1 {
-			// Exit the delay loop when the BPF program saw the signal
-			break
-		}
-		// Need a little wait to allow the probe to be attached.
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	if v.DiscoverProtoShift != 0 {
-		logger.GetLogger().WithField("DiscoverProtoShift", v.DiscoverProtoShift).Warn("FD Lookup could not detect protocol shift")
-		return false, fmt.Errorf("fd lookup could not detect protocol shift")
-	}
-
-	if v.ProtoShift != 0 && v.ProtoShift != 1 {
-		logger.GetLogger().WithError(err).Warn("FD Lookup protocol shift could not be determined")
-		return false, fmt.Errorf("fd lookup protocol shift could not be determined")
-	}
-	protocolShift = v.ProtoShift == 1
-	protocolShiftDetected = true
-
-	logger.GetLogger().Infof("Protocol shift detected: %v", protocolShift)
-
-	gettingProtocolShift = false
-
-	return protocolShift, nil
 }
 
 func openConfigMap() *bpf.Map {
@@ -612,13 +424,23 @@ func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *bpf.Map) 
 	// Add the socket
 	socket.Pid = pid
 	socket.Fd = fd
-	if protocolShift {
-		socket.ProtoShift = 1
-	}
 
 	k := &FdLookupKey{Zero: 0}
 	m.Update(k, &socket)
-	// See getProtocolShift() for details on how this works.
+	/* Trigger BPF FD Lookup program.
+	 * The approach taken here (and later in writeSocketCookies and GetSocketForFD) is to hook
+	 * proc_task_name, which is called whenever user space accesses the /proc/PID/comm pseudo-files.
+	 * This hook receives a pointer to the target task_struct as an argument, and this task_struct
+	 * can be mined for the provided file descriptor.
+	 *
+	 * Later in writeSocketCookies and GetSocketForFD we use the same approach to obtain the socket
+	 * details, including the pseudo socket cookie (used for linking a socket to a process).
+	 *
+	 * We make the assumption that /procRoot (option.Config.ProcFS) is bound to the host's /proc
+	 * so the PIDs in it are host-wide PIDs, rather than namespaced PIDs. This is important so we
+	 * can match up the process in /procRoot with the process in BPF (the PIDs will match).
+	 */
+
 	os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
 	return socket, nil
 }
@@ -635,18 +457,14 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 		for _, fd := range fds {
 			k := &FdLookupKey{Zero: 0}
 			v := &FdLookupValue{
-				Pid:                pid,
-				Fd:                 fd,
-				Protocol:           protocol,
-				DiscoverProtoShift: 0,
-				SignalHit:          0,
-			}
-			if protocolShift {
-				v.ProtoShift = 1
+				Pid:       pid,
+				Fd:        fd,
+				Protocol:  protocol,
+				SignalHit: 0,
 			}
 			m.Update(k, v)
 			for loadWait := 0; loadWait < numIterations; loadWait++ {
-				// See getProtocolShift for details on how this works.
+				// See GetAndAddSocketViaProc for details on how this works.
 				os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
 				ret, err := m.Lookup(k)
 				if err == nil {
@@ -699,20 +517,16 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 
 	k := &FdLookupKey{Zero: 0}
 	v := &FdLookupValue{
-		Pid:                uint32(pid),
-		Fd:                 uint32(fd),
-		Protocol:           protocol,
-		DiscoverProtoShift: 0,
-		SignalHit:          0,
-		Sockaddr:           cookie,
-		Family:             uint16(family),
-	}
-	if protocolShift {
-		v.ProtoShift = 1
+		Pid:       uint32(pid),
+		Fd:        uint32(fd),
+		Protocol:  protocol,
+		SignalHit: 0,
+		Sockaddr:  cookie,
+		Family:    uint16(family),
 	}
 	m.Update(k, v)
 	for loadWait := 0; loadWait < 10; loadWait++ {
-		// See getProtocolShift for details on how this works.
+		// See GetAndAddSocketViaProc for details on how this works.
 		os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
 		ret, err := m.Lookup(k)
 		if err == nil {
@@ -734,23 +548,4 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 	}
 
 	return socket
-}
-
-func ConfigureProtocolShift(mapDir string) error {
-	m, err := bpf.OpenMap(filepath.Join(mapDir, FdLookupConfigMapName))
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	key := &FdLookupKey{
-		Zero: uint32(0),
-	}
-	config := &FdLookupValue{}
-	if protocolShift {
-		config.ProtoShift = 1
-	}
-	m.Update(key, config)
-	logger.GetLogger().Infof("Configured protocol shift: %t", protocolShift)
-	return nil
 }

@@ -2,6 +2,7 @@
 #include "hubble_msg.h"
 #include "cookie.h"
 #include "../lib/address_family.h"
+#include "bpf_tracing.h"
 
 #define FD_LOOKUP_SIGNAL    1024
 #define S_IFMT		    00170000
@@ -21,7 +22,7 @@
 
 static inline __attribute__((always_inline)) int
 fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required_protocol,
-	 bool *read_ok, u16 *family, u8 discover_proto_shift, u8 *proto_shift)
+	 bool *read_ok, u16 *family)
 {
 	struct files_struct *files;
 	struct fdtable *fdt;
@@ -79,39 +80,19 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 			       _(&(sk->sk_protocol)));
 
 	/* On kernels >=5.6, sk_protocol is a u16 and correctly maps to a protocol number.
-	 * On kernels <5.6, sk_protocol is 8 bits of a u32 and incorrectly points at the
-	 * byte before the protocol number. Therefore, to fix this, we read it as a u16 as
-	 * on earlier kernels, but then shift the upper byte (second byte) to the lower
-	 * (first) byte, resulting in a valid protocol number.
-	 * To handle the cases where distributions have patched their kernel to the new
-	 * struct layout, but have failed to update their version number, instead of
-	 * relying on the kernel version number, we instead test whether we need to shift
-	 * the protocol number against a known FD.
-	 * 
-	 * As a consequence of the BTF correctly identifying the location of an 8 bit
-	 * protocol field, we would actually have a set of flags occupying our upper 8
-	 * bits, causing direct comparisons to known protocol numbers to fail. As we do
-	 * not intend to support protocol numbers > 255 currently, we shall simply mask
-	 * off these upper 8 bits to prevent these from upsetting our comparison.
+	 * On kernels <5.6, sk_protocol is 8 bits of a u32. We can detect this by checking
+	 * the size of the field and, if it is part of a u32, we can simply shift the
+	 * protocol that we've already read by 8 bits to the right to obtain the actual
+	 * 8-bit protocol field. (This is all dependent on the bit layout of the u32
+	 * but this doesn't change for kernels <5.6 and compatibility between compiled
+	 * code means it won't change if compiled with a different compiler.)
 	 */
-	if (!discover_proto_shift) {
-		if (*proto_shift) {
-			read_protocol >>= 8;
-		} else {
-			read_protocol &= 0xff;
-		}
-		if (proto_ret == 0 && read_protocol != required_protocol) {
-			return FD_TO_SK_WRONG_PROTO;
-		}
-	} else if (proto_shift) {
-		// Check if we need to shift the protocol to match the required_protocol
-		if ((read_protocol & 0xff) == required_protocol) {
-			*proto_shift = PROTO_SHIFT_FALSE;
-		} else if (read_protocol >> 8 == required_protocol) {
-			*proto_shift = PROTO_SHIFT_TRUE;
-		} else {
-			*proto_shift = PROTO_SHIFT_UNKNOWN;
-		}
+	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
+		read_protocol >>= 8;
+	}
+
+	if (proto_ret == 0 && read_protocol != required_protocol) {
+		return FD_TO_SK_WRONG_PROTO;
 	}
 
 	if (family_ret == 0 && proto_ret == 0)

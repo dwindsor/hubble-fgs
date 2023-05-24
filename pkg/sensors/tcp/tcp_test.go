@@ -30,7 +30,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -200,30 +199,6 @@ func getNCCommand(t *testing.T, orig string) string {
 	t.Logf("Using %q instead of original program %q", server, orig)
 
 	return server
-}
-
-func TestGetProtocolShift(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getBasicTcpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	readyWG.Wait()
-
-	protocolShift, err := ip.ProtocolShift()
-	assert.NoError(t, err)
-	protocolShift2, err := ip.ProtocolShift()
-	assert.NoError(t, err)
-	assert.Equal(t, protocolShift, protocolShift2)
-	if !kernels.MinKernelVersion("5.6.0") {
-		assert.Equal(t, protocolShift, true)
-	} else {
-		assert.Equal(t, protocolShift, false)
-	}
 }
 
 func TestConnectEvent4(t *testing.T) {

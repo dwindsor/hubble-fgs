@@ -420,9 +420,6 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	getRunningSockets(true, true)
-	if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
-		return err
-	}
 
 	if args.Load.Type == "cgrp_tcp_ingress" {
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose)
