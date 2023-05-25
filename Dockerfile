@@ -35,12 +35,12 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     else make hubble-fgs-image TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.19.3-alpine3.15@sha256:eabc3aca6f6c4386369b5b067c9c210aeccd39e76907fa2f8f774fd59d83425a as gops
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.19.9-alpine3.18@sha256:d83a2d699b085a72d5e2920517b00e372f333165a51170cb862b3c0facba6e8d as gops
 ARG TARGETARCH
 RUN apk add --no-cache binutils git \
  && git clone https://github.com/google/gops /go/src/github.com/google/gops \
  && cd /go/src/github.com/google/gops \
- && git checkout -b v0.3.22 v0.3.22 \
+ && git checkout -b v0.3.27 v0.3.27 \
  && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
 
 # This builder (cross-)compile a stripped static version of bpftool.
