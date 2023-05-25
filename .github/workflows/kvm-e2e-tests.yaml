@@ -3,7 +3,7 @@ name: KVM e2e Tests
 on:
   pull_request:
     paths-ignore:
-    - "**.md"
+      - "**.md"
   push:
     branches:
       - master
@@ -57,16 +57,16 @@ jobs:
   run-tests:
     needs: ensure-image-available
     runs-on:
-    - majestic-ketchup-light
+      - majestic-ketchup-light
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         kernel:
-          - '5.15-main'
-          - '5.10-main'
-          - '5.4-main'
-          - '4.19-main'
+          - "5.15-20230420.212204"
+          - "5.10-20230420.212204"
+          - "5.4-20230420.212204"
+          - "4.19-20230420.212204"
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@v3
@@ -100,13 +100,13 @@ jobs:
           rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@0b7d7157dae56a44dc531c852e7756dc671071af
+        uses: cilium/little-vm-helper@657fd0df35e4edfd7815efdae14ca44ea1e74897
         with:
           install-dependencies: true
           test-name: tetragon-e2e
           image: kind
-          image-version: '${{ matrix.kernel }}'
-          lvh-version: 'v0.0.2'
+          image-version: "${{ matrix.kernel }}"
+          lvh-version: "v0.0.4"
           host-mount: ./
           ssh-port: 2222
           mem: 8G
@@ -131,12 +131,12 @@ jobs:
 
       - name: Load Docker Images Into LVH
         run: |
-            docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
+          docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@0b7d7157dae56a44dc531c852e7756dc671071af
+        uses: cilium/little-vm-helper@657fd0df35e4edfd7815efdae14ca44ea1e74897
         with:
-          provision: 'false'
+          provision: "false"
           cmd: |
             set -eux
             cd /host/hubble-fgs
