@@ -32,7 +32,7 @@ require (
 	golang.org/x/net v0.10.0
 	golang.org/x/sys v0.8.0
 	golang.org/x/time v0.3.0
-	google.golang.org/api v0.122.0
+	google.golang.org/api v0.124.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -65,7 +65,7 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/google/s2a-go v0.1.3 // indirect
+	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/hashicorp/consul/api v1.18.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.2.0 // indirect
@@ -181,8 +181,8 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
-	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
