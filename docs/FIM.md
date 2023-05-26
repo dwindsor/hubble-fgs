@@ -21,9 +21,10 @@ spec:
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/locale.alias"
+    monitorHostFiles: true
 ```
 
-To enable FIM, the user should provide at least one path under `spec.file.file_paths`. This field defined prefixes to be monitored, while `spec.file.file_paths_exclude` excludes prefixes (e.g., to reduce the amount of events).
+To enable FIM, the user should provide at least one path under `spec.file.file_paths`. This field defined prefixes to be monitored, while `spec.file.file_paths_exclude` excludes prefixes (e.g., to reduce the amount of events). If `spec.file.monitorHostFiles` is `true` we monitor host files. This can affect monitoring of pod files as described [here](#monitoring-pod-files).
 
 Path filtering is prefix based. This means that the previous TracingPolicy will generate events for all file paths that start with `/etc/` excluding the prefix `/etc/demo1`. This will also exclude `/etc/demo10` which has the same exclude prefix. Deleting a file and creating that again will not affect the filtering on that.
 
@@ -243,7 +244,7 @@ FIM requires a kernel version of 4.19 or later (exception is RedHat/OpenShift 4.
 
 ## Monitoring Pod Files
 
-FIM also supports monitoring for K8s pod files. Users can select pods to be monitored based on the namespace and pod name using the `onlyPodFiles` and `podSelector` fields.
+FIM also supports monitoring for K8s pod files. Users can select pods to be monitored based on the namespace and pod name using the `podSelector` field.
 
 An example TracingPolicy that enables pod file monitoring is:
 
@@ -260,7 +261,7 @@ spec:
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/locale.alias"
-    onlyPodFiles: false
+    monitorHostFiles: true
     podSelector:
       matchExpressions:
       - key: "k8s:io.kubernetes.pod.namespace"
@@ -270,14 +271,7 @@ spec:
         - "ubuntu"
 ```
 
-Based on the values of `onlyPodFiles` and `podSelector` we can distinguish four cases:
-
-1. Using `onlyPodFiles is false` and `podSelector is not empty` we will monitor host and pod files that match `podSelector`.
-2. Using `onlyPodFiles is false` and `podSelector is empty` we will monitor only host files.
-3. Using `onlyPodFiles is true` and `podSelector is not empty` we will monitor only pod files that match `podSelector`.
-4. Using `onlyPodFiles is true` and `podSelector is empty` we will monitor nothing (not valid).
-
-The default value of `onlyPodFiles` is `false`.
+Users can use `monitorHostFiles` to define if this tracing policy should also include host files. The default value of `monitorHostFiles` in K8s is `true`. When loading the policy with a switch or via gRPC, the default value of `monitorHostFiles` is `false`. Thus, the user should specify `monitorHostFiles: true` in order to monitor host files.
 
 Using the previous example we will monitor host and pod files that have `[pod_namespace == "default" OR pod_namespace == "ubuntu"]`. The exact files that we care about, are defined using `file_paths` and `file_paths_exclude`, similar to what we described in the previous sections.
 
@@ -327,6 +321,12 @@ podSelector:
 
 This monitors pod files with `[(pod_namespace == "default" OR pod_namespace == "test") AND pod_name == "ubuntu"]`.
 
+```yaml
+podSelector: {}
+```
+
+This monitors all pods (including the pod that runs Tetragon Enterprise).
+
 We also support `matchLabels` under `podSelector` in order to be consistent with K8s common practices and Cilium. An example is:
 
 ```yaml
@@ -360,6 +360,7 @@ spec:
     - "/etc/demo1"
     - "/etc/demo2"
     - "/etc/locale.alias"
+    monitorHostFiles: true
     selectors:
     - matchBinaries:
       - operator: "In"
@@ -407,7 +408,7 @@ spec:
   file:
     file_paths:
     - "/etc/"
-    onlyPodFiles: false
+    monitorHostFiles: true
     podSelector:
       matchExpressions:
       - key: "k8s:io.kubernetes.pod.namespace"
@@ -496,6 +497,7 @@ spec:
     - "/etc/"
     file_paths_exclude:
     - "/etc/locale.alias"
+    monitorHostFiles: true
 ```
 
 ## Known Limitations
