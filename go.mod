@@ -3,7 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.18
 
 require (
-	github.com/cilium/cilium v1.13.2
+	github.com/cilium/cilium v1.13.3
 	github.com/cilium/ebpf v0.10.0
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
