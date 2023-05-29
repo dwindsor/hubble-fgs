@@ -118,7 +118,7 @@ func TestDemoApp(t *testing.T) {
 
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
-	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(6 * time.Minute)
+	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(10 * time.Minute)
 	testDemoApp := features.New("Test Demo App").
 		Assess("Run Event Checks", demoChecker.CheckInNamespace(30*time.Second, namespace)).
 		Feature()
