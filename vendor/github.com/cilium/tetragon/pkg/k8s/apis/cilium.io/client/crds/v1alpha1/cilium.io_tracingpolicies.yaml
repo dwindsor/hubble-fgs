@@ -53,8 +53,8 @@ spec:
                     items:
                       type: string
                     type: array
-                  onlyPodFiles:
-                    default: false
+                  monitorHostFiles:
+                    default: true
                     description: Do monitoring on host files
                     type: boolean
                   podSelector:

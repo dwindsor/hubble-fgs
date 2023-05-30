@@ -16,7 +16,7 @@ spec:
     - "/etc/demo1"
     - "/etc/demo2"
     - "/etc/locale.alias"
-    onlyPodFiles: false
+    monitorHostFiles: true
     podSelector:
       matchExpressions:
       - key: "k8s:io.kubernetes.pod.namespace"

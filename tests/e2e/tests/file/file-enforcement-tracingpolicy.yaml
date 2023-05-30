@@ -9,7 +9,7 @@ spec:
     - "/etc/"
     file_paths_exclude:
     - "/etc/test_dir/"
-    onlyPodFiles: true
+    monitorHostFiles: false
     podSelector:
       matchExpressions:
       - key: "k8s:io.kubernetes.pod.namespace"

@@ -611,7 +611,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		}
 	}
 
-	if !spec.OnlyPodFiles {
+	if spec.MonitorHostFiles {
 		if err := TracingPolicyInitFsScanner(*spec, mapDir, tc.pinPathPrefix); err != nil {
 			return err
 		}
@@ -1074,7 +1074,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
 
-	if !kprobes.OnlyPodFiles {
+	if kprobes.MonitorHostFiles {
 		if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
@@ -1362,6 +1362,10 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, nil
 	}
 	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
+
+	if !spec.FileMonitoring.MonitorHostFiles && spec.FileMonitoring.PodSelector == nil {
+		logger.GetLogger().Warnf("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
+	}
 
 	selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
 	if err != nil {

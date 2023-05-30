@@ -16,4 +16,4 @@ spec:
     - "/etc/demo1"
     - "/etc/demo2"
     - "/etc/locale.alias"
-    hostFiles: true
+    monitorHostFiles: true

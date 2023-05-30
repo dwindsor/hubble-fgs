@@ -169,10 +169,10 @@ type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []FileSelector `json:"selectors"`
-	// +kubebuilder:default=false
+	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	// Do monitoring on host files
-	OnlyPodFiles bool `json:"onlyPodFiles"`
+	MonitorHostFiles bool `json:"monitorHostFiles"`
 	// +kubebuilder:validation:Optional
 	// This is a label selector which selects Pods. This field follows standard label
 	// selector semantics; if present but empty, it selects all pods.

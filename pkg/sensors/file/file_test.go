@@ -223,9 +223,10 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -272,9 +273,10 @@ func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -326,9 +328,10 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -506,9 +509,10 @@ func testFileDelete(gt *testing.T, t *testing.T) {
 	createFileInDir(t, in_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -616,9 +620,10 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 	createTestDir(t, test_path)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -962,9 +967,10 @@ func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	out_file := filepath.Join(test_path, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -997,9 +1003,10 @@ func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{test_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1034,9 +1041,10 @@ func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{inside_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{inside_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1072,9 +1080,10 @@ func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{inside_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{inside_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1109,9 +1118,10 @@ func testFileRename5(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	out_file := filepath.Join(outside_path, "test1")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{inside_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{inside_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1149,9 +1159,10 @@ func testFileRename6(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{inside_path},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{inside_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1198,9 +1209,10 @@ func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{in1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{in1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1251,9 +1263,10 @@ func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{in1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{in1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1303,9 +1316,10 @@ func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUT
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1361,9 +1375,10 @@ func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OU
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1415,9 +1430,10 @@ func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	iFile2 := filepath.Join(in_b, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1465,9 +1481,10 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	iFile2 := filepath.Join(in_b, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out1},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1507,9 +1524,10 @@ func testFileRmdir(gt *testing.T, t *testing.T) {
 	}
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1535,9 +1553,10 @@ func testFileMkdir(gt *testing.T, t *testing.T) {
 	a := filepath.Join(out, "a")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1584,9 +1603,10 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 	createTestDir(t, in3)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1630,9 +1650,10 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1704,11 +1725,11 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 	})
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{"/etc/"},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
-		OnlyPodFiles: true, // check only container files here
-		PodSelector:  &slimv1.LabelSelector{},
+		Paths:            []string{"/etc/"},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: false, // check only container files here
+		PodSelector:      &slimv1.LabelSelector{},
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1752,9 +1773,10 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 		Selectors: []v1alpha1.FileSelector{
 			{
 				MatchBinaries: []v1alpha1.BinarySelector{
@@ -1798,9 +1820,10 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 		Selectors: []v1alpha1.FileSelector{
 			{
 				MatchOperations: []v1alpha1.OperationSelector{
@@ -1844,9 +1867,10 @@ func testExactFileDelete(gt *testing.T, t *testing.T) {
 	createFileInDir(t, a) // create the file before starting FIM
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{a}, // monitor only a specific file
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{a}, // monitor only a specific file
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1872,9 +1896,10 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
@@ -1920,9 +1945,10 @@ func testFileChown(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:        []string{out},
-		PathsExclude: []string{},
-		Config:       make(map[string]string),
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
 	}); err != nil {
 		fmt.Printf("ReGenerateFimMaps failed with %s", err)
 	}
