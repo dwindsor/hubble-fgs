@@ -113,7 +113,7 @@ func (msg *MsgInterfaceEventUnix) RetryInternal(ev notify.Event, timestamp uint6
 }
 
 func (msg *MsgInterfaceEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
+	return eventcache.HandleGenericEvent(internal, ev, nil)
 }
 
 func (msg *MsgInterfaceEventUnix) Notify() bool {

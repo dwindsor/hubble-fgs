@@ -157,7 +157,7 @@ func (msg *MsgTLSEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*p
 }
 
 func (msg *MsgTLSEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
+	return eventcache.HandleGenericEvent(internal, ev, nil)
 }
 
 func (msg *MsgTLSEventUnix) Notify() bool {

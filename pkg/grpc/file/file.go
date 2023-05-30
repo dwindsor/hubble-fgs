@@ -409,7 +409,7 @@ func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 }
 
 func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	if err := eventcache.HandleGenericEvent(internal, ev); err != nil {
+	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
 		return err
 	}
 	handleFileEventCacheRetryMetrics(ev, msg.TpName, msg.TpRule)
@@ -610,7 +610,7 @@ func (msg *MsgFileRenameEventUnix) RetryInternal(ev notify.Event, timestamp uint
 }
 
 func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	if err := eventcache.HandleGenericEvent(internal, ev); err != nil {
+	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
 		return err
 	}
 	handleFileEventCacheRetryMetrics(ev, msg.TpName, msg.TpRule)

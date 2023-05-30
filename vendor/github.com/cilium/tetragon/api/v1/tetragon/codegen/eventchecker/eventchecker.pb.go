@@ -5924,6 +5924,7 @@ type KprobeSkbChecker struct {
 	Proto       *uint32                      `json:"proto,omitempty"`
 	SecPathLen  *uint32                      `json:"secPathLen,omitempty"`
 	SecPathOlen *uint32                      `json:"secPathOlen,omitempty"`
+	Protocol    *stringmatcher.StringMatcher `json:"protocol,omitempty"`
 }
 
 // NewKprobeSkbChecker creates a new KprobeSkbChecker
@@ -5996,6 +5997,11 @@ func (checker *KprobeSkbChecker) Check(event *tetragon.KprobeSkb) error {
 		if checker.SecPathOlen != nil {
 			if *checker.SecPathOlen != event.SecPathOlen {
 				return fmt.Errorf("SecPathOlen has value %d which does not match expected value %d", event.SecPathOlen, *checker.SecPathOlen)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Match(event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
 			}
 		}
 		return nil
@@ -6072,6 +6078,12 @@ func (checker *KprobeSkbChecker) WithSecPathOlen(check uint32) *KprobeSkbChecker
 	return checker
 }
 
+// WithProtocol adds a Protocol check to the KprobeSkbChecker
+func (checker *KprobeSkbChecker) WithProtocol(check *stringmatcher.StringMatcher) *KprobeSkbChecker {
+	checker.Protocol = check
+	return checker
+}
+
 //FromKprobeSkb populates the KprobeSkbChecker using data from a KprobeSkb field
 func (checker *KprobeSkbChecker) FromKprobeSkb(event *tetragon.KprobeSkb) *KprobeSkbChecker {
 	if event == nil {
@@ -6115,6 +6127,7 @@ func (checker *KprobeSkbChecker) FromKprobeSkb(event *tetragon.KprobeSkb) *Kprob
 		val := event.SecPathOlen
 		checker.SecPathOlen = &val
 	}
+	checker.Protocol = stringmatcher.Full(event.Protocol)
 	return checker
 }
 
