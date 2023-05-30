@@ -13,6 +13,7 @@ package eventmetrics
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	// This is needed to get tests passing since gotest seems to implicitly import this
@@ -151,23 +152,27 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	// Post UDP Latency numbers
+	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
+	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
+	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B00").Add(c)
-		c = float64(s.Latency.Buckets[1].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B01").Add(c)
-		c = float64(s.Latency.Buckets[2].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B10").Add(c)
-		c = float64(s.Latency.Buckets[3].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B25").Add(c)
-		c = float64(s.Latency.Buckets[4].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B50").Add(c)
-		c = float64(s.Latency.Buckets[5].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B75").Add(c)
-		c = float64(s.Latency.Buckets[6].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B90").Add(c)
-		c = float64(s.Latency.Buckets[7].Count)
-		socketmetrics.SocketStatsUdpLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
+		c += float64(s.Latency.Buckets[1].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
+		c += float64(s.Latency.Buckets[2].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
+		c += float64(s.Latency.Buckets[3].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
+		c += float64(s.Latency.Buckets[4].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
+		c += float64(s.Latency.Buckets[5].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
+		c += float64(s.Latency.Buckets[6].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
+		c += float64(s.Latency.Buckets[7].Count)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
+		socketmetrics.UdpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	}
 }
 
@@ -201,24 +206,28 @@ func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *
 	c = float64(s.SkbConsumeMisses)
 	socketmetrics.SocketStatsUDPMulticastConsumeMisses.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
 
-	// Post UDP Latency numbers
+	// Post UDP Multicast Latency numbers
+	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
+	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
+	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B00").Add(c)
-		c = float64(s.Latency.Buckets[1].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B01").Add(c)
-		c = float64(s.Latency.Buckets[2].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B10").Add(c)
-		c = float64(s.Latency.Buckets[3].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B25").Add(c)
-		c = float64(s.Latency.Buckets[4].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B50").Add(c)
-		c = float64(s.Latency.Buckets[5].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B75").Add(c)
-		c = float64(s.Latency.Buckets[6].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B90").Add(c)
-		c = float64(s.Latency.Buckets[7].Count)
-		socketmetrics.SocketStatsUdpMulticastLatency.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "B99").Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
+		c += float64(s.Latency.Buckets[1].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
+		c += float64(s.Latency.Buckets[2].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
+		c += float64(s.Latency.Buckets[3].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
+		c += float64(s.Latency.Buckets[4].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
+		c += float64(s.Latency.Buckets[5].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
+		c += float64(s.Latency.Buckets[6].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
+		c += float64(s.Latency.Buckets[7].Count)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "+Inf").Add(c)
+		socketmetrics.UdpMulticastLatencyCount.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
 	}
 }
 
@@ -248,42 +257,58 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	socketmetrics.SocketStatsDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	// Post TCP Latency numbers
+	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
+	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
+	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Rtt != nil && s.Rtt.Buckets != nil {
 		c = float64(s.Rtt.Buckets[0].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B00").Add(c)
-		c = float64(s.Rtt.Buckets[1].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B01").Add(c)
-		c = float64(s.Rtt.Buckets[2].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B10").Add(c)
-		c = float64(s.Rtt.Buckets[3].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B25").Add(c)
-		c = float64(s.Rtt.Buckets[4].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B50").Add(c)
-		c = float64(s.Rtt.Buckets[5].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B75").Add(c)
-		c = float64(s.Rtt.Buckets[6].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B90").Add(c)
-		c = float64(s.Rtt.Buckets[7].Count)
-		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(1)).Add(c)
+		c += float64(s.Rtt.Buckets[1].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(10)).Add(c)
+		c += float64(s.Rtt.Buckets[2].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(25)).Add(c)
+		c += float64(s.Rtt.Buckets[3].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(50)).Add(c)
+		c += float64(s.Rtt.Buckets[4].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(75)).Add(c)
+		c += float64(s.Rtt.Buckets[5].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(90)).Add(c)
+		c += float64(s.Rtt.Buckets[6].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(99)).Add(c)
+		c += float64(s.Rtt.Buckets[7].Count)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(100)).Add(c)
+		socketmetrics.TcpRttCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	}
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B00").Add(c)
-		c = float64(s.Latency.Buckets[1].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B01").Add(c)
-		c = float64(s.Latency.Buckets[2].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B10").Add(c)
-		c = float64(s.Latency.Buckets[3].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B25").Add(c)
-		c = float64(s.Latency.Buckets[4].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B50").Add(c)
-		c = float64(s.Latency.Buckets[5].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B75").Add(c)
-		c = float64(s.Latency.Buckets[6].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B90").Add(c)
-		c = float64(s.Latency.Buckets[7].Count)
-		socketmetrics.SocketStatsLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01))).Add(c)
+		c += float64(s.Latency.Buckets[1].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10))).Add(c)
+		c += float64(s.Latency.Buckets[2].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25))).Add(c)
+		c += float64(s.Latency.Buckets[3].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50))).Add(c)
+		c += float64(s.Latency.Buckets[4].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75))).Add(c)
+		c += float64(s.Latency.Buckets[5].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90))).Add(c)
+		c += float64(s.Latency.Buckets[6].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99))).Add(c)
+		c += float64(s.Latency.Buckets[7].Count)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
+		socketmetrics.TcpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	}
+}
+
+func getPromBucket(min, max, upperLimitPercent uint32) string {
+	if upperLimitPercent == 100 {
+		return "+Inf"
+	}
+	return strconv.Itoa(int(min + (max-min)*upperLimitPercent/100))
+}
+
+func getTcpRttPromBucket(upperLimitPercent uint32) string {
+	return getPromBucket(tcpconfig.RttHistogramMin, tcpconfig.RttHistogramMax, upperLimitPercent)
 }
 
 func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {

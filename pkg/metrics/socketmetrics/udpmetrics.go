@@ -124,19 +124,39 @@ var (
 )
 
 // UDP Latency Histogram
+// It emulates an OpenMetrics histogram:
+//   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
+//     limit of the bucket
+//   - a "_count" metric, identical to the highest ("+Inf") bucket metric
+//
+// TODO: Add a "_sum" metric (sum of all observed values)
 var (
-	SocketStatsUdpLatency = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_latency",
-		Help: "UDP socket latency bucket counter",
-	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
+	UdpLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_latency_microseconds_bucket",
+		Help: "Histogram bucket for UDP socket latency in microseconds",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
+	UdpLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_latency_microseconds_count",
+		Help: "Histogram count for UDP socket latency",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
 // UDP Multicast Latency Histogram
+// It emulates an OpenMetrics histogram:
+//   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
+//     limit of the bucket
+//   - a "_count" metric, identical to the highest ("+Inf") bucket metric
+//
+// TODO: Add a "_sum" metric (sum of all observed values)
 var (
-	SocketStatsUdpMulticastLatency = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_latency",
-		Help: "UDP socket latency bucket counter",
-	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "bucket"})
+	UdpMulticastLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_bucket",
+		Help: "Histogram bucket for UDP socket multicast latency in microseconds",
+	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "le"})
+	UdpMulticastLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_count",
+		Help: "Histogram count for UDP socket multicast latency",
+	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 )
 
 // UDP Sequence Check errors

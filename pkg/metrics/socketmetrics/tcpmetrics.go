@@ -81,14 +81,30 @@ var (
 	}, []string{"namespace", "pod", "binary"})
 )
 
-// TCP Latency Histogram
+// TCP Latency Histograms
+// They emulate OpenMetrics histograms:
+//   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
+//     limit of the bucket
+//   - a "_count" metric, identical to the highest ("+Inf") bucket metric
+//
+// TODO: Add a "_sum" metric (sum of all observed values)
 var (
-	SocketStatsRttLatency = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_rtt",
-		Help: "TCP socket RTT bucket counter",
-	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
-	SocketStatsLatency = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_latency",
-		Help: "TCP socket latency bucket counter",
-	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
+	TcpRttBucket = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_rtt_microseconds_bucket",
+		Help: "Histogram bucket for TCP socket rtt in microseconds",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
+	TcpRttCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_rtt_microseconds_count",
+		Help: "Histogram count for TCP socket rtt",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+)
+var (
+	TcpLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_latency_microseconds_bucket",
+		Help: "Histogram bucket for TCP socket latency in microseconds",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
+	TcpLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_latency_microseconds_count",
+		Help: "Histogram count for TCP socket latency",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
