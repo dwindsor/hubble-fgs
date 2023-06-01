@@ -102,9 +102,9 @@ Initialize the OSS submodule with:
 make oss-init
 ```
 
-Install `libcap` and `libelf`, on Debian systems:
+Install: `libcap`, `libelf`, `libaio` and `liburing`. On Debian systems:
 ```
-sudo apt install libelf-dev libcap-dev
+sudo apt install libelf-dev libcap-dev libaio-dev liburing-dev
 ```
 
 #### Build and run
