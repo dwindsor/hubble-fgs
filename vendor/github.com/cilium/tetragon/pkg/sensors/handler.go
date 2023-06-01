@@ -121,6 +121,7 @@ func (h *handler) addTracingPolicy(op *tracingPolicyAdd) error {
 		name:            op.name,
 		tracingpolicy:   op.tp,
 		tracingpolicyID: uint64(tpID),
+		policyfilterID:  uint64(filterID),
 	}
 	if err := col.load(h.bpfDir, h.mapDir, h.ciliumDir, nil); err != nil {
 		return err
@@ -138,8 +139,20 @@ func (h *handler) delTracingPolicy(op *tracingPolicyDel) error {
 		return fmt.Errorf("tracing policy %s does not exist", op.name)
 	}
 	err := col.unload(nil)
+	if err != nil {
+		col.err = fmt.Errorf("failed to unload tracing policy: %w", err)
+		return err
+	}
+
+	filterID := policyfilter.PolicyID(col.policyfilterID)
+	err = h.pfState.DelPolicy(filterID)
+	if err != nil {
+		col.err = fmt.Errorf("failed to remove from policyfilter: %w", err)
+		return err
+	}
+
 	delete(h.collections, op.name)
-	return err
+	return nil
 }
 
 func (h *handler) listTracingPolicies(op *tracingPolicyList) error {
@@ -152,7 +165,7 @@ func (h *handler) listTracingPolicies(op *tracingPolicyList) error {
 		pol := tetragon.TracingPolicyStatus{
 			Id:   col.tracingpolicyID,
 			Name: name,
-			Info: col.tracingpolicy.TpInfo(),
+			Info: fmt.Sprintf("%s filterID:%d error:%v", col.tracingpolicy.TpInfo(), col.policyfilterID, col.err),
 		}
 
 		pol.Namespace = ""
@@ -202,7 +215,7 @@ func (h *handler) enableSensor(op *sensorEnable) error {
 	// The idea is that sensors can get a handle to the stt manager when
 	// they are loaded which they can use to attach stt information to
 	// events. Need to revsit this, and until we do we keep LoadArg.
-	return col.load(h.bpfDir, h.mapDir, h.ciliumDir, &LoadArg{STTManagerHandle: op.sttManagerHandle})
+	return col.load(h.bpfDir, h.mapDir, h.ciliumDir, &LoadArg{})
 }
 
 func (h *handler) disableSensor(op *sensorDisable) error {
@@ -212,7 +225,7 @@ func (h *handler) disableSensor(op *sensorDisable) error {
 	}
 
 	// NB: see LoadArg for sensorEnable
-	return col.unload(&UnloadArg{STTManagerHandle: op.sttManagerHandle})
+	return col.unload(&UnloadArg{})
 }
 
 func (h *handler) listSensors(op *sensorList) error {
