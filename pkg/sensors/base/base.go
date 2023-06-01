@@ -45,10 +45,10 @@ var (
 
 	Exit = program.Builder(
 		"bpf_exit.o",
-		"sched/sched_process_exit",
-		"tracepoint/sys_exit",
+		"do_task_dead",
+		"kprobe/do_task_dead",
 		"event_exit",
-		"tracepoint",
+		"kprobe",
 	)
 
 	Fork = program.Builder(
