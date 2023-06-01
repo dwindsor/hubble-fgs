@@ -84,6 +84,8 @@ const (
 
 	keyEnablePolicyFilter      = "enable-policy-filter"
 	keyEnablePolicyFilterDebug = "enable-policy-filter-debug"
+
+	keyEnablePidSetFilter = "enable-pid-set-filter"
 )
 
 var (
@@ -164,4 +166,6 @@ func readAndSetFlags() {
 
 	option.Config.EnablePolicyFilter = viper.GetBool(keyEnablePolicyFilter)
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
+
+	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
 }

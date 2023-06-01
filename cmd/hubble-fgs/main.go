@@ -66,11 +66,11 @@ var (
 )
 
 func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
-	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist))
+	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist), viper.GetBool(keyEnablePidSetFilter))
 	if err != nil {
 		return nil, nil, err
 	}
-	denyList, err := filters.ParseFilterList(viper.GetString(keyExportDenylist))
+	denyList, err := filters.ParseFilterList(viper.GetString(keyExportDenylist), viper.GetBool(keyEnablePidSetFilter))
 	if err != nil {
 		return nil, nil, err
 	}
