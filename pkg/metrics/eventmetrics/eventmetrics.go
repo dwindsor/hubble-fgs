@@ -35,11 +35,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
-)
-
-var (
-	TcpMetricsEnabled = false
-	UdpMetricsEnabled = false
+	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
 // An RCode is a DNS response status code.
@@ -304,11 +301,11 @@ func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
 	if res.Socket.Protocol == tetragon.SocketProtocol_TCP {
-		if TcpMetricsEnabled {
+		if tcpconfig.MetricsEnabled {
 			postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
 		}
 	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
-		if UdpMetricsEnabled {
+		if udpconfig.MetricsEnabled {
 			postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
 			postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res)
 		}
@@ -359,11 +356,11 @@ func postProcessNetworkBurstEventStats(res *tetragon.ProcessNetworkBurst) {
 	binary, pod, ns := oss.GetProcessInfo(res.Process)
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
-		if UdpMetricsEnabled {
+		if udpconfig.MetricsEnabled {
 			postUDPBurstStats(ns, pod, binary, res)
 		}
 	case tetragon.SocketProtocol_TCP.String():
-		if TcpMetricsEnabled {
+		if tcpconfig.MetricsEnabled {
 			postTCPBurstStats(ns, pod, binary, res)
 		}
 	}
@@ -449,7 +446,7 @@ func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermar
 	binary, pod, ns := oss.GetProcessInfo(res.Process)
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
-		if !UdpMetricsEnabled {
+		if !udpconfig.MetricsEnabled {
 			break
 		}
 		if res.WatermarksType == "burst" {
@@ -459,7 +456,7 @@ func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermar
 		}
 
 	case tetragon.SocketProtocol_TCP.String():
-		if !TcpMetricsEnabled {
+		if !tcpconfig.MetricsEnabled {
 			break
 		}
 		if res.WatermarksType == "burst" {

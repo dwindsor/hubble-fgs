@@ -17,12 +17,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -40,12 +40,8 @@ var (
 	tcpWatermarksDipTriggerMult   uint64
 	watermarksEnabled             = false
 
-	tcpRttHistogramMax uint32
-	tcpRttHistogramMin uint32
-
 	stats          *lru.Cache[tcpStatsKey, networkapi.MsgSocketStatsUnix]
 	stataCacheSize = 32000
-	LatencyConfig  networklatency.ProtocolConfig
 
 	configured       = false
 	timestampEnabled = false
@@ -190,7 +186,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		SendCheck6,
 	}
 
-	if tcpRttHistogramMax != 0 {
+	if tcpconfig.RttHistogramMax != 0 {
 		progs = append(progs, RttTracer)
 	}
 
@@ -231,9 +227,9 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		"watermarksEnable":           tcpWatermarksEnable,
 		"watermarksWindowSize":       tcpWatermarksWindowSize,
 		"watermarksBurstTriggerMult": tcpWatermarksBurstTriggerMult,
-		"maxRttHistogram":            tcpRttHistogramMax,
-		"minRttHistogram":            tcpRttHistogramMin,
-		"metrics":                    eventmetrics.TcpMetricsEnabled,
+		"maxRttHistogram":            tcpconfig.RttHistogramMax,
+		"minRttHistogram":            tcpconfig.RttHistogramMin,
+		"metrics":                    tcpconfig.MetricsEnabled,
 	}).Infof("Enable TCP")
 	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
 	tcpSensor.UnloadHook = unloadTcpSensor
@@ -255,9 +251,9 @@ func (tcp *tcpSensor) PolicyHandler(
 	}
 
 	if spec.Parser.Tcp.Metrics != nil {
-		eventmetrics.TcpMetricsEnabled = spec.Parser.Tcp.Metrics.Enable
+		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 	} else {
-		eventmetrics.TcpMetricsEnabled = true
+		tcpconfig.MetricsEnabled = true
 	}
 
 	if fid != policyfilter.NoFilterID {
@@ -290,16 +286,16 @@ func (tcp *tcpSensor) PolicyHandler(
 		tcpWatermarksDipTriggerMult = 0
 	}
 	if spec.Parser.Tcp.RttHistogram.Enable {
-		tcpRttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
-		tcpRttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
+		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
+		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
 
-		if tcpRttHistogramMax < tcpRttHistogramMin {
+		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
 			return nil, fmt.Errorf("Misconfigured Rtt Histogram: Min value must be less than Max")
 		}
 	} else {
-		tcpRttHistogramMax = 0
+		tcpconfig.RttHistogramMax = 0
 	}
-	LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
+	tcpconfig.LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
 	return EnableTcp(spec.Parser.Tcp.Latency.Enable), nil
 }
 
@@ -438,7 +434,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	} else {
-		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
+		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpconfig.RttHistogramMax, tcpconfig.RttHistogramMin)
 		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
@@ -447,7 +443,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 	if !configured {
 		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_TCP, LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()

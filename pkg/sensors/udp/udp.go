@@ -41,7 +41,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -49,6 +48,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
 const (
@@ -76,7 +76,6 @@ var (
 	stats *lru.Cache[udpInfoKey, udpInfoValue]
 
 	Config           ConfigValue
-	LatencyConfig    networklatency.ProtocolConfig
 	configured       = false
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
@@ -630,7 +629,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 		logger.GetLogger().WithField("timestampEnabled", timestampEnabled).Debug("UDP Loader")
 		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_UDP, LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()
@@ -766,7 +765,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		"sensorName":     versionStr,
 		"statsInterval":  interval,
 		"deleteInterval": UdpDeleteInterval,
-		"metrics":        eventmetrics.UdpMetricsEnabled,
+		"metrics":        udpconfig.MetricsEnabled,
 	}).Infof("Enable UDP")
 	udpSensor := sensors.SensorBuilder(versionStr, progs, maps)
 	udpSensor.UnloadHook = unloadUdpSensor
@@ -788,9 +787,9 @@ func (udp *udpSensor) PolicyHandler(
 	}
 
 	if spec.Parser.Udp.Metrics != nil {
-		eventmetrics.UdpMetricsEnabled = spec.Parser.Udp.Metrics.Enable
+		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 	} else {
-		eventmetrics.UdpMetricsEnabled = true
+		udpconfig.MetricsEnabled = true
 	}
 
 	/* UDP GC interval tracks UDP stats events and UDP delete events. If
@@ -814,7 +813,7 @@ func (udp *udpSensor) PolicyHandler(
 			interval = UdpDeleteInterval
 		}
 	}
-	Config, LatencyConfig = ParseUdpSpec(spec)
+	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
 }
