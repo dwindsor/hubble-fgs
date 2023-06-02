@@ -95,14 +95,14 @@ type ProtocolConfig struct {
 	Pad2          uint32
 	subnets       [maxSubnets]SubnetSelector
 	ports         [maxPorts]uint16
-	latBucket00   uint32
-	latBucket01   uint32
-	latBucket10   uint32
-	latBucket25   uint32
-	latBucket50   uint32
-	latBucket75   uint32
-	latBucket90   uint32
-	latBucket99   uint32
+	LatBucket00   uint32
+	LatBucket01   uint32
+	LatBucket10   uint32
+	LatBucket25   uint32
+	LatBucket50   uint32
+	LatBucket75   uint32
+	LatBucket90   uint32
+	LatBucket99   uint32
 }
 
 func (k *configKey) String() string             { return fmt.Sprintf("Zero: %d", k.zero) }
@@ -132,10 +132,10 @@ func (v *configValue) String() string {
 		"B90: %d, "+
 		"B99: %d}, "+
 		"bootNs: %d",
-		v.udp.enable, v.udp.maxPacketSize, v.udp.latBucket00, v.udp.latBucket01, v.udp.latBucket10, v.udp.latBucket25,
-		v.udp.latBucket50, v.udp.latBucket75, v.udp.latBucket90, v.udp.latBucket99,
-		v.tcp.enable, v.tcp.maxPacketSize, v.tcp.latBucket00, v.tcp.latBucket01, v.tcp.latBucket10, v.tcp.latBucket25,
-		v.tcp.latBucket50, v.tcp.latBucket75, v.tcp.latBucket90, v.tcp.latBucket99,
+		v.udp.enable, v.udp.maxPacketSize, v.udp.LatBucket00, v.udp.LatBucket01, v.udp.LatBucket10, v.udp.LatBucket25,
+		v.udp.LatBucket50, v.udp.LatBucket75, v.udp.LatBucket90, v.udp.LatBucket99,
+		v.tcp.enable, v.tcp.maxPacketSize, v.tcp.LatBucket00, v.tcp.LatBucket01, v.tcp.LatBucket10, v.tcp.LatBucket25,
+		v.tcp.LatBucket50, v.tcp.LatBucket75, v.tcp.LatBucket90, v.tcp.LatBucket99,
 		v.bootNs)
 }
 func (v *configValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
@@ -173,14 +173,14 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		}
 		latencyRange := float64(latencyMax - latencyMin)
 		fLatencyMin := float64(latencyMin)
-		config.latBucket00 = latencyMin
-		config.latBucket01 = uint32((latencyRange * .01) + fLatencyMin)
-		config.latBucket10 = uint32((latencyRange * .10) + fLatencyMin)
-		config.latBucket25 = uint32((latencyRange * .25) + fLatencyMin)
-		config.latBucket50 = uint32((latencyRange * .50) + fLatencyMin)
-		config.latBucket75 = uint32((latencyRange * .75) + fLatencyMin)
-		config.latBucket90 = uint32((latencyRange * .90) + fLatencyMin)
-		config.latBucket99 = uint32((latencyRange * .99) + fLatencyMin)
+		config.LatBucket00 = latencyMin
+		config.LatBucket01 = uint32((latencyRange * .01) + fLatencyMin)
+		config.LatBucket10 = uint32((latencyRange * .10) + fLatencyMin)
+		config.LatBucket25 = uint32((latencyRange * .25) + fLatencyMin)
+		config.LatBucket50 = uint32((latencyRange * .50) + fLatencyMin)
+		config.LatBucket75 = uint32((latencyRange * .75) + fLatencyMin)
+		config.LatBucket90 = uint32((latencyRange * .90) + fLatencyMin)
+		config.LatBucket99 = uint32((latencyRange * .99) + fLatencyMin)
 
 		if len(spec.MatchSubnets) == 0 {
 			// Do not enable latency if subnets not specified as packet mangling
@@ -226,14 +226,14 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		}
 
 		logger.GetLogger().WithFields(logrus.Fields{"Min": latencyMin, "Range": latencyRange,
-			"bucket00": config.latBucket00,
-			"bucket01": config.latBucket01,
-			"bucket10": config.latBucket10,
-			"bucket25": config.latBucket25,
-			"bucket50": config.latBucket50,
-			"bucket75": config.latBucket75,
-			"bucket90": config.latBucket90,
-			"bucket99": config.latBucket99}).Infof("Configured %s latency buckets: ", protoStr)
+			"bucket00": config.LatBucket00,
+			"bucket01": config.LatBucket01,
+			"bucket10": config.LatBucket10,
+			"bucket25": config.LatBucket25,
+			"bucket50": config.LatBucket50,
+			"bucket75": config.LatBucket75,
+			"bucket90": config.LatBucket90,
+			"bucket99": config.LatBucket99}).Infof("Configured %s latency buckets: ", protoStr)
 
 		if clockCheckInterval == 0 || spec.ClockCheckInterval < clockCheckInterval {
 			clockCheckInterval = spec.ClockCheckInterval
