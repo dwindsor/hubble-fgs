@@ -58,12 +58,12 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 ### Deploy the new release to Alpo-2
 
 - [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the FGS version in Alpo-2
-  - [ ] Edit the file flux/clusters/alpo-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
+  - [ ] Edit the file flux/clusters/alp-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
   ```diff
-  diff --git a/flux/clusters/alpo-2/hubble-enterprise/hr.yaml b/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
+  diff --git a/flux/clusters/alp-2/hubble-enterprise/hr.yaml b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
   index 4bca3d5..5c178eb 100644
-  --- a/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
-  +++ b/flux/clusters/alpo-2/hubble-enterprise/hr.yaml
+  --- a/flux/clusters/alp-2/hubble-enterprise/hr.yaml
+  +++ b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
   @@ -21,14 +21,14 @@ spec:
          btf: /sys/kernel/btf/vmlinux
          image:
