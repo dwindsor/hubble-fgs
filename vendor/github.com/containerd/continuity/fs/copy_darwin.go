@@ -14,21 +14,22 @@
    limitations under the License.
 */
 
-package version
+package fs
 
-import "runtime"
+import (
+	"errors"
+	"fmt"
 
-var (
-	// Package is filled at linking time
-	Package = "github.com/containerd/containerd"
-
-	// Version holds the complete version number. Filled in at linking time.
-	Version = "1.7.2+unknown"
-
-	// Revision is filled with the VCS (e.g. git) revision being used to build
-	// the program at linking time.
-	Revision = ""
-
-	// GoVersion is Go tree's version.
-	GoVersion = runtime.Version()
+	"golang.org/x/sys/unix"
 )
+
+func copyFile(target, source string) error {
+	if err := unix.Clonefile(source, target, unix.CLONE_NOFOLLOW); err != nil {
+		if !errors.Is(err, unix.ENOTSUP) && !errors.Is(err, unix.EXDEV) {
+			return fmt.Errorf("clonefile failed: %w", err)
+		}
+
+		return openAndCopyFile(target, source)
+	}
+	return nil
+}
