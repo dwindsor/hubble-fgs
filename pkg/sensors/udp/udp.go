@@ -363,6 +363,7 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 			B75: v.Buckets[5],
 			B90: v.Buckets[6],
 			B99: v.Buckets[7],
+			Sum: v.LatencySum,
 		},
 	}
 	unix.Duration = duration
@@ -499,6 +500,7 @@ func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error
 		SPort:            curr.SPort,
 		DPort:            curr.DPort,
 		Buckets:          udpDiffLatency(&last.Buckets, &curr.Buckets),
+		LatencySum:       curr.LatencySum - last.LatencySum,
 	}, nil
 }
 

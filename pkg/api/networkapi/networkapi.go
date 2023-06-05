@@ -107,6 +107,7 @@ type Histogram struct {
 	B10 uint64
 	B01 uint64
 	B00 uint64
+	Sum uint64
 }
 
 type MsgInterfaceStats struct {

@@ -33,6 +33,7 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, latency bool) api.Msg
 			B75: m.RttBuckets[5],
 			B90: m.RttBuckets[6],
 			B99: m.RttBuckets[7],
+			Sum: m.RttSum,
 		}
 		message.Rtt = histogram
 	}
@@ -46,6 +47,7 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, latency bool) api.Msg
 			B75: m.LatencyBuckets[5],
 			B90: m.LatencyBuckets[6],
 			B99: m.LatencyBuckets[7],
+			Sum: m.LatencySum,
 		}
 		message.Latency = histogram
 	}

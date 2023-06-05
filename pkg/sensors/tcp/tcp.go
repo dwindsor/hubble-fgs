@@ -309,6 +309,7 @@ func tcpDiffRtt(last, curr *networkapi.Histogram) networkapi.Histogram {
 		B10: curr.B10 - last.B10,
 		B01: curr.B01 - last.B01,
 		B00: curr.B00 - last.B00,
+		Sum: curr.Sum - last.Sum,
 	}
 }
 

@@ -166,6 +166,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 		B10: 0,
 		B01: 0,
 		B00: 0,
+		Sum: 0,
 	}
 
 	for _, percpu_val := range netValue {
@@ -184,6 +185,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 		qlen.B10 += percpu_val.P10
 		qlen.B01 += percpu_val.P01
 		qlen.B00 += percpu_val.P00
+		qlen.Sum += percpu_val.QLenSum
 
 		// These are duplicated in each value at the moment
 		if !foundName {
