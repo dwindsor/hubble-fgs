@@ -553,31 +553,28 @@ func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
 	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns, pod).Set(float64(res.TxDrops))
 	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns, pod).Set(float64(res.RxDrops))
 
-	if res.Qlen == nil {
-		return
+	if res.Qlen != nil {
+		c := float64(res.Qlen.Buckets[0].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(1)).Set(c)
+		c += float64(res.Qlen.Buckets[1].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(10)).Set(c)
+		c += float64(res.Qlen.Buckets[2].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(25)).Set(c)
+		c += float64(res.Qlen.Buckets[3].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(50)).Set(c)
+		c += float64(res.Qlen.Buckets[4].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(75)).Set(c)
+		c += float64(res.Qlen.Buckets[5].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(90)).Set(c)
+		c += float64(res.Qlen.Buckets[6].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(99)).Set(c)
+		c += float64(res.Qlen.Buckets[7].Count)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(100)).Set(c)
+		interfacemetrics.InterfaceQlenCount.WithLabelValues(name, ns, pod).Set(c)
 	}
-	if res.Qlen.Buckets[7].Count > 0 {
-		interfacemetrics.InterfaceQlen99.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[7].Count))
-	}
-	if res.Qlen.Buckets[6].Count > 0 {
-		interfacemetrics.InterfaceQlen90.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[6].Count))
-	}
-	if res.Qlen.Buckets[5].Count > 0 {
-		interfacemetrics.InterfaceQlen75.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[5].Count))
-	}
-	if res.Qlen.Buckets[4].Count > 0 {
-		interfacemetrics.InterfaceQlen50.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[4].Count))
-	}
-	if res.Qlen.Buckets[3].Count > 0 {
-		interfacemetrics.InterfaceQlen25.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[3].Count))
-	}
-	if res.Qlen.Buckets[2].Count > 0 {
-		interfacemetrics.InterfaceQlen10.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[2].Count))
-	}
-	if res.Qlen.Buckets[1].Count > 0 {
-		interfacemetrics.InterfaceQlen01.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[1].Count))
-	}
-	if res.Qlen.Buckets[0].Count > 0 {
-		interfacemetrics.InterfaceQlen00.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[0].Count))
-	}
+}
+
+func getIfaceQLenPromBucket(upperLimitPercent uint32) string {
+	// min and max are defined in bpf_dev_queue_xmit.c
+	return getPromBucket(0, 990, upperLimitPercent)
 }

@@ -52,37 +52,20 @@ var (
 	}, []string{"name", "namespace", "pod"})
 )
 
+// Interface QLen Histogram
+// It emulates an OpenMetrics gauge histogram:
+//   - a set of "_bucket"-suffixed gauges with a "le" label (less or equal), which is the upper
+//     limit of the bucket
+//   - a "_gcount" metric, identical to the highest ("+Inf") bucket metric
+//
+// TODO: Add a "_gsum" metric (sum of all observed values)
 var (
-	InterfaceQlen99 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen99",
-		Help: "The number of packets enqueued at 99th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen90 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen90",
-		Help: "The number of packets enqueued at 90th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen75 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen75",
-		Help: "The number of packets enqueued at 75th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen50 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen50",
-		Help: "The number of packets enqueued at 50th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen25 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen25",
-		Help: "The number of packets enqueued at 25th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen10 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen10",
-		Help: "The number of packets enqueued at 10th percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen01 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen01",
-		Help: "The number of packets enqueued at 1st percentile queue length",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlen00 = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen00",
-		Help: "The number of packets enqueued at 1st percentile queue length",
+	InterfaceQlenBucket = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen_bucket",
+		Help: "Histogram bucket for the number of enqued packets",
+	}, []string{"name", "namespace", "pod", "le"})
+	InterfaceQlenCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen_gcount",
+		Help: "Histogram count for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
 )
