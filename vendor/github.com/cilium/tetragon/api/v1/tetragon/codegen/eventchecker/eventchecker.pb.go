@@ -7434,6 +7434,7 @@ func (checker *HistogramBucketChecker) FromHistogramBucket(event *tetragon.Histo
 // HistogramChecker implements a checker struct to check a Histogram field
 type HistogramChecker struct {
 	Buckets *HistogramBucketListMatcher `json:"buckets,omitempty"`
+	Sum     *uint64                     `json:"sum,omitempty"`
 }
 
 // NewHistogramChecker creates a new HistogramChecker
@@ -7458,6 +7459,11 @@ func (checker *HistogramChecker) Check(event *tetragon.Histogram) error {
 				return fmt.Errorf("Buckets check failed: %w", err)
 			}
 		}
+		if checker.Sum != nil {
+			if *checker.Sum != event.Sum {
+				return fmt.Errorf("Sum has value %d which does not match expected value %d", event.Sum, *checker.Sum)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -7469,6 +7475,12 @@ func (checker *HistogramChecker) Check(event *tetragon.Histogram) error {
 // WithBuckets adds a Buckets check to the HistogramChecker
 func (checker *HistogramChecker) WithBuckets(check *HistogramBucketListMatcher) *HistogramChecker {
 	checker.Buckets = check
+	return checker
+}
+
+// WithSum adds a Sum check to the HistogramChecker
+func (checker *HistogramChecker) WithSum(check uint64) *HistogramChecker {
+	checker.Sum = &check
 	return checker
 }
 
@@ -7489,6 +7501,10 @@ func (checker *HistogramChecker) FromHistogram(event *tetragon.Histogram) *Histo
 		lm := NewHistogramBucketListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Buckets = lm
+	}
+	{
+		val := event.Sum
+		checker.Sum = &val
 	}
 	return checker
 }

@@ -276,7 +276,6 @@ github.com/cilium/tetragon/pkg/ratelimit
 github.com/cilium/tetragon/pkg/reader/bpf
 github.com/cilium/tetragon/pkg/reader/caps
 github.com/cilium/tetragon/pkg/reader/exec
-github.com/cilium/tetragon/pkg/reader/ktime
 github.com/cilium/tetragon/pkg/reader/namespace
 github.com/cilium/tetragon/pkg/reader/network
 github.com/cilium/tetragon/pkg/reader/node

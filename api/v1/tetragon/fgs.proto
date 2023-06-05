@@ -30,6 +30,7 @@ message HistogramBucket {
 
 message Histogram {
     repeated HistogramBucket buckets = 1;
+    uint64 sum = 2;
 }
 
 message InterfaceStats {
