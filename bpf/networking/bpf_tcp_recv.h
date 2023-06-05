@@ -43,7 +43,7 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 			       bpf_ntohl(ts_opt->timestamp_high));
 	tcp_latency = &latency_config->tcp;
 
-	add_latency(tcp_latency, process->latency_buckets, latency);
+	add_latency(tcp_latency, process->latency_buckets, &process->latency_sum, latency);
 
 	return 1;
 }

@@ -52,6 +52,7 @@ struct udp_info_value {
 	u16 dport; // retain (and complete) as useful for debugging
 	u32 skb_consume_misses;
 	u64 buckets[8];
+	u64 latency_sum;
 	u8 ipv6;
 	u8 padding[7];
 	u64 create_time;
@@ -355,6 +356,7 @@ udp_info_init(struct udp_info_value *v)
 	for (int i = 0; i < 8; i++) {
 		v->buckets[i] = 0;
 	}
+	v->latency_sum = 0;
 }
 
 static inline __attribute__((always_inline)) void

@@ -174,7 +174,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 			udp_info_tx_reset(value, payload_sz);
 		else {
 			udp_info_rx_reset(value, payload_sz);
-			add_latency(latency_config, value->buckets, latency);
+			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 		}
 
 		/* Store the info in the entry for later use,
@@ -217,7 +217,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 			udp_info_tx_reset(value, payload_sz);
 		else {
 			udp_info_rx_reset(value, payload_sz);
-			add_latency(latency_config, value->buckets, latency);
+			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 		}
 		info = udp_info(ip, ipv6, udp, send);
 		if (!info)
@@ -249,7 +249,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 			update_tx_value(value, payload_sz);
 		else {
 			update_rx_value(value, payload_sz);
-			add_latency(latency_config, value->buckets, latency);
+			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 		}
 	}
 	return value;

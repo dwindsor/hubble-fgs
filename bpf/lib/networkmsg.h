@@ -49,6 +49,8 @@ struct msg_socket_stats {
 	__u32 pad;
 	__u64 rtt_buckets[8];
 	__u64 latency_buckets[8];
+	__u64 rtt_sum;
+	__u64 latency_sum;
 }; // All fields aligned so no 'packed' attribute.
 
 // harmonise data structs for ipv4 and ipv6

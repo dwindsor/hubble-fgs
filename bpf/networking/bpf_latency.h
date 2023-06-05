@@ -96,7 +96,7 @@ calc_latency(u64 bootns, u64 ts_low, u64 ts_high)
  */
 static inline __attribute__((always_inline)) void
 add_latency(struct latency_protocol_config *cfg, u64 *buckets,
-	    s64 latency)
+	    u64 *sum, s64 latency)
 {
 	/* Negative latency is a clock sync error.
 	 * Zero latency indicates latency wasn't provided.
@@ -120,6 +120,8 @@ add_latency(struct latency_protocol_config *cfg, u64 *buckets,
 		buckets[6]++;
 	else
 		buckets[7]++;
+
+	*sum += latency;
 }
 
 #endif // __BPF_LATENCY_H__

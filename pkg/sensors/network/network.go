@@ -68,14 +68,15 @@ type networkInfoValue struct {
 	Pad     uint32
 
 	// Embedded Qdisc histogram
-	P99 uint64
-	P90 uint64
-	P75 uint64
-	P50 uint64
-	P25 uint64
-	P10 uint64
-	P01 uint64
-	P00 uint64
+	P99     uint64
+	P90     uint64
+	P75     uint64
+	P50     uint64
+	P25     uint64
+	P10     uint64
+	P01     uint64
+	P00     uint64
+	QLenSum uint64
 }
 
 func (k *networkInfoKey) String() string {

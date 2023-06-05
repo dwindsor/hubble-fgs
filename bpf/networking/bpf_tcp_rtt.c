@@ -68,5 +68,8 @@ tcp_ack_snd_check(struct pt_regs *ctx)
 		process->rtt_buckets[6]++;
 	else
 		process->rtt_buckets[7]++;
+
+	process->rtt_sum += rtt_us;
+
 	return 0;
 }

@@ -231,6 +231,7 @@ type udpInfoValue struct {
 	DPort            uint16
 	SkbConsumeMisses uint32
 	Buckets          [8]uint64
+	LatencySum       uint64
 	IPv6             uint8
 	Padding          [7]uint8
 	CreateTime       uint64

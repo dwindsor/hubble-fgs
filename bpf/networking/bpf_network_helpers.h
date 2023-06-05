@@ -94,6 +94,8 @@ get_socket_stats(struct sock *sk, struct net *net,
 		stats->rtt_buckets[i] = process->rtt_buckets[i];
 		stats->latency_buckets[i] = process->latency_buckets[i];
 	}
+	stats->rtt_sum = process->rtt_sum;
+	stats->latency_sum = process->latency_sum;
 }
 
 static inline __attribute__((always_inline)) void

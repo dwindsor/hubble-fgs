@@ -17,6 +17,8 @@ struct socketmap_value {
 	__u64 latency_buckets[8];
 	__u8 ack_finack;
 	__u8 pad[7];
+	__u64 rtt_sum;
+	__u64 latency_sum;
 };
 
 struct {
@@ -189,6 +191,8 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 				process->rtt_buckets[i] = 0;
 				process->latency_buckets[i] = 0;
 			}
+			process->rtt_sum = 0;
+			process->latency_sum = 0;
 			add_socketmap(cookie, t, process);
 		} else {
 			process->key.pid = value->key.pid;
@@ -205,6 +209,8 @@ update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 				process->rtt_buckets[i] = 0;
 				process->latency_buckets[i] = 0;
 			}
+			process->rtt_sum = 0;
+			process->latency_sum = 0;
 		}
 	}
 	return true;

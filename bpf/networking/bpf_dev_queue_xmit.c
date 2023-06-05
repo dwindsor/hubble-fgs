@@ -23,6 +23,7 @@ struct qdisc_qlen_hist {
 	u64 b10;
 	u64 b01;
 	u64 b00;
+	u64 sum;
 };
 
 struct network_value {
@@ -85,6 +86,8 @@ qlen_hist(struct network_value *value, __u32 qlen)
 		value->qlen.b01++;
 	else if (qlen >= P00)
 		value->qlen.b00++;
+
+	value->qlen.sum += qlen;
 }
 
 static inline __attribute__((always_inline)) u64

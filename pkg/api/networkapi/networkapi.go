@@ -94,6 +94,8 @@ type MsgSocketStats struct {
 	Pad              uint32
 	RttBuckets       [8]uint64
 	LatencyBuckets   [8]uint64
+	RttSum           uint64
+	LatencySum       uint64
 }
 
 type Histogram struct {
