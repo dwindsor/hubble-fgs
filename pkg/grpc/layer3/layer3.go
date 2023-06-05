@@ -107,7 +107,6 @@ type MsgIPEventUnix struct {
 	SocketStats networkapi.MsgSocketStatsUnix
 	SocketFlags uint32
 	RefCntDone  [2]bool
-	Rtt         networkapi.Histogram
 	Duration    time.Duration
 }
 

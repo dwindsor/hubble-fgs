@@ -2,7 +2,6 @@ package networkapi
 
 import (
 	"encoding/binary"
-	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 )
@@ -95,20 +94,6 @@ type MsgSocketStats struct {
 	Pad              uint32
 	RttBuckets       [8]uint64
 	LatencyBuckets   [8]uint64
-}
-
-type MsgIPEventUnix struct {
-	Common      processapi.MsgCommon
-	Tuple       MsgIPTuple
-	Kube        processapi.MsgK8sUnix
-	Return      int64
-	ProcessKey  processapi.MsgExecveKey
-	SockCookie  uint64
-	SocketStats MsgSocketStatsUnix
-	SocketFlags uint32
-	RefCntDone  [2]bool
-	Rtt         Histogram
-	Duration    time.Duration
 }
 
 type Histogram struct {
