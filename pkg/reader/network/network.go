@@ -11,7 +11,9 @@ import (
 )
 
 func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
-	rttHist := &tetragon.Histogram{}
+	rttHist := &tetragon.Histogram{
+		Sum: stats.Rtt.Sum,
+	}
 
 	if stats.Rtt.B99 > 0 ||
 		stats.Rtt.B90 > 0 ||
@@ -74,7 +76,9 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
 		}
 	}
 
-	latencyHist := &tetragon.Histogram{}
+	latencyHist := &tetragon.Histogram{
+		Sum: stats.Latency.Sum,
+	}
 
 	if stats.Latency.B99 > 0 ||
 		stats.Latency.B90 > 0 ||

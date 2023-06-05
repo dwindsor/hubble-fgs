@@ -75,6 +75,7 @@ func statsToHistogram(h api.Histogram) *tetragon.Histogram {
 	}
 	return &tetragon.Histogram{
 		Buckets: buckets,
+		Sum:     h.Sum,
 	}
 }
 
