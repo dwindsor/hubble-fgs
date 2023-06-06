@@ -173,6 +173,7 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 		c += float64(s.Latency.Buckets[7].Count)
 		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
 		socketmetrics.UdpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.UdpLatencySum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
 	}
 }
 
@@ -228,6 +229,7 @@ func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *
 		c += float64(s.Latency.Buckets[7].Count)
 		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "+Inf").Add(c)
 		socketmetrics.UdpMulticastLatencyCount.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+		socketmetrics.UdpMulticastLatencySum.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(float64(s.Latency.Sum))
 	}
 }
 
@@ -278,6 +280,7 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 		c += float64(s.Rtt.Buckets[7].Count)
 		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(100)).Add(c)
 		socketmetrics.TcpRttCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.TcpRttSum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Rtt.Sum))
 	}
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
@@ -297,6 +300,7 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 		c += float64(s.Latency.Buckets[7].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
 		socketmetrics.TcpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.TcpLatencySum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
 	}
 }
 
@@ -571,6 +575,7 @@ func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
 		c += float64(res.Qlen.Buckets[7].Count)
 		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(100)).Set(c)
 		interfacemetrics.InterfaceQlenCount.WithLabelValues(name, ns, pod).Set(c)
+		interfacemetrics.InterfaceQlenSum.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Sum))
 	}
 }
 

@@ -86,8 +86,7 @@ var (
 //   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
 //     limit of the bucket
 //   - a "_count" metric, identical to the highest ("+Inf") bucket metric
-//
-// TODO: Add a "_sum" metric (sum of all observed values)
+//   - a "_sum" metric, reporting the sum of all observed values
 var (
 	TcpRttBucket = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "tcp_rtt_microseconds_bucket",
@@ -96,6 +95,10 @@ var (
 	TcpRttCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "tcp_rtt_microseconds_count",
 		Help: "Histogram count for TCP socket rtt",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	TcpRttSum = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_rtt_microseconds_sum",
+		Help: "Histogram sum for TCP socket rtt in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 var (
@@ -106,5 +109,9 @@ var (
 	TcpLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "tcp_latency_microseconds_count",
 		Help: "Histogram count for TCP socket latency",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	TcpLatencySum = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "tcp_latency_microseconds_sum",
+		Help: "Histogram sum for TCP socket latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )

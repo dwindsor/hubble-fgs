@@ -57,8 +57,7 @@ var (
 //   - a set of "_bucket"-suffixed gauges with a "le" label (less or equal), which is the upper
 //     limit of the bucket
 //   - a "_gcount" metric, identical to the highest ("+Inf") bucket metric
-//
-// TODO: Add a "_gsum" metric (sum of all observed values)
+//   - a "_gsum" metric, reporting the sum of all observed values
 var (
 	InterfaceQlenBucket = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: consts.MetricNamePrefix + "interface_qlen_bucket",
@@ -67,5 +66,9 @@ var (
 	InterfaceQlenCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: consts.MetricNamePrefix + "interface_qlen_gcount",
 		Help: "Histogram count for the number of enqued packets",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlenSum = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen_gsum",
+		Help: "Histogram sum for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
 )

@@ -128,8 +128,7 @@ var (
 //   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
 //     limit of the bucket
 //   - a "_count" metric, identical to the highest ("+Inf") bucket metric
-//
-// TODO: Add a "_sum" metric (sum of all observed values)
+//   - a "_sum" metric, reporting the sum of all observed values
 var (
 	UdpLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "udp_latency_microseconds_bucket",
@@ -139,6 +138,10 @@ var (
 		Name: consts.MetricNamePrefix + "udp_latency_microseconds_count",
 		Help: "Histogram count for UDP socket latency",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	UdpLatencySum = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_latency_microseconds_sum",
+		Help: "Histogram sum for UDP socket latency in microseconds",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
 // UDP Multicast Latency Histogram
@@ -146,8 +149,7 @@ var (
 //   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
 //     limit of the bucket
 //   - a "_count" metric, identical to the highest ("+Inf") bucket metric
-//
-// TODO: Add a "_sum" metric (sum of all observed values)
+//   - a "_sum" metric, reporting the sum of all observed values
 var (
 	UdpMulticastLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_bucket",
@@ -156,6 +158,10 @@ var (
 	UdpMulticastLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_count",
 		Help: "Histogram count for UDP socket multicast latency",
+	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	UdpMulticastLatencySum = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_sum",
+		Help: "Histogram sum for UDP socket multicast latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 )
 
