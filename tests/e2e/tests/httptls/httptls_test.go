@@ -236,7 +236,7 @@ func TlsChecker(_ string) ec.MultiEventChecker {
 			WithProcess(curlChecker).
 			WithDestinationPort(443).
 			WithNegotiatedVersion(sm.Full("TLS1.3")).
-			WithSupportedVersions(sm.Full("TLS1.3 TLS1.2 TLS1.1 TLS1.0")).
+			WithSupportedVersions(sm.Full("TLS1.3 TLS1.2")).
 			WithSniName(sm.Contains("google.com")).
 			WithSniType(sm.Full("host_name")),
 	)
