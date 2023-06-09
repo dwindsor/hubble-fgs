@@ -275,7 +275,7 @@ Users can use `monitorHostFiles` to define if this tracing policy should also in
 
 Using the previous example we will monitor host and pod files that have `[pod_namespace == "default" OR pod_namespace == "ubuntu"]`. The exact files that we care about, are defined using `file_paths` and `file_paths_exclude`, similar to what we described in the previous sections.
 
-For now, valid keys are `"k8s:io.kubernetes.pod.namespace"`, `"io.kubernetes.pod.namespace"`, `"k8s:io.kubernetes.pod.app"`, and `"io.kubernetes.pod.app"`. Valid operators are `"In"` and `"NotIn"`.
+For now, valid keys are `"k8s:io.kubernetes.pod.namespace"`, `"io.kubernetes.pod.namespace"`, `"k8s:io.kubernetes.pod.app"`, and `"io.kubernetes.pod.app"`. Valid operators are `"In"` and `"NotIn"`. In the case of `"k8s:io.kubernetes.pod.namespace"` and `"io.kubernetes.pod.namespace"` we do a full match check. In the case of `"k8s:io.kubernetes.pod.app"`, and `"io.kubernetes.pod.app"` we do a prefix check, which also matches in the case of full match.
 
 ### Other examples
 

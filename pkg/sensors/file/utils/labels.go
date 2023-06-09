@@ -11,6 +11,8 @@
 package file
 
 import (
+	"strings"
+
 	"github.com/cilium/tetragon/pkg/logger"
 
 	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
@@ -48,7 +50,13 @@ func matchLabelSelectorRequirement(spec slimv1.LabelSelectorRequirement, podNs, 
 
 		match := false
 		for _, value := range spec.Values {
-			match = match || (value == matchVal)
+			if tp == AppLabel {
+				// in the case of app we check for prefix or full match
+				match = match || strings.HasPrefix(matchVal, value)
+			} else if tp == NamespaceLabel {
+				// in the case of namespace we check for full match
+				match = match || (matchVal == value)
+			}
 		}
 
 		switch op := spec.Operator; op {
@@ -89,7 +97,16 @@ func matchLabels(labels map[string]slimv1.MatchLabelsValue, podNs, podName strin
 				matchVal = podName
 			}
 
-			if val != matchVal {
+			match := false
+			if tp == AppLabel {
+				// in the case of app we check for prefix or full match
+				match = strings.HasPrefix(matchVal, val)
+			} else if tp == NamespaceLabel {
+				// in the case of namespace we check for full match
+				match = (matchVal == val)
+			}
+
+			if !match {
 				return false
 			}
 		default:

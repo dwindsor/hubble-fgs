@@ -74,6 +74,7 @@ func TestMatchExpressions(t *testing.T) {
 	}
 
 	assert.True(t, MatchPodSelector(s, "kube-proxy", "tetragon"))
+	assert.True(t, MatchPodSelector(s, "kube-proxy", "tetragon-abcde"))
 	assert.False(t, MatchPodSelector(s, "kube-proxy", "tetra"))
 	assert.False(t, MatchPodSelector(s, "default", "random-gjhad"))
 	assert.False(t, MatchPodSelector(s, "ubuntu", "random-gjhad"))
@@ -88,6 +89,7 @@ func TestMatchLabels(t *testing.T) {
 	}
 
 	assert.True(t, MatchPodSelector(s, "kube-proxy", "tetragon"))
+	assert.True(t, MatchPodSelector(s, "kube-proxy", "tetragon-abcde"))
 	assert.False(t, MatchPodSelector(s, "kube-proxy", "tetra"))
 	assert.False(t, MatchPodSelector(s, "default", "tetragon"))
 	assert.False(t, MatchPodSelector(s, "default", "tetra"))
