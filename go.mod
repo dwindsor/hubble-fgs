@@ -16,7 +16,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/gops v0.3.27
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/golang-lru/v2 v2.0.2
+	github.com/hashicorp/golang-lru/v2 v2.0.3
 	github.com/mennanov/fieldmask-utils v1.0.0
 	github.com/miekg/dns v1.1.43
 	github.com/prometheus/client_golang v1.15.1
