@@ -29,7 +29,7 @@ jobs:
         uses: docker/setup-buildx-action@2a1a44ac4aa01993040736bd95bb470da1a38365
 
       - name: Login to quay.io
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
