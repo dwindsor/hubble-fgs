@@ -871,3 +871,32 @@ func TestCompactEncoder_EncodeWithTimestamp(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "1970-01-01T00:00:00.000000000Z 🚀 process kube-system/hubble-enterprise /usr/bin/curl isovalent.com\n", b.String())
 }
+
+func TestCompactEncoder_FileEventToString(t *testing.T) {
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessFile{
+			ProcessFile: &tetragon.ProcessFile{
+				Process: &tetragon.Process{
+					Binary:    "/usr/bin/curl",
+					Arguments: "isovalent.com",
+				},
+				Action: tetragon.FileAction_FILE_READ,
+				Args: &tetragon.FileArgument{
+					Arg: &tetragon.FileArgument_GenericArg{
+						GenericArg: &tetragon.GenericFileArg{
+							File: &tetragon.FileDetails{
+								Filename: "/run/systemd/resolve/resolv.conf",
+								Inode:    &tetragon.Inode{Number: 1234},
+							},
+						},
+					},
+				},
+				Hook: "rw_verify_area",
+			},
+		},
+		NodeName: "my-node",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "📁 file    my-node /usr/bin/curl isovalent.com FILE_READ rw_verify_area /run/systemd/resolve/resolv.conf 1234", result)
+}

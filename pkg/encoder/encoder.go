@@ -93,7 +93,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		if file.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
-		event := p.colorer.Blue.Sprintf(" 📁 %-7s", "file")
+		event := p.colorer.Blue.Sprintf("📁 %-7s", "file")
 		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, file.Process)
 		processFileAction := p.colorer.Cyan.Sprint(file.Action)
 		functionHook := p.colorer.Cyan.Sprintf(file.Hook)
