@@ -2528,6 +2528,7 @@ type KprobeSockChecker struct {
 	Daddr    *stringmatcher.StringMatcher `json:"daddr,omitempty"`
 	Sport    *uint32                      `json:"sport,omitempty"`
 	Dport    *uint32                      `json:"dport,omitempty"`
+	Cookie   *uint64                      `json:"cookie,omitempty"`
 }
 
 // NewKprobeSockChecker creates a new KprobeSockChecker
@@ -2592,6 +2593,11 @@ func (checker *KprobeSockChecker) Check(event *tetragon.KprobeSock) error {
 				return fmt.Errorf("Dport has value %d which does not match expected value %d", event.Dport, *checker.Dport)
 			}
 		}
+		if checker.Cookie != nil {
+			if *checker.Cookie != event.Cookie {
+				return fmt.Errorf("Cookie has value %d which does not match expected value %d", event.Cookie, *checker.Cookie)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2654,6 +2660,12 @@ func (checker *KprobeSockChecker) WithDport(check uint32) *KprobeSockChecker {
 	return checker
 }
 
+// WithCookie adds a Cookie check to the KprobeSockChecker
+func (checker *KprobeSockChecker) WithCookie(check uint64) *KprobeSockChecker {
+	checker.Cookie = &check
+	return checker
+}
+
 //FromKprobeSock populates the KprobeSockChecker using data from a KprobeSock field
 func (checker *KprobeSockChecker) FromKprobeSock(event *tetragon.KprobeSock) *KprobeSockChecker {
 	if event == nil {
@@ -2679,6 +2691,10 @@ func (checker *KprobeSockChecker) FromKprobeSock(event *tetragon.KprobeSock) *Kp
 	{
 		val := event.Dport
 		checker.Dport = &val
+	}
+	{
+		val := event.Cookie
+		checker.Cookie = &val
 	}
 	return checker
 }
@@ -3709,6 +3725,7 @@ type KprobeArgumentChecker struct {
 	UintArg           *uint32                      `json:"uintArg,omitempty"`
 	UserNamespaceArg  *KprobeUserNamespaceChecker  `json:"userNamespaceArg,omitempty"`
 	CapabilityArg     *KprobeCapabilityChecker     `json:"capabilityArg,omitempty"`
+	Label             *stringmatcher.StringMatcher `json:"label,omitempty"`
 }
 
 // NewKprobeArgumentChecker creates a new KprobeArgumentChecker
@@ -3898,6 +3915,11 @@ func (checker *KprobeArgumentChecker) Check(event *tetragon.KprobeArgument) erro
 				return fmt.Errorf("KprobeArgumentChecker: CapabilityArg check failed: %T is not a CapabilityArg", event)
 			}
 		}
+		if checker.Label != nil {
+			if err := checker.Label.Match(event.Label); err != nil {
+				return fmt.Errorf("Label check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -4008,6 +4030,12 @@ func (checker *KprobeArgumentChecker) WithCapabilityArg(check *KprobeCapabilityC
 	return checker
 }
 
+// WithLabel adds a Label check to the KprobeArgumentChecker
+func (checker *KprobeArgumentChecker) WithLabel(check *stringmatcher.StringMatcher) *KprobeArgumentChecker {
+	checker.Label = check
+	return checker
+}
+
 //FromKprobeArgument populates the KprobeArgumentChecker using data from a KprobeArgument field
 func (checker *KprobeArgumentChecker) FromKprobeArgument(event *tetragon.KprobeArgument) *KprobeArgumentChecker {
 	if event == nil {
@@ -4115,6 +4143,7 @@ func (checker *KprobeArgumentChecker) FromKprobeArgument(event *tetragon.KprobeA
 			checker.CapabilityArg = NewKprobeCapabilityChecker().FromKprobeCapability(event.CapabilityArg)
 		}
 	}
+	checker.Label = stringmatcher.Full(event.Label)
 	return checker
 }
 

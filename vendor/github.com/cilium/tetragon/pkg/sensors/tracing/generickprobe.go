@@ -85,6 +85,7 @@ type argPrinters struct {
 	ty      int
 	index   int
 	maxData bool
+	label   string
 }
 
 type pendingEventKey struct {
@@ -240,6 +241,11 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 	selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
 	maps = append(maps, selNamesMap)
 
+	if kernels.EnableLargeProgs() {
+		socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), load)
+		maps = append(maps, socktrack)
+	}
+
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
 
@@ -377,6 +383,15 @@ func createGenericKprobeSensor(
 
 		config := &api.EventConfig{}
 		config.PolicyID = uint32(policyID)
+		if len(f.ReturnArgAction) > 0 {
+			if !kernels.EnableLargeProgs() {
+				return nil, fmt.Errorf("ReturnArgAction requires kernel >=5.3")
+			}
+			config.ArgReturnAction = selectors.ActionTypeFromString(f.ReturnArgAction)
+			if config.ArgReturnAction == selectors.ActionTypeInvalid {
+				return nil, fmt.Errorf("ReturnArgAction type '%s' unsupported", f.ReturnArgAction)
+			}
+		}
 
 		argRetprobe = nil // holds pointer to arg for return handler
 		funcName := f.Call
@@ -411,7 +426,7 @@ func createGenericKprobeSensor(
 			config.ArgM[a.Index] = uint32(argMValue)
 
 			argsBTFSet[a.Index] = true
-			argP := argPrinters{index: j, ty: argType, maxData: a.MaxData}
+			argP := argPrinters{index: j, ty: argType, maxData: a.MaxData, label: a.Label}
 			argSigPrinters = append(argSigPrinters, argP)
 		}
 
@@ -447,7 +462,7 @@ func createGenericKprobeSensor(
 			argType := gt.GenericTypeFromString(argRetprobe.Type)
 			config.ArgReturnCopy = int32(argType)
 
-			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
+			argP := argPrinters{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		} else {
 			config.ArgReturnCopy = int32(0)
@@ -584,6 +599,11 @@ func createGenericKprobeSensor(
 		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
 		maps = append(maps, selNamesMap)
 
+		if kernels.EnableLargeProgs() {
+			socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), load)
+			maps = append(maps, socktrack)
+		}
+
 		if setRetprobe {
 			pinRetProg := sensors.PathJoin(pinPath, fmt.Sprintf("%s_ret_prog", kprobeEntry.funcName))
 			loadret := program.Builder(
@@ -603,8 +623,11 @@ func createGenericKprobeSensor(
 			maps = append(maps, retConfigMap)
 
 			// add maps with non-default paths (pins) to the retprobe
-			program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), load)
+			program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), loadret)
 			program.MapBuilderPin("fdinstall_map", sensors.PathJoin(sensorPath, "fdinstall_map"), loadret)
+			if kernels.EnableLargeProgs() {
+				program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), loadret)
+			}
 		}
 
 		logger.GetLogger().WithField("flags", flagsString(config.Flags)).
@@ -947,6 +970,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 
 			arg.Index = uint64(a.index)
 			arg.Value = output
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericFileType, gt.GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
@@ -968,6 +992,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			}
 
 			arg.Flags = flags
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericPathType:
 			var arg api.MsgGenericKprobeArgPath
@@ -983,6 +1008,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			}
 
 			arg.Flags = flags
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericFilenameType, gt.GenericStringType:
 			var b int32
@@ -1005,6 +1031,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 				strVal = strVal[0 : lenStrVal-1]
 			}
 			arg.Value = strVal
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericCredType:
 			var cred api.MsgGenericKprobeCred
@@ -1019,9 +1046,11 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Permitted = cred.Permitted
 			arg.Effective = cred.Effective
 			arg.Inheritable = cred.Inheritable
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericCharBuffer, gt.GenericCharIovec:
 			if arg, err := ReadArgBytes(r, a.index, a.maxData); err == nil {
+				arg.Label = a.label
 				unix.Args = append(unix.Args, *arg)
 			} else {
 				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
@@ -1047,6 +1076,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Proto = uint32(skb.Tuple.Protocol)
 			arg.SecPathLen = skb.SecPathLen
 			arg.SecPathOLen = skb.SecPathOLen
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericSockType:
 			var sock api.MsgGenericKprobeSock
@@ -1067,6 +1097,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Daddr = network.GetIP(sock.Tuple.Daddr).String()
 			arg.Sport = uint32(sock.Tuple.Sport)
 			arg.Dport = uint32(sock.Tuple.Dport)
+			arg.Sockaddr = sock.Sockaddr
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericSizeType, gt.GenericU64Type:
 			var output uint64
@@ -1079,6 +1111,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 
 			arg.Index = uint64(a.index)
 			arg.Value = output
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericNopType:
 			// do nothing
@@ -1094,6 +1127,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.InsnCnt = output.InsnCnt
 			length := bytes.IndexByte(output.ProgName[:], 0) // trim tailing null bytes
 			arg.ProgName = string(output.ProgName[:length])
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericPerfEvent:
 			var output api.MsgGenericKprobePerfEvent
@@ -1108,6 +1142,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Type = output.Type
 			arg.Config = output.Config
 			arg.ProbeOffset = output.ProbeOffset
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericBpfMap:
 			var output api.MsgGenericKprobeBpfMap
@@ -1124,6 +1159,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.MaxEntries = output.MaxEntries
 			length := bytes.IndexByte(output.MapName[:], 0) // trim tailing null bytes
 			arg.MapName = string(output.MapName[:length])
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericU32Type:
 			var output uint32
@@ -1136,6 +1172,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 
 			arg.Index = uint64(a.index)
 			arg.Value = output
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericUserNamespace:
 			var output api.MsgGenericKprobeUserNamespace
@@ -1149,6 +1186,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Owner = output.Owner
 			arg.Group = output.Group
 			arg.NsInum = output.NsInum
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericCapability:
 			var output api.MsgGenericKprobeCapability
@@ -1159,6 +1197,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 				logger.GetLogger().WithError(err).Warnf("capability type error")
 			}
 			arg.Value = output.Value
+			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		default:
 			logger.GetLogger().WithError(err).WithField("event-type", a.ty).Warnf("Unknown event type")

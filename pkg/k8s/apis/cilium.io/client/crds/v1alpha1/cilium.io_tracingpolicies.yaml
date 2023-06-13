@@ -207,6 +207,9 @@ spec:
                             format: int32
                             minimum: 0
                             type: integer
+                          label:
+                            description: Label to output in the JSON
+                            type: string
                           maxData:
                             default: false
                             description: Read maximum possible data. This field is
@@ -265,6 +268,9 @@ spec:
                           format: int32
                           minimum: 0
                           type: integer
+                        label:
+                          description: Label to output in the JSON
+                          type: string
                         maxData:
                           default: false
                           description: Read maximum possible data. This field is used
@@ -306,6 +312,13 @@ spec:
                       - index
                       - type
                       type: object
+                    returnArgAction:
+                      description: An action to perform on the return argument.
+                      enum:
+                      - Post
+                      - TrackSock
+                      - UntrackSock
+                      type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
@@ -328,7 +341,11 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - GetUrl
+                                  - DnsLookup
                                   - NoPost
+                                  - TrackSock
+                                  - UntrackSock
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -352,8 +369,19 @@ spec:
                                   description: A signal number for signal action
                                   format: int32
                                   type: integer
+                                argSock:
+                                  description: An arg index for the sock for trackSock
+                                    and untrackSock actions
+                                  format: int32
+                                  type: integer
                                 argUrl:
                                   description: A URL for the getUrl action
+                                  type: string
+                                rateLimit:
+                                  description: A time period within which repeated
+                                    messages will not be posted. Can be specified
+                                    in seconds (default or with 's' suffix), minutes
+                                    ('m' suffix) or hours ('h' suffix).
                                   type: string
                               required:
                               - action
@@ -601,6 +629,7 @@ spec:
                       type: boolean
                   required:
                   - call
+                  - returnArgAction
                   type: object
                 type: array
               loader:
@@ -1163,6 +1192,9 @@ spec:
                             format: int32
                             minimum: 0
                             type: integer
+                          label:
+                            description: Label to output in the JSON
+                            type: string
                           maxData:
                             default: false
                             description: Read maximum possible data. This field is
@@ -1230,7 +1262,11 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - GetUrl
+                                  - DnsLookup
                                   - NoPost
+                                  - TrackSock
+                                  - UntrackSock
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1254,8 +1290,19 @@ spec:
                                   description: A signal number for signal action
                                   format: int32
                                   type: integer
+                                argSock:
+                                  description: An arg index for the sock for trackSock
+                                    and untrackSock actions
+                                  format: int32
+                                  type: integer
                                 argUrl:
                                   description: A URL for the getUrl action
+                                  type: string
+                                rateLimit:
+                                  description: A time period within which repeated
+                                    messages will not be posted. Can be specified
+                                    in seconds (default or with 's' suffix), minutes
+                                    ('m' suffix) or hours ('h' suffix).
                                   type: string
                               required:
                               - action
@@ -1534,7 +1581,11 @@ spec:
                                   - Sigkill
                                   - CopyFD
                                   - Override
+                                  - GetUrl
+                                  - DnsLookup
                                   - NoPost
+                                  - TrackSock
+                                  - UntrackSock
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1558,8 +1609,19 @@ spec:
                                   description: A signal number for signal action
                                   format: int32
                                   type: integer
+                                argSock:
+                                  description: An arg index for the sock for trackSock
+                                    and untrackSock actions
+                                  format: int32
+                                  type: integer
                                 argUrl:
                                   description: A URL for the getUrl action
+                                  type: string
+                                rateLimit:
+                                  description: A time period within which repeated
+                                    messages will not be posted. Can be specified
+                                    in seconds (default or with 's' suffix), minutes
+                                    ('m' suffix) or hours ('h' suffix).
                                   type: string
                               required:
                               - action
