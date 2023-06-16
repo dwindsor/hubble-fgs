@@ -119,7 +119,8 @@ func getNestedContainerdRoot(ctx context.Context, address, cid string) (string, 
 // expect container ID without any prefix
 func ContainerdIdToRootFs(cid string) (string, error) {
 	addr := "/run/containerd/containerd.sock"
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
 
 	if root, err := getContainerdRoot(ctx, addr, "k8s.io", cid); err == nil {
 		return root, nil
@@ -132,7 +133,8 @@ func ContainerdIdToRootFs(cid string) (string, error) {
 // returns the root directory of a container on docker runtime
 // expect container ID without any prefix
 func DockerIdToRootFs(cid string) (string, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return "", err
@@ -172,7 +174,7 @@ func configureUnixTransport(tr *http.Transport, proto, addr string) error {
 	// No need for compression in local communications.
 	tr.DisableCompression = true
 	tr.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
-		return net.DialTimeout(proto, addr, 32*time.Second)
+		return net.DialTimeout(proto, addr, 4*time.Second)
 	}
 	return nil
 }
