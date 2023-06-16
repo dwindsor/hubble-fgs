@@ -72,7 +72,7 @@ var (
 func podForAllContainersId(pod *v1.Pod, fn func(id string)) {
 	run := func(s []v1.ContainerStatus) {
 		for _, i := range s {
-			if i.Ready {
+			if i.State.Running != nil {
 				fn(i.ContainerID)
 			}
 		}
