@@ -35,8 +35,8 @@ github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghf
 github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc/go.mod h1:MTkMtVFAjFChVkoycc9XjGGH6jiuI6qO71iEdcyNq7I=
 github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2 h1:e8rUgm4lkgItm5/qX43VmvtRkxaOhLIPP6gWjP9Eib4=
 github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2/go.mod h1:hJyC9ybFldjAq/sR0x8jwbV9g0uPxjl8fqBa+mVa3DE=
-github.com/cilium/cilium v1.13.2 h1:BWHxoqWQP4iK6KWHLiWvVZ/eyvqpP0tvkWnEVg1gDyk=
-github.com/cilium/cilium v1.13.2/go.mod h1:AkOABrMt0qsqZUN0Vl2mGY/PRUwkH7kcS1JHsQVEk5Q=
+github.com/cilium/cilium v1.13.4 h1:rvbcA6q7YMWtDfEtx9y4olL46wBFoZfM2BazUoJlaRI=
+github.com/cilium/cilium v1.13.4/go.mod h1:bppTjxboubrsI835+yp3vZ2S79wRQbZCbUiHxrAIOQY=
 github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2 h1:h27SvWUTrlFQ2Q8LAnt0q+iw/VJoni8ffzCjAIidLV8=
 github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2/go.mod h1:qOTXyxeuKXiha7G6yZPUzrvJ8l7qSrVAxJl1VGBYrkE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
