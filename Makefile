@@ -53,6 +53,13 @@ COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
 TESTER_PROGS_DIR = "contrib/tester-progs"
 
+# Do a parallel build with multiple jobs, based on the number of CPUs online
+# in this system: 'make -j8' on a 8-CPU system, etc.
+#
+# (To override it, run 'make JOBS=1' and similar.)
+#
+JOBS ?= $(shell nproc)
+
 all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
@@ -141,7 +148,7 @@ hubble-bpf-verify: hubble-bpf
 
 hubble-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang || true
-	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH)
+	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
 	$(CONTAINER_ENGINE) rm hubble-clang
 
 hubble-fgs: hubble-fgs-fs-scanner
