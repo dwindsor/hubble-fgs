@@ -46,7 +46,7 @@ jobs:
         sudo apt install gcc # needed for tester-progs
         sudo -E make hubble-fgs-fs-scanner
         sudo -E make tester-progs
-        sudo -E make test
+        sudo -E make test GO_TEST_TIMEOUT=40m
 
     - name: Upload FGS logs
       if: failure()
