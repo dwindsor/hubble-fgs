@@ -10,7 +10,7 @@ COPY --from=builder /openssl /openssl
 COPY . .
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
- && apt-get install -y bash build-essential pkg-config strace wget vim \
+ && apt-get install -y bash build-essential pkg-config strace wget vim busybox netcat \
  && bash build-curl.sh \
  && bash configure.sh
 
