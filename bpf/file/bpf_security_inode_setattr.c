@@ -113,8 +113,15 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 	return (msg->operation & FILE_OP_BLOCK) != 0;
 }
 
-SEC("kprobe/security_inode_setattr")
-int BPF_KPROBE(security_inode_setattr, struct dentry *dentry, struct iattr *attr)
+SEC("kprobe/security_inode_setattr/419")
+int BPF_KPROBE(security_inode_setattr_v419, struct dentry *dentry, struct iattr *attr)
+{
+	do_security_inode_setattr(ctx, dentry, attr);
+	return 0;
+}
+
+SEC("kprobe/security_inode_setattr/60")
+int BPF_KPROBE(security_inode_setattr_v60, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr)
 {
 	do_security_inode_setattr(ctx, dentry, attr);
 	return 0;
@@ -122,7 +129,11 @@ int BPF_KPROBE(security_inode_setattr, struct dentry *dentry, struct iattr *attr
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_setattr")
+#ifdef __V60_BPF_PROG
+int BPF_PROG(security_inode_setattr_lsm, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr)
+#else
 int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *attr)
+#endif
 {
 	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
 	if (do_security_inode_setattr(ctx, dentry, attr) == 1)
@@ -133,7 +144,11 @@ int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *at
 
 #ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_setattr")
+#ifdef __V60_BPF_PROG
+int BPF_PROG(security_inode_setattr_fmod, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr, int ret)
+#else
 int BPF_PROG(security_inode_setattr_fmod, struct dentry *dentry, struct iattr *attr, int ret)
+#endif
 {
 	if (ret != 0)
 		return ret;

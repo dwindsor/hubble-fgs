@@ -697,6 +697,11 @@ func TestLoadFileSensor(t *testing.T) {
 		verSuffix = "v512"
 	}
 
+	attrVerSuffix := "v419"
+	if kernels.MinKernelVersion("6.0.0") {
+		attrVerSuffix = "v60"
+	}
+
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
 		1:  tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
@@ -714,7 +719,7 @@ func TestLoadFileSensor(t *testing.T) {
 		13: tus.SensorProg{Name: "vfs_rename_exit", Type: ebpf.Kprobe},
 		14: tus.SensorProg{Name: "vfs_open", Type: ebpf.Kprobe},
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
-		16: tus.SensorProg{Name: "security_inode_setattr", Type: ebpf.Kprobe},
+		16: tus.SensorProg{Name: fmt.Sprintf("security_inode_setattr_%s", attrVerSuffix), Type: ebpf.Kprobe},
 	}
 
 	sensorMaps := []tus.SensorMap{

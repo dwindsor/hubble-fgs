@@ -150,7 +150,10 @@ var (
 			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
 		}},
 		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir"}}},
-		{"kprobe", "security_inode_setattr", []FimFunc{{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr"}}},
+		{"kprobe", "security_inode_setattr", []FimFunc{
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419"},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60"},
+		}},
 	}
 
 	FimHooksFmodRet = [...]FimHook{
@@ -182,7 +185,10 @@ var (
 		}},
 		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_fmod.o", "security_inode_rename"}}},
 		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_fmod.o", "security_file_permission"}}},
-		{"fmod_ret", "security_inode_setattr", []FimFunc{{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr"}}},
+		{"fmod_ret", "security_inode_setattr", []FimFunc{
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr"},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr"},
+		}},
 	}
 
 	FimHooksLsm = [...]FimHook{
@@ -214,7 +220,10 @@ var (
 		}},
 		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_lsm.o", "inode_rename"}}},
 		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_lsm.o", "file_permission"}}},
-		{"lsm", "security_inode_setattr", []FimFunc{{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"}}},
+		{"lsm", "security_inode_setattr", []FimFunc{
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm_v60.o", "inode_setattr"},
+		}},
 	}
 
 	SharedMaps = [...]string{
