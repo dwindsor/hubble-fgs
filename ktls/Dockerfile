@@ -1,11 +1,11 @@
-FROM ubuntu:hirsute-20210917 AS builder
+FROM ubuntu:22.04 AS builder
 
 COPY build.sh build.sh
 RUN apt-get update \
  && apt-get install -y bash build-essential wget \
  && bash build.sh
 
-FROM ubuntu:hirsute-20210917
+FROM ubuntu:22.04
 COPY --from=builder /openssl /openssl
 COPY . .
 ENV DEBIAN_FRONTEND=noninteractive
