@@ -100,7 +100,7 @@ jobs:
           rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@af4173a4a1c9132b7fb0a02dba74cd6233a175b5
+        uses: cilium/little-vm-helper@0fcaa3fed17811fcd8b6f1b0dc1f24e5f4ff6b13
         with:
           install-dependencies: true
           test-name: tetragon-e2e
@@ -134,7 +134,7 @@ jobs:
           docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@af4173a4a1c9132b7fb0a02dba74cd6233a175b5
+        uses: cilium/little-vm-helper@0fcaa3fed17811fcd8b6f1b0dc1f24e5f4ff6b13
         with:
           provision: "false"
           cmd: |
