@@ -45,9 +45,9 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
 	  bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
 	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o \
-	  bpf_execve_event_v60.o bpf_generic_kprobe_v60.o bpf_generic_retkprobe_v60.o \
-	  bpf_generic_tracepoint_v60.o \
-	  bpf_multi_kprobe_v60.o bpf_multi_retkprobe_v60.o \
+	  bpf_execve_event_v61.o bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
+	  bpf_generic_tracepoint_v61.o \
+	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
 	  bpf_loader.o
 
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
@@ -248,28 +248,28 @@ $(DEPSDIR)%_v419.d:
 $(DEPSDIR)%_v53.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-objs/bpf_execve_event_v60.ll: $(PROCESSDIR)/bpf_execve_event.c
-objs/bpf_generic_kprobe_v60.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
-objs/bpf_generic_retkprobe_v60.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
-objs/bpf_multi_kprobe_v60.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
-objs/bpf_multi_retkprobe_v60.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
-objs/bpf_generic_tracepoint_v60.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
+objs/bpf_execve_event_v61.ll: $(PROCESSDIR)/bpf_execve_event.c
+objs/bpf_generic_kprobe_v61.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_generic_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_multi_kprobe_v61.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_multi_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_generic_tracepoint_v61.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
-objs/bpf_multi_kprobe_v60.ll objs/bpf_multi_retkprobe_v60.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V60_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
+objs/bpf_multi_kprobe_v61.ll objs/bpf_multi_retkprobe_v61.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V61_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
 
-objs/%_v60.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V60_BPF_PROG -c $< -o $@
+objs/%_v61.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V61_BPF_PROG -c $< -o $@
 
-deps/bpf_execve_event_v60.d: $(PROCESSDIR)/bpf_execve_event.c
-deps/bpf_generic_kprobe_v60.d: $(PROCESSDIR)/bpf_generic_kprobe.c
-deps/bpf_generic_retkprobe_v60.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
-deps/bpf_multi_kprobe_v60.d: $(PROCESSDIR)/bpf_generic_kprobe.c
-deps/bpf_multi_retkprobe_v60.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
-deps/bpf_generic_tracepoint_v60.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
+deps/bpf_execve_event_v61.d: $(PROCESSDIR)/bpf_execve_event.c
+deps/bpf_generic_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_generic_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_multi_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_multi_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
-$(DEPSDIR)%_v60.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG  -D__V60_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+$(DEPSDIR)%_v61.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG  -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
