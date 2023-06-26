@@ -131,8 +131,33 @@ jobs:
         if: ${{ always() }}
         run: |
           echo "kernel_version=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')" >> $GITHUB_OUTPUT
-          gcloud container clusters delete --quiet ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
-        shell: bash {0}
+
+          zone=${{ env.zone }}
+          cluster=${{ steps.vars.outputs.clusterName }}
+
+          max_attempts=40
+          attempt_delay=30 # in seconds
+
+          for ((attempt=0; attempt<$max_attempts; attempt++)); do
+              output=$(gcloud container clusters delete --zone $zone $cluster --quiet 2>&1 | tee /dev/tty)
+              code=$(echo $output | grep -oP 'code=\K\d+')
+              if [ "$code" == "400" ]; then
+                  # When Google returns the error 'is currently creating cluster' , it returns error
+                  # 400 even though the request is well formated. So here we suppose that if we
+                  # receive a 400 error, it is because the cluster is being created and we want to
+                  # retry in order to cleanup properly and not leak resources.
+                  printf "gcloud returned an error and the code is equal to 400, retrying in %ds...\n" "$delay"
+                  sleep $delay
+              else
+                  break
+              fi
+          done
+
+          if [[ $attempt -ge $max_attempts ]]; then
+            printf "Maximum number of attempts reached: %d. Exiting.\n" "$max_attempts"
+            exit 1
+          fi
+        shell: 'script --return --quiet --command "bash {0}"' # hack to make /dev/tty accessible, see https://github.com/actions/runner/issues/241#issuecomment-924327172
 
       - name: Upload Tetragon test artifacts
         if: ${{ failure() }}
