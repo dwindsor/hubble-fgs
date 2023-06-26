@@ -91,7 +91,7 @@ jobs:
         run: |
           gcloud container clusters create ${{ steps.vars.outputs.clusterName }} \
             --preemptible \
-            --labels "usage=pr,owner=${{ github.event.pull_request.number }}" \
+            --labels "usage=pr,owner=${{ github.event.pull_request.number }},creation=$(date +'%Y-%m-%d')" \
             --image-type COS_CONTAINERD \
             --num-nodes 2 \
             --machine-type n1-standard-4 \
