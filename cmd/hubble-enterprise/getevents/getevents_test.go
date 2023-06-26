@@ -25,7 +25,7 @@ func Test_GetEvents_Namespace(t *testing.T) {
 	t.Run("FilterNothing", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--namespace", "demo-app"})
+		cmd.SetArgs([]string{"--namespaces", "demo-app"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 100, bytes.Count(output, []byte("\n")))
 	})
@@ -33,7 +33,7 @@ func Test_GetEvents_Namespace(t *testing.T) {
 	t.Run("FilterAll", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--namespace", "doesnotexist"})
+		cmd.SetArgs([]string{"--namespaces", "doesnotexist"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 0, bytes.Count(output, []byte("\n")))
 	})
@@ -43,7 +43,7 @@ func Test_GetEvents_Pod(t *testing.T) {
 	t.Run("FilterCoreapi", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--pod", "coreapi"})
+		cmd.SetArgs([]string{"--pods", "coreapi"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 18, bytes.Count(output, []byte("\n")))
 	})
@@ -51,7 +51,7 @@ func Test_GetEvents_Pod(t *testing.T) {
 	t.Run("FilterLoader", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--pod", "loader"})
+		cmd.SetArgs([]string{"--pods", "loader"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 82, bytes.Count(output, []byte("\n")))
 	})
@@ -59,7 +59,7 @@ func Test_GetEvents_Pod(t *testing.T) {
 	t.Run("FilterAll", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--pod", "doesnotexist"})
+		cmd.SetArgs([]string{"--pods", "doesnotexist"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 0, bytes.Count(output, []byte("\n")))
 	})
@@ -69,7 +69,7 @@ func Test_GetEvents_Process(t *testing.T) {
 	t.Run("FilterPythonNode", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--process", "python,node"})
+		cmd.SetArgs([]string{"--processes", "python,node"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 74, bytes.Count(output, []byte("\n")))
 	})
@@ -77,7 +77,7 @@ func Test_GetEvents_Process(t *testing.T) {
 	t.Run("FilterAll", func(t *testing.T) {
 		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
 		cmd := New()
-		cmd.SetArgs([]string{"--process", "doesnotexist"})
+		cmd.SetArgs([]string{"--processes", "doesnotexist"})
 		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
 		assert.Equal(t, 0, bytes.Count(output, []byte("\n")))
 	})

@@ -23,7 +23,6 @@ import (
 	// append enterprise filters
 	_ "github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // GetEncoder returns an encoder for an event stream based on configuration options.
@@ -53,12 +52,9 @@ var (
 
 // GetFilter returns a filter for an event stream based on configuration options.
 var GetFilter = func() *tetragon.Filter {
-	// retrieve filter flags from OSS that records them into viper global state,
-	// it can results in issue if the two subcommands bind the same flag, the
-	// last will override the rest, see https://github.com/spf13/viper/issues/233
-	namespaces = viper.GetStringSlice("namespace")
-	processes = viper.GetStringSlice("process")
-	pods = viper.GetStringSlice("pod")
+	namespaces = ossGetevents.Options.Namespaces
+	processes = ossGetevents.Options.Processes
+	pods = ossGetevents.Options.Pods
 
 	if host {
 		// Host events can be matched by an empty namespace string.
