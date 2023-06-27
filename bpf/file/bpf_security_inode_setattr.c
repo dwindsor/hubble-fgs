@@ -120,7 +120,7 @@ int BPF_KPROBE(security_inode_setattr, struct dentry *dentry, struct iattr *attr
 	return 0;
 }
 
-#ifdef __FILE_ENFORCE
+#ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_setattr")
 int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *attr)
 {
@@ -129,7 +129,9 @@ int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *at
 		return -EPERM;
 	return 0;
 }
+#endif
 
+#ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_setattr")
 int BPF_PROG(security_inode_setattr_fmod, struct dentry *dentry, struct iattr *attr, int ret)
 {

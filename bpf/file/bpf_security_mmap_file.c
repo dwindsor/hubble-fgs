@@ -3,6 +3,7 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+#ifdef __FILE_ENFORCE_LSM
 SEC("lsm/mmap_file")
 int BPF_PROG(security_mmap_file_lsm, struct file *file, unsigned long prot, unsigned long flags)
 {
@@ -25,7 +26,9 @@ int BPF_PROG(security_mmap_file_lsm, struct file *file, unsigned long prot, unsi
 		return -EPERM;
 	return 0;
 }
+#endif
 
+#ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_mmap_file")
 int BPF_PROG(security_mmap_file_fmod, struct file *file, unsigned long prot, unsigned long flags, int ret)
 {
@@ -51,3 +54,4 @@ int BPF_PROG(security_mmap_file_fmod, struct file *file, unsigned long prot, uns
 		return -EPERM;
 	return 0;
 }
+#endif

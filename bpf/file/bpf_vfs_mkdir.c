@@ -263,7 +263,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	return 0;
 }
 
-#ifdef __FILE_ENFORCE
+#if defined(__FILE_ENFORCE_LSM) || defined(__FILE_ENFORCE_FMOD)
 static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	struct retprobe_key rkey = {
@@ -295,13 +295,17 @@ static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx,
 	}
 	return 0;
 }
+#endif
 
+#ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_mkdir")
 int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	return security_inode_mkdir(ctx, dir, dentry, mode);
 }
+#endif
 
+#ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_mkdir")
 int BPF_PROG(security_inode_mkdir_fmod, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {

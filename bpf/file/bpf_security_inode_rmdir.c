@@ -90,7 +90,7 @@ int BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 	return 0;
 }
 
-#ifdef __FILE_ENFORCE
+#ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_rmdir")
 int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
 {
@@ -99,7 +99,9 @@ int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
 		return -EPERM;
 	return 0;
 }
+#endif
 
+#ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_rmdir")
 int BPF_PROG(security_inode_rmdir_fmod, struct inode *dir, struct dentry *dentry, int ret)
 {

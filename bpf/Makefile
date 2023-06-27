@@ -53,10 +53,16 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
 	  bpf_security_file_permission.o  bpf_vfs_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
 	  bpf_vfs_mkdir.o bpf_security_inode_rmdir.o bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v419.o \
-	  bpf_iterate_dir.o bpf_security_mmap_file.o \
-	  bpf_security_inode_setattr.o bpf_security_inode_create.o \
-	  bpf_iterate_dir_enforce.o bpf_security_file_permission_enforce.o bpf_security_inode_rmdir_enforce.o \
-	  bpf_vfs_mkdir_enforce.o bpf_vfs_unlink_enforce.o bpf_vfs_rename_enforce.o bpf_security_inode_setattr_enforce.o
+	  bpf_iterate_dir.o bpf_security_inode_setattr.o \
+	  bpf_security_mmap_file_lsm.o bpf_security_mmap_file_fmod.o \
+	  bpf_security_inode_create_lsm.o bpf_security_inode_create_fmod.o \
+	  bpf_iterate_dir_enforce_lsm.o bpf_iterate_dir_enforce_fmod.o \
+	  bpf_security_file_permission_enforce_lsm.o bpf_security_file_permission_enforce_fmod.o \
+	  bpf_security_inode_rmdir_enforce_lsm.o bpf_security_inode_rmdir_enforce_fmod.o \
+	  bpf_vfs_mkdir_enforce_lsm.o bpf_vfs_mkdir_enforce_fmod.o \
+	  bpf_vfs_unlink_enforce_lsm.o bpf_vfs_unlink_enforce_fmod.o \
+	  bpf_vfs_rename_enforce_lsm.o bpf_vfs_rename_enforce_fmod.o \
+	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 
@@ -163,11 +169,17 @@ deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
 objs/%.ll: $(FILEDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
-objs/%_enforce.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE -c $< -o $@
+objs/%_lsm.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -c $< -o $@
 
-$(DEPSDIR)%_enforce.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+$(DEPSDIR)%_lsm.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+objs/%_fmod.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -c $< -o $@
+
+$(DEPSDIR)%_fmod.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -196,13 +208,24 @@ deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_vfs_rename_v419.d: $(FILEDIR)/bpf_vfs_rename.c
-deps/bpf_iterate_dir_enforce.d: $(FILEDIR)/bpf_iterate_dir.c
-deps/bpf_security_file_permission_enforce.d: $(FILEDIR)/bpf_security_file_permission.c
-deps/bpf_security_inode_rmdir_enforce.d: $(FILEDIR)/bpf_security_inode_rmdir.c
-deps/bpf_vfs_mkdir_enforce.d: $(FILEDIR)/bpf_vfs_mkdir.c
-deps/bpf_vfs_unlink_enforce.d: $(FILEDIR)/bpf_vfs_unlink.c
-deps/bpf_vfs_rename_enforce.d: $(FILEDIR)/bpf_vfs_rename.c
-deps/bpf_security_inode_setattr_enforce.d: $(FILEDIR)/bpf_security_inode_setattr.c
+deps/bpf_security_mmap_file_lsm.d: $(FILEDIR)/bpf_security_mmap_file.c
+deps/bpf_security_mmap_file_fmod.d: $(FILEDIR)/bpf_security_mmap_file.c
+deps/bpf_security_inode_create_lsm.d: $(FILEDIR)/bpf_security_inode_create.c
+deps/bpf_security_inode_create_fmod.d: $(FILEDIR)/bpf_security_inode_create.c
+deps/bpf_iterate_dir_enforce_lsm.d: $(FILEDIR)/bpf_iterate_dir.c
+deps/bpf_iterate_dir_enforce_fmod.d: $(FILEDIR)/bpf_iterate_dir.c
+deps/bpf_security_file_permission_enforce_lsm.d: $(FILEDIR)/bpf_security_file_permission.c
+deps/bpf_security_file_permission_enforce_fmod.d: $(FILEDIR)/bpf_security_file_permission.c
+deps/bpf_security_inode_rmdir_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_rmdir.c
+deps/bpf_security_inode_rmdir_enforce_fmod.d: $(FILEDIR)/bpf_security_inode_rmdir.c
+deps/bpf_vfs_mkdir_enforce_lsm.d: $(FILEDIR)/bpf_vfs_mkdir.c
+deps/bpf_vfs_mkdir_enforce_fmod.d: $(FILEDIR)/bpf_vfs_mkdir.c
+deps/bpf_vfs_unlink_enforce_lsm.d: $(FILEDIR)/bpf_vfs_unlink.c
+deps/bpf_vfs_unlink_enforce_fmod.d: $(FILEDIR)/bpf_vfs_unlink.c
+deps/bpf_vfs_rename_enforce_lsm.d: $(FILEDIR)/bpf_vfs_rename.c
+deps/bpf_vfs_rename_enforce_fmod.d: $(FILEDIR)/bpf_vfs_rename.c
+deps/bpf_security_inode_setattr_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_setattr.c
+deps/bpf_security_inode_setattr_enforce_fmod.d: $(FILEDIR)/bpf_security_inode_setattr.c
 
 $(DEPSDIR)%_v419.d:
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
