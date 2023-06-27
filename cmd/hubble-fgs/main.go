@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
+	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -412,7 +412,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		}()
 	}
 
-	encoder := json.NewEncoder(writer)
+	encoder := encoder.NewProtojsonEncoder(writer)
 	var rateLimiter *ratelimit.RateLimiter
 	if exportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)

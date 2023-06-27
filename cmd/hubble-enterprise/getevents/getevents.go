@@ -11,7 +11,6 @@
 package getevents
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -33,7 +32,7 @@ var GetEncoder = func(w io.Writer, colorMode ossEncoder.ColorMode, timestamps bo
 	if tty != "" {
 		return ossEncoder.NewTtyEncoder(w, tty)
 	}
-	return json.NewEncoder(w)
+	return ossEncoder.NewProtojsonEncoder(w)
 }
 
 var (

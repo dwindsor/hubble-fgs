@@ -161,6 +161,7 @@ type eventCheckerHelper struct {
 	ProcessNetworkWatermark *eventchecker.ProcessNetworkWatermarkChecker `json:"networkWatermark,omitempty"`
 	ProcessUdpSeqCheckError *eventchecker.ProcessUdpSeqCheckErrorChecker `json:"udpSeqCheckError,omitempty"`
 	ProcessDns              *eventchecker.ProcessDnsChecker              `json:"dns,omitempty"`
+	RateLimitInfo           *eventchecker.RateLimitInfoChecker           `json:"rateLimitInfo,omitempty"`
 }
 
 // EventChecker is a wrapper around the EventChecker interface to help unmarshaling
@@ -301,6 +302,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessDns
 	}
+	if helper.RateLimitInfo != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.RateLimitInfo, eventChecker)
+		}
+		eventChecker = helper.RateLimitInfo
+	}
 	checker.EventChecker = eventChecker
 	return nil
 }
@@ -351,6 +358,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessUdpSeqCheckError = c
 	case *eventchecker.ProcessDnsChecker:
 		helper.ProcessDns = c
+	case *eventchecker.RateLimitInfoChecker:
+		helper.RateLimitInfo = c
 	default:
 		return nil, fmt.Errorf("EventChecker: unknown checker type %T", c)
 	}

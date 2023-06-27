@@ -419,6 +419,14 @@ func (event *ProcessDns) SetParent(p *Process) {
 	event.Parent = p
 }
 
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
+func (event *RateLimitInfo) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_RateLimitInfo{
+		RateLimitInfo: event,
+	}
+}
+
 // UnwrapGetEventsResponse gets the inner event type from a GetEventsResponse
 func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 	event := response.GetEvent()
@@ -468,6 +476,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessUdpSeqCheckError
 	case *GetEventsResponse_ProcessDns:
 		return ev.ProcessDns
+	case *GetEventsResponse_RateLimitInfo:
+		return ev.RateLimitInfo
 	}
 	return nil
 }
