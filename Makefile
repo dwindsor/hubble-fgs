@@ -40,6 +40,7 @@ VERSION=$(shell git describe --tags --always)
 GO_GCFLAGS ?= ""
 GO_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
 GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
+GO_IMAGE_LDFLAGS_CGO_DISABLED="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
 GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -s -w"
 
 OSS_DIR=./modules/tetragon-oss
@@ -174,8 +175,8 @@ ksyms:
 
 hubble-fgs-image:
 	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
-	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
-	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-fgs/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-enterprise/
 
 hubble-enterprise-operator-image:
 	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator
