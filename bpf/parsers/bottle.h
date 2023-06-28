@@ -47,7 +47,8 @@ bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 {
 	u32 bottle_len = bottle->len;
 	BOTTLE_MASK(bottle_len);
-	if (off + len > bottle_len) {
+	/* Avoid integer overflow checking if off + len > bottle_len */
+	if ((off > bottle_len) || (len > (bottle_len - off))) {
 		return 0;
 	}
 	BOTTLE_MASK(off);
