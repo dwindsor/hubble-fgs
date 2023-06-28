@@ -45,6 +45,7 @@ GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(
 
 OSS_DIR=./modules/tetragon-oss
 FS_SCANNER_BIN=bpf/objs/hubble-fgs-fs-scanner
+FS_SCANNER_RUNNER=bpf/objs/hubble-fgs-runner 
 
 GOLANGCILINT_WANT_VERSION = $(shell grep docker.io/golangci/golangci-lint Dockerfile.golangci-lint | cut -f 2 -d ":" | cut -c2-)
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
@@ -163,6 +164,7 @@ hubble-enterprise-operator:
 
 hubble-fgs-fs-scanner:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -buildvcs=false -mod=vendor -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
 
 fgs-alignchecker:
 	make -C $(OSS_DIR) tetragon-alignchecker
@@ -174,7 +176,8 @@ ksyms:
 	cp $(OSS_DIR)/ksyms ksyms
 
 hubble-fgs-image:
-	CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-fgs/
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-enterprise/
 

@@ -377,23 +377,31 @@ func startFsScanner() (*exec.Cmd, error) {
 		}
 	}
 
-	args := []string{"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10), "-scannerFifoPath", fm.ScannerFifoPath}
+	execName := path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner")
+	execFd, err := os.Open(execName)
+	if err != nil {
+		return nil, fmt.Errorf("startFsScanner: failed to open %s: %w", execName, err)
+	}
+	defer execFd.Close()
+
+	args := []string{fmt.Sprintf("%s/1/ns/mnt", option.Config.ProcFS), execName, "-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10), "-scannerFifoPath", fm.ScannerFifoPath}
+
 	if option.Config.Debug {
-		args = append([]string{"-debug"}, args...)
+		args = append(args, "-debug")
 	}
 
 	if eeOption.Config.FimRuntimeEndpoint != "" {
-		args = append([]string{"-runtimeEndpoint", eeOption.Config.FimRuntimeEndpoint}, args...)
+		args = append(args, "-runtimeEndpoint", eeOption.Config.FimRuntimeEndpoint)
 	}
 
 	level, levelOk := option.Config.LogOpts["level"]
 	if levelOk {
-		args = append([]string{"-logLevel", level}, args...)
+		args = append(args, "-logLevel", level)
 	}
 
 	format, formatOk := option.Config.LogOpts["format"]
 	if formatOk {
-		args = append([]string{"-logFormat", format}, args...)
+		args = append(args, "-logFormat", format)
 	}
 
 	// After an agent crash, hubble-fgs-fs-scanner may be still running.
@@ -404,16 +412,17 @@ func startFsScanner() (*exec.Cmd, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner"), args...)
+	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-runner"), args...)
 	fsScannerCancelFnMtx.Lock()
 	fsScannerCancelFn = cancel
 	fsScannerCancelFnMtx.Unlock()
 
-	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting hubble-fgs-fs-scanner")
+	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting")
 
 	fsScannerCmd.Env = append(fsScannerCmd.Env, fmt.Sprintf("TETRAGON_PROCFS=%s", option.Config.ProcFS))
 	fsScannerCmd.Stdout = os.Stdout
 	fsScannerCmd.Stderr = os.Stderr
+	fsScannerCmd.ExtraFiles = []*os.File{execFd}
 
 	if err := fsScannerCmd.Start(); err != nil {
 		return nil, fmt.Errorf("fsScannerCmd.Start(): %w", err)

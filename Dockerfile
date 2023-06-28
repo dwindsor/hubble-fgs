@@ -90,6 +90,7 @@ COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterp
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
+COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/hubble-fgs/
 RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
 CMD ["sh", "-c", "/usr/bin/hubble-fgs"]
 
