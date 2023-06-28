@@ -86,6 +86,8 @@ const (
 	keyEnablePolicyFilterDebug = "enable-policy-filter-debug"
 
 	keyEnablePidSetFilter = "enable-pid-set-filter"
+
+	keyFimRuntimeEndpoint = "fim-runtime-endpoint"
 )
 
 var (
@@ -168,4 +170,6 @@ func readAndSetFlags() {
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
 
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
+
+	enterpriseOption.Config.FimRuntimeEndpoint = viper.GetString(keyFimRuntimeEndpoint)
 }

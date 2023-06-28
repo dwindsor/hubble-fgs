@@ -9,6 +9,7 @@ type config struct {
 	NetNsCacheSize         int
 	FimFifoPath            string
 	DisableKprobeMulti     bool
+	FimRuntimeEndpoint     string
 }
 
 var (
@@ -18,5 +19,6 @@ var (
 		DnsCacheSize:           1024,
 		NetNsCacheSize:         256,
 		FimFifoPath:            "/var/run/cilium/hubble",
+		FimRuntimeEndpoint:     "",
 	}
 )

@@ -609,6 +609,8 @@ func execute() error {
 	flags.Bool(keyEnablePolicyFilter, false, "Enable policy filter (beta) code")
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 
+	flags.String(keyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

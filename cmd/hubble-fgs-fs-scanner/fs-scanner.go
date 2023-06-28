@@ -84,6 +84,7 @@ import (
 var (
 	hostMntNs       = flag.Uint("hostMntNs", 0, "host mnt namespace to check that the scanner is indeed running on the host mount namespace (sanity check).")
 	scannerFifoPath = flag.String("scannerFifoPath", "", "path to create the scanner FIFO (for communication with the agent)")
+	runtimeEndpoint = flag.String("runtimeEndpoint", "", "custom container runtime endpoint (for containerd or cri-o)")
 	debug           = flag.Bool("debug", false, "Enable debug messages. Equivalent to '--log-level=debug'")
 	logLevel        = flag.String("logLevel", "info", "Set log level")
 	logFormat       = flag.String("logFormat", "text", "Set log format")
@@ -91,6 +92,7 @@ var (
 )
 
 var stopChan = make(chan os.Signal, 2)
+var containerRuntimeEndpoint = ""
 
 type rpcRunner interface {
 	Run()
@@ -322,7 +324,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 
 		rootDir := args.RootDir
 		if rootDir == "" {
-			rootDir, err = fm.ContainerIdToRootFs(args.ContainerID)
+			rootDir, err = fm.ContainerIdToRootFs(args.ContainerID, containerRuntimeEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to resolve container rootDir: %w", err)
 			}
@@ -455,6 +457,13 @@ func main() {
 	if !isFlagPassed("scannerFifoPath") {
 		logger.GetLogger().Warnf("scannerFifoPath flag is not passed in hubble-fgs-fs-scanner")
 		os.Exit(1)
+	}
+
+	if isFlagPassed("runtimeEndpoint") {
+		containerRuntimeEndpoint = *runtimeEndpoint
+		logger.GetLogger().WithField("endpoint", containerRuntimeEndpoint).Info("fim: Using custom container runtime endpoint")
+	} else {
+		logger.GetLogger().Info("fim: Using default runtime endpoints")
 	}
 
 	inum, err := GetMntNsInode()

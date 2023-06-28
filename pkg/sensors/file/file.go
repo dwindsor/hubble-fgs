@@ -382,6 +382,10 @@ func startFsScanner() (*exec.Cmd, error) {
 		args = append([]string{"-debug"}, args...)
 	}
 
+	if eeOption.Config.FimRuntimeEndpoint != "" {
+		args = append([]string{"-runtimeEndpoint", eeOption.Config.FimRuntimeEndpoint}, args...)
+	}
+
 	level, levelOk := option.Config.LogOpts["level"]
 	if levelOk {
 		args = append([]string{"-logLevel", level}, args...)

@@ -117,8 +117,11 @@ func getNestedContainerdRoot(ctx context.Context, address, cid string) (string, 
 
 // returns the root directory of a container on containerd runtime
 // expect container ID without any prefix
-func ContainerdIdToRootFs(cid string) (string, error) {
+func ContainerdIdToRootFs(cid, endpoint string) (string, error) {
 	addr := "/run/containerd/containerd.sock"
+	if endpoint != "" {
+		addr = endpoint
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
@@ -229,8 +232,11 @@ func (c *crioClientImpl) ContainerInfo(id string) (*crTypes.ContainerInfo, error
 
 // returns the root directory of a container on docker runtime
 // expect container ID without any prefix
-func CrioIdToRootFs(cid string) (string, error) {
+func CrioIdToRootFs(cid, endpoint string) (string, error) {
 	defaultSocket := "/var/run/crio/crio.sock"
+	if endpoint != "" {
+		defaultSocket = endpoint
+	}
 	client, err := NewCrioClient(defaultSocket)
 	if err != nil {
 		return "", err
@@ -244,10 +250,10 @@ func CrioIdToRootFs(cid string) (string, error) {
 // returns the root directory of a container
 // it check the prefix of cid argument in order to determine
 // the container runtime
-func ContainerIdToRootFs(cid string) (string, error) {
+func ContainerIdToRootFs(cid, endpoint string) (string, error) {
 	if strings.HasPrefix(cid, ContainerdPrefix) {
 		c := strings.TrimPrefix(cid, ContainerdPrefix)
-		rootDir, err := ContainerdIdToRootFs(c)
+		rootDir, err := ContainerdIdToRootFs(c, endpoint)
 		if err != nil {
 			return "", err
 		}
@@ -261,7 +267,7 @@ func ContainerIdToRootFs(cid string) (string, error) {
 		return rootDir, nil
 	} else if strings.HasPrefix(cid, CrioPrefix) {
 		c := strings.TrimPrefix(cid, CrioPrefix)
-		rootDir, err := CrioIdToRootFs(c)
+		rootDir, err := CrioIdToRootFs(c, endpoint)
 		if err != nil {
 			return "", err
 		}
