@@ -1,0 +1,61 @@
+name: Packages Releases
+
+on:
+  push:
+    tags:
+      - v*
+
+env:
+  BUCKET_NAME : "isovalent-tetragon-enterprise-public"
+  AWS_REGION : "us-west-2"
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+
+    steps:
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@16c0bc4a6e6ada2cfd8afd41d22d95379cf7c32a # v2.8.0
+
+      - name: Getting image tag
+        id: tag
+        run: |
+          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
+      - name: Checkout Source Code
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: true
+
+      - name: Generate Tetragon EE Tarball Release
+        id: tetragon-tarball-release
+        run: make tarball-release
+
+      - name: Checksum Tetragon EE Tarball
+        run: sha256sum -c hubble-fgs-*-${{ matrix.arch }}.tar.gz.sha256sum
+        working-directory: ./release
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355 # v2.2.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::679388779924:role/tetragon-enterprise-github-actions
+          role-session-name: tetragon-enterprise-s3-upload
+
+      - name: Upload Tetragon EE Tarball to AWS s3
+        run: |
+          aws s3 cp hubble-fgs-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
+          aws s3 cp hubble-fgs-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
+        working-directory: ./release
