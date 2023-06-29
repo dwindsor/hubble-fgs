@@ -297,6 +297,7 @@ github.com/cilium/tetragon/pkg/server
 github.com/cilium/tetragon/pkg/syscallinfo
 github.com/cilium/tetragon/pkg/testutils
 github.com/cilium/tetragon/pkg/testutils/sensors
+github.com/cilium/tetragon/pkg/tgsyscall
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
 github.com/cilium/tetragon/pkg/tracingpolicy
