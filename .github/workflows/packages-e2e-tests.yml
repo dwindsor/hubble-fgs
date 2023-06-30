@@ -1,0 +1,62 @@
+name: Packages e2e Tests
+
+on:
+  pull_request:
+    paths-ignore:
+    - "**.md"
+
+jobs:
+  standalone-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+
+    steps:
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@16c0bc4a6e6ada2cfd8afd41d22d95379cf7c32a # v2.8.0
+
+      - name: Checkout Source Code
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: true
+
+      - name: Getting version tag
+        id: tag
+        run: echo "tag=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+
+      - name: Generate Tetragon EE Tarball
+        id: tetragon-enterprise-tarball
+        run: make tarball
+
+      - name: Install Tetragon EE Tarball
+        run: |
+          tar zxvf hubble-fgs-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
+          sudo ./hubble-fgs-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/install.sh
+        working-directory: ./build/${{ matrix.arch }}/linux-tarball/
+
+      - name: Wait for Tetragon EE service
+        run: sleep 5s
+        shell: bash
+
+      - name: Check Tetragon EE
+        run: sudo systemctl is-active tetragon-enterprise
+
+      - name: Check Tetragon EE startup logs
+        run: sudo journalctl -b -u tetragon-enterprise --no-pager
+
+      - name: Test Tetragon EE
+        run: |
+          sudo hubble-enterprise status
+          sudo grep "hubble-enterprise" /var/log/hubble-fgs/hubble-fgs.log
+          sudo hubble-enterprise bugtool
+
+      - name: Uninstall Tetragon EE Tarball
+        run: |
+          sudo ./hubble-fgs-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/uninstall.sh
+        working-directory: ./build/${{ matrix.arch }}/linux-tarball/
