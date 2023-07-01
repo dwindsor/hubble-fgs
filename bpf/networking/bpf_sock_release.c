@@ -7,7 +7,7 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("kprobe/__sk_free"), used)) int
-sk_free(struct pt_regs *ctx)
+tg_sk_free(struct pt_regs *ctx)
 {
 	__sk_free(ctx);
 	return 0;

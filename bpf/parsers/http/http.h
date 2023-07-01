@@ -167,12 +167,12 @@ struct {
 	__type(key, struct msg_tls_ip);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1000);
-} http_map SEC(".maps");
+} tg_http_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1);
-} http_map_heap SEC(".maps");
+} tg_http_map_heap SEC(".maps");
 #endif // ALIGNCHECKER

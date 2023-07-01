@@ -111,56 +111,56 @@ struct {
 	__type(key, int);
 	__type(value, struct udp_sensor_config);
 	__uint(max_entries, 1);
-} udp_config_map SEC(".maps");
+} tg_udp_config_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct msg_udp_event);
 	__uint(max_entries, 1);
-} udp_event_heap SEC(".maps");
+} tg_udp_event_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct udp_info_key);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
-} udp_map SEC(".maps");
+} tg_udp_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, 1);
-} udp_value_heap SEC(".maps");
+} tg_udp_value_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct udp_info);
 	__uint(max_entries, 1);
-} udp_info_heap SEC(".maps");
+} tg_udp_info_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, u64);
 	__uint(max_entries, 1);
-} udp_cookie_heap SEC(".maps");
+} tg_udp_cookie_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct msg_udp_event);
 	__uint(max_entries, 1);
-} udp_payload_map SEC(".maps");
+} tg_udp_payload_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct udp_packet_details);
 	__uint(max_entries, 1);
-} udp_header_heap SEC(".maps");
+} tg_udp_header_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
@@ -182,7 +182,7 @@ emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
 	struct msg_ip_event *val;
 	int zero = 0;
 
-	val = (struct msg_ip_event *)map_lookup_elem(&udp_event_heap, &zero);
+	val = (struct msg_ip_event *)map_lookup_elem(&tg_udp_event_heap, &zero);
 	if (!val)
 		return;
 
@@ -223,7 +223,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	struct msg_udp_event *val;
 	int zero = 0;
 
-	val = (struct msg_udp_event *)map_lookup_elem(&udp_event_heap, &zero);
+	val = (struct msg_udp_event *)map_lookup_elem(&tg_udp_event_heap, &zero);
 	if (!val)
 		return 0;
 
@@ -313,9 +313,9 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	 * verifier into thinking it isn't skb data so that we can send it
 	 * out the perf ring buffer!
 	 */
-	map_update_elem(&udp_payload_map, &zero, val, 0);
+	map_update_elem(&tg_udp_payload_map, &zero, val, 0);
 
-	val = (struct msg_udp_event *)map_lookup_elem(&udp_payload_map, &zero);
+	val = (struct msg_udp_event *)map_lookup_elem(&tg_udp_payload_map, &zero);
 	if (!val)
 		return;
 	size &= 0x7ff;

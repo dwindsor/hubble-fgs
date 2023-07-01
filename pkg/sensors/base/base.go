@@ -68,7 +68,7 @@ var (
 	ExecveMap                   = program.MapBuilder("execve_map", Execve)
 	ExecveMapV53                = program.MapBuilder("execve_map", ExecveV53)
 	ExecveMapV61                = program.MapBuilder("execve_map", ExecveV61)
-	ProcessNetworkWatermarksMap = program.MapBuilder("pn_watermarks_map", Exit)
+	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 
 	ExecveTailCallsMap    = program.MapBuilderPin("execve_calls", "execve_calls", Execve)
 	ExecveTailCallsMapV53 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV53)
@@ -88,7 +88,7 @@ var (
 	ExecveStats          = program.MapBuilder("execve_map_stats", Execve)
 	ExecveStatsV53       = program.MapBuilder("execve_map_stats", ExecveV53)
 	ExecveStatsV61       = program.MapBuilder("execve_map_stats", ExecveV61)
-	PNWatermarksMapStats = program.MapBuilder("pn_watermarks_map_stats", Exit)
+	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
 )
 
 func GetExecveMap() *program.Map {

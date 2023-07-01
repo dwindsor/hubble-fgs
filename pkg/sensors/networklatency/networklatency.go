@@ -33,7 +33,7 @@ import (
 const (
 	maxSubnets    = 4
 	maxPorts      = 4
-	ConfigMapName = "latency_config_map"
+	ConfigMapName = "tg_latency_config_map"
 )
 
 var (
@@ -65,7 +65,7 @@ func TCEgressTimestamp(protocol uint16) (*program.Program, error) {
 		"bpf_timestamp.o",
 		"egress_timestamp",
 		"classifier/egress_timestamp",
-		"classifier_egress_timestamp",
+		"tg_tc_egress_timestamp",
 		fmt.Sprintf("%s_tc_egress", pstr),
 	)
 	return p, nil

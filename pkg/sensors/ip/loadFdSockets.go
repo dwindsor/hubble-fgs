@@ -36,9 +36,9 @@ const (
 	maxMapRetries         = 4
 	mapRetryDelay         = 1
 	FdLookupConfigMapName = "fd_lookup_config_map"
-	SocketMapName         = "socket_map"
-	TlsSocketMapName      = "tls_socket_map"
-	SocketMapStatsName    = "socket_map_stats"
+	SocketMapName         = "tg_socket_map"
+	TlsSocketMapName      = "tg_tls_socket_map"
+	SocketMapStatsName    = "tg_socket_map_stats"
 )
 
 type FdLookupKey struct {

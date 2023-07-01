@@ -25,7 +25,7 @@ struct {
 } tcp_connect_event_map SEC(".maps");
 
 __attribute__((section("kprobe/tcp_connect"), used)) int
-event_tcp_connect(struct pt_regs *ctx)
+tg_event_tcp_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
 	struct msg_ip_event *val;

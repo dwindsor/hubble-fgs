@@ -243,18 +243,18 @@ spec:
 
 	var sensorMaps = []tus.SensorMap{
 		// all but base and bpf_sockmap
-		tus.SensorMap{Name: "tls_map", Progs: []uint{1, 2, 3}},
+		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{1, 2, 3}},
 
 		// all but base and bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0, 1}},
 
 		// bpf_sockmap
-		tus.SensorMap{Name: "tls_sock_map", Progs: []uint{0}},
+		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{0}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "bottles", Progs: []uint{2, 3}},
-		tus.SensorMap{Name: "bottle_map_stats", Progs: []uint{2, 3}},
-		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tg_bottles", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{2, 3}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3}},
@@ -303,15 +303,15 @@ spec:
 
 	var sensorMaps = []tus.SensorMap{
 		// send and recv
-		tus.SensorMap{Name: "tls_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{0, 1}},
 
 		// send only
-		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0, 1}},
 
 		// send and recv
-		tus.SensorMap{Name: "bottles", Progs: []uint{0, 1}},
-		tus.SensorMap{Name: "bottle_map_stats", Progs: []uint{0, 1}},
-		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_bottles", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{0, 1}},
 
 		// send and recv
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},

@@ -53,12 +53,12 @@ import (
 
 const (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
-	UdpMapName           = "udp_map"
-	UdpRetprobeMapName   = "udp_retprobe_map"
-	UdpRetprobeStatsName = "udp_retprobe_map_stats"
-	UdpConfigMapName     = "udp_config_map"
-	UdpPayloadMapName    = "udp_payload_map"
-	SocketMapName        = "socket_map"
+	UdpMapName           = "tg_udp_map"
+	UdpRetprobeMapName   = "tg_udp_retprobe_map"
+	UdpRetprobeStatsName = "tg_udp_retprobe_map_stats"
+	UdpConfigMapName     = "tg_udp_config_map"
+	UdpPayloadMapName    = "tg_udp_payload_map"
+	SocketMapName        = "tg_socket_map"
 
 	stataCacheSize = 32000
 )
@@ -91,7 +91,7 @@ var (
 		"bpf_sock_create.o",
 		"sk_alloc",
 		"kretprobe/sk_alloc",
-		"kretprobe_sk_alloc",
+		"tg_ret_sk_alloc",
 		"kprobe",
 	).SetRetProbe(true)
 
@@ -99,14 +99,14 @@ var (
 		"bpf_sock_release.o",
 		"__sk_free",
 		"kprobe/__sk_free",
-		"kprobe___sk_free",
+		"tg___sk_free",
 		"kprobe")
 
 	InetSend = program.Builder(
 		"bpf_inet_send.o",
 		"inet_send",
 		"cgroup_skb/egress",
-		"cgroup_skb_egress",
+		"tg_skb_egress",
 		"cgrp_egress",
 	)
 
@@ -114,7 +114,7 @@ var (
 		"bpf_inet_send.o",
 		"inet_recv",
 		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+		"tg_skb_ingress",
 		"cgrp_ingress",
 	)
 
@@ -122,7 +122,7 @@ var (
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_send",
 		"cgroup_skb/egress",
-		"cgroup_skb_egress",
+		"tg_skb_egress",
 		"cgrp_egress",
 	)
 
@@ -130,7 +130,7 @@ var (
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_recv",
 		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+		"tg_skb_ingress",
 		"cgrp_ingress",
 	)
 
@@ -138,7 +138,7 @@ var (
 		"bpf_inet_send_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
 		"kprobe/__cgroup_bpf_run_filter_skb",
-		"kprobe___cgroup_bpf_run_filter_skb",
+		"tg_run_filter_skb",
 		"kprobe_udp",
 	)
 
@@ -146,7 +146,7 @@ var (
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
-		"kprobe_udp_sendmsg",
+		"tg_udp_sendmsg",
 		"kprobe",
 	)
 
@@ -154,7 +154,7 @@ var (
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
-		"kretprobe_udp_sendmsg",
+		"tg_ret_udp_sendmsg",
 		"kprobe",
 	).SetRetProbe(true)
 
@@ -162,7 +162,7 @@ var (
 		"bpf_udp_send_recv.o",
 		"udpv6_sendmsg",
 		"kprobe/udpv6_sendmsg",
-		"kprobe_udpv6_sendmsg",
+		"tg_udpv6_sendmsg",
 		"kprobe",
 	)
 
@@ -170,7 +170,7 @@ var (
 		"bpf_udp_send_recv.o",
 		"udpv6_sendmsg",
 		"kretprobe/udpv6_sendmsg",
-		"kretprobe_udpv6_sendmsg",
+		"tg_ret_udpv6_sendmsg",
 		"kprobe",
 	).SetRetProbe(true)
 
@@ -178,13 +178,13 @@ var (
 		"bpf_udp_send_recv.o",
 		"skb_consume_udp",
 		"kprobe/skb_consume_udp",
-		"kprobe_skb_consume_udp",
+		"tg_skb_consume_udp",
 		"kprobe",
 	)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, Udp4Send)
-	SocketCookieStats = program.MapBuilder("socket_map_stats", Udp4Send)
+	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", Udp4Send)
 
 	// UDP maps
 	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)

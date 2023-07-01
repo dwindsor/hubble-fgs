@@ -68,7 +68,7 @@ set_tuple_from_skb(struct msg_ip_tuple *tuple, struct sk_buff *skb)
 }
 
 __attribute__((section("kprobe/kfree_skb"), used)) int
-event_kfree_skb(struct pt_regs *ctx)
+tg_event_kfree_skb(struct pt_regs *ctx)
 {
 	struct msg_kfree_skb msg = { 0 };
 	bool emit;

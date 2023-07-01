@@ -29,7 +29,7 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 	int zero = 0;
 	s64 latency = 0;
 
-	latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
+	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 	if (!latency_config) {
 		return 1;
 	}

@@ -30,7 +30,7 @@ udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info || !ip)
 		return 0;
 
@@ -105,7 +105,7 @@ udp_port_info(struct udphdr *udp, u64 send)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -164,10 +164,10 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	key.cookie = *cookie;
 	udp_key(&key, ip, ipv6, udp, send);
 
-	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
+	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 
 	if (!value) {
-		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
 		if (!value)
 			return 0;
 
@@ -211,7 +211,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 			emit_udp_connect_event(skb, cookie, value);
 		}
 
-		map_update_elem(&udp_map, &key, value, 0);
+		map_update_elem(&tg_udp_map, &key, value, 0);
 	} else if (process && value->pid != process->key.pid) {
 		/* PID doesn't match, so this must be a new socket */
 		if (send)
@@ -277,12 +277,12 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	int zero = 0;
 	s64 latency = 0;
 
-	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
+	config = (struct udp_sensor_config *)map_lookup_elem(&tg_udp_config_map, &zero);
 	if (!config)
 		return 1;
 
 	if (!send) {
-		latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
+		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 		if (!latency_config)
 			return 1;
 
@@ -346,11 +346,11 @@ udp_watermarks(void *ctx, u64 *cookie, struct udp_packet_details *packet, u64 se
 	struct socketmap_value *process;
 	int zero = 0;
 
-	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
+	config = (struct udp_sensor_config *)map_lookup_elem(&tg_udp_config_map, &zero);
 	if (!config || !config->watermarks_enable)
 		return;
 
-	c = (struct process_network_watermarks_config *)map_lookup_elem(&pn_watermarks_config_heap, &zero);
+	c = (struct process_network_watermarks_config *)map_lookup_elem(&tg_pn_watermarks_config_heap, &zero);
 	if (!c)
 		return;
 	c->avg_window_size_ms = config->watermarks_avg_window_size_ms;
@@ -394,7 +394,7 @@ inet_handler_lazy(struct __sk_buff *skb, u64 send)
 	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
 		return;
 
-	cookie = (u64 *)map_lookup_elem(&udp_cookie_heap, &zero);
+	cookie = (u64 *)map_lookup_elem(&tg_udp_cookie_heap, &zero);
 	if (!cookie)
 		return;
 	write_cookie(cookie, (u64)skb->sk);
@@ -404,7 +404,7 @@ inet_handler_lazy(struct __sk_buff *skb, u64 send)
 		return;
 	}
 
-	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
 		return;
 
@@ -511,7 +511,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 		emit_ip_error_event(ctx, 0, 0, false, 0, send + 1, 0, IP_ERROR_INET_NO_COOKIE);
 		return;
 	}
-	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
 		return;
 
@@ -628,7 +628,7 @@ inet_handler(struct __sk_buff *skb, u64 send)
 		return;
 
 	write_cookie(&cookie, (u64)skb->sk);
-	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
 		return;
 

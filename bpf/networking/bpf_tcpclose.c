@@ -27,7 +27,7 @@ struct {
 } tcp_close_event_map SEC(".maps");
 
 __attribute__((section("kprobe/tcp_set_state"), used)) int
-event_tcp_close(struct pt_regs *ctx)
+tg_event_tcp_close(struct pt_regs *ctx)
 {
 	struct msg_ip_event *val;
 	struct socketmap_value *process;
@@ -155,9 +155,9 @@ event_tcp_close(struct pt_regs *ctx)
 		del_socketmap(&cookie, &tuple);
 
 		del_tlsmap(&cookie);
-		map_delete_elem(&http_map, &tuple);
+		map_delete_elem(&tg_http_map, &tuple);
 		tuple.remaining = 1;
-		map_delete_elem(&http_map, &tuple);
+		map_delete_elem(&tg_http_map, &tuple);
 		bottle_drop(&cookie);
 	} else {
 		del_socketmap(&cookie, 0);

@@ -37,28 +37,28 @@ var (
 		"bpf_tls_skmsg.o",
 		"sk_msg",
 		"sk_msg/fgs_tls",
-		"bpf_tls_sk_msg_fgs",
+		"tg_tls_sk_msg_fgs",
 		"skmsg")
 
 	SkSkbVerdict = program.Builder(
 		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
-		"bpf_tls_skskb_verdict_fgs",
+		"tg_tls_skskb_verdict_fgs",
 		"sk_skb_verdict")
 
 	SkSkbParser = program.Builder(
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
-		"bpf_tls_skskb_parser_fgs",
+		"tg_tls_skskb_parser_fgs",
 		"sk_skb_parser")
 
 	SockoptSet = program.Builder(
 		"bpf_setsockopt.o",
 		"cgroup",
 		"cgroup/setsockopt",
-		"cgroup_setsockopt",
+		"tg_setsockopt",
 		"cgrp_socketopt",
 	)
 
@@ -69,14 +69,14 @@ var (
 		"bpf_tls_inet_send.o",
 		"tls_inet_send",
 		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+		"tg_skb_ingress",
 		"tls_cgrp_ingress")
 
 	CGEgress = program.Builder(
 		"bpf_tls_inet_send.o",
 		"tls_inet_recv",
 		"cgroup_skb/egress",
-		"cgroup_skb_egress",
+		"tg_skb_egress",
 		"tls_cgrp_egress")
 
 	// TLS maps
@@ -84,13 +84,13 @@ var (
 	MapStats    = tcp.TLSMapStats
 	Bottle      = tcp.TLSBottles
 	BottleStats = tcp.TLSBottleStats
-	TailCalls   = program.MapBuilder("tls_calls", Skmsg)
+	TailCalls   = program.MapBuilder("tg_tls_calls", Skmsg)
 	// CGroup TLS maps
-	CGParserStats = program.MapBuilder("tls_parser_stats", CGEgress)
-	CGTailCalls   = program.MapBuilder("tls_calls", CGIngress)
+	CGParserStats = program.MapBuilder("tg_tls_parser_stats", CGEgress)
+	CGTailCalls   = program.MapBuilder("tg_tls_calls", CGIngress)
 	// Sockops Filter
 	FilterMap   = sockops.TlsFilterMap
-	ParserStats = program.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
+	ParserStats = program.MapBuilder("tg_tls_parser_stats", sockops.SockopsEstablished)
 	// Socket links
 	SocketMap   = tcp.SocketMap
 	SocketStats = tcp.SocketStats
@@ -130,7 +130,7 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	return sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters)
+	return sockops.SetFilter(args.MapDir, "tg_tls_filter_map", tlsFilters)
 }
 
 type skSkbVerdictTLSSensor struct {
@@ -303,5 +303,5 @@ func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	}
-	return sockops.SetFilter(args.MapDir, "tls_filter_map", tlsFilters)
+	return sockops.SetFilter(args.MapDir, "tg_tls_filter_map", tlsFilters)
 }

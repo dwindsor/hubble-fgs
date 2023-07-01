@@ -31,14 +31,14 @@ struct {
 	__type(key, __u32);
 	__type(value, struct tcp_send_check_sample_cfg);
 	__uint(max_entries, 1);
-} tcp_send_check_sampler SEC(".maps");
+} tg_tcp_send_check_sampler SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
-} tcp_send_check_event_map SEC(".maps");
+} tg_tcp_send_check_event_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
 __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
@@ -107,7 +107,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			process->zero_window++;
 
 		cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
-			&tcp_send_check_sampler, &zero);
+			&tg_tcp_send_check_sampler, &zero);
 		if (!cfg)
 			return 0;
 
@@ -123,7 +123,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 
 		process->last_time = current_time_ns;
 		val = (struct msg_ip_event *)map_lookup_elem(
-			&tcp_send_check_event_map, &zero);
+			&tg_tcp_send_check_event_map, &zero);
 		if (!val)
 			goto out;
 

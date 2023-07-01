@@ -114,7 +114,7 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	if (iph->protocol != IPPROTO_UDP && iph->protocol != IPPROTO_TCP)
 		return true;
 
-	latency_config = (struct latency_config *)map_lookup_elem(&latency_config_map, &zero);
+	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 	if (!latency_config)
 		return true;
 

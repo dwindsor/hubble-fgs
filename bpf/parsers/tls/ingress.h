@@ -250,12 +250,12 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 	if (!cookie_val)
 		return;
 
-	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
 	if (!cookie)
 		return;
 	*cookie = cookie_val;
 
-	event = map_lookup_elem(&tls_map, cookie);
+	event = map_lookup_elem(&tg_tls_map, cookie);
 	if (!event)
 		return;
 

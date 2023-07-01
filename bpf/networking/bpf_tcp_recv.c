@@ -8,7 +8,7 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("cgroup_skb/ingress"), used)) int
-tcp_recv(struct __sk_buff *skb)
+tg_tcp_recv(struct __sk_buff *skb)
 {
 	tcp_handler(skb);
 	return SK_PASS;

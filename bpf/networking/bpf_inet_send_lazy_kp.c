@@ -9,7 +9,7 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("kprobe/__cgroup_bpf_run_filter_skb"), used)) int
-inet_lazy_send_kp(struct pt_regs *ctx)
+tg_inet_lazy_send_kp(struct pt_regs *ctx)
 {
 	struct sock *sk = (void *)PT_REGS_PARM1_CORE(ctx);
 	struct sk_buff *skb = (void *)PT_REGS_PARM2_CORE(ctx);

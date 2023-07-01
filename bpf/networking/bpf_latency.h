@@ -79,7 +79,7 @@ struct {
 	__type(key, int);
 	__type(value, struct latency_config);
 	__uint(max_entries, 1);
-} latency_config_map SEC(".maps");
+} tg_latency_config_map SEC(".maps");
 
 /* Calculate latency from packet send time stamp. */
 static inline __attribute__((always_inline)) s64

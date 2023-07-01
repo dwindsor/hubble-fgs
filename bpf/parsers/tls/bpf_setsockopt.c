@@ -51,7 +51,7 @@ setsockopt(struct bpf_sockopt *ctx)
 	if (ctx->level != SOL_TLS || ctx->optname != TLS_TX)
 		return 1;
 
-	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
 	if (!cookie)
 		return 1;
 
@@ -59,7 +59,7 @@ setsockopt(struct bpf_sockopt *ctx)
 	if (!*cookie)
 		return 1;
 
-	event = map_lookup_elem(&tls_map, cookie);
+	event = map_lookup_elem(&tg_tls_map, cookie);
 	if (event) {
 		struct sock_key filter_key = { 0 };
 		int result;

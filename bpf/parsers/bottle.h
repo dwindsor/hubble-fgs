@@ -25,7 +25,7 @@ struct {
 	__type(key, int);
 	__type(value, struct bottle);
 	__uint(max_entries, 1);
-} bottle_heap SEC(".maps");
+} tg_bottle_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -33,14 +33,14 @@ struct {
 	__type(key, __u64);
 	__type(value, struct bottle);
 	__uint(max_entries, 1024);
-} bottles SEC(".maps");
+} tg_bottles SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __s32);
 	__type(value, __s64);
 	__uint(max_entries, 1);
-} bottle_map_stats SEC(".maps");
+} tg_bottle_map_stats SEC(".maps");
 
 static inline __attribute__((always_inline)) void *
 bottle_get_data(struct bottle *bottle, u32 off, u32 len)
@@ -57,38 +57,38 @@ bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 
 static inline __attribute__((always_inline)) void bottle_drop(u64 *cookie)
 {
-	int err = map_delete_elem(&bottles, cookie);
+	int err = map_delete_elem(&tg_bottles, cookie);
 	int zero = 0;
 	s64 *cntr;
-	if (!err && (cntr = map_lookup_elem(&bottle_map_stats, &zero)))
+	if (!err && (cntr = map_lookup_elem(&tg_bottle_map_stats, &zero)))
 		*cntr = *cntr - 1;
 }
 
 static inline __attribute__((always_inline)) struct bottle *
 bottle_fill(ctx_md *ctx, u64 *cookie, int payload_off)
 {
-	struct bottle *bottle = map_lookup_elem(&bottles, cookie);
+	struct bottle *bottle = map_lookup_elem(&tg_bottles, cookie);
 
 	if (!bottle) {
 		int zero = 0;
 		int err;
 
-		bottle = map_lookup_elem(&bottle_heap, &zero);
+		bottle = map_lookup_elem(&tg_bottle_heap, &zero);
 		if (!bottle)
 			return 0;
 
 		bottle->len = 0;
 
-		err = map_update_elem(&bottles, cookie, bottle, 0);
+		err = map_update_elem(&tg_bottles, cookie, bottle, 0);
 		if (err) {
 			return 0;
 		} else {
-			s64 *cntr = map_lookup_elem(&bottle_map_stats, &zero);
+			s64 *cntr = map_lookup_elem(&tg_bottle_map_stats, &zero);
 			if (cntr)
 				*cntr = *cntr + 1;
 		}
 
-		bottle = map_lookup_elem(&bottles, cookie);
+		bottle = map_lookup_elem(&tg_bottles, cookie);
 		if (!bottle)
 			return 0;
 	}
@@ -146,7 +146,7 @@ bottle_fill(ctx_md *ctx, u64 *cookie, int payload_off)
 	return bottle;
 
 discard:
-	map_delete_elem(&bottles, cookie);
+	map_delete_elem(&tg_bottles, cookie);
 	return 0;
 }
 

@@ -40,7 +40,7 @@ skskb_http_key(struct __sk_buff *skb, struct msg_tls_ip *key)
 }
 
 __attribute__((section("sk_skb/stream_verdict/fgshttp"), used)) int
-bpf_skskb_http_verdict(struct __sk_buff *skb)
+tg_skskb_http_verdict(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 
@@ -49,7 +49,7 @@ bpf_skskb_http_verdict(struct __sk_buff *skb)
 }
 
 __attribute__((section("sk_skb/stream_verdict/0"), used)) int
-bpf_skskb_http_response(struct __sk_buff *skb)
+tg_skskb_http_response(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
@@ -69,7 +69,7 @@ bpf_skskb_http_response(struct __sk_buff *skb)
 }
 
 __attribute__((section("sk_skb/stream_verdict/1"), used)) int
-bpf_skskb_http_request(struct __sk_buff *skb)
+tg_skskb_http_request(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
@@ -89,7 +89,7 @@ bpf_skskb_http_request(struct __sk_buff *skb)
 }
 
 __attribute__((section("sk_skb/stream_verdict/2"), used)) int
-bpf_skskb_get_more_headers(struct __sk_buff *skb)
+tg_skskb_get_more_headers(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
@@ -109,7 +109,7 @@ bpf_skskb_get_more_headers(struct __sk_buff *skb)
 }
 
 __attribute__((section("sk_skb/stream_verdict/3"), used)) int
-bpf_skskb_http2(struct __sk_buff *skb)
+tg_skskb_http2(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 

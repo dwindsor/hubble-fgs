@@ -15,13 +15,13 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("tracepoint/syscalls/sys_exit_accept"), used)) int
-event_tcp_acceptret(struct accept_args *ctx)
+tg_event_tcp_acceptret(struct accept_args *ctx)
 {
 	return __event_tcp_acceptret(ctx);
 }
 
 __attribute__((section("tracepoint/syscalls/sys_exit_accept4"), used)) int
-event_tcp_accept4ret(struct accept_args *ctx)
+tg_event_tcp_accept4ret(struct accept_args *ctx)
 {
 	return __event_tcp_acceptret(ctx);
 }

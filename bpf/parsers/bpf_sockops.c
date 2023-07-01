@@ -15,21 +15,21 @@ struct {
 	__type(key, struct sock_key);
 	__type(value, int);
 	__uint(max_entries, SOCKOPS_TLS_MAP_SIZE);
-} tls_sock_map SEC(".maps");
+} tg_tls_sock_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_SOCKHASH);
 	__type(key, struct sock_key);
 	__type(value, int);
 	__uint(max_entries, SOCKOPS_HTTP_MAP_SIZE);
-} http_sock_map SEC(".maps");
+} tg_http_sock_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_SOCKHASH);
 	__type(key, struct sock_key);
 	__type(value, int);
 	__uint(max_entries, SOCKOPS_NOP_MAP_SIZE);
-} nop_sock_map SEC(".maps");
+} tg_nop_sock_map SEC(".maps");
 
 static inline void bpf_sock_ops_ip(struct bpf_sock_ops *skops)
 {
@@ -45,15 +45,15 @@ static inline void bpf_sock_ops_ip(struct bpf_sock_ops *skops)
 
 	result = tls_filter(&filter_key);
 	if (result != PROTO_SKIP)
-		sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
+		sock_hash_update(skops, &tg_tls_sock_map, &key, BPF_NOEXIST);
 
 	result = http_filter(&filter_key);
 	if (result != PROTO_SKIP)
-		sock_hash_update(skops, &http_sock_map, &key, BPF_NOEXIST);
+		sock_hash_update(skops, &tg_http_sock_map, &key, BPF_NOEXIST);
 
 	result = nop_filter(&filter_key);
 	if (result != PROTO_SKIP)
-		sock_hash_update(skops, &nop_sock_map, &key, BPF_NOEXIST);
+		sock_hash_update(skops, &tg_nop_sock_map, &key, BPF_NOEXIST);
 }
 
 __section("sockops/fgs_sockops") int bpf_sockmap(struct bpf_sock_ops *skops)

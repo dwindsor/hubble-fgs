@@ -526,7 +526,7 @@ put_reverse_http_context(struct msg_tls_ip *key, struct msg_http_event *event)
 		.uid = key->uid,
 	};
 	event->request.state = http2_expect_frame;
-	return map_update_elem(&http_map, &rkey, event, BPF_NOEXIST);
+	return map_update_elem(&tg_http_map, &rkey, event, BPF_NOEXIST);
 }
 
 static inline __attribute__((always_inline)) void
@@ -604,17 +604,17 @@ get_http_context(struct msg_tls_ip *key)
 {
 	struct msg_http_event *http;
 
-	http = map_lookup_elem(&http_map, key);
+	http = map_lookup_elem(&tg_http_map, key);
 	if (!http) {
 		struct msg_http_event *__http;
 		int zero = 0;
 
-		__http = map_lookup_elem(&http_map_heap, &zero);
+		__http = map_lookup_elem(&tg_http_map_heap, &zero);
 		if (!__http)
 			goto out;
 
-		map_update_elem(&http_map, key, __http, BPF_NOEXIST);
-		http = map_lookup_elem(&http_map, key);
+		map_update_elem(&tg_http_map, key, __http, BPF_NOEXIST);
+		http = map_lookup_elem(&tg_http_map, key);
 	}
 out:
 	return http;

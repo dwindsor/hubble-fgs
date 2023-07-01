@@ -307,43 +307,43 @@ func unloadNetworkSensor() error {
 var (
 	DevQueueXmit = program.Builder(
 		"bpf_dev_queue_xmit.o",
-		"dev_queue_xmit",
+		"__dev_queue_xmit",
 		"kprobe/dev_queue_xmit",
-		"kprobe_dev_queue_xmit",
+		"tg_dev_queue_xmit",
 		"kprobe")
 	IngressSkb = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"netif_receive_skb",
 		"kprobe/netif_receive_skb",
-		"kprobe_netif_receive_skb",
+		"tg_netif_receive_skb",
 		"kprobe",
 	)
 	IngressGro = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"napi_gro_receive",
 		"kprobe/napi_gro_receive",
-		"kprobe_napi_gro_receive",
+		"tg_napi_gro_receive",
 		"kprobe",
 	)
 	NetifRxInternal = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"netif_rx",
 		"kprobe/__netif_rx",
-		"kprobe_netif_rx",
+		"tg_netif_rx",
 		"kprobe",
 	)
 	UnregisterNetdev = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"call_netdevice_notifiers_info",
 		"kprobe/call_netdevice_notifiers_info",
-		"kprobe_call_netdevice_notifiers_info",
+		"tg_call_netdevice_notifiers_info",
 		"kprobe",
 	)
 	ExitNs = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"net_ns_net_exit",
 		"kprobe/net_ns_net_exit",
-		"kprobe_net_ns_net_exit",
+		"tg_net_ns_net_exit",
 		"kprobe",
 	)
 

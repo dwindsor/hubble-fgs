@@ -83,12 +83,12 @@ func TestLoadNopSensor(t *testing.T) {
 
 		sensorMaps = []tus.SensorMap{
 			// maps are loaded only in bpf_sockmap program
-			tus.SensorMap{Name: "nop_sock_map", Progs: []uint{0}},
-			tus.SensorMap{Name: "http_sock_map", Progs: []uint{0}},
-			tus.SensorMap{Name: "tls_sock_map", Progs: []uint{0}},
-			tus.SensorMap{Name: "nop_filter_map", Progs: []uint{0}},
-			tus.SensorMap{Name: "http_filter_map", Progs: []uint{0}},
-			tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_nop_sock_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_http_sock_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_nop_filter_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_http_filter_map", Progs: []uint{0}},
+			tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0}},
 		}
 	} else {
 		sensorProgs = []tus.SensorProg{

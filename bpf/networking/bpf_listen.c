@@ -23,7 +23,7 @@ struct {
 } tcp_listen_event_map SEC(".maps");
 
 __attribute__((section("kprobe/__inet_hash"), used)) int
-event_sys_listen(struct pt_regs *ctx)
+tg_event_sys_listen(struct pt_regs *ctx)
 {
 	struct msg_ip_event *val;
 	struct execve_map_value *process = 0;

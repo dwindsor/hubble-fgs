@@ -26,14 +26,14 @@ struct {
 	__type(key, __u64);
 	__type(value, struct udp_sock_info);
 	__uint(max_entries, 16384);
-} udp_retprobe_map SEC(".maps");
+} tg_udp_retprobe_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, int64_t);
 	__uint(max_entries, 1);
-} udp_retprobe_map_stats SEC(".maps");
+} tg_udp_retprobe_map_stats SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -54,7 +54,7 @@ udp4_get_info(struct udp_sock_info *sock_info)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -96,7 +96,7 @@ udp6_get_info(struct udp_sock_info *sock_info)
 	struct udp_info *info;
 	int zero = 0;
 
-	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
@@ -188,12 +188,12 @@ add_to_retprobe_map(void *ctx, u64 cookie, u64 *key, struct udp_sock_info *value
 	int zero = 0;
 	long ret;
 
-	ret = map_update_elem(&udp_retprobe_map, key, value, 0);
+	ret = map_update_elem(&tg_udp_retprobe_map, key, value, 0);
 	if (ret < 0) {
 		emit_ip_error_event(ctx, 0, 0, false,
 				    0, 2, 0, IP_ERROR_UDP_RETPROBE_ADD);
 	} else {
-		u32 *stat = (u32 *)map_lookup_elem(&udp_retprobe_map_stats, &zero);
+		u32 *stat = (u32 *)map_lookup_elem(&tg_udp_retprobe_map_stats, &zero);
 		if (stat) {
 			*stat = *stat + 1;
 		}
@@ -203,7 +203,7 @@ add_to_retprobe_map(void *ctx, u64 cookie, u64 *key, struct udp_sock_info *value
 static inline __attribute__((always_inline)) struct udp_sock_info *
 lookup_retprobe_map(void *ctx, u64 *key)
 {
-	return (struct udp_sock_info *)map_lookup_elem(&udp_retprobe_map, key);
+	return (struct udp_sock_info *)map_lookup_elem(&tg_udp_retprobe_map, key);
 }
 
 #define ENOENT 2
@@ -214,7 +214,7 @@ udp_retprobe_map_dec(void)
 	int zero = 0;
 	u32 *stat;
 
-	stat = (u32 *)map_lookup_elem(&udp_retprobe_map_stats, &zero);
+	stat = (u32 *)map_lookup_elem(&tg_udp_retprobe_map_stats, &zero);
 	if (!stat)
 		return;
 
@@ -243,7 +243,7 @@ del_from_retprobe_map(void *ctx, u64 cookie, struct udp_info *info, u64 *key)
 	 * by decrementing the counter and let it fall through. Notice we
 	 * still want to catch other errors.
 	 */
-	ret = map_delete_elem(&udp_retprobe_map, key);
+	ret = map_delete_elem(&tg_udp_retprobe_map, key);
 	if (ret == -ENOENT) {
 		udp_retprobe_map_dec();
 	} else if (ret < 0) {
@@ -337,12 +337,12 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 	key.ipv6 = ipv6;
 	udp_key_daddr_dport(&key, sock_info);
 
-	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
+	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
 		 */
-		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
 		if (!value) {
 			del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 			return 0;
@@ -378,7 +378,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 			emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 		}
 
-		map_update_elem(&udp_map, &key, value, 0);
+		map_update_elem(&tg_udp_map, &key, value, 0);
 	} else {
 		update_submitted_value(value, ret);
 		if (!value->pid) {
@@ -411,10 +411,10 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 	void *skb_head;
 	u8 ipver;
 
-	info = (struct udp_info *)map_lookup_elem(&udp_info_heap, &zero);
+	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
 		return 0;
-	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
 		return 0;
 
@@ -483,7 +483,7 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 	key->padding1 = 0;
 	key->padding2 = 0;
 
-	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
 		return false;
 
@@ -636,13 +636,13 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 		key.dport = 0;
 	}
 
-	value = (struct udp_info_value *)map_lookup_elem(&udp_map, &key);
+	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
 		 * Should be a rare occurrence.
 		 */
-		value = (struct udp_info_value *)map_lookup_elem(&udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
 		if (!value)
 			return 0;
 
@@ -658,7 +658,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 		if (hasctx && valid_addr) {
 			emit_udp_connect_event(ctx, &cookie, value);
 		}
-		map_update_elem(&udp_map, &key, value, 0);
+		map_update_elem(&tg_udp_map, &key, value, 0);
 	} else {
 		update_consumed_value(value, len);
 		if ((value->saddr[0] == 0 && value->saddr[1] == 0) ||

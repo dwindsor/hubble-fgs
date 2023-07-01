@@ -55,7 +55,7 @@ tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 	struct sock_key filter_key = { 0 };
 	int result;
 
-	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
 	if (!cookie)
 		return;
 	write_cookie(cookie, (u64)skb->sk);

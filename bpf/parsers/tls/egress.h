@@ -68,7 +68,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 	tuple.uid = get_socket_cookie(ctx);
 #endif
 
-	state = map_lookup_elem(&tls_map, cookie);
+	state = map_lookup_elem(&tg_tls_map, cookie);
 	if (state) {
 #ifdef SK_MSG
 

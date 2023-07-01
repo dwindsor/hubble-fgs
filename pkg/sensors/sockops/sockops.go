@@ -32,19 +32,19 @@ var (
 		"bpf_sockops.o",
 		"sockops",
 		"sockops/fgs_sockops",
-		"sockops_fgs_sockops",
+		"tg_sockops",
 		"sockops")
 
-	TlsSockMapName  = "tls_sock_map"
-	httpSockMapName = "http_sock_map"
-	NopSockMapName  = "nop_sock_map"
+	TlsSockMapName  = "tg_tls_sock_map"
+	httpSockMapName = "tg_http_sock_map"
+	NopSockMapName  = "tg_nop_sock_map"
 
 	HttpSockMap   = program.MapBuilder(httpSockMapName, SockopsEstablished)
 	TlsSockMap    = program.MapBuilder(TlsSockMapName, SockopsEstablished)
 	NopSockMap    = program.MapBuilder(NopSockMapName, SockopsEstablished)
-	TlsFilterMap  = program.MapBuilder("tls_filter_map", SockopsEstablished)
-	HttpFilterMap = program.MapBuilder("http_filter_map", SockopsEstablished)
-	NopFilterMap  = program.MapBuilder("nop_filter_map", SockopsEstablished)
+	TlsFilterMap  = program.MapBuilder("tg_tls_filter_map", SockopsEstablished)
+	HttpFilterMap = program.MapBuilder("tg_http_filter_map", SockopsEstablished)
+	NopFilterMap  = program.MapBuilder("tg_nop_filter_map", SockopsEstablished)
 )
 
 const (

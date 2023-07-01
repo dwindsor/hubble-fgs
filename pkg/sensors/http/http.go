@@ -80,21 +80,21 @@ var (
 		"bpf_http.o",
 		"sk_msg",
 		"sk_msg/fgs",
-		"sk_msg_fgs",
+		"tg_sk_msg_fgs",
 		"http_skmsg")
 
 	SkSkbParser = program.Builder(
 		"bpf_http_parser.o",
 		"sk_skb",
 		"sk_skb_http_parser/fgshttp",
-		"sk_skb_parser",
+		"tg_sk_skb_parser",
 		"sk_skb_parser")
 
 	SkSkbVerdict = program.Builder(
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgshttp",
-		"bpf_skskb_http_verdict",
+		"tg_skskb_http_verdict",
 		"sk_skb_verdict")
 
 	// Http maps
@@ -128,7 +128,7 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if err != nil {
 		return err
 	}
-	return sockops.SetFilter(args.MapDir, "http_filter_map", filters)
+	return sockops.SetFilter(args.MapDir, "tg_http_filter_map", filters)
 }
 
 func (http *httpSensor) PolicyHandler(

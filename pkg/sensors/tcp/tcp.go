@@ -52,7 +52,7 @@ var (
 		"bpf_tcpmon.o",
 		"tcp_connect",
 		"kprobe/tcp_connect",
-		"kprobe_tcp_connect",
+		"tg_tcp_connect",
 		"kprobe",
 	)
 
@@ -60,7 +60,7 @@ var (
 		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
-		"kprobe_tcp_set_state",
+		"tg_tcp_set_state",
 		"kprobe",
 	)
 
@@ -68,7 +68,7 @@ var (
 		"bpf_listen.o",
 		"__inet_hash",
 		"kprobe/__inet_hash",
-		"kprobe___inet_hash",
+		"tg___inet_hash",
 		"kprobe",
 	)
 
@@ -76,7 +76,7 @@ var (
 		"bpf_tcpaccept.o",
 		"syscalls/sys_exit_accept",
 		"tracepoint/syscalls/sys_exit_accept",
-		"tracepoint_syscalls_sys_exit_accept",
+		"tg_syscalls_sys_exit_accept",
 		"tracepoint",
 	)
 
@@ -84,7 +84,7 @@ var (
 		"bpf_tcpaccept.o",
 		"syscalls/sys_exit_accept4",
 		"tracepoint/syscalls/sys_exit_accept4",
-		"tracepoint_syscalls_sys_exit_accept4",
+		"tg_syscalls_sys_exit_accept4",
 		"tracepoint",
 	)
 
@@ -92,14 +92,14 @@ var (
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
-		"kprobe_tcp_v4_send_check",
+		"tg_tcp_v4_send_check",
 		"tcp_sensor")
 
 	SendCheck6 = program.Builder(
 		"bpf_tcp_send_check.o",
 		"inet6_csk_xmit",
 		"kprobe/inet6_csk_xmit",
-		"kprobe_inet6_csk_xmit",
+		"tg_inet6_csk_xmit",
 		"tcp_sensor")
 
 	// RTT Tracer uses kprobe on the TCP ACK Send Check to get the rtt_us value
@@ -109,7 +109,7 @@ var (
 		"bpf_tcp_rtt.o",
 		"__tcp_ack_snd_check",
 		"kprobe/__tcp_ack_snd_check",
-		"kprobe_tcp_ack_snd_check",
+		"tg_tcp_ack_snd_check",
 		"kprobe")
 
 	// Latency uses TC egress to add timestamp and cgroup skb ingress to calculate
@@ -118,7 +118,7 @@ var (
 		"bpf_tcp_recv.o",
 		"tcp_recv",
 		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+		"tg_skb_ingress",
 		"cgrp_tcp_ingress",
 	)
 
@@ -126,25 +126,25 @@ var (
 		"bpf_tcp_recv_lazy.o",
 		"tcp_recv",
 		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+		"tg_skb_ingress",
 		"cgrp_tcp_ingress",
 	)
 
 	// Maps for TCP Sockets
-	SocketMap         = program.MapBuilder("socket_map", Connect)
-	TlsSocketMap      = program.MapBuilder("tls_socket_map", Connect)
-	SocketStats       = program.MapBuilder("socket_map_stats", Connect)
+	SocketMap         = program.MapBuilder("tg_socket_map", Connect)
+	TlsSocketMap      = program.MapBuilder("tg_tls_socket_map", Connect)
+	SocketStats       = program.MapBuilder("tg_socket_map_stats", Accept)
 	FdLookupConfigMap = program.MapBuilder(ip.FdLookupConfigMapName, Accept)
 
 	// Parser maps
-	HTTPContext    = program.MapBuilder("http_map", Close)
-	TLSContext     = program.MapBuilder("tls_map", Close)
-	TLSMapStats    = program.MapBuilder("tls_map_stats", Connect)
-	TLSBottles     = program.MapBuilder("bottles", Close)
-	TLSBottleStats = program.MapBuilder("bottle_map_stats", Close)
+	HTTPContext    = program.MapBuilder("tg_http_map", Close)
+	TLSContext     = program.MapBuilder("tg_tls_map", Close)
+	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", Connect)
+	TLSBottles     = program.MapBuilder("tg_bottles", Close)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", Close)
 
 	// Maps for watermarks detection
-	SendCheckSampler            = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
+	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 
 	// Map for latency

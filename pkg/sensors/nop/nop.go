@@ -42,21 +42,21 @@ var (
 		"bpf_nop.o",
 		"sk_msg",
 		"sk_msg/fgsnop",
-		"sk_msg_fgs_nop",
+		"tg_skmsg_nop",
 		"nop_skmsg")
 
 	SkSkbParser = program.Builder(
 		"bpf_nop_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgsnop",
-		"sk_skb_parser_nop",
+		"tg_skskb_pnop",
 		"nop_skskb_parser")
 
 	SkSkbVerdict = program.Builder(
 		"bpf_nop_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgsnop",
-		"sk_skb_verdict_nop",
+		"tg_skskb_vnop",
 		"nop_skskb_verdict")
 )
 

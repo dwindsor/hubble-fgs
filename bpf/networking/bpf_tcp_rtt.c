@@ -21,7 +21,7 @@ struct rcv_rtt_est {
 #define INT_MAX		((int)(~0U >> 1))
 
 __attribute__((section("kprobe/__tcp_ack_snd_check"), used)) int
-tcp_ack_snd_check(struct pt_regs *ctx)
+tg_tcp_ack_snd_check(struct pt_regs *ctx)
 {
 	struct tcp_sock *skp = (struct tcp_sock *)PT_REGS_PARM1_CORE(ctx);
 	struct tcp_send_check_sample_cfg *cfg;
@@ -42,7 +42,7 @@ tcp_ack_snd_check(struct pt_regs *ctx)
 
 	probe_read(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
-		&tcp_send_check_sampler, &zero);
+		&tg_tcp_send_check_sampler, &zero);
 	if (!cfg) {
 		return 0;
 	}

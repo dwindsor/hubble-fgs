@@ -13,21 +13,21 @@ struct {
 	__uint(key_size, sizeof(__u32));
 	__uint(value_size, sizeof(__u32));
 	__uint(max_entries, 2);
-} tls_calls SEC(".maps");
+} tg_tls_calls SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u64);
 	__type(value, struct msg_tls);
 	__uint(max_entries, 32000);
-} tls_map SEC(".maps");
+} tg_tls_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __s32);
 	__type(value, __s64);
 	__uint(max_entries, 1);
-} tls_map_stats SEC(".maps");
+} tg_tls_map_stats SEC(".maps");
 
 /* Mark a TLS entry as completed to stop further parsing. */
 static inline __attribute__((always_inline)) void
@@ -39,21 +39,21 @@ tls_mark_complete(struct msg_tls *tls)
 static inline __attribute__((always_inline)) void add_tlsmap(__u64 *cookie,
 							     struct msg_tls *v)
 {
-	int err = map_update_elem(&tls_map, cookie, v, 0);
+	int err = map_update_elem(&tg_tls_map, cookie, v, 0);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&tls_map_stats, &zero)))
+	if (!err && (cntr = map_lookup_elem(&tg_tls_map_stats, &zero)))
 		*cntr = *cntr + 1;
 }
 
 static inline __attribute__((always_inline)) void del_tlsmap(__u64 *cookie)
 {
-	int err = map_delete_elem(&tls_map, cookie);
+	int err = map_delete_elem(&tg_tls_map, cookie);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&tls_map_stats, &zero)))
+	if (!err && (cntr = map_lookup_elem(&tg_tls_map_stats, &zero)))
 		*cntr = *cntr - 1;
 }
 
@@ -62,28 +62,28 @@ struct {
 	__type(key, __u32);
 	__type(value, __u8);
 	__uint(max_entries, TLS_MAX_PORTS);
-} tls_filter_map SEC(".maps");
+} tg_tls_filter_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u32);
 	__type(value, __u8);
 	__uint(max_entries, TLS_MAX_PORTS);
-} http_filter_map SEC(".maps");
+} tg_http_filter_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u32);
 	__type(value, __u8);
 	__uint(max_entries, TLS_MAX_PORTS);
-} nop_filter_map SEC(".maps");
+} tg_nop_filter_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, u64);
 	__uint(max_entries, 1);
-} tls_cookie_heap SEC(".maps");
+} tg_tls_cookie_heap SEC(".maps");
 
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
@@ -108,19 +108,19 @@ map_key_filter(void *filter_map, struct sock_key *key)
 static inline __attribute__((always_inline)) int
 tls_filter(struct sock_key *key)
 {
-	return map_key_filter(&tls_filter_map, key);
+	return map_key_filter(&tg_tls_filter_map, key);
 }
 
 static inline __attribute__((always_inline)) int
 http_filter(struct sock_key *key)
 {
-	return map_key_filter(&http_filter_map, key);
+	return map_key_filter(&tg_http_filter_map, key);
 }
 
 static inline __attribute__((always_inline)) int
 nop_filter(struct sock_key *key)
 {
-	return map_key_filter(&nop_filter_map, key);
+	return map_key_filter(&tg_nop_filter_map, key);
 }
 
 struct __tls_parser_stats {
@@ -140,14 +140,14 @@ struct {
 	__type(key, __s32);
 	__type(value, struct __tls_parser_stats);
 	__uint(max_entries, 1);
-} tls_parser_stats SEC(".maps");
+} tg_tls_parser_stats SEC(".maps");
 
 #define INC_TLS_PARSER_STATS_FUNC(field)                                    \
 	static inline __attribute__((always_inline)) void tls_inc_##field() \
 	{                                                                   \
 		int zero = 0;                                               \
 		struct __tls_parser_stats *stats;                           \
-		stats = map_lookup_elem(&tls_parser_stats, &zero);          \
+		stats = map_lookup_elem(&tg_tls_parser_stats, &zero);       \
 		if (stats)                                                  \
 			stats->cnt_##field++;                               \
 	}
