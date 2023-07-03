@@ -50,6 +50,7 @@ var (
 	pollTimer           = timer.NewPeriodicTimer("Network Event Poll", runNetworkBPFGC, true)
 
 	NetworkMapName = "network_map"
+	bpfEnabled     = false
 )
 
 type networkInfoKey struct {
@@ -295,8 +296,11 @@ func (net *networkSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 }
 
 func unloadNetworkSensor() error {
-	eventTimer.Stop()
-	pollTimer.Stop()
+	if bpfEnabled {
+		pollTimer.Stop()
+	} else {
+		eventTimer.Stop()
+	}
 	return nil
 }
 
@@ -346,8 +350,10 @@ var (
 	NetworkMap = program.MapBuilder(NetworkMapName, DevQueueXmit)
 )
 
-func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
+func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	var defaultCBInterval time.Duration
+	var progs []*program.Program
+	var maps []*program.Map
 
 	if statInterval == 0 {
 		defaultCBInterval = NetworkStatInterval
@@ -356,9 +362,9 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 	}
 
 	versionStr := "__networkPacket_probe__"
-	if bpf {
+	if bpfEnabled {
 		logger.GetLogger().Infof("Enable Packet Interface Statistics")
-		progs := []*program.Program{
+		progs = []*program.Program{
 			DevQueueXmit,
 			//	IngressSkb,
 			IngressGro,
@@ -366,27 +372,28 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 			UnregisterNetdev,
 			ExitNs,
 		}
-		maps := []*program.Map{
+		maps = []*program.Map{
 			NetworkMap,
 		}
 		pollTimer.Start(time.Duration(defaultCBInterval))
-		return sensors.SensorBuilder(versionStr, progs, maps)
+	} else {
+		logger.GetLogger().Infof("Enable Polling Interface Statistics")
+		progs = []*program.Program{
+			ExitNs,
+		}
+		maps = []*program.Map{}
+
+		err := populateSandboxToContainer()
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
+		}
+
+		eventTimer.Start(defaultCBInterval)
 	}
 
-	logger.GetLogger().Infof("Enable Polling Interface Statistics")
-	progs := []*program.Program{
-		ExitNs,
-	}
-	maps := []*program.Map{}
 	sens := sensors.SensorBuilder(versionStr, progs, maps)
 	sens.UnloadHook = unloadNetworkSensor
 
-	err := populateSandboxToContainer()
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
-	}
-
-	eventTimer.Start(defaultCBInterval)
 	return sens
 }
 
@@ -403,7 +410,8 @@ func (net *networkSensor) PolicyHandler(
 		return nil, fmt.Errorf("parser interface sensor does not implement policy filtering")
 	}
 
-	return EnableNetworkParser(spec.Parser.Interface.Packet, spec.Parser.Interface.StatsInterval), nil
+	bpfEnabled = spec.Parser.Interface.Packet
+	return EnableNetworkParser(spec.Parser.Interface.StatsInterval), nil
 }
 
 type MsgNetNsExitEvent struct {

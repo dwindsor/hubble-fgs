@@ -57,7 +57,7 @@ event_exit(struct pt_regs *ctx)
 
 	if (live.counter == 0) {
 		process_watermarks_map_delete(ctx, pid_tgid >> 32);
-		event_exit_send(ctx, pid_tgid >> 32);
+		event_exit_send((void *)ctx, pid_tgid >> 32);
 	}
 
 	return 0;
