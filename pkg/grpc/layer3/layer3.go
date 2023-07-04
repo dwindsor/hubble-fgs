@@ -108,6 +108,7 @@ type MsgIPEventUnix struct {
 	SocketFlags uint32
 	RefCntDone  [2]bool
 	Duration    time.Duration
+	Data        uint64
 }
 
 type MsgUdpSeqCheckErrorEventUnix struct {
@@ -655,6 +656,14 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		details = "Unknown error"
 	}
 
+	var send string
+	switch event.Tuple.Send {
+	case 1:
+		send = "Send"
+	case 2:
+		send = "Receive"
+	}
+
 	fgsEvent := &tetragon.ProcessIpError{
 		Process:       fgsProcess,
 		Parent:        fgsParent,
@@ -663,6 +672,9 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		Version:       version,
 		SockCookie:    event.SockCookie,
 		Details:       details,
+		Send:          send,
+		VersionByte:   uint64(event.Tuple.VersionByte),
+		Data:          event.Data,
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data

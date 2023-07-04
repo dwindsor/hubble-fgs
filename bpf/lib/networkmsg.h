@@ -22,7 +22,9 @@ struct msg_ip_tuple {
 	__u16 dport;
 	__u16 sport;
 	__u8 proto;
-	__u8 pad[3];
+	__u8 send;
+	__u8 version_byte;
+	__u8 pad;
 	__u32 post_daddr;
 	__u16 post_dport;
 	__u16 pad2;

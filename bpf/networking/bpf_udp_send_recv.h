@@ -191,7 +191,7 @@ add_to_retprobe_map(void *ctx, u64 cookie, u64 *key, struct udp_sock_info *value
 	ret = map_update_elem(&udp_retprobe_map, key, value, 0);
 	if (ret < 0) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_UDP_RETPROBE_ADD);
+				    0, 2, 0, IP_ERROR_UDP_RETPROBE_ADD);
 	} else {
 		u32 *stat = (u32 *)map_lookup_elem(&udp_retprobe_map_stats, &zero);
 		if (stat) {
@@ -258,10 +258,10 @@ del_from_retprobe_map(void *ctx, u64 cookie, struct udp_info *info, u64 *key)
 				ip = (void *)&ip6;
 			}
 			emit_ip_error_event(ctx, ip, &cookie, info->ipv6,
-					    IP_ERROR_UDP_RETPROBE_DEL);
+					    0, 2, 0, IP_ERROR_UDP_RETPROBE_DEL);
 		} else {
 			emit_ip_error_event(ctx, 0, &cookie, false,
-					    IP_ERROR_UDP_RETPROBE_DEL);
+					    0, 2, 0, IP_ERROR_UDP_RETPROBE_DEL);
 		}
 	} else {
 		udp_retprobe_map_dec();
@@ -320,7 +320,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 			 * the sock info).
 			 */
 			emit_ip_error_event(ctx, 0, 0, false,
-					    IP_ERROR_UDP_SEND_NO_SOCK_INFO);
+					    0, 2, 0, IP_ERROR_UDP_SEND_NO_SOCK_INFO);
 		}
 		return 0;
 	}
@@ -329,7 +329,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 	if (!cookie) {
 		del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_UDP_SEND_NO_COOKIE);
+				    0, 2, 0, IP_ERROR_UDP_SEND_NO_COOKIE);
 		return 0;
 	}
 
@@ -375,7 +375,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 		if (hasctx) {
 			emit_udp_connect_event(ctx, &cookie, value);
 		} else {
-			emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UDP_SEND_MISSING_PROCESS);
+			emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 		}
 
 		map_update_elem(&udp_map, &key, value, 0);
@@ -386,14 +386,14 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 			if (hasctx) {
 				emit_udp_connect_event(ctx, &cookie, value);
 			} else {
-				emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UDP_SEND_MISSING_PROCESS);
+				emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 			}
 		}
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
 	if (!update_socketmap(&cookie, 0, value->pid)) {
-		emit_ip_error_event(ctx, 0, &cookie, ipv6, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
+		emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
 	}
 
 	del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
@@ -424,7 +424,7 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 		if (!get_ip4_header(&packet->ip.ip4, network_header_off,
 				    skb_head)) {
 			emit_ip_error_event(ctx, 0, cookie, false,
-					    IP_ERROR_UDP_RECV_READ_IP);
+					    ipver, 2, 0, IP_ERROR_UDP_RECV_READ_IP);
 			return 0;
 		}
 		info->ipv6 = false;
@@ -433,20 +433,20 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 		if (!get_ip6_header(&packet->ip.ip6, network_header_off,
 				    skb_head)) {
 			emit_ip_error_event(ctx, 0, cookie, true,
-					    IP_ERROR_UDP_RECV_READ_IP);
+					    ipver, 2, 0, IP_ERROR_UDP_RECV_READ_IP);
 			return 0;
 		}
 		info->ipv6 = true;
 		break;
 	default:
 		emit_ip_error_event(ctx, 0, cookie, false,
-				    IP_ERROR_UDP_RECV_NO_VERSION);
+				    ipver, 2, 0, IP_ERROR_UDP_RECV_NO_VERSION);
 		return 0;
 	}
 
 	if (!get_udp_header(&packet->udp, 0, skb_head, skb)) {
 		emit_ip_error_event(ctx, &packet->ip, cookie, info->ipv6,
-				    IP_ERROR_UDP_RECV_NO_VERSION);
+				    ipver, 2, 0, IP_ERROR_UDP_RECV_NO_VERSION);
 		return 0;
 	}
 
@@ -493,7 +493,7 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 		if (!get_ip4_header(&packet->ip.ip4, network_header_off,
 				    skb_head)) {
 			emit_ip_error_event(ctx, 0, &key->cookie, false,
-					    IP_ERROR_UDP_RECV_READ_IP);
+					    ipver, 1, 0, IP_ERROR_UDP_RECV_READ_IP);
 			return false;
 		}
 		key->ipv6 = false;
@@ -502,20 +502,20 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 		if (!get_ip6_header(&packet->ip.ip6, network_header_off,
 				    skb_head)) {
 			emit_ip_error_event(ctx, 0, &key->cookie, true,
-					    IP_ERROR_UDP_RECV_READ_IP);
+					    ipver, 1, 0, IP_ERROR_UDP_RECV_READ_IP);
 			return false;
 		}
 		key->ipv6 = true;
 		break;
 	default:
 		emit_ip_error_event(ctx, 0, &key->cookie, false,
-				    IP_ERROR_UDP_RECV_NO_VERSION);
+				    ipver, 1, 0, IP_ERROR_UDP_RECV_NO_VERSION);
 		return false;
 	}
 
 	if (!get_udp_header(&packet->udp, 0, skb_head, skb)) {
 		emit_ip_error_event(ctx, &packet->ip, &key->cookie, key->ipv6,
-				    IP_ERROR_UDP_RECV_NO_VERSION);
+				    ipver, 1, 0, IP_ERROR_UDP_RECV_NO_VERSION);
 		return false;
 	}
 
@@ -624,7 +624,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_UDP_RECV_NO_COOKIE);
+				    0, 1, 0, IP_ERROR_UDP_RECV_NO_COOKIE);
 		return 0;
 	}
 
@@ -651,7 +651,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 
 		hasctx = add_process_ctx(value);
 		if (!hasctx) {
-			emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+			emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
 		}
 		valid_addr = udp_set_info(ctx, &cookie, value, skb);
 
@@ -666,7 +666,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 			if (value->pid == 0) {
 				hasctx = add_process_ctx(value);
 				if (!hasctx) {
-					emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+					emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
 				}
 			}
 			valid_addr = udp_set_info(ctx, &cookie, value, skb);
@@ -679,7 +679,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
 	if (!update_socketmap(&cookie, 0, value->pid)) {
-		emit_ip_error_event(ctx, 0, &cookie, key.ipv6, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
+		emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
 	}
 
 	return 0;

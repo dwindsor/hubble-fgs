@@ -22,12 +22,14 @@ const (
 )
 
 type MsgIPTuple struct {
-	SAddr [2]uint64
-	DAddr [2]uint64
-	DPort uint16
-	SPort uint16
-	Proto uint8
-	Pad   [3]uint8
+	SAddr       [2]uint64
+	DAddr       [2]uint64
+	DPort       uint16
+	SPort       uint16
+	Proto       uint8
+	Send        uint8
+	VersionByte uint8
+	Pad         uint8
 	// define as uint8 otherwise padding in struct breaks
 	PostData [6]uint8
 	Pad2     [2]uint8

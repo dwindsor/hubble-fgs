@@ -24,13 +24,13 @@ __sk_allocret(struct pt_regs *ctx)
 
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_SOCK_CREATE_NO_COOKIE);
+				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_COOKIE);
 		return 0;
 	}
 
 	if (pid < 1) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_SOCK_CREATE_PID_0);
+				    0, 0, 0, IP_ERROR_SOCK_CREATE_PID_0);
 		return 0;
 	}
 
@@ -57,7 +57,7 @@ __sk_allocret(struct pt_regs *ctx)
 		process.key.ktime = value->key.ktime;
 	} else {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_SOCK_CREATE_NO_PROCESS);
+				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_PROCESS);
 		return 1;
 	}
 	process.create_time = ktime_get_ns();

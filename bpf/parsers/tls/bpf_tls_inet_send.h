@@ -45,7 +45,7 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 }
 
 static inline __attribute__((always_inline)) void
-tls_inet_send_handler(struct __sk_buff *skb, bool send)
+tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 {
 	struct tls_packet_details *packet;
 	u64 *cookie;
@@ -85,7 +85,7 @@ tls_inet_send_handler(struct __sk_buff *skb, bool send)
 				      0, true, false, &err);
 		if (proto == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
-					    err);
+					    packet->ip.ip4.version, send + 1, 0, err);
 			return;
 		} else if (proto != IPPROTO_TCP) {
 			return;

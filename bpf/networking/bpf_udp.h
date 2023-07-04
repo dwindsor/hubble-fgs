@@ -263,14 +263,14 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	if (!kp) {
 		if (skb_load_bytes(skb, off, &val->payload, payload_size) < 0) {
 			emit_ip_error_event(ctx, ip, cookie, ipv6,
-					    IP_ERROR_INET_READ_PAYLOAD);
+					    0, 0, 0, IP_ERROR_INET_READ_PAYLOAD);
 			return 0;
 		}
 	} else {
 		if (probe_read(&val->payload, payload_size, skb_head + off) <
 		    0) {
 			emit_ip_error_event(ctx, ip, cookie, ipv6,
-					    IP_ERROR_INET_READ_PAYLOAD);
+					    0, 0, 0, IP_ERROR_INET_READ_PAYLOAD);
 			return 0;
 		}
 	}

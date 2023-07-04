@@ -28,14 +28,14 @@ __sk_free(struct pt_regs *ctx)
 
 	if (!sk) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_SOCK_RELEASE_NO_SOCK);
+				    0, 0, 0, IP_ERROR_SOCK_RELEASE_NO_SOCK);
 		return 0;
 	}
 
 	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
 		emit_ip_error_event(ctx, 0, 0, false,
-				    IP_ERROR_SOCK_RELEASE_NO_COOKIE);
+				    0, 0, 0, IP_ERROR_SOCK_RELEASE_NO_COOKIE);
 		return 0;
 	}
 

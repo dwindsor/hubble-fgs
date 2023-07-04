@@ -367,7 +367,7 @@ static inline __attribute__((always_inline)) void copy_ipv6_addr(u64 *dest,
 
 static inline __attribute__((always_inline)) void
 emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
-		    unsigned long int err)
+		    u8 packetver, u8 send, u64 data, unsigned long int err)
 {
 	struct msg_ip_event *val;
 	struct socketmap_value *process = 0;
@@ -419,9 +419,11 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	} else {
 		val->socket_cookie = 0;
 	}
+	val->tuple.send = send;
+	val->tuple.version_byte = packetver;
 	val->ret = err;
 	val->pad = 0;
-	val->duration = 0;
+	val->duration = data;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 			  sizeof(struct msg_ip_event));

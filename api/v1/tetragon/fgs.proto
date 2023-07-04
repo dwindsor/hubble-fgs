@@ -144,6 +144,9 @@ message ProcessIpError {
     uint64 sock_cookie = 6;
     tetragon.Pod destination_pod = 7;
     string details = 8;
+    string send = 9;
+    uint64 version_byte = 10;
+    uint64 data = 11;
 }
 
 enum FileAction {

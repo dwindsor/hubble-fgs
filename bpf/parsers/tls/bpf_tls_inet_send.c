@@ -10,13 +10,13 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("cgroup_skb/egress"), used)) int
 tls_inet_send(struct __sk_buff *skb)
 {
-	tls_inet_send_handler(skb, true);
+	tls_inet_send_handler(skb, 1);
 	return SK_PASS;
 }
 
 __attribute__((section("cgroup_skb/ingress"), used)) int
 tls_inet_recv(struct __sk_buff *skb)
 {
-	tls_inet_send_handler(skb, false);
+	tls_inet_send_handler(skb, 0);
 	return SK_PASS;
 }

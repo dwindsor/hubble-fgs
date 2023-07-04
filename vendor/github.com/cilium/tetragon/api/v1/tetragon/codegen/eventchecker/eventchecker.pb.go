@@ -2734,6 +2734,9 @@ type ProcessIpErrorChecker struct {
 	SockCookie     *uint64                      `json:"sockCookie,omitempty"`
 	DestinationPod *PodChecker                  `json:"destinationPod,omitempty"`
 	Details        *stringmatcher.StringMatcher `json:"details,omitempty"`
+	Send           *stringmatcher.StringMatcher `json:"send,omitempty"`
+	VersionByte    *uint64                      `json:"versionByte,omitempty"`
+	Data           *uint64                      `json:"data,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2815,6 +2818,21 @@ func (checker *ProcessIpErrorChecker) Check(event *tetragon.ProcessIpError) erro
 				return fmt.Errorf("Details check failed: %w", err)
 			}
 		}
+		if checker.Send != nil {
+			if err := checker.Send.Match(event.Send); err != nil {
+				return fmt.Errorf("Send check failed: %w", err)
+			}
+		}
+		if checker.VersionByte != nil {
+			if *checker.VersionByte != event.VersionByte {
+				return fmt.Errorf("VersionByte has value %d which does not match expected value %d", event.VersionByte, *checker.VersionByte)
+			}
+		}
+		if checker.Data != nil {
+			if *checker.Data != event.Data {
+				return fmt.Errorf("Data has value %d which does not match expected value %d", event.Data, *checker.Data)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2871,6 +2889,24 @@ func (checker *ProcessIpErrorChecker) WithDetails(check *stringmatcher.StringMat
 	return checker
 }
 
+// WithSend adds a Send check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithSend(check *stringmatcher.StringMatcher) *ProcessIpErrorChecker {
+	checker.Send = check
+	return checker
+}
+
+// WithVersionByte adds a VersionByte check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithVersionByte(check uint64) *ProcessIpErrorChecker {
+	checker.VersionByte = &check
+	return checker
+}
+
+// WithData adds a Data check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithData(check uint64) *ProcessIpErrorChecker {
+	checker.Data = &check
+	return checker
+}
+
 //FromProcessIpError populates the ProcessIpErrorChecker using data from a ProcessIpError event
 func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.ProcessIpError) *ProcessIpErrorChecker {
 	if event == nil {
@@ -2893,6 +2929,15 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.Process
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Details = stringmatcher.Full(event.Details)
+	checker.Send = stringmatcher.Full(event.Send)
+	{
+		val := event.VersionByte
+		checker.VersionByte = &val
+	}
+	{
+		val := event.Data
+		checker.Data = &val
+	}
 	return checker
 }
 

@@ -42,7 +42,7 @@ egress_timestamp(struct __sk_buff *skb)
 		}
 		break;
 	default:
-		emit_ip_error_event(skb, 0, 0, false, IP_ERROR_INET_NO_VERSION);
+		emit_ip_error_event(skb, 0, 0, false, iph->version, 2, 0, IP_ERROR_INET_NO_VERSION);
 		return TC_ACT_PIPE;
 	}
 }

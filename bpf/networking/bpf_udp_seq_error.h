@@ -64,7 +64,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	/* Read the flags. */
 	if (skb_load_bytes(skb, payload_off, &flags, 1) < 0) {
 		emit_ip_error_event(skb, ip, cookie, ipv6,
-				    IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
+				    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
 		return;
 	}
 
@@ -79,14 +79,14 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	case 1:
 		if (skb_load_bytes(skb, payload_off + 1, &line_id, 1) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
-					    IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
+					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
 			return;
 		}
 		break;
 	case 2:
 		if (skb_load_bytes(skb, payload_off + 1, &temp_line_id, 2) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
-					    IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
+					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
 			return;
 		}
 		line_id = bpf_ntohs(temp_line_id);
@@ -97,7 +97,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	case 2:
 		if (skb_load_bytes(skb, payload_off + 1 + line_id_sz, &temp_seq_num, 2) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
-					    IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
+					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
 			return;
 		}
 		seq_num = bpf_ntohl(temp_seq_num << 16);
@@ -106,7 +106,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	case 3:
 		if (skb_load_bytes(skb, payload_off + 1 + line_id_sz, &temp_seq_num, 3) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
-					    IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
+					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
 			return;
 		}
 		seq_num = bpf_ntohl(temp_seq_num << 8);

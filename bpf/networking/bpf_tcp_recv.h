@@ -61,12 +61,12 @@ tcp_handler_lazy(struct __sk_buff *skb)
 		return;
 	write_cookie(cookie, (u64)skb->sk);
 	if (!*cookie) {
-		emit_ip_error_event(skb, 0, cookie, false, IP_ERROR_INET_NO_COOKIE);
+		emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_NO_COOKIE);
 		return;
 	}
 
 	if (skb_load_bytes(skb, 0, &ip, sizeof(struct iphdr)) < 0) {
-		emit_ip_error_event(skb, 0, cookie, false, IP_ERROR_INET_READ_VER);
+		emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
 		return;
 	}
 
@@ -80,7 +80,7 @@ tcp_handler_lazy(struct __sk_buff *skb)
 			 * add to detect TCP latency.
 			 */
 			if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
-				emit_ip_error_event(skb, &ip, cookie, false, IP_ERROR_INET_READ_IP_OPTION);
+				emit_ip_error_event(skb, &ip, cookie, false, ip.version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 				return;
 			}
 			if (ts_opt.type != IPO_TYPE && ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) && ts_opt.magic != ts_opt.magic2) {
@@ -92,7 +92,7 @@ tcp_handler_lazy(struct __sk_buff *skb)
 	case 6:
 		break;
 	default:
-		emit_ip_error_event(skb, 0, cookie, false, IP_ERROR_INET_NO_VERSION);
+		emit_ip_error_event(skb, 0, cookie, false, ip.version, 1, 0, IP_ERROR_INET_NO_VERSION);
 		return;
 	}
 }
@@ -109,7 +109,7 @@ tcp_handler(struct __sk_buff *skb)
 	write_cookie(&cookie, (u64)skb->sk);
 
 	if (data + 1 > data_end) {
-		emit_ip_error_event(skb, 0, &cookie, false, IP_ERROR_INET_READ_VER);
+		emit_ip_error_event(skb, 0, &cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
 		return;
 	}
 
@@ -118,7 +118,7 @@ tcp_handler(struct __sk_buff *skb)
 	switch (ip->version) {
 	case 4:
 		if (data + sizeof(struct iphdr) > data_end) {
-			emit_ip_error_event(skb, 0, &cookie, false, IP_ERROR_INET_READ_IP);
+			emit_ip_error_event(skb, 0, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP);
 			return;
 		}
 		if (ip->protocol != IPPROTO_TCP)
@@ -129,7 +129,7 @@ tcp_handler(struct __sk_buff *skb)
 			 * add to detect TCP latency.
 			 */
 			if (data + sizeof(struct iphdr) + sizeof(struct timestamp_option) > data_end) {
-				emit_ip_error_event(skb, ip, &cookie, false, IP_ERROR_INET_READ_IP_OPTION);
+				emit_ip_error_event(skb, ip, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 				return;
 			}
 			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
@@ -142,7 +142,7 @@ tcp_handler(struct __sk_buff *skb)
 	case 6:
 		break;
 	default:
-		emit_ip_error_event(skb, 0, &cookie, false, IP_ERROR_INET_NO_VERSION);
+		emit_ip_error_event(skb, 0, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_NO_VERSION);
 		return;
 	}
 }

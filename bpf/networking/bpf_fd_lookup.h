@@ -107,7 +107,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		case FD_TO_SK_READ_ERROR_FILE:
 		case FD_TO_SK_READ_ERROR_INODE: {
 			u64 reason = sk_err;
-			emit_ip_error_event(ctx, 0, &reason, 0, IP_ERROR_SOCKET_DISCOVERY_READ_ERROR);
+			emit_ip_error_event(ctx, 0, &reason, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_READ_ERROR);
 			return 0;
 		}
 		case FD_TO_SK_WRONG_FAMILY:
@@ -117,11 +117,11 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 			 */
 			return 0;
 		case FD_TO_SK_NO_SK:
-			emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
+			emit_ip_error_event(ctx, 0, 0, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
 			return 0;
 		}
 		if (!sk) {
-			emit_ip_error_event(ctx, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
+			emit_ip_error_event(ctx, 0, 0, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
 			return 0;
 		}
 	} else {
@@ -135,7 +135,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	value = event_find_task(p, &ppid, &walked);
 	if (!value) {
 		emit_ip_error_event(ctx, 0, &cookie, 0,
-				    IP_ERROR_SOCKET_DISCOVERY_NO_PROCESS);
+				    0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_PROCESS);
 		return 0;
 	}
 

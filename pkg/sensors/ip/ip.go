@@ -46,6 +46,7 @@ func MsgToIPUnix(m *api.MsgIPEvent, rtt bool, udpLatency bool) *layer3.MsgIPEven
 	unix.SocketStats = stats.MsgToSocketStatsUnix(&m.SocketStats, rtt, udpLatency)
 	unix.SocketFlags = m.SocketFlags
 	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
+	unix.Data = m.Duration // For IP_ERROR messages
 	// no need to copy the pad here
 	if enableDns {
 		unix.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
