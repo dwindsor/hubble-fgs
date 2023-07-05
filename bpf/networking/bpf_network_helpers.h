@@ -275,21 +275,12 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 		case 51:
 			e->byte_len = (e->len * 4) + 8;
 			break;
-		default:
-			// Unrecognised header, return error.
-			if (err) {
-				*err = ((unsigned long int)(e->curr) << 32) |
-				       IP_ERROR_IPV6_UNKNOWN_EXT;
-			}
-			return IP_HEADER_ERROR;
 		}
 
 		// Move to next extension.
 		e->ip_off += e->byte_len;
 		// If next is transport (or an unhandled header, e.g. ESP or Mobility), return it and the optional offset.
-		if (e->next == IPPROTO_UDP || e->next == IPPROTO_TCP ||
-		    e->next == IPPROTO_ICMP6 || e->next == 50 ||
-		    e->next == 135) {
+		if (e->next != 0 && e->next != 43 && e->next != 44 && e->next != 51 && e->next != 60) {
 			if (payload_off)
 				*payload_off = e->ip_off;
 			return e->next;
