@@ -350,7 +350,6 @@ bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 	return next;
 }
 
-#define ETH_P_IP	0x800
 #define TLS_REMOTE_PORT 443
 
 #if defined(SK_MSG)

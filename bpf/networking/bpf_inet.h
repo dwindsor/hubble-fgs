@@ -11,6 +11,7 @@
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "bpf_udp_seq_error.h"
+#include "address_family.h"
 #include "bpf_tracing.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
@@ -387,6 +388,11 @@ inet_handler_lazy(struct __sk_buff *skb, u64 send)
 	u8 proto;
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
+	u16 ethertype = bpf_ntohs((u16)skb->protocol);
+
+	/* Only handle IPv4 and IPv6 here. */
+	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
+		return;
 
 	cookie = (u64 *)map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -489,6 +495,16 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	u8 proto;
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
+	u16 ethertype;
+
+	if (probe_read(&ethertype, sizeof(ethertype), _(&(skb->protocol))) < 0)
+		return;
+
+	ethertype = bpf_ntohs(ethertype);
+
+	/* Only handle IPv4 and IPv6 here. */
+	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
+		return;
 
 	write_cookie(&cookie, (u64)sk);
 	if (!cookie) {
@@ -605,6 +621,11 @@ inet_handler(struct __sk_buff *skb, u64 send)
 	u8 proto;
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
+	u16 ethertype = bpf_ntohs((u16)skb->protocol);
+
+	/* Only handle IPv4 and IPv6 here. */
+	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
+		return;
 
 	write_cookie(&cookie, (u64)skb->sk);
 	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);

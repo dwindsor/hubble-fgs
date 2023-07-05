@@ -10,6 +10,7 @@
 #include "bpf_process_network_watermarks.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
+#include "address_family.h"
 #include "bpf_tracing.h"
 
 struct {
@@ -55,6 +56,11 @@ tcp_handler_lazy(struct __sk_buff *skb)
 	u64 *cookie;
 	int zero = 0;
 	struct timestamp_option ts_opt;
+	u16 ethertype = bpf_ntohs((u16)skb->protocol);
+
+	/* Only handle IPv4 and IPv6 here. */
+	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
+		return;
 
 	cookie = (u64 *)map_lookup_elem(&tcp_cookie_heap, &zero);
 	if (!cookie)
@@ -105,6 +111,11 @@ tcp_handler(struct __sk_buff *skb)
 	struct iphdr *ip;
 	u64 cookie;
 	struct timestamp_option *ts_opt = 0;
+	u16 ethertype = bpf_ntohs((u16)skb->protocol);
+
+	/* Only handle IPv4 and IPv6 here. */
+	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
+		return;
 
 	write_cookie(&cookie, (u64)skb->sk);
 
