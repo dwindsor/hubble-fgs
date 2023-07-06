@@ -107,6 +107,11 @@ struct msg_udp_seq_error_event {
 	__u64 seq_num_received;
 }; // All fields aligned so no 'packed' attribute.
 
+struct msg_calltrace {
+	__u64 stack[16];
+	int32_t ret;
+} __attribute__((packed));
+
 struct msg_kfree_skb {
 	struct msg_common common;
 	struct msg_calltrace calltrace;

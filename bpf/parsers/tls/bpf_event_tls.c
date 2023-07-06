@@ -2,8 +2,8 @@
 #include "api.h"
 #include "../lib/tlsmsg.h"
 
-#include "hubble_msg.h"
-#include "bpf_events.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
 #include "../bpf_sockops.h"
 #include "tlsmsg.h"
 #include "../../lib/iso_msg_types.h"

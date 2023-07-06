@@ -1,7 +1,7 @@
 #include "vmlinux.h"
 #include "api.h"
 
-#include "hubble_msg.h"
+#include "bpf_event.h"
 #include "bpf_sockops.h"
 #include "./tls/tls_map.h"
 #include "../lib/address_family.h"

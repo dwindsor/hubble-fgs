@@ -2,8 +2,8 @@
 
 #include "api.h"
 #include "iso_msg_types.h"
-#include "hubble_msg.h"
-#include "bpf_events.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
 #include "cookie.h"
 #include "netns.h"
 #include "tlsmsg.h"

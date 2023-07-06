@@ -12,8 +12,8 @@
 #define _HTTP_PARSER_
 
 #include "iso_msg_types.h"
-#include "hubble_msg.h"
-#include "bpf_events.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
 #include "../bpf_sockops.h"
 #include "../parser.h"
 #include "http.h"

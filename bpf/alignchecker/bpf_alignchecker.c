@@ -2,7 +2,7 @@
 
 #include "vmlinux.h"
 #include "api.h"
-#include "hubble_msg.h"
+#include "bpf_event.h"
 #include "parsers/http/http.h"
 #include "generic.h"
 #include "lib/file.h"

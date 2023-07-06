@@ -1,8 +1,8 @@
 #include "vmlinux.h"
 
 #include "api.h"
-#include "hubble_msg.h"
-#include "bpf_events.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "bpf_process_network_watermarks.h"

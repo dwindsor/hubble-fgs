@@ -1,9 +1,9 @@
 #include "vmlinux.h"
 
 #include "api.h"
-#include "hubble_msg.h"
+#include "bpf_event.h"
 #include "../parsers/tls/tls_map.h"
-#include "bpf_events.h"
+#include "bpf_task.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "netns.h"

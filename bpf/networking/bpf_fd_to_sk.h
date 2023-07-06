@@ -1,5 +1,5 @@
 #include "vmlinux.h"
-#include "hubble_msg.h"
+#include "bpf_event.h"
 #include "cookie.h"
 #include "../lib/address_family.h"
 #include "bpf_tracing.h"

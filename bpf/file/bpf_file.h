@@ -2,8 +2,8 @@
 #include "api.h"
 #include "bpf_tracing.h"
 
-#include "hubble_msg.h"
-#include "bpf_events.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
 
 #include "file.h"
 #include "iso_msg_types.h"
