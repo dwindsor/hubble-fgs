@@ -21,7 +21,7 @@ var (
 	TlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: consts.MetricNamePrefix + "tls_handshakes_total",
 		Help: "TLS handshake statistics",
-	}, []string{"namespace", "pod", "binaray", "version", "cipher", "sni_name"})
+	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
 )
 
 func GetNegotiatedVersion(tls *tetragon.Tls) string {
