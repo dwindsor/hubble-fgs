@@ -200,7 +200,12 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 	event_len = (sizeof(struct msg_tls_cont_event) + end_offset - offset);
 	BOTTLE_MASK(event_len);
 
-	/* To avoid a copy we write the event header on top of the now irrelevant data. */
+	/* To avoid a copy we write the event header on top of the now irrelevant data.
+	       * Avoid integer underflow in second argument. */
+	if (offset < sizeof(struct msg_tls_cont_event)) {
+		errcode = EBADHEADER;
+		goto fail;
+	}
 	event = bottle_get_data(
 		bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
 	if (!event) {
