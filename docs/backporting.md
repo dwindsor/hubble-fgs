@@ -37,6 +37,19 @@ flowchart TD
 Note that above applies only to EE 1.9, where there is an OSS module. For 1.8, backports from OSS
 need to be done directly into the EE version.
 
+## What are the backport criteria?
+
+Should I backport a PR?
+ - Does it fix a customer-related issue? YES
+ - Does it fix an issue with a non-negligible chance that will hit customers? YES
+ - Does it fix an issue (e.g., CI fix) that will affect our CI for stable versions? YES
+ - Does it improve our QoL (e.g., release automation) -> case-by-case (see below)
+ - Does it make it asier to backport any of the above -> case-by-case (see below)
+
+Case-by-case: Evaluate case-by-case based on the following factors:
+ - Is there a chance to break things that work (especially in customer setups)?
+ - Is the utiliity offered by the backport worth the effort?
+
 ## What PRs should be backported?
 
 Similary, to Cilium we use the the `needs-backport/X.Y` label to mark PRs that need to be
