@@ -33,11 +33,13 @@ export BRANCH=v1.9
 ```
 xdg-open "https://github.com/isovalent/hubble-fgs/pulls?q=is%3Apr+is%3Aopen+base%3A$BRANCH"
 ```
-- [ ] Create a tag for the release:
+- [ ] Create the release tags (a "main" tag, and an "api" tag):
 ```
 git checkout $BRANCH && git pull origin $BRANCH
-git tag -a $RELEASE -m "$RELEASE release" -s
-git push origin $RELEASE
+git tag -a "$RELEASE" -m "$RELEASE release" -s
+git tag -a "api/$RELEASE" -m "api/$RELEASE release" -s
+git push origin "$RELEASE"
+git push origin "api/$RELEASE"
 ```
 - [ ] Only for major release, update `dependabot.yml` to include the new branch. Example [here](https://github.com/isovalent/hubble-fgs/pull/2677/commits/f910b6663e8314fe0f5d1e1b87fae1bdbc0173d6).
 - [ ] Create standalone tarball release:
@@ -49,7 +51,7 @@ make tarball
 aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isovalent-tetragon-enterprise-public/hubble-enterprise-standalone-tarball/
 ```
 - [ ] Generate [release notes][hubble-fgs release] for the new release
-  - [ ] Choose the tag you just generated as the tag
+  - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"
   - [ ] Click "publish release"
 
@@ -136,7 +138,7 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
   git checkout master && git pull origin master
   git checkout -b pr/prepare-fgs-$RELEASE
   ```
-  - [ ] Update `values.yaml` and change the `hubble-enterprise` and `hubble-enterprise-operator` image `tag` values to the new release tag. Example diff:
+  - [ ] Update `values.yaml` and change the `hubble-enterprise` and `hubble-enterprise-operator` image `tag` values to the new "main" release tag. Example diff:
   ```diff
   diff --git a/values.yaml b/values.yaml
   index 85166d0..f86ba0e 100644
