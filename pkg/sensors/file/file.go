@@ -665,7 +665,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 
 	sel, err := fm.InitKernelSelectorState(spec.Selectors)
 	if err != nil {
-		return fmt.Errorf("failed to initialize kernel selector state")
+		return fmt.Errorf("failed to initialize kernel selector state: %w", err)
 	}
 
 	if err := fm.GenerateFileNamesMap(selHandle, sel); err != nil {
@@ -1401,7 +1401,7 @@ func (k *observerFileSensor) PolicyHandler(
 
 	selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
 	if err != nil {
-		return nil, fmt.Errorf("FileMonitoring failed to parse selectors")
+		return nil, fmt.Errorf("FileMonitoring failed to parse selectors: %w", err)
 	}
 
 	// start hubble-fgs-fs-scanner if it hasn't started yet
