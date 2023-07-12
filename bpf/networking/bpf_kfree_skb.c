@@ -73,7 +73,7 @@ tg_event_kfree_skb(struct pt_regs *ctx)
 	struct msg_kfree_skb msg = { 0 };
 	bool emit;
 
-	struct sk_buff *skb = (void *)PT_REGS_PARM1_CORE(ctx);
+	struct sk_buff *skb = (void *)PT_REGS_PARM1(ctx);
 
 	emit = set_tuple_from_skb(&msg.tuple, skb);
 	if (!emit)

@@ -23,7 +23,7 @@ struct rcv_rtt_est {
 __attribute__((section("kprobe/__tcp_ack_snd_check"), used)) int
 tg_tcp_ack_snd_check(struct pt_regs *ctx)
 {
-	struct tcp_sock *skp = (struct tcp_sock *)PT_REGS_PARM1_CORE(ctx);
+	struct tcp_sock *skp = (struct tcp_sock *)PT_REGS_PARM1(ctx);
 	struct tcp_send_check_sample_cfg *cfg;
 	struct socketmap_value *process;
 	struct rcv_rtt_est rtt;

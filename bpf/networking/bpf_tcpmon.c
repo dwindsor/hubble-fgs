@@ -46,7 +46,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		return 0;
 	}
 
-	skp = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+	skp = (struct sock *)PT_REGS_PARM1(ctx);
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;

@@ -283,8 +283,8 @@ static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 	if (!value)
 		return 0;
 
-	value->sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
-	value->msg = (struct msghdr *)PT_REGS_PARM2_CORE(ctx);
+	value->sk = (struct sock *)PT_REGS_PARM1(ctx);
+	value->msg = (struct msghdr *)PT_REGS_PARM2(ctx);
 	add_to_retprobe_map(ctx, (u64)value->sk, &pid_tgid, value);
 	return 0;
 }
@@ -608,9 +608,9 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 {
 	struct udp_info_value *value;
 	int zero = 0;
-	struct sock *sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2_CORE(ctx);
-	int len = (int)PT_REGS_PARM3_CORE(ctx);
+	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2(ctx);
+	int len = (int)PT_REGS_PARM3(ctx);
 	u64 cookie;
 	struct udp_info_key key;
 	int hasctx = 1;

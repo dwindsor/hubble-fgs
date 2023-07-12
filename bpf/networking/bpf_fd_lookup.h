@@ -59,7 +59,7 @@ event_find_task(struct task_struct *task, __u32 *ppid, bool *walked)
 static inline __attribute__((always_inline)) int
 __kprobe_proc_task_name(struct pt_regs *ctx)
 {
-	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2_CORE(ctx);
+	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
 	struct fd_lookup_config *config;
 	int zero = 0;
 	uint32_t pid;

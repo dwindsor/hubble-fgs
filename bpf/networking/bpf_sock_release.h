@@ -18,7 +18,7 @@ struct {
 static inline __attribute__((always_inline)) int
 __sk_free(struct pt_regs *ctx)
 {
-	struct sock *sk = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
 	__u64 cookie;
 	u16 protocol;
 	int zero = 0;

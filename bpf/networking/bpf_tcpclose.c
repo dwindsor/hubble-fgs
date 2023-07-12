@@ -41,11 +41,11 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	u64 cookie;
 	unsigned char old_state;
 
-	state = PT_REGS_PARM2_CORE(ctx);
+	state = PT_REGS_PARM2(ctx);
 	if (state != TCP_CLOSE)
 		return 0;
 
-	skp = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+	skp = (struct sock *)PT_REGS_PARM1(ctx);
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;

@@ -172,7 +172,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 __attribute__((section(("kprobe/dev_queue_xmit")), used)) int
 dev_queue_xmit(struct pt_regs *ctx)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1_CORE(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
 
 	return interface_stats(skb, true);
 }
@@ -180,7 +180,7 @@ dev_queue_xmit(struct pt_regs *ctx)
 __attribute__((section("kprobe/netif_receive_skb"), used)) int
 __netif_receive_skb_core(struct pt_regs *ctx)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1_CORE(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
 
 	return interface_stats(skb, false);
 }
@@ -188,7 +188,7 @@ __netif_receive_skb_core(struct pt_regs *ctx)
 __attribute__((section("kprobe/napi_gro_receive"), used)) int
 napi_gro_receive(struct pt_regs *ctx)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2_CORE(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2(ctx);
 
 	return interface_stats(skb, false);
 }
@@ -196,7 +196,7 @@ napi_gro_receive(struct pt_regs *ctx)
 __attribute__((section("kprobe/__netif_rx"), used)) int
 __netif_rx(struct pt_regs *ctx)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1_CORE(ctx);
+	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
 
 	return interface_stats(skb, false);
 }
@@ -207,8 +207,8 @@ __attribute__((section("kprobe/call_netdevice_notifiers_info"), used)) int
 unregister_netdevice(struct pt_regs *ctx)
 {
 	struct netdev_notifier_info *info =
-		(struct netdev_notifier_info *)PT_REGS_PARM2_CORE(ctx);
-	unsigned long type = (unsigned long)PT_REGS_PARM1_CORE(ctx);
+		(struct netdev_notifier_info *)PT_REGS_PARM2(ctx);
+	unsigned long type = (unsigned long)PT_REGS_PARM1(ctx);
 	struct network_key *key;
 	struct net_device *dev;
 	int zero = 0;
@@ -243,7 +243,7 @@ struct {
 __attribute__((section("kprobe/net_ns_net_exit"), used)) int
 net_ns_net_exit(struct pt_regs *ctx)
 {
-	struct net *net = (struct net *)PT_REGS_PARM1_CORE(ctx);
+	struct net *net = (struct net *)PT_REGS_PARM1(ctx);
 	struct msg_netns_exit *val;
 	struct ns_common nscommon;
 	int zero = 0;
