@@ -1993,6 +1993,75 @@ func testFileChown(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	oFile := filepath.Join(out, "test1")
+	createFileInDir(t, oFile)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{out},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+		Selectors: []v1alpha1.FileSelector{
+			{
+				MatchOperations: []v1alpha1.OperationSelector{
+					{
+						Operator: "In",
+						Values:   []string{"FILE_READ"},
+					},
+				},
+			},
+			{
+				MatchOperations: []v1alpha1.OperationSelector{
+					{
+						Operator: "In",
+						Values:   []string{"FILE_WRITE"},
+					},
+				},
+			},
+		},
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if _, err := os.ReadFile(oFile); err != nil {
+		t.Logf("failed run os.ReadFile(%s): %s", oFile, err)
+	}
+
+	file, err := os.OpenFile(oFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString("some random test data here"); err != nil {
+		t.Logf("failed run file.WriteString(%s): %s", oFile, err)
+	}
+
+	ino, dev := getInodeInfo(t, oFile)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+
+	fileReadChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_READ).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("security_file_permission"))
+	fileWriteChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("security_file_permission"))
+	checker := ec.NewUnorderedEventChecker(fileReadChecker, fileWriteChecker)
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -2171,5 +2240,8 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("chown", func(lt *testing.T) {
 		testFileChown(t, lt)
+	})
+	t.Run("multipleselectors", func(lt *testing.T) {
+		testFileReadWriteMultipleSelectors(t, lt)
 	})
 }
