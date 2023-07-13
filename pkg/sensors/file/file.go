@@ -244,6 +244,7 @@ var (
 		"hash_map_dir_alloc",
 		"file_names_map",
 		"file_ops_map",
+		"file_actions_map",
 		"file_config_map",
 	}
 )
@@ -608,6 +609,7 @@ func cleanupFIMMaps(id uint32) error {
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_map")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_map")
+	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_actions_map")
 
 	return nil
 }
@@ -685,6 +687,17 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 
 	if err := fm.GenerateFileOpsMap(selOpsHandle, sel); err != nil {
 		return fmt.Errorf("failed to populate file_ops_map")
+	}
+
+	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_actions_map"))
+	selActionsHandle, err := ebpf.LoadPinnedMap(selActionsMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", selActionsMapPath)
+	}
+	defer selActionsHandle.Close()
+
+	if err := fm.GenerateFileActionsMap(selActionsHandle, sel); err != nil {
+		return fmt.Errorf("failed to populate file_actions_map")
 	}
 
 	return nil
@@ -1134,7 +1147,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
-	config.ActionValue = sel.GetAction() // set action_value to config
 	for _, h := range fimProgs {
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),
@@ -1164,6 +1176,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Name:  "file_ops_map",
 				Load: func(m *ebpf.Map, index uint32) error {
 					return fm.GenerateFileOpsMap(m, sel)
+				},
+			},
+			{
+				Index: 0,
+				Name:  "file_actions_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					return fm.GenerateFileActionsMap(m, sel)
 				},
 			},
 			{

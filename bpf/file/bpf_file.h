@@ -217,6 +217,13 @@ struct {
 } file_ops_map SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1);
+	__type(key, __u32);
+	__type(value, __u32);
+} file_actions_map SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, __u32);
@@ -294,10 +301,10 @@ static inline __attribute__((always_inline)) int check_match_operations(__u32 ac
 static inline __attribute__((always_inline)) int check_enforcement()
 {
 	__u32 zero = 0;
-	struct file_config_map_value *conf = map_lookup_elem(&file_config_map, &zero);
-	if (!conf)
+	__u32 *action = map_lookup_elem(&file_actions_map, &zero);
+	if (!action)
 		return 0;
-	return (conf->action_value & FILE_OP_BLOCK) != 0;
+	return (*action & FILE_OP_BLOCK) != 0;
 }
 
 static inline __attribute__((always_inline)) __u32

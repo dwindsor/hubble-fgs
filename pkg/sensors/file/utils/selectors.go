@@ -59,10 +59,6 @@ func (k *KernelSelectorState) GetOperationOp() uint32 {
 	return k.selOpsOp
 }
 
-func (k *KernelSelectorState) GetAction() uint32 {
-	return k.action
-}
-
 func (k *KernelSelectorState) GetOpsSelMap() map[uint32]uint32 {
 	retMap := make(map[uint32]uint32)
 	k.selOpsMap.Range(func(key, val any) bool {
@@ -149,6 +145,10 @@ func GenerateFileOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	}
 
 	return nil
+}
+
+func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	return m.Update(uint32(0), sel.action, ebpf.UpdateAny)
 }
 
 func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector) error {
