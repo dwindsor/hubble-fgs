@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/selectors"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
@@ -27,6 +28,8 @@ import (
 const (
 	FileOperationTypePost  = uint32(tetragon.FileOperation_FILE_OP_POST)
 	FileOperationTypeBlock = uint32(tetragon.FileOperation_FILE_OP_BLOCK)
+
+	MaxFimSelectors = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
 )
 
 var fileActionTypeTable = map[string]uint32{
@@ -34,42 +37,73 @@ var fileActionTypeTable = map[string]uint32{
 	"block": FileOperationTypeBlock,
 }
 
+type SelOps struct {
+	opVal  uint32
+	opsMap sync.Map
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
-	// matchBinaries mappings
-	selOpsOp  uint32
-	selOpsMap sync.Map
+	// matchOperations mappings
+	operations map[uint32]*SelOps
 
 	// matchActions value
-	action uint32
+	action map[uint32]uint32
+
+	// number of selectors
+	num uint32
 }
 
 func NewKernelSelectorState() *KernelSelectorState {
 	return &KernelSelectorState{
 		KernelSelectorState: *selectors.NewKernelSelectorState(),
+		operations:          map[uint32]*SelOps{},
+		action:              map[uint32]uint32{},
 	}
 }
 
-func (k *KernelSelectorState) SetOperationOp(op uint32) {
-	k.selOpsOp = op
+func (k *KernelSelectorState) GetNumSelectors() uint32 {
+	return k.num
 }
 
-func (k *KernelSelectorState) GetOperationOp() uint32 {
-	return k.selOpsOp
+func (k *SelOps) SetOperationOp(op uint32) {
+	k.opVal = op
 }
 
-func (k *KernelSelectorState) GetOpsSelMap() map[uint32]uint32 {
+func (k *SelOps) GetOperationOp() uint32 {
+	return k.opVal
+}
+
+func (k *SelOps) GetOpsSelMap() map[uint32]uint32 {
 	retMap := make(map[uint32]uint32)
-	k.selOpsMap.Range(func(key, val any) bool {
+	k.opsMap.Range(func(key, val any) bool {
 		retMap[key.(uint32)] = val.(uint32)
 		return true
 	})
 	return retMap
 }
 
-func (k *KernelSelectorState) AddOpsVal(op, val uint32) {
-	k.selOpsMap.LoadOrStore(op, val)
+func (k *SelOps) AddOpsVal(op, val uint32) {
+	k.opsMap.LoadOrStore(op, val)
+}
+
+func (k *KernelSelectorState) InitOrGet(selIdx uint32) *SelOps {
+	val, ok := k.operations[selIdx]
+	if ok {
+		return val
+	}
+	inner := &SelOps{}
+	k.operations[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) Get(selIdx uint32) *SelOps {
+	val, ok := k.operations[selIdx]
+	if ok {
+		return val
+	}
+	return nil
 }
 
 func writeBinaryMap(m *ebpf.Map, id uint32, path string) error {
@@ -95,52 +129,101 @@ func UpdateNamesMap(mapDir string, sel *KernelSelectorState) error {
 	return nil
 }
 
-func GenerateFileNamesMap(m *ebpf.Map, sel *KernelSelectorState) error {
+func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
 	allEntries := sel.GetBinSelNamesMap()
 	if len(allEntries) == 0 {
 		return nil
 	}
 
-	binEntries, ok := allEntries[0] // we support only a single selector in FIM for now
-	if !ok {
-		return nil
-	}
+	for i := uint32(0); i < sel.num; i++ {
+		binEntries, ok := allEntries[int(i)] // we support only a single selector in FIM for now
+		if !ok {                             // no mathcBinaries for this selector
+			continue
+		}
 
-	entries := binEntries.GetBinSelNamesMap()
-	if len(entries) == 0 { // no matchBinaries selectors
-		return nil
-	}
+		entries := binEntries.GetBinSelNamesMap()
+		if len(entries) == 0 { // no matchBinaries selectors
+			return nil
+		}
 
-	// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
-	// if this is zero we don't have any matchBinaries selectors
-	if err := m.Update(uint32(0xffffffff), sel.GetBinaryOp(0), ebpf.UpdateAny); err != nil {
-		return err
-	}
+		innerName := fmt.Sprintf("file_names_map_%d", i)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Hash,
+			KeySize:    4,                        // uint32
+			ValueSize:  4,                        // uint32
+			MaxEntries: uint32(len(entries)) + 1, // for the special entry UINT32_MAX
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
 
-	for idx, val := range entries {
-		if err := m.Update(idx, val, ebpf.UpdateAny); err != nil {
-			return err
+		// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
+		// if this is zero we don't have any matchBinaries selectors
+		if err := innerMap.Update(uint32(0xffffffff), sel.GetBinaryOp(0), ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("ops: %w", err)
+		}
+
+		for idx, val := range entries {
+			if err := innerMap.Update(idx, val, ebpf.UpdateAny); err != nil {
+				return fmt.Errorf("entries: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
 	}
 
 	return nil
 }
 
-func GenerateFileOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
-	entries := sel.GetOpsSelMap()
-	if len(entries) == 0 { // no matchOperations selectors
-		return nil
-	}
+func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	for i := uint32(0); i < sel.num; i++ {
+		s := sel.Get(i)
+		if s == nil { // no matchOperations for this selector
+			continue
+		}
 
-	// add a special entry (key == UINT32_MAX) that has as a value the number of matchOperations entry
-	// if this is zero we don't have any matchOperations selectors
-	if err := m.Update(uint32(0xffffffff), sel.GetOperationOp(), ebpf.UpdateAny); err != nil {
-		return err
-	}
+		entries := s.GetOpsSelMap()
+		if len(entries) == 0 { // no matchOperations for this selector
+			return nil
+		}
 
-	for op, val := range entries {
-		if err := m.Update(op, val, ebpf.UpdateAny); err != nil {
-			return err
+		innerName := fmt.Sprintf("file_ops_map_%d", i)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Hash,
+			KeySize:    4,                        // uint32
+			ValueSize:  4,                        // uint32
+			MaxEntries: uint32(len(entries)) + 1, // for the special entry UINT32_MAX
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
+
+		// add a special entry (key == UINT32_MAX) that has as a value the number of matchOperations entry
+		// if this is zero we don't have any matchOperations selectors
+		if err := innerMap.Update(uint32(0xffffffff), s.GetOperationOp(), ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("ops: %w", err)
+		}
+
+		for op, val := range entries {
+			if err := innerMap.Update(op, val, ebpf.UpdateAny); err != nil {
+				return fmt.Errorf("entries: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
 	}
 
@@ -148,10 +231,15 @@ func GenerateFileOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 }
 
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
-	return m.Update(uint32(0), sel.action, ebpf.UpdateAny)
+	for idx, action := range sel.action {
+		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector) error {
+func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector, selIdx int) error {
 	op, err := selectors.SelectorOp(b.Operator)
 	if err != nil {
 		return fmt.Errorf("matchOperation error: %w", err)
@@ -159,70 +247,78 @@ func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector) 
 	if op != selectors.SelectorOpIn && op != selectors.SelectorOpNotIn {
 		return fmt.Errorf("matchOperation error: Only In and NotIn operators are supported")
 	}
-	k.SetOperationOp(op)
+	v := k.InitOrGet(uint32(selIdx))
+	v.SetOperationOp(op)
 	for _, s := range b.Values {
 		val, ok := tetragon.FileAction_value[strings.ToUpper(s)]
 		if !ok {
 			return fmt.Errorf("unknown value in matchOperation: %s", s)
 		}
-		k.AddOpsVal(uint32(val), 1)
+		v.AddOpsVal(uint32(val), 1)
 	}
 	return nil
 }
 
-func ParseMatchOperations(k *KernelSelectorState, ops []v1alpha1.OperationSelector) error {
+func ParseMatchOperations(k *KernelSelectorState, ops []v1alpha1.OperationSelector, selIdx int) error {
 	if len(ops) > 1 {
 		return fmt.Errorf("only support single operations selector")
 	}
 	for _, s := range ops {
-		if err := ParseMatchOperation(k, &s); err != nil {
+		if err := ParseMatchOperation(k, &s, selIdx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector) error {
+func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector, selIdx int) error {
 	if len(actions) > 1 {
 		return fmt.Errorf("only support single actions selector")
 	}
+	action := uint32(0)
 	for _, a := range actions {
 		act, ok := fileActionTypeTable[strings.ToLower(a.Action)]
 		if !ok {
 			return fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
 		}
-		k.action |= act
+		action |= act
 	}
+	k.action[uint32(selIdx)] = action
 	return nil
 }
 
-func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector) error {
-	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries, 0); err != nil {
+func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector, selIdx int) error {
+	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries, selIdx); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
-	if err := ParseMatchOperations(k, fileSel.MatchOperations); err != nil {
+	if err := ParseMatchOperations(k, fileSel.MatchOperations, selIdx); err != nil {
 		return fmt.Errorf("parseMatchOperations error: %w", err)
 	}
-	if err := ParseMatchActions(k, fileSel.MatchActions); err != nil {
+	if err := ParseMatchActions(k, fileSel.MatchActions, selIdx); err != nil {
 		return fmt.Errorf("parseMatchActions error: %w", err)
 	}
 	return nil
 }
 
 func (k *KernelSelectorState) NeedEnforcement() bool {
-	return (k.action & FileOperationTypeBlock) != 0
+	for _, v := range k.action {
+		if v&FileOperationTypeBlock != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
-	if len(fileSel) > 1 {
-		return nil, fmt.Errorf("file monitoring supports up to 1 selector")
+	if len(fileSel) > MaxFimSelectors {
+		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
 	}
-
 	kernelSelectors := NewKernelSelectorState()
-	for _, s := range fileSel {
-		if err := parseSelector(kernelSelectors, &s); err != nil {
+	for i, s := range fileSel {
+		if err := parseSelector(kernelSelectors, &s, i); err != nil {
 			return nil, err
 		}
 	}
+	kernelSelectors.num = uint32(len(fileSel))
 	return kernelSelectors, nil
 }

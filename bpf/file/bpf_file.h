@@ -39,6 +39,8 @@
 
 #define PAGE_SIZE 4096
 
+#define MAX_FIM_SELECTORS 6
+
 #define MINORBITS 20
 #define MINORMASK ((1U << MINORBITS) - 1)
 
@@ -193,32 +195,47 @@ struct {
 /*
  * For matchBinaries we use two maps:
  * 1. names_map: global (for all sensors) keeps a mapping from names -> ids
- * 2. sel_names_map: per-sensor: keeps a mapping from id -> selector val
+ * 2. file_names_maps: per-fim-sensor: keeps a mapping from selector_id -> id -> selector val
+ *
+ * For each selector we have a separate inner map. We choose the appropriate
+ * inner map based on the selector ID.
  *
  * At exec time, we check names_map and set ->binary in execve_map equal to
  * the id stored in names_map. Assuming the binary name exists in the map,
  * otherwise binary is 0.
  *
- * When we check the selectors, use ->binary to index sel_names_map and decide
+ * When we check the selectors, use ->binary to index file_names_maps and decide
  * whether the selector matches or not.
  */
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 256);
-	__type(key, __u32);
-	__type(value, __u32);
-} file_names_map SEC(".maps");
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__uint(key_size, sizeof(__u32)); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(max_entries, 256);
+			__type(key, __u32);
+			__type(value, __u32);
+		});
+} file_names_maps SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__uint(key_size, sizeof(__u32)); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(max_entries, 1);
+			__type(key, __u32);
+			__type(value, __u32);
+		});
+} file_ops_maps SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 256);
-	__type(key, __u32);
-	__type(value, __u32);
-} file_ops_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1);
+	__uint(max_entries, MAX_FIM_SELECTORS);
 	__type(key, __u32);
 	__type(value, __u32);
 } file_actions_map SEC(".maps");
@@ -231,23 +248,25 @@ struct {
 } file_config_map SEC(".maps");
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_binaries()
+static inline __attribute__((always_inline)) int check_match_binaries(__u32 sel_idx, struct execve_map_value *execve)
 {
 	__u32 max = 0xffffffff; // UINT32_MAX
 	__u32 *op;
+	void *file_names_map;
 
-	op = map_lookup_elem(&file_names_map, &max);
+	file_names_map = map_lookup_elem(&file_names_maps, &sel_idx);
+	if (!file_names_map) /* no matchBinaries for this selector */
+		return 1;
+
+	op = map_lookup_elem(file_names_map, &max);
 	if (op) {
-		struct execve_map_value *execve;
-		bool walker = 0;
-		__u32 ppid, bin_key, *bin_val;
+		__u32 bin_key, *bin_val;
 
-		execve = event_find_curr(&ppid, &walker);
 		if (!execve)
 			return 0;
 
 		bin_key = execve->binary;
-		bin_val = map_lookup_elem(&file_names_map, &bin_key);
+		bin_val = map_lookup_elem(file_names_map, &bin_key);
 
 		/*
 		 * The following things may happen:
@@ -273,14 +292,19 @@ static inline __attribute__((always_inline)) int check_match_binaries()
 }
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_operations(__u32 action)
+static inline __attribute__((always_inline)) int check_match_operations(__u32 sel_idx, __u32 action)
 {
 	__u32 max = 0xffffffff; // UINT32_MAX
 	__u32 *op, *val;
+	void *file_ops_map;
 
-	op = map_lookup_elem(&file_ops_map, &max);
+	file_ops_map = map_lookup_elem(&file_ops_maps, &sel_idx);
+	if (!file_ops_map) /* no matchOperations for this selector */
+		return 1;
+
+	op = map_lookup_elem(file_ops_map, &max);
 	if (op) {
-		val = map_lookup_elem(&file_ops_map, &action);
+		val = map_lookup_elem(file_ops_map, &action);
 		if (*op == op_filter_in) {
 			if (!val)
 				return 0;
@@ -298,23 +322,22 @@ static inline __attribute__((always_inline)) int check_match_operations(__u32 ac
 }
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_enforcement()
+static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
-	__u32 zero = 0;
-	__u32 *action = map_lookup_elem(&file_actions_map, &zero);
+	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
 	if (!action)
 		return 0;
 	return (*action & FILE_OP_BLOCK) != 0;
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action)
+__eval_selectors(__u32 sel_idx, __u32 action, struct execve_map_value *execve)
 {
-	if (!check_match_binaries())
+	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
-	if (!check_match_operations(action))
+	if (!check_match_operations(sel_idx, action))
 		goto nopost;
-	if (!check_enforcement())
+	if (!check_enforcement(sel_idx))
 		goto post;
 
 	return FILE_OP_POST | FILE_OP_BLOCK;
@@ -322,6 +345,41 @@ post:
 	return FILE_OP_POST;
 nopost:
 	return 0;
+}
+
+static inline __attribute__((always_inline)) __u32
+eval_selectors(__u32 action)
+{
+	__u32 ppid, i, val = 0, zero = 0;
+	struct file_config_map_value *conf;
+	struct execve_map_value *execve;
+	bool walker = 0;
+
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return 0;
+
+	// no selectors, post all events
+	if (conf->num_selectors == 0)
+		return FILE_OP_POST;
+
+	/*
+	 * Do this outside of the loop in order to reduce the number of instructions
+	 * and make that work on 4.19 kernels. The check for != 0 is done close to
+	 * the use as we don't know here if the selector that uses that has matchBinaries
+	 * selector.
+	 */
+	execve = event_find_curr(&ppid, &walker);
+
+#pragma unroll
+	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
+		if (i >= conf->num_selectors) // no need to check more selectors
+			break;
+		val = __eval_selectors(i, action, execve);
+		if (val) // we return the value from the first selector that matches
+			return val;
+	}
+	return 0; // not selector matches
 }
 
 static inline __attribute__((always_inline)) int get_tp_id()

@@ -175,6 +175,7 @@ struct vfs_rename_info {
 struct file_config_map_value {
 	__u32 has_security_path_rename;
 	__u32 tp_id;
+	__u32 num_selectors;
 };
 
 #endif

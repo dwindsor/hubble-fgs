@@ -242,8 +242,8 @@ var (
 		"lpm_trie_map_alloc",
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
-		"file_names_map",
-		"file_ops_map",
+		"file_names_maps",
+		"file_ops_maps",
 		"file_actions_map",
 		"file_config_map",
 	}
@@ -607,8 +607,8 @@ func cleanupFIMMaps(id uint32) error {
 	cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.pinPathPrefix, "lpm_trie_map_alloc")
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_file_alloc")
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
-	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_map")
-	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_map")
+	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_maps")
+	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_maps")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_actions_map")
 
 	return nil
@@ -658,7 +658,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	}
 	defer fileHandle.Close()
 
-	selMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_names_map"))
+	selMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_names_maps"))
 	selHandle, err := ebpf.LoadPinnedMap(selMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selMapPath)
@@ -670,23 +670,23 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to initialize kernel selector state: %w", err)
 	}
 
-	if err := fm.GenerateFileNamesMap(selHandle, sel); err != nil {
-		return fmt.Errorf("failed to populate file_names_map")
+	if err := fm.GenerateFileNamesMap(selHandle, sel, tc.pinPathPrefix); err != nil {
+		return fmt.Errorf("failed to populate file_names_maps")
 	}
 
 	if err := fm.UpdateNamesMap(mapDir, sel); err != nil {
 		return fmt.Errorf("failed to update names_map")
 	}
 
-	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_ops_map"))
+	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_ops_maps"))
 	selOpsHandle, err := ebpf.LoadPinnedMap(selOpsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
 	}
 	defer selOpsHandle.Close()
 
-	if err := fm.GenerateFileOpsMap(selOpsHandle, sel); err != nil {
-		return fmt.Errorf("failed to populate file_ops_map")
+	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.pinPathPrefix); err != nil {
+		return fmt.Errorf("failed to populate file_ops_maps")
 	}
 
 	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_actions_map"))
@@ -1147,6 +1147,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
+	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),
@@ -1166,23 +1167,32 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		load.MapLoad = []*program.MapLoad{
 			{
 				Index: 0,
-				Name:  "file_names_map",
+				Name:  "file_names_maps",
 				Load: func(m *ebpf.Map, index uint32) error {
-					return fm.GenerateFileNamesMap(m, sel)
+					if err := fm.GenerateFileNamesMap(m, sel, e.pinPathPrefix); err != nil {
+						return fmt.Errorf("file_names_maps: %w", err)
+					}
+					return nil
 				},
 			},
 			{
 				Index: 0,
-				Name:  "file_ops_map",
+				Name:  "file_ops_maps",
 				Load: func(m *ebpf.Map, index uint32) error {
-					return fm.GenerateFileOpsMap(m, sel)
+					if err := fm.GenerateFileOpsMap(m, sel, e.pinPathPrefix); err != nil {
+						return fmt.Errorf("file_ops_maps: %w", err)
+					}
+					return nil
 				},
 			},
 			{
 				Index: 0,
 				Name:  "file_actions_map",
 				Load: func(m *ebpf.Map, index uint32) error {
-					return fm.GenerateFileActionsMap(m, sel)
+					if err := fm.GenerateFileActionsMap(m, sel); err != nil {
+						return fmt.Errorf("file_actions_map: %w", err)
+					}
+					return nil
 				},
 			},
 			{
