@@ -143,6 +143,14 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	return 0;
 }
 
+SEC("kprobe/vfs_mkdir/63")
+int BPF_KPROBE(vfs_mkdir_v63, struct mnt_idmap *idmap, struct inode *dir,
+	       struct dentry *dentry, umode_t mode)
+{
+	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	return 0;
+}
+
 SEC("kprobe/vfs_mkdir/512")
 int BPF_KPROBE(vfs_mkdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
 	       struct dentry *dentry, umode_t mode)

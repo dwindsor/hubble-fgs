@@ -127,6 +127,7 @@ var (
 		{"kprobe", "vfs_unlink", []FimFunc{
 			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419"},
 			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512"},
+			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63"},
 		}},
 		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
 		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
@@ -134,10 +135,12 @@ var (
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 		}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
 		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
@@ -153,6 +156,7 @@ var (
 		{"kprobe", "security_inode_setattr", []FimFunc{
 			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419"},
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60"},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63"},
 		}},
 	}
 
@@ -167,10 +171,12 @@ var (
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 		}},
 		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir"}}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
@@ -188,6 +194,7 @@ var (
 		{"fmod_ret", "security_inode_setattr", []FimFunc{
 			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr"},
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr"},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr"},
 		}},
 	}
 
@@ -202,10 +209,12 @@ var (
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
 		}},
 		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir"}}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
@@ -223,6 +232,7 @@ var (
 		{"lsm", "security_inode_setattr", []FimFunc{
 			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm_v60.o", "inode_setattr"},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm_v63.o", "inode_setattr"},
 		}},
 	}
 

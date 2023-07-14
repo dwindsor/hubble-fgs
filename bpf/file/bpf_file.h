@@ -107,6 +107,11 @@
 #define ATTR_TIMES_SET (1 << 16)
 #define ATTR_TOUCH     (1 << 17)
 
+struct mnt_idmap {
+	struct user_namespace *owner;
+	refcount_t count;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct retprobe_key);

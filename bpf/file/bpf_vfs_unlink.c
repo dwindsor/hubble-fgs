@@ -102,6 +102,13 @@ ignore_unlink:
 	return 0;
 }
 
+SEC("kprobe/vfs_unlink/63")
+int BPF_KPROBE(vfs_unlink_v63, struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+{
+	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	return 0;
+}
+
 SEC("kprobe/vfs_unlink/512")
 int BPF_KPROBE(vfs_unlink_v512, struct user_namespace *mnt_userns, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {

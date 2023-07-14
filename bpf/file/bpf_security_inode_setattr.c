@@ -127,10 +127,19 @@ int BPF_KPROBE(security_inode_setattr_v60, struct user_namespace *mnt_userns, st
 	return 0;
 }
 
+SEC("kprobe/security_inode_setattr/63")
+int BPF_KPROBE(security_inode_setattr_v63, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr)
+{
+	do_security_inode_setattr(ctx, dentry, attr);
+	return 0;
+}
+
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_setattr")
-#ifdef __V60_BPF_PROG
+#if defined(__V60_BPF_PROG)
 int BPF_PROG(security_inode_setattr_lsm, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr)
+#elif defined(__V63_BPF_PROG)
+int BPF_PROG(security_inode_setattr_lsm, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr)
 #else
 int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *attr)
 #endif
@@ -144,8 +153,10 @@ int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *at
 
 #ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_setattr")
-#ifdef __V60_BPF_PROG
+#if defined(__V60_BPF_PROG)
 int BPF_PROG(security_inode_setattr_fmod, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr, int ret)
+#elif defined(__V63_BPF_PROG)
+int BPF_PROG(security_inode_setattr_fmod, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr, int ret)
 #else
 int BPF_PROG(security_inode_setattr_fmod, struct dentry *dentry, struct iattr *attr, int ret)
 #endif
