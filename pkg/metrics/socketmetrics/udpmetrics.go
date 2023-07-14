@@ -21,103 +21,126 @@ import (
 // UDP socket metrics
 var (
 	SocketStatsUDPTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_txbytes",
-		Help: "UDP socket TX bytes statistics",
+		Name:      "socket_stats_udp_txbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_txsegs",
-		Help: "UDP socket TX segment statistics",
+		Name:      "socket_stats_udp_txsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPTxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_txbursts",
-		Help: "UDP socket TX bursts statistics",
+		Name:      "socket_stats_udp_txbursts",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPTxDips = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_txdips",
-		Help: "UDP socket TX dips statistics",
+		Name:      "socket_stats_udp_txdips",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_rxbytes",
-		Help: "UDP socket RX bytes statistics",
+		Name:      "socket_stats_udp_rxbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_rxsegs",
-		Help: "UDP socket RX segment statistics",
+		Name:      "socket_stats_udp_rxsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_rxbursts",
-		Help: "UDP socket RX bursts statistics",
+		Name:      "socket_stats_udp_rxbursts",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPRxDips = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_rxdips",
-		Help: "UDP socket RX dips statistics",
+		Name:      "socket_stats_udp_rxdips",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPDrops = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_drops",
-		Help: "UDP socket drops statistics",
+		Name:      "socket_stats_udp_drops",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPConsumeMisses = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_consume_misses",
-		Help: "UDP socket consume packet misses",
+		Name:      "socket_stats_udp_consume_misses",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket consume packet misses",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPStackTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_stack_txbytes",
-		Help: "UDP stack TX bytes statistics",
+		Name:      "socket_stats_udp_stack_txbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP stack TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPStackTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_stack_txsegs",
-		Help: "UDP stack TX segment statistics",
+		Name:      "socket_stats_udp_stack_txsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP stack TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPStackRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_stack_rxbytes",
-		Help: "UDP stack RX bytes statistics",
+		Name:      "socket_stats_udp_stack_rxbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP stack RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPStackRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_stack_rxsegs",
-		Help: "UDP stack RX segment statistics",
+		Name:      "socket_stats_udp_stack_rxsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP stack RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPTxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_tx_watermarks_state",
-		Help: "UDP socket TX watermarks state",
+		Name:      "socket_stats_udp_tx_watermarks_state",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX watermarks state",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPRxWatermarksState = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_rx_watermarks_state",
-		Help: "UDP socket RX watermarks state",
+		Name:      "socket_stats_udp_rx_watermarks_state",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX watermarks state",
 	}, []string{"namespace", "pod", "binary"})
 )
 
 // UDP multicast socket metrics
 var (
 	SocketStatsUDPMulticastTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_txbytes",
-		Help: "UDP socket TX bytes statistics",
+		Name:      "socket_stats_udp_mcast_txbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_txsegs",
-		Help: "UDP socket TX segment statistics",
+		Name:      "socket_stats_udp_mcast_txsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_rxbytes",
-		Help: "UDP socket RX bytes statistics",
+		Name:      "socket_stats_udp_mcast_rxbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_rxsegs",
-		Help: "UDP socket RX segment statistics",
+		Name:      "socket_stats_udp_mcast_rxsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastDrops = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_drops",
-		Help: "UDP socket drops statistics",
+		Name:      "socket_stats_udp_mcast_drops",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastConsumeMisses = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_consume_misses",
-		Help: "UDP socket consume packet misses",
+		Name:      "socket_stats_udp_mcast_consume_misses",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket consume packet misses",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 )
 
 // UDP metrics collection errors
 var (
 	SocketStatsUDPGC = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:        consts.MetricNamePrefix + "socket_stats_udp_retrieve",
+		Name:        "socket_stats_udp_retrieve",
+		Namespace:   consts.MetricsNamespace,
 		Help:        "UDP socket retrieval stats. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"count"})
@@ -131,16 +154,19 @@ var (
 //   - a "_sum" metric, reporting the sum of all observed values
 var (
 	UdpLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_latency_microseconds_bucket",
-		Help: "Histogram bucket for UDP socket latency in microseconds",
+		Name:      "udp_latency_microseconds_bucket",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram bucket for UDP socket latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
 	UdpLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_latency_microseconds_count",
-		Help: "Histogram count for UDP socket latency",
+		Name:      "udp_latency_microseconds_count",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram count for UDP socket latency",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	UdpLatencySum = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_latency_microseconds_sum",
-		Help: "Histogram sum for UDP socket latency in microseconds",
+		Name:      "udp_latency_microseconds_sum",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram sum for UDP socket latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
@@ -152,24 +178,28 @@ var (
 //   - a "_sum" metric, reporting the sum of all observed values
 var (
 	UdpMulticastLatencyBucket = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_bucket",
-		Help: "Histogram bucket for UDP socket multicast latency in microseconds",
+		Name:      "udp_mcast_latency_microseconds_bucket",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram bucket for UDP socket multicast latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "le"})
 	UdpMulticastLatencyCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_count",
-		Help: "Histogram count for UDP socket multicast latency",
+		Name:      "udp_mcast_latency_microseconds_count",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram count for UDP socket multicast latency",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 	UdpMulticastLatencySum = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "udp_mcast_latency_microseconds_sum",
-		Help: "Histogram sum for UDP socket multicast latency in microseconds",
+		Name:      "udp_mcast_latency_microseconds_sum",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram sum for UDP socket multicast latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 )
 
 // UDP Sequence Check errors
 var (
 	SocketStatsUDPSeqCheckErrors = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "socket_stats_udp_sequence_check_errors",
-		Help: "UDP socket sequence check errors statistics",
+		Name:      "socket_stats_udp_sequence_check_errors",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket sequence check errors statistics",
 	}, []string{"namespace", "pod", "binary"})
 )
 

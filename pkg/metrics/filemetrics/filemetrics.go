@@ -21,23 +21,27 @@ import (
 
 var (
 	fileTotalEvents = promauto.NewCounter(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_events_total",
-		Help: "Total number of process_file events (independently of going through the eventcache).",
+		Name:      "file_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of process_file events (independently of going through the eventcache).",
 	})
 
 	fileTotalCacheEvents = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_cache_events_total",
-		Help: "Total number of process_file events (that go in/out the eventcache).",
+		Name:      "file_cache_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of process_file events (that go in/out the eventcache).",
 	}, []string{"direction"})
 
 	fileTotalActionEvents = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_actions_total",
-		Help: "Total file events per action",
+		Name:      "file_actions_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total file events per action",
 	}, []string{"node", "namespace", "policy", "rule", "action", "operation"})
 
 	fileTotalErrors = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "file_errors_total",
-		Help: "Total number of process_file event errors (can be from the grpc or sensor).",
+		Name:      "file_errors_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of process_file event errors (can be from the grpc or sensor).",
 	}, []string{"reason"})
 )
 

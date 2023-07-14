@@ -19,5 +19,5 @@ import (
 )
 
 func init() {
-	consts.MetricNamePrefix = "isovalent_"
+	consts.MetricsNamespace = "isovalent"
 }

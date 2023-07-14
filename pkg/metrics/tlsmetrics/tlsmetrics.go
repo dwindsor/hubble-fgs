@@ -19,8 +19,9 @@ import (
 
 var (
 	TlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "tls_handshakes_total",
-		Help: "TLS handshake statistics",
+		Name:      "tls_handshakes_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "TLS handshake statistics",
 	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
 )
 

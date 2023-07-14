@@ -18,11 +18,13 @@ import (
 
 var (
 	HttpResponseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "http_response_total",
-		Help: "HTTP return code statistics",
+		Name:      "http_response_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
 	HttpRequestDurationSeconds = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       consts.MetricNamePrefix + "http_stats_latency",
+		Name:       "http_stats_latency",
+		Namespace:  consts.MetricsNamespace,
 		Help:       "HTTP latency statistics",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})

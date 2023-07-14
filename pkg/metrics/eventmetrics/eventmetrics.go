@@ -80,8 +80,9 @@ func HandleOriginalEvent(originalEvent interface{}) {
 
 var (
 	dnsRequestTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: consts.MetricNamePrefix + "dns_total",
-		Help: "Dns request/response statistics",
+		Name:      "dns_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Dns request/response statistics",
 	}, []string{"namespace", "pod", "binary", "names", "rcodes", "response"})
 )
 

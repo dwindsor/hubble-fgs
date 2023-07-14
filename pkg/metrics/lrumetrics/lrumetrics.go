@@ -24,7 +24,8 @@ import (
 
 var (
 	LruMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        consts.MetricNamePrefix + "lru_in_use_gauge",
+		Name:        "lru_in_use_gauge",
+		Namespace:   consts.MetricsNamespace,
 		Help:        "The total number of LRU in-use entries.",
 		ConstLabels: nil,
 	}, []string{"map", "total"})

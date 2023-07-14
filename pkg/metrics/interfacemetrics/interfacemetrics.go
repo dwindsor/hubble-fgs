@@ -19,36 +19,44 @@ import (
 // Interface metrics
 var (
 	InterfaceBytesSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_txbytes",
-		Help: "Bytes sent per network interface",
+		Name:      "interface_txbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Bytes sent per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceBytesReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_rxbytes",
-		Help: "Bytes received per network interface",
+		Name:      "interface_rxbytes",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Bytes received per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceSegmentsSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_txsegs",
-		Help: "Segments sent per network interface",
+		Name:      "interface_txsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Segments sent per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceSegmentsReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_rxsegs",
-		Help: "Segments received per network interface",
+		Name:      "interface_rxsegs",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Segments received per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceTxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_txerrors",
-		Help: "TX errors per network interface",
+		Name:      "interface_txerrors",
+		Namespace: consts.MetricsNamespace,
+		Help:      "TX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceRxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_rxerrors",
-		Help: "RX errors per network interface",
+		Name:      "interface_rxerrors",
+		Namespace: consts.MetricsNamespace,
+		Help:      "RX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceTxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_txdrops",
-		Help: "TX drops per network interface",
+		Name:      "interface_txdrops",
+		Namespace: consts.MetricsNamespace,
+		Help:      "TX drops per network interface",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceRxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_rxdrops",
-		Help: "RX drops per network interface",
+		Name:      "interface_rxdrops",
+		Namespace: consts.MetricsNamespace,
+		Help:      "RX drops per network interface",
 	}, []string{"name", "namespace", "pod"})
 )
 
@@ -60,15 +68,18 @@ var (
 //   - a "_gsum" metric, reporting the sum of all observed values
 var (
 	InterfaceQlenBucket = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen_bucket",
-		Help: "Histogram bucket for the number of enqued packets",
+		Name:      "interface_qlen_bucket",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram bucket for the number of enqued packets",
 	}, []string{"name", "namespace", "pod", "le"})
 	InterfaceQlenCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen_gcount",
-		Help: "Histogram count for the number of enqued packets",
+		Name:      "interface_qlen_gcount",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram count for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
 	InterfaceQlenSum = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: consts.MetricNamePrefix + "interface_qlen_gsum",
-		Help: "Histogram sum for the number of enqued packets",
+		Name:      "interface_qlen_gsum",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Histogram sum for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
 )
