@@ -56,11 +56,10 @@ func (s *Summary) Dump() {
 	}
 }
 
-func getGaugeValue(gauge prometheus.Gauge) int {
-	// Yep, this does seem to be the only way to read it.
+func getCounterValue(counter prometheus.Counter) int {
 	var d dto.Metric
-	gauge.Write(&d)
-	return int(*d.Gauge.Value)
+	counter.Write(&d)
+	return int(*d.Counter.Value)
 }
 
 func (s *Summary) PrettyPrint() {
@@ -93,9 +92,9 @@ func (s *Summary) PrettyPrint() {
 			s.TLSEvents, s.HTTPEvents, s.TCPEvents,
 			s.ExitEvents, s.ExecEvents)
 		fmt.Printf("Ring buffer:       received=%d, lost=%d, errors=%d\n",
-			getGaugeValue(ringbufmetrics.PerfEventReceived.WithLabelValues()),
-			getGaugeValue(ringbufmetrics.PerfEventLost.WithLabelValues()),
-			getGaugeValue(ringbufmetrics.PerfEventErrors.WithLabelValues()))
+			getCounterValue(ringbufmetrics.PerfEventReceived),
+			getCounterValue(ringbufmetrics.PerfEventLost),
+			getCounterValue(ringbufmetrics.PerfEventErrors))
 	}
 
 	if s.SourceStats.Errors > 0 {
