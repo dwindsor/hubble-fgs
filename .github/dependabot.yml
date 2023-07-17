@@ -14,6 +14,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "vendor:"
 
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
@@ -23,6 +25,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "images:"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -32,6 +36,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "ci:"
 
   # v1.11 branch
   - package-ecosystem: "gomod"
@@ -43,6 +49,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.11] vendor:"
 
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
@@ -53,6 +61,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.11] images:"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -63,6 +73,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.11] ci:"
 
   # v1.10 branch
   - package-ecosystem: "gomod"
@@ -74,6 +86,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.10] vendor:"
 
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
@@ -84,6 +98,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.10] images:"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -94,6 +110,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.10] ci:"
 
   # v1.9 branch
   - package-ecosystem: "gomod"
@@ -105,6 +123,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.9] vendor:"
 
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
@@ -115,6 +135,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.9] images:"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -125,6 +147,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.9] ci:"
 
   # v1.8 branch
   - package-ecosystem: "gomod"
@@ -136,6 +160,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.8] vendor:"
 
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
@@ -146,6 +172,8 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.8] images:"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -156,3 +184,5 @@ updates:
     labels:
     - enhancement
     - release-blocker
+    commit-message:
+      prefix: "[v1.8] ci:"
