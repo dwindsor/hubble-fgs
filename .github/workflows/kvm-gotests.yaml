@@ -33,13 +33,12 @@ jobs:
           submodules: true
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@0fcaa3fed17811fcd8b6f1b0dc1f24e5f4ff6b13
+        uses: cilium/little-vm-helper@6a3d1797af8fab1a49f1c3d09afe3230aea559b6
         with:
           install-dependencies: true
           test-name: tetragon-unit-tests
           image: kind
           image-version: '${{ matrix.kernel }}'
-          lvh-version: 'v0.0.4'
           host-mount: ./
           ssh-port: 2222
           mem: 4G
@@ -61,7 +60,7 @@ jobs:
             DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@0fcaa3fed17811fcd8b6f1b0dc1f24e5f4ff6b13
+        uses: cilium/little-vm-helper@6a3d1797af8fab1a49f1c3d09afe3230aea559b6
         with:
           provision: 'false'
           cmd: |
