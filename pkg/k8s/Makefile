@@ -1,9 +1,4 @@
 GO ?= go
-VERSION=$(shell git describe --tags --always --exclude 'api/*')
-GO_GCFLAGS ?= ""
-GO_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
-GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
-GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -s -w"
 
 all: generate
 
@@ -13,10 +8,6 @@ all: generate
 help:
 	@echo 'Generated files:'
 	@echo '    generate          - genereate kubebuilder files'
-
-ifeq (1,$(NOOPT))
-GO_GCFLAGS = "all=-N -l"
-endif
 
 # Enterprise pkg/k8s is used as a replacement for OSS cilium/tetragon/pkg/k8s. It
 # replaces the k8s v1alpha1 and factories with new ones that know both OSS and
