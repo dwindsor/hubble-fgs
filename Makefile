@@ -83,6 +83,8 @@ help:
 	@echo 'Packages:'
 	@echo '    tarball           - build Tetragon Enterprise compressed tarball'
 	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
+	@echo 'Helpers: '
+	@echo '    version     - retrieve the current git tag version of the project'
 
 # Branch in the OSS repo we want to sync with. Default is origin/main
 OSS_SYNC_TARGET ?= origin/main
@@ -383,3 +385,7 @@ cscope:
 tester-progs:
 	$(MAKE) -C $(TESTER_PROGS_DIR)
 .PHONY: tester-progs
+
+version:
+	@echo $(VERSION)
+.PHONY: version

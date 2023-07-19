@@ -28,7 +28,7 @@ jobs:
 
       - name: Getting version tag
         id: tag
-        run: echo "tag=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+        run: echo "tag=$(make version)" >> $GITHUB_OUTPUT
 
       - name: Generate Tetragon EE Tarball
         id: tetragon-enterprise-tarball
