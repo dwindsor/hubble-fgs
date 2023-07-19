@@ -47,7 +47,7 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) Retry(internal *process.Process
 		return eventcache.ErrFailedToGetPodInfo
 	}
 
-	ev.SetProcess(internal.GetProcessCopy())
+	ev.SetProcess(internal.UnsafeGetProcess())
 
 	// For burst events we need to account for metrics skipped
 	// by original handling of event
@@ -154,12 +154,6 @@ func createProcessNetworkWatermarks(
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
-	if process != nil {
-		fgsEvent.Process = process.GetProcessCopy()
-	}
-	if parent != nil {
-		fgsEvent.Parent = parent.GetProcessCopy()
-	}
 
 	eventmetrics.HandleProcessWatermarksEvent(fgsEvent)
 	return fgsEvent
@@ -221,12 +215,6 @@ func createProcessNetworkBurst(
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
-	}
-	if process != nil {
-		fgsEvent.Process = process.GetProcessCopy()
-	}
-	if parent != nil {
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	eventmetrics.HandleProcessBurstEvent(fgsEvent)

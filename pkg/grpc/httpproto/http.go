@@ -135,9 +135,6 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
-	if processInt != nil {
-		fgsEvent.Process = processInt.GetProcessCopy()
-	}
 	eventmetrics.HandleHttpEvent(fgsEvent)
 	return fgsEvent
 }

@@ -350,9 +350,6 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		return nil
 	}
 
-	if parent != nil {
-		tetragonEvent.Parent = parent.GetProcessCopy()
-	}
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
 		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
@@ -592,9 +589,6 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		return nil
 	}
 
-	if parent != nil {
-		tetragonEvent.Parent = parent.GetProcessCopy()
-	}
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
 		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)

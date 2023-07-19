@@ -102,7 +102,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		proc = processInt.UnsafeGetProcess()
 	}
 	if parentInt != nil {
-		parent = parentInt.GetProcessCopy()
+		parent = parentInt.UnsafeGetProcess()
 	}
 
 	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
@@ -143,9 +143,6 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
-	}
-	if processInt != nil {
-		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	eventmetrics.HandleTlsEvent(fgsEvent)
 	return fgsEvent

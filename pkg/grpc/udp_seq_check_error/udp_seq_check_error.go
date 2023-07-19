@@ -42,8 +42,7 @@ func (msg *MsgUdpSeqCheckErrorEventUnix) Retry(internal *process.ProcessInternal
 		return eventcache.ErrFailedToGetPodInfo
 	}
 
-	ev.SetProcess(internal.GetProcessCopy())
-
+	ev.SetProcess(internal.UnsafeGetProcess())
 	createProcessUdpSeqCheckError(msg, false)
 
 	return nil
@@ -134,12 +133,6 @@ func createProcessUdpSeqCheckError(
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
-	}
-	if process != nil {
-		fgsEvent.Process = process.GetProcessCopy()
-	}
-	if parent != nil {
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	eventmetrics.HandleProcessUdpSeqCheckError(fgsEvent)

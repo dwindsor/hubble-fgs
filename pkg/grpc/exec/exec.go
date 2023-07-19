@@ -72,7 +72,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	parent, err := process.Get(parentId)
 	if err == nil {
 		parent.RefInc()
-		fgsParent = parent.GetProcessCopy()
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	// Set the cap field only if --enable-process-cred flag is set.
@@ -110,8 +110,6 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 		ec.Add(proc, fgsEvent, event.Common.Ktime, event.Process.Ktime, event)
 		return nil
 	}
-
-	fgsEvent.Process = proc.GetProcessCopy()
 
 	netinum := event.Namespaces.NetInum
 	if netinum != 0 && fgsEvent.Process.Pod != nil {
@@ -162,7 +160,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	// want to panic anyway to help us catch the bug faster. So no need to do a nil check
 	// here.
 	internal.AddPodInfo(podInfo)
-	ev.SetProcess(internal.GetProcessCopy())
+	ev.SetProcess(internal.UnsafeGetProcess())
 
 	// Check we have a parent with exception for pid 1, note we do this last because we want
 	// to ensure the podInfo and process are set before returning any errors.
@@ -173,7 +171,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 			return err
 		}
 		parent.RefInc()
-		ev.SetParent(parent.GetProcessCopy())
+		ev.SetParent(parent.UnsafeGetProcess())
 
 		// setup ancestors, we missed parent in the original event so now we can do that
 		if e, ok := ev.(*tetragon.ProcessExec); ok {
@@ -297,11 +295,9 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	}
 	if parent != nil {
 		parent.RefDec()
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	if process != nil {
 		process.RefDec()
-		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -321,7 +317,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	var err error
 
 	if parent != nil {
-		ev.SetParent(parent.GetProcessCopy())
+		ev.SetParent(parent.UnsafeGetProcess())
 		if !msg.RefCntDone[ParentRefCnt] {
 			parent.RefDec()
 			msg.RefCntDone[ParentRefCnt] = true

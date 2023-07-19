@@ -50,7 +50,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 
 	}
 	if parentInt != nil {
-		parent = parentInt.GetProcessCopy()
+		parent = parentInt.UnsafeGetProcess()
 	}
 
 	fgsTuple := sockinfo.GetTuple(&msg.Tuple, 0, msg.Common.Op)
@@ -107,9 +107,6 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
 		ec.Add(nil, fgsEvent, msg.Common.Ktime, msg.ProcessKey.Ktime, msg)
 		return nil
-	}
-	if processInt != nil {
-		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	eventmetrics.HandleDnsEvent(fgsEvent)
 	return fgsEvent

@@ -188,11 +188,9 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 	if process != nil {
 		process.RefInc()
-		fgsEvent.Process = process.GetProcessCopy()
 	}
 	if parent != nil {
 		parent.RefInc()
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -275,11 +273,9 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	}
 	if process != nil {
 		process.RefDec()
-		fgsEvent.Process = process.GetProcessCopy()
 	}
 	if parent != nil {
 		parent.RefDec()
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -328,11 +324,9 @@ func GetProcessListen(
 
 	if process != nil {
 		process.RefInc()
-		fgsEvent.Process = process.GetProcessCopy()
 	}
 	if parent != nil {
 		parent.RefInc()
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	return fgsEvent
@@ -402,11 +396,9 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 	if process != nil {
 		process.RefInc()
-		fgsEvent.Process = process.GetProcessCopy()
 	}
 	if parent != nil {
 		parent.RefInc()
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	return fgsEvent
@@ -450,12 +442,6 @@ func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.Process
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
-	if process != nil {
-		fgsEvent.Process = process.GetProcessCopy()
-	}
-	if parent != nil {
-		fgsEvent.Parent = parent.GetProcessCopy()
-	}
 	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
 
@@ -484,7 +470,7 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	}
 
 	if parent != nil {
-		ev.SetParent(parent.GetProcessCopy())
+		ev.SetParent(parent.UnsafeGetProcess())
 		if !msg.RefCntDone[exec.ParentRefCnt] {
 			if refAction == refInc {
 				parent.RefInc()
@@ -525,7 +511,7 @@ func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Ev
 		return eventcache.ErrFailedToGetPodInfo
 	}
 
-	ev.SetProcess(internal.GetProcessCopy())
+	ev.SetProcess(internal.UnsafeGetProcess())
 
 	// For SockStats events we need to account for metrics skipped
 	// by original handling of event.
@@ -689,12 +675,6 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
-	}
-	if process != nil {
-		fgsEvent.Process = process.GetProcessCopy()
-	}
-	if parent != nil {
-		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	return fgsEvent
