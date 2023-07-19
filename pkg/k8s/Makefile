@@ -1,5 +1,5 @@
 GO ?= go
-VERSION=$(shell git describe --tags --always)
+VERSION=$(shell git describe --tags --always --exclude 'api/*')
 GO_GCFLAGS ?= ""
 GO_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
 GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
