@@ -692,12 +692,21 @@ func TestLoadFileSensor(t *testing.T) {
 	})
 
 	verSuffix := "v419"
-	if kernels.MinKernelVersion("5.12.0") {
+	if kernels.MinKernelVersion("6.3.0") {
+		verSuffix = "v63"
+	} else if kernels.MinKernelVersion("5.12.0") {
 		verSuffix = "v512"
 	}
 
+	renameVerSuffix := "v419"
+	if kernels.MinKernelVersion("5.12.0") {
+		renameVerSuffix = "v512"
+	}
+
 	attrVerSuffix := "v419"
-	if kernels.MinKernelVersion("6.0.0") {
+	if kernels.MinKernelVersion("6.3.0") {
+		attrVerSuffix = "v63"
+	} else if kernels.MinKernelVersion("6.0.0") {
 		attrVerSuffix = "v60"
 	}
 
@@ -714,7 +723,7 @@ func TestLoadFileSensor(t *testing.T) {
 		9:  tus.SensorProg{Name: "vfs_mkdir_exit", Type: ebpf.Kprobe},
 		10: tus.SensorProg{Name: "security_path_rename", Type: ebpf.Kprobe},
 		11: tus.SensorProg{Name: "security_path_rename_exit", Type: ebpf.Kprobe},
-		12: tus.SensorProg{Name: fmt.Sprintf("vfs_rename_%s", verSuffix), Type: ebpf.Kprobe},
+		12: tus.SensorProg{Name: fmt.Sprintf("vfs_rename_%s", renameVerSuffix), Type: ebpf.Kprobe},
 		13: tus.SensorProg{Name: "vfs_rename_exit", Type: ebpf.Kprobe},
 		14: tus.SensorProg{Name: "vfs_open", Type: ebpf.Kprobe},
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
