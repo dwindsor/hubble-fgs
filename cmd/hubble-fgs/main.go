@@ -790,6 +790,7 @@ func execute() error {
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
 	flags.String(keyProtocolShift, "auto", "(deprecated)")
 	flags.Int(keyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
+	flags.Int(keyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
 	flags.Int(keyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
 	flags.String(keyFimFifoPath, "/var/run/cilium/hubble", "Path for the FIFO used for fs-scanner and hubble-fgs communication")
 

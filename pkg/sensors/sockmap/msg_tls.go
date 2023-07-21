@@ -15,20 +15,24 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/yalue/native_endian"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 )
 
 var (
-	/* Runtime Containers */
-	tlsInProgress map[api.MsgTLSIP]*MsgTLSEventCert = make(map[api.MsgTLSIP]*MsgTLSEventCert)
-	tlsFilters    []uint32
+	// Do not use directly, should be accessed via getCache()
+	__cache    *tlsCache
+	tlsFilters []uint32
 )
 
 const (
@@ -38,6 +42,24 @@ const (
 type MsgTLSEventCert struct {
 	tls  *api.MsgTLSEvent
 	cert []byte
+}
+
+type tlsCache = lru.Cache[api.MsgTLSIP, *MsgTLSEventCert]
+
+// Return a reference to the tlsCache, allocating it first if necessary.
+func getCache() (*tlsCache, error) {
+	if __cache != nil {
+		return __cache, nil
+	}
+
+	logger.GetLogger().WithField("size", enterpriseOption.Config.TlsCacheSize).Info("Initializing TLS cache")
+	lru, err := lru.New[api.MsgTLSIP, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS cache: %w", err)
+	}
+
+	__cache = lru
+	return __cache, nil
 }
 
 func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *tls.MsgTLSEventUnix {
@@ -64,8 +86,13 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 	var m *api.MsgTLSEvent
 	errCode := uint32(0)
 
+	cache, err := getCache()
+	if err != nil {
+		return nil, err
+	}
+
 	m = &api.MsgTLSEvent{}
-	err := binary.Read(r, native_endian.NativeEndian(), m)
+	err = binary.Read(r, native_endian.NativeEndian(), m)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +108,7 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 		 * as part of the key lookup.
 		 */
 		m.Tuple.Remaining = 0
-		tlsInProgress[m.Tuple] = v
+		cache.Add(m.Tuple, v)
 		return nil, nil
 	}
 
@@ -98,7 +125,12 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	var bytes uint32
 	var op uint8
 
-	if err := binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
+	cache, err := getCache()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
 		return nil, err
 	}
 	key := api.MsgTLSIP{}
@@ -111,13 +143,13 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	 */
 	key.Remaining = 0
 
-	m := tlsInProgress[key]
+	m, ok := cache.Get(key)
 	/* If m is nil this implies either we incorrectly deleted a map
 	 * entry. (datapath indicated no more bytes, but then sent more?)
 	 * Or the entry was never populated in the first place. This would
 	 * indicate a MSG_OP_TLS_CONT event without a matching MSG_OP_TLS
 	 * event. */
-	if m == nil {
+	if m == nil || !ok {
 		m = &MsgTLSEventCert{}
 		m.tls = &api.MsgTLSEvent{}
 		errCode = api.TlsCertificateErrorSpuriousCerts
@@ -152,6 +184,6 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 		}
 	}
 
-	delete(tlsInProgress, key)
+	cache.Remove(key)
 	return []observer.Event{msgToTLSEventUnix(m.tls, certStrings, errCode, errState)}, nil
 }

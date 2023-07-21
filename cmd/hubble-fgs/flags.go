@@ -74,6 +74,7 @@ const (
 	keyProtocolShift = "protocol-shift"
 
 	keyDnsCacheSize   = "dns-cache-size"
+	keyTlsCacheSize   = "tls-cache-size"
 	keyNetNsCacheSize = "net-ns-cache-size"
 
 	keyFimFifoPath = "fim-fifo-path"
@@ -159,6 +160,7 @@ func readAndSetFlags() {
 	enterpriseOption.Config.DetachOldBpf = viper.GetBool(keyDetatchOldBPF)
 
 	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
+	enterpriseOption.Config.TlsCacheSize = viper.GetInt(keyTlsCacheSize)
 	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
 
 	enterpriseOption.Config.FimFifoPath = viper.GetString(keyFimFifoPath)
