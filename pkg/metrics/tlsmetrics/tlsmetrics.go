@@ -11,7 +11,10 @@
 package tlsmetrics
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,6 +22,24 @@ import (
 )
 
 var (
+	tlsErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:      "tls_errors_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Errors encountered while processing TLS events. For internal use only.",
+	}, []string{"error", "continuation"})
+
+	tlsExpectedContinuationTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name:      "tls_expected_continutation_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Expected number of TLS continuation events. For internal use only.",
+	})
+
+	tlsActualContinuationTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name:      "tls_actual_continutation_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Actual number of TLS continuation events. For internal use only.",
+	})
+
 	tlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
@@ -26,10 +47,46 @@ var (
 	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
 )
 
+// Maps TLS error codes to strings for display in metrics
+var tlsErrorString = map[int]string{
+	// The following codes are taken from pkg/api/tlsapi/tlsapi.go
+	// TlsCertificateErrorBadHeader
+	0x0001: "bad header",
+	// TlsCertificateErrorLengthRead
+	0x0100: "bad length read",
+	// TlsCertificateErrorMissingError
+	0x0200: "missing certificate",
+	// TlsCertificateErrorCertRead
+	0x0400: "failed to read certificate",
+	// TlsCertificateErrorCertPartial
+	0x0800: "partial certificate",
+	// TlsCertificateErrorParseX509
+	0x1000: "failed to parse X509 certificate",
+	// TlsCertificateErrorSpuriousCerts
+	0x2000: "unmatched continuation event",
+}
+
 func TlsHandshakeTotal(res *tetragon.Tls) prometheus.Counter {
 	binary, pod, ns := oss.GetProcessInfo(res.Process)
 	version := getNegotiatedVersion(res)
 	return tlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Cipher, res.SniName)
+}
+
+func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {
+	s, ok := tlsErrorString[err]
+	if !ok {
+		s = "unknown"
+		logger.GetLogger().WithField("code", err).Warn("unknown TLS error")
+	}
+	return tlsErrorsTotal.WithLabelValues(s, fmt.Sprint(continuation))
+}
+
+func TlsExpectedContinuationTotal() prometheus.Counter {
+	return tlsExpectedContinuationTotal
+}
+
+func TlsActualContinuationTotal() prometheus.Counter {
+	return tlsActualContinuationTotal
 }
 
 func getNegotiatedVersion(tls *tetragon.Tls) string {

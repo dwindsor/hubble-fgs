@@ -25,6 +25,7 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 )
@@ -101,6 +102,8 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 	 * MsgTlsEvent until certificates arrive.
 	 */
 	if (m.ServerHello.Flags & api.TlsFlagCert) != 0 {
+		tlsmetrics.TlsExpectedContinuationTotal().Inc()
+
 		v := &MsgTLSEventCert{}
 		v.tls = m
 		v.cert = make([]byte, 0)
@@ -124,6 +127,8 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	var errState api.MsgTLSParserState
 	var bytes uint32
 	var op uint8
+
+	tlsmetrics.TlsActualContinuationTotal().Inc()
 
 	cache, err := getCache()
 	if err != nil {
@@ -150,40 +155,45 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	 * indicate a MSG_OP_TLS_CONT event without a matching MSG_OP_TLS
 	 * event. */
 	if m == nil || !ok {
-		m = &MsgTLSEventCert{}
-		m.tls = &api.MsgTLSEvent{}
-		errCode = api.TlsCertificateErrorSpuriousCerts
-	} else {
-		if err := binary.Read(r, native_endian.NativeEndian(), &bytes); err != nil {
-			errCode = api.TlsCertificateErrorLengthRead
-		} else if bytes == 0 {
-			var errBpf uint32
+		tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorSpuriousCerts, true).Inc()
+		return nil, fmt.Errorf("missing original entry for continuation event")
+	}
 
-			err := binary.Read(r, native_endian.NativeEndian(), &errBpf)
-			if err == nil {
-				errCode = uint32(errBpf)
-				if errCode != 0 {
-					err = binary.Read(r, native_endian.NativeEndian(), &errState)
-					if err != nil {
-						errCode = api.TlsCertificateErrorMissingError
-					}
+	if err := binary.Read(r, native_endian.NativeEndian(), &bytes); err != nil {
+		tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorLengthRead, true).Inc()
+		errCode = api.TlsCertificateErrorLengthRead
+	} else if bytes == 0 {
+		var errBpf uint32
+
+		err := binary.Read(r, native_endian.NativeEndian(), &errBpf)
+		if err == nil {
+			errCode = uint32(errBpf)
+			if errCode != 0 {
+				err = binary.Read(r, native_endian.NativeEndian(), &errState)
+				if err != nil {
+					tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorMissingError, true).Inc()
+					errCode = api.TlsCertificateErrorMissingError
 				}
-			} else {
-				errCode = api.TlsCertificateErrorMissingError
 			}
 		} else {
-			m.cert = make([]byte, bytes)
-			n, err := r.Read(m.cert)
-			if err != nil && !errors.Is(err, io.EOF) {
-				errCode = api.TlsCertificateErrorCertRead
-			} else if n != int(bytes) {
-				errCode = api.TlsCertificateErrorCertRead
-			} else {
-				certStrings, errCode = readertls.GetTLSCertificateString(m.cert)
-			}
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorMissingError, true).Inc()
+			errCode = api.TlsCertificateErrorMissingError
+		}
+	} else {
+		m.cert = make([]byte, bytes)
+		n, err := r.Read(m.cert)
+		if err != nil && !errors.Is(err, io.EOF) {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertRead, true).Inc()
+			errCode = api.TlsCertificateErrorCertRead
+		} else if n != int(bytes) {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertRead, true).Inc()
+			errCode = api.TlsCertificateErrorCertRead
+		} else {
+			certStrings, errCode = readertls.GetTLSCertificateString(m.cert)
 		}
 	}
 
 	cache.Remove(key)
-	return []observer.Event{msgToTLSEventUnix(m.tls, certStrings, errCode, errState)}, nil
+	ev := msgToTLSEventUnix(m.tls, certStrings, errCode, errState)
+	return []observer.Event{ev}, nil
 }

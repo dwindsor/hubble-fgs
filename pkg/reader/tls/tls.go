@@ -10,6 +10,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/yalue/native_endian"
 )
 
@@ -207,12 +208,14 @@ func defragHandshake(fragments []byte) ([]byte, uint32) {
 		// TLS record header: [ type 8b | version 16b | length 16b ]
 		typ := fragments[0]
 		if typ != 22 {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorBadHeader, false).Inc()
 			return nil, api.TlsCertificateErrorBadHeader
 		}
 		length := int(fragments[3])<<8 | int(fragments[4])
 		fragments = fragments[5:]
 
 		if len(fragments) < length {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertPartial, false).Inc()
 			return nil, api.TlsCertificateErrorCertPartial
 		}
 
@@ -221,6 +224,7 @@ func defragHandshake(fragments []byte) ([]byte, uint32) {
 	}
 
 	if len(fragments) > 0 {
+		tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertPartial, false).Inc()
 		return nil, api.TlsCertificateErrorCertPartial
 	}
 
@@ -233,12 +237,14 @@ func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
 		return nil, code
 	}
 	if len(cert) < 6 {
+		tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertPartial, false).Inc()
 		return nil, api.TlsCertificateErrorCertPartial
 	}
 
 	// Header: [ type 8b | length 24b | certs length 24b ]
 	handshakeType := cert[0]
 	if handshakeType != 11 {
+		tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorBadHeader, false).Inc()
 		return nil, api.TlsCertificateErrorBadHeader
 	}
 	// Jump type + handshake length and parse the certificates length.
@@ -254,6 +260,7 @@ func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
 		length = int(cert[0])<<16 | int(cert[1])<<8 | int(cert[2])
 
 		if len(cert) < length {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorCertPartial, false).Inc()
 			return certSubjects, api.TlsCertificateErrorCertPartial
 		}
 
@@ -262,6 +269,7 @@ func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
 
 		parsedCert, err := x509.ParseCertificate(certificate)
 		if err != nil {
+			tlsmetrics.TlsErrorsTotal(api.TlsCertificateErrorParseX509, false).Inc()
 			return certSubjects, api.TlsCertificateErrorParseX509
 		}
 
