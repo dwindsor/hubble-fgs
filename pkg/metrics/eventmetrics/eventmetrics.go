@@ -534,9 +534,7 @@ func HandleHttpEvent(res *tetragon.ProcessHttp) {
 }
 
 func HandleTlsEvent(res *tetragon.Tls) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
-	version := tlsmetrics.GetNegotiatedVersion(res)
-	tlsmetrics.TlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Cipher, res.SniName).Inc()
+	tlsmetrics.TlsHandshakeTotal(res).Inc()
 }
 
 func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {

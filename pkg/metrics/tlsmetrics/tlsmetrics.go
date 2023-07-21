@@ -13,19 +13,26 @@ package tlsmetrics
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	TlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	tlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",
 	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
 )
 
-func GetNegotiatedVersion(tls *tetragon.Tls) string {
+func TlsHandshakeTotal(res *tetragon.Tls) prometheus.Counter {
+	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	version := getNegotiatedVersion(res)
+	return tlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Cipher, res.SniName)
+}
+
+func getNegotiatedVersion(tls *tetragon.Tls) string {
 	// NegotiatedVersion field should always be set since for TLS <1.3 we are using
 	// readertls.GetNegotiatedVersion to set the negotiated version field through version
 	// discovery.
