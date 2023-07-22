@@ -33,7 +33,7 @@ jobs:
           submodules: true
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@6a3d1797af8fab1a49f1c3d09afe3230aea559b6
+        uses: cilium/little-vm-helper@908ab1ff8a596a03cd5221a1f8602dc44c3f906d
         with:
           install-dependencies: true
           test-name: tetragon-unit-tests
@@ -60,7 +60,7 @@ jobs:
             DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@6a3d1797af8fab1a49f1c3d09afe3230aea559b6
+        uses: cilium/little-vm-helper@908ab1ff8a596a03cd5221a1f8602dc44c3f906d
         with:
           provision: 'false'
           cmd: |
