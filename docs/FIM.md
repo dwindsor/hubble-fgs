@@ -240,6 +240,10 @@ This event contains `rename_arg` instead of `generic_arg` in order to provide de
 
    These are events for changing permissions/uid/gid (i.e. `chmod`, `chown` system calls) for files/directories inside a watched path.
 
+9. ### `FILE_EXEC`
+
+   These are events for executing a file inside a watched path.
+
 FIM requires a kernel version of 4.19 or later (exception is RedHat/OpenShift 4.18 kernels, check [here](#using-fim-in-openshiftrethat-418-kernels)). Our tests cover all above on 4.19, 5.4, 5.10, and 5.15 kernels (longterm releases). We do not plan to support older kernels.
 
 ## Monitoring Pod Files
@@ -503,11 +507,10 @@ spec:
 ## Known Limitations
 
 1. There are cases where errors will cause the operation not to happen, but an event will be emitted. These does not include insufficient permissions, i.e., if an operation is not completed due to insufficient permissions no event is generated.
-2. Currently, we don't support more than one [selectors](#event-selector).
-3. There are some limitations with creating/deleting symlinks after the agent has started:
+2. There are some limitations with creating/deleting symlinks after the agent has started:
     - Creating a new symlink (after file monitoring starts) in a watched directory that points to a directory that is not watched.
     - Deleting a symlink will not remove the watched (previously) target file.
-4. Renaming directories is racy because we need to scan the hierarchy in user-space. Renaming files do not have this issue.
-5. Only path prefixes are supported for matching files.
-6. We do not track `mount`/`unmount`/`chroot` operations inside a watched directory (i.e. if we monitor `/etc/` and we mount a new tree at `/etc/test/` we will not get any events from files/directories inside `/etc/test/`).
-7. We check for invalid UTF-8 bytes in path names. If we find any, we replace that with "�", which leads to information being lost. We may need to use alterative ways to handle them (i.e. strconv.Quote()) or represent paths with bytes to avoid lost information.
+3. Renaming directories is racy because we need to scan the hierarchy in user-space. Renaming files do not have this issue.
+4. Only path prefixes are supported for matching files.
+5. We do not track `mount`/`unmount`/`chroot` operations inside a watched directory (i.e. if we monitor `/etc/` and we mount a new tree at `/etc/test/` we will not get any events from files/directories inside `/etc/test/`).
+6. We check for invalid UTF-8 bytes in path names. If we find any, we replace that with "�", which leads to information being lost. We may need to use alterative ways to handle them (i.e. strconv.Quote()) or represent paths with bytes to avoid lost information.
