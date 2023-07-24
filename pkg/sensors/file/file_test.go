@@ -900,6 +900,57 @@ func TestFileEnforceWrite(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestFileEnforceExec(t *testing.T) {
+	if !SupportEnforcement() {
+		t.Skip("Kernel does not support file enforcement")
+	}
+
+	testBin := testutils.RepoRootPath("contrib/tester-progs/test.sh")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecEnforceFile(t, testBin, "FILE_EXEC")
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		ClearFIMTracingPolicies()
+	})
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	assert.Error(t, exec.Command(testBin).Run()) // we expect this to fail
+
+	ino, dev := getInodeInfo(t, testBin)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(testBin)).WithInode(i)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
+		)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_EXEC).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("hook_security_bprm_check")).
+		WithOperation(o)
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
 func fileRead(t *testing.T, f string) {
 	file, err := os.Open(f)
 	if err != nil {
