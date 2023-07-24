@@ -2060,6 +2060,43 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func testFileExec(gt *testing.T, t *testing.T) {
+	out := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out)
+
+	oFile := filepath.Join(out, "test1")
+	createFileInDir(t, oFile)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{"/usr/bin/cat"},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := exec.Command("/usr/bin/cat", oFile).Run(); err != nil {
+		t.Logf("failed run  /usr/bin/cat %s: %s", oFile, err)
+	}
+
+	ino, dev := getInodeInfo(t, "/usr/bin/cat")
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full("/usr/bin/cat")).WithInode(i)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_EXEC).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("hook_security_bprm_check"))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
+
 func TestFileOps(t *testing.T) {
 	if !kernels.MinKernelVersion("4.19.0") {
 		t.Skip("File monitoring requires at least 4.19.0 version")
@@ -2220,6 +2257,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("truncate", func(lt *testing.T) {
 		testFileTruncate(t, lt)
+	})
+	t.Run("fileexec", func(lt *testing.T) {
+		testFileExec(t, lt)
 	})
 	t.Run("readcontainerfile", func(lt *testing.T) {
 		testFileReadContainerFile(t, lt)
