@@ -64,7 +64,8 @@ FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o 
 	  bpf_vfs_rename_enforce_lsm.o bpf_vfs_rename_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_lsm_v60.o bpf_security_inode_setattr_enforce_fmod_v60.o \
-	  bpf_security_inode_setattr_enforce_lsm_v63.o bpf_security_inode_setattr_enforce_fmod_v63.o
+	  bpf_security_inode_setattr_enforce_lsm_v63.o bpf_security_inode_setattr_enforce_fmod_v63.o \
+	  bpf_security_bprm_check.o
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 

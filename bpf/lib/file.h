@@ -24,6 +24,7 @@ enum { action_invalid = 0,
        action_rename = 7,
        action_readdir = 8,
        action_chattr = 9,
+       action_exec = 10,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -49,6 +50,7 @@ enum { hook_undef = 0,
        hook_security_inode_create = 19,
        hook_security_inode_mkdir = 20,
        hook_security_inode_rename = 21,
+       hook_security_bprm_check = 22,
 };
 
 #define KRETPROBE_KEY 0
