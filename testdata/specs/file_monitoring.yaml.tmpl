@@ -7,3 +7,20 @@ spec:
     file_paths:
     - {{.MatchedPath}}
     monitorHostFiles: true
+    selectors: # this will be overriden during the tests, we have to use the maximum number of selectors here
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "/usr/bin/cat"
+      matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_DELETE"
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "/usr/bin/cat"
+      matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_DELETE"

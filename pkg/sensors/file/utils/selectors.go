@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
@@ -84,6 +85,15 @@ func (k *SelOps) GetOpsSelMap() map[uint32]uint32 {
 	return retMap
 }
 
+func (k *SelOps) GetOpsSelMapSize() uint32 {
+	numItems := uint32(0)
+	k.opsMap.Range(func(key, val any) bool {
+		numItems++
+		return true
+	})
+	return numItems
+}
+
 func (k *SelOps) AddOpsVal(op, val uint32) {
 	k.opsMap.LoadOrStore(op, val)
 }
@@ -98,12 +108,8 @@ func (k *KernelSelectorState) InitOrGet(selIdx uint32) *SelOps {
 	return inner
 }
 
-func (k *KernelSelectorState) Get(selIdx uint32) *SelOps {
-	val, ok := k.operations[selIdx]
-	if ok {
-		return val
-	}
-	return nil
+func (k *KernelSelectorState) GetOpsEntries() map[uint32]*SelOps {
+	return k.operations
 }
 
 func writeBinaryMap(m *ebpf.Map, id uint32, path string) error {
@@ -129,30 +135,36 @@ func UpdateNamesMap(mapDir string, sel *KernelSelectorState) error {
 	return nil
 }
 
-func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
-	allEntries := sel.GetBinSelNamesMap()
-	if len(allEntries) == 0 {
-		return nil
+func GetMaxInnerEntriesNamesMap(sel *KernelSelectorState) uint32 {
+	maxEntries := 0
+	for _, entry := range sel.GetBinSelNamesMap() {
+		num := len(entry.GetBinSelNamesMap())
+		if num > maxEntries {
+			maxEntries = num
+		}
 	}
+	return uint32(maxEntries) + 1 // for the special entry UINT32_MAX
+}
 
-	for i := uint32(0); i < sel.num; i++ {
-		binEntries, ok := allEntries[int(i)] // we support only a single selector in FIM for now
-		if !ok {                             // no mathcBinaries for this selector
-			continue
+func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	maxEntries := GetMaxInnerEntriesNamesMap(sel)
+	for innerID, entry := range sel.GetBinSelNamesMap() {
+		entries := entry.GetBinSelNamesMap()
+		// in order kernels we should provide the maximum number of inner map entries
+		maxInnerEntries := uint32(len(entries)) + 1 // for the special entry UINT32_MAX
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxInnerEntries = maxEntries
 		}
 
-		entries := binEntries.GetBinSelNamesMap()
-		if len(entries) == 0 { // no matchBinaries selectors
-			return nil
-		}
-
-		innerName := fmt.Sprintf("file_names_map_%d", i)
+		innerName := fmt.Sprintf("file_names_map_%d", innerID)
 		innerSpec := &ebpf.MapSpec{
 			Name:       innerName,
 			Type:       ebpf.Hash,
-			KeySize:    4,                        // uint32
-			ValueSize:  4,                        // uint32
-			MaxEntries: uint32(len(entries)) + 1, // for the special entry UINT32_MAX
+			KeySize:    4, // uint32
+			ValueSize:  4, // uint32
+			MaxEntries: maxInnerEntries,
 		}
 		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
 			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
@@ -164,7 +176,7 @@ func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathP
 
 		// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
 		// if this is zero we don't have any matchBinaries selectors
-		if err := innerMap.Update(uint32(0xffffffff), sel.GetBinaryOp(0), ebpf.UpdateAny); err != nil {
+		if err := innerMap.Update(uint32(0xffffffff), sel.GetBinaryOp(innerID), ebpf.UpdateAny); err != nil {
 			return fmt.Errorf("ops: %w", err)
 		}
 
@@ -174,7 +186,7 @@ func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathP
 			}
 		}
 
-		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
+		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
 			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
 	}
@@ -182,25 +194,37 @@ func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathP
 	return nil
 }
 
+func GetMaxInnerEntriesOpsMap(sel *KernelSelectorState) uint32 {
+	maxEntries := uint32(0)
+	for _, entry := range sel.GetOpsEntries() {
+		num := entry.GetOpsSelMapSize()
+		if num > maxEntries {
+			maxEntries = num
+		}
+	}
+	return maxEntries + 1 // for the special entry UINT32_MAX
+}
+
 func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
-	for i := uint32(0); i < sel.num; i++ {
-		s := sel.Get(i)
-		if s == nil { // no matchOperations for this selector
-			continue
+	maxEntries := GetMaxInnerEntriesOpsMap(sel)
+	for innerID, entry := range sel.GetOpsEntries() {
+		entries := entry.GetOpsSelMap()
+
+		// in order kernels we should provide the maximum number of inner map entries
+		maxInnerEntries := uint32(len(entries)) + 1 // for the special entry UINT32_MAX
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxInnerEntries = maxEntries
 		}
 
-		entries := s.GetOpsSelMap()
-		if len(entries) == 0 { // no matchOperations for this selector
-			return nil
-		}
-
-		innerName := fmt.Sprintf("file_ops_map_%d", i)
+		innerName := fmt.Sprintf("file_ops_map_%d", innerID)
 		innerSpec := &ebpf.MapSpec{
 			Name:       innerName,
 			Type:       ebpf.Hash,
-			KeySize:    4,                        // uint32
-			ValueSize:  4,                        // uint32
-			MaxEntries: uint32(len(entries)) + 1, // for the special entry UINT32_MAX
+			KeySize:    4, // uint32
+			ValueSize:  4, // uint32
+			MaxEntries: maxInnerEntries,
 		}
 		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
 			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
@@ -212,7 +236,7 @@ func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPre
 
 		// add a special entry (key == UINT32_MAX) that has as a value the number of matchOperations entry
 		// if this is zero we don't have any matchOperations selectors
-		if err := innerMap.Update(uint32(0xffffffff), s.GetOperationOp(), ebpf.UpdateAny); err != nil {
+		if err := innerMap.Update(uint32(0xffffffff), entry.GetOperationOp(), ebpf.UpdateAny); err != nil {
 			return fmt.Errorf("ops: %w", err)
 		}
 
@@ -222,7 +246,7 @@ func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPre
 			}
 		}
 
-		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
+		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
 			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
 	}

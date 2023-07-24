@@ -675,7 +675,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	}
 
 	if err := fm.GenerateFileNamesMap(selHandle, sel, tc.pinPathPrefix); err != nil {
-		return fmt.Errorf("failed to populate file_names_maps")
+		return fmt.Errorf("failed to populate file_names_maps: %w", err)
 	}
 
 	if err := fm.UpdateNamesMap(mapDir, sel); err != nil {
@@ -690,7 +690,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	defer selOpsHandle.Close()
 
 	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.pinPathPrefix); err != nil {
-		return fmt.Errorf("failed to populate file_ops_maps")
+		return fmt.Errorf("failed to populate file_ops_maps: %w", err)
 	}
 
 	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_actions_map"))
@@ -1166,6 +1166,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			s:  sel,
 			tp: h.tp,
 		})
+		load.MaxEntriesInnerMap = map[string]uint32{
+			"file_names_maps": fm.GetMaxInnerEntriesNamesMap(sel),
+			"file_ops_maps":   fm.GetMaxInnerEntriesOpsMap(sel),
+		}
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{

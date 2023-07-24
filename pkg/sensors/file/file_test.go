@@ -226,7 +226,7 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := testCmd.Start(); err != nil {
@@ -276,7 +276,7 @@ func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := testCmd.Start(); err != nil {
@@ -331,7 +331,7 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := testCmd.Start(); err != nil {
@@ -512,7 +512,7 @@ func testFileDelete(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	// get inode before removing the file
@@ -623,7 +623,7 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	fp1 := filepath.Join(test_path, "newfile1.txt")
@@ -1029,7 +1029,7 @@ func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(in_file, out_file); err != nil {
@@ -1065,7 +1065,7 @@ func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(in_file, out_file); err != nil {
@@ -1103,7 +1103,7 @@ func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(out_file, in_file); err != nil {
@@ -1142,7 +1142,7 @@ func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(out_file, in_file); err != nil {
@@ -1180,7 +1180,7 @@ func testFileRename5(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(in_file, out_file); err != nil {
@@ -1221,7 +1221,7 @@ func testFileRename6(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(in_file, out_file); err != nil {
@@ -1271,7 +1271,7 @@ func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(out_a, in_a); err != nil {
@@ -1325,7 +1325,7 @@ func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := syscall.Rename(out_a, in_a); err != nil {
@@ -1378,7 +1378,7 @@ func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUT
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(out_a, in_a); err != nil {
@@ -1437,7 +1437,7 @@ func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OU
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := syscall.Rename(out_a, in_a); err != nil {
@@ -1492,7 +1492,7 @@ func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Rename(out_a, in_b); err != nil {
@@ -1543,7 +1543,7 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := syscall.Rename(out_a, in_b); err != nil {
@@ -1586,7 +1586,7 @@ func testFileRmdir(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	ino, dev := getInodeInfo(t, a)
@@ -1615,7 +1615,7 @@ func testFileMkdir(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	createTestDir(t, a)
@@ -1665,7 +1665,7 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	// method 1
@@ -1712,7 +1712,7 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := os.Truncate(oFile, 222); err != nil {
@@ -1788,7 +1788,7 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 		MonitorHostFiles: false, // check only container files here
 		PodSelector:      &slimv1.LabelSelector{},
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	rootDir, err := dockerIdToRootFs(containerId)
@@ -1845,7 +1845,7 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 			},
 		},
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := exec.Command("/usr/bin/cat", oFile).Run(); err != nil {
@@ -1892,7 +1892,7 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 			},
 		},
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if _, err := os.ReadFile(oFile); err != nil {
@@ -1929,7 +1929,7 @@ func testExactFileDelete(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	os.Remove(a)          // delete the file that we are monitoring
@@ -1958,7 +1958,7 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	sb, err := os.Stat(oFile)
@@ -2007,7 +2007,7 @@ func testFileChown(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	var sb syscall.Stat_t
@@ -2075,7 +2075,7 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 			},
 		},
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if _, err := os.ReadFile(oFile); err != nil {
@@ -2126,7 +2126,7 @@ func testFileExec(gt *testing.T, t *testing.T) {
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
 	}); err != nil {
-		fmt.Printf("ReGenerateFimMaps failed with %s", err)
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
 	if err := exec.Command("/usr/bin/cat", oFile).Run(); err != nil {
