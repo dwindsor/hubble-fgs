@@ -176,7 +176,8 @@ func LoadTC(
 ) (map[NamespaceInterface]bool, error) {
 	allAttached := make(map[NamespaceInterface]bool)
 
-	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+	attach := func(coll *ebpf.Collection, collSpec *ebpf.CollectionSpec,
+		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		seenNs := make(map[uint64]bool)
 
 		progMap[load] = prog
@@ -240,7 +241,7 @@ func LoadTC(
 	p, exists := progMap[load]
 	if exists {
 		if p.FD() != -1 {
-			_, err := attach(p, nil)
+			_, err := attach(nil, nil, p, nil)
 			return allAttached, err
 		}
 		delete(progMap, load)

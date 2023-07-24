@@ -58,8 +58,6 @@ const (
 	CharBufErrorPageFault   = -2
 	CharBufErrorTooLarge    = -3
 	CharBufSavedForRetprobe = -4
-
-	MaxKprobesMulti = 100 // MAX_ENTRIES_CONFIG in bpf code
 )
 
 func kprobeCharBufErrorToString(e int32) string {
@@ -150,14 +148,6 @@ func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
 	}
 }
 
-func genericKprobeFromBpfLoad(l *program.Program) (*genericKprobe, error) {
-	id, ok := l.LoaderData.(idtable.EntryID)
-	if !ok {
-		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.LoaderData, l.LoaderData)
-	}
-	return genericKprobeTableGet(id)
-}
-
 var (
 	MaxFilterIntArgs = 8
 )
@@ -230,7 +220,14 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 	maps = append(maps, filterMap)
 
 	argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), load)
+	// NB: code depends on multi kprobe links which was merged in 5.17, so the expectation is
+	// that we do not need to SetInnerMaxEntries() here.
 	maps = append(maps, argFilterMaps)
+
+	addr4FilterMaps := program.MapBuilderPin("addr4lpm_maps", sensors.PathJoin(pinPath, "addr4lpm_maps"), load)
+	// NB: code depends on multi kprobe links which was merged in 5.17, so the expectation is
+	// that we do not need to SetInnerMaxEntries() here.
+	maps = append(maps, addr4FilterMaps)
 
 	retProbe := program.MapBuilderPin("retprobe_map", sensors.PathJoin(pinPath, "retprobe_map"), load)
 	maps = append(maps, retProbe)
@@ -588,7 +585,22 @@ func createGenericKprobeSensor(
 		maps = append(maps, filterMap)
 
 		argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), load)
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxEntries := kprobeEntry.loadArgs.selectors.ValueMapsMaxEntries()
+			argFilterMaps.SetInnerMaxEntries(maxEntries)
+		}
 		maps = append(maps, argFilterMaps)
+
+		addr4FilterMaps := program.MapBuilderPin("addr4lpm_maps", sensors.PathJoin(pinPath, "addr4lpm_maps"), load)
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxEntries := kprobeEntry.loadArgs.selectors.Addr4MapsMaxEntries()
+			addr4FilterMaps.SetInnerMaxEntries(maxEntries)
+		}
+		maps = append(maps, addr4FilterMaps)
 
 		retProbe := program.MapBuilderPin("retprobe_map", sensors.PathJoin(pinPath, "retprobe_map"), load)
 		maps = append(maps, retProbe)
@@ -643,47 +655,6 @@ func createGenericKprobeSensor(
 		Progs: progs,
 		Maps:  maps,
 	}, nil
-}
-
-// ReloadGenericKprobeSelectors will reload a kprobe by unlinking it, generating new
-// selector data and updating filter_map, and then relinking the kprobe (entry).
-//
-// This is intended for speeding up testing, so DO NOT USE elsewhere without
-// checking its implementation first because limitations may exist (e.g,. the
-// config map is not updated, the retprobe is not reloaded, userspace return filters are not updated, etc.).
-func ReloadGenericKprobeSelectors(kpSensor *sensors.Sensor, conf *v1alpha1.KProbeSpec, actionArgTable *idtable.Table) error {
-	// The first program should be the (entry) kprobe, and that's the only
-	// one we will reload. We could reload the retprobe, but the assumption
-	// is that we don't need to, because it will never be executed if the
-	// entry probe is not loaded.
-	kprobeProg := kpSensor.Progs[0]
-	if kprobeProg.Label != "kprobe/generic_kprobe" {
-		return fmt.Errorf("first program %+v does not seem to be the entry kprobe", kprobeProg)
-	}
-
-	gk, err := genericKprobeFromBpfLoad(kprobeProg)
-	if err != nil {
-		return err
-	}
-
-	if err := kprobeProg.Unlink(); err != nil {
-		return fmt.Errorf("unlinking %v failed: %s", kprobeProg, err)
-	}
-
-	kState, err := selectors.InitKernelSelectorState(conf.Selectors, conf.Args, actionArgTable)
-	if err != nil {
-		return err
-	}
-
-	if err := updateSelectors(kState, kprobeProg.PinMap, gk.pinPathPrefix); err != nil {
-		return err
-	}
-
-	if err := kprobeProg.Relink(); err != nil {
-		return fmt.Errorf("failed relinking %v: %w", kprobeProg, err)
-	}
-
-	return nil
 }
 
 func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *program.Program, verbose int) error {
@@ -837,7 +808,7 @@ func ReadArgBytes(r *bytes.Reader, index int, hasMaxData bool) (*api.MsgGenericK
 			if err := binary.Read(r, binary.LittleEndian, &desc); err != nil {
 				return nil, err
 			}
-			data, err := observer.DataGet(desc.Id)
+			data, err := observer.DataGet(desc)
 			if err != nil {
 				return nil, err
 			}

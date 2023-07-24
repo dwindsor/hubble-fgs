@@ -28,7 +28,7 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220608195807-1a118fe229fc
 	github.com/vishvananda/netns v0.0.4
 	github.com/yalue/native_endian v1.0.2
-	go.uber.org/multierr v1.9.0
+	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.12.0
 	golang.org/x/sys v0.10.0
 	golang.org/x/time v0.3.0

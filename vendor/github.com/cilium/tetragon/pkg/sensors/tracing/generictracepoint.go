@@ -81,6 +81,9 @@ type genericTracepoint struct {
 
 	// policyName is the name of the policy that this tracepoint belongs to
 	policyName string
+
+	// parsed kernel selector state
+	selectors *selectors.KernelSelectorState
 }
 
 // genericTracepointArg is the internal representation of an output value of a
@@ -380,6 +383,11 @@ func createGenericTracepointSensor(
 			"generic_tracepoint",
 		)
 
+		err := tp.InitKernelSelectors()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize tracepoint kernel selectors: %w", err)
+		}
+
 		prog0.LoaderData = tp.tableIdx
 		progs = append(progs, prog0)
 
@@ -393,7 +401,22 @@ func createGenericTracepointSensor(
 		maps = append(maps, filterMap)
 
 		argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), prog0)
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxEntries := tp.selectors.ValueMapsMaxEntries()
+			argFilterMaps.SetInnerMaxEntries(maxEntries)
+		}
 		maps = append(maps, argFilterMaps)
+
+		addr4FilterMaps := program.MapBuilderPin("addr4lpm_maps", sensors.PathJoin(pinPath, "addr4lpm_maps"), prog0)
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxEntries := tp.selectors.Addr4MapsMaxEntries()
+			addr4FilterMaps.SetInnerMaxEntries(maxEntries)
+		}
+		maps = append(maps, addr4FilterMaps)
 
 		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), prog0)
 		maps = append(maps, selNamesMap)
@@ -406,7 +429,11 @@ func createGenericTracepointSensor(
 	}, nil
 }
 
-func (tp *genericTracepoint) KernelSelectors() (*selectors.KernelSelectorState, error) {
+func (tp *genericTracepoint) InitKernelSelectors() error {
+	if tp.selectors != nil {
+		return fmt.Errorf("InitKernelSelectors: selectors already initialized")
+	}
+
 	// rewrite arg index
 	selArgs := make([]v1alpha1.KProbeArg, 0, len(tp.args))
 	selSelectors := make([]v1alpha1.KProbeSelector, 0, len(tp.Spec.Selectors))
@@ -419,7 +446,7 @@ func (tp *genericTracepoint) KernelSelectors() (*selectors.KernelSelectorState, 
 		tpArg := &tp.args[i]
 		ty, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return nil, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
+			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 		selType := selectors.ArgTypeToString(uint32(ty))
 
@@ -441,7 +468,12 @@ func (tp *genericTracepoint) KernelSelectors() (*selectors.KernelSelectorState, 
 		}
 	}
 
-	return selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs)
+	selectors, err := selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs)
+	if err != nil {
+		return err
+	}
+	tp.selectors = selectors
+	return nil
 }
 
 func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
@@ -482,55 +514,6 @@ func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
 	return config, nil
 }
 
-// ReloadGenericTracepointSelectors will reload a tracepoint by unlinking it, generating new
-// selector data and updating filter_map, and then relinking the tracepoint.
-//
-// This is intended for speeding up testing, so DO NOT USE elsewhere without checking its
-// implementation first because limitations may exist (e.g., the config map is not updated).
-// TODO: pass the sensor here
-func ReloadGenericTracepointSelectors(p *program.Program, conf *v1alpha1.TracepointSpec) error {
-	tpIdx, ok := p.LoaderData.(int)
-	if !ok {
-		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", p.Name, p.LoaderData, p.LoaderData)
-	}
-
-	tp, err := genericTracepointTable.getTracepoint(tpIdx)
-	if err != nil {
-		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", p.Attach, err)
-	}
-
-	if err := p.Unlink(); err != nil {
-		return fmt.Errorf("unlinking %v failed: %s", p, err)
-	}
-
-	tp.Info.Subsys = conf.Subsystem
-	tp.Info.Event = conf.Event
-	if err := tp.Info.LoadFormat(); err != nil {
-		return fmt.Errorf("tracepoint %s/%s not supported: %w", conf.Subsystem, conf.Event, err)
-	}
-
-	tp.Spec = conf
-	tp.args, err = buildGenericTracepointArgs(tp.Info, conf.Args)
-	if err != nil {
-		return err
-	}
-
-	kernelSelectors, err := tp.KernelSelectors()
-	if err != nil {
-		return err
-	}
-
-	if err := updateSelectors(kernelSelectors, p.PinMap, tp.pinPathPrefix); err != nil {
-		return err
-	}
-
-	if err := p.Relink(); err != nil {
-		return fmt.Errorf("failed relinking %v: %w", p, err)
-	}
-
-	return nil
-}
-
 func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
 
 	tracepointLog = logger.GetLogger()
@@ -545,11 +528,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err)
 	}
 
-	kernelSelectors, err := tp.KernelSelectors()
-	if err != nil {
-		return err
-	}
-	load.MapLoad = append(load.MapLoad, selectorsMaploads(kernelSelectors, tp.pinPathPrefix, 0)...)
+	load.MapLoad = append(load.MapLoad, selectorsMaploads(tp.selectors, tp.pinPathPrefix, 0)...)
 
 	config, err := tp.EventConfig()
 	if err != nil {
@@ -579,7 +558,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 	}
 	defer m.Close()
 
-	for i, path := range kernelSelectors.GetNewBinaryMappings() {
+	for i, path := range tp.selectors.GetNewBinaryMappings() {
 		writeBinaryMap(m, i, path)
 	}
 
