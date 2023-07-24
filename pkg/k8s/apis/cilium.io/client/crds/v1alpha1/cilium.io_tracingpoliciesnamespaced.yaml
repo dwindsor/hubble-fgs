@@ -183,6 +183,7 @@ spec:
                                   - FILE_RENAME
                                   - FILE_READDIR
                                   - FILE_CHATTR
+                                  - FILE_EXEC
                                   type: string
                                 type: array
                             required:
