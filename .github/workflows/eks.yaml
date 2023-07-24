@@ -39,7 +39,7 @@ jobs:
       # See https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.18.3'
+          go-version: '1.20.6'
       - name: Install eksctl
         run: |
           DOWNLOAD_URL=https://github.com/weaveworks/eksctl/releases/download/$EKSCTL_VERSION/eksctl_Linux_amd64.tar.gz
