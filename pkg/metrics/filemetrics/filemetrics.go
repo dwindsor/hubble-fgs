@@ -14,9 +14,6 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-
-	// Needed to fix metrics prefix
-	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 )
 
 var (

@@ -16,9 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	// This is needed to get tests passing since gotest seems to implicitly import this
-	// package before running inits
-	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/wrapperspb"

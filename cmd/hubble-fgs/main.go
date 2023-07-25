@@ -12,14 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	// This needs to be first to be first in order to force oss consts to be fixed up
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"golang.org/x/sys/unix"

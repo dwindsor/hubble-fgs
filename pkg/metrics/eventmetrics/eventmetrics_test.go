@@ -88,24 +88,24 @@ func Test_eventHandleProcessedEvent(t *testing.T) {
 		},
 	}}})
 
-	expected := strings.NewReader(`# HELP isovalent_events_total The total number of Tetragon events
-# TYPE isovalent_events_total counter
-isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_EXIT"} 1
-isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="",namespace="",pod="",type="unknown"} 1
-isovalent_events_total{binary="binary_a",namespace="",pod="",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="binary_a",namespace="namespace_a",pod="pod_a",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="binary_b",namespace="",pod="",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="binary_b",namespace="namespace_b",pod="pod_b",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="binary_c",namespace="",pod="",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="binary_c",namespace="namespace_c",pod="pod_c",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="binary_d",namespace="",pod="",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT"} 1
-isovalent_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT"} 1
+	expected := strings.NewReader(`# HELP tetragon_events_total The total number of Tetragon events
+# TYPE tetragon_events_total counter
+tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_CONNECT"} 1
+tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_EXEC"} 1
+tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_EXIT"} 1
+tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_LISTEN"} 1
+tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_TLS"} 1
+tetragon_events_total{binary="",namespace="",pod="",type="unknown"} 1
+tetragon_events_total{binary="binary_a",namespace="",pod="",type="PROCESS_CONNECT"} 1
+tetragon_events_total{binary="binary_a",namespace="namespace_a",pod="pod_a",type="PROCESS_CONNECT"} 1
+tetragon_events_total{binary="binary_b",namespace="",pod="",type="PROCESS_EXEC"} 1
+tetragon_events_total{binary="binary_b",namespace="namespace_b",pod="pod_b",type="PROCESS_EXEC"} 1
+tetragon_events_total{binary="binary_c",namespace="",pod="",type="PROCESS_LISTEN"} 1
+tetragon_events_total{binary="binary_c",namespace="namespace_c",pod="pod_c",type="PROCESS_LISTEN"} 1
+tetragon_events_total{binary="binary_d",namespace="",pod="",type="PROCESS_TLS"} 1
+tetragon_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",type="PROCESS_TLS"} 1
+tetragon_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT"} 1
+tetragon_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, expected))
 }
@@ -119,10 +119,10 @@ func Test_handleOriginalEvent(t *testing.T) {
 			Flags: api.EventClone | api.EventExecve,
 		},
 	})
-	expected := strings.NewReader(`# HELP isovalent_flags_total The total number of Tetragon flags. For internal use only.
-# TYPE isovalent_flags_total counter
-isovalent_flags_total{type="clone"} 1
-isovalent_flags_total{type="execve"} 1
+	expected := strings.NewReader(`# HELP tetragon_flags_total The total number of Tetragon flags. For internal use only.
+# TYPE tetragon_flags_total counter
+tetragon_flags_total{type="clone"} 1
+tetragon_flags_total{type="execve"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.FlagCount, expected))
 }
@@ -141,51 +141,51 @@ func Test_handleInterfaceStatsEvent(t *testing.T) {
 		RxDrops:         8,
 	})
 
-	expected := strings.NewReader(`# HELP isovalent_interface_txbytes Bytes sent per network interface
-# TYPE isovalent_interface_txbytes gauge
-isovalent_interface_txbytes{name="eth0", namespace="", pod=""} 1
+	expected := strings.NewReader(`# HELP tetragon_interface_txbytes Bytes sent per network interface
+# TYPE tetragon_interface_txbytes gauge
+tetragon_interface_txbytes{name="eth0", namespace="", pod=""} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceBytesSent, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_rxbytes Bytes received per network interface
-# TYPE isovalent_interface_rxbytes gauge
-isovalent_interface_rxbytes{name="eth0",  namespace="", pod=""} 2
+	expected = strings.NewReader(`# HELP tetragon_interface_rxbytes Bytes received per network interface
+# TYPE tetragon_interface_rxbytes gauge
+tetragon_interface_rxbytes{name="eth0",  namespace="", pod=""} 2
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceBytesReceived, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_txsegs Segments sent per network interface
-# TYPE isovalent_interface_txsegs gauge
-isovalent_interface_txsegs{name="eth0", namespace="", pod=""} 3
+	expected = strings.NewReader(`# HELP tetragon_interface_txsegs Segments sent per network interface
+# TYPE tetragon_interface_txsegs gauge
+tetragon_interface_txsegs{name="eth0", namespace="", pod=""} 3
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceSegmentsSent, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_rxsegs Segments received per network interface
-# TYPE isovalent_interface_rxsegs gauge
-isovalent_interface_rxsegs{name="eth0", namespace="", pod=""} 4
+	expected = strings.NewReader(`# HELP tetragon_interface_rxsegs Segments received per network interface
+# TYPE tetragon_interface_rxsegs gauge
+tetragon_interface_rxsegs{name="eth0", namespace="", pod=""} 4
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceSegmentsReceived, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_txerrors TX errors per network interface
-# TYPE isovalent_interface_txerrors gauge
-isovalent_interface_txerrors{name="eth0", namespace="", pod=""} 5
+	expected = strings.NewReader(`# HELP tetragon_interface_txerrors TX errors per network interface
+# TYPE tetragon_interface_txerrors gauge
+tetragon_interface_txerrors{name="eth0", namespace="", pod=""} 5
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceTxErrors, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_rxerrors RX errors per network interface
-# TYPE isovalent_interface_rxerrors gauge
-isovalent_interface_rxerrors{name="eth0", namespace="", pod=""} 6
+	expected = strings.NewReader(`# HELP tetragon_interface_rxerrors RX errors per network interface
+# TYPE tetragon_interface_rxerrors gauge
+tetragon_interface_rxerrors{name="eth0", namespace="", pod=""} 6
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceRxErrors, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_txdrops TX drops per network interface
-# TYPE isovalent_interface_txdrops gauge
-isovalent_interface_txdrops{name="eth0", namespace="", pod=""} 7
+	expected = strings.NewReader(`# HELP tetragon_interface_txdrops TX drops per network interface
+# TYPE tetragon_interface_txdrops gauge
+tetragon_interface_txdrops{name="eth0", namespace="", pod=""} 7
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceTxDrops, expected))
 
-	expected = strings.NewReader(`# HELP isovalent_interface_rxdrops RX drops per network interface
-# TYPE isovalent_interface_rxdrops gauge
-isovalent_interface_rxdrops{name="eth0", namespace="", pod=""} 8
+	expected = strings.NewReader(`# HELP tetragon_interface_rxdrops RX drops per network interface
+# TYPE tetragon_interface_rxdrops gauge
+tetragon_interface_rxdrops{name="eth0", namespace="", pod=""} 8
 `)
 	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceRxDrops, expected))
 }
