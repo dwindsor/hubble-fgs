@@ -72,11 +72,11 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket zero window events",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsSrtt = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "socket_stats_srtt",
-		Namespace:  consts.MetricsNamespace,
-		Help:       "TCP socket smoothed RTT latency distribution.",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	SocketStatsSrtt = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:      "socket_stats_srtt",
+		Namespace: consts.MetricsNamespace,
+		Help:      "TCP socket smoothed RTT latency distribution in microseconds.",
+		Buckets:   []float64{50, 100, 250, 500, 750, 1_000, 2_500, 5_000, 7_500, 10_000, 25_000, 50_000, 75_000, 100_000},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsDrops = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "socket_stats_drops_total",

@@ -21,11 +21,13 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
-	HttpRequestDurationSeconds = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "http_stats_latency",
-		Namespace:  consts.MetricsNamespace,
-		Help:       "HTTP latency statistics",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	// The buckets are defined based on OpenTelemetry semantic conventions for HTTP metrics:
+	// https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/http-metrics/#metric-httpserverduration
+	HttpRequestDurationSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:      "http_stats_latency",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Duration of HTTP request processing.",
+		Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
 )
 
