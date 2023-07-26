@@ -463,22 +463,22 @@ In the case of [enforcement](#enforcement), we block `mmap` calls. This is becau
 
 FIM also provides [Prometheus](https://prometheus.io/) metrics.
 
-`isovalent_file_total_actions` is a counter per action, k8s namespace, node name, operation, tracing policy name, and rule that matches. An example is:
+`tetragon_file_total_actions` is a counter per action, k8s namespace, node name, operation, tracing policy name, and rule that matches. An example is:
 ```
-isovalent_file_total_actions{action="FILE_DELETE",namespace="<host>",node="minikube",operation="FILE_OP_BLOCK",",policy="fim-host-block-passwd-shadow",rule="/etc/passwd"} 1
-isovalent_file_total_actions{action="FILE_DELETE",namespace="<host>",node="minikube",operation="FILE_OP_BLOCK",policy="fim-host-block-passwd-shadow",rule="/etc/shadow"} 1
-isovalent_file_total_actions{action="FILE_DELETE",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 3
-isovalent_file_total_actions{action="FILE_READ",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/bin/"} 10574
-isovalent_file_total_actions{action="FILE_READ",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/sbin/"} 170
-isovalent_file_total_actions{action="FILE_READ",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/etc/"} 11
-isovalent_file_total_actions{action="FILE_READ",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 2
-isovalent_file_total_actions{action="FILE_READDIR",namespace="default",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/etc/"} 4
-isovalent_file_total_actions{action="FILE_READDIR",namespace="default",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 26
-isovalent_file_total_actions{action="FILE_WRITE",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/bin/"} 178
-isovalent_file_total_actions{action="FILE_WRITE",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/sbin/"} 10
+tetragon_file_total_actions{action="FILE_DELETE",namespace="<host>",node="minikube",operation="FILE_OP_BLOCK",",policy="fim-host-block-passwd-shadow",rule="/etc/passwd"} 1
+tetragon_file_total_actions{action="FILE_DELETE",namespace="<host>",node="minikube",operation="FILE_OP_BLOCK",policy="fim-host-block-passwd-shadow",rule="/etc/shadow"} 1
+tetragon_file_total_actions{action="FILE_DELETE",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 3
+tetragon_file_total_actions{action="FILE_READ",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/bin/"} 10574
+tetragon_file_total_actions{action="FILE_READ",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/sbin/"} 170
+tetragon_file_total_actions{action="FILE_READ",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/etc/"} 11
+tetragon_file_total_actions{action="FILE_READ",namespace="ubuntu",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 2
+tetragon_file_total_actions{action="FILE_READDIR",namespace="default",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/etc/"} 4
+tetragon_file_total_actions{action="FILE_READDIR",namespace="default",node="minikube",operation="FILE_OP_POST",policy="fim-pods-observe-etc-var",rule="/var/"} 26
+tetragon_file_total_actions{action="FILE_WRITE",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/bin/"} 178
+tetragon_file_total_actions{action="FILE_WRITE",namespace="<host>",node="minikube",operation="FILE_OP_POST",policy="fim-all-observe-bin",rule="/sbin/"} 10
 ```
 
-`isovalent_file_total_events` is a counter for the total number of events that FIM generates. Finally, `isovalent_file_total_errors` shows FIM errors. In normal execution, all errors should be zero.
+`tetragon_file_total_events` is a counter for the total number of events that FIM generates. Finally, `tetragon_file_total_errors` shows FIM errors. In normal execution, all errors should be zero.
 
 ## Using FIM in OpenShift/RetHat 4.18 kernels
 
