@@ -101,7 +101,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		arg := file.GetArgs().Arg
 		switch v := arg.(type) {
 		case *tetragon.FileArgument_GenericArg:
-			fileName := p.colorer.Cyan.Sprintf("%s", v.GenericArg.GetFile().Filename)
+			fileName := p.colorer.Cyan.Sprintf("%s", v.GenericArg.GetFile().GetStr())
 			inodeNumber := p.colorer.Cyan.Sprintf("%d", v.GenericArg.File.Inode.Number)
 			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, fileName, inodeNumber), caps), nil
 		}

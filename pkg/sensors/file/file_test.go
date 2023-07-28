@@ -197,7 +197,7 @@ func genericArgFilenameChecker(fileName string, ino uint64, dev string) *ec.File
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fileName)).WithInode(i).WithLocation(l)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(fileName)).WithInode(i).WithLocation(l)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 	return ec.NewFileArgumentChecker().WithGenericArg(c)
 }
@@ -825,7 +825,7 @@ func TestFileEnforceCreate(t *testing.T) {
 	_, err = os.Create(oFile) // we expect this to fail
 	assert.Error(t, err)
 
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile))
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile))
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 	o := ec.NewFileOperationListMatcher().
 		WithOperator(lm.Ordered).
@@ -881,7 +881,7 @@ func TestFileEnforceWrite(t *testing.T) {
 	_, err = file.WriteString("some random test data here")
 	assert.Error(t, err) // we expect this to fail
 
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile))
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile))
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 	o := ec.NewFileOperationListMatcher().
 		WithOperator(lm.Ordered).
@@ -922,7 +922,7 @@ func fileRemove(t *testing.T, f string) {
 
 func renameDeleteChecker(f string) *ec.ProcessFileChecker {
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
-	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f)).WithLocation(l)
+	d := ec.NewFileDetailsChecker().WithStr(sm.Full(f)).WithLocation(l)
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
@@ -933,7 +933,7 @@ func renameDeleteChecker(f string) *ec.ProcessFileChecker {
 
 func renameReadChecker(f string) *ec.ProcessFileChecker {
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
-	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f)).WithLocation(l)
+	d := ec.NewFileDetailsChecker().WithStr(sm.Full(f)).WithLocation(l)
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
@@ -944,8 +944,8 @@ func renameReadChecker(f string) *ec.ProcessFileChecker {
 
 func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
-	d1 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_a)).WithLocation(l)
-	d2 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_b)).WithLocation(l)
+	d1 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_a)).WithLocation(l)
+	d2 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_b)).WithLocation(l)
 	fl := ec.NewStringListMatcher().
 		WithOperator(lm.Ordered).
 		WithValues(
@@ -1584,7 +1584,7 @@ func readdirArgChecker(t *testing.T, path string) *ec.ReadDirArgChecker {
 	ino, dev := getInodeInfo(t, path)
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fmt.Sprintf("%s/", path))).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(fmt.Sprintf("%s/", path))).WithInode(i)
 	return ec.NewReadDirArgChecker().WithFile(f)
 }
 
@@ -1672,7 +1672,7 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
 	fileChecker := ec.NewProcessFileChecker("").
@@ -1761,7 +1761,7 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 	}
 
 	locChecker := ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL).WithContainerId(sm.Full(containerId))
-	fdChecker := ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(locChecker)
+	fdChecker := ec.NewFileDetailsChecker().WithStr(sm.Full("/etc/shadow")).WithLocation(locChecker)
 	gfileChecker := ec.NewGenericFileArgChecker().WithFile(fdChecker)
 	argChecker := ec.NewFileArgumentChecker().WithGenericArg(gfileChecker)
 	readChecker := ec.NewProcessFileChecker("").WithAction(tetragon.FileAction_FILE_READ).WithArgs(argChecker)
@@ -1805,7 +1805,7 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
 	fileChecker := ec.NewProcessFileChecker("").
@@ -1852,7 +1852,7 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
 	fileChecker := ec.NewProcessFileChecker("").
@@ -1928,7 +1928,7 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	p := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%v (%#o)", sa.Mode(), sa.Mode()))).WithOld(sm.Full(fmt.Sprintf("%v (%#o)", sb.Mode(), sb.Mode())))
 	a := ec.NewFileAttrChecker().WithPermissions(p)
 	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
@@ -1977,7 +1977,7 @@ func testFileChown(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	u := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Uid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Uid)))
 	g := ec.NewAttrChangeChecker().WithNew(sm.Full(fmt.Sprintf("%d", sa.Gid))).WithOld(sm.Full(fmt.Sprintf("%d", sb.Gid)))
 	a := ec.NewFileAttrChecker().WithUid(u).WithGid(g)
@@ -2045,7 +2045,7 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(oFile)).WithInode(i)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
 	fileReadChecker := ec.NewProcessFileChecker("").

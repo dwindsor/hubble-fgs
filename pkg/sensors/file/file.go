@@ -41,6 +41,7 @@ import (
 	"github.com/cilium/tetragon/pkg/podhooks"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"golang.org/x/sys/unix"
 	"k8s.io/client-go/tools/cache"
@@ -789,7 +790,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, fmt.Errorf("Failed to read file operation: %w", err)
 	}
 
-	str := string(m.Path.Str[:])
+	str := strutils.UTF8FromBPFBytes(m.Path.Str[:])
 	if uint32(len(str)) > m.Path.Size {
 		str = str[:m.Path.Size]
 	}
@@ -840,14 +841,14 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
 
-	srcDir := string(m.Src.Path.Dir[:])
+	srcDir := strutils.UTF8FromBPFBytes(m.Src.Path.Dir[:])
 	if m.Src.Path.DirSize == 0xffffffff { // due to missing security_path_rename
 		srcDir = "<UNRESOLVED>"
 	} else if uint32(len(srcDir)) > m.Src.Path.DirSize {
 		srcDir = srcDir[:m.Src.Path.DirSize]
 	}
 
-	srcName := string(m.Src.Path.Name[:])
+	srcName := strutils.UTF8FromBPFBytes(m.Src.Path.Name[:])
 	if uint32(len(srcName)) > m.Src.Path.NameSize {
 		srcName = srcName[:m.Src.Path.NameSize]
 	}
@@ -857,14 +858,14 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		srcCid = string(m.Src.Path.ContainerID[:])
 	}
 
-	dstDir := string(m.Dst.Path.Dir[:])
+	dstDir := strutils.UTF8FromBPFBytes(m.Dst.Path.Dir[:])
 	if m.Dst.Path.DirSize == 0xffffffff { // due to missing security_path_rename
 		srcDir = "<UNRESOLVED>"
 	} else if uint32(len(dstDir)) > m.Dst.Path.DirSize {
 		dstDir = dstDir[:m.Dst.Path.DirSize]
 	}
 
-	dstName := string(m.Dst.Path.Name[:])
+	dstName := strutils.UTF8FromBPFBytes(m.Dst.Path.Name[:])
 	if uint32(len(dstName)) > m.Dst.Path.NameSize {
 		dstName = dstName[:m.Dst.Path.NameSize]
 	}

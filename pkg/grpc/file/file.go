@@ -116,8 +116,9 @@ func createMntNs(inum uint32) *tetragon.Namespace {
 }
 
 func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
+
 	fileDetails := &tetragon.FileDetails{
-		Filename: event.Path,
+		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
 			Number: event.Ino,
 			Fs:     createFileSystem(event.Fs),
@@ -137,7 +138,7 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 
 func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	fileDetails := &tetragon.FileDetails{
-		Filename: event.Path,
+		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
 			Number: event.Ino,
 			Fs:     createFileSystem(event.Fs),
@@ -158,7 +159,7 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 
 func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	fileDetails := &tetragon.FileDetails{
-		Filename: event.Path,
+		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
 			Number: event.Ino,
 			Fs:     createFileSystem(event.Fs),
@@ -446,7 +447,7 @@ func GetRenameFlags(flags uint32) []string {
 
 func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 	src := &tetragon.FileDetails{
-		Filename: event.Src.Path,
+		Filename: &tetragon.FileDetails_Str{Str: event.Src.Path},
 		Inode: &tetragon.Inode{
 			Number: event.Src.Ino,
 			Fs:     createFileSystem(event.Src.Fs),
@@ -458,7 +459,7 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 		Location: &tetragon.FileLocation{},
 	}
 	dst := &tetragon.FileDetails{
-		Filename: event.Dst.Path,
+		Filename: &tetragon.FileDetails_Str{Str: event.Dst.Path},
 		Inode: &tetragon.Inode{
 			Number: event.Dst.Ino,
 			Fs:     createFileSystem(event.Dst.Fs),

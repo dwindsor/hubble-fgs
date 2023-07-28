@@ -8292,7 +8292,7 @@ func (checker *FileLocationChecker) FromFileLocation(event *tetragon.FileLocatio
 
 // FileDetailsChecker implements a checker struct to check a FileDetails field
 type FileDetailsChecker struct {
-	Filename    *stringmatcher.StringMatcher `json:"filename,omitempty"`
+	Str         *stringmatcher.StringMatcher `json:"str,omitempty"`
 	Inode       *InodeChecker                `json:"inode,omitempty"`
 	ParentInode *InodeChecker                `json:"parentInode,omitempty"`
 	Location    *FileLocationChecker         `json:"location,omitempty"`
@@ -8315,9 +8315,14 @@ func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
 	}
 
 	fieldChecks := func() error {
-		if checker.Filename != nil {
-			if err := checker.Filename.Match(event.Filename); err != nil {
-				return fmt.Errorf("Filename check failed: %w", err)
+		if checker.Str != nil {
+			switch event := event.Filename.(type) {
+			case *tetragon.FileDetails_Str:
+				if err := checker.Str.Match(event.Str); err != nil {
+					return fmt.Errorf("Str check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileDetailsChecker: Str check failed: %T is not a Str", event)
 			}
 		}
 		if checker.Inode != nil {
@@ -8343,9 +8348,9 @@ func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
 	return nil
 }
 
-// WithFilename adds a Filename check to the FileDetailsChecker
-func (checker *FileDetailsChecker) WithFilename(check *stringmatcher.StringMatcher) *FileDetailsChecker {
-	checker.Filename = check
+// WithStr adds a Str check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithStr(check *stringmatcher.StringMatcher) *FileDetailsChecker {
+	checker.Str = check
 	return checker
 }
 
@@ -8372,7 +8377,10 @@ func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) 
 	if event == nil {
 		return checker
 	}
-	checker.Filename = stringmatcher.Full(event.Filename)
+	switch event := event.Filename.(type) {
+	case *tetragon.FileDetails_Str:
+		checker.Str = stringmatcher.Full(event.Str)
+	}
 	if event.Inode != nil {
 		checker.Inode = NewInodeChecker().FromInode(event.Inode)
 	}

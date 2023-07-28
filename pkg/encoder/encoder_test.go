@@ -886,7 +886,7 @@ func TestCompactEncoder_FileEventToString(t *testing.T) {
 					Arg: &tetragon.FileArgument_GenericArg{
 						GenericArg: &tetragon.GenericFileArg{
 							File: &tetragon.FileDetails{
-								Filename: "/run/systemd/resolve/resolv.conf",
+								Filename: &tetragon.FileDetails_Str{Str: "/run/systemd/resolve/resolv.conf"},
 								Inode:    &tetragon.Inode{Number: 1234},
 							},
 						},

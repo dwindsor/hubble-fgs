@@ -295,7 +295,7 @@ func TestFile(t *testing.T) {
 }
 
 func createChecker(file string) *ec.FileDetailsChecker {
-	return ec.NewFileDetailsChecker().WithFilename(sm.Full(file)).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))
+	return ec.NewFileDetailsChecker().WithStr(sm.Full(file)).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))
 }
 
 func createOpChecker(val tetragon.FileOperation) *ec.FileOperationListMatcher {
@@ -350,7 +350,7 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
-					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/tmp/testfile")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithStr(sm.Full("/tmp/testfile")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
 			WithHook(sm.Full("security_file_permission")).
@@ -364,7 +364,7 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
-					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/passwd")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithStr(sm.Full("/etc/passwd")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE))),
 				),
 			).
 			WithHook(sm.Full("security_file_permission")).
@@ -377,7 +377,7 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_READ).
 			WithArgs(
 				ec.NewFileArgumentChecker().WithGenericArg(
-					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithFilename(sm.Full("/etc/shadow")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))),
+					ec.NewGenericFileArgChecker().WithFile(ec.NewFileDetailsChecker().WithStr(sm.Full("/etc/shadow")).WithLocation(ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL))),
 				),
 			).
 			WithHook(sm.Full("security_file_permission")).

@@ -188,7 +188,9 @@ message FileLocation {
 }
 
 message FileDetails {
-    string filename = 1;
+    oneof filename {
+        string str = 1;
+    }
     Inode inode = 2;
     Inode parent_inode = 3;
     FileLocation location = 4;
