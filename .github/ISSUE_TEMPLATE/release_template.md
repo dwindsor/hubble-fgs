@@ -16,7 +16,24 @@ If you are doing a minor version bump (i.e. the Y in X.Y.Z), there are a few ste
 
 - [ ] [Cut a new OSS release][oss-release]
 - [ ] **After** checking out your new release branch (see below) but **before** you push the tag, update the `modules/tetragon-oss` to point to your new OSS release branch, and do an OSS sync
-- [ ] Make sure you add the `-rc1` suffix to the version number for release candidates
+- [ ] Make sure you add the `-rc1` suffix to the version number for release candidates (rc)
+
+Branch `X.Y` may not exist, because we have not branched out yet. This can only happen for
+`X.Y.0-rc.N` or `X.Y.0` releases. In this case:
+
+   * If release is `X.Y.0`:
+       * Create `X.Y` branch
+   * Else: # release is `X.Y.0-rc.N`
+       * If `N == 1`, no need to create a branch
+       * If `N > 1`
+           * do `git log X.Y.0-rc.N-1..master`
+                * If there are non-safe commits that may introduce new bugs:
+                     * Create `X.Y` branch
+                     * Backport safe commits from master to `X.Y`
+
+See [tagging] for more details.
+
+
 
 ### Cutting the FGS release
 
@@ -216,3 +233,4 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 [cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
 [cilium-enterprise-dogfooding]: https://github.com/isovalent/cilium-enterprise-dogfooding
 [oss-release]: https://github.com/cilium/tetragon/issues/new?assignees=&labels=kind%2Frelease&template=release_template.md&title=vX.Y.Z+release
+[tagging]: https://github.com/isovalent/hubble-fgs/blob/master/docs/tagging.md
