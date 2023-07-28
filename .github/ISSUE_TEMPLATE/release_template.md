@@ -1,14 +1,14 @@
 ---
-name: Release a new version of FGS
+name: Release a new version of Tetragon Enteprise
 about: Create a checklist for an upcoming release
 title: 'vX.Y.Z release'
 labels: kind/release
 assignees: ''
 ---
 
-## FGS release checklist
+## Tetragon Enterprise release checklist
 
-The following is a release checklist that should be followed when cutting a new release of FGS. Please follow the steps carefully and ask for help in Slack if you have difficulty during the release process.
+The following is a release checklist that should be followed when cutting a new release of Tetragon Enterprise. Please follow the steps carefully and ask for help in Slack if you have difficulty during the release process.
 
 ### Minor Version Bump
 
@@ -35,7 +35,7 @@ See [tagging] for more details.
 
 
 
-### Cutting the FGS release
+### Cutting the Tetragon Enterprise release
 
 - [ ] Check that there are no [release blockers].
 - [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.9.0`:
@@ -74,7 +74,7 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 ### Deploy the new release to Alpo-2
 
-- [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the FGS version in Alpo-2
+- [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in Alpo-2
   - [ ] Edit the file flux/clusters/alp-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
   ```diff
   diff --git a/flux/clusters/alp-2/hubble-enterprise/hr.yaml b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
@@ -106,14 +106,14 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 ### Documentation
 
-- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of FGS
+- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise
   - [ ] Check out a new release branch:
   ```
   git checkout master && git pull origin master
   git checkout -b pr/document-fgs-$RELEASE
   ```
 - [ ] Add release notes to the docs
-  - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the FGS version. Example diff:
+  - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:
   ```
   diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
   index 98284b7..92a1d34 100644
@@ -185,11 +185,11 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
   ```
   - [ ] Add and commit the results and file a pull request on [GitHub][hubble-enterprise chart] (HINT: you can just click the link in the output of the `git push` command):
   ```
-  git commit -a -m "Prepare for $RELEASE FGS release" -s && git push origin HEAD
+  git commit -a -m "Prepare for $RELEASE Tetragon Enterprise release" -s && git push origin HEAD
   ```
   - [ ] After your PR is merged, tag a [new release][hubble-enterprise chart release] of `hubble-enterprise-chart`.
     - [ ] Click "generate release notes" and create a new tag with the appropriate version bump
-    - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the FGS version, so don't worry if they don't match
+    - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version, so don't worry if they don't match
     - [ ] Click "publish release"
 
 ### Updating the umbrella chart
@@ -200,7 +200,7 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
   git checkout master && git pull origin master
   git checkout -b pr/pick-up-latest-hubble-enterprise
   ```
-  - [ ] Edit `cilium-enterprise/Chart.yaml` to bump the hubble-enterprise version. IMPORTANT NOTE: this should be the version of the `hubble-enterprise-chart` that you released in the previous step, **NOT** the version of FGS. Example diff:
+  - [ ] Edit `cilium-enterprise/Chart.yaml` to bump the hubble-enterprise version. IMPORTANT NOTE: this should be the version of the `hubble-enterprise-chart` that you released in the previous step, **NOT** the version of Tetragon Enterprise. Example diff:
   ```diff
   diff --git a/cilium-enterprise/Chart.yaml b/cilium-enterprise/Chart.yaml
   index ffcacbe..ee663d9 100644
