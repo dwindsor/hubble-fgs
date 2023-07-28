@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/encoder"
@@ -101,9 +102,37 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		arg := file.GetArgs().Arg
 		switch v := arg.(type) {
 		case *tetragon.FileArgument_GenericArg:
-			fileName := p.colorer.Cyan.Sprintf("%s", v.GenericArg.GetFile().GetStr())
+			fileName := p.colorer.Cyan.Sprintf("%s", v.GenericArg.File.GetStr())
 			inodeNumber := p.colorer.Cyan.Sprintf("%d", v.GenericArg.File.Inode.Number)
 			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, fileName, inodeNumber), caps), nil
+		case *tetragon.FileArgument_ReaddirArg:
+			dirName := p.colorer.Cyan.Sprintf("%s", v.ReaddirArg.File.GetStr())
+			inodeNumber := p.colorer.Cyan.Sprintf("%d", v.ReaddirArg.File.Inode.Number)
+			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, dirName, inodeNumber), caps), nil
+		case *tetragon.FileArgument_RenameArg:
+			srcName := p.colorer.Cyan.Sprintf("%s", v.RenameArg.Src.GetStr())
+			srcInodeNumber := p.colorer.Cyan.Sprintf("%d", v.RenameArg.Src.Inode.Number)
+			dstName := p.colorer.Cyan.Sprintf("%s", v.RenameArg.Dst.GetStr())
+			dstInodeNumber := p.colorer.Cyan.Sprintf("%d", v.RenameArg.Dst.Inode.Number)
+			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, srcName, srcInodeNumber, dstName, dstInodeNumber), caps), nil
+		case *tetragon.FileArgument_AttrArg:
+			var allChanges []string
+			fileName := p.colorer.Cyan.Sprintf("%s", v.AttrArg.File.GetStr())
+			inodeNumber := p.colorer.Cyan.Sprintf("%d", v.AttrArg.File.Inode.Number)
+
+			attr := v.AttrArg.Attr
+			if attr.Permissions != nil && attr.Permissions.New != attr.Permissions.Old {
+				allChanges = append(allChanges, strings.Join([]string{"permissions", attr.Permissions.Old, attr.Permissions.New}, " "))
+			}
+			if attr.Uid != nil && attr.Uid.New != attr.Uid.Old {
+				allChanges = append(allChanges, strings.Join([]string{"uid", attr.Uid.Old, attr.Uid.New}, " "))
+			}
+			if attr.Gid != nil && attr.Gid.New != attr.Gid.Old {
+				allChanges = append(allChanges, strings.Join([]string{"gid", attr.Gid.Old, attr.Gid.New}, " "))
+			}
+			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, fileName, inodeNumber, strings.Join(allChanges, " ")), caps), nil
+		default:
+			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s [unknown: %T]", event, processInfo, args, processFileAction, functionHook, v), caps), nil
 		}
 	case *tetragon.GetEventsResponse_ProcessListen:
 		listen := response.GetProcessListen()
