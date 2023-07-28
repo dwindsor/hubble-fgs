@@ -14,8 +14,8 @@ set -e
 
 v=""
 if [ -z "$1" ]; then
-	echo "No argument specified: using main branch"
-	v="origin/main"
+	v=$(git config -f .gitmodules --get submodule.modules/tetragon-oss.branch)
+	echo "No argument specified: using default branch: $v"
 else
 	v="$1"
 fi
