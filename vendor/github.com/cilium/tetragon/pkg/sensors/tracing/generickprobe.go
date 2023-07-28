@@ -35,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/strutils"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 
@@ -118,6 +119,9 @@ type genericKprobe struct {
 
 	// policyName is the name of the policy that this tracepoint belongs to
 	policyName string
+
+	// is there override defined for the kprobe
+	hasOverride bool
 }
 
 // pendingEvent is an event waiting to be merged with another event.
@@ -364,10 +368,8 @@ func createGenericKprobeSensor(
 	// use multi kprobe only if:
 	// - it's not disabled by user
 	// - there's support detected
-	// - multiple kprobes are defined
 	useMulti = !option.Config.DisableKprobeMulti &&
-		bpf.HasKprobeMulti() &&
-		len(kprobes) > 1
+		bpf.HasKprobeMulti()
 
 	for i := range kprobes {
 		f := &kprobes[i]
@@ -497,8 +499,6 @@ func createGenericKprobeSensor(
 			}
 		}
 
-		hasOverride := selectors.HasOverride(f)
-
 		// Write attributes into BTF ptr for use with load
 		if !setRetprobe {
 			setRetprobe = f.Return
@@ -529,6 +529,7 @@ func createGenericKprobeSensor(
 			pendingEvents:     nil,
 			tableId:           idtable.UninitializedEntryID,
 			policyName:        policyName,
+			hasOverride:       selectors.HasOverride(f),
 		}
 
 		// Parse Filters into kernel filter logic
@@ -555,6 +556,7 @@ func createGenericKprobeSensor(
 			logger.GetLogger().
 				WithField("return", setRetprobe).
 				WithField("function", kprobeEntry.funcName).
+				WithField("override", kprobeEntry.hasOverride).
 				Infof("Added multi kprobe")
 			continue
 		}
@@ -569,7 +571,7 @@ func createGenericKprobeSensor(
 			pinProg,
 			"generic_kprobe").
 			SetLoaderData(kprobeEntry.tableId)
-		load.Override = hasOverride
+		load.Override = kprobeEntry.hasOverride
 		progs = append(progs, load)
 
 		fdinstall := program.MapBuilderPin("fdinstall_map", sensors.PathJoin(sensorPath, "fdinstall_map"), load)
@@ -643,6 +645,7 @@ func createGenericKprobeSensor(
 		}
 
 		logger.GetLogger().WithField("flags", flagsString(config.Flags)).
+			WithField("override", kprobeEntry.hasOverride).
 			Infof("Added generic kprobe sensor: %s -> %s", load.Name, load.Attach)
 	}
 
@@ -728,8 +731,13 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *p
 
 		data.Symbols = append(data.Symbols, gk.funcName)
 		data.Cookies = append(data.Cookies, uint64(index))
+
+		if gk.hasOverride && !load.RetProbe {
+			data.Overrides = append(data.Overrides, gk.funcName)
+		}
 	}
 
+	load.Override = len(data.Overrides) > 0
 	load.SetAttachData(data)
 
 	if err := program.LoadMultiKprobeProgram(bpfDir, mapDir, load, verbose); err == nil {
@@ -766,7 +774,9 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, verbo
 		load.LoaderData, load.LoaderData)
 }
 
-func handleGenericKprobeString(r *bytes.Reader) string {
+// handleGenericKprobeString: reads a string argument. Strings are encoded with their size first.
+// def is return in case of an error.
+func handleGenericKprobeString(r *bytes.Reader, def string) string {
 	var b int32
 
 	err := binary.Read(r, binary.LittleEndian, &b)
@@ -777,15 +787,17 @@ func handleGenericKprobeString(r *bytes.Reader) string {
 		 * lets just report its on "/" all though pid filtering will mostly
 		 * catch this.
 		 */
-		return "/"
+		logger.GetLogger().WithError(err).Warnf("handleGenericKprobeString: read string size failed")
+		return def
 	}
 	outputStr := make([]byte, b)
 	err = binary.Read(r, binary.LittleEndian, &outputStr)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
+		logger.GetLogger().WithError(err).Warnf("handleGenericKprobeString: read string with size %d", b)
+		return def
 	}
 
-	strVal := string(outputStr[:])
+	strVal := strutils.UTF8FromBPFBytes(outputStr[:])
 	lenStrVal := len(strVal)
 	if lenStrVal > 0 && strVal[lenStrVal-1] == '\x00' {
 		strVal = strVal[0 : lenStrVal-1]
@@ -954,7 +966,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			}
 
 			arg.Index = uint64(a.index)
-			arg.Value = handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r, "/")
 
 			// read the first byte that keeps the flags
 			err := binary.Read(r, binary.LittleEndian, &flags)
@@ -970,7 +982,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			var flags uint32
 
 			arg.Index = uint64(a.index)
-			arg.Value = handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r, "/")
 
 			// read the first byte that keeps the flags
 			err := binary.Read(r, binary.LittleEndian, &flags)
@@ -982,26 +994,11 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericFilenameType, gt.GenericStringType:
-			var b int32
 			var arg api.MsgGenericKprobeArgString
 
-			err := binary.Read(r, binary.LittleEndian, &b)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("StringSz type err")
-			}
-			outputStr := make([]byte, b)
-			err = binary.Read(r, binary.LittleEndian, &outputStr)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
-			}
-
 			arg.Index = uint64(a.index)
-			strVal := string(outputStr[:])
-			lenStrVal := len(strVal)
-			if lenStrVal > 0 && strVal[lenStrVal-1] == '\x00' {
-				strVal = strVal[0 : lenStrVal-1]
-			}
-			arg.Value = strVal
+			arg.Value = handleGenericKprobeString(r, "")
+
 			arg.Label = a.label
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericCredType:
