@@ -21,7 +21,7 @@ RUN make hubble-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
 # - hubble-fgs-fs-scanner (this one uses CGO, so a gcc cross compiler is needed)
 # - hubble-fgs            (tetragon/pkg/bpf uses CGO, so a gcc cross compiler is needed)
 # - hubble-enterprise
-FROM --platform=$BUILDPLATFORM quay.io/cilium/cilium-builder:832f86bb0f7c7129c1536d5620174deeec645117@sha256:6dbac9f9eba3e20f8edad4676689aa8c11b172035fe5e25b533552f42dea4e9a as hubble-builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.20.6@sha256:010a0ffe47398a3646993df44906c065c526eabf309d01fb0cbc9a5696024a60 as tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
 RUN apt-get update
@@ -85,12 +85,12 @@ RUN addgroup hubble	       && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
-COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
-COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
-COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
-COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/hubble-fgs/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/hubble-fgs/
 RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
 CMD ["sh", "-c", "/usr/bin/hubble-fgs"]
 
