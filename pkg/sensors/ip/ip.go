@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -71,7 +70,7 @@ func getNetNs(nsPath string) (uint64, error) {
 }
 
 func getInodeForCookieFromFile(cookie uint64, netFile string) (uint64, error) {
-	fileBytes, err := ioutil.ReadFile(netFile)
+	fileBytes, err := os.ReadFile(netFile)
 	if err != nil {
 		return 0, err
 	}

@@ -13,6 +13,7 @@ package bench
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"crypto/tls"
 	_ "embed"
 	"fmt"
@@ -123,7 +124,7 @@ func (sink tcpOrTLSSink) acceptCopyLoop(l net.Listener) {
 			// Write random amount of random
 			n := rand.Int31n(1024)
 			buf := make([]byte, n)
-			rand.Read(buf)
+			crand.Read(buf)
 			c.Write(buf)
 		} else {
 			io.Copy(c, c)

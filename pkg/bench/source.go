@@ -14,10 +14,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -140,7 +141,7 @@ func (src tcpOrTLSCRRSource) Run(ctx context.Context, sinkPort int, args SourceA
 func genRandomBytes(minSize, maxSize int32) []byte {
 	n := minSize + rand.Int31n(maxSize-minSize)
 	buf := make([]byte, n)
-	_, err := rand.Read(buf)
+	_, err := crand.Read(buf)
 	if err != nil {
 		log.Fatalf("rand.Read(): %s", err)
 	}
@@ -318,7 +319,7 @@ func (src goHTTPRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs
 			return err
 		}
 		defer resp.Body.Close()
-		if _, err := ioutil.ReadAll(resp.Body); err != nil {
+		if _, err := io.ReadAll(resp.Body); err != nil {
 			return err
 		}
 		return nil
@@ -369,7 +370,7 @@ func (src goHTTP2RRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 			}
 		}
 		defer resp.Body.Close()
-		if _, err := ioutil.ReadAll(resp.Body); err != nil {
+		if _, err := io.ReadAll(resp.Body); err != nil {
 			return err
 		}
 		return nil
@@ -406,7 +407,7 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 		}
 		defer resp.Body.Close()
 
-		_, err = ioutil.ReadAll(resp.Body)
+		_, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("ReadAll: %w", err)
 		}

@@ -13,8 +13,8 @@ package bench
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"text/template"
@@ -115,7 +115,7 @@ static_resources:
 
 func (ep envoyProxy) Start(ctx context.Context, sinkPort int) (int, chan ProxyStats, error) {
 	tmpl := template.Must(template.New("envoy-template").Parse(envoyConfigTemplate))
-	f, err := ioutil.TempFile("/tmp", "fgs-bench-envoy-*.yaml")
+	f, err := os.CreateTemp("/tmp", "fgs-bench-envoy-*.yaml")
 	if err != nil {
 		return -1, nil, fmt.Errorf("failed to open temporary file: %w", err)
 	}

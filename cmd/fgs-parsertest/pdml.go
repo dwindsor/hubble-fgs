@@ -5,7 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -158,7 +158,7 @@ func dumpField(w io.Writer, maxSingleHexLineLen int, proto string, field Field) 
 // PDMLToTestCase converts a Wireshark "Packet Details Markup Language"
 // into a FGS parser test-case.
 func PDMLToTestCase(pdmlFile string, w io.Writer) error {
-	data, err := ioutil.ReadFile(pdmlFile)
+	data, err := os.ReadFile(pdmlFile)
 	if err != nil {
 		return err
 	}

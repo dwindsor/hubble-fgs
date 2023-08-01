@@ -12,7 +12,6 @@ package ip
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -305,7 +304,7 @@ func getIpAddrPort(ipPort string, ipv6 bool) ([2]uint64, uint16, error) {
 }
 
 func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, protocol uint16) error {
-	fileBytes, err := ioutil.ReadFile(netFile)
+	fileBytes, err := os.ReadFile(netFile)
 	if err != nil {
 		return err
 	}

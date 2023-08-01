@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -1618,8 +1617,8 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 	}
 
 	// method 1
-	if _, err := ioutil.ReadDir(in1); err != nil {
-		t.Fatalf("ioutil.ReadDir failed (%s)", err)
+	if _, err := os.ReadDir(in1); err != nil {
+		t.Fatalf("os.ReadDir failed (%s)", err)
 	}
 
 	// method 2
