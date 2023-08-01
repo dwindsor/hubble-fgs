@@ -341,6 +341,9 @@ type TcpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration
 	Metrics *PromMetrics `json:"metrics"`
+	// +kubebuilder:validation:Optional
+	// Disable TCP events
+	DisableEvents TcpEventDisablePolicySpec `json:"disableEvents"`
 }
 
 type TcpWatermarksPolicySpec struct {
@@ -499,4 +502,23 @@ type HeartbeatPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the TCP port
 	TcpPort uint32 `json:"tcpPort"`
+}
+
+type TcpEventDisablePolicySpec struct {
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable connect events
+	DisableConnect bool `json:"disableConnect"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable close events
+	DisableClose bool `json:"disableClose"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable accept events
+	DisableAccept bool `json:"disableAccept"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable listen events
+	DisableListen bool `json:"disableListen"`
 }

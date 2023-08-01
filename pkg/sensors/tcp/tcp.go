@@ -45,6 +45,11 @@ var (
 
 	configured       = false
 	timestampEnabled = false
+
+	disableConnect = false
+	disableClose   = false
+	disableAccept  = false
+	disableListen  = false
 )
 
 var (
@@ -150,6 +155,9 @@ var (
 	// Map for latency
 	LatencyConfigMap     = program.MapBuilder(networklatency.ConfigMapName, Latency)
 	LatencyConfigMapLazy = program.MapBuilder(networklatency.ConfigMapName, LatencyLazy)
+
+	// Map for disabling events
+	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
 )
 
 type tcpStatsKey struct {
@@ -202,6 +210,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		SendCheckSampler,
 		ProcessNetworkWatermarksMap,
 		FdLookupConfigMap,
+		EventDisableConfig,
 	}
 
 	if timestampEnable && kernels.MinKernelVersion("5.4.0") {
@@ -296,6 +305,11 @@ func (tcp *tcpSensor) PolicyHandler(
 		tcpconfig.RttHistogramMax = 0
 	}
 	tcpconfig.LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
+
+	disableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
+	disableClose = spec.Parser.Tcp.DisableEvents.DisableClose
+	disableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
+	disableListen = spec.Parser.Tcp.DisableEvents.DisableListen
 	return EnableTcp(spec.Parser.Tcp.Latency.Enable), nil
 }
 
@@ -436,6 +450,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	} else {
 		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpconfig.RttHistogramMax, tcpconfig.RttHistogramMin)
+		configureTCPDisableEvents(disableConnect, disableClose, disableAccept, disableListen)
 		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err

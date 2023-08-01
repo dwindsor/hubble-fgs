@@ -6,6 +6,7 @@
 #include "cookie.h"
 #include "netns.h"
 #include "bpf_fd_lookup.h"
+#include "bpf_network_event_config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -41,6 +42,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	u32 ppid;
 	struct fd_lookup_config *config;
 	int skp_err = 0;
+	struct tcp_event_disable_config *event_cfg;
 
 	fd = ctx->ret;
 	if (fd < 0)
@@ -104,8 +106,15 @@ __event_tcp_acceptret(struct accept_args *ctx)
 		val->key.ktime = 0;
 	}
 
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return 0;
+
 	size = sizeof(struct msg_ip_event);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	if (!event_cfg->disableAccept) {
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
 
 	if (!process)
 		return 0;

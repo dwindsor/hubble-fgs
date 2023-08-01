@@ -12,6 +12,7 @@
 #include "bpf_tracing.h"
 #include "../parsers/http/http.h"
 #include "../parsers/bottle.h"
+#include "bpf_network_event_config.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -40,6 +41,7 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	u32 zero = 0;
 	u64 cookie;
 	unsigned char old_state;
+	struct tcp_event_disable_config *event_cfg;
 
 	state = PT_REGS_PARM2(ctx);
 	if (state != TCP_CLOSE)
@@ -136,9 +138,16 @@ tg_event_tcp_close(struct pt_regs *ctx)
 		    val->stats.bytes_received > 0)
 			val->stats.bytes_received--;
 
+		event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+			&tg_event_disable_config, &zero);
+		if (!event_cfg)
+			return 0;
+
 		size = sizeof(struct msg_ip_event);
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-				  size);
+		if (!event_cfg->disableClose) {
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					  size);
+		}
 	}
 
 	if (family != AF_INET6) {

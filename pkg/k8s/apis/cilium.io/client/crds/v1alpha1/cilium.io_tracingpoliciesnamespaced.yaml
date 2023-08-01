@@ -820,6 +820,26 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      disableEvents:
+                        description: Disable TCP events
+                        properties:
+                          disableAccept:
+                            default: false
+                            description: Disable accept events
+                            type: boolean
+                          disableClose:
+                            default: false
+                            description: Disable close events
+                            type: boolean
+                          disableConnect:
+                            default: false
+                            description: Disable connect events
+                            type: boolean
+                          disableListen:
+                            default: false
+                            description: Disable listen events
+                            type: boolean
+                        type: object
                       enable:
                         description: Enable TCP statistics
                         type: boolean

@@ -10,6 +10,7 @@
 #include "../parsers/tls/tls_map.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
+#include "bpf_network_event_config.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -35,6 +36,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	u16 family;
 	uint64_t size;
 	u64 cookie;
+	struct tcp_event_disable_config *event_cfg;
 
 	process = event_find_curr(&ppid, &walker);
 	if (!process)
@@ -85,9 +87,16 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
 			   _(&(skp->__sk_common.skc_v6_daddr)));
 	}
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+
+	if (!event_cfg)
+		return 0;
 
 	size = sizeof(struct msg_ip_event);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	if (!event_cfg->disableConnect) {
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
 
 	struct socketmap_value v = { 0 };
 	v.key.pid = process->key.pid;

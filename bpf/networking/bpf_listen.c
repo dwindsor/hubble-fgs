@@ -8,6 +8,7 @@
 #include "tlsmsg.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
+#include "bpf_network_event_config.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -32,6 +33,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	bool walker = 0;
 	u16 family;
 	u64 cookie;
+	struct tcp_event_disable_config *event_cfg;
 
 	pid = (get_current_pid_tgid() >> 32);
 	process = event_find_curr(&ppid, &walker);
@@ -78,9 +80,15 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
 			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
 	}
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return 0;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-			  sizeof(struct msg_ip_event));
+	if (!event_cfg->disableListen) {
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+				  sizeof(struct msg_ip_event));
+	}
 
 	struct socketmap_value v = { 0 };
 
