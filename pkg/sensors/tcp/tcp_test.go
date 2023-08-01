@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"testing"
@@ -168,6 +169,19 @@ func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context, docke
 	return getTcpObserver(t, ctx, tcpBasicConfigWithLatencyDetection, docker)
 }
 
+func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) *observer.Observer {
+	eventDisableConfig := `
+      disableEvents:
+`
+	eventDisableConfig += "\n        disableConnect: " + strconv.FormatBool(disableConnect)
+	eventDisableConfig += "\n        disableClose: " + strconv.FormatBool(disableClose)
+	eventDisableConfig += "\n        disableAccept: " + strconv.FormatBool(disableAccept)
+	eventDisableConfig += "\n        disableListen: " + strconv.FormatBool(disableListen)
+
+	tcpDisableEventsConfig := tcpBasicConfig + eventDisableConfig
+	return getTcpObserver(t, ctx, tcpDisableEventsConfig, docker)
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if server {
@@ -248,6 +262,46 @@ func TestConnectEvent4(t *testing.T) {
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func testDisableConfigConnect4(t *testing.T, disableConnect bool) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("127.0.0.1"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessConnectChecker("curlConnect").
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(80).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	obs := getTcpObserverDisableEvents(t, ctx, false, disableConnect, true, true, true)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
+
+	// If connect events are disabled then expect checker failure
+	err := jsonchecker.JsonTestCheckExpect(t, checker, disableConnect)
+	assert.NoError(t, err)
+}
+
+func TestDisableConnectEvent4(t *testing.T) {
+	testDisableConfigConnect4(t, true)
+}
+
+func TestNoDisableConnectEvent4(t *testing.T) {
+	testDisableConfigConnect4(t, false)
 }
 
 func TestExecEventClone4(t *testing.T) {
@@ -545,6 +599,81 @@ func TestListenAcceptClose4(t *testing.T) {
 
 	err = jsonchecker.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
+}
+
+func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disableAccept bool, disableClose bool) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081"))
+
+	listenChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessListenChecker("ncListen").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+	acceptChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessAcceptChecker("ncAccept").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+	closeChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessCloseChecker("ncClose").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("0.0.0.0")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("listen")),
+	)
+
+	obs := getTcpObserverDisableEvents(t, ctx, false, true, disableClose, disableAccept, disableListen)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	assert.NoError(t, cmdClient.Start())
+
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+
+	listenErr := jsonchecker.JsonTestCheckExpect(t, listenChecker, disableListen)
+	assert.NoError(t, listenErr)
+
+	acceptErr := jsonchecker.JsonTestCheckExpect(t, acceptChecker, disableAccept)
+	assert.NoError(t, acceptErr)
+
+	closeErr := jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
+	assert.NoError(t, closeErr)
+}
+
+func TestDisableListenAcceptClose4(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, true, true, true)
+}
+
+func TestNoDisableListenAcceptClose4(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, false, false, false)
 }
 
 func TestDockerExistingListenEvent4(t *testing.T) {
