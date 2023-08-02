@@ -13,34 +13,40 @@ package filemetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	fileTotalEvents = promauto.NewCounter(prometheus.CounterOpts{
+	fileTotalEvents = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "file_events_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total number of process_file events (independently of going through the eventcache).",
 	})
 
-	fileTotalCacheEvents = promauto.NewCounterVec(prometheus.CounterOpts{
+	fileTotalCacheEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_cache_events_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total number of process_file events (that go in/out the eventcache).",
 	}, []string{"direction"})
 
-	fileTotalActionEvents = promauto.NewCounterVec(prometheus.CounterOpts{
+	fileTotalActionEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_actions_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total file events per action",
 	}, []string{"node", "namespace", "policy", "rule", "action", "operation"})
 
-	fileTotalErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	fileTotalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_errors_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total number of process_file event errors (can be from the grpc or sensor).",
 	}, []string{"reason"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(fileTotalEvents)
+	registry.MustRegister(fileTotalCacheEvents)
+	registry.MustRegister(fileTotalActionEvents)
+	registry.MustRegister(fileTotalErrors)
+}
 
 func FileTotalEventsInc() {
 	fileTotalEvents.Inc()

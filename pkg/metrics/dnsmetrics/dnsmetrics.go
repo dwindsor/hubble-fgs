@@ -13,17 +13,16 @@ package dnsmetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	dnsCacheErrors = promauto.NewCounter(prometheus.CounterOpts{
+	dnsCacheErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "dns_cache_misses_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Number of IPs not found in the DNS cache. Note that this is expected for IPs that don't have FQDNs",
 	})
 
-	dnsCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
+	dnsCacheEvictions = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "dns_cache_evictions_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "DNS cache evictions. Some churn is expected, but this metric can be useful to determine the rate of churn",
@@ -36,4 +35,9 @@ func DnsCacheMisses() prometheus.Counter {
 
 func DnsCacheEvictions() prometheus.Counter {
 	return dnsCacheEvictions
+}
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(dnsCacheErrors)
+	registry.MustRegister(dnsCacheEvictions)
 }

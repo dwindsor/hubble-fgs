@@ -13,19 +13,23 @@ package httpmetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	HttpResponseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	HttpResponseTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "http_response_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
-	HttpRequestDurationSeconds = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	HttpRequestDurationSeconds = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Name:       "http_stats_latency",
 		Namespace:  consts.MetricsNamespace,
 		Help:       "HTTP latency statistics",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(HttpResponseTotal)
+	registry.MustRegister(HttpRequestDurationSeconds)
+}

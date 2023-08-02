@@ -13,16 +13,19 @@ package iperrormetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	processIpErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	processIpErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "layer3_event_errors_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Errors propagated to userspace by the L3 event sensors",
 	}, []string{"error", "version"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(processIpErrors)
+}
 
 func ProcessIpErrors(err string, version string) prometheus.Counter {
 	return processIpErrors.WithLabelValues(err, version)

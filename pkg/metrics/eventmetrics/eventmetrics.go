@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -76,12 +75,16 @@ func HandleOriginalEvent(originalEvent interface{}) {
 }
 
 var (
-	dnsRequestTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	dnsRequestTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "dns_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Dns request/response statistics",
 	}, []string{"namespace", "pod", "binary", "names", "rcodes", "response"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(dnsRequestTotal)
+}
 
 func postDnsMetric(res *tetragon.ProcessDns) {
 	var rr string

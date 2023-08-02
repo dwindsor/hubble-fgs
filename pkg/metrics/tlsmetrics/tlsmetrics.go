@@ -18,34 +18,40 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	tlsErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	tlsErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "tls_errors_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Errors encountered while processing TLS events. For internal use only.",
 	}, []string{"error", "continuation"})
 
-	tlsExpectedContinuationTotal = promauto.NewCounter(prometheus.CounterOpts{
+	tlsExpectedContinuationTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "tls_expected_continutation_events_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Expected number of TLS continuation events. For internal use only.",
 	})
 
-	tlsActualContinuationTotal = promauto.NewCounter(prometheus.CounterOpts{
+	tlsActualContinuationTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "tls_actual_continutation_events_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Actual number of TLS continuation events. For internal use only.",
 	})
 
-	tlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	tlsHandshakeTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",
 	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(tlsErrorsTotal)
+	registry.MustRegister(tlsExpectedContinuationTotal)
+	registry.MustRegister(tlsActualContinuationTotal)
+	registry.MustRegister(tlsHandshakeTotal)
+}
 
 // Maps TLS error codes to strings for display in metrics
 var tlsErrorString = map[int]string{

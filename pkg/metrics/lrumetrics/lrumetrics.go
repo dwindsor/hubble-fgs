@@ -19,17 +19,20 @@ import (
 
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	LruMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	LruMapSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "lru_in_use_gauge",
 		Namespace:   consts.MetricsNamespace,
 		Help:        "The total number of LRU in-use entries.",
 		ConstLabels: nil,
 	}, []string{"map", "total"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(LruMapSize)
+}
 
 // Get a new handle on LruMapSize for a given map name and capacity
 func GetLruMapSize(mapName string, capacity int) prometheus.Gauge {

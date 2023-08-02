@@ -13,47 +13,46 @@ package interfacemetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // Interface metrics
 var (
-	InterfaceBytesSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceBytesSent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_txbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes sent per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceBytesReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceBytesReceived = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_rxbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes received per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceSegmentsSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceSegmentsSent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_txsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments sent per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceSegmentsReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceSegmentsReceived = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_rxsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments received per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceTxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceTxErrors = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_txerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceRxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceRxErrors = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_rxerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceTxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceTxDrops = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_txdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX drops per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceRxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceRxDrops = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_rxdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX drops per network interface",
@@ -67,19 +66,33 @@ var (
 //   - a "_gcount" metric, identical to the highest ("+Inf") bucket metric
 //   - a "_gsum" metric, reporting the sum of all observed values
 var (
-	InterfaceQlenBucket = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceQlenBucket = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_qlen_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for the number of enqued packets",
 	}, []string{"name", "namespace", "pod", "le"})
-	InterfaceQlenCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceQlenCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gcount",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceQlenSum = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceQlenSum = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gsum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for the number of enqued packets",
 	}, []string{"name", "namespace", "pod"})
 )
+
+func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(InterfaceBytesSent)
+	registry.MustRegister(InterfaceBytesReceived)
+	registry.MustRegister(InterfaceSegmentsSent)
+	registry.MustRegister(InterfaceSegmentsReceived)
+	registry.MustRegister(InterfaceTxErrors)
+	registry.MustRegister(InterfaceRxErrors)
+	registry.MustRegister(InterfaceTxDrops)
+	registry.MustRegister(InterfaceRxDrops)
+	registry.MustRegister(InterfaceQlenBucket)
+	registry.MustRegister(InterfaceQlenCount)
+	registry.MustRegister(InterfaceQlenSum)
+}
