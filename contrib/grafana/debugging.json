@@ -1070,7 +1070,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(rate(tetragon_dns_cache_misses{node=~\"$node\"}[$__rate_interval]))",
+              "expr": "sum(rate(tetragon_dns_cache_misses_total{node=~\"$node\"}[$__rate_interval]))",
               "legendFormat": "{{label_name}}",
               "range": true,
               "refId": "Sum By Endpoint"
@@ -1166,7 +1166,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(rate(tetragon_dns_cache_evictions{node=~\"$node\"}[$__rate_interval]))",
+              "expr": "sum(rate(tetragon_dns_cache_evictions_total{node=~\"$node\"}[$__rate_interval]))",
               "instant": false,
               "legendFormat": "{{label_name}}",
               "range": true,
@@ -1262,7 +1262,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum by(binary) (rate(tetragon_socket_stats_txbytes{node=~\"$node\", dstdns=\"\", dstpod=\"\"}[$__rate_interval]) / 1024)",
+              "expr": "sum by(binary) (rate(tetragon_socket_stats_txbytes_total{node=~\"$node\", dstdns=\"\", dstpod=\"\"}[$__rate_interval]) / 1024)",
               "legendFormat": "{{binary}}",
               "range": true,
               "refId": "Destination Names"
@@ -1357,7 +1357,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum by(binary) (rate(tetragon_socket_stats_rxbytes{node=~\"$node\", dstdns=\"\", dstpod=\"\"}[$__rate_interval])) / 1024",
+              "expr": "sum by(binary) (rate(tetragon_socket_stats_rxbytes_total{node=~\"$node\", dstdns=\"\", dstpod=\"\"}[$__rate_interval])) / 1024",
               "legendFormat": "{{binary}}",
               "range": true,
               "refId": "Destination Names"
@@ -2518,7 +2518,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(rate(tetragon_layer3_event_errors{node=~\"$node\"}[$__rate_interval])) * 60",
+              "expr": "sum(rate(tetragon_layer3_event_errors_total{node=~\"$node\"}[$__rate_interval])) * 60",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -2613,7 +2613,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum by(error) (rate(tetragon_layer3_event_errors{node=~\"$node\"}[$__rate_interval]))",
+              "expr": "sum by(error) (rate(tetragon_layer3_event_errors_total{node=~\"$node\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"

@@ -18,7 +18,7 @@ import (
 
 var (
 	processIpErrors = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "layer3_event_errors",
+		Name:      "layer3_event_errors_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Errors propagated to userspace by the L3 event sensors",
 	}, []string{"error", "version"})

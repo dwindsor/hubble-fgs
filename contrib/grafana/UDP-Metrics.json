@@ -230,7 +230,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txbytes{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txbytes_total{pod =~ \"$pod\"}[5m])))",
           "instant": false,
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
@@ -320,7 +320,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxbytes{pod!=\"\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxbytes_total{pod!=\"\"}[5m])))",
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
           "queryType": "randomWalk",
@@ -409,7 +409,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_stack_txbytes{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_stack_txbytes_total{pod =~ \"$pod\"}[5m])))",
           "instant": false,
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
@@ -499,7 +499,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_stack_rxbytes{pod!=\"\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_stack_rxbytes_total{pod!=\"\"}[5m])))",
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
           "queryType": "randomWalk",
@@ -587,7 +587,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (pod, dstpod) ((rate(tetragon_socket_stats_udp_rxbytes{dstpod != \"\"}[5m]) + rate(tetragon_socket_stats_udp_txbytes{dstpod != \"\"}[5m]))))",
+          "expr": "topk(10, sum by (pod, dstpod) ((rate(tetragon_socket_stats_udp_rxbytes_total{dstpod != \"\"}[5m]) + rate(tetragon_socket_stats_udp_txbytes_total{dstpod != \"\"}[5m]))))",
           "interval": "",
           "legendFormat": "{{pod}} -> {{dstpod}}",
           "queryType": "randomWalk",
@@ -676,7 +676,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (dstdns) (rate(tetragon_socket_stats_udp_txbytes{dstdns=\"$dstdns\"}[5m])))",
+          "expr": "topk(10, sum by (dstdns) (rate(tetragon_socket_stats_udp_txbytes_total{dstdns=\"$dstdns\"}[5m])))",
           "interval": "",
           "legendFormat": "{{dstdns}}",
           "queryType": "randomWalk",
@@ -765,7 +765,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txbursts{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txbursts_total{pod =~ \"$pod\"}[5m])))",
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
           "queryType": "randomWalk",
@@ -854,7 +854,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxbursts{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxbursts_total{pod =~ \"$pod\"}[5m])))",
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
           "queryType": "randomWalk",
@@ -1040,7 +1040,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_txbytes{binary=\"\"}[1h]))",
+          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_txbytes_total{binary=\"\"}[1h]))",
           "interval": "",
           "legendFormat": "TXBytes Missing Binary",
           "queryType": "randomWalk",
@@ -1052,7 +1052,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_rxbytes{binary=\"\"}[1h]))",
+          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_rxbytes_total{binary=\"\"}[1h]))",
           "hide": false,
           "interval": "",
           "legendFormat": "RXBytes Missing Binary",
@@ -1064,7 +1064,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_stack_txbytes{binary=\"\"}[1h]))",
+          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_stack_txbytes_total{binary=\"\"}[1h]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Stack TXBytes  Missing Binary",
@@ -1076,7 +1076,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_stack_rxbytes{binary=\"\"}[1h]))",
+          "expr": "sum by(binary)(rate(tetragon_socket_stats_udp_stack_rxbytes_total{binary=\"\"}[1h]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Stack RXBytes Missing Binary",
@@ -1088,7 +1088,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum (rate(tetragon_socket_stats_udp_consume_misses{}[1h]))",
+          "expr": "sum (rate(tetragon_socket_stats_udp_consume_misses_total{}[1h]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Consume Misses",
@@ -1147,7 +1147,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (pod, dstdns) ((rate(tetragon_socket_stats_udp_rxbytes{dstdns != \"\"}[5m]) + rate(tetragon_socket_stats_udp_txbytes{dstdns != \"\"}[5m]))))",
+          "expr": "topk(10, sum by (pod, dstdns) ((rate(tetragon_socket_stats_udp_rxbytes_total{dstdns != \"\"}[5m]) + rate(tetragon_socket_stats_udp_txbytes_total{dstdns != \"\"}[5m]))))",
           "interval": "",
           "legendFormat": "{{pod}} -> {{dstdns}}",
           "queryType": "randomWalk",
@@ -1236,7 +1236,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txsegs{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_txsegs_total{pod =~ \"$pod\"}[5m])))",
           "instant": false,
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
@@ -1326,7 +1326,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxsegs{pod =~ \"$pod\"}[5m])))",
+          "expr": "topk(10, sum by (pod, binary) (rate(tetragon_socket_stats_udp_rxsegs_total{pod =~ \"$pod\"}[5m])))",
           "interval": "",
           "legendFormat": "{{pod}} ({{binary}})",
           "queryType": "randomWalk",

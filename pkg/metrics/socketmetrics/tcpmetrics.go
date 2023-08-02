@@ -19,57 +19,57 @@ import (
 // TCP socket metrics
 var (
 	SocketStatsTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_txbytes",
+		Name:      "socket_stats_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_txsegs",
+		Name:      "socket_stats_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsTxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_txbursts",
+		Name:      "socket_stats_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsTxDips = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_txdips",
+		Name:      "socket_stats_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_rxbytes",
+		Name:      "socket_stats_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_rxsegs",
+		Name:      "socket_stats_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_rxbursts",
+		Name:      "socket_stats_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRxDips = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_rxdips",
+		Name:      "socket_stats_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_retransmitbytes",
+		Name:      "socket_stats_retransmitbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRetranSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_retransmitsegs",
+		Name:      "socket_stats_retransmitsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit seg statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsZeroWindow = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_zerowindow",
+		Name:      "socket_stats_zerowindow_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket zero window events",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
@@ -80,7 +80,7 @@ var (
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsDrops = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:      "socket_stats_drops",
+		Name:      "socket_stats_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})

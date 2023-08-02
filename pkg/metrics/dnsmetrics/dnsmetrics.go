@@ -18,13 +18,13 @@ import (
 
 var (
 	dnsCacheErrors = promauto.NewCounter(prometheus.CounterOpts{
-		Name:      "dns_cache_misses",
+		Name:      "dns_cache_misses_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Number of IPs not found in the DNS cache. Note that this is expected for IPs that don't have FQDNs",
 	})
 
 	dnsCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
-		Name:      "dns_cache_evictions",
+		Name:      "dns_cache_evictions_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "DNS cache evictions. Some churn is expected, but this metric can be useful to determine the rate of churn",
 	})
