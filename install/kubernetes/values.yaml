@@ -207,8 +207,6 @@ hubbleEnterpriseOperator:
     override: ~
     repository: quay.io/isovalent/hubble-enterprise-operator
     tag: v1.11.0
-    # hubble-enterprise-operator image-digest
-    suffix: ""
 
 export:
   # "stdout", "fluentd", or "s3". "" to disable.

@@ -112,7 +112,7 @@
 - name: {{ include "container.enterprise.name" . }}-operator
   command:
   - hubble-enterprise-operator
-  image: "{{ if .Values.hubbleEnterpriseOperator.image.override }}{{ .Values.hubbleEnterpriseOperator.image.override }}{{ else }}{{ .Values.hubbleEnterpriseOperator.image.repository }}{{ .Values.hubbleEnterpriseOperator.image.suffix }}:{{ .Values.hubbleEnterpriseOperator.image.tag }}{{ end }}"
+  image: "{{ if .Values.hubbleEnterpriseOperator.image.override }}{{ .Values.hubbleEnterpriseOperator.image.override }}{{ else }}{{ .Values.hubbleEnterpriseOperator.image.repository }}:{{ .Values.hubbleEnterpriseOperator.image.tag }}{{ end }}"
   imagePullPolicy: {{ .Values.imagePullPolicy }}
   terminationMessagePolicy: FallbackToLogsOnError
 {{- end }}
