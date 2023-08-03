@@ -317,6 +317,7 @@ github.com/cilium/tetragon/pkg/metrics/kprobemetrics
 github.com/cilium/tetragon/pkg/metrics/mapmetrics
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
 github.com/cilium/tetragon/pkg/metrics/policyfilter
+github.com/cilium/tetragon/pkg/metrics/processexecmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufmetrics
 github.com/cilium/tetragon/pkg/metrics/syscallmetrics
 github.com/cilium/tetragon/pkg/metrics/watchermetrics
