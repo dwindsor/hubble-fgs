@@ -523,8 +523,8 @@ github.com/coreos/go-systemd/v22/journal
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/cri-o/cri-o v1.24.6
-## explicit; go 1.17
+# github.com/cri-o/cri-o v1.26.0
+## explicit; go 1.19
 github.com/cri-o/cri-o/pkg/types
 # github.com/cyphar/filepath-securejoin v0.2.3
 ## explicit; go 1.13
@@ -1033,14 +1033,14 @@ go.etcd.io/etcd/api/v3/mvccpb
 go.etcd.io/etcd/api/v3/v3rpc/rpctypes
 go.etcd.io/etcd/api/v3/version
 go.etcd.io/etcd/api/v3/versionpb
-# go.etcd.io/etcd/client/pkg/v3 v3.5.9
+# go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 => go.etcd.io/etcd/client/pkg/v3 v3.5.9
 ## explicit; go 1.19
 go.etcd.io/etcd/client/pkg/v3/logutil
 go.etcd.io/etcd/client/pkg/v3/systemd
 go.etcd.io/etcd/client/pkg/v3/tlsutil
 go.etcd.io/etcd/client/pkg/v3/types
-# go.etcd.io/etcd/client/v3 v3.5.9
-## explicit; go 1.19
+# go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
+## explicit; go 1.17
 go.etcd.io/etcd/client/v3
 go.etcd.io/etcd/client/v3/concurrency
 go.etcd.io/etcd/client/v3/credentials
@@ -1938,6 +1938,7 @@ sigs.k8s.io/yaml
 # github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
 # github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 # github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
+# go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.9
 # gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 # k8s.io/client-go => k8s.io/client-go v0.27.2
 # sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.12.1
