@@ -3,14 +3,14 @@ module github.com/isovalent/hubble-fgs
 go 1.20
 
 require (
-	github.com/cilium/cilium v1.13.5
+	github.com/cilium/cilium v1.14.0
 	github.com/cilium/ebpf v0.11.0
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
 	github.com/containernetworking/plugins v1.3.0
-	github.com/cri-o/cri-o v1.26.3
+	github.com/cri-o/cri-o v1.24.6
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220608195807-1a118fe229fc
+	github.com/vishvananda/netlink v1.2.1-beta.2.0.20230621221334-77712cff8739
 	github.com/vishvananda/netns v0.0.4
 	github.com/yalue/native_endian v1.0.2
 	go.uber.org/multierr v1.11.0
@@ -36,8 +36,8 @@ require (
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.26.7
-	k8s.io/apiextensions-apiserver v0.26.7
+	k8s.io/api v0.27.4
+	k8s.io/apiextensions-apiserver v0.27.4
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.27.4
 	k8s.io/klog/v2 v2.100.1
@@ -54,6 +54,8 @@ require (
 	github.com/Microsoft/hcsshim v0.10.0-rc.8 // indirect
 	github.com/armon/go-metrics v0.4.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/cilium/proxy v0.0.0-20230623092907-8fddead4e52c // indirect
+	github.com/cncf/xds/go v0.0.0-20230607035331-e9ce68804cb4 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/continuity v0.4.1 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
@@ -63,10 +65,12 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/envoyproxy/protoc-gen-validate v0.10.1 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/hashicorp/consul/api v1.20.0 // indirect
+	github.com/hashicorp/consul/api v1.21.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.2.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -88,18 +92,20 @@ require (
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.1 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 // indirect
-	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0 // indirect
-	go.opentelemetry.io/otel v1.14.0 // indirect
-	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
+	go.etcd.io/etcd/client/v3 v3.5.9 // indirect
+	go.opentelemetry.io/otel v1.16.0 // indirect
+	go.opentelemetry.io/otel/metric v1.16.0 // indirect
+	go.opentelemetry.io/otel/trace v1.16.0 // indirect
+	go.uber.org/dig v1.17.0 // indirect
+	go.uber.org/zap v1.24.0 // indirect
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230706204954-ccb25ca9f130 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230720185612-659f7aaaa771 // indirect
 )
@@ -123,16 +129,16 @@ require (
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
-	github.com/go-openapi/errors v0.20.3 // indirect
+	github.com/go-openapi/errors v0.20.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
-	github.com/go-openapi/runtime v0.25.0 // indirect
-	github.com/go-openapi/spec v0.20.7 // indirect
+	github.com/go-openapi/runtime v0.26.0 // indirect
+	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/strfmt v0.21.7 // indirect
-	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/go-openapi/validate v0.22.0 // indirect
-	github.com/gobuffalo/flect v0.2.3 // indirect
+	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/validate v0.22.1 // indirect
+	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -169,7 +175,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
-	github.com/prometheus/procfs v0.10.1 // indirect
+	github.com/prometheus/procfs v0.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
@@ -182,22 +188,22 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	golang.org/x/tools v0.7.0 // indirect
+	golang.org/x/tools v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230706204954-ccb25ca9f130 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
-	k8s.io/apimachinery v0.26.7 // indirect
-	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
+	k8s.io/apimachinery v0.27.4 // indirect
+	k8s.io/gengo v0.0.0-20230306165830-ab3349d207d4 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
-	sigs.k8s.io/controller-runtime v0.13.1-0.20221201045826-d9912251cd81 // indirect
+	sigs.k8s.io/controller-runtime v0.15.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
@@ -213,7 +219,7 @@ replace (
 	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
-	github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
+	github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
 	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 	github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
 
@@ -221,11 +227,11 @@ replace (
 	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 
 	// due to CRI-O, otherwise it fails to build hubble-fgs
-	k8s.io/client-go => k8s.io/client-go v0.26.4
+	k8s.io/client-go => k8s.io/client-go v0.27.2
 
 	// Using private fork of controller-tools. See commit msg for more context
 	// as to why we are using a private fork.
-	sigs.k8s.io/controller-tools => github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2
+	sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.12.1
 	// Pull in support for helm uninstall. TODO: remove this when 0.0.8 comes out.
 	sigs.k8s.io/e2e-framework => github.com/kubernetes-sigs/e2e-framework v0.0.0-20220527132303-bc7888d1b4f0
 )
