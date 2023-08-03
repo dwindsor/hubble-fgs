@@ -2113,6 +2113,20 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
+func getExecChecker(t *testing.T, path string) *ec.ProcessFileChecker {
+	ino, dev := getInodeInfo(t, path)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(path)).WithInode(i)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+
+	return ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_EXEC).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("hook_security_bprm_check"))
+}
+
 func testFileExec(gt *testing.T, t *testing.T) {
 	out := filepath.Join(workingDir, "fim_test_outdir")
 	createTestDir(t, out)
@@ -2133,18 +2147,32 @@ func testFileExec(gt *testing.T, t *testing.T) {
 		t.Logf("failed run  /usr/bin/cat %s: %s", oFile, err)
 	}
 
-	ino, dev := getInodeInfo(t, "/usr/bin/cat")
+	checker := ec.NewUnorderedEventChecker(getExecChecker(t, "/usr/bin/cat"))
 
-	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
-	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithStr(sm.Full("/usr/bin/cat")).WithInode(i)
-	c := ec.NewGenericFileArgChecker().WithFile(f)
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(gt, err)
+}
 
-	fileChecker := ec.NewProcessFileChecker("").
-		WithAction(tetragon.FileAction_FILE_EXEC).
-		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_bprm_check"))
-	checker := ec.NewUnorderedEventChecker(fileChecker)
+func testFileExecInterpreter(gt *testing.T, t *testing.T) {
+	testBin := testutils.RepoRootPath("contrib/tester-progs/test.sh")
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{"/usr/bin/bash", testBin},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := exec.Command(testBin).Run(); err != nil {
+		t.Logf("failed run %s: %s", testBin, err)
+	}
+
+	checker := ec.NewUnorderedEventChecker(
+		getExecChecker(t, "/usr/bin/bash"),
+		getExecChecker(t, testBin),
+	)
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(gt, err)
@@ -2313,6 +2341,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("fileexec", func(lt *testing.T) {
 		testFileExec(t, lt)
+	})
+	t.Run("fileexecint", func(lt *testing.T) {
+		testFileExecInterpreter(t, lt)
 	})
 	t.Run("readcontainerfile", func(lt *testing.T) {
 		testFileReadContainerFile(t, lt)
