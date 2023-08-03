@@ -5,7 +5,7 @@ metadata:
   name: {{ .Chart.Name }}-{{- include "container.export.fluentd.name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-  {{- include "hubble-enterprise.labels" . | nindent 4 }}
+  {{- include "tetragon-enterprise.labels" . | nindent 4 }}
 data:
   input.conf: |
     {{- tpl .Values.export.fluentd.inputConfig . | nindent 4 }}

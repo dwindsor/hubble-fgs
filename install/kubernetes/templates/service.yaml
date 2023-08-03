@@ -5,7 +5,7 @@ metadata:
     {{- with .Values.serviceLabelsOverride}}
     {{- toYaml . | nindent 4 }}
     {{- else }}
-    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+    {{- include "tetragon.labels" . | nindent 4 }}
     {{- end }}
   name: {{ .Chart.Name }}
   namespace: {{ .Release.Namespace }}
@@ -19,6 +19,6 @@ spec:
     {{- with .Values.daemonSetLabelsOverride}}
     {{- toYaml . | nindent 4 }}
     {{- else }}
-    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+    {{- include "tetragon.labels" . | nindent 4 }}
     {{- end }}
   type: ClusterIP

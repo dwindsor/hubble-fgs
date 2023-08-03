@@ -1,22 +1,22 @@
-{{- define "container.enterprise" -}}
-- name: {{ include "container.enterprise.name" . }}
+{{- define "container.tetragon" -}}
+- name: {{ include "container.tetragon.name" . }}
   securityContext:
-    {{- toYaml .Values.enterprise.securityContext | nindent 4 }}
-  image: "{{ if .Values.enterprise.image.override }}{{ .Values.enterprise.image.override }}{{ else }}{{ .Values.enterprise.image.repository }}:{{ .Values.enterprise.image.tag | default .Chart.AppVersion }}{{ end }}"
+    {{- toYaml .Values.tetragon.securityContext | nindent 4 }}
+  image: "{{ if .Values.tetragon.image.override }}{{ .Values.tetragon.image.override }}{{ else }}{{ .Values.tetragon.image.repository }}:{{ .Values.tetragon.image.tag | default .Chart.AppVersion }}{{ end }}"
   imagePullPolicy: {{ .Values.imagePullPolicy }}
   terminationMessagePolicy: FallbackToLogsOnError
   command:
-{{- with .Values.enterprise.commandOverride }}
+{{- with .Values.tetragon.commandOverride }}
   {{- toYaml . | nindent 2 }}
 {{- else }}
     - /usr/bin/hubble-fgs
 {{- end }}
   args:
     - --config-dir=/etc/hubble-enterprise
-{{- with .Values.enterprise.argsOverride }}
+{{- with .Values.tetragon.argsOverride }}
   {{- toYaml . | nindent 2 }}
 {{- else }}
-{{- range $key, $value := .Values.enterprise.extraArgs }}
+{{- range $key, $value := .Values.tetragon.extraArgs }}
 {{- if $value }}
     - --{{ $key }}={{ $value }}
 {{- else }}
@@ -25,15 +25,15 @@
 {{- end }}
 {{- end }}
   volumeMounts:
-    {{- with .Values.enterprise.extraVolumeMounts }}
+    {{- with .Values.tetragon.extraVolumeMounts }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- if .Values.enterprise.metadata.enabled }}
+    {{- if .Values.tetragon.metadata.enabled }}
     - mountPath: /var/lib/hubble-fgs/metadata
       name: metadata-files
     {{- end }}
     - mountPath: /etc/hubble-enterprise
-      name: fgs-config
+      name: tetragon-config
       readOnly: true
     - mountPath: /sys/fs/bpf
       mountPropagation: Bidirectional
@@ -62,29 +62,29 @@
       valueFrom:
         fieldRef:
             fieldPath: spec.nodeName
-{{- if .Values.enterprise.extraEnv }}
-  {{- toYaml .Values.enterprise.extraEnv | nindent 4 }}
+{{- if .Values.tetragon.extraEnv }}
+  {{- toYaml .Values.tetragon.extraEnv | nindent 4 }}
 {{- end }}
-{{- with .Values.enterprise.resources }}
+{{- with .Values.tetragon.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
 {{- end }}
-{{- if .Values.enterprise.grpc.enabled }}
+{{- if .Values.tetragon.grpc.enabled }}
   livenessProbe:
     exec:
       command:
       - hubble-enterprise
       - status
       - --server-address
-      - {{ .Values.enterprise.grpc.address }}
+      - {{ .Values.tetragon.grpc.address }}
 {{- end -}}
 {{- end -}}
 
-{{- define "container.enterprise.init" -}}
-- name: {{ include "container.enterprise.name" . }}-init
-  image: "{{ if .Values.enterprise.metadata.image.override }}{{ .Values.enterprise.metadata.image.override }}{{ else }}{{ .Values.enterprise.metadata.image.repository }}:{{ .Values.enterprise.metadata.image.tag }}{{ end }}"
-{{- if .Values.enterprise.metadata.image.imagePullPolicy }}
-  imagePullPolicy: {{ .Values.enterprise.metadata.image.imagePullPolicy }}
+{{- define "container.tetragon.init" -}}
+- name: {{ include "container.tetragon.name" . }}-init
+  image: "{{ if .Values.tetragon.metadata.image.override }}{{ .Values.tetragon.metadata.image.override }}{{ else }}{{ .Values.tetragon.metadata.image.repository }}:{{ .Values.tetragon.metadata.image.tag }}{{ end }}"
+{{- if .Values.tetragon.metadata.image.imagePullPolicy }}
+  imagePullPolicy: {{ .Values.tetragon.metadata.image.imagePullPolicy }}
 {{- else }}
   imagePullPolicy: {{ .Values.imagePullPolicy }}
 {{- end }}
@@ -95,24 +95,24 @@
     - -c
     - |
         cp -r /var/run/hubble-fgs/* /var/lib/hubble-fgs/metadata
-{{- if .Values.enterprise.enableCiliumAPI }}
+{{- if .Values.tetragon.enableCiliumAPI }}
         until [ -S /var/run/cilium/cilium.sock -a -S /var/run/cilium/monitor1_2.sock ]; do sleep 3; done
 {{- end }}
   volumeMounts:
     - mountPath: /var/lib/hubble-fgs/metadata
       name: metadata-files
-{{- if .Values.enterprise.enableCiliumAPI }}
+{{- if .Values.tetragon.enableCiliumAPI }}
     - mountPath: /var/run/cilium
       name: cilium-run
 {{- end }}
 {{- end -}}
 
-{{- define "container.enterprise.init-operator" -}}
-{{- if .Values.hubbleEnterpriseOperator.enabled -}}
-- name: {{ include "container.enterprise.name" . }}-operator
+{{- define "container.tetragon.init-operator" -}}
+{{- if .Values.tetragonOperator.enabled -}}
+- name: {{ include "container.tetragon.name" . }}-operator
   command:
   - hubble-enterprise-operator
-  image: "{{ if .Values.hubbleEnterpriseOperator.image.override }}{{ .Values.hubbleEnterpriseOperator.image.override }}{{ else }}{{ .Values.hubbleEnterpriseOperator.image.repository }}:{{ .Values.hubbleEnterpriseOperator.image.tag }}{{ end }}"
+  image: "{{ if .Values.tetragonOperator.image.override }}{{ .Values.tetragonOperator.image.override }}{{ else }}{{ .Values.tetragonOperator.image.repository }}:{{ .Values.tetragonOperator.image.tag }}{{ end }}"
   imagePullPolicy: {{ .Values.imagePullPolicy }}
   terminationMessagePolicy: FallbackToLogsOnError
 {{- end }}

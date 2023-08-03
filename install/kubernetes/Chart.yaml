@@ -1,6 +1,6 @@
 apiVersion: v2
-name: hubble-enterprise
-description: Helm chart for Hubble Enterprise
+name: tetragon
+description: Helm chart for Tetragon Enterprise
 
 type: application
 

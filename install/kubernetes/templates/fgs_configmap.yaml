@@ -4,56 +4,56 @@ metadata:
   name: {{ .Chart.Name }}-config
   namespace: {{ .Release.Namespace }}
   labels:
-  {{- include "hubble-enterprise.labels" . | nindent 4 }}
+  {{- include "tetragon.labels" . | nindent 4 }}
 data:
-{{- if .Values.enterprise.btf }}
-  btf: {{ .Values.enterprise.btf }}
+{{- if .Values.tetragon.btf }}
+  btf: {{ .Values.tetragon.btf }}
 {{- end }}
   procfs: /procRoot
-  enable-process-cred: {{ .Values.enterprise.enableProcessCred | quote }}
-  enable-process-ns: {{ .Values.enterprise.enableProcessNs | quote }}
-  fim-runtime-endpoint: {{ .Values.enterprise.fimRuntimeEndpoint | quote }}
-  process-cache-size: {{ .Values.enterprise.processCacheSize | quote }}
-{{- if .Values.enterprise.exportFilename }}
-  export-filename: {{ .Values.exportDirectory}}/{{ .Values.enterprise.exportFilename }}
-  export-file-max-size-mb: {{ .Values.enterprise.exportFileMaxSizeMB | quote }}
-  export-file-max-backups: {{ .Values.enterprise.exportFileMaxBackups | quote }}
-  export-file-compress: {{ .Values.enterprise.exportFileCompress | quote }}
+  enable-process-cred: {{ .Values.tetragon.enableProcessCred | quote }}
+  enable-process-ns: {{ .Values.tetragon.enableProcessNs | quote }}
+  fim-runtime-endpoint: {{ .Values.tetragon.fimRuntimeEndpoint | quote }}
+  process-cache-size: {{ .Values.tetragon.processCacheSize | quote }}
+{{- if .Values.tetragon.exportFilename }}
+  export-filename: {{ .Values.exportDirectory}}/{{ .Values.tetragon.exportFilename }}
+  export-file-max-size-mb: {{ .Values.tetragon.exportFileMaxSizeMB | quote }}
+  export-file-max-backups: {{ .Values.tetragon.exportFileMaxBackups | quote }}
+  export-file-compress: {{ .Values.tetragon.exportFileCompress | quote }}
   export-allowlist: |-
-{{- .Values.enterprise.exportAllowList | trim | nindent 4 }}
+{{- .Values.tetragon.exportAllowList | trim | nindent 4 }}
   export-denylist: |-
-{{- .Values.enterprise.exportDenyList | trim | nindent 4 }}
+{{- .Values.tetragon.exportDenyList | trim | nindent 4 }}
   field-filters: |-
-{{- .Values.enterprise.fieldFilters | trim | nindent 4 }}
+{{- .Values.tetragon.fieldFilters | trim | nindent 4 }}
 {{- if eq .Values.export.mode "s3"}}
   export-file-rotation-interval: {{ .Values.exportFileCreationInterval | default "15s" }}
 {{- end }}
-  export-rate-limit: {{ .Values.enterprise.exportRateLimit | quote }}
+  export-rate-limit: {{ .Values.tetragon.exportRateLimit | quote }}
 {{- end }}
-{{- if .Values.enterprise.enableK8sAPI }}
+{{- if .Values.tetragon.enableK8sAPI }}
   enable-k8s-api: "true"
 {{- end }}
-{{- if .Values.enterprise.enableCiliumAPI }}
+{{- if .Values.tetragon.enableCiliumAPI }}
   enable-cilium-api: "true"
   cilium-bpf: /sys/fs/bpf/tc/globals/
 {{- end }}
-{{- if .Values.enterprise.prometheus.enabled }}
-  metrics-server: {{ .Values.enterprise.prometheus.address }}:{{ .Values.enterprise.prometheus.port }}
+{{- if .Values.tetragon.prometheus.enabled }}
+  metrics-server: {{ .Values.tetragon.prometheus.address }}:{{ .Values.tetragon.prometheus.port }}
 {{- else }}
   metrics-server: ""
 {{- end }}
-{{- if .Values.enterprise.grpc.enabled }}
-  server-address: {{ .Values.enterprise.grpc.address }}
+{{- if .Values.tetragon.grpc.enabled }}
+  server-address: {{ .Values.tetragon.grpc.address }}
 {{- else }}
   server-address: ""
 {{- end }}
-{{- if .Values.enterprise.tcpStatsSampleSegs }}
-  tcp-stats-sample-segs: {{ .Values.enterprise.tcpStatsSampleSegs | quote }}
+{{- if .Values.tetragon.tcpStatsSampleSegs }}
+  tcp-stats-sample-segs: {{ .Values.tetragon.tcpStatsSampleSegs | quote }}
 {{- end }}
-  gops-address: {{ .Values.enterprise.gops.address }}:{{ .Values.enterprise.gops.port }}
-{{- if .Values.enterprise.enablePolicyFilter }}
+  gops-address: {{ .Values.tetragon.gops.address }}:{{ .Values.tetragon.gops.port }}
+{{- if .Values.tetragon.enablePolicyFilter }}
   enable-policy-filter: "true"
 {{- end }}
-{{- if .Values.enterprise.enablePolicyFilterDebug }}
+{{- if .Values.tetragon.enablePolicyFilterDebug }}
   enable-policy-filter-debug: "true"
 {{- end }}

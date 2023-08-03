@@ -1,14 +1,14 @@
-{{- if .Values.enterprise.prometheus.serviceMonitor.enabled -}}
+{{- if .Values.tetragon.prometheus.serviceMonitor.enabled -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    {{- with .Values.enterprise.prometheus.serviceMonitor.labelsOverride}}
+    {{- with .Values.tetragon.prometheus.serviceMonitor.labelsOverride}}
     {{- toYaml . | nindent 4 }}
     {{- else }}
-    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+    {{- include "tetragon.labels" . | nindent 4 }}
     {{- end }}
-  name: hubble-enterprise
+  name: {{ .Chart.Name }}
   namespace: {{ .Release.Namespace }}
 spec:
   endpoints:
@@ -29,6 +29,6 @@ spec:
       {{- with .Values.serviceLabelsOverride}}
       {{- toYaml . | nindent 6 }}
       {{- else }}
-      {{- include "hubble-enterprise.labels" . | nindent 6 }}
+      {{- include "tetragon.labels" . | nindent 6 }}
       {{- end }}
 {{- end }}

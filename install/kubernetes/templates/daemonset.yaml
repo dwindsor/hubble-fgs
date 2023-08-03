@@ -9,7 +9,7 @@ metadata:
   {{- with .Values.daemonSetLabelsOverride}}
     {{- toYaml . | nindent 4 }}
   {{- else }}
-    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+    {{- include "tetragon.labels" . | nindent 4 }}
   {{- end }}
   name: {{ .Chart.Name }}
   namespace: {{ .Release.Namespace }}
@@ -19,7 +19,7 @@ spec:
     {{- with .Values.selectorLabelsOverride }}
       {{- toYaml . | nindent 6 }}
     {{- else }}
-      {{- include "hubble-enterprise.selectorLabels" . | nindent 6 }}
+      {{- include "tetragon.selectorLabels" . | nindent 6 }}
     {{- end }}
   template:
     metadata:
@@ -31,7 +31,7 @@ spec:
       {{- with .Values.podLabelsOverride }}
         {{- toYaml . | nindent 8 }}
       {{- else }}
-        {{- include "hubble-enterprise.labels" . | nindent 8 }}
+        {{- include "tetragon.labels" . | nindent 8 }}
       {{- end }}
       {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
@@ -49,11 +49,11 @@ spec:
       securityContext:
         {{- toYaml . | nindent 6 }}
       {{- end }}
-{{- if .Values.enterprise.enabled }}
+{{- if .Values.tetragon.enabled }}
       initContainers:
-      {{- include "container.enterprise.init-operator" . | nindent 6 -}}
-{{- if .Values.enterprise.metadata.enabled }}
-      {{- include "container.enterprise.init" . | nindent 6 -}}
+      {{- include "container.tetragon.init-operator" . | nindent 6 -}}
+{{- if .Values.tetragon.metadata.enabled }}
+      {{- include "container.tetragon.init" . | nindent 6 -}}
 {{- end }}
 {{- end }}
       containers:
@@ -67,8 +67,8 @@ spec:
 {{- if and (not (eq .Values.export.mode "stdout")) (.Values.export.enableStdout) }}
       {{- include "container.export.stdout" . | nindent 6 -}}
 {{- end }}
-{{- if .Values.enterprise.enabled }}
-      {{- include "container.enterprise" . | nindent 6 -}}
+{{- if .Values.tetragon.enabled }}
+      {{- include "container.tetragon" . | nindent 6 -}}
 {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -94,8 +94,8 @@ spec:
         hostPath:
           path: {{ .Values.exportDirectory }}
           type: DirectoryOrCreate
-{{- if .Values.enterprise.enabled }}
-      - name: fgs-config
+{{- if .Values.tetragon.enabled }}
+      - name: tetragon-config
         configMap:
           name: {{ .Chart.Name }}-config
       - name: bpf-maps
@@ -106,7 +106,7 @@ spec:
         hostPath:
           path: /proc
           type: Directory
-{{- if .Values.enterprise.metadata.enabled }}
+{{- if .Values.tetragon.metadata.enabled }}
       - emptyDir: {}
         name: metadata-files
 {{- end }}

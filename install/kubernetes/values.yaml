@@ -23,9 +23,9 @@ selectorLabelsOverride: {}
 podLabelsOverride: {}
 serviceLabelsOverride: {}
 
-# Set DNS policy for hubble-enterprise pods.
+# Set DNS policy for tetragon pods.
 #
-# Recommended DNS policy for hubble-enterprise pod depends on whether the export container
+# Recommended DNS policy for tetragon pod depends on whether the export container
 # needs to resolve external DNS names (e.g. an S3 URL) or internal ones (e.g. a Kubernetes
 # DNS name for elasticsearch service).
 #
@@ -37,15 +37,15 @@ serviceLabelsOverride: {}
 # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
 dnsPolicy: Default
 
-# exportDirectory specifies directory to put Hubble and FGS JSON export files.
+# exportDirectory specifies directory to put Tetragon JSON export files.
 exportDirectory: "/var/run/cilium/hubble"
 # exportFileRotationInterval specifies file creation interval for hubble-export-s3.
 exportFileCreationInterval: "120s"
 
 #
-# Configures whether Hubble Enterprise pods run on the host network.
+# Configures whether Tetragon pods run on the host network.
 #
-# IMPORTANT: Hubble Enterprise must be on the host network for the process visibility to
+# IMPORTANT: Tetragon must be on the host network for the process visibility to
 # function properly. However, S3 export does not work on the host network when used with
 # kiam to assign a role due to a limitation in how kiam configures iptables rules to
 # intercept requests to AWS metadata server.
@@ -57,7 +57,7 @@ exportFileCreationInterval: "120s"
 #
 hostNetwork: true
 
-enterprise:
+tetragon:
   enabled: true
   image:
     override: ~
@@ -81,8 +81,8 @@ enterprise:
   securityContext:
     privileged: true
 
-  # FGS puts processes in an LRU cache. The cache is used to find ancestors for subsequently exec'ed
-  # processes.
+  # Tetragon puts processes in an LRU cache. The cache is used to find ancestors
+  # for subsequently exec'ed processes.
   processCacheSize: 65536
 
   # JSON export filename. Set it to an empty string to disable JSON export altogether.
@@ -136,10 +136,10 @@ enterprise:
   fieldFilters: |-
     {}
 
-  # Access Kubernetes API to associate FGS events with Kubernetes pods.
+  # Access Kubernetes API to associate Tetragon events with Kubernetes pods.
   enableK8sAPI: true
 
-  # Access Cilium API to associate FGS events with Cilium endpoints and DNS cache.
+  # Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache.
   enableCiliumAPI: true
 
   # enableProcessCred enables Capabilities visibility in exec and kprobe events.
@@ -168,20 +168,20 @@ enterprise:
   tcpStatsSampleSegs: 0
 
   prometheus:
-    # -- Whether to enable exposing Hubble Enterprise metrics.
+    # -- Whether to enable exposing Tetragon metrics.
     enabled: true
     # -- The address at which to expose metrics. Set it to "" to expose on all available interfaces.
     address: ""
     # -- The port at which to expose metrics.
     port: 2112
     serviceMonitor:
-      # -- Whether to create a 'ServiceMonitor' resource targeting the 'hubble-enterprise' pods.
+      # -- Whether to create a 'ServiceMonitor' resource targeting the 'tetragon-enterprise' pods.
       enabled: false
       # -- The set of labels to place on the 'ServiceMonitor' resource.
       labelsOverride: {}
 
   grpc:
-    # -- Whether to enable exposing Hubble Enterprise gRPC.
+    # -- Whether to enable exposing Tetragon gRPC.
     enabled: true
     # -- The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
     address: "localhost:54321"
@@ -197,11 +197,11 @@ enterprise:
   # -- Enable policy filter debug messages.
   enablePolicyFilterDebug: false
 
-hubbleEnterpriseOperator:
-  # -- Enable the hubble-enterprise-operator component (required).
+tetragonOperator:
+  # -- Enable the tetragon-enterprise-operator component (required).
   enabled: true
 
-  # -- hubble-enterprise-operator image.
+  # -- tetragon-enterprise-operator image.
   image:
     override: ~
     repository: quay.io/isovalent/hubble-enterprise-operator
