@@ -319,16 +319,3 @@ export:
     # How often directory is checked for files at which point files are queued for upload
     # (up to --concurrent-limit). (default "1s")
     interval: ~
-
-  # export dashboards
-  grafana:
-    dashboards:
-      enabled: false
-      # -- Namespace to create the ConfigMap in. Defaults to namespace of the helm release.
-      namespace: ~
-      # -- Labels to add to the ConfigMap. If using the dashboards sidecar, they
-      # must include the label used to discover dashboards.
-      labels:
-        grafana_dashboard: "1"
-      # -- Annotations to add to the ConfigMap
-      annotations: {}

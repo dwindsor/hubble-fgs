@@ -73,10 +73,6 @@ Helm chart for Hubble Enterprise
 | export.fluentd.outputConfig | string | `"# send hubble and fgs logs both to the same output\n<match hubble.log fgs.log>\n{{- if .Values.export.fluentd.output }}\n{{ tpl .Values.export.fluentd.output . | trim | indent 2 }}\n{{- end }}\n</match>\n"` |  |
 | export.fluentd.tls.ca.configMap.key | string | `"ca.crt"` |  |
 | export.fluentd.tls.ca.configMap.name | string | `nil` |  |
-| export.grafana.dashboards.annotations | object | `{}` | Annotations to add to the ConfigMap |
-| export.grafana.dashboards.enabled | bool | `false` |  |
-| export.grafana.dashboards.labels | object | `{"grafana_dashboard":"1"}` | Labels to add to the ConfigMap. If using the dashboards sidecar, they must include the label used to discover dashboards. |
-| export.grafana.dashboards.namespace | string | `nil` | Namespace to create the ConfigMap in. Defaults to namespace of the helm release. |
 | export.mode | string | `"stdout"` |  |
 | export.resources | object | `{}` |  |
 | export.s3.acl | string | `nil` |  |
