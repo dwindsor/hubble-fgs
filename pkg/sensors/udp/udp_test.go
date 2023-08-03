@@ -76,6 +76,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for UDP tests in KVM CI not met, skipping", v)
 		return
 	}
+	bpf.CheckOrMountCgroup2()
 
 	flag.Parse()
 	if server {
@@ -251,8 +252,6 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
-
-	bpf.CheckOrMountCgroup2()
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
@@ -532,8 +531,6 @@ func TestUdpSeqCheck(t *testing.T) {
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
-
-	bpf.CheckOrMountCgroup2()
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
@@ -1477,8 +1474,6 @@ func TestDnsEvents(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
-
-	bpf.CheckOrMountCgroup2()
 
 	if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
