@@ -86,19 +86,19 @@ var (
 )
 
 var (
-	SkAllocRet = program.Builder(
+	SkUdpAlloc = program.Builder(
 		"bpf_sock_create.o",
-		"sk_alloc",
-		"kretprobe/sk_alloc",
-		"tg_ret_sk_alloc",
+		"udp_init_sock",
+		"kprobe/udp_init_sock",
+		"tg_udp_init_sock",
 		"kprobe",
-	).SetRetProbe(true)
+	)
 
-	SockRelease = program.Builder(
+	SkUdpDestroy = program.Builder(
 		"bpf_sock_release.o",
-		"__sk_free",
-		"kprobe/__sk_free",
-		"tg___sk_free",
+		"udp_destroy_sock",
+		"kprobe/udp_destroy_sock",
+		"tg_udp_destroy_sock",
 		"kprobe")
 
 	InetSend = program.Builder(
@@ -197,7 +197,7 @@ var (
 	UdpPayloadMap              = program.MapBuilder(UdpPayloadMapName, InetSend)
 	UdpPayloadLazyMap          = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
 	UdpPayloadLazyMapKprobe    = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	FdLookupConfigMap          = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
+	FdLookupConfigMap          = program.MapBuilder(ip.FdLookupConfigMapName, SkUdpDestroy)
 	LatencyConfigMap           = program.MapBuilder(networklatency.ConfigMapName, InetRecv)
 	LatencyConfigMapLazy       = program.MapBuilder(networklatency.ConfigMapName, InetRecvLazy)
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
@@ -649,8 +649,8 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*program.Program{
-			SkAllocRet,
-			SockRelease,
+			SkUdpAlloc,
+			SkUdpDestroy,
 			InetSendRecvLazy,
 			Udp4Send,
 			Udp4RetSend,
@@ -673,8 +673,8 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		versionStr = "__udp_sensor_probe__"
 	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
-			SkAllocRet,
-			SockRelease,
+			SkUdpAlloc,
+			SkUdpDestroy,
 			InetSendLazy,
 			InetRecvLazy,
 			Udp4Send,
@@ -698,8 +698,8 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		versionStr = "__udp_sensor_probe__"
 	} else {
 		progs = []*program.Program{
-			SkAllocRet,
-			SockRelease,
+			SkUdpAlloc,
+			SkUdpDestroy,
 			InetSend,
 			InetRecv,
 			Udp4Send,

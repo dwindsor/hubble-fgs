@@ -87,14 +87,15 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
 			   _(&(skp->__sk_common.skc_v6_daddr)));
 	}
-	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+
+	event_cfg = (struct tcp_event_disable_config *)
+		map_lookup_elem(&tg_event_disable_config, &zero);
 
 	if (!event_cfg)
 		return 0;
 
-	size = sizeof(struct msg_ip_event);
 	if (!event_cfg->disableConnect) {
+		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
