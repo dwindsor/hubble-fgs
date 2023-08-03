@@ -156,7 +156,7 @@ hubble-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang
 
 hubble-fgs: hubble-fgs-fs-scanner
-	$(GO) build -tags enterprise -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
@@ -178,10 +178,10 @@ ksyms:
 	cp $(OSS_DIR)/ksyms ksyms
 
 hubble-fgs-image:
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-fgs/
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags enterprise,netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-enterprise/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-fgs/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-enterprise/
 
 hubble-enterprise-operator-image:
 	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator
@@ -207,13 +207,13 @@ clean: tarball-clean
 
 .PHONY: fgs-bench fgs-bench-image fgs-bench-graph
 fgs-bench:
-	$(GO) build -tags enterprise ./cmd/fgs-bench
+	$(GO) build ./cmd/fgs-bench
 
 fgs-bench-image:
 	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
 
 fgs-bench-graph:
-	$(GO) build -tags enterprise ./cmd/fgs-bench-graph
+	$(GO) build ./cmd/fgs-bench-graph
 
 parsertest-image:
 	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) test -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -c ./pkg/parsertest -o parsertest
