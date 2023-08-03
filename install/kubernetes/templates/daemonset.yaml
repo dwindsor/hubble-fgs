@@ -23,15 +23,9 @@ spec:
     {{- end }}
   template:
     metadata:
-    {{- if or .Values.podAnnotations (and .Values.rbac.enabled .Values.rbac.metricsProxy.port) }}
-      annotations:
     {{- with .Values.podAnnotations }}
+      annotations:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- if and .Values.rbac.enabled .Values.rbac.metricsProxy.port }}
-        prometheus.io/scrape: 'true'
-        prometheus.io/port: '{{ .Values.rbac.metricsProxy.port }}'
-    {{- end }}
     {{- end }}
       labels:
       {{- with .Values.podLabelsOverride }}
@@ -75,9 +69,6 @@ spec:
 {{- end }}
 {{- if .Values.enterprise.enabled }}
       {{- include "container.enterprise" . | nindent 6 -}}
-{{- end }}
-{{- if .Values.rbac.enabled }}
-      {{- include "container.rbac" . | nindent 6 -}}
 {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -125,50 +116,6 @@ spec:
       {{- end }}
 {{- if eq .Values.export.mode "fluentd" }}
       {{- include "container.export.fluentd.volumes" . | nindent 6 -}}
-{{- end }}
-{{- if .Values.rbac.enabled }}
-      - name: {{ .Chart.Name }}-{{- include "container.rbac.name" . }}
-        configMap:
-          name: {{ .Chart.Name }}-{{- include "container.rbac.name" . }}
-          defaultMode: 420
-{{- if eq .Values.rbac.policy.mode "configMap" }}
-      - name: hubble-rbac-policy
-        configMap:
-          name: {{ .Values.rbac.policy.configMap.name }}
-          defaultMode: 0400
-{{- end }}
-{{- end }}
-{{- if .Values.rbac.enabled }}
-      - name: hubble-tls
-        projected:
-          defaultMode: 0400
-          sources:
-          {{- if or .Values.rbac.observerProxy.autoTLS .Values.rbac.metricsProxy.autoTLS }}
-          - secret:
-              name: hubble-server-certs
-              optional: true
-              items:
-              - key: ca.crt
-                path: client-ca.crt
-              - key: tls.crt
-                path: server.crt
-              - key: tls.key
-                path: server.key
-          {{- end }}
-          {{- if .Values.rbac.observerProxy.oidcCA.configMap.name }}
-          - configMap:
-              name: {{ .Values.rbac.observerProxy.oidcCA.configMap.name }}
-              items:
-              - key: {{ .Values.rbac.observerProxy.oidcCA.configMap.key }}
-                path: hubble-oidc-provider-ca.pem
-          {{- end }}
-          {{- if .Values.rbac.metricsProxy.oidcCA.configMap.name }}
-          - configMap:
-              name: {{ .Values.rbac.metricsProxy.oidcCA.configMap.name }}
-              items:
-              - key: {{ .Values.rbac.metricsProxy.oidcCA.configMap.key }}
-                path: metrics-oidc-provider-ca.pem
-          {{- end }}
 {{- end }}
 {{- range .Values.extraHostPathMounts }}
       - name: {{ .name }}

@@ -114,46 +114,6 @@ Helm chart for Hubble Enterprise
 | podLabelsOverride | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | priorityClassName | string | `""` |  |
-| rbac.enabled | bool | `false` |  |
-| rbac.extraArgs | object | `{}` |  |
-| rbac.extraEnv | list | `[]` |  |
-| rbac.image.override | string | `nil` |  |
-| rbac.image.repository | string | `"quay.io/isovalent/hubble-rbac"` |  |
-| rbac.image.tag | string | `"v1.3.0"` |  |
-| rbac.loggingLevel | string | `"info"` |  |
-| rbac.metricsProxy.authMode | string | `"none"` |  |
-| rbac.metricsProxy.autoTLS | bool | `true` |  |
-| rbac.metricsProxy.filtration | bool | `true` |  |
-| rbac.metricsProxy.jwtScopeField | string | `nil` |  |
-| rbac.metricsProxy.localAddress | string | `"localhost:9091"` |  |
-| rbac.metricsProxy.oidcCA.configMap.key | string | `"ca.crt"` |  |
-| rbac.metricsProxy.oidcCA.configMap.name | string | `nil` |  |
-| rbac.metricsProxy.oidcClientID | string | `nil` |  |
-| rbac.metricsProxy.oidcURL | string | `nil` |  |
-| rbac.metricsProxy.port | int | `9092` |  |
-| rbac.metricsProxy.tlsDisabled | bool | `false` |  |
-| rbac.metricsProxy.tlsSecretName | string | `"rbac-metrics-tls"` |  |
-| rbac.observerProxy.authMode | string | `"none"` |  |
-| rbac.observerProxy.autoTLS | bool | `true` |  |
-| rbac.observerProxy.jwtScopeField | string | `nil` |  |
-| rbac.observerProxy.oidcCA.configMap.key | string | `"ca.crt"` |  |
-| rbac.observerProxy.oidcCA.configMap.name | string | `nil` |  |
-| rbac.observerProxy.oidcCert | string | `nil` |  |
-| rbac.observerProxy.oidcClientID | string | `nil` |  |
-| rbac.observerProxy.oidcURL | string | `nil` |  |
-| rbac.observerProxy.port | int | `4244` |  |
-| rbac.observerProxy.socketPath | string | `"/var/run/cilium/hubble.sock"` |  |
-| rbac.observerProxy.tlsDisabled | bool | `false` |  |
-| rbac.policy.configMap.bindings | list | `[{"role":"admin","scope":"groups","value":"admins"}]` | The list of bindings between scope values and roles. |
-| rbac.policy.configMap.create | bool | `true` | Whether to create the config map from where the mapping between scope and roles is read. If set to 'false' the user must create the config map out-of-band. Hubble Enterprise will not start until the config map is in place. |
-| rbac.policy.configMap.key | Advanced | `"hubble-rbac-policy.yaml"` | The name of the config map key containing the policy document. If managed out-of-band, the config map must contain the policy document under this key. Most users won't need to customize this. |
-| rbac.policy.configMap.name | Advanced | `"hubble-rbac-policy"` | The name of the config map containing the policy document. If managed out-of-band, the config map must have the name defined here. Most users won't need to customize this. |
-| rbac.policy.configMap.roles | list | `[{"name":"admin","rules":[{"actions":["*"],"allowAllContexts":true,"kind":"*"}]}]` | The list of roles to define. |
-| rbac.policy.logRoles | bool | `false` | Whether to enable logging of a user's roles to debug logs when they authenticate and make requests. |
-| rbac.policy.mode | string | `"namespace"` | The policy mode to use (one of 'namespace' or 'configMap'). 'namespace' assumes users are assigned one or more 'cilium:<namespace>' groups and are thus granted access to the corresponding namespaces. 'configMap' allows for reading a mapping between scope values and roles from a config map. |
-| rbac.resources | object | `{}` |  |
-| rbac.securityContext | object | `{}` |  |
-| rbac.socketPath | string | `"/var/run/cilium/hubble-rbac.sock"` | Local Hubble RBAC socket path. |
 | selectorLabelsOverride | object | `{}` |  |
 | serviceAccount.annotations | object | `{}` |  |
 | serviceAccount.create | bool | `true` |  |

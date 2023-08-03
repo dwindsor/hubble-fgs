@@ -49,7 +49,3 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "container.enterprise.name" -}}
 {{- print "enterprise" -}}
 {{- end }}
-
-{{- define "container.rbac.name" -}}
-{{- "rbac" -}}
-{{- end }}
