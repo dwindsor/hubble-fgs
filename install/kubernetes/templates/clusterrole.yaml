@@ -16,7 +16,6 @@ rules:
       - watch
   - apiGroups:
       - cilium.io
-      - isovalent.com
     resources:
       - tracingpolicies
       - tracingpoliciesnamespaced
@@ -39,7 +38,6 @@ rules:
     resourceNames:
       - tracingpolicies.cilium.io
       - tracingpoliciesnamespaced.cilium.io
-      - tracingpolicies.isovalent.com
     verbs:
       - update
 {{- end }}
