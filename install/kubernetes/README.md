@@ -22,7 +22,6 @@ Helm chart for Hubble Enterprise
 | enterprise.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
 | enterprise.enableProcessCred | bool | `false` |  |
 | enterprise.enableProcessNs | bool | `false` |  |
-| enterprise.enableTLSEvents | bool | `false` |  |
 | enterprise.enabled | bool | `true` |  |
 | enterprise.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_TLS\"]}"` |  |
 | enterprise.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` |  |

@@ -10,7 +10,6 @@ data:
   btf: {{ .Values.enterprise.btf }}
 {{- end }}
   procfs: /procRoot
-  tlstc: {{ .Values.enterprise.enableTLSEvents | quote }}
   enable-process-cred: {{ .Values.enterprise.enableProcessCred | quote }}
   enable-process-ns: {{ .Values.enterprise.enableProcessNs | quote }}
   fim-runtime-endpoint: {{ .Values.enterprise.fimRuntimeEndpoint | quote }}

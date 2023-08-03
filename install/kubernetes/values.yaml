@@ -140,9 +140,6 @@ enterprise:
   # Access Cilium API to associate FGS events with Cilium endpoints and DNS cache.
   enableCiliumAPI: true
 
-  # enableTLSEvents enables TLS visibility.
-  enableTLSEvents: false
-
   # enableProcessCred enables Capabilities visibility in exec and kprobe events.
   enableProcessCred: false
 
