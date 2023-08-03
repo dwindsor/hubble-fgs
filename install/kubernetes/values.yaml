@@ -63,12 +63,14 @@ enterprise:
     override: ~
     repository: quay.io/isovalent/hubble-enterprise
     tag: v1.11.0
-  metadataImage:
-    override: ~
-    repository: quay.io/isovalent/hubble-enterprise-metadata
-    tag: current
-    # Override the global image pull policy.
-    imagePullPolicy: Always
+  metadata:
+    enabled: false
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-enterprise-metadata
+      tag: current
+      # Override the global image pull policy.
+      imagePullPolicy: Always
   resources: {}
   extraArgs: {}
   extraEnv: []

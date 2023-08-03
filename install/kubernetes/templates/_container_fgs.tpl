@@ -28,7 +28,7 @@
     {{- with .Values.enterprise.extraVolumeMounts }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- if not .Values.enterprise.btf }}
+    {{- if .Values.enterprise.metadata.enabled }}
     - mountPath: /var/lib/hubble-fgs/metadata
       name: metadata-files
     {{- end }}
@@ -82,9 +82,9 @@
 
 {{- define "container.enterprise.init" -}}
 - name: {{ include "container.enterprise.name" . }}-init
-  image: "{{ if .Values.enterprise.metadataImage.override }}{{ .Values.enterprise.metadataImage.override }}{{ else }}{{ .Values.enterprise.metadataImage.repository }}:{{ .Values.enterprise.metadataImage.tag }}{{ end }}"
-{{- if .Values.enterprise.metadataImage.imagePullPolicy }}
-  imagePullPolicy: {{ .Values.enterprise.metadataImage.imagePullPolicy }}
+  image: "{{ if .Values.enterprise.metadata.image.override }}{{ .Values.enterprise.metadata.image.override }}{{ else }}{{ .Values.enterprise.metadata.image.repository }}:{{ .Values.enterprise.metadata.image.tag }}{{ end }}"
+{{- if .Values.enterprise.metadata.image.imagePullPolicy }}
+  imagePullPolicy: {{ .Values.enterprise.metadata.image.imagePullPolicy }}
 {{- else }}
   imagePullPolicy: {{ .Values.imagePullPolicy }}
 {{- end }}

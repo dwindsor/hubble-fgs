@@ -52,7 +52,7 @@ spec:
 {{- if .Values.enterprise.enabled }}
       initContainers:
       {{- include "container.enterprise.init-operator" . | nindent 6 -}}
-{{- if not .Values.enterprise.btf }}
+{{- if .Values.enterprise.metadata.enabled }}
       {{- include "container.enterprise.init" . | nindent 6 -}}
 {{- end }}
 {{- end }}
@@ -106,7 +106,7 @@ spec:
         hostPath:
           path: /proc
           type: Directory
-{{- if not .Values.enterprise.btf }}
+{{- if .Values.enterprise.metadata.enabled }}
       - emptyDir: {}
         name: metadata-files
 {{- end }}

@@ -42,10 +42,11 @@ Helm chart for Hubble Enterprise
 | enterprise.image.override | string | `nil` |  |
 | enterprise.image.repository | string | `"quay.io/isovalent/hubble-enterprise"` |  |
 | enterprise.image.tag | string | `"v1.11.0"` |  |
-| enterprise.metadataImage.imagePullPolicy | string | `"Always"` |  |
-| enterprise.metadataImage.override | string | `nil` |  |
-| enterprise.metadataImage.repository | string | `"quay.io/isovalent/hubble-enterprise-metadata"` |  |
-| enterprise.metadataImage.tag | string | `"current"` |  |
+| enterprise.metadata.enabled | bool | `false` |  |
+| enterprise.metadata.image.imagePullPolicy | string | `"Always"` |  |
+| enterprise.metadata.image.override | string | `nil` |  |
+| enterprise.metadata.image.repository | string | `"quay.io/isovalent/hubble-enterprise-metadata"` |  |
+| enterprise.metadata.image.tag | string | `"current"` |  |
 | enterprise.processCacheSize | int | `65536` |  |
 | enterprise.prometheus.address | string | `""` | The address at which to expose metrics. Set it to "" to expose on all available interfaces. |
 | enterprise.prometheus.enabled | bool | `true` | Whether to enable exposing Hubble Enterprise metrics. |
