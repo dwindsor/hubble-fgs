@@ -203,13 +203,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 
 func runNetworkBPFGC() {
 	path := filepath.Join(bpf.MapPrefixPath(), NetworkMapName)
-	fd, err := bpf.ObjGet(path)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Network GC failed to open file")
-		return
-	}
-
-	networkMap, err := ebpf.NewMapFromFD(fd)
+	networkMap, err := ebpf.LoadPinnedMap(path, nil)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Network map open failed")
 		return
