@@ -1,0 +1,35 @@
+{{ if .Values.rbac.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-{{- include "container.rbac.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+  {{- include "hubble-enterprise.labels" . | nindent 4 }}
+data:
+{{- if .Values.rbac.metricsProxy.oidcCert }}
+  metrics-oidc-cert.pem: {{ toYaml .Values.rbac.metricsProxy.oidcCert | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.metricsProxy.tlsKey }}
+  metrics-tls-key.pem: {{ toYaml .Values.rbac.metricsProxy.tlsKey | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.metricsProxy.cert }}
+  metrics-tls-cert.pem: {{ toYaml .Values.rbac.metricsProxy.cert | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.metricsProxy.clientCA }}
+  metrics-client-ca.pem: {{ toYaml .Values.rbac.metricsProxy.clientCA | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.observerProxy.oidcCert }}
+  hubble-oidc-cert.pem: {{ toYaml .Values.rbac.observerProxy.oidcCert | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.observerProxy.tlsKey }}
+  hubble-tls-key.pem: {{ toYaml .Values.rbac.observerProxy.tlsKey | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.observerProxy.cert }}
+  hubble-tls-cert.pem: {{ toYaml .Values.rbac.observerProxy.cert | indent 2 }}
+{{- end }}
+{{- if .Values.rbac.observerProxy.clientCA }}
+  hubble-client-ca.pem: {{ toYaml .Values.observerProxy.clientCA | indent 2 }}
+{{- end }}
+{{- end }}
+  

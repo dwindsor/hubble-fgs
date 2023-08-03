@@ -1,0 +1,181 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  {{- with .Values.daemonSetAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+  {{- with .Values.daemonSetLabelsOverride}}
+    {{- toYaml . | nindent 4 }}
+  {{- else }}
+    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+  {{- end }}
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+    {{- with .Values.selectorLabelsOverride }}
+      {{- toYaml . | nindent 6 }}
+    {{- else }}
+      {{- include "hubble-enterprise.selectorLabels" . | nindent 6 }}
+    {{- end }}
+  template:
+    metadata:
+    {{- if or .Values.podAnnotations (and .Values.rbac.enabled .Values.rbac.metricsProxy.port) }}
+      annotations:
+    {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if and .Values.rbac.enabled .Values.rbac.metricsProxy.port }}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '{{ .Values.rbac.metricsProxy.port }}'
+    {{- end }}
+    {{- end }}
+      labels:
+      {{- with .Values.podLabelsOverride }}
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
+        {{- include "hubble-enterprise.labels" . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Chart.Name }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+{{- if .Values.enterprise.enabled }}
+      initContainers:
+      {{- include "container.enterprise.init-operator" . | nindent 6 -}}
+{{- if not .Values.enterprise.btf }}
+      {{- include "container.enterprise.init" . | nindent 6 -}}
+{{- end }}
+{{- end }}
+      containers:
+{{- if eq .Values.export.mode "stdout" }}
+      {{- include "container.export.stdout" . | nindent 6 -}}
+{{- else if eq .Values.export.mode "fluentd" }}
+      {{- include "container.export.fluentd" . | nindent 6 -}}
+{{- else if eq .Values.export.mode "s3" }}
+      {{- include "container.export.s3" . | nindent 6 -}}
+{{- end }}
+{{- if and (not (eq .Values.export.mode "stdout")) (.Values.export.enableStdout) }}
+      {{- include "container.export.stdout" . | nindent 6 -}}
+{{- end }}
+{{- if .Values.enterprise.enabled }}
+      {{- include "container.enterprise" . | nindent 6 -}}
+{{- end }}
+{{- if .Values.rbac.enabled }}
+      {{- include "container.rbac" . | nindent 6 -}}
+{{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      terminationGracePeriodSeconds: 1
+      volumes:
+      - name: cilium-run
+        hostPath:
+          path: /var/run/cilium
+          type: DirectoryOrCreate
+      - name: export-logs
+        hostPath:
+          path: {{ .Values.exportDirectory }}
+          type: DirectoryOrCreate
+{{- if .Values.enterprise.enabled }}
+      - name: fgs-config
+        configMap:
+          name: {{ .Chart.Name }}-config
+      - name: bpf-maps
+        hostPath:
+          path: /sys/fs/bpf
+          type: DirectoryOrCreate
+      - name: host-proc
+        hostPath:
+          path: /proc
+          type: Directory
+{{- if not .Values.enterprise.btf }}
+      - emptyDir: {}
+        name: metadata-files
+{{- end }}
+{{- end }}
+      {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+{{- if eq .Values.export.mode "fluentd" }}
+      {{- include "container.export.fluentd.volumes" . | nindent 6 -}}
+{{- end }}
+{{- if .Values.rbac.enabled }}
+      - name: {{ .Chart.Name }}-{{- include "container.rbac.name" . }}
+        configMap:
+          name: {{ .Chart.Name }}-{{- include "container.rbac.name" . }}
+          defaultMode: 420
+{{- if eq .Values.rbac.policy.mode "configMap" }}
+      - name: hubble-rbac-policy
+        configMap:
+          name: {{ .Values.rbac.policy.configMap.name }}
+          defaultMode: 0400
+{{- end }}
+{{- end }}
+{{- if .Values.rbac.enabled }}
+      - name: hubble-tls
+        projected:
+          defaultMode: 0400
+          sources:
+          {{- if or .Values.rbac.observerProxy.autoTLS .Values.rbac.metricsProxy.autoTLS }}
+          - secret:
+              name: hubble-server-certs
+              optional: true
+              items:
+              - key: ca.crt
+                path: client-ca.crt
+              - key: tls.crt
+                path: server.crt
+              - key: tls.key
+                path: server.key
+          {{- end }}
+          {{- if .Values.rbac.observerProxy.oidcCA.configMap.name }}
+          - configMap:
+              name: {{ .Values.rbac.observerProxy.oidcCA.configMap.name }}
+              items:
+              - key: {{ .Values.rbac.observerProxy.oidcCA.configMap.key }}
+                path: hubble-oidc-provider-ca.pem
+          {{- end }}
+          {{- if .Values.rbac.metricsProxy.oidcCA.configMap.name }}
+          - configMap:
+              name: {{ .Values.rbac.metricsProxy.oidcCA.configMap.name }}
+              items:
+              - key: {{ .Values.rbac.metricsProxy.oidcCA.configMap.key }}
+                path: metrics-oidc-provider-ca.pem
+          {{- end }}
+{{- end }}
+{{- range .Values.extraHostPathMounts }}
+      - name: {{ .name }}
+        hostPath:
+          path: {{ .mountPath }}
+{{- end }}
+{{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}

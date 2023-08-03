@@ -1,0 +1,17 @@
+{{- if .Values.export.grafana.dashboards.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubble-export-grafana-dashboard
+  namespace: {{ .Values.export.grafana.dashboards.namespace | default .Release.Namespace }}
+  labels:
+    {{- with .Values.export.grafana.dashboards.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.export.grafana.dashboards.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+{{ (.Files.Glob "dashboards/export/*.json").AsConfig | indent 2 }}
+{{- end }}

@@ -1,0 +1,484 @@
+enabled: true
+imagePullPolicy: IfNotPresent
+priorityClassName: ""
+imagePullSecrets: []
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+podAnnotations: {}
+podSecurityContext: {}
+nodeSelector: {}
+tolerations:
+- operator: Exists
+affinity: {}
+extraHostPathMounts: []
+extraConfigmapMounts: []
+daemonSetAnnotations: {}
+extraVolumes: []
+updateStrategy: {}
+podLabels: {}
+daemonSetLabelsOverride: {}
+selectorLabelsOverride: {}
+podLabelsOverride: {}
+serviceLabelsOverride: {}
+
+# Set DNS policy for hubble-enterprise pods.
+#
+# Recommended DNS policy for hubble-enterprise pod depends on whether the export container
+# needs to resolve external DNS names (e.g. an S3 URL) or internal ones (e.g. a Kubernetes
+# DNS name for elasticsearch service).
+#
+# - For external DNS names, use "Default" so that the export container continues to function
+#   properly in case there is a connectivity issue between the export container and core-dns.
+# - For internal DNS names, use "ClusterFirstWithHostNet" so that the export container can
+#   resolve them.
+#
+# https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: Default
+
+# exportDirectory specifies directory to put Hubble and FGS JSON export files.
+exportDirectory: "/var/run/cilium/hubble"
+# exportFileRotationInterval specifies file creation interval for hubble-export-s3.
+exportFileCreationInterval: "120s"
+
+#
+# Configures whether Hubble Enterprise pods run on the host network.
+#
+# IMPORTANT: Hubble Enterprise must be on the host network for the process visibility to
+# function properly. However, S3 export does not work on the host network when used with
+# kiam to assign a role due to a limitation in how kiam configures iptables rules to
+# intercept requests to AWS metadata server.
+#
+# Set this flag to false if and only if you don't use the process visibility functionality
+# and you use kiam to assign a role to upload events to S3.
+#
+# Reference: https://github.com/uswitch/kiam/issues/119
+#
+hostNetwork: true
+
+enterprise:
+  enabled: true
+  image:
+    override: ~
+    repository: quay.io/isovalent/hubble-enterprise
+    tag: v1.11.0
+  metadataImage:
+    override: ~
+    repository: quay.io/isovalent/hubble-enterprise-metadata
+    tag: current
+    # Override the global image pull policy.
+    imagePullPolicy: Always
+  resources: {}
+  extraArgs: {}
+  extraEnv: []
+  # extraEnv:
+  #   - name: foo
+  #     value: bar
+  extraVolumeMounts: []
+  securityContext:
+    privileged: true
+
+  # FGS puts processes in an LRU cache. The cache is used to find ancestors for subsequently exec'ed
+  # processes.
+  processCacheSize: 65536
+
+  # JSON export filename. Set it to an empty string to disable JSON export altogether.
+  exportFilename: fgs.log
+
+  # Size in megabytes at which to rotate JSON export files.
+  exportFileMaxSizeMB: 10
+
+  # Number of rotated files to retain.
+  exportFileMaxBackups: 5
+
+  # Compress rotated JSON export files.
+  exportFileCompress: false
+
+  # Rate-limit event export (events per minute), Set to -1 to export all events.
+  exportRateLimit: -1
+
+  # Allowlist for JSON export. For example, to export only process_connect events from
+  # the default namespace:
+  #
+  # exportAllowList: |
+  #   {"namespace":["default"],"event_set":["PROCESS_CONNECT"]}
+  exportAllowList: |-
+    {"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_TLS"]}
+
+  # Denylist for JSON export. For example, to exclude exec events that look similar to
+  # Kubernetes health checks and all the events from kube-system namespace and the host:
+  #
+  # exportDenyList: |
+  #   {"health_check":true}
+  #   {"namespace":["kube-system",""]}
+  #
+  exportDenyList: |-
+    {"health_check":true}
+    {"namespace":["", "cilium", "kube-system"]}
+
+  # Filters to include or exclude fields from Tetragon events. Without any filters, all
+  # fields are included by default. The presence of at least one inclusion filter implies
+  # default-exclude (i.e. any fields that don't match an inclusion filter will be
+  # excluded). Field paths are expressed using dot notation like "a.b.c" and multiple
+  # field paths can be separated by commas like "a.b.c,d,e.f". An optional "event_set" may
+  # be specified to apply the field filter to a specific set of events.
+  #
+  # For example, to exclude the "parent" field from all events and include the "process"
+  # field in PROCESS_KPROBE events while excluding all others:
+  #
+  # fieldFilters: |
+  #   {"fields": "parent", "action": "EXCLUDE"}
+  #   {"event_set": ["PROCESS_KPROBE"], "fields": "process", "action": "INCLUDE"}
+  #
+  fieldFilters: |-
+    {}
+
+  # Access Kubernetes API to associate FGS events with Kubernetes pods.
+  enableK8sAPI: true
+
+  # Access Cilium API to associate FGS events with Cilium endpoints and DNS cache.
+  enableCiliumAPI: true
+
+  # enableTLSEvents enables TLS visibility.
+  enableTLSEvents: false
+
+  # enableProcessCred enables Capabilities visibility in exec and kprobe events.
+  enableProcessCred: false
+
+  # enableProcessNs enables Namespaces visibility in exec and kprobe events.
+  enableProcessNs: false
+
+  # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
+  fimRuntimeEndpoint: ""
+
+  # Set --btf option to explicitly specify an absolute path to the metadata file. For advanced users only.
+  btf: ""
+
+  # Override the command. For advanced users only.
+  commandOverride: []
+
+  # Override the arguments. For advanced users only.
+  argsOverride: []
+
+  # -- EXPERIMENTAL: This field may be removed in the future without notice.
+  #
+  # Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.
+  #
+  # Note that the counter for sampling is global, and it is not per socket.
+  tcpStatsSampleSegs: 0
+
+  prometheus:
+    # -- Whether to enable exposing Hubble Enterprise metrics.
+    enabled: true
+    # -- The address at which to expose metrics. Set it to "" to expose on all available interfaces.
+    address: ""
+    # -- The port at which to expose metrics.
+    port: 2112
+    serviceMonitor:
+      # -- Whether to create a 'ServiceMonitor' resource targeting the 'hubble-enterprise' pods.
+      enabled: false
+      # -- The set of labels to place on the 'ServiceMonitor' resource.
+      labelsOverride: {}
+
+  grpc:
+    # -- Whether to enable exposing Hubble Enterprise gRPC.
+    enabled: true
+    # -- The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
+    address: "localhost:54321"
+
+  gops:
+     # -- The address at which to expose gops.
+     address: "localhost"
+     # -- The port at which to expose gops.
+     port: 8118
+
+  # -- Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default.
+  enablePolicyFilter: false
+  # -- Enable policy filter debug messages.
+  enablePolicyFilterDebug: false
+
+hubbleEnterpriseOperator:
+  # -- Enable the hubble-enterprise-operator component (required).
+  enabled: true
+
+  # -- hubble-enterprise-operator image.
+  image:
+    override: ~
+    repository: quay.io/isovalent/hubble-enterprise-operator
+    tag: v1.11.0
+    # hubble-enterprise-operator image-digest
+    suffix: ""
+
+export:
+  # "stdout", "fluentd", or "s3". "" to disable.
+  mode: "stdout"
+  resources: {}
+  extraArgs: {}
+  extraEnv: []
+  # extraEnv:
+  #   - name: foo
+  #     value: bar
+  extraVolumeMounts: []
+  securityContext: {}
+
+  # Override the command. For advanced users only.
+  commandOverride: [ ]
+
+  # Override the arguments. For advanced users only.
+  argsOverride: [ ]
+
+  # filenames defines list of files for fluentd to tail and export.
+  filenames:
+  - fgs.log
+  - hubble.log
+
+  stdout:
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-export-stdout
+      tag: v1.0.3
+  fluentd:
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-export-fluentd
+      tag: v1.5.1
+    inputConfig: |
+      {{- $paths := list -}}
+      {{- range .Values.export.filenames }}
+        {{- $paths = append $paths (printf "%s/%s" $.Values.exportDirectory .) -}}
+      {{- end -}}
+      <source>
+        @type tail
+        path {{ join "," $paths }}
+        pos_file {{ .Values.exportDirectory }}/fluentd-tail.pos
+        read_from_head true
+        refresh_interval 15
+        tag hubble-logs.*
+        <parse>
+          @type json
+          time_format %iso8601
+          keep_time_key true
+        </parse>
+      </source>
+    filterConfig: |
+      <match hubble-logs.**>
+        @type rewrite_tag_filter
+        <rule>
+          key node_name
+          pattern /.+/
+          # /var/run/cilium/hubble/hubble.log has a tag of var.run.cilium.hubble.hubble.log
+          # and the rewrite rule changes it to hubble.log
+          tag ${tag_parts[5]}.${tag_parts[6]}
+        </rule>
+      </match>
+    outputConfig: |
+      # send hubble and fgs logs both to the same output
+      <match hubble.log fgs.log>
+      {{- if .Values.export.fluentd.output }}
+      {{ tpl .Values.export.fluentd.output . | trim | indent 2 }}
+      {{- end }}
+      </match>
+    # output specifies the fluentd output plugin configuration that goes in the match
+    # directive. The default value outputs events to stdout as JSON.
+    #
+    # https://docs.fluentd.org/configuration/config-file#2-match-tell-fluentd-what-to-do
+    output: |-
+      # https://docs.fluentd.org/output/stdout
+      @type stdout
+      <format>
+        @type json
+      </format>
+    config: |
+      @include input.conf
+      @include filter.conf
+      @include output.conf
+    tls:
+      ca:
+        configMap:
+          name: ~
+          key: ca.crt
+  s3:
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-export-s3
+      tag: v1.0.0
+    bucket: ~
+    awsRegion: ~
+    kms: ~
+    kmsId: ~
+    objectTemplate: ~
+    skipProbe: false
+    acl: ~
+    awsAccessKeyId: ~
+    awsSecretAccessKey: ~
+    # Files larger than this size (in MB) will be uploaded using MultiPart S3 API.
+    partSize: 5
+    # Maximum number of concurrent S3 file uploads to schedule each --interval. (default 10)
+    concurrentLimit: 10
+    # How often directory is checked for files at which point files are queued for upload
+    # (up to --concurrent-limit). (default "1s")
+    interval: ~
+
+  # export dashboards
+  grafana:
+    dashboards:
+      enabled: false
+      # -- Namespace to create the ConfigMap in. Defaults to namespace of the helm release.
+      namespace: ~
+      # -- Labels to add to the ConfigMap. If using the dashboards sidecar, they
+      # must include the label used to discover dashboards.
+      labels:
+        grafana_dashboard: "1"
+      # -- Annotations to add to the ConfigMap
+      annotations: {}
+
+rbac:
+  enabled: false
+  image:
+    override: ~
+    repository: quay.io/isovalent/hubble-rbac
+    tag: v1.3.0
+  extraArgs: {}
+  extraEnv: []
+  # extraEnv:
+  #   - name: foo
+  #     value: bar
+  resources: {}
+  securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+  loggingLevel: info
+
+  observerProxy:
+    tlsDisabled: false
+    socketPath: /var/run/cilium/hubble.sock
+    autoTLS: true
+    port: 4244
+    authMode: none
+    oidcURL: ~
+    oidcClientID: ~
+    oidcCert: ~
+    oidcCA:
+      configMap:
+        name: ~
+        key: "ca.crt"
+    jwtScopeField: ~
+    # See metricsProxy section for the auth modes and possibilities. Note that
+    # the tls auth mode is not supported for observerProxy.
+    #   authMode: [oidc|none]
+
+  metricsProxy:
+    port: 9092
+    tlsDisabled: false
+    autoTLS: true
+    tlsSecretName: rbac-metrics-tls
+    localAddress: localhost:9091
+    filtration: true
+    authMode: none
+    oidcURL: ~
+    oidcCA:
+      configMap:
+        name: ~
+        key: "ca.crt"
+    oidcClientID: ~
+    jwtScopeField: ~
+
+  # -- Local Hubble RBAC socket path.
+  socketPath: "/var/run/cilium/hubble-rbac.sock"
+
+  policy:
+    # -- The policy mode to use (one of 'namespace' or 'configMap'). 'namespace'
+    # assumes users are assigned one or more 'cilium:<namespace>' groups and are
+    # thus granted access to the corresponding namespaces. 'configMap' allows
+    # for reading a mapping between scope values and roles from a config map.
+    mode: namespace
+
+    # -- Whether to enable logging of a user's roles to debug logs when they
+    # authenticate and make requests.
+    logRoles: false
+    # Further configuration for the 'configMap' mode.
+    configMap:
+      # -- Whether to create the config map from where the mapping between scope
+      # and roles is read. If set to 'false' the user must create the config map
+      # out-of-band. Hubble Enterprise will not start until the config map is
+      # in place.
+      create: true
+      # -- The list of roles to define.
+      roles:
+        - name: admin
+          rules:
+            - actions:
+                - "*"
+              kind: "*"
+              allowAllContexts: true
+      # -- The list of bindings between scope values and roles.
+      bindings:
+        - scope: groups
+          value: admins
+          role: admin
+      # -- (Advanced) The name of the config map containing the policy document.
+      # If managed out-of-band, the config map must have the name defined here.
+      # Most users won't need to customize this.
+      name: hubble-rbac-policy
+      # -- (Advanced) The name of the config map key containing the policy
+      # document. If managed out-of-band, the config map must contain the policy
+      # document under this key. Most users won't need to customize this.
+      key: hubble-rbac-policy.yaml
+    # The 'namespace' mode doesn't support further configuration at the moment.
+    # namespace: {}
+
+
+    #   authMode: [oidc|tls|none]
+    #
+    # OIDC Example
+    #
+    #   authMode: oidc
+    #   jwtScopeField: https://isovalent.com/roles
+    #   oidcURL: https://dev-isovalent.us.auth0.com/.well-known/openid-configuration
+    #
+    # TLS Example
+    #
+    #   authMode: tls
+    #   clientCA: |
+    #     -----BEGIN CERTIFICATE-----
+    #     MIIF1TCCA72gAwIBAgIUBHFSBvTMzd60LiC6ZozHQwTtaWYwDQYJKoZIhvcNAQEN
+    #     BQAwXjELMAkGA1UEBhMCVVMxEjAQBgNVBAgTCVdpc2NvbnNpbjEQMA4GA1UEBxMH
+    #     TWFkaXNvbjENMAsGA1UEChMEbmF0ZTELMAkGA1UECxMCQ0ExDTALBgNVBAMTBG5h
+    #     dGUwHhcNMjAwODAyMjMzMjAwWhcNMjEwODAyMjMzMjAwWjBqMQswCQYDVQQGEwJV
+    #     UzESMBAGA1UECBMJV2lzY29uc2luMRAwDgYDVQQHEwdNYWRpc29uMRYwFAYDVQQK
+    #     Ew1jaWxpdW06aHViYmxlMQ0wCwYDVQQLEwRuYXRlMQ4wDAYDVQQDEwVhZG1pbjCC
+    #     AiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBALVHVE7H1c/25C4nC4BpYizb
+    #     N4flrayUjeeYLcOniq8ZclK2NSJxRIGzU0RKcwFVGGzZDqyGqOmoQYkKClxUtCwV
+    #     6v7ea0ykez3/52jEQg7W/mwNtUC6occV+7dc/VKg/Er/wRVgew718SJm40wx/g3L
+    #     Vo9LoMYULrJ/1oWOLMdnnV6POHylWi4NnABwFGW8UEzxSvhYvBXqoL3KCcCsKGT6
+    #     1GzACfn53jhV+TMNweOCBNtRyCAG3fdd+OyzhCziST4d92KgkatbZJ1NDGi9xhGp
+    #     zmeh3XHok7/5I0qXsvflFJtt4OKD7KvAkdh2kTHfMHo2+Hef5QcSQ1d7HHc47O29
+    #     V3Oug+sFnWeW6FVdJEwC2NidMUcCl++TcfMo22hKdxc788cqjLI2Tf+y3B1o5Tam
+    #     pefZABGXVbee/P3AttZrIyoVOtEIEK3HIWy2mWqpXJVOADuZfuymnsjjX3YV5Q/h
+    #     9X/j8e6RfLYmX2JStF5XVrxX6yH47RC9/jhZQRiiTiByXMU11qn4PzuWsMlcL2oJ
+    #     UzUESAOhYOuSGEtJaR+o9fWruaXuPym8Yo2k+AFHirMk2n52nqD+7RwHiJ37MARw
+    #     CC/AS5mKYcZOYvIP7RzRPGH19t9iWtEr0F6eZrUL9AaFmyDbCCzNyYBZ58TUwL/A
+    #     shIN1P2jm7SSj3peaLxLAgMBAAGjfzB9MA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUE
+    #     FjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQU
+    #     r16fC412V6fXIGj4rgV2rPJ0/DkwHwYDVR0jBBgwFoAU/iiRhkMszV5MX6ZHgKjZ
+    #     fVvMqsYwDQYJKoZIhvcNAQENBQADggIBAHYmf9hcfUwx562oDFdwjuGLFOImCa73
+    #     +USPQBBP7S7OM6np/nyN6qS6p08R8KEH637lSByS+xtNfUo3BEkzmhwMTD5aLDyR
+    #     kgr7sWD3dHAvVtcnyq2+KXoN21Op2IDwlw+UGfVkCt44nxgTz34C91L5JqHuzPSQ
+    #     gPl3fWeSqEgh/Ywd9ZU7dpeIlEYTAxLthvpskSVTmrIvV99Nlwzci37yel4R0U4O
+    #     90L21Jc/1oq+cqBnyQjkFPpBeLlRLbVdzDLoB+ZDHbR73TX9HASqcfbNHl8nTpCZ
+    #     G6Sq5LI/jhO+I8/vCBjfaKlQdvMtRVfEXIJVgmpXQBlDxJwowy+u70PfyE4lWTir
+    #     skx4M7uG7Krgdu+xYTUptQJZEwRb5+i442NpfoGx1d1O10H1jwwwqxWyRIdRtg+w
+    #     PG3rRyea7UzPOpi7NyJa88zzTZwTjMUshtbRGgmVwhR9WhiBj1j4inSG7ZXx75B7
+    #     a6t7OkMonmWcTwri9QPmfslK9HvPdMtMZHYF7hylY+NelqCybgBU0JNOAEft8y9k
+    #     jieB5GW977O+roqVPTJA5ZD+uLDnKOG3K2Oah2Lh3FUqN0b3SwdKauoCEp8IpyR/
+    #     6b8nPel+391tXc8fM3/RhB359nTFRMjTtV5esVnXP7V2dXhCzpo+Boy37BkGgxDI
+    #     ZLuZ1Ul7P4oE
+    #     -----END CERTIFICATE-----
+    #   cert: | ...
+    #   tlsKey: | ...

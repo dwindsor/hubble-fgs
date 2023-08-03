@@ -1,0 +1,18 @@
+{{ if eq .Values.export.mode "fluentd"}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-{{- include "container.export.fluentd.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+  {{- include "hubble-enterprise.labels" . | nindent 4 }}
+data:
+  input.conf: |
+    {{- tpl .Values.export.fluentd.inputConfig . | nindent 4 }}
+  filter.conf: |
+    {{- tpl .Values.export.fluentd.filterConfig . | nindent 4 }}
+  output.conf: |
+    {{- tpl .Values.export.fluentd.outputConfig . | nindent 4 }}
+  fluent.conf: |
+    {{- tpl .Values.export.fluentd.config . | nindent 4 }}
+{{- end }}

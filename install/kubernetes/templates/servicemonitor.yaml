@@ -1,0 +1,35 @@
+{{- if .Values.enterprise.prometheus.serviceMonitor.enabled -}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{- with .Values.enterprise.prometheus.serviceMonitor.labelsOverride}}
+    {{- toYaml . | nindent 4 }}
+    {{- else }}
+    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+    {{- end }}
+  name: hubble-enterprise
+  namespace: {{ .Release.Namespace }}
+spec:
+  endpoints:
+    - honorLabels: true
+      interval: 10s
+      path: /metrics
+      port: metrics
+      relabelings:
+        - replacement: ${1}
+          sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: node
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- with .Values.serviceLabelsOverride}}
+      {{- toYaml . | nindent 6 }}
+      {{- else }}
+      {{- include "hubble-enterprise.labels" . | nindent 6 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,14 @@
+{{- if and (and (eq .Values.rbac.enabled true) (eq .Values.rbac.policy.mode "configMap")) (eq .Values.rbac.policy.configMap.create true) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "hubble-enterprise.labels" . | nindent 4 }}
+  name: {{ .Values.rbac.policy.configMap.name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ .Values.rbac.policy.configMap.key }}: |
+    roles: {{ toYaml .Values.rbac.policy.configMap.roles | nindent 6 }}
+    bindings: {{ toYaml .Values.rbac.policy.configMap.bindings | nindent 6 }}
+{{- end }}
