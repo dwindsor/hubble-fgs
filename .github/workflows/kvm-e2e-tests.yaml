@@ -140,13 +140,13 @@ jobs:
             set -eux
             cd /host/hubble-fgs
             export HOST_PROC=/procRoot
-            go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
-              -tetragon.cilium-version=${{ env.ciliumVersion }} \
-              -tetragon.btf=/boot/btf-\$(uname -r) \
-              -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
-              -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
-              -tetragon.helm.set enterprise.extraArgs.fim-fifo-path=/tetragonExport \
-              -v
+            make e2e-test                                          \
+              E2E_BUILD_IMAGES=0                                   \
+              E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
+              E2E_BTF=/boot/btf-\$(uname -r)                       \
+              E2E_AGENT=${{ steps.vars.outputs.agentImage }}       \
+              E2E_OPERATOR=${{ steps.vars.outputs.operatorImage }} \
+              E2E_EXTRA_TEST_FLAGS="-tetragon.cilium-version=${{ env.ciliumVersion }} -tetragon.helm.set tetragon.extraArgs.fim-fifo-path=/tetragonExport -v"
 
       - name: Copy out e2e test logs
         if: ${{ failure() || cancelled() }}

@@ -16,11 +16,10 @@ import (
 
 	// Import flags from OSS so they get initialized here.
 	_ "github.com/cilium/tetragon/tests/e2e/flags"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 func init() {
-	flag.CommandLine.Set("tetragon.helm.set", "enterprise.exportAllowList=")
-	flag.CommandLine.Set("tetragon.helm.daemonset", "hubble-enterprise")
-	flag.CommandLine.Set("tetragon.helm.url", "https://helm.isovalent.com")
-	flag.CommandLine.Set("tetragon.helm.chart", "isovalent/hubble-enterprise")
+	flag.CommandLine.Set("tetragon.helm.url", "")
+	flag.CommandLine.Set("tetragon.helm.chart", testutils.RepoRootPath("install/kubernetes"))
 }

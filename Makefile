@@ -13,7 +13,6 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 EXTRA_TESTFLAGS ?=
 SUDO ?= sudo
 GO_TEST_TIMEOUT ?= 20m
-E2E_TEST_TIMEOUT ?= 20m
 
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
@@ -270,6 +269,7 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 test: tester-progs hubble-bpf
 	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
 
+E2E_TIMEOUT ?= 20m
 # Agent image to use for end-to-end tests
 E2E_AGENT ?= isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)
 # Operator image to use for end-to-end tests
@@ -279,11 +279,16 @@ E2E_BTF ?=
 # Actual flags to use for BTF file in e2e test. Use E2E_BTF instead.
 ifneq ($(E2E_BTF),)
 	E2E_BTF_FLAGS ?= -tetragon.btf="$(shell readlink -f $(E2E_BTF))"
-else
-	E2E_BTF_FLAGS =
 endif
 # Build image and operator images locally before running test. Set to 0 to disable.
 E2E_BUILD_IMAGES ?= 1
+ifneq ($(GO_BUILD_GCFLAGS),)
+	E2E_GO_BUILD_GCFLAGS ?= -gcflags=$(GO_BUILD_GCFLAGS)
+endif
+ifeq ($(E2E_COVER),1)
+	E2E_COVER_FLAG ?= -cover
+endif
+E2E_TESTS ?= ./tests/e2e/tests/...
 
 # Run an e2e-test
 .PHONY: e2e-test
@@ -292,7 +297,11 @@ e2e-test: image image-operator
 else
 e2e-test:
 endif
-	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(E2E_TEST_TIMEOUT) -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="$(E2E_AGENT)" -tetragon.helm.set hubbleEnterpriseOperator.image.override="$(E2E_OPERATOR)" $(E2E_BTF_FLAGS)
+	$(GO) test -p 1 -parallel 1 $(E2E_COVER_FLAG) $(E2E_GO_BUILD_GCFLAGS)  \
+		-timeout $(E2E_TIMEOUT) ${E2E_EXTRA_GOTEST_FLAGS}              \
+		${E2E_TESTS} ${E2E_EXTRA_TEST_FLAGS} $(E2E_BTF_FLAGS)          \
+		-tetragon.helm.set tetragon.image.override="$(E2E_AGENT)"      \
+		-tetragon.helm.set tetragonOperator.image.override="$(E2E_OPERATOR)"
 
 TEST_COMPILE ?= ./...
 .PHONY: test-compile

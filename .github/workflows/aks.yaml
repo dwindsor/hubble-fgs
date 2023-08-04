@@ -128,13 +128,12 @@ jobs:
         run: |
           cd hubble-fgs
           export HOST_PROC=/proc
-          go test -p 1 -parallel 1 -timeout 20m -failfast -cover ./tests/e2e/tests/... \
-            -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
-            -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
-            -tetragon.keep-export=true \
-            -tetragon.install-cilium=false \
-            -cluster-name ${{ env.name }} \
-            -kubeconfig ~/.kube/config
+          make e2e-test                                          \
+            E2E_BUILD_IMAGES=0                                   \
+            E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
+            E2E_AGENT=${{ steps.vars.outputs.agentImage }}       \
+            E2E_OPERATOR=${{ steps.vars.outputs.operatorImage }} \
+            E2E_EXTRA_TEST_FLAGS="-tetragon.keep-export=true -tetragon.install-cilium=false -cluster-name ${{ env.name }} -kubeconfig ~/.kube/config"
 
       - name: Clean up AKS
         if: ${{ always() }}

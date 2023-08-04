@@ -62,7 +62,7 @@ var tracingEnforcePolicyYaml string
 
 var supportEnforcement = false
 
-// This function checks if all hubble-enterprise pods support file enforcement.
+// This function checks if all tetragon pods support file enforcement.
 // We use that to run file enforcement e2e tests only in supported platforms.
 func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error) {
 	namespace := "kube-system"
@@ -70,10 +70,10 @@ func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 	podList := &corev1.PodList{}
 	r.List(ctx, podList)
 	for _, pod := range podList.Items {
-		if strings.HasPrefix(pod.Name, "hubble-enterprise") {
+		if strings.HasPrefix(pod.Name, "tetragon") {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
-			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "enterprise", stdout, stderr, strings.Fields("hubble-enterprise file-debug support-enforcement"))
+			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "tetragon", stdout, stderr, strings.Fields("tetra file-debug support-enforcement"))
 			if err != nil {
 				return false, err
 			}
@@ -91,7 +91,7 @@ func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 
 func TestMain(m *testing.M) {
 	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
-		"enterprise.exportAllowList": "",
+		"tetragon.exportAllowList": "",
 	})).Init()
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {

@@ -14,6 +14,5 @@ package enterprise
 import "github.com/cilium/tetragon/tests/e2e/helpers"
 
 func init() {
-	helpers.TetragonContainerName = "enterprise"
 	helpers.TetragonJsonPathname = "/var/run/cilium/hubble/fgs.log"
 }
