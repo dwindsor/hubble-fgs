@@ -1,7 +1,8 @@
 /bin
 lib/*
-/hubble-fgs
-/hubble-enterprise
+/tetragon
+/tetra
+/tetragon-operator
 /fgs-bench
 /fgs-alignchecker
 /parsertest

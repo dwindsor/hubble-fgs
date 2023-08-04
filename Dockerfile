@@ -15,12 +15,12 @@ WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN apt-get update && apt-get install -y linux-libc-dev
 COPY . ./
 ARG TARGETARCH
-RUN make hubble-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
+RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
 
 # Second builder (cross-)compile:
-# - hubble-fgs-fs-scanner (this one uses CGO, so a gcc cross compiler is needed)
-# - hubble-fgs            (tetragon/pkg/bpf uses CGO, so a gcc cross compiler is needed)
-# - hubble-enterprise
+# - hubble-fgs-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
+# - tetragon
+# - tetra
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.20.7@sha256:bc5f0b5e43282627279fe5262ae275fecb3d2eae3b33977a7fd200c7a760d6f1 as tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
@@ -31,8 +31,8 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
 RUN ldconfig /usr/local/
 COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
-    then make hubble-fgs-image TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
-    else make hubble-fgs-image TARGET_ARCH=$TARGETARCH; fi
+    then make tetragon-image TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
+    else make tetragon-image TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.20.7-alpine@sha256:b255d9352ff4967f0424731acf5a262c3bb4b5bd712e6324ad9ed533c9d2aee7 as gops
@@ -85,14 +85,17 @@ RUN addgroup hubble	       && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
-COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
-COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetra /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/hubble-fgs/
-RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
-CMD ["sh", "-c", "/usr/bin/hubble-fgs"]
+# legacy aliases
+RUN ln -s /usr/bin/tetra /usr/bin/hubble-fgs-printer
+RUN ln -s /usr/bin/tetra /usr/bin/hubble-enterprise
+RUN ln -s /usr/bin/tetragon /usr/bin/hubble-fgs
+ENTRYPOINT ["/usr/bin/tetragon"]
 
 # This target only builds with the `--target release` option and reduces the
 # size of the final image with a static build of bpftool without the LLVM

@@ -26,6 +26,10 @@ ifeq ($(UNAME_M),aarch64)
 endif
 TARGET_ARCH ?= amd64
 
+# Set GOARCH to TARGET_ARCH only if it's not set so that we can still use both
+# GOARCH and TARGET_ARCH (make sense for pure Go program like tetragon-operator)
+GOARCH ?= $(TARGET_ARCH)
+
 ifeq ($(TARGET_ARCH),amd64)
 	BPF_TARGET_ARCH ?= x86
 endif
@@ -37,11 +41,6 @@ BPF_TARGET_ARCH ?= x86
 BUILD_PKG_DIR ?= $(shell pwd)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always --exclude 'api/*')
-GO_GCFLAGS ?= ""
-GO_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
-GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
-GO_IMAGE_LDFLAGS_CGO_DISABLED="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'"
-GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -s -w"
 
 OSS_DIR=./modules/tetragon-oss
 FS_SCANNER_BIN=bpf/objs/hubble-fgs-fs-scanner
@@ -62,9 +61,44 @@ TESTER_PROGS_DIR = "contrib/tester-progs"
 #
 JOBS ?= $(shell nproc)
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs
+ifeq ($(DEBUG),1)
+	NOOPT=1
+	NOSTRIP=1
+endif
 
-.PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
+# Branch in the OSS repo we want to sync with. Default is origin/main
+OSS_SYNC_TARGET ?= origin/main
+
+# GO_BUILD_LDFLAGS is initialized to empty use EXTRA_GO_BUILD_LDFLAGS to add link flags
+GO_BUILD_LDFLAGS =
+GO_BUILD_LDFLAGS += -X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'
+ifeq ($(NOSTRIP),)
+    # Note: these options will not remove annotations needed for stack
+    # traces, so panic backtraces will still be readable.
+    # -w: Omit the DWARF symbol table.
+    # -s: Omit the symbol table and debug information.
+    GO_BUILD_LDFLAGS += -s -w
+endif
+ifdef EXTRA_GO_BUILD_LDFLAGS
+	GO_BUILD_LDFLAGS += $(EXTRA_GO_BUILD_LDFLAGS)
+endif
+
+# GO_BUILD_FLAGS is initialized to empty use EXTRA_GO_BUILD_FLAGS to add build flags
+GO_BUILD_FLAGS =
+GO_BUILD_FLAGS += -ldflags "$(GO_BUILD_LDFLAGS)"
+ifeq ($(NOOPT),1)
+	GO_BUILD_GCFLAGS = "all=-N -l"
+    GO_BUILD_FLAGS += -gcflags=$(GO_BUILD_GCFLAGS)
+endif
+GO_BUILD_FLAGS += -mod=vendor
+ifdef EXTRA_GO_BUILD_FLAGS
+	GO_BUILD_FLAGS += $(EXTRA_GO_BUILD_FLAGS)
+endif
+
+GO_BUILD = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
+
+.PHONY: all
+all: tetragon-bpf tetragon tetra fgs-bench fgs-alignchecker test-compile tester-progs
 
 -include Makefile.docker
 
@@ -79,15 +113,16 @@ help:
 	@echo '    codegen      - genereate code based on .proto files'
 	@echo '    generate     - genereate kubebuilder files'
 	@echo 'Compilation: '
+	@echo '    tetragon          - compile the Tetragon agent'
+	@echo '    tetragon-operator - compile the Tetragon operator'
+	@echo '    tetra             - compile the Tetragon gRPC client'
+	@echo '    tetragon-bpf      - compile bpf programs'
 	@echo '    test-compile - compile go tests'
 	@echo 'Packages:'
 	@echo '    tarball           - build Tetragon Enterprise compressed tarball'
 	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
 	@echo 'Helpers: '
 	@echo '    version     - retrieve the current git tag version of the project'
-
-# Branch in the OSS repo we want to sync with. Default is origin/main
-OSS_SYNC_TARGET ?= origin/main
 
 .PHONY: oss-sync
 oss-sync:
@@ -134,40 +169,44 @@ compile-commands:
 	$(MAKE) -C ./bpf clean
 	bear -- $(MAKE) -C ./bpf
 
+.PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
-hubble-bpf: hubble-bpf-local
+tetragon-bpf: tetragon-bpf-local
 else
-hubble-bpf: hubble-bpf-container
+tetragon-bpf: tetragon-bpf-container
 endif
 
-ifeq (1,$(NOOPT))
-GO_GCFLAGS = "all=-N -l"
-endif
+.PHONY: tetragon-bpf-local
+tetragon-bpf-local:
+	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
 
-hubble-bpf-local:
-	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH)
+.PHONY: tetragon-bpf-container
+tetragon-bpf-container:
+	$(CONTAINER_ENGINE) rm hubble-clang || true
+	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
 
-hubble-bpf-verify: hubble-bpf
+.PHONY: tetragon-bpf-verify
+tetragon-bpf-verify: tetragon-bpf
 	sudo contrib/fgs-verify-programs bpf/objs
 
-hubble-bpf-container:
-	$(CONTAINER_ENGINE) rm hubble-clang || true
-	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
-	$(CONTAINER_ENGINE) rm hubble-clang
+.PHONY: tetragon
+tetragon: hubble-fgs-fs-scanner
+	$(GO_BUILD) -o $@ ./cmd/hubble-fgs/
 
-hubble-fgs: hubble-fgs-fs-scanner
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
+.PHONY: tetra
+tetra:
+	$(GO_BUILD) -o $@ ./cmd/hubble-enterprise/
 
-hubble-enterprise:
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
+.PHONY: tetragon-operator
+tetragon-operator:
+	$(GO_BUILD) -o $@ ./operator
 
-hubble-enterprise-operator:
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
-
+.PHONY: hubble-fgs-fs-scanner
 hubble-fgs-fs-scanner:
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -buildvcs=false -mod=vendor -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
 
+.PHONY: fgs-alignchecker
 fgs-alignchecker:
 	make -C $(OSS_DIR) tetragon-alignchecker
 	cp $(OSS_DIR)/tetragon-alignchecker fgs-alignchecker
@@ -177,14 +216,16 @@ ksyms:
 	make -C $(OSS_DIR) ksyms
 	cp $(OSS_DIR)/ksyms ksyms
 
-hubble-fgs-image:
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
+.PHONY: tetragon-image
+tetragon-image:
+	$(GO_BUILD) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-fgs/
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -tags netgo,osusergo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS_CGO_DISABLED) ./cmd/hubble-enterprise/
+	$(GO_BUILD) -o tetragon ./cmd/hubble-fgs/
+	$(GO_BUILD) -o tetra ./cmd/hubble-enterprise/
 
-hubble-enterprise-operator-image:
-	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator
+.PHONY: tetragon-operator-image
+tetragon-operator-image:
+	$(GO_BUILD) -o tetragon-operator ./operator
 
 install:
 	groupadd -f hubble
@@ -199,24 +240,27 @@ vendor:
 	$(GO) mod vendor
 	$(GO) mod verify
 
+.PHONY: clean
 clean: tarball-clean
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
+	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
 	rm -fr ./release
 
-.PHONY: fgs-bench fgs-bench-image fgs-bench-graph
+.PHONY: fgs-bench
 fgs-bench:
 	$(GO) build ./cmd/fgs-bench
 
+.PHONY: fgs-bench-image
 fgs-bench-image:
-	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
+	$(GO_BUILD) ./cmd/fgs-bench
 
+.PHONY: fgs-bench-graph
 fgs-bench-graph:
 	$(GO) build ./cmd/fgs-bench-graph
 
 parsertest-image:
-	GOOS=linux GOARCH=$(TARGET_ARCH) $(GO) test -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -c ./pkg/parsertest -o parsertest
+	$(GO_BUILD) -c ./pkg/parsertest -o parsertest
 
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
@@ -224,7 +268,7 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 
 .PHONY: test
 test: tester-progs hubble-bpf
-	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
+	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
 
 # Agent image to use for end-to-end tests
 E2E_AGENT ?= isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)
@@ -248,7 +292,7 @@ e2e-test: image image-operator
 else
 e2e-test:
 endif
-	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout $(E2E_TEST_TIMEOUT) -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="$(E2E_AGENT)" -tetragon.helm.set hubbleEnterpriseOperator.image.override="$(E2E_OPERATOR)" $(E2E_BTF_FLAGS)
+	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(E2E_TEST_TIMEOUT) -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="$(E2E_AGENT)" -tetragon.helm.set hubbleEnterpriseOperator.image.override="$(E2E_OPERATOR)" $(E2E_BTF_FLAGS)
 
 TEST_COMPILE ?= ./...
 .PHONY: test-compile
@@ -258,7 +302,7 @@ test-compile:
 		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
 		localtestfile=$$(echo $$localpkg | sed -e 's:/:.:g'); \
 		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
-	done | xargs -P $$(nproc) -L 1 $(GO) test -gcflags=$(GO_GCFLAGS)
+	done | xargs -P $$(nproc) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
 
 .PHONY: check-copyright update-copyright
 check-copyright:
@@ -373,7 +417,7 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check
+.PHONY: headers image install lint generate check
 
 
 # generate cscope for bpf files
@@ -389,3 +433,16 @@ tester-progs:
 version:
 	@echo $(VERSION)
 .PHONY: version
+
+# those are legacy aliases
+.PHONY: hubble-fgs
+hubble-fgs: tetragon
+.PHONY: hubble-enterprise
+hubble-enterprise: tetra
+.PHONY: hubble-enterprise-operator
+hubble-enterprise-operator: tetragon-operator
+.PHONY: hubble-bpf
+hubble-bpf: tetragon-bpf
+.PHONY: hubble-bpf-verify
+hubble-bpf-verify: tetragon-bpf-verify
+

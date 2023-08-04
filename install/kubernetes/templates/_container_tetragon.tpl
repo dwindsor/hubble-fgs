@@ -5,11 +5,9 @@
   image: "{{ if .Values.tetragon.image.override }}{{ .Values.tetragon.image.override }}{{ else }}{{ .Values.tetragon.image.repository }}:{{ .Values.tetragon.image.tag | default .Chart.AppVersion }}{{ end }}"
   imagePullPolicy: {{ .Values.imagePullPolicy }}
   terminationMessagePolicy: FallbackToLogsOnError
-  command:
 {{- with .Values.tetragon.commandOverride }}
+  command:
   {{- toYaml . | nindent 2 }}
-{{- else }}
-    - /usr/bin/hubble-fgs
 {{- end }}
   args:
     - --config-dir=/etc/hubble-enterprise
@@ -73,7 +71,7 @@
   livenessProbe:
     exec:
       command:
-      - hubble-enterprise
+      - tetra
       - status
       - --server-address
       - {{ .Values.tetragon.grpc.address }}
@@ -110,8 +108,6 @@
 {{- define "container.tetragon.init-operator" -}}
 {{- if .Values.tetragonOperator.enabled -}}
 - name: {{ include "container.tetragon.name" . }}-operator
-  command:
-  - hubble-enterprise-operator
   image: "{{ if .Values.tetragonOperator.image.override }}{{ .Values.tetragonOperator.image.override }}{{ else }}{{ .Values.tetragonOperator.image.repository }}:{{ .Values.tetragonOperator.image.tag }}{{ end }}"
   imagePullPolicy: {{ .Values.imagePullPolicy }}
   terminationMessagePolicy: FallbackToLogsOnError

@@ -20,8 +20,11 @@ ARG NOSTRIP
 
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs --mount=target=/root/.cache,type=cache --mount=target=/go/pkg/mod,type=cache \
-    make GOARCH=${TARGETARCH} hubble-enterprise-operator-image \
-    && mkdir -p /out/${TARGETOS}/${TARGETARCH}/usr/bin && mv hubble-enterprise-operator /out/${TARGETOS}/${TARGETARCH}/usr/bin
+    make GOARCH=${TARGETARCH} tetragon-operator-image \
+    && mkdir -p /out/${TARGETOS}/${TARGETARCH}/usr/bin && mv tetragon-operator /out/${TARGETOS}/${TARGETARCH}/usr/bin
+# this is a workaround to copy symlinks to a scratch image without following the symlink
+# see https://github.com/moby/moby/issues/40449#issuecomment-1545819389
+RUN mkdir -p /tmp/symlinks && ln -s /usr/bin/tetragon-operator /tmp/symlinks/hubble-enterprise-operator
 
 # BUILDPLATFORM is an automatic platform ARG enabled by Docker BuildKit.
 # Represents the plataform where the build is happening, do not mix with
@@ -36,7 +39,8 @@ ARG TARGETOS
 ARG TARGETARCH
 LABEL maintainer="maintainer@cilium.io"
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/hubble-enterprise-operator /usr/bin/hubble-enterprise-operator
+COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/tetragon-operator /usr/bin/tetragon-operator
+COPY --from=builder /tmp/symlinks /usr/bin/
 WORKDIR /
 ENV GOPS_CONFIG_DIR=/
-CMD ["/usr/bin/hubble-enterprise-operator"]
+ENTRYPOINT ["/usr/bin/tetragon-operator"]
