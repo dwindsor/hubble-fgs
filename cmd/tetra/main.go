@@ -12,9 +12,9 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/cilium/tetragon/cmd/tetra/version"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/file"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/getevents"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/record"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,8 +33,8 @@ func main() {
 
 func New() *cobra.Command {
 	rootCmd = &cobra.Command{
-		Use:   "hubble-enterprise",
-		Short: "Hubble Enterprise CLI",
+		Use:   "tetra",
+		Short: "Tetra Enterprise CLI",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},

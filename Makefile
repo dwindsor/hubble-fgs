@@ -191,11 +191,11 @@ tetragon-bpf-verify: tetragon-bpf
 
 .PHONY: tetragon
 tetragon: hubble-fgs-fs-scanner
-	$(GO_BUILD) ./cmd/tetragon/
+	$(GO_BUILD) ./cmd/tetragon
 
 .PHONY: tetra
 tetra:
-	$(GO_BUILD) -o $@ ./cmd/hubble-enterprise/
+	$(GO_BUILD) ./cmd/tetra
 
 .PHONY: tetragon-operator
 tetragon-operator:
@@ -220,8 +220,8 @@ ksyms:
 tetragon-image:
 	$(GO_BUILD) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
-	$(GO_BUILD) ./cmd/tetragon/
-	$(GO_BUILD) -o tetra ./cmd/hubble-enterprise/
+	$(GO_BUILD) ./cmd/tetragon
+	$(GO_BUILD) ./cmd/tetra
 
 .PHONY: tetragon-operator-image
 tetragon-operator-image:
