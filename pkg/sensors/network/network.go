@@ -19,7 +19,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -83,30 +82,11 @@ type networkInfoValue struct {
 func (k *networkInfoKey) String() string {
 	return fmt.Sprintf("Index=%d NetNS: %d", k.Index, k.Netns)
 }
-func (k *networkInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
-func (k *networkInfoKey) NewValue() bpf.MapValue {
-	return &networkInfoValue{}
-}
-func (k *networkInfoKey) DeepCopyMapKey() bpf.MapKey {
-	return &networkInfoKey{
-		Index: k.Index,
-		Netns: k.Netns,
-	}
-}
 
 func (v *networkInfoValue) String() string {
 	return fmt.Sprintf(
 		"Name=%s: TX=%d:%d RX:%d:%d",
 		v.Name, v.TxBytes, v.PacketsOut, v.RxBytes, v.PacketsIn)
-}
-
-func (v *networkInfoValue) GetValuePtr() unsafe.Pointer {
-	return unsafe.Pointer(&v)
-}
-func (v *networkInfoValue) DeepCopyMapValue() bpf.MapValue {
-	var newV networkInfoValue
-	newV = *v
-	return &newV
 }
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
