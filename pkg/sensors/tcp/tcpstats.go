@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"time"
-	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -15,10 +15,7 @@ type SockStatKey struct {
 	Zero uint32
 }
 
-func (k *SockStatKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *SockStatKey) NewValue() bpf.MapValue     { return &SockStatValue{} }
-func (k *SockStatKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *SockStatKey) DeepCopyMapKey() bpf.MapKey { return &SockStatKey{} }
+func (k *SockStatKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type SockStatValue struct {
 	KTime                      uint64
@@ -46,14 +43,10 @@ func (v *SockStatValue) String() string {
 		"WatermarksDipTriggerMult: %d",
 		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
-func (v *SockStatValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
-	return &SockStatValue{}
-}
 
 func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
 	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name), nil)
 	if err != nil {
 		return err
 	}
@@ -88,7 +81,7 @@ func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 		RttBucket6:                 uint32((rttRange * .90) + fRttMin),
 		RttBucket7:                 uint32((rttRange * .99) + fRttMin),
 	}
-	m.Update(key, value)
+	m.Put(key, value)
 	logger.GetLogger().WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
 	logger.GetLogger().WithFields(logrus.Fields{"enable": watermarksEnable,
 		"windowSize":       watermarksAvgWindowSize,
