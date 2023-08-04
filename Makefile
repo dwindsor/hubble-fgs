@@ -318,27 +318,29 @@ update-copyright:
 lint:
 	golint -set_exit_status $$(go list ./...)
 
-.PHONY: tarball tarball-release tarball-clean
+.PHONY: tarball
 # Share same build environment as docker image
 tarball: tarball-clean image
-	$(CONTAINER_ENGINE) build --build-arg HUBBLE_FGS_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/hubble-fgs-tarball:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
-	$(CONTAINER_ENGINE) save isovalent/hubble-fgs-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	$(CONTAINER_ENGINE) save isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/tetragon-$(VERSION)-$(TARGET_ARCH).tmp.tar
 	$(QUIET)rm -fr $(BUILD_PKG_DIR)/docker/
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/docker/
 	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
-	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	find $(BUILD_PKG_DIR)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar \;
-	@rm -fr $(BUILD_PKG_DIR)/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar
-	@echo "hubble-fgs tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz"
+	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/tetragon-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	find $(BUILD_PKG_DIR)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR)/linux-tarball/tetragon-$(VERSION)-$(TARGET_ARCH).tar \;
+	@rm -fr $(BUILD_PKG_DIR)/tetragon-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-$(VERSION)-$(TARGET_ARCH).tar
+	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-$(VERSION)-$(TARGET_ARCH).tar.gz"
 
+.PHONY: tarball-release
 tarball-release: tarball
 	mkdir -p release/
-	mv $(BUILD_PKG_DIR)/linux-tarball/hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz release/
-	(cd release && sha256sum hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz > hubble-fgs-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
+	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-$(VERSION)-$(TARGET_ARCH).tar.gz release/
+	(cd release && sha256sum tetragon-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
 
+.PHONY: tarball-clean
 tarball-clean:
 	rm -fr $(BUILD_PKG_DIR)
 

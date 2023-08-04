@@ -17,10 +17,17 @@ systemctl disable tetragon-enterprise
 rm -fr /usr/lib/systemd/system/hubble-fgs.service
 rm -fr /usr/lib/systemd/system/tetragon-enterprise.service
 
+
 # Cleanup systemd state
 systemctl daemon-reload
 
-rm -fr /usr/local/bin/hubble-fgs
-rm -fr /usr/local/bin/hubble-fgs-printer
-rm -fr /usr/local/bin/hubble-enterprise
+# remove binaries
+rm -f /usr/local/bin/tetragon
+rm -f /usr/local/bin/tetra
+
+# remove legacy symbolic links
+rm -f /usr/local/bin/hubble-fgs
+rm -f /usr/local/bin/hubble-enterprise
+rm -f /usr/local/bin/hubble-fgs-printer
+
 rm -fr /usr/local/lib/hubble-fgs/

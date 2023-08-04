@@ -1,4 +1,4 @@
-FROM isovalent/hubble-fgs:latest as hubble-fgs-release
+FROM isovalent/hubble-fgs:latest as tetragon-release
 
 FROM scratch as linux-tarball-1
 
@@ -16,21 +16,20 @@ COPY install/linux-tarball/systemd/tetragon-enterprise.service /usr/lib/systemd/
 COPY install/linux-tarball/systemd /usr/local/lib/hubble-fgs/systemd
 
 # Our binaries
-COPY --from=hubble-fgs-release /usr/bin/hubble-fgs /usr/local/bin/
-COPY --from=hubble-fgs-release /usr/bin/hubble-enterprise /usr/local/bin/
-COPY --from=hubble-fgs-release /usr/bin/hubble-enterprise /usr/local/bin/hubble-fgs-printer
+COPY --from=tetragon-release /usr/bin/tetragon /usr/local/bin/
+COPY --from=tetragon-release /usr/bin/tetra /usr/local/bin/
 
 # Helper binaries
-COPY --from=hubble-fgs-release /usr/bin/bpftool /usr/local/lib/hubble-fgs/bpftool
+COPY --from=tetragon-release /usr/bin/bpftool /usr/local/lib/hubble-fgs/bpftool
 
 # BPF files and hubble-fgs-fs-scanner
-COPY --from=hubble-fgs-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf
+COPY --from=tetragon-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf
 
 # We need one layer
 FROM scratch as linux-tarball-2
 
-ARG HUBBLE_FGS_VERSION
+ARG TETRAGON_VERSION
 ARG TARGET_ARCH
 
-# We explicitly prefix the filesystem with hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGET_ARCH}
-COPY --from=linux-tarball-1 / /hubble-fgs-${HUBBLE_FGS_VERSION}-${TARGET_ARCH}/
+# We explicitly prefix the filesystem with tetragon-${TETRAGON_VERSION}-${TARGET_ARCH}
+COPY --from=linux-tarball-1 / /tetragon-${TETRAGON_VERSION}-${TARGET_ARCH}/
