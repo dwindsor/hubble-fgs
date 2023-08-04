@@ -3,8 +3,8 @@ package tcp
 import (
 	"fmt"
 	"path/filepath"
-	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -14,10 +14,7 @@ type EventDisableKey struct {
 	Zero uint32
 }
 
-func (k *EventDisableKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *EventDisableKey) NewValue() bpf.MapValue     { return &EventDisableValue{} }
-func (k *EventDisableKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *EventDisableKey) DeepCopyMapKey() bpf.MapKey { return &EventDisableKey{} }
+func (k *EventDisableKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type EventDisableValue struct {
 	DisableConnect uint8
@@ -33,13 +30,9 @@ func (v *EventDisableValue) String() string {
 		"DisableListen: %d, ",
 		v.DisableConnect, v.DisableClose, v.DisableAccept, v.DisableListen)
 }
-func (v *EventDisableValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *EventDisableValue) DeepCopyMapValue() bpf.MapValue {
-	return &EventDisableValue{}
-}
 
 func configureTCPDisableEvents(disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) error {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), EventDisableConfig.Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), EventDisableConfig.Name), nil)
 	if err != nil {
 		return err
 	}
@@ -72,7 +65,7 @@ func configureTCPDisableEvents(disableConnect bool, disableClose bool, disableAc
 		DisableAccept:  disableAcceptVar,
 		DisableListen:  disableListenVar,
 	}
-	m.Update(key, value)
+	m.Put(key, value)
 	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": disableConnectVar,
 		"disableClose":  disableCloseVar,
 		"disableAccept": disableAcceptVar,
