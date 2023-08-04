@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -242,18 +241,6 @@ func (k *udpInfoKey) String() string {
 	return fmt.Sprintf("Cookie=%d\n"+
 		"DAddr=%s:%d\n", k.Cookie, ipDst, k.DPort)
 }
-func (k *udpInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
-func (k *udpInfoKey) NewValue() bpf.MapValue {
-	return &udpInfoValue{}
-}
-func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
-	return &udpInfoKey{
-		Cookie: k.Cookie,
-		DAddr:  k.DAddr,
-		DPort:  k.DPort,
-		IPv6:   k.IPv6,
-	}
-}
 
 func (v *udpInfoValue) String() string {
 	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
@@ -275,23 +262,10 @@ func (v *udpInfoValue) String() string {
 		v.SegsOut, v.SegsIn,
 		v.SkDrops, v.SkbConsumeMisses)
 }
-func (v *udpInfoValue) GetValuePtr() unsafe.Pointer {
-	return unsafe.Pointer(&v)
-}
-func (v *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
-	var newV udpInfoValue
-	newV = *v
-	return &newV
-}
 
 type udpSensorConfigKey struct {
 	Zero uint32
 }
-
-func (k *udpSensorConfigKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &ConfigValue{} }
-func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
 
 type ConfigValue struct {
 	dnsPorts                      [maxDnsPorts]uint16
@@ -313,11 +287,6 @@ func (v *ConfigValue) String() string {
 		"watermarkDipTriggerPercent: %d",
 		v.dnsPorts, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent,
 		v.watermarksDipTriggerPercent)
-}
-func (v *ConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
-	var n = *v
-	return &n
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
@@ -508,18 +477,16 @@ var (
 	deleteLastKey *udpInfoKey
 )
 
-func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
+func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 	// Access to TypeTotalRetrieve metrics is serialized by UdpGC.
 	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTotalRetrieve)
-	udpValue := v.(*udpInfoValue)
-	udpKey := k.(*udpInfoKey)
 
 	// If we delete the key out from under the walker it can't find the
 	// next key and the result is we start walking from the first element
 	// again. Giving us something like O(n!) for walking a list with lots
 	// of deletes.
 	if deleteLastKey != nil {
-		if err := m.DeleteKey(deleteLastKey); err != nil {
+		if err := m.Delete(deleteLastKey); err != nil {
 			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
 		}
 		deleteLastKey = nil
@@ -544,16 +511,13 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 				if *udpValue != last {
 					diffValue, err := udpDiffValues(udpKey, &last, udpValue)
 					if err == nil {
-						mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-						udpKey = k.DeepCopyMapKey().(*udpInfoKey)
-						stats.Add(*udpKey, *mapUpdate)
+						stats.Add(*udpKey, *udpValue)
 						emitStatEvent(udpKey, &diffValue)
 					} else {
 						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailureGC)
 					}
 				}
 			} else {
-				udpValue = v.DeepCopyMapValue().(*udpInfoValue)
 				stats.Add(*udpKey, *udpValue)
 				emitStatEvent(udpKey, udpValue)
 			}
@@ -581,7 +545,7 @@ func runUdpGC() {
 
 	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
-	m, err := bpf.OpenMap(file)
+	m, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("UDP GC failed to open file")
 		// lock is safe only done here inside GC
@@ -589,10 +553,16 @@ func runUdpGC() {
 		return
 	}
 	defer m.Close()
-	m.MapKey = &udpInfoKey{}
-	m.KeySize = 32
-	m.MapValue = &udpInfoValue{}
-	m.DumpWithCallback(udpGcCb)
+
+	var (
+		key udpInfoKey
+		val udpInfoValue
+	)
+
+	iter := m.Iterate()
+	for iter.Next(&key, &val) {
+		udpGcCb(m, &key, &val)
+	}
 }
 
 type udpSensor struct {
@@ -643,7 +613,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 }
 
 func configureUdpSensor(mapDir string, mapName string, config ConfigValue) error {
-	m, err := bpf.OpenMap(filepath.Join(mapDir, mapName))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return err
 	}
@@ -652,7 +622,7 @@ func configureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 	key := &udpSensorConfigKey{
 		Zero: uint32(0),
 	}
-	m.Update(key, &config)
+	m.Put(key, &config)
 	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
 	return nil
 }
