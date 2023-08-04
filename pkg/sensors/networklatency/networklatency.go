@@ -72,29 +72,29 @@ func TCEgressTimestamp(protocol uint16) (*program.Program, error) {
 }
 
 type SubnetSelector struct {
-	addr      [2]uint64
-	ipv6      uint8
-	prefixLen uint8
+	Addr      [2]uint64
+	Ipv6      uint8
+	PrefixLen uint8
 	Padding   [6]uint8
 }
 
 type configKey struct {
-	zero uint32
+	Zero uint32
 }
 
 type configValue struct {
-	bootNs uint64
-	udp    ProtocolConfig
-	tcp    ProtocolConfig
+	BootNs uint64
+	Udp    ProtocolConfig
+	Tcp    ProtocolConfig
 }
 
 type ProtocolConfig struct {
-	enable        uint8
+	Enable        uint8
 	Pad1          uint8
-	maxPacketSize uint16
+	MaxPacketSize uint16
 	Pad2          uint32
-	subnets       [maxSubnets]SubnetSelector
-	ports         [maxPorts]uint16
+	Subnets       [maxSubnets]SubnetSelector
+	Ports         [maxPorts]uint16
 	LatBucket00   uint32
 	LatBucket01   uint32
 	LatBucket10   uint32
@@ -105,14 +105,14 @@ type ProtocolConfig struct {
 	LatBucket99   uint32
 }
 
-func (k *configKey) String() string             { return fmt.Sprintf("Zero: %d", k.zero) }
+func (k *configKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
 func (k *configKey) NewValue() bpf.MapValue     { return &configValue{} }
 func (k *configKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *configKey) DeepCopyMapKey() bpf.MapKey { return &configKey{} }
 
 func (v *configValue) String() string {
-	return fmt.Sprintf("UDP: {enable: %d, "+
-		"maxPacketSize: %d, "+
+	return fmt.Sprintf("UDP: {Enable: %d, "+
+		"MaxPacketSize: %d, "+
 		"B00: %d, "+
 		"B01: %d, "+
 		"B10: %d, "+
@@ -121,8 +121,8 @@ func (v *configValue) String() string {
 		"B75: %d, "+
 		"B90: %d, "+
 		"B99: %d}, "+
-		"TCP: {enable: %d, "+
-		"maxPacketSize: %d, "+
+		"TCP: {Enable: %d, "+
+		"MaxPacketSize: %d, "+
 		"B00: %d, "+
 		"B01: %d, "+
 		"B10: %d, "+
@@ -131,12 +131,12 @@ func (v *configValue) String() string {
 		"B75: %d, "+
 		"B90: %d, "+
 		"B99: %d}, "+
-		"bootNs: %d",
-		v.udp.enable, v.udp.maxPacketSize, v.udp.LatBucket00, v.udp.LatBucket01, v.udp.LatBucket10, v.udp.LatBucket25,
-		v.udp.LatBucket50, v.udp.LatBucket75, v.udp.LatBucket90, v.udp.LatBucket99,
-		v.tcp.enable, v.tcp.maxPacketSize, v.tcp.LatBucket00, v.tcp.LatBucket01, v.tcp.LatBucket10, v.tcp.LatBucket25,
-		v.tcp.LatBucket50, v.tcp.LatBucket75, v.tcp.LatBucket90, v.tcp.LatBucket99,
-		v.bootNs)
+		"BootNs: %d",
+		v.Udp.Enable, v.Udp.MaxPacketSize, v.Udp.LatBucket00, v.Udp.LatBucket01, v.Udp.LatBucket10, v.Udp.LatBucket25,
+		v.Udp.LatBucket50, v.Udp.LatBucket75, v.Udp.LatBucket90, v.Udp.LatBucket99,
+		v.Tcp.Enable, v.Tcp.MaxPacketSize, v.Tcp.LatBucket00, v.Tcp.LatBucket01, v.Tcp.LatBucket10, v.Tcp.LatBucket25,
+		v.Tcp.LatBucket50, v.Tcp.LatBucket75, v.Tcp.LatBucket90, v.Tcp.LatBucket99,
+		v.BootNs)
 }
 func (v *configValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *configValue) DeepCopyMapValue() bpf.MapValue {
@@ -158,7 +158,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		protoStr = "Unknown"
 	}
 	if spec.Enable {
-		config.enable = 1
+		config.Enable = 1
 		enabled[protocol] = true
 		if tcCheckInterval == time.Duration(0) || time.Duration(spec.InterfacesCheckInterval)*time.Second < tcCheckInterval {
 			tcCheckInterval = time.Duration(spec.InterfacesCheckInterval) * time.Second
@@ -167,7 +167,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		latencyMax := spec.Max
 		if latencyMax <= latencyMin {
 			logger.GetLogger().Warnf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
-			config.enable = 0
+			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
 		}
@@ -186,7 +186,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 			// Do not enable latency if subnets not specified as packet mangling
 			// has the opportunity to break networks.
 			logger.GetLogger().Warnf("%s latency disabled due to no valid subnets", protoStr)
-			config.enable = 0
+			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("%s latency disabled due to no valid subnets", protoStr)
 		}
@@ -210,17 +210,17 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 				continue
 			}
 			ipv4 := ipnet.IP.To4()
-			config.subnets[index].addr[0] = uint64(binary.LittleEndian.Uint32(ipv4))
-			config.subnets[index].ipv6 = 0
-			config.subnets[index].prefixLen = uint8(prefixLen)
-			logger.GetLogger().Infof("%s latency subnet: IP=%s/%d", protoStr, ipv4, config.subnets[index].prefixLen)
+			config.Subnets[index].Addr[0] = uint64(binary.LittleEndian.Uint32(ipv4))
+			config.Subnets[index].Ipv6 = 0
+			config.Subnets[index].PrefixLen = uint8(prefixLen)
+			logger.GetLogger().Infof("%s latency subnet: IP=%s/%d", protoStr, ipv4, config.Subnets[index].PrefixLen)
 			index++
 		}
 		if index == 0 {
 			// Do not enable latency if subnets not specified as packet mangling
 			// has the opportunity to break networks.
 			logger.GetLogger().Warnf("%s latency disabled due to no valid subnets", protoStr)
-			config.enable = 0
+			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("%s latency disabled due to no valid subnets", protoStr)
 		}
@@ -243,25 +243,25 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		}
 
 		interfaces[protocol] = spec.Interfaces
-		config.maxPacketSize = spec.MaxPacketSize
+		config.MaxPacketSize = spec.MaxPacketSize
 
 		// MatchPorts are strictly optional, as we have constrained the packet mangling
 		// to the specified subnets, or refused to enable latency.
 		if len(spec.MatchPorts) == 0 {
-			config.ports[0] = 0
+			config.Ports[0] = 0
 			return config, nil
 		}
 		if len(spec.MatchPorts) <= maxPorts {
-			copy(config.ports[:], spec.MatchPorts)
+			copy(config.Ports[:], spec.MatchPorts)
 		} else {
-			copy(config.ports[:], spec.MatchPorts[0:maxPorts])
+			copy(config.Ports[:], spec.MatchPorts[0:maxPorts])
 		}
 	} else {
-		config.enable = 0
+		config.Enable = 0
 		enabled[protocol] = false
-		config.subnets[0].addr[0] = 0
-		config.subnets[0].ipv6 = 0
-		config.ports[0] = 0
+		config.Subnets[0].Addr[0] = 0
+		config.Subnets[0].Ipv6 = 0
+		config.Ports[0] = 0
 	}
 	return config, nil
 }
@@ -286,7 +286,7 @@ func configureBootTime(config configValue) (configValue, error) {
 		logger.GetLogger().WithError(err).Warn("sensor clock error")
 		return config, err
 	}
-	config.bootNs = t
+	config.BootNs = t
 	return config, nil
 }
 
@@ -301,7 +301,7 @@ func checkClock() {
 	defer m.Close()
 
 	key := &configKey{
-		zero: uint32(0),
+		Zero: uint32(0),
 	}
 
 	configMapValue, err := m.Lookup(key)
@@ -316,14 +316,14 @@ func checkClock() {
 		logger.GetLogger().WithError(err).Warn("checkClock failed to get boot time")
 		return
 	}
-	diff := int64(t - config.bootNs)
+	diff := int64(t - config.BootNs)
 	if diff < 0 {
 		diff = -diff
 	}
 	// Is the difference more than the max clock skew?
 	if diff > int64(clockMaxSkew*1000) {
-		old := config.bootNs
-		config.bootNs = t
+		old := config.BootNs
+		config.BootNs = t
 		err = m.Update(key, config)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("checkClock failed to update configuration map")
@@ -380,7 +380,7 @@ func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) err
 	defer m.Close()
 
 	key := &configKey{
-		zero: uint32(0),
+		Zero: uint32(0),
 	}
 
 	existingMapValue, err := m.Lookup(key)
@@ -391,9 +391,9 @@ func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) err
 
 	switch protocol {
 	case unix.IPPROTO_UDP:
-		latencyConfig.udp = config
+		latencyConfig.Udp = config
 	case unix.IPPROTO_TCP:
-		latencyConfig.tcp = config
+		latencyConfig.Tcp = config
 	}
 
 	*latencyConfig, _ = configureBootTime(*latencyConfig)
