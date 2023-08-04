@@ -15,7 +15,7 @@ jobs:
             dockerfile: ./Dockerfile
 
           - name: hubble-enterprise-operator
-            dockerfile: ./operator.Dockerfile
+            dockerfile: ./Dockerfile.operator
 
     steps:
       - name: Checkout Source Code
