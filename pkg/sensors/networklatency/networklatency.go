@@ -17,8 +17,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -105,10 +105,7 @@ type ProtocolConfig struct {
 	LatBucket99   uint32
 }
 
-func (k *configKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *configKey) NewValue() bpf.MapValue     { return &configValue{} }
-func (k *configKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *configKey) DeepCopyMapKey() bpf.MapKey { return &configKey{} }
+func (k *configKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 func (v *configValue) String() string {
 	return fmt.Sprintf("UDP: {Enable: %d, "+
@@ -137,11 +134,6 @@ func (v *configValue) String() string {
 		v.Tcp.Enable, v.Tcp.MaxPacketSize, v.Tcp.LatBucket00, v.Tcp.LatBucket01, v.Tcp.LatBucket10, v.Tcp.LatBucket25,
 		v.Tcp.LatBucket50, v.Tcp.LatBucket75, v.Tcp.LatBucket90, v.Tcp.LatBucket99,
 		v.BootNs)
-}
-func (v *configValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *configValue) DeepCopyMapValue() bpf.MapValue {
-	var n = *v
-	return &n
 }
 
 // ParseLatencySpec parses the input yaml/crd and outputs the kernel selectors
@@ -293,7 +285,7 @@ func configureBootTime(config configValue) (configValue, error) {
 // checkClock checks if the difference between the current boot time and the configured
 // boot time is more than half a microsecond; if so, it updates the configuration.
 func checkClock() {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), ConfigMapName))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), ConfigMapName), nil)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("checkClock failed to open configuration map")
 		return
@@ -304,12 +296,12 @@ func checkClock() {
 		Zero: uint32(0),
 	}
 
-	configMapValue, err := m.Lookup(key)
+	var config configValue
+	err = m.Lookup(key, &config)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("checkClock failed to read configuration map")
 		return
 	}
-	config := configMapValue.(*configValue)
 
 	t, err := GetBootTime()
 	if err != nil {
@@ -324,7 +316,7 @@ func checkClock() {
 	if diff > int64(clockMaxSkew*1000) {
 		old := config.BootNs
 		config.BootNs = t
-		err = m.Update(key, config)
+		err = m.Put(key, &config)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("checkClock failed to update configuration map")
 			return
@@ -373,7 +365,7 @@ func AttachTc(args sensors.LoadProbeArgs) error {
 }
 
 func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) error {
-	m, err := bpf.OpenMap(filepath.Join(mapDir, ConfigMapName))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, ConfigMapName), nil)
 	if err != nil {
 		return err
 	}
@@ -383,11 +375,11 @@ func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) err
 		Zero: uint32(0),
 	}
 
-	existingMapValue, err := m.Lookup(key)
+	var latencyConfig configValue
+	err = m.Lookup(key, &latencyConfig)
 	if err != nil {
 		return err
 	}
-	latencyConfig := existingMapValue.(*configValue)
 
 	switch protocol {
 	case unix.IPPROTO_UDP:
@@ -396,9 +388,9 @@ func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) err
 		latencyConfig.Tcp = config
 	}
 
-	*latencyConfig, _ = configureBootTime(*latencyConfig)
+	latencyConfig, _ = configureBootTime(latencyConfig)
 
-	m.Update(key, latencyConfig)
+	m.Put(key, &latencyConfig)
 	logger.GetLogger().Infof("Configured latency: %s", latencyConfig)
 	return nil
 }
