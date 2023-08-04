@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -67,6 +68,13 @@ import (
 var (
 	log = logger.GetLogger()
 )
+
+func main() {
+	if err := execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
 
 func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
 	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist), viper.GetBool(keyEnablePidSetFilter))
@@ -299,7 +307,7 @@ func hubbleFGSExecute() error {
 		log.Fatalf("Can't specify --rb-size and --rb-size-total together")
 	}
 
-	log.WithField("version", version.Version).Info("Starting hubble-fgs")
+	log.WithField("version", version.Version).Info("Starting Tetragon Enterprise")
 	log.WithField("config", viper.AllSettings()).Info("config settings")
 
 	if viper.IsSet(keyNetnsDir) {
@@ -726,8 +734,15 @@ func resizeCaches() error {
 
 func execute() error {
 	rootCmd := &cobra.Command{
-		Use:   "hubble-fgs",
-		Short: "Run the Hubble FGS agent",
+		Use:   "tetragon",
+		Short: "Run the Tetragon Enterprise agent",
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if len(os.Args) > 0 {
+				if path.Base(os.Args[0]) == "hubble-fgs" {
+					logger.GetLogger().Warn("The name 'hubble-fgs' has been deprecated and is going away, please use 'tetragon' instead.")
+				}
+			}
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			readAndSetFlags()
 
@@ -746,7 +761,7 @@ func execute() error {
 			}
 
 			if err := hubbleFGSExecute(); err != nil {
-				log.WithError(err).Fatal("Failed to start hubble-fgs")
+				log.WithError(err).Fatal("Failed to start tetragon")
 			}
 		},
 	}
@@ -776,8 +791,8 @@ func execute() error {
 	flags.Int(keyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
 	flags.String(keyLogLevel, "info", "Set log level")
 	flags.String(keyLogFormat, "text", "Set log format")
-	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
-	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
+	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
+	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 	flags.Bool(keyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')")
@@ -790,7 +805,7 @@ func execute() error {
 	flags.Int(keyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(keyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
 	flags.Int(keyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
-	flags.String(keyFimFifoPath, "/var/run/cilium/hubble", "Path for the FIFO used for fs-scanner and hubble-fgs communication")
+	flags.String(keyFimFifoPath, "/var/run/cilium/hubble", "Path for the FIFO used for fs-scanner and tetragon communication")
 
 	// Config files
 	flags.String(keyConfigFile, "", "Location of the TracingPolicy file")
