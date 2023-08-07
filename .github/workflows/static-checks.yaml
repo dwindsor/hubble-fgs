@@ -26,6 +26,7 @@ jobs:
       - name: Run static checks
         uses: golangci/golangci-lint-action@v3
         with:
+          # renovate: datasource=docker depName=docker.io/golangci/golangci-lint
           version: v1.52.2
           args: --config=.golangci.yml --verbose
           only-new-issues: false
