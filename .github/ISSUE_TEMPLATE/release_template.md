@@ -58,7 +58,7 @@ git tag -a "api/$RELEASE" -m "api/$RELEASE release" -s
 git push origin "$RELEASE"
 git push origin "api/$RELEASE"
 ```
-- [ ] Only for major release, update `dependabot.yml` to include the new branch. Example [here](https://github.com/isovalent/hubble-fgs/pull/2677/commits/f910b6663e8314fe0f5d1e1b87fae1bdbc0173d6).
+- [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
 - [ ] Create standalone tarball release:
 ```
 make tarball
