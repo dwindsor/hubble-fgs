@@ -26,12 +26,12 @@ jobs:
       USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
         with:
           path: hubble-fgs
           submodules: true
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: '1.20.6'
 
@@ -62,15 +62,15 @@ jobs:
           rm cilium-linux-amd64.tar.gz{,.sha256sum}
           cilium version
 
-      - uses: azure/setup-helm@v3
+      - uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
         with:
            version: 'v3.11.0'
 
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8 # v3.2
 
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58
+        uses: google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58 # v0.6.2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
@@ -104,7 +104,7 @@ jobs:
           gcloud container clusters get-credentials ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
 
       - name: Attempt to pull the FGS image
-        uses: nick-invision/retry@v2
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd # v2.8.3
         with:
           timeout_minutes: 2
           max_attempts: 30
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload Tetragon test artifacts
         if: ${{ failure() }}
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: tetragon-artifacts
           path: /tmp/tetragon.e2e.*

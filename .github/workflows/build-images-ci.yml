@@ -24,16 +24,16 @@ jobs:
     steps:
       # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7
+        uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2.2.0
         with:
           platforms: arm64
 
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1
+        uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1 # v2.9.1
 
       - name: Login to quay.io for CI
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
@@ -49,7 +49,7 @@ jobs:
           fi
 
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
         with:
           submodules: true
           persist-credentials: false
@@ -58,7 +58,7 @@ jobs:
 
       # PR updates
       - name: CI Build (PR)
-        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825
+        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
         id: docker_build_ci_pr
         with:
           context: .
@@ -76,7 +76,7 @@ jobs:
 
       # Upload artifact digests
       - name: Upload artifact digests
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: image-digest ${{ matrix.name }}
           path: image-digest
@@ -94,7 +94,7 @@ jobs:
           mkdir -p image-digest/
 
       - name: Download digests of all images built
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
           path: image-digest/
 

@@ -29,7 +29,7 @@ jobs:
       AWS_DEFAULT_REGION: us-east-1
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
         with:
           path: hubble-fgs
           submodules: true
@@ -37,7 +37,7 @@ jobs:
       # install dependencies
       # helm, kubectl and awscli are already installed on GitHub ubuntu-22.04 runner
       # See https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: '1.20.6'
       - name: Install eksctl
@@ -90,7 +90,7 @@ jobs:
           esac
 
       - name: Login to AWS
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355 # v2.2.0
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
@@ -151,7 +151,7 @@ jobs:
               --force
 
       - name: Attempt to pull the FGS image
-        uses: nick-invision/retry@v2
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd # v2.8.3
         with:
           timeout_minutes: 2
           max_attempts: 30
@@ -210,7 +210,7 @@ jobs:
 
       - name: Upload Tetragon test artifacts
         if: ${{ failure() }}
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: tetragon-artifacts
           path: /tmp/tetragon.e2e.*
