@@ -7,6 +7,7 @@
 #include "generic.h"
 #include "lib/file.h"
 #include "networking/bpf_udp.h"
+#include "networking/bpf_fd_lookup.h"
 
 // from perf_event_output
 struct msg_generic_kprobe _1;
@@ -41,3 +42,6 @@ struct msg_file_rename_ops _24;
 struct file_config_map_value _25;
 struct lpm_key _26;
 struct lpm_val _27;
+
+// from bpf_fd_lookup.h
+struct fd_lookup_config;
