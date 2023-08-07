@@ -40,18 +40,6 @@ app.kubernetes.io/name: "tetragon-operator"
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "container.export.fluentd.name" -}}
-{{- print "export-fluentd" -}}
-{{- end }}
-
-{{- define "container.export.s3.name" -}}
-{{- print "export-s3" -}}
-{{- end }}
-
-{{- define "container.export.stdout.name" -}}
-{{- print "export-stdout" -}}
-{{- end }}
-
 {{- define "container.tetragon.name" -}}
 {{- print "tetragon" -}}
 {{- end }}

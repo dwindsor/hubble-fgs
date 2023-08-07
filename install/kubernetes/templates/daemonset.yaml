@@ -57,16 +57,6 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-{{- if eq .Values.export.mode "stdout" }}
-      {{- include "container.export.stdout" . | nindent 6 -}}
-{{- else if eq .Values.export.mode "fluentd" }}
-      {{- include "container.export.fluentd" . | nindent 6 -}}
-{{- else if eq .Values.export.mode "s3" }}
-      {{- include "container.export.s3" . | nindent 6 -}}
-{{- end }}
-{{- if and (not (eq .Values.export.mode "stdout")) (.Values.export.enableStdout) }}
-      {{- include "container.export.stdout" . | nindent 6 -}}
-{{- end }}
 {{- if .Values.tetragon.enabled }}
       {{- include "container.tetragon" . | nindent 6 -}}
 {{- end }}
@@ -114,9 +104,6 @@ spec:
       {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
-{{- if eq .Values.export.mode "fluentd" }}
-      {{- include "container.export.fluentd.volumes" . | nindent 6 -}}
-{{- end }}
 {{- range .Values.extraHostPathMounts }}
       - name: {{ .name }}
         hostPath:

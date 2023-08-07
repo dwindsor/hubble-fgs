@@ -25,9 +25,6 @@ data:
 {{- .Values.tetragon.exportDenyList | trim | nindent 4 }}
   field-filters: |-
 {{- .Values.tetragon.fieldFilters | trim | nindent 4 }}
-{{- if eq .Values.export.mode "s3"}}
-  export-file-rotation-interval: {{ .Values.exportFileCreationInterval | default "15s" }}
-{{- end }}
   export-rate-limit: {{ .Values.tetragon.exportRateLimit | quote }}
 {{- end }}
 {{- if .Values.tetragon.enableK8sAPI }}

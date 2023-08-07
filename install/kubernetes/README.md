@@ -13,44 +13,6 @@ Helm chart for Tetragon Enterprise
 | daemonSetLabelsOverride | object | `{}` |  |
 | dnsPolicy | string | `"Default"` |  |
 | enabled | bool | `true` |  |
-| export.argsOverride | list | `[]` |  |
-| export.commandOverride | list | `[]` |  |
-| export.extraArgs | object | `{}` |  |
-| export.extraEnv | list | `[]` |  |
-| export.extraVolumeMounts | list | `[]` |  |
-| export.filenames[0] | string | `"fgs.log"` |  |
-| export.filenames[1] | string | `"hubble.log"` |  |
-| export.fluentd.config | string | `"@include input.conf\n@include filter.conf\n@include output.conf\n"` |  |
-| export.fluentd.filterConfig | string | `"<match hubble-logs.**>\n  @type rewrite_tag_filter\n  <rule>\n    key node_name\n    pattern /.+/\n    # /var/run/cilium/hubble/hubble.log has a tag of var.run.cilium.hubble.hubble.log\n    # and the rewrite rule changes it to hubble.log\n    tag ${tag_parts[5]}.${tag_parts[6]}\n  </rule>\n</match>\n"` |  |
-| export.fluentd.image.override | string | `nil` |  |
-| export.fluentd.image.repository | string | `"quay.io/isovalent/hubble-export-fluentd"` |  |
-| export.fluentd.image.tag | string | `"v1.5.1"` |  |
-| export.fluentd.inputConfig | string | `"{{- $paths := list -}}\n{{- range .Values.export.filenames }}\n  {{- $paths = append $paths (printf \"%s/%s\" $.Values.exportDirectory .) -}}\n{{- end -}}\n<source>\n  @type tail\n  path {{ join \",\" $paths }}\n  pos_file {{ .Values.exportDirectory }}/fluentd-tail.pos\n  read_from_head true\n  refresh_interval 15\n  tag hubble-logs.*\n  <parse>\n    @type json\n    time_format %iso8601\n    keep_time_key true\n  </parse>\n</source>\n"` |  |
-| export.fluentd.output | string | `"# https://docs.fluentd.org/output/stdout\n@type stdout\n<format>\n  @type json\n</format>"` |  |
-| export.fluentd.outputConfig | string | `"# send hubble and fgs logs both to the same output\n<match hubble.log fgs.log>\n{{- if .Values.export.fluentd.output }}\n{{ tpl .Values.export.fluentd.output . | trim | indent 2 }}\n{{- end }}\n</match>\n"` |  |
-| export.fluentd.tls.ca.configMap.key | string | `"ca.crt"` |  |
-| export.fluentd.tls.ca.configMap.name | string | `nil` |  |
-| export.mode | string | `"stdout"` |  |
-| export.resources | object | `{}` |  |
-| export.s3.acl | string | `nil` |  |
-| export.s3.awsAccessKeyId | string | `nil` |  |
-| export.s3.awsRegion | string | `nil` |  |
-| export.s3.awsSecretAccessKey | string | `nil` |  |
-| export.s3.bucket | string | `nil` |  |
-| export.s3.concurrentLimit | int | `10` |  |
-| export.s3.image.override | string | `nil` |  |
-| export.s3.image.repository | string | `"quay.io/isovalent/hubble-export-s3"` |  |
-| export.s3.image.tag | string | `"v1.0.0"` |  |
-| export.s3.interval | string | `nil` |  |
-| export.s3.kms | string | `nil` |  |
-| export.s3.kmsId | string | `nil` |  |
-| export.s3.objectTemplate | string | `nil` |  |
-| export.s3.partSize | int | `5` |  |
-| export.s3.skipProbe | bool | `false` |  |
-| export.securityContext | object | `{}` |  |
-| export.stdout.image.override | string | `nil` |  |
-| export.stdout.image.repository | string | `"quay.io/isovalent/hubble-export-stdout"` |  |
-| export.stdout.image.tag | string | `"v1.0.3"` |  |
 | exportDirectory | string | `"/var/run/cilium/hubble"` |  |
 | exportFileCreationInterval | string | `"120s"` |  |
 | extraConfigmapMounts | list | `[]` |  |
