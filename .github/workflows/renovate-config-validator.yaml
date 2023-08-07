@@ -1,0 +1,20 @@
+name: Validate renovate configuration
+
+on:
+  pull_request:
+    paths:
+      - '.github/renovate.json5'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout configuration
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+
+      # this step uses latest renovate slim release
+      - name: Validate configuration
+        run: >
+          docker run --rm --entrypoint "renovate-config-validator"
+          -v "${{ github.workspace }}/.github/renovate.json5":"/renovate.json5"
+          renovate/renovate:slim "/renovate.json5"
