@@ -24,7 +24,8 @@ struct fd_lookup_config {
 	uint8_t pad1;
 	uint16_t family;
 	uint16_t pad2;
-};
+	uint16_t pad3;
+} __attribute__((packed));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);

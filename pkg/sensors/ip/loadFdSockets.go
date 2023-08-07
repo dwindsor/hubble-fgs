@@ -59,6 +59,7 @@ type FdLookupValue struct {
 	Pad1      uint8
 	Family    uint16
 	Pad2      uint16
+	Pad3      uint16
 }
 
 type FdCallback func(*FdLookupValue, uint32)
