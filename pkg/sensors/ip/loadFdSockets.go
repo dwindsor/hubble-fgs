@@ -19,8 +19,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -86,18 +86,10 @@ var (
 	TlsSocketCookieMap = program.MapBuilder(TlsSocketMapName, FdLookup)
 )
 
-func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
-func (k *FdLookupKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *FdLookupKey) DeepCopyMapKey() bpf.MapKey { return &FdLookupKey{k.Zero} }
-
-func (k *FdLookupKey) NewValue() bpf.MapValue { return &FdLookupValue{} }
+func (k *FdLookupKey) String() string { return fmt.Sprintf("key=%d", k.Zero) }
 
 func (v *FdLookupValue) String() string {
 	return fmt.Sprintf("value=%d %d", v.Pid, v.Fd)
-}
-func (v *FdLookupValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *FdLookupValue) DeepCopyMapValue() bpf.MapValue {
-	return &FdLookupValue{}
 }
 
 func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
@@ -247,14 +239,14 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 	return nil
 }
 
-func openConfigMap() *bpf.Map {
+func openConfigMap() *ebpf.Map {
 	mapDir := bpf.MapPrefixPath()
 
 	fdLookupMap := FdLookupConfigMap
 
-	m, err := bpf.OpenMap(filepath.Join(mapDir, fdLookupMap.Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, fdLookupMap.Name), nil)
 	for i := 0; err != nil; i++ {
-		m, err = bpf.OpenMap(filepath.Join(mapDir, fdLookupMap.Name))
+		m, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, fdLookupMap.Name), nil)
 		if err != nil {
 			time.Sleep(mapRetryDelay * time.Second)
 		}
@@ -386,7 +378,7 @@ func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol
 	return nil
 }
 
-func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *bpf.Map) (FdLookupValue, error) {
+func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map) (FdLookupValue, error) {
 	if m == nil {
 		m = openConfigMap()
 		if m == nil {
@@ -426,7 +418,7 @@ func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *bpf.Map) 
 	socket.Fd = fd
 
 	k := &FdLookupKey{Zero: 0}
-	m.Update(k, &socket)
+	m.Put(k, &socket)
 	/* Trigger BPF FD Lookup program.
 	 * The approach taken here (and later in writeSocketCookies and GetSocketForFD) is to hook
 	 * proc_task_name, which is called whenever user space accesses the /proc/PID/comm pseudo-files.
@@ -462,13 +454,12 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				Protocol:  protocol,
 				SignalHit: 0,
 			}
-			m.Update(k, v)
+			m.Put(k, v)
 			for loadWait := 0; loadWait < numIterations; loadWait++ {
 				// See GetAndAddSocketViaProc for details on how this works.
 				os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
-				ret, err := m.Lookup(k)
+				err := m.Lookup(k, v)
 				if err == nil {
-					v = ret.(*FdLookupValue)
 					if v.SignalHit == 1 {
 						break
 					}
@@ -524,13 +515,12 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 		Sockaddr:  cookie,
 		Family:    uint16(family),
 	}
-	m.Update(k, v)
+	m.Put(k, v)
 	for loadWait := 0; loadWait < 10; loadWait++ {
 		// See GetAndAddSocketViaProc for details on how this works.
 		os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
-		ret, err := m.Lookup(k)
+		err := m.Lookup(k, v)
 		if err == nil {
-			v = ret.(*FdLookupValue)
 			if v.SignalHit == 1 {
 				break
 			}
