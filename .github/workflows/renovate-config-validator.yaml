@@ -3,7 +3,7 @@ name: Validate renovate configuration
 on:
   pull_request:
     paths:
-      - '.github/renovate.json5'
+      - '.github/*renovate.json5'
 
 jobs:
   validate:
@@ -17,4 +17,5 @@ jobs:
         run: >
           docker run --rm --entrypoint "renovate-config-validator"
           -v "${{ github.workspace }}/.github/renovate.json5":"/renovate.json5"
-          renovate/renovate:slim "/renovate.json5"
+          -v "${{ github.workspace }}/.github/self-hosted-renovate.json5":"/self-hosted-renovate.json5"
+          renovate/renovate:slim "/renovate.json5" "/self-hosted-renovate.json5"
