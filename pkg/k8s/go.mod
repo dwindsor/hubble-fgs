@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cilium/cilium v1.13.4
+	github.com/cilium/cilium v1.13.5
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.3.0
@@ -18,7 +18,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
+	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect

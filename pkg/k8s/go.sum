@@ -35,8 +35,8 @@ github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghf
 github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc/go.mod h1:MTkMtVFAjFChVkoycc9XjGGH6jiuI6qO71iEdcyNq7I=
 github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2 h1:e8rUgm4lkgItm5/qX43VmvtRkxaOhLIPP6gWjP9Eib4=
 github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2/go.mod h1:hJyC9ybFldjAq/sR0x8jwbV9g0uPxjl8fqBa+mVa3DE=
-github.com/cilium/cilium v1.13.4 h1:rvbcA6q7YMWtDfEtx9y4olL46wBFoZfM2BazUoJlaRI=
-github.com/cilium/cilium v1.13.4/go.mod h1:bppTjxboubrsI835+yp3vZ2S79wRQbZCbUiHxrAIOQY=
+github.com/cilium/cilium v1.13.5 h1:FMHidOY/VyCMpG7RX6plDaWEkP+j523qfDrmZPMnXIM=
+github.com/cilium/cilium v1.13.5/go.mod h1:TKeog+rE2T62B9WqByWGRGk92n0oMyvocCAylG16rXw=
 github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2 h1:h27SvWUTrlFQ2Q8LAnt0q+iw/VJoni8ffzCjAIidLV8=
 github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2/go.mod h1:qOTXyxeuKXiha7G6yZPUzrvJ8l7qSrVAxJl1VGBYrkE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -71,8 +71,8 @@ github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25Kn
 github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153/go.mod h1:/Zj4wYkgs4iZTTu3o/KG3Itv/qCCa8VVMlb3i9OVuzc=
 github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
 github.com/emicklei/go-restful v2.9.5+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
-github.com/emicklei/go-restful/v3 v3.10.1 h1:rc42Y5YTp7Am7CS630D7JmhRjq4UlEUuEKfrDac4bSQ=
-github.com/emicklei/go-restful/v3 v3.10.1/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
+github.com/emicklei/go-restful/v3 v3.10.2 h1:hIovbnmBTLjHXkqEBUz3HGpXZdM7ZrE9fJIZIqlJLqE=
+github.com/emicklei/go-restful/v3 v3.10.2/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/evanphx/json-patch v4.2.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
