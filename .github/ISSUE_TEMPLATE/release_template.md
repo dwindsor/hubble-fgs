@@ -59,6 +59,7 @@ git push origin "$RELEASE"
 git push origin "api/$RELEASE"
 ```
 - [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
+- [ ] Only for major release, update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/edca86cf0e4c5c8e3e064666f84561ae7b05b88b/pkg/k8s/apis/cilium.io/v1alpha1/register.go#L26) to `vX.Y+1.0`.
 - [ ] Create standalone tarball release:
 ```
 make tarball
