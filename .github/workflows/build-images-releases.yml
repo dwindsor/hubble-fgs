@@ -5,6 +5,10 @@ on:
     tags:
       - v*
 
+permissions:
+  # For softprops/action-gh-release draft release creation and artifact upload
+  contents: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-20.04
@@ -107,3 +111,35 @@ jobs:
         run: |
           cd image-digest/
           find -type f | sort | xargs -d '\n' cat
+
+  draft-github-release:
+    name: Create Release
+    if: github.repository == 'isovalent/hubble-fgs'
+    environment: release
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+
+      - name: Set up Go
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        with:
+          # renovate: datasource=golang-version depName=go
+          go-version: '1.20.7'
+
+      - name: Generate tetra CLI artifacts
+        run: make cli-release
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+          body: |
+            Note for maintainers:: Please update the description with the actual release notes (see RELEASE.md for instructions).
+          files: |
+            release/*

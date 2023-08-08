@@ -1,5 +1,6 @@
 /bin
 lib/*
+/release
 /tetragon
 /tetra
 /tetragon-operator

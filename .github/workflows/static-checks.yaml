@@ -68,6 +68,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        with:
+          submodules: true
 
       - name: Install Go
         uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
@@ -81,3 +83,13 @@ jobs:
           echo "git status --porcelain:" `git status --porcelain`
           test -z "$(git status --porcelain)" || (echo "Module vendoring checks failed. Please run 'make vendor', and submit your changes"; exit 1)
 
+  build-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        with:
+          submodules: true
+
+      - name: Build CLI release binaries
+        run: make cli-release
