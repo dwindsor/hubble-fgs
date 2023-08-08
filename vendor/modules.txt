@@ -1358,8 +1358,6 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# gotest.tools/v3 v3.0.3
-## explicit; go 1.11
 # k8s.io/api v0.27.4
 ## explicit; go 1.20
 k8s.io/api/admissionregistration/v1
@@ -1479,7 +1477,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/client-go v1.5.2 => k8s.io/client-go v0.27.2
+# k8s.io/client-go v1.5.2 => github.com/cilium/client-go v0.27.2-fix
 ## explicit; go 1.20
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1alpha1
@@ -1883,8 +1881,8 @@ sigs.k8s.io/controller-runtime/pkg/client
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
 sigs.k8s.io/controller-runtime/pkg/controller/controllerutil
 sigs.k8s.io/controller-runtime/pkg/log
-# sigs.k8s.io/controller-tools v0.12.1 => github.com/cilium/controller-tools v0.12.1
-## explicit; go 1.20
+# sigs.k8s.io/controller-tools v0.12.1 => github.com/cilium/controller-tools v0.6.2
+## explicit; go 1.16
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/crd
 sigs.k8s.io/controller-tools/pkg/crd/markers
@@ -1899,13 +1897,14 @@ sigs.k8s.io/controller-tools/pkg/schemapatcher
 sigs.k8s.io/controller-tools/pkg/schemapatcher/internal/yaml
 sigs.k8s.io/controller-tools/pkg/version
 sigs.k8s.io/controller-tools/pkg/webhook
-# sigs.k8s.io/e2e-framework v0.0.8 => github.com/kubernetes-sigs/e2e-framework v0.0.0-20220527132303-bc7888d1b4f0
-## explicit; go 1.17
+# sigs.k8s.io/e2e-framework v0.0.8
+## explicit; go 1.18
 sigs.k8s.io/e2e-framework/klient
 sigs.k8s.io/e2e-framework/klient/conf
 sigs.k8s.io/e2e-framework/klient/decoder
 sigs.k8s.io/e2e-framework/klient/k8s
 sigs.k8s.io/e2e-framework/klient/k8s/resources
+sigs.k8s.io/e2e-framework/klient/k8s/watcher
 sigs.k8s.io/e2e-framework/klient/wait
 sigs.k8s.io/e2e-framework/klient/wait/conditions
 sigs.k8s.io/e2e-framework/pkg/env
@@ -1935,11 +1934,10 @@ sigs.k8s.io/yaml
 # github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
 # github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 # github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
-# github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
-# github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 # github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
 # go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.9
 # gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
-# k8s.io/client-go => k8s.io/client-go v0.27.2
-# sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.12.1
-# sigs.k8s.io/e2e-framework => github.com/kubernetes-sigs/e2e-framework v0.0.0-20220527132303-bc7888d1b4f0
+# github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
+# go.universe.tf/metallb => github.com/cilium/metallb v0.1.1-0.20220829170633-5d7dfb1129f7
+# k8s.io/client-go => github.com/cilium/client-go v0.27.2-fix
+# sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.6.2

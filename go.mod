@@ -199,7 +199,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/apimachinery v0.27.4 // indirect
 	k8s.io/gengo v0.0.0-20230306165830-ab3349d207d4 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
@@ -208,7 +207,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// has to be in sync with both cilium and hubble overrides (mostly cilium).
 replace (
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss
@@ -219,20 +217,32 @@ replace (
 	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
-	github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
-	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 	github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
 	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.9
 
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
 	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 
-	// due to CRI-O, otherwise it fails to build hubble-fgs
-	k8s.io/client-go => k8s.io/client-go v0.27.2
+// due to CRI-O, otherwise it fails to build hubble-fgs
+// TODO uncomment if replace directive below from cilium/cilium is removed
+// and CRI-O still needs this.
+// k8s.io/client-go => k8s.io/client-go v0.27.2
+)
+
+// This replace directive has to be in sync with with github.com/cilium/cilium.
+// If the github.com/cilium/cilium version is bumped, the sync must be
+// refreshed. As of now we use tag v1.14.0, see the replace directive:
+// https://github.com/cilium/cilium/blob/v1.14/go.mod#L259-L271
+replace (
+	github.com/miekg/dns => github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc
+
+	go.universe.tf/metallb => github.com/cilium/metallb v0.1.1-0.20220829170633-5d7dfb1129f7
+
+	// Using fork of client-go.
+	// Contains fix for exponential backoff for informers.
+	k8s.io/client-go => github.com/cilium/client-go v0.27.2-fix
 
 	// Using private fork of controller-tools. See commit msg for more context
 	// as to why we are using a private fork.
-	sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.12.1
-	// Pull in support for helm uninstall. TODO: remove this when 0.0.8 comes out.
-	sigs.k8s.io/e2e-framework => github.com/kubernetes-sigs/e2e-framework v0.0.0-20220527132303-bc7888d1b4f0
+	sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.6.2
 )
