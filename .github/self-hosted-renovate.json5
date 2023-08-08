@@ -14,6 +14,9 @@
 // use OSS config to extend the repository EE config.
 {
   "username": "isovalent-renovate[bot]",
+  // this is a repository setting needed to avoid renovate to fetch
+  // https://api.github.com/user and fail because it does not have the auth
+  "gitAuthor": "isovalent-renovate[bot] <141654053+isovalent-renovate[bot]@users.noreply.github.com>",
   "repositories": ["isovalent/hubble-fgs"],
   // renovate first reads this configuration, then reads the repository
   // configuration, since we don't split between the self-hosted and the
