@@ -13,7 +13,7 @@ on:
     branches:
       - master
     paths:
-      - '.github/renovate.json5'
+      - '.github/*renovate.json5'
 
 jobs:
   renovate:
@@ -67,7 +67,7 @@ jobs:
         env:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'true' && 'DEBUG' || 'INFO' }}
         with:
-          configurationFile: .github/renovate.json5
+          configurationFile: .github/self-hosted-renovate.json5
           token: '${{ steps.get_token.outputs.app_token }}'
           mount-docker-socket: true
 

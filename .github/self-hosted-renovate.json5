@@ -1,0 +1,31 @@
+// Self-Hosted Configuration
+//
+// this contains exclusively self-hosted configuration for the renovate runner
+// see https://docs.renovatebot.com/self-hosted-configuration/
+//
+// having the same files for self-hosted configuration and repository brings
+// issues because it will be read twice, one time by the runner to start and
+// one time when processing the repository, duplicating regexes detection for
+// examples and failing to update them correctly.
+//
+// For OSS it was simpler because we could disable the read of the repository
+// config since everything was already present in the runner's config. However
+// here, it's still a bit unclear, but apparently it's not possible because we
+// use OSS config to extend the repository EE config.
+{
+  "username": "isovalent-renovate[bot]",
+  "repositories": ["isovalent/hubble-fgs"],
+  // renovate first reads this configuration, then reads the repository
+  // configuration, since we don't split between the self-hosted and the
+  // repository configuration, this can lead to duplicate of some areas of the
+  // config, for example the regex. See:
+  // https://docs.renovatebot.com/self-hosted-configuration/#requireconfig
+  "allowedPostUpgradeCommands": [
+    "^/tmp/install-buildx$",
+    "^make codegen$",
+    "^make generate$",
+    "^install/kubernetes/test.sh$",
+    "^go mod vendor$",
+    "^install-tool golang [0-9]\\.[0-9]+\\.[0-9]+$"
+  ],
+}

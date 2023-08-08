@@ -1,21 +1,6 @@
+// Repository Configuration
+// see https://docs.renovatebot.com/configuration-options/
 {
-  // self-hosted configuration
-  "username": "isovalent-renovate[bot]",
-  "repositories": ["isovalent/hubble-fgs"],
-  // renovate first reads this configuration, then reads the repository
-  // configuration, since we don't split between the self-hosted and the
-  // repository configuration, this can lead to duplicate of some areas of the
-  // config, for example the regex. See:
-  // https://docs.renovatebot.com/self-hosted-configuration/#requireconfig
-  "allowedPostUpgradeCommands": [
-    "^/tmp/install-buildx$", 
-    "^make codegen$", 
-    "^make generate$", 
-    "^install/kubernetes/test.sh$",
-    "^go mod vendor$",
-    "^install-tool golang [0-9]\\.[0-9]+\\.[0-9]+$"
-  ],
-  // repository configuration
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "gitAuthor": "isovalent-renovate[bot] <141654053+isovalent-renovate[bot]@users.noreply.github.com>",
   "extends": [
@@ -26,6 +11,7 @@
     "v1.11",
     "v1.10",
   ],
+  "cloneSubmodules": true,
   "packageRules": [
     {
       // no updates into stable branches (apart from security ones)
