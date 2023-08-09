@@ -59,7 +59,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.grpc.address | string | `"localhost:54321"` | The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock |
 | tetragon.grpc.enabled | bool | `true` | Whether to enable exposing Tetragon gRPC. |
 | tetragon.image.override | string | `nil` |  |
-| tetragon.image.repository | string | `"quay.io/isovalent/hubble-enterprise"` |  |
+| tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.11.0"` |  |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |
@@ -70,13 +70,13 @@ Helm chart for Tetragon Enterprise
 | tetragon.prometheus.address | string | `""` | The address at which to expose metrics. Set it to "" to expose on all available interfaces. |
 | tetragon.prometheus.enabled | bool | `true` | Whether to enable exposing Tetragon metrics. |
 | tetragon.prometheus.port | int | `2112` | The port at which to expose metrics. |
-| tetragon.prometheus.serviceMonitor.enabled | bool | `false` | Whether to create a 'ServiceMonitor' resource targeting the 'tetragon-enterprise' pods. |
+| tetragon.prometheus.serviceMonitor.enabled | bool | `false` | Whether to create a 'ServiceMonitor' resource targeting the tetragon pods. |
 | tetragon.prometheus.serviceMonitor.labelsOverride | object | `{}` | The set of labels to place on the 'ServiceMonitor' resource. |
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.tcpStatsSampleSegs | int | `0` | EXPERIMENTAL: This field may be removed in the future without notice.  Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.  Note that the counter for sampling is global, and it is not per socket. |
-| tetragonOperator.enabled | bool | `true` | Enable the tetragon-enterprise-operator component (required). |
-| tetragonOperator.image | object | `{"override":null,"repository":"quay.io/isovalent/hubble-enterprise-operator","tag":"v1.11.0"}` | tetragon-enterprise-operator image. |
+| tetragonOperator.enabled | bool | `true` | Enable the tetragon-operator component (required). |
+| tetragonOperator.image | object | `{"override":null,"repository":"quay.io/isovalent/tetragon-operator","tag":"v1.11.0"}` | tetragon-operator image. |
 | tolerations[0].operator | string | `"Exists"` |  |
 | updateStrategy | object | `{}` |  |
 

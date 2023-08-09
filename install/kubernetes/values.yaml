@@ -61,7 +61,7 @@ tetragon:
   enabled: true
   image:
     override: ~
-    repository: quay.io/isovalent/hubble-enterprise
+    repository: quay.io/isovalent/tetragon
     tag: v1.11.0
   metadata:
     enabled: false
@@ -175,7 +175,7 @@ tetragon:
     # -- The port at which to expose metrics.
     port: 2112
     serviceMonitor:
-      # -- Whether to create a 'ServiceMonitor' resource targeting the 'tetragon-enterprise' pods.
+      # -- Whether to create a 'ServiceMonitor' resource targeting the tetragon pods.
       enabled: false
       # -- The set of labels to place on the 'ServiceMonitor' resource.
       labelsOverride: {}
@@ -198,11 +198,11 @@ tetragon:
   enablePolicyFilterDebug: false
 
 tetragonOperator:
-  # -- Enable the tetragon-enterprise-operator component (required).
+  # -- Enable the tetragon-operator component (required).
   enabled: true
 
-  # -- tetragon-enterprise-operator image.
+  # -- tetragon-operator image.
   image:
     override: ~
-    repository: quay.io/isovalent/hubble-enterprise-operator
+    repository: quay.io/isovalent/tetragon-operator
     tag: v1.11.0
