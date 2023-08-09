@@ -33,7 +33,11 @@ Branch `X.Y` may not exist, because we have not branched out yet. This can only 
 
 See [tagging] for more details.
 
-
+If you create a `X.Y` branch:
+ - Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
+    - update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/edca86cf0e4c5c8e3e064666f84561ae7b05b88b/pkg/k8s/apis/cilium.io/v1alpha1/register.go#L26) to `X.Y+1.0`.
+ - Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
+   `vX.Y+1.0-pre.0`.
 
 ### Cutting the Tetragon Enterprise release
 
@@ -59,7 +63,6 @@ git push origin "$RELEASE"
 git push origin "api/$RELEASE"
 ```
 - [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
-- [ ] Only for major release, update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/edca86cf0e4c5c8e3e064666f84561ae7b05b88b/pkg/k8s/apis/cilium.io/v1alpha1/register.go#L26) to `vX.Y+1.0`.
 - [ ] Create standalone tarball release:
 ```
 make tarball
