@@ -153,7 +153,7 @@ static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   s64 latency, struct udphdr *udp, int payload_sz,
 	   struct udp_sensor_config *config,
-	   struct latency_protocol_config *latency_config, u64 send, bool lazy,
+	   struct latency_protocol_config *latency_config, u64 send,
 	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
@@ -274,7 +274,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	}
 
 	process = lookup_socketmap(cookie);
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, config, udp_latency, send, lazy, process);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, config, udp_latency, send, process);
 	if (!value)
 		return 1;
 
