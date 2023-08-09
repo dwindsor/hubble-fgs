@@ -157,102 +157,81 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
-	int zero = 0;
 	struct udp_info_key key;
 	struct udp_info *info;
+	int zero = 0;
 
 	key.cookie = *cookie;
 	udp_key(&key, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 
-	if (!value) {
-		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
-		if (!value)
-			return 0;
-
-		if (send)
-			udp_info_tx_reset(value, payload_sz);
-		else {
-			udp_info_rx_reset(value, payload_sz);
-			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
-		}
-
-		/* Store the info in the entry for later use,
-		 * and potentially for searching from userland
-		 * in case we ever need to locate a socket */
-		info = udp_info(ip, ipv6, udp, send);
-		if (!info)
-			return 0;
-		if (!ipv6) {
-			set_ipv6_addr_from_ipv4(value->saddr,
-						info->saddr.ipv4);
-			set_ipv6_addr_from_ipv4(value->daddr,
-						info->daddr.ipv4);
-			value->ipv6 = false;
-		} else {
-			copy_ipv6_addr(value->saddr, info->saddr.ipv6);
-			copy_ipv6_addr(value->daddr, info->daddr.ipv6);
-			value->ipv6 = true;
-		}
-		value->sport = info->sport;
-		value->dport = info->dport;
-
-		/* socket create time is when we see the first datagram, as a socket can
-		 * support multiple pseudo-connections (using sendto()) and we shouldn't
-		 * consider each to have been created when the actual socket was created.
-		 * We should use the 'connect' time instead. */
-		value->create_time = ktime_get_ns();
-
-		/* If process was found, fill in the PID */
-		if (process) {
-			value->pid = process->key.pid;
-			value->pid_ktime = process->key.ktime;
-			emit_udp_connect_event(skb, cookie, value);
-		}
-
-		map_update_elem(&tg_udp_map, &key, value, 0);
-	} else if (process && value->pid != process->key.pid) {
-		/* PID doesn't match, so this must be a new socket */
-		if (send)
-			udp_info_tx_reset(value, payload_sz);
-		else {
-			udp_info_rx_reset(value, payload_sz);
-			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
-		}
-		info = udp_info(ip, ipv6, udp, send);
-		if (!info)
-			return 0;
-		if (!ipv6) {
-			set_ipv6_addr_from_ipv4(value->saddr,
-						info->saddr.ipv4);
-			set_ipv6_addr_from_ipv4(value->daddr,
-						info->daddr.ipv4);
-			value->ipv6 = false;
-		} else {
-			copy_ipv6_addr(value->saddr, info->saddr.ipv6);
-			copy_ipv6_addr(value->daddr, info->daddr.ipv6);
-			value->ipv6 = true;
-		}
-		value->sport = info->sport;
-		value->dport = info->dport;
-		value->pid = process->key.pid;
-		value->pid_ktime = process->key.ktime;
-		/* socket create time is when we see the first datagram, as a socket can
-		 * support multiple pseudo-connections (using sendto()) and we shouldn't
-		 * consider each to have been created when the actual socket was created.
-		 * We should use the 'connect' time instead. */
-		value->create_time = ktime_get_ns();
-
-		emit_udp_connect_event(skb, cookie, value);
-	} else {
+	/* If the PID matches means this is a known connection key and its
+	 * on a known process/socket binding then simply account for bytes
+	 * and any other statistics needed.
+	 */
+	if (process && value && value->pid == process->key.pid) {
 		if (send)
 			update_tx_value(value, payload_sz);
 		else {
 			update_rx_value(value, payload_sz);
 			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 		}
+		return value;
 	}
+
+	if (!value) {
+		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
+		if (!value)
+			return 0;
+
+		value->pid = 0;
+		value->pid_ktime = 0;
+	}
+
+	/* Otherwise this is a new UDP key over an existing socket or the
+	 * socket has moved to a new pid. Either way restart statistics and
+	 * create a new mapping.
+	 */
+	if (send)
+		udp_info_tx_reset(value, payload_sz);
+	else {
+		udp_info_rx_reset(value, payload_sz);
+		add_latency(latency_config, value->buckets, &value->latency_sum, latency);
+	}
+
+	/* Store the info in the entry for later use and potentially for
+	 * searching from userland in case we ever need to locate a socket
+	 */
+	info = udp_info(ip, ipv6, udp, send);
+	if (!info)
+		return 0;
+	if (!ipv6) {
+		set_ipv6_addr_from_ipv4(value->saddr, info->saddr.ipv4);
+		set_ipv6_addr_from_ipv4(value->daddr, info->daddr.ipv4);
+		value->ipv6 = false;
+	} else {
+		copy_ipv6_addr(value->saddr, info->saddr.ipv6);
+		copy_ipv6_addr(value->daddr, info->daddr.ipv6);
+		value->ipv6 = true;
+	}
+	value->sport = info->sport;
+	value->dport = info->dport;
+
+	/* socket create time is when we see the first datagram, as a socket can
+	 * support multiple pseudo-connections (using sendto()) and we shouldn't
+	 * consider each to have been created when the actual socket was created.
+	 * We should use the 'connect' time instead. */
+	value->create_time = ktime_get_ns();
+
+	/* Update process binding and generate connect event */
+	if (process) {
+		value->pid = process->key.pid;
+		value->pid_ktime = process->key.ktime;
+		emit_udp_connect_event(skb, cookie, value);
+	}
+
+	map_update_elem(&tg_udp_map, &key, value, 0);
 	return value;
 }
 
