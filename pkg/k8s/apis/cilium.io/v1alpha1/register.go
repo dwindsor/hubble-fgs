@@ -22,6 +22,8 @@ const (
 	// CustomResourceDefinitionSchemaVersion is semver-conformant version of CRD schema
 	// Used to determine if CRD needs to be updated in cluster
 	//
+	// The major and minor version of the CRD schema should correspond to Tetragon release number
+	// (but not the patch version).
 	// Developers: Bump patch for each change in the CRD schema.
 	CustomResourceDefinitionSchemaVersion = "1.12.0"
 

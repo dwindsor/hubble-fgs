@@ -11,6 +11,7 @@ As of Tetragon EE 1.9, each EE version is in sync with an OSS version.
 | -----  | ---- |
 | 1.9    | 0.8  |
 | 1.10   | 0.9  |
+| 1.11   | 0.10 |
 
 Hence, backporting PRs that are in OSS or have dependencies in PRs that _are_ in OSS needs to go via
 the correspodning OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
@@ -81,3 +82,22 @@ Date:   Tue Apr 20 16:48:18 2021 -0700
 ```
 
 Eventually, we will use the scripts used by Cilium to do this, but we are not there yet.
+
+## CRD changes
+
+In rare situations, we might want to backport CRD changes, which means changing the CRD schema
+version. In these cases, we need to maintain the major and minor versions of the CRD schema.
+
+So, for example a CRD change in 1.12 that does:
+
+```diff
+- 	CustomResourceDefinitionSchemaVersion = "1.12.9"
++ 	CustomResourceDefinitionSchemaVersion = "1.12.10"
+```
+
+Should be backported in 1.11 as:
+
+```diff
+- 	CustomResourceDefinitionSchemaVersion = "1.11.30"
++ 	CustomResourceDefinitionSchemaVersion = "1.11.31"
+```
