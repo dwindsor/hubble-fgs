@@ -68,8 +68,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agent_image=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operator_image=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "agent_image=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operator_image=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
           # retrieve only minor number on k8s version for the name to be valid
           K8S_VERSION=$(echo ${{ matrix.k8s_version }} | awk -F'[.]' '{print $NF}')

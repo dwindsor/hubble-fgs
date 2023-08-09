@@ -11,10 +11,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: hubble-enterprise
+          - name: tetragon
+            legacy-name: hubble-enterprise
             dockerfile: ./Dockerfile
 
-          - name: hubble-enterprise-operator
+          - name: tetragon-operator
+            legacy-name: hubble-enterprise-operator
             dockerfile: ./Dockerfile.operator
 
     steps:
@@ -59,6 +61,8 @@ jobs:
           tags: |
             quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
             quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:${{ github.sha }}
+            quay.io/${{ github.repository_owner }}/${{ matrix.legacy-name }}:${{ steps.tag.outputs.tag }}
+            quay.io/${{ github.repository_owner }}/${{ matrix.legacy-name }}-ci:${{ github.sha }}
 
       - name: Image Release Digest
         shell: bash

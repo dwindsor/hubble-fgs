@@ -57,8 +57,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agentImage=quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operatorImage=quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
       - name: Install Cilium CLI
         run: |
