@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"testing"
@@ -165,6 +166,27 @@ spec:
       enable: true
       ports: [53]
 `
+const udpL7ConfigDisableClose = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    dns:
+      enable: true
+      ports: [53]
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 20
+      deleteIdleSocketInterval: 60
+      seqCheck:
+        enable: true
+        appId: 1
+        ports: [31337]
+      disableEvents:
+        disableClose: `
 
 const BUFSIZE, BUFVAR = 1024, 256
 const hostname = "127.0.0.1"
@@ -710,6 +732,18 @@ func getUdpObserverWithLatencyDetection(t *testing.T, ctx context.Context) *obse
 	return getUdpObserver(t, ctx, udpConfigWithLatencyDetection)
 }
 
+func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConnect bool, disableClose bool, disableStats bool) *observer.Observer {
+	eventDisableConfig := `
+      disableEvents:
+`
+	eventDisableConfig += "\n        disableConnect: " + strconv.FormatBool(disableConnect)
+	eventDisableConfig += "\n        disableClose: " + strconv.FormatBool(disableClose)
+	eventDisableConfig += "\n        disableStats: " + strconv.FormatBool(disableStats)
+
+	udpDisableEventsConfig := udpBasicConfig + eventDisableConfig
+	return getUdpObserver(t, ctx, udpDisableEventsConfig)
+}
+
 func getNCCommand(t *testing.T, orig string) string {
 	if _, err := exec.LookPath(orig); err == nil {
 		return orig
@@ -892,6 +926,65 @@ func TestConnectEvent4(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
+}
+
+func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableStats bool) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	connectChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessConnectChecker("serverConnect").
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+	)
+	serverStatsChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessSockStatsChecker("serverStats").
+			WithSocket(ec.NewSockInfoChecker().
+				WithProtocol(tetragon.SocketProtocol_UDP).
+				WithSourceIp(sm.Full("127.0.0.1")).
+				WithDestinationIp(sm.Full("127.0.0.1")).
+				WithSourcePort(8081)),
+	)
+
+	obs := getUdpObserverDisableEvents(t, ctx, disableConnect, true, disableStats)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	connectErr := jsonchecker.JsonTestCheckExpect(t, connectChecker, disableConnect)
+	assert.NoError(t, connectErr)
+
+	statsErr := jsonchecker.JsonTestCheckExpect(t, serverStatsChecker, disableStats)
+	assert.NoError(t, statsErr)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestDisableConnectStats4(t *testing.T) {
+	testDisableConnectStatsConfig4(t, true, true)
+}
+
+func TestNoDisableConnectStats4(t *testing.T) {
+	testDisableConnectStatsConfig4(t, false, false)
 }
 
 func TestConnectAfterStartEvent4(t *testing.T) {
@@ -1586,4 +1679,78 @@ func TestDnsEvents(t *testing.T) {
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	jsonchecker.RetryDelay = oldDelay
+}
+
+func testDisableCloseConfig(t *testing.T, disableClose bool) {
+	bpf.CheckOrMountCgroup2()
+
+	serverProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-server"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(serverProcess),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	disableCloseConfig := udpL7ConfigDisableClose + strconv.FormatBool(disableClose)
+	if err := observer.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	serverCmd := exec.Command(os.Args[0], "-server")
+	serverOutput, err := serverCmd.StdoutPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	serverCmd.Stderr = os.Stderr
+
+	err = serverCmd.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverOutput)
+	serverBuf.ReadLine()
+
+	serverPid := uint32(serverCmd.Process.Pid)
+
+	clientCmd := exec.Command(os.Args[0], "-layer7Client")
+	clientCmd.Stdout = os.Stderr
+	clientCmd.Stderr = os.Stderr
+	err = clientCmd.Run()
+	assert.NoError(t, err, "cannot start client")
+
+	killAndWaitCommand(t, serverCmd)
+
+	quit := false
+	for !quit {
+		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
+		if err != nil {
+			quit = true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	err = jsonchecker.JsonTestCheckExpect(t, checker, disableClose)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, clientCmd)
+}
+
+func TestDisableClose(t *testing.T) {
+	testDisableCloseConfig(t, true)
+}
+
+func TestNoDisableClose(t *testing.T) {
+	testDisableCloseConfig(t, false)
 }
