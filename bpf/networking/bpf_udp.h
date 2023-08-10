@@ -113,6 +113,16 @@ struct {
 	__uint(max_entries, 1);
 } tg_udp_config_map SEC(".maps");
 
+static inline __attribute__((always_inline)) struct udp_sensor_config *
+get_udp_config()
+{
+	struct udp_sensor_config *config;
+	int zero = 0;
+
+	config = (struct udp_sensor_config *)map_lookup_elem(&tg_udp_config_map, &zero);
+	return config;
+}
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);

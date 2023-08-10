@@ -255,10 +255,6 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	int zero = 0;
 	s64 latency = 0;
 
-	config = (struct udp_sensor_config *)map_lookup_elem(&tg_udp_config_map, &zero);
-	if (!config)
-		return 1;
-
 	if (!send) {
 		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 		if (!latency_config)
@@ -280,9 +276,10 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	/* Only check sequence numbers on recevied packets. */
 	if (!send && !kp)
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
-				  payload_sz, process, value, config);
+				  payload_sz, process, value);
 
-	if (config->dnsPorts[0] != 0) {
+	config = get_udp_config();
+	if (config && config->dnsPorts[0] != 0) {
 		if (dns_port_match(config->dnsPorts, value->sport,
 				   bpf_ntohs(value->dport))) {
 			if (!lazy && value->pid) {
@@ -323,7 +320,7 @@ udp_watermarks(void *ctx, u64 *cookie, struct udp_packet_details *packet, u64 se
 	struct socketmap_value *process;
 	int zero = 0;
 
-	config = (struct udp_sensor_config *)map_lookup_elem(&tg_udp_config_map, &zero);
+	config = get_udp_config();
 	if (!config || !config->watermarks_enable)
 		return;
 

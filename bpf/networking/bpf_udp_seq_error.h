@@ -204,9 +204,11 @@ match_seq_check_ports(u16 *ports, uint16_t port1, uint16_t port2)
 static inline __attribute__((always_inline)) void
 udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		  struct udp_info_value *v, struct udp_sensor_config *config)
+		  struct udp_info_value *v)
 {
-	if (!config->seq_check_app_id)
+	struct udp_sensor_config *config = get_udp_config();
+
+	if (!config || !config->seq_check_app_id)
 		return;
 
 	if (!match_seq_check_ports(config->seq_check_ports, v->sport, bpf_ntohs(v->dport)))
