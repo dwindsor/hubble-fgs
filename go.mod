@@ -14,7 +14,7 @@ require (
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
-	github.com/google/gops v0.3.27
+	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.4
 	github.com/mennanov/fieldmask-utils v1.0.0
@@ -93,7 +93,7 @@ require (
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.5 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
