@@ -279,10 +279,9 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		return 1;
 
 	/* Only check sequence numbers on recevied packets. */
-	if (!send && !kp && config->seq_check_app_id) {
+	if (!send && !kp)
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, value, config);
-	}
 
 	if (config->dnsPorts[0] != 0) {
 		if (dns_port_match(config->dnsPorts, value->sport,
