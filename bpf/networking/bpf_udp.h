@@ -175,62 +175,18 @@ copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
 	info->daddr.ipv6[1] = addr[1];
 }
 
-static inline __attribute__((always_inline)) void
-emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
-{
-	size_t size = sizeof(struct msg_ip_event);
-	struct msg_ip_event *val;
-	int zero = 0;
-
-	val = (struct msg_ip_event *)map_lookup_elem(&tg_udp_event_heap, &zero);
-	if (!val)
-		return;
-
-	val->common.op = op;
-	val->common.size = sizeof(struct msg_ip_event);
-	val->common.ktime = ktime_get_ns();
-	val->key.pid = v->pid;
-	val->key.ktime = v->pid_ktime;
-	val->tuple.ipv6 = v->ipv6;
-	val->tuple.saddr[0] = v->saddr[0];
-	val->tuple.saddr[1] = v->saddr[1];
-	/* FGS expects host byte-order */
-	val->tuple.sport = v->sport;
-	val->tuple.daddr[0] = v->daddr[0];
-	val->tuple.daddr[1] = v->daddr[1];
-	val->tuple.dport = v->dport;
-	val->stats.segs_in = v->segs_in;
-	val->stats.segs_out = v->segs_out;
-	val->stats.bytes_sent = v->tx_bytes;
-	val->stats.bytes_received = v->rx_bytes;
-	val->stats.sk_drops = v->sk_drops;
-	val->stats.skb_consume_misses = v->skb_consume_misses;
-	val->socket_flags = 0;
-	val->pad = 0;
-	val->duration = 0;
-	val->socket_cookie = *cookie;
-
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
-	return;
-}
-
 static inline __attribute__((always_inline)) struct msg_udp_event *
-create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
-			 void *skb_head, struct udp_info_value *v, int off,
-			 int payload_size, size_t *size, bool kp)
+build_udp_payload_event(struct udp_info_value *v, u64 cookie, int size)
 {
-	struct __sk_buff *skb = (struct __sk_buff *)ctx;
 	struct msg_udp_event *val;
-	int zero = 0;
+	int z = 0;
 
-	val = (struct msg_udp_event *)map_lookup_elem(&tg_udp_event_heap, &zero);
+	val = (struct msg_udp_event *)map_lookup_elem(&tg_udp_event_heap, &z);
 	if (!val)
 		return 0;
 
-	*size = payload_size + sizeof(struct msg_ip_event) + 1;
-
-	val->event.common.op = ISO_MSG_OP_UDPPAYLOAD;
-	val->event.common.size = *size;
+	val->event.common.op = ISO_MSG_OP_UNDEF;
+	val->event.common.size = size;
 	val->event.common.ktime = ktime_get_ns();
 	val->event.key.pid = v->pid;
 	val->event.key.ktime = v->pid_ktime;
@@ -250,7 +206,41 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	val->event.stats.skb_consume_misses = v->skb_consume_misses;
 	val->event.pad = 0;
 	val->event.duration = 0;
-	val->event.socket_cookie = *cookie;
+	// WRITE_ONCE to tell compiler to use single store instead
+	// of optimizing into a byte by byte store that would be
+	// rejected by verifier.
+	WRITE_ONCE(val->event.socket_cookie, cookie);
+	return val;
+}
+
+static inline __attribute__((always_inline)) void
+emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
+{
+	size_t size = sizeof(struct msg_ip_event);
+	struct msg_ip_event *val;
+
+	val = (struct msg_ip_event *)build_udp_payload_event(v, *cookie, size);
+	if (!val)
+		return;
+	val->common.op = op;
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	return;
+}
+
+static inline __attribute__((always_inline)) struct msg_udp_event *
+create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+			 void *skb_head, struct udp_info_value *v, int off,
+			 int payload_size, size_t *size, bool kp)
+{
+	struct __sk_buff *skb = (struct __sk_buff *)ctx;
+	struct msg_udp_event *val;
+
+	*size = payload_size + sizeof(struct msg_ip_event) + 1;
+	val = build_udp_payload_event(v, *cookie, *size);
+	if (!val)
+		return 0;
+
+	val->event.common.op = ISO_MSG_OP_UDPPAYLOAD;
 
 	// Move constraint on payload_size to closer to use to stop register
 	// spilling condusing the verifier.
