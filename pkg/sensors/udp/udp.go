@@ -83,6 +83,10 @@ var (
 	pseudoSocketsUpdate sync.Mutex
 
 	timestampEnabled = false
+
+	disableConnectEvents = false
+	disableCloseEvents   = false
+	disableStatsEvents   = false
 )
 
 var (
@@ -372,7 +376,11 @@ func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
 func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := createStatEvent(k, v)
 
-	observer.AllListeners(unix)
+	if disableStatsEvents {
+		layer3.CreateProcessSockStats(unix, false)
+	} else {
+		observer.AllListeners(unix)
+	}
 }
 
 func udpResetEvent(curr, last *udpInfoValue) bool {
@@ -526,7 +534,9 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 
 	if t > UdpDeleteInterval {
 		if udpValue.Pid != 0 {
-			emitCloseEvent(udpKey, udpValue)
+			if !disableCloseEvents {
+				emitCloseEvent(udpKey, udpValue)
+			}
 		}
 		stats.Remove(*udpKey)
 		pseudoSocketsUpdate.Lock()
@@ -788,6 +798,9 @@ func (udp *udpSensor) PolicyHandler(
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
+	disableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
+	disableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
+	disableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
 }
 
@@ -848,19 +861,33 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				if udpValue != entry {
 					diffValue, err := udpDiffValues(&udpKey, &entry, &udpValue)
 					if err == nil {
-						closeEvents = append(closeEvents, createStatEvent(&udpKey, &diffValue))
+						statsEvent := createStatEvent(&udpKey, &diffValue)
+						if disableStatsEvents {
+							layer3.CreateProcessSockStats(statsEvent, false)
+						} else {
+							closeEvents = append(closeEvents, statsEvent)
+						}
 					} else {
 						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
 					}
 				}
 				// Send close event – Duration actually indicates close time
-				closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+				if !disableCloseEvents {
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+				}
 				stats.Remove(udpKey)
 			} else {
 				// Send stats event – no stats event previously sent
-				closeEvents = append(closeEvents, createStatEvent(&udpKey, &udpValue))
+				statsEvent := createStatEvent(&udpKey, &udpValue)
+				if disableStatsEvents {
+					layer3.CreateProcessSockStats(statsEvent, false)
+				} else {
+					closeEvents = append(closeEvents, statsEvent)
+				}
 				// Send close event – Duration actually indicates close time
-				closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+				if !disableCloseEvents {
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+				}
 			}
 		}
 
@@ -869,6 +896,9 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Unlock()
 		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 		return closeEvents, nil
+	}
+	if disableConnectEvents {
+		return []observer.Event{}, nil
 	}
 	return []observer.Event{msgUnix}, nil
 }

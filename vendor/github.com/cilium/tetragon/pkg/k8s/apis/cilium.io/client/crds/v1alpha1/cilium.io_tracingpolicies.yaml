@@ -1032,6 +1032,22 @@ spec:
                           in seconds
                         format: int32
                         type: integer
+                      disableEvents:
+                        description: Disable UDP events
+                        properties:
+                          disableClose:
+                            default: false
+                            description: Disable close events
+                            type: boolean
+                          disableConnect:
+                            default: false
+                            description: Disable connect events
+                            type: boolean
+                          disableStats:
+                            default: false
+                            description: Disable stats events, write to metrics directly
+                            type: boolean
+                        type: object
                       enable:
                         description: Enable UDP observability
                         type: boolean

@@ -401,6 +401,9 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration
 	Metrics *PromMetrics `json:"metrics"`
+	// +kubebuilder:validation:Optional
+	// Disable UDP events
+	DisableEvents UdpEventDisablePolicySpec `json:"disableEvents"`
 }
 
 type UdpWatermarksPolicySpec struct {
@@ -521,4 +524,19 @@ type TcpEventDisablePolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Disable listen events
 	DisableListen bool `json:"disableListen"`
+}
+
+type UdpEventDisablePolicySpec struct {
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable connect events
+	DisableConnect bool `json:"disableConnect"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable close events
+	DisableClose bool `json:"disableClose"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable stats events, write to metrics directly
+	DisableStats bool `json:"disableStats"`
 }

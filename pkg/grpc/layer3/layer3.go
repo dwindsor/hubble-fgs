@@ -404,7 +404,8 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	return fgsEvent
 }
 
-func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.ProcessSockStats {
+// Allow lower layers to call up the stack to push stats into metrics.
+func CreateProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.ProcessSockStats {
 	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -449,7 +450,7 @@ func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.Process
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
 func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
-	return createProcessSockStats(event, true)
+	return CreateProcessSockStats(event, true)
 }
 
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -517,7 +518,7 @@ func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Ev
 	// by original handling of event.
 	switch msg.Common.Op {
 	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
-		createProcessSockStats(msg, false)
+		CreateProcessSockStats(msg, false)
 	}
 
 	return nil
