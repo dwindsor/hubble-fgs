@@ -62,7 +62,7 @@ tetragon:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon
-    tag: v1.11.0
+    tag: v1.11.1
   metadata:
     enabled: false
     image:
@@ -205,4 +205,4 @@ tetragonOperator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.11.0
+    tag: v1.11.1
