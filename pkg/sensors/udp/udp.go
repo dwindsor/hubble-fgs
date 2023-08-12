@@ -546,7 +546,6 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 		pseudoSocketsUpdate.Unlock()
 		deleteLastKey = udpKey
 	}
-	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 }
 
 func runUdpGC() {
@@ -573,6 +572,7 @@ func runUdpGC() {
 	for iter.Next(&key, &val) {
 		udpGcCb(m, &key, &val)
 	}
+	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 }
 
 type udpSensor struct {
