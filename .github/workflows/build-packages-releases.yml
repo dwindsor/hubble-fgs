@@ -44,7 +44,7 @@ jobs:
         run: make tarball-release
 
       - name: Checksum Tetragon EE Tarball
-        run: sha256sum -c hubble-fgs-*-${{ matrix.arch }}.tar.gz.sha256sum
+        run: sha256sum -c tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum
         working-directory: ./release
 
       - name: Configure AWS Credentials
@@ -56,6 +56,6 @@ jobs:
 
       - name: Upload Tetragon EE Tarball to AWS s3
         run: |
-          aws s3 cp hubble-fgs-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
-          aws s3 cp hubble-fgs-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
+          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
+          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
         working-directory: ./release
