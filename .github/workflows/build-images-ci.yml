@@ -1,6 +1,10 @@
 name: Image CI Build
 
 on:
+  push:
+    branches:
+      - master
+      - v*
   pull_request:
     paths-ignore:
     - "**.md"
@@ -58,8 +62,7 @@ jobs:
           ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 0
 
-      # PR updates
-      - name: CI Build (PR)
+      - name: CI Build
         uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
         id: docker_build_ci_pr
         with:
@@ -71,7 +74,7 @@ jobs:
             quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}
             quay.io/${{ github.repository_owner }}-dev/${{ matrix.legacy-name }}-ci:${{ steps.tag.outputs.tag }}
 
-      - name: CI Image digests (PR)
+      - name: CI Image digests
         shell: bash
         run: |
           mkdir -p image-digest/

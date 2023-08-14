@@ -64,9 +64,7 @@ jobs:
           target: release
           tags: |
             quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
-            quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:${{ github.sha }}
             quay.io/${{ github.repository_owner }}/${{ matrix.legacy-name }}:${{ steps.tag.outputs.tag }}
-            quay.io/${{ github.repository_owner }}-dev/${{ matrix.legacy-name }}-ci:${{ github.sha }}
 
       - name: Image Release Digest
         shell: bash
