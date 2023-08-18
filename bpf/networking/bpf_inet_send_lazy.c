@@ -1,3 +1,4 @@
+#define MISSING_PERFEVENT 1
 #include "vmlinux.h"
 #include "bpf_inet.h"
 
