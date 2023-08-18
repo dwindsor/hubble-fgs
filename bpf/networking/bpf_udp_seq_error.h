@@ -206,6 +206,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
 		  struct udp_info_value *v)
 {
+#ifndef IS_KPROBE
 	struct udp_sensor_config *config = get_udp_config();
 
 	if (!config || !config->seq_check_app_id)
@@ -220,6 +221,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 				      payload_off, payload_sz, process, v, config);
 		return;
 	}
+#endif
 }
 
 #endif // __BPF_UDP_SEQ_ERROR_H__

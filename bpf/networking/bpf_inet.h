@@ -245,7 +245,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) int
 udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	 struct timestamp_option *ts_opt, struct udphdr *udp, u64 *cookie,
-	 int payload_off, int payload_sz, u64 send, bool lazy, bool kp)
+	 int payload_off, int payload_sz, u64 send, bool lazy)
 {
 	struct udp_info_value *value;
 	struct udp_sensor_config *config;
@@ -274,7 +274,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		return 1;
 
 	/* Only check sequence numbers on recevied packets. */
-	if (!send && !kp)
+	if (!send)
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, value);
 
@@ -305,7 +305,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 					store_udp_payload_event(
 						skb, ip, cookie, ipv6, skb_head,
 						value, payload_off,
-						payload_sz - 1, kp);
+						payload_sz - 1);
 			}
 		}
 	}
@@ -455,8 +455,7 @@ inet_handler_lazy(struct __sk_buff *skb, u64 send)
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	packet->payload_off = packet->udp_off + sizeof(struct udphdr);
 	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, ts_opt, &packet->udp,
-		 cookie, packet->payload_off, packet->payload_sz, send, true,
-		 false);
+		 cookie, packet->payload_off, packet->payload_sz, send, true);
 	udp_watermarks(skb, cookie, packet, send);
 }
 
@@ -578,7 +577,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
-		 send, true, true);
+		 send, true);
 	udp_watermarks(ctx, &cookie, packet, send);
 }
 
@@ -658,8 +657,7 @@ inet_handler(struct __sk_buff *skb, u64 send)
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
 		udp_send(skb, 0, ip, false, ts_opt, udp, &cookie,
-			 packet->payload_off, packet->payload_sz, send, false,
-			 false);
+			 packet->payload_off, packet->payload_sz, send, false);
 		break;
 	case 6:
 		if (data + sizeof(struct ipv6hdr) > data_end) {
@@ -691,7 +689,7 @@ inet_handler(struct __sk_buff *skb, u64 send)
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
 		udp_send(skb, 0, ip, true, 0, udp, &cookie, packet->payload_off,
-			 packet->payload_sz, send, false, false);
+			 packet->payload_sz, send, false);
 		break;
 	default:
 		emit_ip_error_event(skb, 0, &cookie, false,

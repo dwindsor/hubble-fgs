@@ -1,3 +1,4 @@
+#define IS_KPROBE 1
 #include "vmlinux.h"
 #include "bpf_inet.h"
 #include "bpf_tracing.h"
