@@ -6,7 +6,7 @@
 #include "parsers/http/http.h"
 #include "generic.h"
 #include "lib/file.h"
-#include "networking/bpf_udp.h"
+#include "networking/udp/bpf_udp.h"
 #include "networking/bpf_fd_lookup.h"
 
 // from perf_event_output

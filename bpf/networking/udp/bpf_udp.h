@@ -3,8 +3,8 @@
 
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
-#include "bpf_network_helpers.h"
-#include "bpf_latency.h"
+#include "../bpf_network_helpers.h"
+#include "../bpf_latency.h"
 #include "bpf_tracing.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
