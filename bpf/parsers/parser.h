@@ -2,7 +2,7 @@
 #define parser_h_INCLUDED
 
 #include "api.h"
-#include "../networking/netns.h"
+#include "netns.h"
 #include "../lib/tlsmsg.h"
 #include "../lib/httpmsg.h"
 #include "../lib/address_family.h"

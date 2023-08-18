@@ -27,6 +27,7 @@ PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 NETWORKINGDIR := networking/
 UDPDIR := networking/udp/
+TCPDIR := networking/tcp/
 ISOPROCESS := process/
 FILEDIR := file/
 PROCESSDIR := $(OSSBPFDIR)/process/
@@ -36,13 +37,14 @@ ALIGNCHECKER = bpf_alignchecker.o
 PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
 TLS = bpf_tls_inet_send.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o bpf_setsockopt.o
 NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
-NETWORKING = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_send_check.o \
-	     bpf_kfree_skb.o \
-	     bpf_fd_lookup.o bpf_dev_queue_xmit.o \
-	     bpf_tcp_rtt.o bpf_timestamp.o bpf_tcp_recv.o bpf_tcp_recv_lazy.o
+
+NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o bpf_dev_queue_xmit.o bpf_timestamp.o
 
 UDP = bpf_inet_send_lazy_kp.o bpf_udp_send_recv.o bpf_sock_create.o bpf_sock_release.o \
-      bpf_inet_send.o bpf_inet_send_lazy.o
+      bpf_inet_send.o bpf_inet_send_lazy.o bpf_tcp_rtt.o
+
+TCP = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_send_check.o \
+      bpf_tcp_recv.o bpf_tcp_recv_lazy.o
 
 PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
@@ -82,7 +84,8 @@ FLAGS := -I. \
 	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
 	 -O2
 
-CLANG_FLAGS += $(FLAGS) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) -I $(NETWORKINGDIR) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4
+NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR)
+CLANG_FLAGS += $(FLAGS) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4
 LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
 LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
 
@@ -94,11 +97,12 @@ TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 NOPOBJ        := $(addprefix $(OBJSDIR),$(NOP))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 UDPOBJ	      := $(addprefix $(OBJSDIR),$(UDP))
+TCPOBJ        := $(addprefix $(OBJSDIR),$(TCP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -165,6 +169,13 @@ objs/%.ll: $(UDPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(UDPDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+# TCPDIR
+objs/%.ll: $(TCPDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(TCPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # PROCESSDIR
