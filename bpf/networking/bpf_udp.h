@@ -456,16 +456,4 @@ update_consume_misses(struct udp_info_value *v)
 	__sync_fetch_and_add(&v->skb_consume_misses, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
-
-static inline __attribute__((always_inline)) int
-dns_port_match(u16 *ports, u16 port1, u16 port2)
-{
-	if (ports[0] == port1 || ports[0] == port2 || ports[1] == port1 ||
-	    ports[1] == port2 || ports[2] == port1 || ports[2] == port2 ||
-	    ports[3] == port1 || ports[3] == port2) {
-		return 1;
-	}
-	return 0;
-}
-
 #endif // __BPF_UDP_H__

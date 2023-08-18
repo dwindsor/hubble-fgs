@@ -13,6 +13,7 @@
 #include "bpf_udp_seq_error.h"
 #include "address_family.h"
 #include "bpf_tracing.h"
+#include "dns/dns.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -248,7 +249,6 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	 int payload_off, int payload_sz, u64 send)
 {
 	struct udp_info_value *value;
-	struct udp_sensor_config *config;
 	struct socketmap_value *process;
 	struct latency_config *latency_config = 0;
 	struct latency_protocol_config *udp_latency = 0;
@@ -278,41 +278,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, value);
 
-	config = get_udp_config();
-	if (config && config->dnsPorts[0] != 0) {
-		if (dns_port_match(config->dnsPorts, value->sport,
-				   bpf_ntohs(value->dport))) {
-#ifndef MISSING_PERFEVENT
-			if (value->pid) {
-				/* We subtract 1 from payload_sz because we need to +1 it
-				 * later to sat verifier constraint that skb_load_bytes
-				 * must be nonzero.
-				 */
-				emit_udp_payload_event(skb, ip, cookie, ipv6,
-						       value, payload_off,
-						       payload_sz - 1);
-			} else {
-#else
-			{
-#endif // MISSING_PERFEVENT
-				/* The PID is empty because we couldn't look up
-				 * the process in the cookie->process map. We
-				 * therefore store it for the API-level function
-				 * (either udp_sendret or udp_recv) to add
-				 * process information and then transmit it.
-				 * We also use this store-and-act-later approach
-				 * for kernels <5.10.
-				 */
-
-				// Check payload offset is valid.
-				if (payload_off != -1)
-					store_udp_payload_event(
-						skb, ip, cookie, ipv6, skb_head,
-						value, payload_off,
-						payload_sz - 1);
-			}
-		}
-	}
+	udp_dns(skb, skb_head, value, ip, ipv6, cookie, payload_off, payload_sz);
 	return 1;
 }
 
