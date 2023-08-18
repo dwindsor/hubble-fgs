@@ -15,10 +15,10 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -483,7 +483,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if exportFilename != "" {
-		if err = startExporter(ctx, pm.Server); err != nil {
+		if err = startExporter(ctx, pm.Server, watcher); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
@@ -571,7 +571,7 @@ func getObserverDir() string {
 	return bpf.MapPrefixPath()
 }
 
-func startExporter(ctx context.Context, server *server.Server) error {
+func startExporter(ctx context.Context, server *server.Server, watcher watcher.K8sResourceWatcher) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
 		return err
@@ -636,7 +636,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		}()
 	}
 
-	encoder := encoder.NewProtojsonEncoder(writer)
+	encoder := encoder.NewJSONEncoder(writer, watcher, viper.GetBool(keyEnableHubbleFlowExport))
 	var rateLimiter *ratelimit.RateLimiter
 	if exportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
@@ -849,6 +849,7 @@ func execute() error {
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 
 	flags.String(keyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
+	flags.Bool(keyEnableHubbleFlowExport, false, "Enable Hubble flow export.")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

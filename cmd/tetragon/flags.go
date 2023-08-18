@@ -90,6 +90,8 @@ const (
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
 	keyFimRuntimeEndpoint = "fim-runtime-endpoint"
+
+	keyEnableHubbleFlowExport = "enable-hubble-flow-export"
 )
 
 var (

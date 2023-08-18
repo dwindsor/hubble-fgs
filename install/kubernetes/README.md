@@ -36,6 +36,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.btf | string | `""` |  |
 | tetragon.commandOverride | list | `[]` |  |
 | tetragon.enableCiliumAPI | bool | `true` |  |
+| tetragon.enableHubbleFlowExport | bool | `false` | EXPERIMENTAL: Enable Hubble flow export. When this values is set to true, Tetragon exports ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON. |
 | tetragon.enableK8sAPI | bool | `true` |  |
 | tetragon.enablePolicyFilter | bool | `false` | Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default. |
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |

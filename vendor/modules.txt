@@ -87,6 +87,8 @@ github.com/cilium/cilium/api/v1/health/client/connectivity
 github.com/cilium/cilium/api/v1/health/client/restapi
 github.com/cilium/cilium/api/v1/health/models
 github.com/cilium/cilium/api/v1/models
+github.com/cilium/cilium/api/v1/observer
+github.com/cilium/cilium/api/v1/relay
 github.com/cilium/cilium/pkg/alibabacloud/eni/types
 github.com/cilium/cilium/pkg/alignchecker
 github.com/cilium/cilium/pkg/allocator

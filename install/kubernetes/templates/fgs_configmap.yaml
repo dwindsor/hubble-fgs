@@ -54,3 +54,4 @@ data:
 {{- if .Values.tetragon.enablePolicyFilterDebug }}
   enable-policy-filter-debug: "true"
 {{- end }}
+  enable-hubble-flow-export: {{ .Values.tetragon.enableHubbleFlowExport | quote }}

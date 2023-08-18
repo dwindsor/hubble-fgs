@@ -197,6 +197,10 @@ tetragon:
   # -- Enable policy filter debug messages.
   enablePolicyFilterDebug: false
 
+  # -- EXPERIMENTAL: Enable Hubble flow export. When this values is set to true, Tetragon exports
+  # ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON.
+  enableHubbleFlowExport: false
+
 tetragonOperator:
   # -- Enable the tetragon-operator component (required).
   enabled: true
