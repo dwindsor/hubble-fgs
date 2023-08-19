@@ -1,5 +1,5 @@
-#ifndef __BPF_UDP_H__
-#define __BPF_UDP_H__
+#ifndef __BPF_UDP_EVENT_H__
+#define __BPF_UDP_EVENT_H__
 
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
@@ -207,4 +207,4 @@ emit_udp_connect_event(void *ctx, u64 *cookie, struct udp_info_value *v)
 {
 	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, v);
 }
-#endif // __BPF_UDP_H__
+#endif // __BPF_UDP_EVENT_H__

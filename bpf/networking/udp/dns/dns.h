@@ -1,7 +1,7 @@
 #ifndef __BPF_DNS_H_
 #define __BPF_DNS_H_
 
-#include "../bpf_udp.h"
+#include "../bpf_udp_event.h"
 
 static inline __attribute__((always_inline)) int
 dns_port_match(u16 *ports, u16 port1, u16 port2)
