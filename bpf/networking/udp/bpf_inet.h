@@ -6,6 +6,7 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_udp.h"
+#include "bpf_udp_config.h"
 #include "bpf_latency.h"
 #include "bpf_process_network_watermarks.h"
 #include "cookie.h"
