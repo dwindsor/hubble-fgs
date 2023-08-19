@@ -14,6 +14,7 @@
 #include "address_family.h"
 #include "bpf_tracing.h"
 #include "dns/dns.h"
+#include "bpf_udp_info.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -23,104 +24,6 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 	ip_off &= 0x0f;
 	ip_off *= 4;
 	return ip_off;
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
-{
-	struct udp_info *info;
-	int zero = 0;
-
-	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
-	if (!info || !ip)
-		return 0;
-
-	if (send) {
-		if (!ipv6) {
-			info->saddr.ipv4 = ip->saddr;
-			info->daddr.ipv4 = ip->daddr;
-			info->ipv6 = false;
-		} else {
-			copy_ipv6_addrs_to_info(info,
-						&((struct ipv6hdr *)ip)->saddr,
-						&((struct ipv6hdr *)ip)->daddr);
-			info->ipv6 = true;
-		}
-		info->sport = bpf_ntohs(udp->source);
-		info->dport = udp->dest;
-	} else {
-		if (!ipv6) {
-			info->saddr.ipv4 = ip->daddr;
-			info->daddr.ipv4 = ip->saddr;
-			info->ipv6 = false;
-		} else {
-			copy_ipv6_addrs_to_info(info,
-						&((struct ipv6hdr *)ip)->daddr,
-						&((struct ipv6hdr *)ip)->saddr);
-			info->ipv6 = true;
-		}
-		info->sport = bpf_ntohs(udp->dest);
-		info->dport = udp->source;
-	}
-	info->padding[0] = 0;
-	info->padding[1] = 0;
-	info->padding[2] = 0;
-	return info;
-}
-
-static inline __attribute__((always_inline)) void
-udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
-{
-	if (send) {
-		if (!ipv6) {
-			key->daddr[0] = ip->daddr;
-			key->daddr[1] = 0;
-			key->ipv6 = false;
-		} else {
-			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
-			key->daddr[0] = addr[0];
-			key->daddr[1] = addr[1];
-			key->ipv6 = true;
-		}
-		key->dport = udp->dest;
-	} else {
-		if (!ipv6) {
-			key->daddr[0] = ip->saddr;
-			key->daddr[1] = 0;
-			key->ipv6 = false;
-		} else {
-			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
-			key->daddr[0] = addr[0];
-			key->daddr[1] = addr[1];
-			key->ipv6 = true;
-		}
-		key->dport = udp->source;
-	}
-	key->padding1 = 0;
-	key->padding2 = 0;
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp_port_info(struct udphdr *udp, u64 send)
-{
-	struct udp_info *info;
-	int zero = 0;
-
-	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
-	if (!info)
-		return 0;
-
-	if (send) {
-		info->sport = bpf_ntohs(udp->source);
-		info->dport = udp->dest;
-	} else {
-		info->sport = bpf_ntohs(udp->dest);
-		info->dport = udp->source;
-	}
-	info->padding[0] = 0;
-	info->padding[1] = 0;
-	info->padding[2] = 0;
-	return info;
 }
 
 /* This logic is a bit racy, but we can handle it. Thinking through the
