@@ -153,12 +153,12 @@ func (m MsgGenericKprobeArgSize) IsReturnArg() bool {
 }
 
 type MsgGenericKprobeTuple struct {
-	Saddr    uint32
-	Daddr    uint32
+	Saddr    [2]uint64
+	Daddr    [2]uint64
 	Sport    uint16
 	Dport    uint16
 	Protocol uint16
-	Pad      uint16
+	Family   uint16
 }
 
 type MsgGenericKprobeSock struct {
@@ -166,9 +166,9 @@ type MsgGenericKprobeSock struct {
 	Sockaddr uint64
 	Mark     uint32
 	Priority uint32
-	Family   uint16
 	Type     uint16
-	Pad      uint32
+	State    uint8
+	Pad      [5]uint8
 }
 
 type MsgGenericKprobeArgSock struct {
@@ -184,6 +184,7 @@ type MsgGenericKprobeArgSock struct {
 	Dport    uint32
 	Sockaddr uint64
 	Label    string
+	State    uint8
 }
 
 func (m MsgGenericKprobeArgSock) GetIndex() uint64 {
@@ -206,6 +207,7 @@ type MsgGenericKprobeSkb struct {
 
 type MsgGenericKprobeArgSkb struct {
 	Index       uint64
+	Family      uint16
 	Hash        uint32
 	Len         uint32
 	Priority    uint32
@@ -228,18 +230,36 @@ func (m MsgGenericKprobeArgSkb) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 
-type MsgGenericKprobeCred struct {
-	Permitted   uint64
-	Effective   uint64
-	Inheritable uint64
+type MsgGenericCred struct {
+	Uid        uint32
+	Gid        uint32
+	Suid       uint32
+	Sgid       uint32
+	Euid       uint32
+	Egid       uint32
+	FSuid      uint32
+	FSgid      uint32
+	SecureBits uint32
+	Pad        uint32
+	Cap        processapi.MsgCapabilities
+	UserNs     processapi.MsgUserNamespace
 }
 
 type MsgGenericKprobeArgCred struct {
-	Index       uint64
-	Permitted   uint64
-	Effective   uint64
-	Inheritable uint64
-	Label       string
+	Index      uint64
+	Uid        uint32
+	Gid        uint32
+	Suid       uint32
+	Sgid       uint32
+	Euid       uint32
+	Egid       uint32
+	FSuid      uint32
+	FSgid      uint32
+	SecureBits uint32
+	Pad        uint32
+	Cap        processapi.MsgCapabilities
+	UserNs     processapi.MsgUserNamespace
+	Label      string
 }
 
 func (m MsgGenericKprobeArgCred) GetIndex() uint64 {
@@ -270,18 +290,18 @@ func (m MsgGenericKprobeArgCapability) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 
-type MsgGenericKprobeUserNamespace struct {
+type MsgGenericUserNamespace struct {
 	Level  int32
-	Owner  uint32
-	Group  uint32
+	Uid    uint32
+	Gid    uint32
 	NsInum uint32
 }
 
 type MsgGenericKprobeArgUserNamespace struct {
 	Index  uint64
 	Level  int32
-	Owner  uint32
-	Group  uint32
+	Uid    uint32
+	Gid    uint32
 	NsInum uint32
 	Label  string
 }

@@ -95,6 +95,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 			sockArg := &tetragon.KprobeSock{
 				Cookie:   e.Sockaddr,
 				Family:   network.InetFamily(e.Family),
+				State:    network.TcpState(e.State),
 				Type:     network.InetType(e.Type),
 				Protocol: network.InetProtocol(e.Protocol),
 				Mark:     e.Mark,
@@ -120,16 +121,39 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 				Protocol:    network.InetProtocol(uint16(e.Proto)),
 				SecPathLen:  e.SecPathLen,
 				SecPathOlen: e.SecPathOLen,
+				Family:      network.InetFamily(e.Family),
 			}
 			a.Arg = &tetragon.KprobeArgument_SkbArg{SkbArg: skbArg}
 			a.Label = e.Label
 		case api.MsgGenericKprobeArgCred:
-			capsArg := &tetragon.KprobeCred{
-				Permitted:   caps.GetCapabilitiesTypes(e.Permitted),
-				Effective:   caps.GetCapabilitiesTypes(e.Effective),
-				Inheritable: caps.GetCapabilitiesTypes(e.Inheritable),
+			credArg := &tetragon.ProcessCredentials{
+				Uid:        &wrapperspb.UInt32Value{Value: e.Uid},
+				Gid:        &wrapperspb.UInt32Value{Value: e.Gid},
+				Euid:       &wrapperspb.UInt32Value{Value: e.Euid},
+				Egid:       &wrapperspb.UInt32Value{Value: e.Egid},
+				Suid:       &wrapperspb.UInt32Value{Value: e.Suid},
+				Sgid:       &wrapperspb.UInt32Value{Value: e.Sgid},
+				Fsuid:      &wrapperspb.UInt32Value{Value: e.FSuid},
+				Fsgid:      &wrapperspb.UInt32Value{Value: e.FSgid},
+				Securebits: caps.GetSecureBitsTypes(e.SecureBits),
 			}
-			a.Arg = &tetragon.KprobeArgument_CredArg{CredArg: capsArg}
+			credArg.Caps = &tetragon.Capabilities{
+				Permitted:   caps.GetCapabilitiesTypes(e.Cap.Permitted),
+				Effective:   caps.GetCapabilitiesTypes(e.Cap.Effective),
+				Inheritable: caps.GetCapabilitiesTypes(e.Cap.Inheritable),
+			}
+			credArg.UserNs = &tetragon.UserNamespace{
+				Level: &wrapperspb.Int32Value{Value: e.UserNs.Level},
+				Uid:   &wrapperspb.UInt32Value{Value: e.UserNs.Uid},
+				Gid:   &wrapperspb.UInt32Value{Value: e.UserNs.Gid},
+				Ns: &tetragon.Namespace{
+					Inum: e.UserNs.NsInum,
+				},
+			}
+			if e.UserNs.Level == 0 {
+				credArg.UserNs.Ns.IsHost = true
+			}
+			a.Arg = &tetragon.KprobeArgument_ProcessCredentialsArg{ProcessCredentialsArg: credArg}
 			a.Label = e.Label
 		case api.MsgGenericKprobeArgBytes:
 			if e.OrigSize > uint64(len(e.Value)) {
@@ -185,10 +209,10 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 			a.Arg = &tetragon.KprobeArgument_BpfMapArg{BpfMapArg: bpfMapArg}
 			a.Label = e.Label
 		case api.MsgGenericKprobeArgUserNamespace:
-			nsArg := &tetragon.KprobeUserNamespace{
+			nsArg := &tetragon.UserNamespace{
 				Level: &wrapperspb.Int32Value{Value: e.Level},
-				Owner: &wrapperspb.UInt32Value{Value: e.Owner},
-				Group: &wrapperspb.UInt32Value{Value: e.Group},
+				Uid:   &wrapperspb.UInt32Value{Value: e.Uid},
+				Gid:   &wrapperspb.UInt32Value{Value: e.Gid},
 				Ns: &tetragon.Namespace{
 					Inum: e.NsInum,
 				},
@@ -196,7 +220,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 			if e.Level == 0 {
 				nsArg.Ns.IsHost = true
 			}
-			a.Arg = &tetragon.KprobeArgument_UserNamespaceArg{UserNamespaceArg: nsArg}
+			a.Arg = &tetragon.KprobeArgument_UserNsArg{UserNsArg: nsArg}
 			a.Label = e.Label
 		case api.MsgGenericKprobeArgCapability:
 			cArg := &tetragon.KprobeCapability{
@@ -300,6 +324,10 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 		case int32:
 			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_IntArg{
 				IntArg: v,
+			}})
+		case string:
+			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_StringArg{
+				StringArg: v,
 			}})
 
 		case []byte:

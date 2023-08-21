@@ -237,6 +237,11 @@ func typesCompatible(specTy string, kernelTy string) bool {
 		case "int":
 			return true
 		}
+	case "cred":
+		switch kernelTy {
+		case "struct cred *":
+			return true
+		}
 	}
 
 	return false
@@ -322,6 +327,112 @@ spec:
 
 			crd = crd + filter
 		}
+	}
+
+	return crd, nil
+}
+
+func GetSyscallsList() ([]string, error) {
+	btfFile := "/sys/kernel/btf/vmlinux"
+
+	tetragonBtfEnv := os.Getenv("TETRAGON_BTF")
+	if tetragonBtfEnv != "" {
+		if _, err := os.Stat(tetragonBtfEnv); err != nil {
+			return []string{}, fmt.Errorf("Failed to find BTF: %s", tetragonBtfEnv)
+		}
+		btfFile = tetragonBtfEnv
+	}
+
+	bspec, err := btf.LoadSpec(btfFile)
+	if err != nil {
+		return []string{}, fmt.Errorf("BTF load failed: %v", err)
+	}
+
+	var list []string
+
+	for _, key := range syscallinfo.SyscallsNames() {
+		var fn *btf.Func
+
+		if key == "" {
+			continue
+		}
+
+		sym, err := arch.AddSyscallPrefix(key)
+		if err != nil {
+			return []string{}, err
+		}
+
+		err = bspec.TypeByName(sym, &fn)
+		if err != nil {
+			continue
+		}
+
+		list = append(list, sym)
+	}
+
+	return list, nil
+}
+
+func GetSyscallsYamlList(binary string) (string, error) {
+	crd := `apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "syscalls"
+spec:
+  lists:
+  - name: "syscalls"
+    type: "syscalls"
+    values:`
+
+	btfFile := "/sys/kernel/btf/vmlinux"
+
+	tetragonBtfEnv := os.Getenv("TETRAGON_BTF")
+	if tetragonBtfEnv != "" {
+		if _, err := os.Stat(tetragonBtfEnv); err != nil {
+			return "", fmt.Errorf("Failed to find BTF: %s", tetragonBtfEnv)
+		}
+		btfFile = tetragonBtfEnv
+	}
+
+	bspec, err := btf.LoadSpec(btfFile)
+	if err != nil {
+		return "", fmt.Errorf("BTF load failed: %v", err)
+	}
+
+	for _, key := range syscallinfo.SyscallsNames() {
+		var fn *btf.Func
+
+		if key == "" {
+			continue
+		}
+
+		sym, err := arch.AddSyscallPrefix(key)
+		if err != nil {
+			return "", err
+		}
+
+		err = bspec.TypeByName(sym, &fn)
+		if err != nil {
+			continue
+		}
+
+		crd = crd + "\n" + fmt.Sprintf("    - \"%s\"", key)
+	}
+
+	crd = crd + `
+  kprobes:
+    - call: "list:syscalls"
+      syscall: true`
+
+	if binary != "" {
+		filter := `
+    selectors:
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "` + binary + `"`
+
+		crd = crd + filter
 	}
 
 	return crd, nil

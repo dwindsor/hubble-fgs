@@ -418,6 +418,15 @@ func createGenericTracepointSensor(
 		}
 		maps = append(maps, addr4FilterMaps)
 
+		addr6FilterMaps := program.MapBuilderPin("addr6lpm_maps", sensors.PathJoin(pinPath, "addr6lpm_maps"), prog0)
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxEntries := tp.selectors.Addr6MapsMaxEntries()
+			addr6FilterMaps.SetInnerMaxEntries(maxEntries)
+		}
+		maps = append(maps, addr6FilterMaps)
+
 		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), prog0)
 		maps = append(maps, selNamesMap)
 	}
@@ -640,7 +649,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			unix.Args = append(unix.Args, val)
 
-		case gt.GenericS32Type:
+		case gt.GenericIntType, gt.GenericS32Type:
 			var val int32
 			err := binary.Read(r, binary.LittleEndian, &val)
 			if err != nil {
@@ -690,6 +699,12 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 				default:
 					logger.GetLogger().Warnf("failed to read array argument: unexpected base type: %w", intTy.Base)
 				}
+			}
+		case gt.GenericStringType:
+			if arg, err := parseString(r); err != nil {
+				logger.GetLogger().WithError(err).Warn("error parsing arg type string")
+			} else {
+				unix.Args = append(unix.Args, arg)
 			}
 
 		default:
