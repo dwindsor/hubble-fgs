@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cilium/cilium v1.14.0
+	github.com/cilium/cilium v1.14.1
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.3.0
