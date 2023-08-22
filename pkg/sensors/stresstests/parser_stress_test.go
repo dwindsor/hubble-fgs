@@ -26,7 +26,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -139,13 +139,13 @@ func (tc *testCase) run(t *testing.T) {
 				"port": port,
 			})
 
-			err = observer.WriteConfigFile(testConfigFile, builder.String())
+			err = observertesthelper.WriteConfigFile(testConfigFile, builder.String())
 			require.NoError(t, err, "config file should write")
 
 			bpf.CheckOrMountCgroup2()
 
 			base := base.GetInitialSensor()
-			_, err = observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+			_, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 			require.NoError(t, err, "observer should start")
 		}
 

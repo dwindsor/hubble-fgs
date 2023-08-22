@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
@@ -141,15 +142,15 @@ func init() {
 //
 //revive:disable:context-as-argument
 func getTcpObserver(t *testing.T, ctx context.Context, config string, docker bool) *observer.Observer {
-	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	var obs *observer.Observer
 	var err error
 	if docker {
-		obs, err = observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+		obs, err = observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib)
 	} else {
-		obs, err = observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+		obs, err = observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -258,8 +259,8 @@ func TestConnectEvent4(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
@@ -288,8 +289,8 @@ func testDisableConfigConnect4(t *testing.T, disableConnect bool) {
 	)
 
 	obs := getTcpObserverDisableEvents(t, ctx, false, disableConnect, true, true, true)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 
 	// If connect events are disabled then expect checker failure
 	err := jsonchecker.JsonTestCheckExpect(t, checker, disableConnect)
@@ -363,7 +364,7 @@ func TestExecEventClone4(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -463,7 +464,7 @@ func TestExistingAcceptEvent4(t *testing.T) {
 
 	/* Create obs */
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
@@ -580,7 +581,7 @@ func TestListenAcceptClose4(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -644,7 +645,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 	)
 
 	obs := getTcpObserverDisableEvents(t, ctx, false, true, disableClose, disableAccept, disableListen)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -688,13 +689,13 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
-	observer.WaitForProcess("nc -nvlp 8081 -s 0.0.0.0")
+	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
+	observertesthelper.WaitForProcess("nc -nvlp 8081 -s 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
 	obs := getBasicTcpObserver(t, ctx, true)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -743,12 +744,12 @@ func TestDockerListenConnect4(t *testing.T) {
 	defer cancel()
 
 	obs := getBasicTcpObserver(t, ctx, true)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
+	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1036,21 +1037,21 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	defer cancel()
 
 	if legacy {
-		if err := observer.WriteConfigFile(testConfigFile, tcpConfigLegacy); err != nil {
+		if err := observertesthelper.WriteConfigFile(testConfigFile, tcpConfigLegacy); err != nil {
 			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 		}
 	} else {
-		if err := observer.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
+		if err := observertesthelper.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
 			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 		}
 	}
 
 	dfltBase := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")
@@ -1170,12 +1171,12 @@ func TestNamespaces(t *testing.T) {
 			WithParent(ec.NewProcessChecker()),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -1238,7 +1239,7 @@ func TestDetectLatency4(t *testing.T) {
 	)
 
 	obs := getTcpObserverWithLatencyDetection(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8082")
@@ -1261,11 +1262,11 @@ func TestDetectLatency4(t *testing.T) {
 }
 
 func TestLoadTcpSensor(t *testing.T) {
-	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -1344,8 +1345,8 @@ func TestConnectEvent6(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "[::1]")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "[::1]")
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
@@ -1409,7 +1410,7 @@ func TestExecEventClone6(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8081")
@@ -1509,7 +1510,7 @@ func TestExistingAcceptEvent6(t *testing.T) {
 
 	/* Create obs */
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
@@ -1626,7 +1627,7 @@ func TestListenAcceptClose6(t *testing.T) {
 	)
 
 	obs := getBasicTcpObserver(t, ctx, false)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8081")
@@ -1659,13 +1660,13 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
-	observer.WaitForProcess("nc -nvlp 8081 -s [::]")
+	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
+	observertesthelper.WaitForProcess("nc -nvlp 8081 -s [::]")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
 	obs := getBasicTcpObserver(t, ctx, true)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -1714,12 +1715,12 @@ func TestDockerListenConnect6(t *testing.T) {
 	defer cancel()
 
 	obs := getBasicTcpObserver(t, ctx, true)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
+	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.

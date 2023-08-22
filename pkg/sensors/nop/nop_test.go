@@ -19,7 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -53,20 +53,20 @@ spec:
 }
 
 func TestNopSensorSmoke(t *testing.T) {
-	if err := observer.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err := observer.GetDefaultObserverWithConfig(t, context.Background(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	_, err := observertesthelper.GetDefaultObserverWithConfig(t, context.Background(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	assert.NoError(t, err, "nop sensor should load")
 }
 
 func TestLoadNopSensor(t *testing.T) {
-	if err := observer.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}

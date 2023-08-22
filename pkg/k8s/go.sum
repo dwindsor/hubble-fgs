@@ -80,8 +80,8 @@ github.com/cilium/client-go v0.27.2-fix/go.mod h1:tY0gVmUsHrAmjzHX9zs7eCjxcBsf8I
 github.com/cilium/controller-tools v0.6.2 h1:oIkqAzqncKsm+lQFJVP6n+bqHOVs9nUZ06hgZ4PxlMM=
 github.com/cilium/controller-tools v0.6.2/go.mod h1:oaeGpjXn6+ZSEIQkUe/+3I40PNiDYp9aeawbt3xTgJ8=
 github.com/cilium/dns v1.1.51-0.20220729113855-5b94b11b46fc/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
-github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2 h1:h27SvWUTrlFQ2Q8LAnt0q+iw/VJoni8ffzCjAIidLV8=
-github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2/go.mod h1:qOTXyxeuKXiha7G6yZPUzrvJ8l7qSrVAxJl1VGBYrkE=
+github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f h1:r0aLexokPBHCYtgLNE+DLGB+G8571+oHfqc8jTdzVbE=
+github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f/go.mod h1:M0zzlEQp1jqrDo6lU8WqLiq9KYp34264m6r0a8ZwG9Q=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cncf/udpa/go v0.0.0-20200629203442-efcf912fb354/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=

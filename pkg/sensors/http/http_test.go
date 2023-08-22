@@ -27,7 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
@@ -120,16 +120,16 @@ func TestHttp11Curl(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -209,16 +209,16 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 			WithHttp(httpChecker),
 	)
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -231,15 +231,15 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}

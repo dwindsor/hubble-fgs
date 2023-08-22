@@ -1651,14 +1651,7 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 			l.Logf(warn)
 		}
 		matchedLabels := map[string]struct{}{}
-		for _, label := range p.Labels {
-			kv := strings.SplitN(label, "=", 2)
-			if len(kv) != 2 {
-				l.Logf("label %s does not match key=val format. Ignoring", label)
-				continue
-			}
-			key := kv[0]
-			val := kv[1]
+		for key, val := range p.PodLabels {
 			if matcher, ok := labelMatchers[key]; ok {
 				if err := matcher(val); err != nil {
 					return fmt.Errorf("label %s mismatch: %w", key, err)
@@ -1679,7 +1672,7 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 			}
 		}
 
-		l.Logf("**** MATCH on %s: %s", "labels", p.Labels)
+		l.Logf("**** MATCH on %s: %s", "labels", p.PodLabels)
 		return nil
 	})
 }

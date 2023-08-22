@@ -37,7 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -681,7 +681,7 @@ func TestLoadFileSensor(t *testing.T) {
 	specFname := createSpecFile(t, test_path)
 
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -810,7 +810,7 @@ func TestFileEnforceCreate(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_CREATE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -818,7 +818,7 @@ func TestFileEnforceCreate(t *testing.T) {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
 	})
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	oFile := filepath.Join(out, "test1")
@@ -860,7 +860,7 @@ func TestFileEnforceWrite(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_WRITE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -868,7 +868,7 @@ func TestFileEnforceWrite(t *testing.T) {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
 	})
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	oFile := filepath.Join(out, "test1")
@@ -915,7 +915,7 @@ func TestFileEnforceExec(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, testBin, "FILE_EXEC")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -923,7 +923,7 @@ func TestFileEnforceExec(t *testing.T) {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
 	})
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	assert.Error(t, exec.Command(testBin).Run()) // we expect this to fail
@@ -2193,7 +2193,7 @@ func TestFileOps(t *testing.T) {
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	// Can't use observer.WithMyPid() here because we are also checking events from
 	// a spawned container here.
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib)
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -2201,7 +2201,7 @@ func TestFileOps(t *testing.T) {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
 	})
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	t.Run("read", func(lt *testing.T) {

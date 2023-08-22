@@ -37,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/sirupsen/logrus"
 
@@ -388,21 +389,21 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	defer cancel()
 
 	if legacy {
-		if err := observer.WriteConfigFile(testConfigFile, udpConfigLegacy); err != nil {
+		if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigLegacy); err != nil {
 			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 		}
 	} else {
-		if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
+		if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
 			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 		}
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid(), observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")
@@ -616,16 +617,16 @@ func TestUdpSeqCheck(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")
@@ -712,12 +713,12 @@ spec:
 //
 //revive:disable:context-as-argument
 func getUdpObserver(t *testing.T, ctx context.Context, config string) *observer.Observer {
-	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -904,7 +905,7 @@ func TestConnectEvent4(t *testing.T) {
 	}
 
 	obs := getBasicUdpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081")
@@ -955,7 +956,7 @@ func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableSt
 	)
 
 	obs := getUdpObserverDisableEvents(t, ctx, disableConnect, true, disableStats)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081")
@@ -1061,7 +1062,7 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	obs := getBasicUdpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
@@ -1144,7 +1145,7 @@ func TestDetectLatency4(t *testing.T) {
 	)
 
 	obs := getUdpObserverWithLatencyDetection(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081")
@@ -1293,11 +1294,11 @@ func TestLoadUdpSensor(t *testing.T) {
 		}
 	}
 
-	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -1442,7 +1443,7 @@ func TestConnectEvent6(t *testing.T) {
 	}
 
 	obs := getBasicUdpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6unvlp", "8081")
@@ -1540,7 +1541,7 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	obs := getBasicUdpObserver(t, ctx)
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdClient := exec.Command(client, "-6u", "::1", "8081")
@@ -1568,16 +1569,16 @@ func TestDnsEvents(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	selfChecker := ec.NewProcessChecker().
@@ -1700,15 +1701,15 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	defer cancel()
 
 	disableCloseConfig := udpL7ConfigDisableClose + strconv.FormatBool(disableClose)
-	if err := observer.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")

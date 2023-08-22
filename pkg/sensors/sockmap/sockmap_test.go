@@ -23,7 +23,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
@@ -124,17 +124,17 @@ func TestTLS13(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -188,17 +188,17 @@ func TestTLS12(t *testing.T) {
 		tlsChecker,
 	)
 
-	if err := observer.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -225,11 +225,11 @@ spec:
         - 443
 `
 
-	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -287,11 +287,11 @@ spec:
         - 443
 `
 
-	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
@@ -365,17 +365,17 @@ func TestCGTLS13(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -429,17 +429,17 @@ func TestCGTLS12(t *testing.T) {
 		tlsChecker,
 	)
 
-	if err := observer.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observer.WithMyPid())
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)

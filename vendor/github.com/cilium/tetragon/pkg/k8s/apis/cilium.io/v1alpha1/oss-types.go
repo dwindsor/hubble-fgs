@@ -20,8 +20,9 @@ type KProbeSpec struct {
 	// +kubebuilder:validation:Optional
 	// A return argument to include in the trace output.
 	ReturnArg KProbeArg `json:"returnArg"`
-	// +kubebuilder:validation:Enum=Post;TrackSock;UntrackSock
+	// +kubebuilder:validation:Optional
 	// An action to perform on the return argument.
+	// Available actions are: Post;TrackSock;UntrackSock
 	ReturnArgAction string `json:"returnArgAction"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
@@ -32,7 +33,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;
+	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;
 	// Argument type.
 	Type string `json:"type"`
 	// +kubebuilder:validation:Optional
@@ -42,11 +43,18 @@ type KProbeArg struct {
 	SizeArgIndex uint32 `json:"sizeArgIndex"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-	// This field is used only for char_buf and char_iovec types.
+	// This field is used only for char_buf and char_iovec types. It indicates
+	// that this argument should be read later (when the kretprobe for the
+	// symbol is triggered) because it might not be populated when the kprobe
+	// is triggered at the entrance of the function. For example, a buffer
+	// supplied to read(2) won't have content until kretprobe is triggered.
 	ReturnCopy bool `json:"returnCopy"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-	// Read maximum possible data. This field is used only for char_buf type.
+	// Read maximum possible data (currently 327360). This field is only used
+	// for char_buff data. When this value is false (default), the bpf program
+	// will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+	// supports fetching up to 327360 bytes if this flag is turned on
 	MaxData bool `json:"maxData"`
 	// +kubebuilder:validation:Optional
 	// Label to output in the JSON
@@ -54,7 +62,7 @@ type KProbeArg struct {
 }
 
 type BinarySelector struct {
-	// +kubebuilder:validation:Enum=In
+	// +kubebuilder:validation:Enum=In;NotIn
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
@@ -149,7 +157,7 @@ type ArgSelector struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument to apply fhe filter to.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;Postfix
+	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;NotPrefix;Postfix;NotPostfix;GreaterThan;LessThan;GT;LT;Mask;SPort;NotSPort;SPortPriv;NotSportPriv;DPort;NotDPort;DPortPriv;NotDPortPriv;SAddr;NotSAddr;DAddr;NotDAddr;Protocol;Family;State
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
@@ -208,4 +216,19 @@ type UProbeSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors"`
+}
+
+type ListSpec struct {
+	// Name of the list
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
+	// Values of the list
+	Values []string `json:"values"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=syscalls;generated_syscalls;generated_ftrace
+	// Indicates the type of the list values.
+	Type string `json:"type"`
+	// +kubebuilder:validation:Optional
+	// Pattern for 'generated' lists.
+	Pattern string `json:"pattern"`
 }

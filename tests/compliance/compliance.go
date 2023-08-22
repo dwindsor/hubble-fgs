@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -98,7 +98,7 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal TracingPolicy: %w", err)
 	}
-	err = observer.WriteConfigFile(configFilePath, string(policyBytes))
+	err = observertesthelper.WriteConfigFile(configFilePath, string(policyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to write config file: %w", err)
 	}
@@ -107,12 +107,12 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 		return nil, fmt.Errorf("failed to check or mount cgroup2")
 	}
 
-	obs, err := observer.GetDefaultObserverWithFile(t, ctx.Ctx, configFilePath, runner.Conf().TetragonLib)
+	obs, err := observertesthelper.GetDefaultObserverWithFile(t, ctx.Ctx, configFilePath, runner.Conf().TetragonLib)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen for events: %w", err)
 	}
 
-	observer.LoopEvents(ctx.Ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx.Ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	return &doneWG, nil

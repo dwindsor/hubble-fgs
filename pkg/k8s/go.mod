@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cilium/cilium v1.14.1
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.3.0
 	k8s.io/apiextensions-apiserver v0.27.4

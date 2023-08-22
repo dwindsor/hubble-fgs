@@ -10,8 +10,8 @@ github.com/cilium/cilium/pkg/lock
 github.com/cilium/cilium/pkg/logging
 github.com/cilium/cilium/pkg/logging/logfields
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2
-## explicit; go 1.18
+# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
+## explicit; go 1.20
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned

@@ -324,6 +324,7 @@ github.com/cilium/tetragon/pkg/metrics/watchermetrics
 github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/multiplexer
 github.com/cilium/tetragon/pkg/observer
+github.com/cilium/tetragon/pkg/observer/observertesthelper
 github.com/cilium/tetragon/pkg/oldhubble/api/v1
 github.com/cilium/tetragon/pkg/oldhubble/cilium
 github.com/cilium/tetragon/pkg/oldhubble/cilium/client
@@ -388,7 +389,7 @@ github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
-# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230515182614-dcca3b1890e2 => ./pkg/k8s
+# github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f => ./pkg/k8s
 ## explicit; go 1.21
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client

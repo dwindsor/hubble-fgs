@@ -89,6 +89,10 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// A list of list specs.
+	Lists []ListSpec `json:"lists"`
 }
 
 func (tp *TracingPolicy) TpName() string {
@@ -121,6 +125,10 @@ type KProbeSpec struct {
 	// A return argument to include in the trace output.
 	ReturnArg KProbeArg `json:"returnArg"`
 	// +kubebuilder:validation:Optional
+	// An action to perform on the return argument.
+	// Available actions are: Post;TrackSock;UntrackSock
+	ReturnArgAction string `json:"returnArgAction"`
+	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors"`
 }
@@ -129,7 +137,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;
+	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;
 	// Argument type.
 	Type string `json:"type"`
 	// +kubebuilder:validation:Optional
@@ -139,19 +147,22 @@ type KProbeArg struct {
 	SizeArgIndex uint32 `json:"sizeArgIndex"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-    // This field is used only for char_buf and char_iovec types. It indicates
-    // that this argument should be read later (when the kretprobe for the
-    // symbol is triggered) because it might not be populated when the kprobe
-    // is triggered at the entrance of the function. For example, a buffer
-    // supplied to read(2) won't have content until kretprobe is triggered.
+	// This field is used only for char_buf and char_iovec types. It indicates
+	// that this argument should be read later (when the kretprobe for the
+	// symbol is triggered) because it might not be populated when the kprobe
+	// is triggered at the entrance of the function. For example, a buffer
+	// supplied to read(2) won't have content until kretprobe is triggered.
 	ReturnCopy bool `json:"returnCopy"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-    // Read maximum possible data (currently 327360). This field is only used
-    // for char_buff data. When this value is false (default), the bpf program
-    // will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
-    // supports fetching up to 327360 bytes if this flag is turned on
+	// Read maximum possible data (currently 327360). This field is only used
+	// for char_buff data. When this value is false (default), the bpf program
+	// will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+	// supports fetching up to 327360 bytes if this flag is turned on
 	MaxData bool `json:"maxData"`
+	// +kubebuilder:validation:Optional
+	// Label to output in the JSON
+	Label string `json:"label"`
 }
 
 type BinarySelector struct {
@@ -250,7 +261,7 @@ type ArgSelector struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument to apply fhe filter to.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;Postfix;GreaterThan;LessThan;GT;LT
+	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;NotPrefix;Postfix;NotPostfix;GreaterThan;LessThan;GT;LT;Mask;SPort;NotSPort;SPortPriv;NotSportPriv;DPort;NotDPort;DPortPriv;NotDPortPriv;SAddr;NotSAddr;DAddr;NotDAddr;Protocol;Family;State
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
@@ -258,7 +269,7 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost
+	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost;TrackSock;UntrackSock
 	// Action to execute.
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
@@ -279,6 +290,13 @@ type ActionSelector struct {
 	// +kubebuilder:validation:Optional
 	// A signal number for signal action
 	ArgSig uint32 `json:"argSig"`
+	// +kubebuilder:validation:Optional
+	// An arg index for the sock for trackSock and untrackSock actions
+	ArgSock uint32 `json:"argSock"`
+	// +kubebuilder:validation:Optional
+	// A time period within which repeated messages will not be posted. Can be specified in seconds (default or with
+	// 's' suffix), minutes ('m' suffix) or hours ('h' suffix).
+	RateLimit string `json:"rateLimit"`
 }
 
 type TracepointSpec struct {
@@ -316,4 +334,19 @@ type UProbeSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors"`
+}
+
+type ListSpec struct {
+	// Name of the list
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
+	// Values of the list
+	Values []string `json:"values"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=syscalls;generated_syscalls;generated_ftrace
+	// Indicates the type of the list values.
+	Type string `json:"type"`
+	// +kubebuilder:validation:Optional
+	// Pattern for 'generated' lists.
+	Pattern string `json:"pattern"`
 }

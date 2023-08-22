@@ -146,6 +146,7 @@ spec:
                                 description: Filter operation.
                                 enum:
                                 - In
+                                - NotIn
                                 type: string
                               values:
                                 description: Value to compare the argument against.
@@ -213,13 +214,22 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data. This field is
-                              used only for char_buf type.
+                            description: Read maximum possible data (currently 327360).
+                              This field is only used for char_buff data. When this
+                              value is false (default), the bpf program will fetch
+                              at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is
+                              turned on
                             type: boolean
                           returnCopy:
                             default: false
                             description: This field is used only for char_buf and
-                              char_iovec types.
+                              char_iovec types. It indicates that this argument should
+                              be read later (when the kretprobe for the symbol is
+                              triggered) because it might not be populated when the
+                              kprobe is triggered at the entrance of the function.
+                              For example, a buffer supplied to read(2) won't have
+                              content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
                             description: Specifies the position of the corresponding
@@ -247,6 +257,14 @@ spec:
                             - filename
                             - path
                             - nop
+                            - bpf_attr
+                            - perf_event
+                            - bpf_map
+                            - user_namespace
+                            - capability
+                            - kiocb
+                            - iov_iter
+                            - cred
                             type: string
                         required:
                         - index
@@ -274,13 +292,21 @@ spec:
                           type: string
                         maxData:
                           default: false
-                          description: Read maximum possible data. This field is used
-                            only for char_buf type.
+                          description: Read maximum possible data (currently 327360).
+                            This field is only used for char_buff data. When this
+                            value is false (default), the bpf program will fetch at
+                            most 4096 bytes. In later kernels (>=5.4) tetragon supports
+                            fetching up to 327360 bytes if this flag is turned on
                           type: boolean
                         returnCopy:
                           default: false
                           description: This field is used only for char_buf and char_iovec
-                            types.
+                            types. It indicates that this argument should be read
+                            later (when the kretprobe for the symbol is triggered)
+                            because it might not be populated when the kprobe is triggered
+                            at the entrance of the function. For example, a buffer
+                            supplied to read(2) won't have content until kretprobe
+                            is triggered.
                           type: boolean
                         sizeArgIndex:
                           description: Specifies the position of the corresponding
@@ -308,17 +334,22 @@ spec:
                           - filename
                           - path
                           - nop
+                          - bpf_attr
+                          - perf_event
+                          - bpf_map
+                          - user_namespace
+                          - capability
+                          - kiocb
+                          - iov_iter
+                          - cred
                           type: string
                       required:
                       - index
                       - type
                       type: object
                     returnArgAction:
-                      description: An action to perform on the return argument.
-                      enum:
-                      - Post
-                      - TrackSock
-                      - UntrackSock
+                      description: 'An action to perform on the return argument. Available
+                        actions are: Post;TrackSock;UntrackSock'
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
@@ -405,7 +436,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -426,6 +479,7 @@ spec:
                                   description: Filter operation.
                                   enum:
                                   - In
+                                  - NotIn
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -609,7 +663,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -630,7 +706,32 @@ spec:
                       type: boolean
                   required:
                   - call
-                  - returnArgAction
+                  type: object
+                type: array
+              lists:
+                description: A list of list specs.
+                items:
+                  properties:
+                    name:
+                      description: Name of the list
+                      type: string
+                    pattern:
+                      description: Pattern for 'generated' lists.
+                      type: string
+                    type:
+                      description: Indicates the type of the list values.
+                      enum:
+                      - syscalls
+                      - generated_syscalls
+                      - generated_ftrace
+                      type: string
+                    values:
+                      description: Values of the list
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - name
                   type: object
                 type: array
               loader:
@@ -1234,13 +1335,22 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data. This field is
-                              used only for char_buf type.
+                            description: Read maximum possible data (currently 327360).
+                              This field is only used for char_buff data. When this
+                              value is false (default), the bpf program will fetch
+                              at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is
+                              turned on
                             type: boolean
                           returnCopy:
                             default: false
                             description: This field is used only for char_buf and
-                              char_iovec types.
+                              char_iovec types. It indicates that this argument should
+                              be read later (when the kretprobe for the symbol is
+                              triggered) because it might not be populated when the
+                              kprobe is triggered at the entrance of the function.
+                              For example, a buffer supplied to read(2) won't have
+                              content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
                             description: Specifies the position of the corresponding
@@ -1268,6 +1378,14 @@ spec:
                             - filename
                             - path
                             - nop
+                            - bpf_attr
+                            - perf_event
+                            - bpf_map
+                            - user_namespace
+                            - capability
+                            - kiocb
+                            - iov_iter
+                            - cred
                             type: string
                         required:
                         - index
@@ -1362,7 +1480,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1383,6 +1523,7 @@ spec:
                                   description: Filter operation.
                                   enum:
                                   - In
+                                  - NotIn
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1566,7 +1707,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1681,7 +1844,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1702,6 +1887,7 @@ spec:
                                   description: Filter operation.
                                   enum:
                                   - In
+                                  - NotIn
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1885,7 +2071,29 @@ spec:
                                   - Equal
                                   - NotEqual
                                   - Prefix
+                                  - NotPrefix
                                   - Postfix
+                                  - NotPostfix
+                                  - GreaterThan
+                                  - LessThan
+                                  - GT
+                                  - LT
+                                  - Mask
+                                  - SPort
+                                  - NotSPort
+                                  - SPortPriv
+                                  - NotSportPriv
+                                  - DPort
+                                  - NotDPort
+                                  - DPortPriv
+                                  - NotDPortPriv
+                                  - SAddr
+                                  - NotSAddr
+                                  - DAddr
+                                  - NotDAddr
+                                  - Protocol
+                                  - Family
+                                  - State
                                   type: string
                                 values:
                                   description: Value to compare the argument against.

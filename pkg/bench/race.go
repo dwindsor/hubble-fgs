@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -101,6 +102,10 @@ func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 
 func (r *raceK8sWatcher) GetPodInfo(_, _, _ string, _ uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 	return nil, nil
+}
+
+func (r *raceK8sWatcher) FindServiceByIP(ip string) ([]*corev1.Service, error) {
+	return nil, fmt.Errorf("service with IP %s not found", ip)
 }
 
 type raceEncoder struct {
