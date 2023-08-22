@@ -22,6 +22,7 @@ import (
 	"text/scanner"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/yalue/native_endian"
@@ -313,7 +314,7 @@ type TestStepAssert struct {
 }
 
 func (a *TestStepAssert) Exec(_ *TestContext) *TestStepError {
-	m, err := bpf.OpenMap(path.Join(bpf.MapPrefixPath(), a.MapName))
+	m, err := ebpf.LoadPinnedMap(path.Join(bpf.MapPrefixPath(), a.MapName), nil)
 	if err != nil {
 		return &TestStepError{a.Position, "ASSERT MAP", err}
 	}
@@ -321,7 +322,7 @@ func (a *TestStepAssert) Exec(_ *TestContext) *TestStepError {
 
 	switch a.Type {
 	case AssertMapCount:
-		count, err := m.Count()
+		count, err := count(m)
 		if err != nil {
 			return &TestStepError{a.Position, "ASSERT MAP", fmt.Errorf("failed to get map count: %w", err)}
 		}
@@ -331,4 +332,14 @@ func (a *TestStepAssert) Exec(_ *TestContext) *TestStepError {
 		}
 	}
 	return nil
+}
+
+func count(m *ebpf.Map) (int, error) {
+	count := 0
+	var key, val string
+	itr := m.Iterate()
+	for itr.Next(key, val) {
+		count++
+	}
+	return count, itr.Err()
 }

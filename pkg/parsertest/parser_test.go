@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -207,7 +208,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 }
 
 func addSelfToEvecveMap(t *testing.T) {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), base.GetExecveMap().Name))
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.GetExecveMap().Name), nil)
 	if err != nil {
 		t.Fatalf("OpenMap: %s\n", err)
 	}
@@ -216,7 +217,7 @@ func addSelfToEvecveMap(t *testing.T) {
 	pid := uint32(os.Getpid())
 	ppid := uint32(os.Getppid())
 
-	err = m.Update(
+	err = m.Put(
 		&execvemap.ExecveKey{Pid: pid},
 		&execvemap.ExecveValue{
 			Parent:  processapi.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
@@ -224,7 +225,7 @@ func addSelfToEvecveMap(t *testing.T) {
 		},
 	)
 	if err != nil {
-		t.Fatalf("Map.Update: %s\n", err)
+		t.Fatalf("Map.Put: %s\n", err)
 	}
 }
 
