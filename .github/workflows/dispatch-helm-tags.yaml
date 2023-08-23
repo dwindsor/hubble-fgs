@@ -1,0 +1,16 @@
+name: dispatch
+on:
+  push:
+    tags:
+      - v*
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to helm-repo
+        run: |
+          curl -u isovalent-bot:${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }} \
+            -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/isovalent/helm-repo/dispatches \
+            -d '{"event_type":"tetragon-chart-push"}'
