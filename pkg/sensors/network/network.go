@@ -366,7 +366,7 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	}
 
 	sens := sensors.SensorBuilder(versionStr, progs, maps)
-	sens.UnloadHook = unloadNetworkSensor
+	sens.PreUnloadHook = unloadNetworkSensor
 
 	return sens
 }

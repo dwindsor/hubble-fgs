@@ -241,7 +241,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		"metrics":                    tcpconfig.MetricsEnabled,
 	}).Infof("Enable TCP")
 	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
-	tcpSensor.UnloadHook = unloadTcpSensor
+	tcpSensor.PreUnloadHook = unloadTcpSensor
 	return tcpSensor
 }
 

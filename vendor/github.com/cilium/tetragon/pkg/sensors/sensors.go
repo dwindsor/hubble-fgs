@@ -32,11 +32,6 @@ var (
 // serialization point for concurrent client requests.
 
 // Sensor is a set of BPF programs and maps that are managed as a unit.
-//
-// NB: We need to rethink the Ops field. See manager main loop for some
-// discussion on this. If we decide to keep them, we should merge them with the
-// UnloadHook since the two are similar: ops.Unloaded is called when a sensor
-// is successfully unloaded, while UnloadHook is called during unloading.
 type Sensor struct {
 	// Name is a human-readbale description.
 	Name string
@@ -46,21 +41,14 @@ type Sensor struct {
 	Maps []*program.Map
 	// Loaded indicates whether the sensor has been Loaded.
 	Loaded bool
-	// Ops contains an implementation to perform on this sensor.
-	Ops Operations
-	// UnloadHook can optionally contain a pointer to a function to be
+	// PreUnloadHook can optionally contain a pointer to a function to be
 	// called during sensor unloading, prior to the programs and maps being
 	// unloaded.
-	UnloadHook SensorUnloadHook
-}
-
-// Operations is the interface to the underlying sensor implementations.
-type Operations interface {
-	Loaded(arg LoadArg)
-	Unloaded(arg UnloadArg)
-
-	GetConfig(cfg string) (string, error)
-	SetConfig(cfg string, val string) error
+	PreUnloadHook SensorUnloadHook
+	// PostUnloadHook can optionally contain a pointer to a function to be
+	// called during sensor unloading, after the programs and maps being
+	// unloaded.
+	PostUnloadHook SensorUnloadHook
 }
 
 // SensorUnloadHook is the function signature for an optional function

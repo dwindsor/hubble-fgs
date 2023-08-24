@@ -1224,7 +1224,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Name:  name,
 		Progs: progs,
 		Maps:  maps,
-		UnloadHook: func() error {
+		PreUnloadHook: func() error {
 			fileMonitoringTable.rmFIM(config.TpId)
 			return nil
 		},

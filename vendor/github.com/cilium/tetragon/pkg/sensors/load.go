@@ -122,9 +122,9 @@ func (s *Sensor) Unload() error {
 		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", s.Name)
 	}
 
-	if s.UnloadHook != nil {
-		if err := s.UnloadHook(); err != nil {
-			logger.GetLogger().Warnf("Sensor %s unload hook failed: %s", s.Name, err)
+	if s.PreUnloadHook != nil {
+		if err := s.PreUnloadHook(); err != nil {
+			logger.GetLogger().WithError(err).WithField("sensor", s.Name).Warn("Pre unload hook failed")
 		}
 	}
 
@@ -134,11 +134,18 @@ func (s *Sensor) Unload() error {
 
 	for _, m := range s.Maps {
 		if err := m.Unload(); err != nil {
-			logger.GetLogger().Warnf("Failed to unload map %s: %s", m.Name, err)
+			logger.GetLogger().WithError(err).WithField("map", s.Name).Warn("Failed to unload map")
 		}
 	}
 
 	s.Loaded = false
+
+	if s.PostUnloadHook != nil {
+		if err := s.PostUnloadHook(); err != nil {
+			logger.GetLogger().WithError(err).WithField("sensor", s.Name).Warn("Post unload hook failed")
+		}
+	}
+
 	return nil
 }
 
