@@ -260,7 +260,6 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	processManager, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&wg,
-		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
 		glblHookRunner,
 	)

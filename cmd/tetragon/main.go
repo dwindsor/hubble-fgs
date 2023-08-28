@@ -445,7 +445,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return fmt.Errorf("failed to get k8s API watcher: %w", err)
 	}
-	ciliumState, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium)
+	_, err = cilium.InitCiliumState(ctx, option.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
@@ -474,7 +474,6 @@ func hubbleFGSExecute() error {
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
-		ciliumState,
 		observer.SensorManager,
 		hookRunner)
 	if err != nil {

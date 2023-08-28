@@ -5,6 +5,9 @@ import (
 	"net"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	ciliumState "github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/logger"
+	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/oldhubble/cilium"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -80,7 +83,7 @@ func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *ciliu
 	var entry []string
 
 	if dns.CiliumDnsEnabled() {
-		endpoint := process.GetProcessEndpoint(proc)
+		endpoint := getProcessEndpoint(proc)
 		if endpoint == nil {
 			return nil, fmt.Errorf("no endpoint found for GetIp")
 		}
@@ -91,4 +94,20 @@ func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *ciliu
 		return entry, nil
 	}
 	return cache.GetIp(ip)
+}
+
+func getProcessEndpoint(p *tetragon.Process) *hubblev1.Endpoint {
+	if p == nil {
+		return nil
+	}
+	if p.Docker == "" {
+		return nil
+	}
+	pod, _, ok := process.GetK8s().FindContainer(p.Docker)
+	if !ok {
+		logger.GetLogger().WithField("container id", p.Docker).Trace("failed to get pod")
+		return nil
+	}
+	endpoint, _ := ciliumState.GetCiliumState().GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
+	return endpoint
 }

@@ -356,18 +356,8 @@ func Get(execId string) (*ProcessInternal, error) {
 	return procCache.get(execId)
 }
 
-func GetProcessEndpoint(p *tetragon.Process) *hubblev1.Endpoint {
-	if p == nil {
-		return nil
-	}
-	if p.Docker == "" {
-		return nil
-	}
-	pod, _, ok := k8s.FindContainer(p.Docker)
-	if !ok {
-		logger.GetLogger().WithField("container id", p.Docker).Trace("failed to get pod")
-		return nil
-	}
-	endpoint, _ := cilium.GetCiliumState().GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
-	return endpoint
+// GetK8s returns K8sResourceWatcher. You must call InitCache before calling this function to ensure
+// that k8s has been initialized.
+func GetK8s() watcher.K8sResourceWatcher {
+	return k8s
 }
