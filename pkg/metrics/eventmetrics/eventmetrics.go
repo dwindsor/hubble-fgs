@@ -80,7 +80,7 @@ var (
 		Name:      "dns_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Dns request/response statistics",
-	}, []string{"namespace", "pod", "binary", "names", "rcodes", "response"})
+	}, []string{"namespace", "workload", "pod", "binary", "names", "rcodes", "response"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -90,7 +90,7 @@ func InitMetrics(registry *prometheus.Registry) {
 func postDnsMetric(res *tetragon.ProcessDns) {
 	var rr string
 
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
@@ -102,7 +102,7 @@ func postDnsMetric(res *tetragon.ProcessDns) {
 		rr = "Request"
 	}
 
-	dnsRequestTotal.WithLabelValues(ns, pod, binary, names, codes, rr).Inc()
+	dnsRequestTotal.WithLabelValues(ns, workload, pod, binary, names, codes, rr).Inc()
 }
 
 func HandleDnsEvent(res *tetragon.ProcessDns) {
@@ -110,10 +110,10 @@ func HandleDnsEvent(res *tetragon.ProcessDns) {
 }
 
 func HandleProcessedEvent(processedEvent interface{}) {
-	var eventType, namespace, pod, binary string
+	var eventType, namespace, workload, pod, binary string
 	switch ev := processedEvent.(type) {
 	case *tetragon.GetEventsResponse:
-		binary, pod, namespace = oss.GetProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+		binary, pod, workload, namespace = oss.GetProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		var err error
 		eventType, err = helpers.ResponseTypeString(ev)
 		if err != nil {
@@ -123,35 +123,35 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	default:
 		eventType = "unknown"
 	}
-	oss.EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
+	oss.EventsProcessed.WithLabelValues(eventType, namespace, workload, pod, binary).Inc()
 }
 
-func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
+func postUDPSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
 	c := float64(s.BytesSubmitted)
-	socketmetrics.SocketStatsUDPTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPTxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsSubmitted)
-	socketmetrics.SocketStatsUDPTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPTxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.BytesConsumed)
-	socketmetrics.SocketStatsUDPRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPRxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsConsumed)
-	socketmetrics.SocketStatsUDPRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPRxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.BytesSent)
-	socketmetrics.SocketStatsUDPStackTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPStackTxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsOut)
-	socketmetrics.SocketStatsUDPStackTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPStackTxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.BytesReceived)
-	socketmetrics.SocketStatsUDPStackRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPStackRxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsIn)
-	socketmetrics.SocketStatsUDPStackRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPStackRxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.SkDrop)
-	socketmetrics.SocketStatsUDPDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPDrops.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.SkbConsumeMisses)
-	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	// Post UDP Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
@@ -159,27 +159,27 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
 		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
 		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
 		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
 		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
 		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
 		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
 		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
-		socketmetrics.UdpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
-		socketmetrics.UdpLatencySum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
+		socketmetrics.UdpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
+		socketmetrics.UdpLatencyCount.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.UdpLatencySum.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
 	}
 }
 
-func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *tetragon.ProcessSockStats) {
+func postUDPMulticastSocketStats(ns, workload, pod, binary, dstns, dstpod, _ string, res *tetragon.ProcessSockStats) {
 	source := res.Socket.SourceIp
 	sip := net.ParseIP(source)
 	dest := res.Socket.DestinationIp
@@ -192,22 +192,22 @@ func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *
 	}
 
 	c := float64(s.BytesSubmitted)
-	socketmetrics.SocketStatsUDPMulticastTxBytes.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastTxBytes.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	c = float64(s.SegsSubmitted)
-	socketmetrics.SocketStatsUDPMulticastTxSegs.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastTxSegs.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	c = float64(s.BytesConsumed)
-	socketmetrics.SocketStatsUDPMulticastRxBytes.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastRxBytes.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	c = float64(s.SegsConsumed)
-	socketmetrics.SocketStatsUDPMulticastRxSegs.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastRxSegs.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	c = float64(s.SkDrop)
-	socketmetrics.SocketStatsUDPMulticastDrops.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastDrops.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	c = float64(s.SkbConsumeMisses)
-	socketmetrics.SocketStatsUDPMulticastConsumeMisses.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+	socketmetrics.SocketStatsUDPMulticastConsumeMisses.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
 
 	// Post UDP Multicast Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
@@ -215,50 +215,50 @@ func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, _ string, res *
 	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
 		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
 		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
 		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
 		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
 		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
 		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
 		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest, "+Inf").Add(c)
-		socketmetrics.UdpMulticastLatencyCount.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
-		socketmetrics.UdpMulticastLatencySum.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(float64(s.Latency.Sum))
+		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest, "+Inf").Add(c)
+		socketmetrics.UdpMulticastLatencyCount.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(c)
+		socketmetrics.UdpMulticastLatencySum.WithLabelValues(ns, workload, pod, binary, source, dstns, dstpod, dest).Add(float64(s.Latency.Sum))
 	}
 }
 
-func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
+func postTCPSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
 	c := float64(s.BytesSent)
-	socketmetrics.SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsTxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsOut)
-	socketmetrics.SocketStatsTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsTxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.BytesReceived)
-	socketmetrics.SocketStatsRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsRxBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsIn)
-	socketmetrics.SocketStatsRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsRxSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.RetransmitsBytes)
-	socketmetrics.SocketStatsRetranBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsRetranBytes.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.RetransmitsSegs)
-	socketmetrics.SocketStatsRetranSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsRetranSegs.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.ToZeroWindow)
-	socketmetrics.SocketStatsZeroWindow.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsZeroWindow.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.Srtt)
-	socketmetrics.SocketStatsSrtt.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Observe(c)
+	socketmetrics.SocketStatsSrtt.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Observe(c)
 
 	c = float64(s.SkDrop)
-	socketmetrics.SocketStatsDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	socketmetrics.SocketStatsDrops.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	// Post TCP Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
@@ -266,43 +266,43 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Rtt != nil && s.Rtt.Buckets != nil {
 		c = float64(s.Rtt.Buckets[0].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(1)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(1)).Add(c)
 		c += float64(s.Rtt.Buckets[1].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(10)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(10)).Add(c)
 		c += float64(s.Rtt.Buckets[2].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(25)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(25)).Add(c)
 		c += float64(s.Rtt.Buckets[3].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(50)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(50)).Add(c)
 		c += float64(s.Rtt.Buckets[4].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(75)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(75)).Add(c)
 		c += float64(s.Rtt.Buckets[5].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(90)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(90)).Add(c)
 		c += float64(s.Rtt.Buckets[6].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(99)).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(99)).Add(c)
 		c += float64(s.Rtt.Buckets[7].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(100)).Add(c)
-		socketmetrics.TcpRttCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
-		socketmetrics.TcpRttSum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Rtt.Sum))
+		socketmetrics.TcpRttBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, getTcpRttPromBucket(100)).Add(c)
+		socketmetrics.TcpRttCount.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.TcpRttSum.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Rtt.Sum))
 	}
 	if s.Latency != nil && s.Latency.Buckets != nil {
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01))).Add(c)
 		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10))).Add(c)
 		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25))).Add(c)
 		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50))).Add(c)
 		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75))).Add(c)
 		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90))).Add(c)
 		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99))).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99))).Add(c)
 		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
-		socketmetrics.TcpLatencyCount.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
-		socketmetrics.TcpLatencySum.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
+		socketmetrics.TcpLatencyBucket.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, "+Inf").Add(c)
+		socketmetrics.TcpLatencyCount.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.TcpLatencySum.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels).Add(float64(s.Latency.Sum))
 	}
 }
 
@@ -326,19 +326,19 @@ func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {
 }
 
 func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
 	if res.Socket.Protocol == tetragon.SocketProtocol_TCP {
 		if tcpconfig.MetricsEnabled {
-			postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+			postTCPSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels, res.Stats)
 		}
 	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
 		if udpconfig.MetricsEnabled {
-			postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
-			postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res)
+			postUDPSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+			postUDPMulticastSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels, res)
 		}
 	}
 }
@@ -347,52 +347,52 @@ func HandleSocketEvent(res *tetragon.ProcessSockStats) {
 	postStatsEventSocketStats(res)
 }
 
-func postUDPBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkBurst) {
+func postUDPBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
-func postTCPBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkBurst) {
+func postTCPBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
 func postProcessNetworkBurstEventStats(res *tetragon.ProcessNetworkBurst) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
 		if udpconfig.MetricsEnabled {
-			postUDPBurstStats(ns, pod, binary, res)
+			postUDPBurstStats(ns, workload, pod, binary, res)
 		}
 	case tetragon.SocketProtocol_TCP.String():
 		if tcpconfig.MetricsEnabled {
-			postTCPBurstStats(ns, pod, binary, res)
+			postTCPBurstStats(ns, workload, pod, binary, res)
 		}
 	}
 }
@@ -401,89 +401,89 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postUDPWatermarksBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
-func postUDPWatermarksDipStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksDipStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(-1)
+			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPRxDips.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(-1)
+			socketmetrics.SocketStatsUDPRxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
-func postTCPWatermarksBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, pod, binary).Set(1)
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
 		} else {
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
-func postTCPWatermarksDipStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksDipStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsTxDips.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(-1)
+			socketmetrics.SocketStatsTxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsRxDips.WithLabelValues(ns, pod, binary).Inc()
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, pod, binary).Set(-1)
+			socketmetrics.SocketStatsRxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
 		} else {
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, pod, binary).Set(0)
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
 		}
 	}
 }
 
 func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermark) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
 		if !udpconfig.MetricsEnabled {
 			break
 		}
 		if res.WatermarksType == "burst" {
-			postUDPWatermarksBurstStats(ns, pod, binary, res)
+			postUDPWatermarksBurstStats(ns, workload, pod, binary, res)
 		} else {
-			postUDPWatermarksDipStats(ns, pod, binary, res)
+			postUDPWatermarksDipStats(ns, workload, pod, binary, res)
 		}
 
 	case tetragon.SocketProtocol_TCP.String():
@@ -491,9 +491,9 @@ func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermar
 			break
 		}
 		if res.WatermarksType == "burst" {
-			postTCPWatermarksBurstStats(ns, pod, binary, res)
+			postTCPWatermarksBurstStats(ns, workload, pod, binary, res)
 		} else {
-			postTCPWatermarksDipStats(ns, pod, binary, res)
+			postTCPWatermarksDipStats(ns, workload, pod, binary, res)
 		}
 	}
 }
@@ -503,8 +503,8 @@ func HandleProcessWatermarksEvent(res *tetragon.ProcessNetworkWatermark) {
 }
 
 func postProcessUdpSeqCheckErrors(res *tetragon.ProcessUdpSeqCheckError) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
-	socketmetrics.SocketStatsUDPSeqCheckErrors.WithLabelValues(ns, pod, binary).Inc()
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
+	socketmetrics.SocketStatsUDPSeqCheckErrors.WithLabelValues(ns, workload, pod, binary).Inc()
 }
 
 func HandleProcessUdpSeqCheckError(res *tetragon.ProcessUdpSeqCheckError) {
@@ -512,7 +512,7 @@ func HandleProcessUdpSeqCheckError(res *tetragon.ProcessUdpSeqCheckError) {
 }
 
 func postHttpStats(res *tetragon.ProcessHttp) {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
@@ -524,10 +524,10 @@ func postHttpStats(res *tetragon.ProcessHttp) {
 	// We may consider adding URI here as well, but without a configuration mechanism
 	// to enable/disable it this could have poor scaling properties. Imagine a user
 	// scanning for URIs behind a host.
-	httpmetrics.HttpResponseTotal.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, host, code).Inc()
+	httpmetrics.HttpResponseTotal.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, host, code).Inc()
 
 	c := float64(http.Latency.AsDuration().Seconds())
-	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, host).Observe(c)
+	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(ns, workload, pod, binary, dstns, dstpod, dstLabels, host).Observe(c)
 }
 
 func HandleHttpEvent(res *tetragon.ProcessHttp) {
@@ -540,42 +540,42 @@ func HandleTlsEvent(res *tetragon.Tls) {
 
 func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
 	name := res.InterfaceName
-	ns := ""
-	pod := ""
+	var ns, workload, pod string
 
 	if res.Pod != nil {
 		ns = res.Pod.Namespace
+		workload = res.Pod.Workload
 		pod = res.Pod.Name
 	}
 
-	interfacemetrics.InterfaceBytesSent.WithLabelValues(name, ns, pod).Set(float64(res.BytesSent))
-	interfacemetrics.InterfaceBytesReceived.WithLabelValues(name, ns, pod).Set(float64(res.BytesReceived))
-	interfacemetrics.InterfaceSegmentsSent.WithLabelValues(name, ns, pod).Set(float64(res.PacketsSent))
-	interfacemetrics.InterfaceSegmentsReceived.WithLabelValues(name, ns, pod).Set(float64(res.PacketsReceived))
-	interfacemetrics.InterfaceTxErrors.WithLabelValues(name, ns, pod).Set(float64(res.TxErrors))
-	interfacemetrics.InterfaceRxErrors.WithLabelValues(name, ns, pod).Set(float64(res.RxErrors))
-	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns, pod).Set(float64(res.TxDrops))
-	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns, pod).Set(float64(res.RxDrops))
+	interfacemetrics.InterfaceBytesSent.WithLabelValues(name, ns, workload, pod).Set(float64(res.BytesSent))
+	interfacemetrics.InterfaceBytesReceived.WithLabelValues(name, ns, workload, pod).Set(float64(res.BytesReceived))
+	interfacemetrics.InterfaceSegmentsSent.WithLabelValues(name, ns, workload, pod).Set(float64(res.PacketsSent))
+	interfacemetrics.InterfaceSegmentsReceived.WithLabelValues(name, ns, workload, pod).Set(float64(res.PacketsReceived))
+	interfacemetrics.InterfaceTxErrors.WithLabelValues(name, ns, workload, pod).Set(float64(res.TxErrors))
+	interfacemetrics.InterfaceRxErrors.WithLabelValues(name, ns, workload, pod).Set(float64(res.RxErrors))
+	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns, workload, pod).Set(float64(res.TxDrops))
+	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns, workload, pod).Set(float64(res.RxDrops))
 
 	if res.Qlen != nil {
 		c := float64(res.Qlen.Buckets[0].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(1)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(1)).Set(c)
 		c += float64(res.Qlen.Buckets[1].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(10)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(10)).Set(c)
 		c += float64(res.Qlen.Buckets[2].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(25)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(25)).Set(c)
 		c += float64(res.Qlen.Buckets[3].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(50)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(50)).Set(c)
 		c += float64(res.Qlen.Buckets[4].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(75)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(75)).Set(c)
 		c += float64(res.Qlen.Buckets[5].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(90)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(90)).Set(c)
 		c += float64(res.Qlen.Buckets[6].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(99)).Set(c)
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(99)).Set(c)
 		c += float64(res.Qlen.Buckets[7].Count)
-		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, pod, getIfaceQLenPromBucket(100)).Set(c)
-		interfacemetrics.InterfaceQlenCount.WithLabelValues(name, ns, pod).Set(c)
-		interfacemetrics.InterfaceQlenSum.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Sum))
+		interfacemetrics.InterfaceQlenBucket.WithLabelValues(name, ns, workload, pod, getIfaceQLenPromBucket(100)).Set(c)
+		interfacemetrics.InterfaceQlenCount.WithLabelValues(name, ns, workload, pod).Set(c)
+		interfacemetrics.InterfaceQlenSum.WithLabelValues(name, ns, workload, pod).Set(float64(res.Qlen.Sum))
 	}
 }
 

@@ -44,7 +44,7 @@ var (
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",
-	}, []string{"namespace", "pod", "binary", "version", "cipher", "sni_name"})
+	}, []string{"namespace", "pod", "workload", "binary", "version", "cipher", "sni_name"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -74,9 +74,9 @@ var tlsErrorString = map[int]string{
 }
 
 func TlsHandshakeTotal(res *tetragon.Tls) prometheus.Counter {
-	binary, pod, ns := oss.GetProcessInfo(res.Process)
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 	version := getNegotiatedVersion(res)
-	return tlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Cipher, res.SniName)
+	return tlsHandshakeTotal.WithLabelValues(ns, workload, pod, binary, version, res.Cipher, res.SniName)
 }
 
 func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {

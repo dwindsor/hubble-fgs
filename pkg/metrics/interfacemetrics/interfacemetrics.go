@@ -22,42 +22,42 @@ var (
 		Name:      "interface_txbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes sent per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceBytesReceived = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes received per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceSegmentsSent = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments sent per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceSegmentsReceived = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments received per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceTxErrors = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX errors per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceRxErrors = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX errors per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceTxDrops = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX drops per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceRxDrops = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX drops per network interface",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 )
 
 // Interface QLen Histogram
@@ -67,21 +67,21 @@ var (
 //   - a "_gcount" metric, identical to the highest ("+Inf") bucket metric
 //   - a "_gsum" metric, reporting the sum of all observed values
 var (
-	InterfaceQlenBucket = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceQlenBucket = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for the number of enqued packets",
-	}, []string{"name", "namespace", "pod", "le"})
-	InterfaceQlenCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	}, []string{"name", "namespace", "workload", "pod", "le"})
+	InterfaceQlenCount = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gcount",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for the number of enqued packets",
-	}, []string{"name", "namespace", "pod"})
-	InterfaceQlenSum = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	}, []string{"name", "namespace", "workload", "pod"})
+	InterfaceQlenSum = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gsum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for the number of enqued packets",
-	}, []string{"name", "namespace", "pod"})
+	}, []string{"name", "namespace", "workload", "pod"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
