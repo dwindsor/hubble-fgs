@@ -55,6 +55,7 @@ $(EE_CHART)/values.yaml:
 $(EE_CHART)/templates: $(CRDS) $(EE_PATCHES)
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
+	cp -rf $(EE_PATCHES)/dashboards/. $(EE_CHART)/dashboards
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
 .PHONY: $(EE_CHART)/README.md

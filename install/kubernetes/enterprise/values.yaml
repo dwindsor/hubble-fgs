@@ -102,3 +102,18 @@ tracingPolicies:
     privileges:
       # -- Enable Privileges monitoring default policy.
       enabled: false
+# -- Grafana dashboards, installed as ConfigMaps.
+# They can be mounted in a Grafana deployment, or loaded automatically using the Grafana's sidecar for dashboards.
+# See: https://github.com/grafana/helm-charts/tree/main/charts/grafana#sidecar-for-dashboards
+dashboards:
+  health:
+    # -- Enable dashboards for monitoring Tetragon health and operations.
+    enabled: false
+  # -- Namespace to create the dashboards ConfigMaps in. Defaults to namespace of the Helm release.
+  namespace: ~
+  # -- Labels to add to the dashboards ConfigMaps. If using the dashboards sidecar, these
+  # must include the label used for dashboards discovery.
+  labels:
+    grafana_dashboard: "1"
+  # -- Annotations to add to the dashboards ConfigMaps.
+  annotations: {}
