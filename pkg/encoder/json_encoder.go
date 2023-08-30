@@ -32,19 +32,22 @@ import (
 // If --enable-hubble-flow-export is true, it encodes ProcessConnect events both as process_connect
 // and Hubble flow, while delegating encoding of all the other event types to ProtoJsonEncoder.
 type JSONEncoder struct {
-	encoder                *json.Encoder
-	protoJSONEncoder       *jsonEncoder.ProtojsonEncoder
-	watcher                watcher.K8sResourceWatcher
-	enableHubbleFlowExport bool
+	flowEncoder      *json.Encoder
+	protoJSONEncoder *jsonEncoder.ProtojsonEncoder
+	watcher          watcher.K8sResourceWatcher
+	enableFlowExport bool
 }
 
-func NewJSONEncoder(writer io.Writer, watcher watcher.K8sResourceWatcher, enableHubbleFlowExport bool) *JSONEncoder {
-	return &JSONEncoder{
-		encoder:                json.NewEncoder(writer),
-		protoJSONEncoder:       jsonEncoder.NewProtojsonEncoder(writer),
-		watcher:                watcher,
-		enableHubbleFlowExport: enableHubbleFlowExport,
+func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, watcher watcher.K8sResourceWatcher, enableFlowExport bool) *JSONEncoder {
+	encoder := JSONEncoder{
+		protoJSONEncoder: jsonEncoder.NewProtojsonEncoder(writer),
+		watcher:          watcher,
 	}
+	if enableFlowExport {
+		encoder.enableFlowExport = true
+		encoder.flowEncoder = json.NewEncoder(flowWriter)
+	}
+	return &encoder
 }
 
 // Encode implements EventEncoder.Encode.
@@ -55,7 +58,7 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 		return nil
 	}
 	var flowError error
-	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableHubbleFlowExport {
+	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableFlowExport {
 		f := h.processConnectToFlow(response.GetProcessConnect())
 		f.NodeName = response.NodeName
 		f.Time = response.Time
@@ -64,7 +67,7 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 			NodeName:      response.NodeName,
 			Time:          response.Time,
 		}
-		flowError = h.encoder.Encode(res)
+		flowError = h.flowEncoder.Encode(res)
 	}
 	return errors.Join(flowError, h.protoJSONEncoder.Encode(response))
 }

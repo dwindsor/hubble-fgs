@@ -11,7 +11,6 @@
 package encoder
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 	"testing"
@@ -31,7 +30,7 @@ import (
 
 func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
-	e := NewJSONEncoder(&b, watcher.NewFakeK8sWatcher(nil), false)
+	e := NewJSONEncoder(&b, nil, watcher.NewFakeK8sWatcher(nil), false)
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -51,8 +50,8 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 }
 
 func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
-	var b bytes.Buffer
-	e := NewJSONEncoder(&b, watcher.NewFakeK8sWatcher(nil), true)
+	var b, flowBuffer bytes.Buffer
+	e := NewJSONEncoder(&b, &flowBuffer, watcher.NewFakeK8sWatcher(nil), true)
 	event := tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
 		NodeName: "my-node",
@@ -61,9 +60,6 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	assert.NoError(t, e.Encode(&event))
 	res := tetragon.GetEventsResponse{}
 
-	reader := bufio.NewReader(bytes.NewReader(b.Bytes()))
-	jsonBytes, err := reader.ReadBytes('\n')
-	assert.NoError(t, err)
 	expectedFlow := observer.GetFlowsResponse{
 		ResponseTypes: &observer.GetFlowsResponse_Flow{
 			Flow: &flow.Flow{
@@ -81,12 +77,10 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 		Time:     &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
 	}
 	actualFlow := observer.GetFlowsResponse{}
-	assert.NoError(t, protojson.Unmarshal(jsonBytes, &actualFlow))
+	assert.NoError(t, protojson.Unmarshal(flowBuffer.Bytes(), &actualFlow))
 	assert.True(t, proto.Equal(&expectedFlow, &actualFlow))
 
-	jsonBytes, err = reader.ReadBytes('\n')
-	assert.NoError(t, err)
-	assert.NoError(t, protojson.Unmarshal(jsonBytes, &res))
+	assert.NoError(t, protojson.Unmarshal(b.Bytes(), &res))
 	assert.True(t, proto.Equal(&event, &res))
 
 	b.Reset()
@@ -114,7 +108,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		},
 	}
 	k8sWatcher := watcher.NewFakeK8sWatcherWithPodsAndServices(nil, services)
-	e := NewJSONEncoder(io.Discard, k8sWatcher, true)
+	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true)
 
 	// Empty connect event
 	event := tetragon.GetEventsResponse{

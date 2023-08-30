@@ -63,6 +63,11 @@ const (
 
 	keyFieldFilters = "field-filters"
 
+	keyFlowExportFilename       = "flow-export-filename"
+	keyFlowExportFileMaxSizeMB  = "flow-export-file-max-size-mb"
+	keyFlowExportFileMaxBackups = "flow-export-file-max-backups"
+	keyFlowExportFileCompress   = "flow-export-file-compress"
+
 	keyNetnsDir = "netns-dir"
 
 	keyEventQueueSize = "event-queue-size"
@@ -89,8 +94,6 @@ const (
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
 	keyFimRuntimeEndpoint = "fim-runtime-endpoint"
-
-	keyEnableHubbleFlowExport = "enable-hubble-flow-export"
 )
 
 var (
@@ -112,6 +115,12 @@ var (
 	enableExportAggregation     bool
 	exportAggregationWindowSize time.Duration
 	exportAggregationBufferSize uint64
+
+	// Flow export options
+	flowExportFilename       string
+	flowExportFileMaxSizeMB  int
+	flowExportFileMaxBackups int
+	flowExportFileCompress   bool
 )
 
 func readAndSetFlags() {
@@ -153,6 +162,11 @@ func readAndSetFlags() {
 	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
+
+	flowExportFilename = viper.GetString(keyFlowExportFilename)
+	flowExportFileMaxSizeMB = viper.GetInt(keyFlowExportFileMaxSizeMB)
+	flowExportFileMaxBackups = viper.GetInt(keyFlowExportFileMaxBackups)
+	flowExportFileCompress = viper.GetBool(keyFlowExportFileCompress)
 
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 

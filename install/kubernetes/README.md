@@ -36,7 +36,6 @@ Helm chart for Tetragon Enterprise
 | tetragon.btf | string | `""` |  |
 | tetragon.commandOverride | list | `[]` |  |
 | tetragon.enableCiliumAPI | bool | `true` |  |
-| tetragon.enableHubbleFlowExport | bool | `false` | EXPERIMENTAL: Enable Hubble flow export. When this values is set to true, Tetragon exports ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON. |
 | tetragon.enableK8sAPI | bool | `true` |  |
 | tetragon.enablePolicyFilter | bool | `false` | Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default. |
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
@@ -55,6 +54,10 @@ Helm chart for Tetragon Enterprise
 | tetragon.extraVolumeMounts | list | `[]` |  |
 | tetragon.fieldFilters | string | `"{}"` |  |
 | tetragon.fimRuntimeEndpoint | string | `""` |  |
+| tetragon.flowExportFileCompress | bool | `false` |  |
+| tetragon.flowExportFileMaxBackups | int | `5` |  |
+| tetragon.flowExportFileMaxSizeMB | int | `10` |  |
+| tetragon.flowExportFilename | string | `""` | EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON. |
 | tetragon.gops.address | string | `"localhost"` | The address at which to expose gops. |
 | tetragon.gops.port | int | `8118` | The port at which to expose gops. |
 | tetragon.grpc.address | string | `"localhost:54321"` | The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock |

@@ -27,6 +27,12 @@ data:
 {{- .Values.tetragon.fieldFilters | trim | nindent 4 }}
   export-rate-limit: {{ .Values.tetragon.exportRateLimit | quote }}
 {{- end }}
+{{- if .Values.tetragon.flowExportFilename }}
+  flow-export-filename: {{ .Values.exportDirectory}}/{{ .Values.tetragon.flowExportFilename }}
+  flow-export-file-max-size-mb: {{ .Values.tetragon.flowExportFileMaxSizeMB | quote }}
+  flow-export-file-max-backups: {{ .Values.tetragon.flowExportFileMaxBackups | quote }}
+  flow-export-file-compress: {{ .Values.tetragon.flowExportFileCompress | quote }}
+{{- end }}
 {{- if .Values.tetragon.enableK8sAPI }}
   enable-k8s-api: "true"
 {{- end }}
@@ -53,4 +59,3 @@ data:
 {{- if .Values.tetragon.enablePolicyFilterDebug }}
   enable-policy-filter-debug: "true"
 {{- end }}
-  enable-hubble-flow-export: {{ .Values.tetragon.enableHubbleFlowExport | quote }}

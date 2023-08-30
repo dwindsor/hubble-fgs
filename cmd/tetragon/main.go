@@ -577,6 +577,35 @@ func getObserverDir() string {
 	return bpf.MapPrefixPath()
 }
 
+// getWriter returns lumberjack logger and the absolute path to the file.
+func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*lumberjack.Logger, error) {
+	writer := &lumberjack.Logger{
+		Filename:   filename,
+		MaxSize:    maxSizeMB,
+		MaxBackups: maxBackups,
+		Compress:   compress,
+	}
+	// For non k8s deployments we explicitly want log files
+	// with permission 0600
+	if !option.Config.EnableK8s {
+		writer.FileMode = os.FileMode(0600)
+	}
+
+	finfo, err := os.Stat(filepath.Clean(writer.Filename))
+	if err == nil && finfo.IsDir() {
+		// Error if exportFilename points to a directory
+		return nil, fmt.Errorf("passed export JSON logs file point to a directory")
+	}
+	abspath, err := filepath.Abs(filepath.Clean(writer.Filename))
+	if err != nil {
+		log.WithError(err).WithField("filename", writer.Filename).Warn("Failed to get absolute path of export file", writer.Filename)
+	} else {
+		log.WithField("filename", abspath).Info("Initialized export file")
+
+	}
+	return writer, nil
+}
+
 func startExporter(ctx context.Context, server *server.Server, watcher watcher.K8sResourceWatcher) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
@@ -586,41 +615,24 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 	if err != nil {
 		return err
 	}
-	writer := &lumberjack.Logger{
-		Filename:   exportFilename,
-		MaxSize:    exportFileMaxSizeMB,
-		MaxBackups: exportFileMaxBackups,
-		Compress:   exportFileCompress,
-	}
-
-	// For non k8s deployments we explicitly want log files
-	// with permission 0600
-	if !option.Config.EnableK8s {
-		writer.FileMode = os.FileMode(0600)
-	}
-
-	finfo, err := os.Stat(filepath.Clean(exportFilename))
-	if err == nil && finfo.IsDir() {
-		// Error if exportFilename points to a directory
-		return fmt.Errorf("passed export JSON logs file point to a directory")
-	}
-	logFile := filepath.Base(exportFilename)
-	logsDir, err := filepath.Abs(filepath.Dir(filepath.Clean(exportFilename)))
+	writer, err := getWriter(exportFilename, exportFileMaxSizeMB, exportFileMaxBackups, exportFileCompress)
 	if err != nil {
-		log.WithError(err).Warnf("Failed to get absolute path of exported JSON logs '%s'", exportFilename)
-		// Do not fail; we let lumberjack handle this. We want to
-		// log the rotate logs operation.
-		logsDir = filepath.Dir(exportFilename)
+		return err
+	}
+	var flowWriter *lumberjack.Logger
+	enableFlowExport := flowExportFilename != ""
+	if enableFlowExport {
+		flowWriter, err = getWriter(flowExportFilename, flowExportFileMaxSizeMB, flowExportFileMaxBackups, flowExportFileCompress)
+		if err != nil {
+			return err
+		}
 	}
 
 	if exportFileRotationInterval < 0 {
 		// Passed an invalid interval let's error out
 		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", exportFileRotationInterval.String())
 	} else if exportFileRotationInterval > 0 {
-		log.WithFields(logrus.Fields{
-			"directory": logsDir,
-			"frequency": exportFileRotationInterval.String(),
-		}).Info("Periodically rotating JSON export files")
+		log.WithFields(logrus.Fields{"frequency": exportFileRotationInterval.String()}).Info("Periodically rotating JSON export files")
 		go func() {
 			ticker := time.NewTicker(exportFileRotationInterval)
 			for {
@@ -628,21 +640,21 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					log.WithFields(logrus.Fields{
-						"file":      logFile,
-						"directory": logsDir,
-					}).Info("Rotating JSON logs export")
 					if rotationErr := writer.Rotate(); rotationErr != nil {
-						log.WithError(rotationErr).
-							WithField("file", exportFilename).
-							Warn("Failed to rotate JSON export file")
+						log.WithError(rotationErr).WithField("file", exportFilename).Warn("Failed to rotate JSON export file")
+					}
+					if flowWriter != nil {
+						log.WithField("file", flowExportFilename).Info("Rotating JSON flow export file")
+						if rotationErr := flowWriter.Rotate(); rotationErr != nil {
+							log.WithError(rotationErr).WithField("file", flowExportFilename).Warn("Failed to rotate JSON flow export file")
+						}
 					}
 				}
 			}
 		}()
 	}
 
-	encoder := encoder.NewJSONEncoder(writer, watcher, viper.GetBool(keyEnableHubbleFlowExport))
+	encoder := encoder.NewJSONEncoder(writer, flowWriter, watcher, enableFlowExport)
 	var rateLimiter *ratelimit.RateLimiter
 	if exportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
@@ -794,6 +806,13 @@ func execute() error {
 	flags.Int(keyExportFileMaxBackups, 5, "Number of rotated JSON export files to retain")
 	flags.Bool(keyExportFileCompress, false, "Compress rotated JSON export files")
 	flags.Int(keyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
+
+	// Parameters for Hubble flow export.
+	flags.String(keyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")
+	flags.Int(keyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
+	flags.Int(keyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
+	flags.Bool(keyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
+
 	flags.String(keyLogLevel, "info", "Set log level")
 	flags.String(keyLogFormat, "text", "Set log format")
 	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
@@ -854,7 +873,6 @@ func execute() error {
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 
 	flags.String(keyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
-	flags.Bool(keyEnableHubbleFlowExport, false, "Enable Hubble flow export.")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
