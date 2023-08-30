@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
@@ -75,7 +76,7 @@ func HandleOriginalEvent(originalEvent interface{}) {
 }
 
 var (
-	dnsRequestTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+	dnsRequestTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "dns_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Dns request/response statistics",

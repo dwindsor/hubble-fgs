@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -39,7 +40,7 @@ var (
 		Help:      "Actual number of TLS continuation events. For internal use only.",
 	})
 
-	tlsHandshakeTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+	tlsHandshakeTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",

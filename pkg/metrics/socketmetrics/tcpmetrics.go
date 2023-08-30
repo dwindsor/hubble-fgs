@@ -11,84 +11,85 @@
 package socketmetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // TCP socket metrics
 var (
-	SocketStatsTxBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsTxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsTxSegs = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsTxBursts = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsTxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
-	SocketStatsTxDips = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsTxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
-	SocketStatsRxBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsRxSegs = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsRxBursts = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bursts statistics",
 	}, []string{"namespace", "pod", "binary"})
-	SocketStatsRxDips = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX dips statistics",
 	}, []string{"namespace", "pod", "binary"})
-	SocketStatsRetranBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRetranBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsRetranSegs = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsRetranSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit seg statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsZeroWindow = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsZeroWindow = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_zerowindow_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket zero window events",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsSrtt = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	SocketStatsSrtt = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
 		Name:      "socket_stats_srtt",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket smoothed RTT latency distribution in microseconds.",
 		Buckets:   []float64{50, 100, 250, 500, 750, 1_000, 2_500, 5_000, 7_500, 10_000, 25_000, 50_000, 75_000, 100_000},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsDrops = prometheus.NewCounterVec(prometheus.CounterOpts{
+	SocketStatsDrops = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	SocketStatsTxWatermarksState = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	SocketStatsTxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "socket_stats_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX watermarks state",
 	}, []string{"namespace", "pod", "binary"})
-	SocketStatsRxWatermarksState = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	SocketStatsRxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "socket_stats_rx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX watermarks state",
@@ -102,34 +103,34 @@ var (
 //   - a "_count" metric, identical to the highest ("+Inf") bucket metric
 //   - a "_sum" metric, reporting the sum of all observed values
 var (
-	TcpRttBucket = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpRttBucket = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket rtt in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
-	TcpRttCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpRttCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket rtt",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	TcpRttSum = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpRttSum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket rtt in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 var (
-	TcpLatencyBucket = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpLatencyBucket = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket latency in microseconds",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
-	TcpLatencyCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpLatencyCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket latency",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
-	TcpLatencySum = prometheus.NewCounterVec(prometheus.CounterOpts{
+	TcpLatencySum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket latency in microseconds",

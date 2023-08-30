@@ -11,40 +11,29 @@
 package metrics
 
 import (
-	"net/http"
-
-	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func InitAllMetrics(registry *prometheus.Registry) {
-	dnsmetrics.InitMetrics(registry)
-	eventmetrics.InitMetrics(registry)
-	filemetrics.InitMetrics(registry)
-	httpmetrics.InitMetrics(registry)
-	interfacemetrics.InitMetrics(registry)
-	iperrormetrics.InitMetrics(registry)
-	lrumetrics.InitMetrics(registry)
-	socketmetrics.InitMetrics(registry)
-	tlsmetrics.InitMetrics(registry)
+func DeleteMetricsForPod(pod *corev1.Pod) {
+	oss.DeleteMetricsForPod(pod)
+	// Delete metrics matching the deleted pod on the destination labels too.
+	for _, metric := range oss.ListMetricsWithPod() {
+		metric.DeletePartialMatch(prometheus.Labels{
+			"dstpod":       pod.Name,
+			"dstnamespace": pod.Namespace,
+		})
+	}
 }
 
-func EnableMetrics(address string) {
-	reg := prometheus.NewRegistry()
-	oss.InitAllMetrics(reg)
-	InitAllMetrics(reg)
-	logger.GetLogger().WithField("addr", address).Info("Starting metrics server")
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
-	http.ListenAndServe(address, nil)
+func StartPodDeleteHandler() {
+	queue := oss.GetPodQueue()
+	for {
+		pod, quit := queue.Get()
+		if quit {
+			return
+		}
+		DeleteMetricsForPod(pod.(*corev1.Pod))
+	}
 }

@@ -11,19 +11,20 @@
 package httpmetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	HttpResponseTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+	HttpResponseTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "http_response_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
 	// The buckets are defined based on OpenTelemetry semantic conventions for HTTP metrics:
 	// https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/http-metrics/#metric-httpserverduration
-	HttpRequestDurationSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	HttpRequestDurationSeconds = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
 		Name:      "http_stats_latency",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Duration of HTTP request processing.",

@@ -312,6 +312,7 @@ github.com/cilium/tetragon/pkg/matchers/listmatcher
 github.com/cilium/tetragon/pkg/matchers/stringmatcher
 github.com/cilium/tetragon/pkg/matchers/timestampmatcher
 github.com/cilium/tetragon/pkg/metrics
+github.com/cilium/tetragon/pkg/metrics/config
 github.com/cilium/tetragon/pkg/metrics/consts
 github.com/cilium/tetragon/pkg/metrics/errormetrics
 github.com/cilium/tetragon/pkg/metrics/eventcachemetrics

@@ -19,7 +19,8 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
+	metricsconfig "github.com/isovalent/hubble-fgs/pkg/metrics/config"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"golang.org/x/sys/unix"
@@ -34,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -436,6 +438,10 @@ func hubbleFGSExecute() error {
 
 	if metricsServer != "" {
 		go metrics.EnableMetrics(metricsServer)
+		metricsconfig.InitAllMetrics(metrics.GetRegistry())
+		go enterpriseMetrics.StartPodDeleteHandler()
+		// Handler must be registered before the watcher is started
+		metrics.RegisterPodDeleteHandler()
 	}
 
 	// Probe runtime configuration and do not fail on errors

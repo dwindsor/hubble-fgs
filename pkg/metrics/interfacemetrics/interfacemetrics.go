@@ -11,48 +11,49 @@
 package interfacemetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Interface metrics
 var (
-	InterfaceBytesSent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceBytesSent = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes sent per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceBytesReceived = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceBytesReceived = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxbytes",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Bytes received per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceSegmentsSent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceSegmentsSent = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments sent per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceSegmentsReceived = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceSegmentsReceived = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxsegs",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Segments received per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceTxErrors = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceTxErrors = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceRxErrors = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceRxErrors = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxerrors",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX errors per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceTxDrops = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceTxDrops = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_txdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TX drops per network interface",
 	}, []string{"name", "namespace", "pod"})
-	InterfaceRxDrops = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	InterfaceRxDrops = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_rxdrops",
 		Namespace: consts.MetricsNamespace,
 		Help:      "RX drops per network interface",

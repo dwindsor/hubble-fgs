@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/syscallmetrics"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	EventsProcessed = prometheus.NewCounterVec(prometheus.CounterOpts{
+	EventsProcessed = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Namespace:   consts.MetricsNamespace,
 		Name:        "events_total",
 		Help:        "The total number of Tetragon events",
@@ -38,7 +39,7 @@ var (
 		ConstLabels: nil,
 	})
 
-	policyStats = prometheus.NewCounterVec(prometheus.CounterOpts{
+	policyStats = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Namespace:   consts.MetricsNamespace,
 		Name:        "policy_events_total",
 		Help:        "Policy events calls observed.",
