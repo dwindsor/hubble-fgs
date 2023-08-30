@@ -226,7 +226,7 @@ func populateFileLocation(event *MsgFileEventUnix, tetragonProcess *tetragon.Pro
 		} else {
 			fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
 			if option.Config.EnableK8s {
-				podInfo, _ := process.GetPodInfo(event.ContainerID, "", "", 0)
+				podInfo := process.GetPodInfo(event.ContainerID, "", "", 0)
 				fileLocation.Pod = podInfo
 			}
 		}
@@ -542,7 +542,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		} else {
 			srcFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
 			if option.Config.EnableK8s {
-				podInfo, _ := process.GetPodInfo(event.Src.ContainerID, "", "", 0)
+				podInfo := process.GetPodInfo(event.Src.ContainerID, "", "", 0)
 				srcFileLocation.Pod = podInfo
 			}
 		}
@@ -563,7 +563,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		} else {
 			dstFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
 			if option.Config.EnableK8s {
-				podInfo, _ := process.GetPodInfo(event.Dst.ContainerID, "", "", 0)
+				podInfo := process.GetPodInfo(event.Dst.ContainerID, "", "", 0)
 				dstFileLocation.Pod = podInfo
 			}
 		}
