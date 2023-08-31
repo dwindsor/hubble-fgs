@@ -33,7 +33,7 @@ var (
 		Name:      "file_actions_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total file events per action",
-	}, []string{"node", "namespace", "pod", "policy", "rule", "action", "operation"})
+	}, []string{"node", "namespace", "workload", "pod", "policy", "rule", "action", "operation"})
 
 	fileTotalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_errors_total",
@@ -61,8 +61,8 @@ func FileTotalCacheOutEventsInc() {
 	fileTotalCacheEvents.WithLabelValues("out").Inc()
 }
 
-func FileTotalActionEventsInc(node, namespace, pod, policy, rule, action, operation string) {
-	fileTotalActionEvents.WithLabelValues(node, namespace, pod, policy, rule, action, operation).Inc()
+func FileTotalActionEventsInc(node, namespace, workload, pod, policy, rule, action, operation string) {
+	fileTotalActionEvents.WithLabelValues(node, namespace, workload, pod, policy, rule, action, operation).Inc()
 }
 
 func FileTotalErrorsInc(reason string) {
