@@ -267,13 +267,16 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName, tp
 	}
 
 	namespace := "<host>" // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
+	pod := "<host>"       // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
 	if tetragonEvent.Process.Pod != nil {
 		namespace = tetragonEvent.Process.Pod.Namespace
+		pod = tetragonEvent.Process.Pod.Name
 	}
 
 	filemetrics.FileTotalActionEventsInc(
 		nodeName,
 		namespace,
+		pod,
 		tpName,
 		tpRule,
 		act,

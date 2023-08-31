@@ -11,6 +11,7 @@
 package filemetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -28,11 +29,11 @@ var (
 		Help:      "Total number of process_file events (that go in/out the eventcache).",
 	}, []string{"direction"})
 
-	fileTotalActionEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
+	fileTotalActionEvents = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "file_actions_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total file events per action",
-	}, []string{"node", "namespace", "policy", "rule", "action", "operation"})
+	}, []string{"node", "namespace", "pod", "policy", "rule", "action", "operation"})
 
 	fileTotalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_errors_total",
@@ -60,8 +61,8 @@ func FileTotalCacheOutEventsInc() {
 	fileTotalCacheEvents.WithLabelValues("out").Inc()
 }
 
-func FileTotalActionEventsInc(node, namespace, policy, rule, action, operation string) {
-	fileTotalActionEvents.WithLabelValues(node, namespace, policy, rule, action, operation).Inc()
+func FileTotalActionEventsInc(node, namespace, pod, policy, rule, action, operation string) {
+	fileTotalActionEvents.WithLabelValues(node, namespace, pod, policy, rule, action, operation).Inc()
 }
 
 func FileTotalErrorsInc(reason string) {
