@@ -5,27 +5,163 @@
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git?depth=1"
         },
         {
+            "name": "bpf-next-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git?depth=1",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
+        },
+        {
             "name": "5.15",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.15.y"
+        },
+        {
+            "name": "5.15-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.15.y",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
         },
         {
             "name": "5.10",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.10.y"
         },
         {
+            "name": "5.10-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.10.y",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
+        },
+        {
             "name": "5.4",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.4.y"
+        },
+        {
+            "name": "5.4-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.4.y",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
         },
         {
             "name": "4.19",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-4.19.y"
         },
         {
+            "name": "4.19-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-4.19.y",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
+        },
+        {
             "name": "bpf",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf.git?depth=1"
+        },
+        {
+            "name": "bpf-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf.git?depth=1",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
         }
     ],
     "common_opts": [
+        [
+            "--enable",
+            "CONFIG_BPF_KPROBE_OVERRIDE"
+        ],
         [
             "--disable",
             "CONFIG_AGP"
@@ -609,22 +745,6 @@
         [
             "--enable",
             "CONFIG_SECURITY_APPARMOR"
-        ],
-        [
-            "--enable",
-            "CONFIG_KASAN"
-        ],
-        [
-            "--enable",
-            "CONFIG_PROVE_LOCKING"
-        ],
-        [
-            "--enable",
-            "CONFIG_DEBUG_KMEMLEAK"
-        ],
-        [
-            "--enable",
-            "CONFIG_DEBUG_ATOMIC_SLEEP"
         ],
         [
             "--enable",
