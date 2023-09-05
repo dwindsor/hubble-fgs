@@ -338,7 +338,7 @@ func runTcCheck() {
 			logger.GetLogger().WithFields(logrus.Fields{"program.Load": program.Load.Name}).Warn("tcAttachedInterfaces[program.Load] doesn't exist")
 			attachedInterfaces = make(map[tc.NamespaceInterface]bool)
 		}
-		attachedInterfaces, err := tc.LoadTC(program.BPFDir, program.MapDir, program.CiliumDir, program.Load, program.Verbose, interfacesToAttach, attachedInterfaces)
+		attachedInterfaces, err := tc.LoadTC(program.BPFDir, program.MapDir, program.Load, program.Verbose, interfacesToAttach, attachedInterfaces)
 		if err == nil {
 			tcAttachedInterfaces[program.Load] = attachedInterfaces
 		}
@@ -352,7 +352,7 @@ func AttachTc(args sensors.LoadProbeArgs) error {
 		interfacesToAttach = append(interfacesToAttach, ifaces...)
 	}
 	attachedInterfaces := make(map[tc.NamespaceInterface]bool)
-	attachedInterfaces, err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose, interfacesToAttach, attachedInterfaces)
+	attachedInterfaces, err := tc.LoadTC(args.BPFDir, args.MapDir, args.Load, args.Verbose, interfacesToAttach, attachedInterfaces)
 	if err == nil {
 		tcAttachedInterfaces[args.Load] = attachedInterfaces
 		tcList = append(tcList, args)

@@ -124,7 +124,6 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	option.Config.MapDir = bpf.MapPrefixPath()
-	option.Config.CiliumDir = ""
 	obs := observer.NewObserver(configFile)
 
 	if err := obs.InitSensorManager(nil); err != nil {
@@ -166,15 +165,13 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 
 	if err := base.LoadDefault(
 		option.Config.BpfDir,
-		option.Config.MapDir,
-		option.Config.CiliumDir); err != nil {
+		option.Config.MapDir); err != nil {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
 	if err := startSensors.Load(
 		option.Config.BpfDir,
-		option.Config.MapDir,
-		option.Config.CiliumDir); err != nil {
+		option.Config.MapDir); err != nil {
 		log.Fatalf("Load Start Sensors failed: %v", err)
 	}
 

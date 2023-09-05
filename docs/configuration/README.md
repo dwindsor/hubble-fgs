@@ -53,7 +53,6 @@ This section shows the controlling settings that administrators can set.
 
 ```
       --btf string                                Location of btf
-      --cilium-bpf string                         Cilium BPF directory
       --config-dir string                         Configuration directory that contains a file for each option
       --config-file string                        Location of the TracingPolicy file
       --data-cache-size int                       Size of the data events cache (default 1024)

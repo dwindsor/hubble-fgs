@@ -439,7 +439,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	getRunningSockets(true, true)
 
 	if args.Load.Type == "cgrp_tcp_ingress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}

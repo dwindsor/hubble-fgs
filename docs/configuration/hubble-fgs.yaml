@@ -10,7 +10,6 @@
 
 hubble-lib: /var/lib/hubble-fgs/
 btf:
-cilium-bpf:
 config-dir:
 config-file:
 debug: false

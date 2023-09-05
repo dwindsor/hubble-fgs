@@ -168,7 +168,7 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 }
 
 func LoadTC(
-	bpfDir, mapDir, ciliumDir string,
+	bpfDir, mapDir string,
 	load *program.Program,
 	verbose int,
 	interfaces []string,
@@ -247,5 +247,5 @@ func LoadTC(
 		delete(progMap, load)
 	}
 
-	return allAttached, program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
+	return allAttached, program.LoadProgram(bpfDir, []string{mapDir}, load, attach, verbose)
 }

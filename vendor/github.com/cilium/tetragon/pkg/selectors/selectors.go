@@ -36,12 +36,20 @@ type KernelLpmTrie6 struct {
 	addr   [16]byte
 }
 
+type ValueMap struct {
+	Data map[[8]byte]struct{}
+}
+
+type ValueReader interface {
+	Read(value string) ([]uint32, error)
+}
+
 type KernelSelectorState struct {
 	off uint32     // offset into encoding
 	e   [4096]byte // kernel encoding of selectors
 
 	// valueMaps are used to populate value maps for InMap and NotInMap operators
-	valueMaps []map[[8]byte]struct{}
+	valueMaps []ValueMap
 
 	// addr4Maps are used to populate IPv4 address LpmTrie maps for sock and skb operators
 	addr4Maps []map[KernelLpmTrie4]struct{}
@@ -51,12 +59,15 @@ type KernelSelectorState struct {
 
 	matchBinaries map[int]*MatchBinariesMappings // matchBinaries mappings (one per selector)
 	newBinVals    map[uint32]string              // these should be added in the names_map
+
+	listReader ValueReader
 }
 
-func NewKernelSelectorState() *KernelSelectorState {
+func NewKernelSelectorState(listReader ValueReader) *KernelSelectorState {
 	return &KernelSelectorState{
 		matchBinaries: make(map[int]*MatchBinariesMappings),
 		newBinVals:    make(map[uint32]string),
+		listReader:    listReader,
 	}
 }
 
@@ -79,6 +90,7 @@ func (k *KernelSelectorState) AddBinaryName(selIdx int, binary string) {
 	defer binMu.Unlock()
 	idx, ok := binVals[binary]
 	if ok {
+		k.newBinVals[idx] = binary
 		k.matchBinaries[selIdx].selNamesMap[idx] = 1
 		return
 	}
@@ -102,7 +114,7 @@ func (k *KernelSelectorState) Buffer() [4096]byte {
 	return k.e
 }
 
-func (k *KernelSelectorState) ValueMaps() []map[[8]byte]struct{} {
+func (k *KernelSelectorState) ValueMaps() []ValueMap {
 	return k.valueMaps
 }
 
@@ -118,7 +130,7 @@ func (k *KernelSelectorState) Addr6Maps() []map[KernelLpmTrie6]struct{} {
 func (k *KernelSelectorState) ValueMapsMaxEntries() int {
 	maxEntries := 1
 	for _, vm := range k.valueMaps {
-		if l := len(vm); l > maxEntries {
+		if l := len(vm.Data); l > maxEntries {
 			maxEntries = l
 		}
 	}
@@ -198,9 +210,11 @@ func ArgSelectorValue(v string) ([]byte, uint32) {
 	return b, uint32(len(b))
 }
 
-func (k *KernelSelectorState) newValueMap() (uint32, map[[8]byte]struct{}) {
+func (k *KernelSelectorState) newValueMap() (uint32, ValueMap) {
 	mapid := len(k.valueMaps)
-	k.valueMaps = append(k.valueMaps, map[[8]byte]struct{}{})
+	vm := ValueMap{}
+	vm.Data = make(map[[8]byte]struct{})
+	k.valueMaps = append(k.valueMaps, vm)
 	return uint32(mapid), k.valueMaps[mapid]
 }
 

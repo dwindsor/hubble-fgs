@@ -58,7 +58,7 @@ type KernelSelectorState struct {
 
 func NewKernelSelectorState() *KernelSelectorState {
 	return &KernelSelectorState{
-		KernelSelectorState: *selectors.NewKernelSelectorState(),
+		KernelSelectorState: *selectors.NewKernelSelectorState(nil),
 		operations:          map[uint32]*SelOps{},
 		action:              map[uint32]uint32{},
 	}

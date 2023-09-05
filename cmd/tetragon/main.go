@@ -504,7 +504,7 @@ func hubbleFGSExecute() error {
 	obs.LogPinnedBpf(observerDir)
 
 	// Load default base sensors
-	if err := base.LoadDefault(observerDir, observerDir, option.Config.CiliumDir); err != nil {
+	if err := base.LoadDefault(observerDir, observerDir); err != nil {
 		return err
 	}
 
@@ -524,7 +524,7 @@ func hubbleFGSExecute() error {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}
 
-		if err := sens.Load(observerDir, observerDir, option.Config.CiliumDir); err != nil {
+		if err := sens.Load(observerDir, observerDir); err != nil {
 			return err
 		}
 
@@ -802,7 +802,6 @@ func execute() error {
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')")
 	flags.String(keyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
-	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")

@@ -43,7 +43,6 @@ const (
 	keyMetricsServer     = "metrics-server"
 	keyServerAddress     = "server-address"
 	keyGopsAddr          = "gops-address"
-	keyCiliumBPF         = "cilium-bpf"
 	keyEnableProcessCred = "enable-process-cred"
 	keyEnableProcessNs   = "enable-process-ns"
 	keyConfigFile        = "config-file"
@@ -126,7 +125,6 @@ func readAndSetFlags() {
 
 	option.Config.EnableProcessCred = viper.GetBool(keyEnableProcessCred)
 	option.Config.EnableProcessNs = viper.GetBool(keyEnableProcessNs)
-	option.Config.CiliumDir = viper.GetString(keyCiliumBPF)
 	option.Config.EnableK8s = viper.GetBool(keyEnableK8sAPI)
 	option.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
 

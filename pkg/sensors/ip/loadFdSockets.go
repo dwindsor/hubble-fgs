@@ -190,15 +190,15 @@ func getFdLookupSensor() *sensors.Sensor {
 }
 
 // LoadFdLookup loads the kernel oracle.
-func loadFdLookup(bpfDir, mapDir, ciliumDir string) (*sensors.Sensor, error) {
+func loadFdLookup(bpfDir, mapDir string) (*sensors.Sensor, error) {
 	fdLoadSensor := getFdLookupSensor()
-	if err := fdLoadSensor.Load(bpfDir, mapDir, ciliumDir); err != nil {
+	if err := fdLoadSensor.Load(bpfDir, mapDir); err != nil {
 		return nil, fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	return fdLoadSensor, nil
 }
 
-func unloadFdLookup(fdLoadSensor *sensors.Sensor, _, _, _ string) error {
+func unloadFdLookup(fdLoadSensor *sensors.Sensor, _, _ string) error {
 	if fdLoadSensor == nil {
 		return fmt.Errorf("hubble-fgs, could not unload BPF programs: fdLoadSensor")
 	}
@@ -225,13 +225,13 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
 		return err
 	}
-	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
+	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
 		return err
 	}
 	writeSocketCookies(procSocketFds, callback, protocol)
-	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
+	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir); err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 		return err
 	}
@@ -494,7 +494,7 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 
 	socket := uint64(0)
 
-	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
+	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
 		return 0
@@ -533,7 +533,7 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 		socket = v.Sockaddr
 	}
 
-	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
+	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir); err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 	}
 

@@ -175,8 +175,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 
 	if err := base.LoadDefault(
 		option.Config.BpfDir,
-		option.Config.MapDir,
-		option.Config.CiliumDir); err != nil {
+		option.Config.MapDir); err != nil {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
@@ -244,7 +243,6 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	option.Config.MapDir = bpf.MapPrefixPath()
-	option.Config.CiliumDir = ""
 	obs := observer.NewObserver(f.Name())
 
 	if err := obs.InitSensorManager(nil); err != nil {
@@ -274,8 +272,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 
 	if err := startSensors.Load(
 		option.Config.BpfDir,
-		option.Config.MapDir,
-		option.Config.CiliumDir); err != nil {
+		option.Config.MapDir); err != nil {
 		log.Fatalf("Load Start Sensors failed: %v", err)
 	}
 

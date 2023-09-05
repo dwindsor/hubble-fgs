@@ -591,7 +591,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
