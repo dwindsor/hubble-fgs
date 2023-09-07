@@ -257,6 +257,7 @@ var (
 		"hash_map_dir_alloc",
 		"file_names_maps",
 		"file_ops_maps",
+		"file_digests_maps",
 		"file_actions_map",
 		"file_config_map",
 	}
@@ -622,6 +623,7 @@ func cleanupFIMMaps(id uint32) error {
 	cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_names_maps")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_maps")
+	cleanupMap[fileapi.DigestKey, uint32](tc.pinPathPrefix, "file_digests_maps")
 	cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_actions_map")
 
 	return nil
@@ -700,6 +702,17 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 
 	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.pinPathPrefix); err != nil {
 		return fmt.Errorf("failed to populate file_ops_maps: %w", err)
+	}
+
+	selDigestsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_digests_maps"))
+	selDigestsHandle, err := ebpf.LoadPinnedMap(selDigestsMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
+	}
+	defer selDigestsHandle.Close()
+
+	if err := fm.GenerateFileDigestsMap(selDigestsHandle, sel, tc.pinPathPrefix); err != nil {
+		return fmt.Errorf("failed to populate file_digests_maps: %w", err)
 	}
 
 	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_actions_map"))
@@ -1193,8 +1206,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			tp: h.tp,
 		})
 		load.MaxEntriesInnerMap = map[string]uint32{
-			"file_names_maps": fm.GetMaxInnerEntriesNamesMap(sel),
-			"file_ops_maps":   fm.GetMaxInnerEntriesOpsMap(sel),
+			"file_names_maps":   fm.GetMaxInnerEntriesNamesMap(sel),
+			"file_ops_maps":     fm.GetMaxInnerEntriesOpsMap(sel),
+			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(sel),
 		}
 		progs = append(progs, load)
 
@@ -1215,6 +1229,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Load: func(m *ebpf.Map, index uint32) error {
 					if err := fm.GenerateFileOpsMap(m, sel, e.pinPathPrefix); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "file_digests_maps",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileDigestsMap(m, sel, e.pinPathPrefix); err != nil {
+						return fmt.Errorf("file_digests_maps: %w", err)
 					}
 					return nil
 				},

@@ -13,8 +13,10 @@ package file
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -23,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
 
@@ -49,6 +52,9 @@ type KernelSelectorState struct {
 	// matchOperations mappings
 	operations map[uint32]*SelOps
 
+	// matchDigests mappings
+	digests map[uint32]*SelDigests
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -60,6 +66,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 	return &KernelSelectorState{
 		KernelSelectorState: *selectors.NewKernelSelectorState(nil),
 		operations:          map[uint32]*SelOps{},
+		digests:             map[uint32]*SelDigests{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -98,7 +105,7 @@ func (k *SelOps) AddOpsVal(op, val uint32) {
 	k.opsMap.LoadOrStore(op, val)
 }
 
-func (k *KernelSelectorState) InitOrGet(selIdx uint32) *SelOps {
+func (k *KernelSelectorState) InitOrGetOperations(selIdx uint32) *SelOps {
 	val, ok := k.operations[selIdx]
 	if ok {
 		return val
@@ -110,6 +117,55 @@ func (k *KernelSelectorState) InitOrGet(selIdx uint32) *SelOps {
 
 func (k *KernelSelectorState) GetOpsEntries() map[uint32]*SelOps {
 	return k.operations
+}
+
+type SelDigests struct {
+	digVal uint32
+	digMap sync.Map
+}
+
+func (k *SelDigests) SetDigestOp(op uint32) {
+	k.digVal = op
+}
+
+func (k *SelDigests) GetDigestOp() uint32 {
+	return k.digVal
+}
+
+func (k *SelDigests) GetDigestsSelMap() map[fileapi.DigestKey]uint32 {
+	retMap := make(map[fileapi.DigestKey]uint32)
+	k.digMap.Range(func(key, val any) bool {
+		retMap[key.(fileapi.DigestKey)] = val.(uint32)
+		return true
+	})
+	return retMap
+}
+
+func (k *SelDigests) GetDigestsSelMapSize() uint32 {
+	numItems := uint32(0)
+	k.digMap.Range(func(key, val any) bool {
+		numItems++
+		return true
+	})
+	return numItems
+}
+
+func (k *SelDigests) AddDigestsVal(op fileapi.DigestKey, val uint32) {
+	k.digMap.LoadOrStore(op, val)
+}
+
+func (k *KernelSelectorState) InitOrGetDigests(selIdx uint32) *SelDigests {
+	val, ok := k.digests[selIdx]
+	if ok {
+		return val
+	}
+	inner := &SelDigests{}
+	k.digests[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) GetDigestEntries() map[uint32]*SelDigests {
+	return k.digests
 }
 
 func writeBinaryMap(m *ebpf.Map, id uint32, path string) error {
@@ -254,6 +310,68 @@ func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPre
 	return nil
 }
 
+func GetMaxInnerEntriesDigestsMap(sel *KernelSelectorState) uint32 {
+	maxEntries := uint32(0)
+	for _, entry := range sel.GetDigestEntries() {
+		num := entry.GetDigestsSelMapSize()
+		if num > maxEntries {
+			maxEntries = num
+		}
+	}
+	return maxEntries + 1 // for the special entry UINT32_MAX
+}
+
+func GenerateFileDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	maxEntries := GetMaxInnerEntriesDigestsMap(sel)
+	for innerID, entry := range sel.GetDigestEntries() {
+		entries := entry.GetDigestsSelMap()
+
+		// in order kernels we should provide the maximum number of inner map entries
+		maxInnerEntries := uint32(len(entries)) + 1 // for the special entry UINT32_MAX
+		if !kernels.MinKernelVersion("5.9") {
+			// Versions before 5.9 do not allow inner maps to have different sizes.
+			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+			maxInnerEntries = maxEntries
+		}
+
+		innerName := fmt.Sprintf("file_digests_map_%d", innerID)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Hash,
+			KeySize:    uint32(unsafe.Sizeof(fileapi.DigestKey{})),
+			ValueSize:  4, // uint32
+			MaxEntries: maxInnerEntries,
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
+
+		innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+		// add a special entry (key.algo == INT32_MAX) that has as a value the number of matchDigests entry
+		// if this is zero we don't have any matchDigests selectors
+		if err := innerMap.Update(fileapi.DigestKey{Algo: int32(0x7fffffff)}, entry.GetDigestOp(), ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("ops: %w", err)
+		}
+
+		for op, val := range entries {
+			if err := innerMap.Update(op, val, ebpf.UpdateAny); err != nil {
+				return fmt.Errorf("entries: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
+		}
+
+	}
+	return nil
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -271,7 +389,7 @@ func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector, 
 	if op != selectors.SelectorOpIn && op != selectors.SelectorOpNotIn {
 		return fmt.Errorf("matchOperation error: Only In and NotIn operators are supported")
 	}
-	v := k.InitOrGet(uint32(selIdx))
+	v := k.InitOrGetOperations(uint32(selIdx))
 	v.SetOperationOp(op)
 	for _, s := range b.Values {
 		val, ok := tetragon.FileAction_value[strings.ToUpper(s)]
@@ -289,6 +407,52 @@ func ParseMatchOperations(k *KernelSelectorState, ops []v1alpha1.OperationSelect
 	}
 	for _, s := range ops {
 		if err := ParseMatchOperation(k, &s, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseMatchDigest(k *KernelSelectorState, d *v1alpha1.DigestSelector, selIdx int) error {
+	op, err := selectors.SelectorOp(d.Operator)
+	if err != nil {
+		return fmt.Errorf("matchDigest error: %w", err)
+	}
+	if op != selectors.SelectorOpIn && op != selectors.SelectorOpNotIn {
+		return fmt.Errorf("matchDigest error: Only In and NotIn operators are supported")
+	}
+	v := k.InitOrGetDigests(uint32(selIdx))
+	v.SetDigestOp(op)
+	for _, s := range d.Values {
+		ss := strings.Split(s, ":")
+		if len(ss) != 2 {
+			return fmt.Errorf("matchDigest value:[%s] has wrong format", s)
+		}
+
+		algo := ss[0]
+		digest := ss[1]
+		val, ok := HashNameAlgo[strings.ToLower(algo)]
+		if !ok {
+			return fmt.Errorf("unknown hash algo in matchDigests: %s", algo)
+		}
+		k := fileapi.DigestKey{Algo: int32(val), Digest: [64]uint8{}, Ok: 1}
+
+		for i := 0; i < len(digest)/2; i++ {
+			d := digest[(i * 2) : (i*2)+2]
+			num, _ := strconv.ParseInt(d, 16, 64)
+			k.Digest[i] = uint8(num)
+		}
+		v.AddDigestsVal(k, 1)
+	}
+	return nil
+}
+
+func ParseMatchDigests(k *KernelSelectorState, digests []v1alpha1.DigestSelector, selIdx int) error {
+	if len(digests) > 1 {
+		return fmt.Errorf("only support single digests selector")
+	}
+	for _, d := range digests {
+		if err := ParseMatchDigest(k, &d, selIdx); err != nil {
 			return err
 		}
 	}
@@ -317,6 +481,9 @@ func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector, selId
 	}
 	if err := ParseMatchOperations(k, fileSel.MatchOperations, selIdx); err != nil {
 		return fmt.Errorf("parseMatchOperations error: %w", err)
+	}
+	if err := ParseMatchDigests(k, fileSel.MatchDigests, selIdx); err != nil {
+		return fmt.Errorf("parseMatchDigests error: %w", err)
 	}
 	if err := ParseMatchActions(k, fileSel.MatchActions, selIdx); err != nil {
 		return fmt.Errorf("parseMatchActions error: %w", err)
