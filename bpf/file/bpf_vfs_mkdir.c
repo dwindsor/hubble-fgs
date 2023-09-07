@@ -136,7 +136,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 
-	operation = eval_selectors(action_mkdir);
+	operation = eval_selectors(action_mkdir, 0);
 
 	// create the mkdir_retprobe_map value and set it for the kretprobe
 	fill_mkdir_retprobe_map(ctx, dentry, msg, action, operation);

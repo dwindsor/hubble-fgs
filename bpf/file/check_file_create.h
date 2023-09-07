@@ -126,7 +126,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_create);
+	operation = eval_selectors(action_create, 0);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 	/* operation cannot be FILE_OP_BLOCK here */

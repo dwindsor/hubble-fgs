@@ -52,7 +52,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_readdir);
+	operation = eval_selectors(action_readdir, 0);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 

@@ -33,6 +33,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	struct hash_map_file_val *file_val = 0;
 	struct file *file;
 	__u32 operation = 0;
+	struct digest_key *digest = 0;
 #ifdef __FILE_DIGEST_LSM
 	struct exec_key key = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -73,11 +74,17 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
 
+#ifdef __FILE_DIGEST_LSM
+	msg->digest.ok = 1;
+	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	digest = &msg->digest;
+#endif
+
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_exec);
+	operation = eval_selectors(action_exec, digest);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
@@ -110,9 +117,6 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->digest.ok = 0;
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 #else
-	msg->digest.ok = 1;
-	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
-
 	map_update_elem(&exec_retprobe_map, &key, msg, 0);
 #endif
 

@@ -103,7 +103,7 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	msg->operation = eval_selectors(msg->action);
+	msg->operation = eval_selectors(msg->action, 0);
 	if (!(msg->operation & FILE_OP_POST))
 		return 0;
 

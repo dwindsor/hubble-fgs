@@ -234,6 +234,19 @@ struct {
 } file_ops_maps SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__uint(key_size, sizeof(__u32)); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(max_entries, 1);
+			__type(key, struct digest_key);
+			__type(value, __u32);
+		});
+} file_digests_maps SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
 	__type(key, __u32);
@@ -322,6 +335,52 @@ static inline __attribute__((always_inline)) int check_match_operations(__u32 se
 }
 
 // returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_idx, struct digest_key *digest, __u32 action)
+{
+	void *file_digests_map;
+	struct digest_key op_key = {
+		.digest = { 0 },
+		.algo = 0x7fffffff, // INT32_MAX
+		.ok = 0,
+	};
+	__u32 *op, *val;
+
+	// the event does not support digests yet, so accept
+	if (digest == 0)
+		return 1;
+
+	// only applicable to exec events
+	if (action != action_exec)
+		return 1;
+
+	// failed to get digest
+	if (digest->algo < 0)
+		return 0;
+
+	file_digests_map = map_lookup_elem(&file_digests_maps, &sel_idx);
+	if (!file_digests_map) /* no matchDigests for this selector */
+		return 1;
+
+	op = map_lookup_elem(file_digests_map, &op_key);
+	if (op) {
+		val = map_lookup_elem(file_digests_map, digest);
+		if (*op == op_filter_in) {
+			if (!val)
+				return 0;
+		} else if (*op == op_filter_notin) {
+			if (val)
+				return 0;
+		}
+
+		return 1;
+	}
+
+	// If 'max' not found in file_digests_map this means that we don't have any
+	// matchDigests selectors.
+	return 1;
+}
+
+// returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
 	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
@@ -331,11 +390,13 @@ static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, struct execve_map_value *execve)
+__eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct execve_map_value *execve)
 {
 	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
 	if (!check_match_operations(sel_idx, action))
+		goto nopost;
+	if (!check_match_digests(sel_idx, digest, action))
 		goto nopost;
 	if (!check_enforcement(sel_idx))
 		goto post;
@@ -348,7 +409,7 @@ nopost:
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action)
+eval_selectors(__u32 action, struct digest_key *digest)
 {
 	__u32 ppid, i, val = 0, zero = 0;
 	struct file_config_map_value *conf;
@@ -375,7 +436,7 @@ eval_selectors(__u32 action)
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, execve);
+		val = __eval_selectors(i, action, digest, execve);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
