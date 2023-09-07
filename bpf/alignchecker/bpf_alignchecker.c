@@ -42,6 +42,7 @@ struct msg_file_rename_ops _24;
 struct file_config_map_value _25;
 struct lpm_key _26;
 struct lpm_val _27;
+struct digest_key _28;
 
 // from bpf_fd_lookup.h
 struct fd_lookup_config;
