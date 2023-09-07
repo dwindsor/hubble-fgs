@@ -1421,6 +1421,65 @@ func SupportEnforcement() bool {
 	return false
 }
 
+//	int BPF_PROG(bprm_check, struct linux_binprm *bprm) {
+//	    __u64 data;
+//	    bpf_ima_file_hash(bprm->file, &data, sizeof(__u64));
+//	    return 0;
+//	}
+//
+// Binary code for the previous program
+var testImaFileHashHelper = []byte{
+	0x79, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 0)
+	0x79, 0x11, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 64)
+	0xbf, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r2 = r10
+	0x07, 0x02, 0x00, 0x00, 0xf8, 0xff, 0xff, 0xff, // r2 += -8
+	0xb7, 0x03, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, // r3 = 8
+	0x85, 0x00, 0x00, 0x00, 0xc1, 0x00, 0x00, 0x00, // call 193
+	0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r0 = 0
+	0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // exit
+}
+
+func probeImaFileHashHelper() error {
+	r := bytes.NewReader(testImaFileHashHelper)
+
+	var insns asm.Instructions
+	if err := insns.Unmarshal(r, binary.LittleEndian); err != nil {
+		return fmt.Errorf("probeImaFileHashHelper: Cannot Unmarshal instructions: %w", err)
+	}
+
+	spec := &ebpf.ProgramSpec{
+		Type:         ebpf.LSM,
+		AttachType:   ebpf.AttachLSMMac,
+		AttachTo:     "bprm_creds_for_exec",
+		License:      "GPL",
+		Flags:        unix.BPF_F_SLEEPABLE,
+		Instructions: insns,
+	}
+
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: true,
+	})
+	if err == nil {
+		if lnk, err = link.AttachLSM(link.LSMOptions{Program: prog}); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+
+	switch {
+	// EINVAL occurs when attempting to create a program with an unknown type.
+	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
+	// of the struct known by the running kernel, meaning the kernel is too old
+	// to support the given prog type.
+	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
+		err = ebpf.ErrNotSupported
+	}
+	return err
+}
+
 func probeFileMode(s *fm.KernelSelectorState) Mode {
 	supportTracing := (probeTracingModifyReturn() == nil)
 	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
@@ -1433,7 +1492,8 @@ func probeFileMode(s *fm.KernelSelectorState) Mode {
 			enabledLSM = strings.Contains(string(lsm), "bpf")
 		}
 	}
-	logger.GetLogger().Infof("probeLSM() = %t (enabled = %t)", supportLSM, enabledLSM)
+	supportImaFileHash := (probeImaFileHashHelper() == nil)
+	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t (enabled = %t)", supportLSM, supportImaFileHash, enabledLSM)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
 	if !s.NeedEnforcement() {
