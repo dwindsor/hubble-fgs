@@ -383,8 +383,23 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	}
 }
 
+func latencyResetEvent(curr, last *[8]uint64, currSum, lastSum uint64) bool {
+	if curr[0] < last[0] ||
+		curr[1] < last[1] ||
+		curr[2] < last[2] ||
+		curr[3] < last[3] ||
+		curr[4] < last[4] ||
+		curr[5] < last[5] ||
+		curr[6] < last[6] ||
+		curr[7] < last[7] ||
+		currSum < lastSum {
+		return true
+	}
+	return false
+}
+
 func udpResetEvent(curr, last *udpInfoValue) bool {
-	// If we have fewer bytes or setgs than last measurement this is a
+	// If we have fewer bytes or segs than last measurement this is a
 	// sure sign we had a data race. Counters in BPF side are monotonic
 	// so a single entry will never be decrementing.
 	if curr.ConsumedSegs < last.ConsumedSegs ||
@@ -394,7 +409,8 @@ func udpResetEvent(curr, last *udpInfoValue) bool {
 		curr.SubmittedSegs < last.SubmittedSegs ||
 		curr.SubmittedBytes < last.SubmittedBytes ||
 		curr.SegsOut < last.SegsOut ||
-		curr.TXBytes < last.TXBytes {
+		curr.TXBytes < last.TXBytes ||
+		latencyResetEvent(&curr.Buckets, &last.Buckets, curr.LatencySum, last.LatencySum) {
 		return true
 	}
 
@@ -454,7 +470,10 @@ func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error
 	// datapath caused a map_value to replace the last entry. In this case
 	// to avoid dropping bytes on the counter we do not diff the values.
 	if udpResetEvent(curr, last) {
-		return *curr, nil
+		ipDst := network.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
+		ipSrc := network.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
+		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last}).Warnf("UDP stats underflow")
+		return udpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
 
 	return udpInfoValue{

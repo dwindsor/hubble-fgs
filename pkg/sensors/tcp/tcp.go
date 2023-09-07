@@ -313,7 +313,19 @@ func (tcp *tcpSensor) PolicyHandler(
 	return EnableTcp(spec.Parser.Tcp.Latency.Enable), nil
 }
 
-func tcpDiffRtt(last, curr *networkapi.Histogram) networkapi.Histogram {
+func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string) (networkapi.Histogram, error) {
+	if curr.B99 < last.B99 ||
+		curr.B90 < last.B90 ||
+		curr.B75 < last.B75 ||
+		curr.B50 < last.B50 ||
+		curr.B25 < last.B25 ||
+		curr.B10 < last.B10 ||
+		curr.B01 < last.B01 ||
+		curr.B00 < last.B00 ||
+		curr.Sum < last.Sum {
+		logger.GetLogger().WithFields(logrus.Fields{"source": source, "dest": dest, "curr": curr, "last": last}).Warnf("TCP %s stats underflow", ty)
+		return networkapi.Histogram{}, fmt.Errorf("TCP %s stats invalid diff operation", ty)
+	}
 	return networkapi.Histogram{
 		B99: curr.B99 - last.B99,
 		B90: curr.B90 - last.B90,
@@ -324,7 +336,7 @@ func tcpDiffRtt(last, curr *networkapi.Histogram) networkapi.Histogram {
 		B01: curr.B01 - last.B01,
 		B00: curr.B00 - last.B00,
 		Sum: curr.Sum - last.Sum,
-	}
+	}, nil
 }
 
 func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStatsUnix, error) {
@@ -343,6 +355,14 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.
 		}).Warnf("TX TCP stats underflow: %d < %d", curr.BytesSent, last.BytesSent)
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
+	rttHist, err := tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT", source, dest)
+	if err != nil {
+		return *last, err
+	}
+	latencyHist, err := tcpDiffHistogram(&last.Latency, &curr.Latency, "Latency", source, dest)
+	if err != nil {
+		return *last, err
+	}
 	return networkapi.MsgSocketStatsUnix{
 		BytesSubmitted:   0,
 		BytesSent:        curr.BytesSent - last.BytesSent,
@@ -358,7 +378,8 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.
 		ToZeroWindow:     curr.ToZeroWindow - last.ToZeroWindow,
 		SkDrop:           curr.SkDrop - last.SkDrop,
 		SkbConsumeMisses: 0,
-		Rtt:              tcpDiffRtt(&last.Rtt, &curr.Rtt),
+		Rtt:              rttHist,
+		Latency:          latencyHist,
 	}, nil
 }
 
