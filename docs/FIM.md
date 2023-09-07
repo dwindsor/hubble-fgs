@@ -378,17 +378,24 @@ spec:
         values:
         - "FILE_DELETE"
         - "FILE_WRITE"
+      matchDigests:
+      - operator: "In"
+        values:
+        - "sha1:cae542290d1bb5c91c637350e0a633f71fd2a6e4" # /bin/sleep
+        - "sha1:439667f622b84ecb9f381be93cc9139f83a92f66" # /bin/bash
       matchActions:
       - action: Post
 ```
 
-This will generate events when `[process.binary == /usr/bin/mybinary] AND [(action == FILE_DELETE) OR (action == FILE_WRITE)]`.
+This will generate events when `[process.binary == /usr/bin/mybinary] AND [(action == FILE_DELETE) OR (action == FILE_WRITE)] AND [(file.digest == sha1:cae542290d1bb5c91c637350e0a633f71fd2a6e4) OR (file.digest == sha1:439667f622b84ecb9f381be93cc9139f83a92f66)]`.
 
 We support the following filters:
 
 - `matchBinaries` filters events based on `process.binary`. Valid operators are `"In"` and `"NotIn"`. Values are arbitrary strings with size less than 255 characters. The maximum number of values can be 256.
 
 - `matchOperations` filters events based on `action`. Valid operators are `"In"` and `"NotIn"`. Valid values are all actions listed [here](#supported-actions).
+
+- `matchDigests` filters events based on the file hash. Valid operators are `"In"` and `"NotIn"`. Valid values contain a `:` where the first part is the hashing algorith and the second part is the actual file hash (e.g. `sha1:cae542290d1bb5c91c637350e0a633f71fd2a6e4`). Only `FILE_EXEC` events may provide file hashes, so this selector only works in that cases. In all other event types (that do not contain any file hash), this selector is simply ignored.
 
 - `matchActions` defines the action to be taken. Valid actions are `Post` and `Block` (default is `Post`). `Post` generates an event. `Block` blocks the operation (application will receive an error) and generates an event. More on enforcement can be found [here](#enforcement).
 
