@@ -158,6 +158,27 @@ spec:
                             - values
                             type: object
                           type: array
+                        matchDigests:
+                          description: A list of operation filters.
+                          items:
+                            properties:
+                              operator:
+                                description: Filter operation.
+                                enum:
+                                - In
+                                - NotIn
+                                type: string
+                              values:
+                                description: Value to compare the argument against.
+                                items:
+                                  description: 'Example: "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f"'
+                                  type: string
+                                type: array
+                            required:
+                            - operator
+                            - values
+                            type: object
+                          type: array
                         matchOperations:
                           description: A list of operation filters.
                           items:

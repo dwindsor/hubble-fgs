@@ -147,6 +147,17 @@ type FileActionSelector struct {
 	Action string `json:"action"`
 }
 
+// Example: "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f"
+type DigestSelectorValue = string
+
+type DigestSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []DigestSelectorValue `json:"values"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -155,6 +166,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
 	MatchOperations []OperationSelector `json:"matchOperations"`
+	// +kubebuilder:validation:Optional
+	// A list of operation filters.
+	MatchDigests []DigestSelector `json:"matchDigests"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions"`
