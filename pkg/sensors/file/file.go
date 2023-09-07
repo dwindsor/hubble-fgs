@@ -187,8 +187,9 @@ var (
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60"},
 			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63"},
 		}},
-		{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check"}}},
 	}
+
+	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check"}}}
 
 	FimHooksFmodRet = [...]FimHook{
 		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file"}}},
@@ -226,8 +227,9 @@ var (
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr"},
 			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr"},
 		}},
-		{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check"}}},
 	}
+
+	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check"}}}
 
 	FimHooksLsm = [...]FimHook{
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file"}}},
@@ -265,7 +267,13 @@ var (
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
 			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
 		}},
-		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security"}}},
+	}
+
+	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security"}}}
+
+	FimHooksLsmExecDigests = [...]FimHook{
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security"}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check"}}},
 	}
 
 	SharedMaps = [...]string{
@@ -1202,7 +1210,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", h.tp, h.name)),
+			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
 			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
@@ -1257,6 +1265,15 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			},
 		}
 
+		// only for exec events when digests are enabled
+		if h.name == "security_bprm_check" && h.progName == "bpf_security_bprm_check_enforce_lsm_digest.o" {
+			m := "exec_retprobe_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+			)
+		}
+
 		for _, m := range SharedMaps {
 			maps = append(
 				maps,
@@ -1283,7 +1300,7 @@ func fixProgName(p string) string {
 	return p
 }
 
-func findHooks(config *fileapi.FileConfigMapValue, mode Mode) ([]FimProg, error) {
+func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
@@ -1297,12 +1314,36 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode) ([]FimProg, error)
 	if mode == Observe {
 		hooks = FimHooksObserve[:]
 		m = "observe"
+		if digestSupport {
+			for _, h := range FimHooksLsmExecDigests {
+				hooks = append(hooks, h)
+			}
+			m += " with exec digests"
+		} else {
+			hooks = append(hooks, FimHooksObserveExec)
+		}
 	} else if mode == EnforceFmodRet {
 		hooks = FimHooksFmodRet[:]
 		m = "enforce with fmod_ret"
+		if digestSupport {
+			for _, h := range FimHooksLsmExecDigests {
+				hooks = append(hooks, h)
+			}
+			m += " with exec digests"
+		} else {
+			hooks = append(hooks, FimHooksFmodRetExec)
+		}
 	} else if mode == EnforceLSM {
 		hooks = FimHooksLsm[:]
 		m = "enforce with lsm"
+		if digestSupport {
+			for _, h := range FimHooksLsmExecDigests {
+				hooks = append(hooks, h)
+			}
+			m += " with exec digests"
+		} else {
+			hooks = append(hooks, FimHooksLsmExec)
+		}
 	} else {
 		return nil, fmt.Errorf("unknown mode in findHooks [%d]", mode)
 	}
@@ -1480,7 +1521,8 @@ func probeImaFileHashHelper() error {
 	return err
 }
 
-func probeFileMode(s *fm.KernelSelectorState) Mode {
+// returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
+func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	supportTracing := (probeTracingModifyReturn() == nil)
 	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
@@ -1496,18 +1538,20 @@ func probeFileMode(s *fm.KernelSelectorState) Mode {
 	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t (enabled = %t)", supportLSM, supportImaFileHash, enabledLSM)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
+	digestSupport := supportImaFileHash && supportTracing
+
 	if !s.NeedEnforcement() {
-		return Observe
+		return Observe, digestSupport
 	}
 
 	// If we have support for lsm and fmod_ret we prefer to use lsm.
 	// For lsm we should also check that this is enabled.
 	if supportLSM && enabledLSM {
-		return EnforceLSM
+		return EnforceLSM, digestSupport
 	} else if supportTracing {
-		return EnforceFmodRet
+		return EnforceFmodRet, digestSupport
 	}
-	return EnforceNotSupported
+	return EnforceNotSupported, digestSupport
 }
 
 // PolicyHandler (called on init)
@@ -1531,6 +1575,11 @@ func (k *observerFileSensor) PolicyHandler(
 	if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
 		forceLoad = true
 	}
+	enableExecDigests := false
+	if val, ok := spec.FileMonitoring.Config["enableExecDigests"]; ok && val == "true" {
+		enableExecDigests = true
+	}
+
 	if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
 		logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
 		return nil, nil
@@ -1559,7 +1608,14 @@ func (k *observerFileSensor) PolicyHandler(
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 	}
-	progs, err := findHooks(&config, probeFileMode(selState))
+	fileMode, digestSupport := probeFileMode(selState)
+	if !enableExecDigests { // we explicitly disable digests if the user has not enabled them
+		digestSupport = false
+	}
+	if enableExecDigests && !digestSupport { // the user enables exec digests but the kernel does not support them
+		logger.GetLogger().Warn("FileMonitoring: User enables file digests but the kernel does not support them. Falling back to not using them.")
+	}
+	progs, err := findHooks(&config, fileMode, digestSupport)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
 		return nil, nil
@@ -1588,7 +1644,7 @@ func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	} else if v.tp == "fentry" || v.tp == "fexit" || v.tp == "fmod_ret" {
 		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else if v.tp == "lsm" {
+	} else if v.tp == "lsm" || v.tp == "lsm.s" {
 		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	} else {
 		return fmt.Errorf("file: %s programs are not supported", v.tp)
