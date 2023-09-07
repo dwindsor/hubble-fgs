@@ -101,33 +101,6 @@ const (
 	EnforceLSM
 )
 
-const IMA_MAX_DIGEST_SIZE = 64
-
-var (
-	HashAlgoLen = map[tetragon.DigestAlgo]int{
-		tetragon.DigestAlgo_HASH_ALGO_MD4:          16,
-		tetragon.DigestAlgo_HASH_ALGO_MD5:          16,
-		tetragon.DigestAlgo_HASH_ALGO_SHA1:         20,
-		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_160:  20,
-		tetragon.DigestAlgo_HASH_ALGO_SHA256:       32,
-		tetragon.DigestAlgo_HASH_ALGO_SHA384:       48,
-		tetragon.DigestAlgo_HASH_ALGO_SHA512:       64,
-		tetragon.DigestAlgo_HASH_ALGO_SHA224:       28,
-		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_128:  16,
-		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_256:  32,
-		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_320:  40,
-		tetragon.DigestAlgo_HASH_ALGO_WP_256:       32,
-		tetragon.DigestAlgo_HASH_ALGO_WP_384:       48,
-		tetragon.DigestAlgo_HASH_ALGO_WP_512:       64,
-		tetragon.DigestAlgo_HASH_ALGO_TGR_128:      16,
-		tetragon.DigestAlgo_HASH_ALGO_TGR_160:      20,
-		tetragon.DigestAlgo_HASH_ALGO_TGR_192:      24,
-		tetragon.DigestAlgo_HASH_ALGO_SM3_256:      32,
-		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_256: 32,
-		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_512: 64,
-	}
-)
-
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
@@ -844,8 +817,8 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		digest.Ok = true
 		if digest.Error = m.Digest.Algo; digest.Error >= 0 { // we don't have an error here
 			digest.Algo = m.Digest.Algo
-			digestLen := IMA_MAX_DIGEST_SIZE
-			if dlen, ok := HashAlgoLen[tetragon.DigestAlgo(m.Digest.Algo)]; ok {
+			digestLen := fm.IMA_MAX_DIGEST_SIZE
+			if dlen, ok := fm.HashAlgoLen[tetragon.DigestAlgo(m.Digest.Algo)]; ok {
 				digestLen = dlen
 			}
 			for i := 0; i < digestLen; i++ {
