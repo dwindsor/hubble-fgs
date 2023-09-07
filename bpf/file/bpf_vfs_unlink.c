@@ -83,6 +83,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
+	msg->digest.ok = 0;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

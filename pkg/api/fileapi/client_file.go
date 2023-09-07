@@ -58,6 +58,12 @@ type MsgFsInfo struct {
 	SUuid [16]byte `align:"uuid"`
 }
 
+type DigestKey struct {
+	Digest [64]uint8 `align:"digest"`
+	Algo   int32     `align:"algo"`
+	Ok     int32     `align:"ok"`
+}
+
 type MsgFileEvent struct {
 	Common     processapi.MsgCommon    `align:"common"`
 	ProcessKey processapi.MsgExecveKey `align:"current"`
@@ -77,6 +83,7 @@ type MsgFileEvent struct {
 	TpId       uint32                  `align:"tp_id"`
 	RuleID     uint32                  `align:"rule_id"`
 	Tid        uint32                  `align:"tid"`
+	Digest     DigestKey               `align:"digest"`
 }
 
 type MsgFileSplitPath struct {

@@ -75,7 +75,9 @@ FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o 
 	  bpf_vfs_rename_enforce_lsm.o bpf_vfs_rename_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_fmod_v60.o bpf_security_inode_setattr_enforce_fmod_v63.o \
-	  bpf_security_bprm_check.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o
+	  bpf_security_bprm_check.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
+	  bpf_security_bprm_check_enforce_lsm_digest.o
+
 
 BPFTEST = bpf_lseek.o bpf_globals.o
 
@@ -221,6 +223,12 @@ objs/%_lsm.ll:
 $(DEPSDIR)%_lsm.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
+objs/%_lsm_digest.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM -c $< -o $@
+
+$(DEPSDIR)%_lsm_digest.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
 objs/%_fmod.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -c $< -o $@
 
@@ -300,6 +308,7 @@ deps/bpf_security_inode_setattr_enforce_fmod_v60.d: $(FILEDIR)/bpf_security_inod
 deps/bpf_security_inode_setattr_enforce_fmod_v63.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_bprm_check_enforce_lsm.d: $(FILEDIR)/bpf_security_bprm_check.c
 deps/bpf_security_bprm_check_enforce_fmod.d: $(FILEDIR)/bpf_security_bprm_check.c
+deps/bpf_security_bprm_check_enforce_lsm_digest.d: $(FILEDIR)/bpf_security_bprm_check.c
 
 $(DEPSDIR)%_v419.d:
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@

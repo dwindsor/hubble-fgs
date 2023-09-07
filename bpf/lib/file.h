@@ -12,6 +12,8 @@
 
 #define CONTAINER_ID_LEN 64
 
+#define IMA_MAX_DIGEST_SIZE 64
+
 #define EPERM 1 /* Operation not permitted */
 
 enum { action_invalid = 0,
@@ -103,6 +105,12 @@ struct msg_fs_info {
 	__u8 uuid[16];
 };
 
+struct digest_key {
+	__u8 digest[IMA_MAX_DIGEST_SIZE];
+	__s32 algo; // < 0 fails to extract a file digest, >= 0 shows the hashing algorithm
+	__s32 ok; // 1 if the event tried to generate a digest, 0 otherwise
+};
+
 struct msg_file_ops {
 	struct msg_common common;
 	struct msg_execve_key current;
@@ -122,6 +130,7 @@ struct msg_file_ops {
 	__u32 tp_id;
 	__u32 rule_id;
 	__u32 tid;
+	struct digest_key digest;
 };
 
 struct vfs_mkdir_info {

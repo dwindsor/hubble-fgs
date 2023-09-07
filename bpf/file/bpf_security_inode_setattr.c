@@ -63,6 +63,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
+	msg->digest.ok = 0;
 
 	return msg;
 }

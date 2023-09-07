@@ -2,6 +2,22 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+#ifdef __FILE_DIGEST_LSM
+struct exec_key {
+	__u64 pid_tgid;
+	__u64 bprm_ptr;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct exec_key);
+	__type(value, struct msg_file_ops);
+	__uint(max_entries, 128);
+} exec_retprobe_map SEC(".maps");
+
+static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
+#endif
+
 /*
  * This function handles all exec operations.
  * Returns:
@@ -17,6 +33,12 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	struct hash_map_file_val *file_val = 0;
 	struct file *file;
 	__u32 operation = 0;
+#ifdef __FILE_DIGEST_LSM
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+#endif
 
 	file = BPF_CORE_READ(bprm, file);
 	if (!file)
@@ -79,20 +101,58 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 
+	// Getting a file digest requires a sleepable LSM program.
+	// Sleepable programs can only use array, hash, ringbuf and local storage maps.
+	// To overcome this limitation we use an fexit program to call perf_event_output
+	// and send the event to the user-space. Fexit program always runs after
+	// the lsm.s program and they communicate through the exec_retprobe_map map.
+#ifndef __FILE_DIGEST_LSM
+	msg->digest.ok = 0;
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+#else
+	msg->digest.ok = 1;
+	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+
+	map_update_elem(&exec_retprobe_map, &key, msg, 0);
+#endif
 
 	return (operation & FILE_OP_BLOCK) != 0;
 }
 
+#ifndef __FILE_DIGEST_LSM
 SEC("kprobe/security_bprm_check")
 int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 {
 	handle_file_exec(ctx, bprm);
 	return 0;
 }
+#endif
+
+#ifdef __FILE_DIGEST_LSM
+SEC("fexit/security_bprm_check")
+int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
+{
+	struct msg_file_ops *msg;
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+
+	msg = map_lookup_elem(&exec_retprobe_map, &key);
+	if (!msg)
+		return 0;
+
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	return 0;
+}
+#endif
 
 #ifdef __FILE_ENFORCE_LSM
+#ifdef __FILE_DIGEST_LSM
+SEC("lsm.s/bprm_check_security")
+#else
 SEC("lsm/bprm_check_security")
+#endif
 int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 {
 	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
