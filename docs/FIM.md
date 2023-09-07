@@ -101,9 +101,12 @@ These include:
 - `CONTAINER_FILE_REMOTE` the file is monitored as a container file (`location.container_id` shows the container id), and the access happened from a different container or the host.
 
 8. `args.generic_arg.file.mnt_ns.inum` is the mnt namespace of the process at the time of the event. `mnt_ns.is_host` is true, if this is the host mnt namespace.
-9. `args.time` is the time of the event.
-10. `args.hook` is the kernel function that generates the event (mainly for debugging).
-11. `args.operation` is the operation of this event. Possible values are:
+9. `args.generic_arg.file.digest.hash` is the hash of the file that is related to this event. Only applicable for `FILE_EXEC` events. Check [here](#file-digest-during-exec-events) on how to enable file digests.
+10. `args.generic_arg.file.digest.algo` is the algorithm used to calculate `args.generic_arg.file.digest.hash`. Only applicable for `FILE_EXEC` events. Check [here](#file-digest-during-exec-events) on how to enable file digests.
+11. `args.generic_arg.file.digest.error` is the reason that the kernel fails to generate `args.generic_arg.file.digest.hash`. Only prapplicableovided for `FILE_EXEC` events. Check [here](#file-digest-during-exec-events) on how to enable file digests.
+12. `args.time` is the time of the event.
+13. `args.hook` is the kernel function that generates the event (mainly for debugging).
+14. `args.operation` is the operation of this event. Possible values are:
 
 - `FILE_OP_POST` we report this access.
 - `FILE_OP_BLOCK` we block this access (application will receive an error). More details about enforcement can be found [here](#enforcement).
@@ -503,6 +506,29 @@ spec:
     - "/etc/locale.alias"
     monitorHostFiles: true
 ```
+
+## File digest during exec events
+
+Tetragon Enterprise supports file digests during `FILE_EXEC` events. To enable that, the user should set `file_config.enableExecDigests` to true. An example is:
+
+```yaml
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_config:
+      enableExecDigests: "true"
+    file_paths:
+    - "/usr/bin/"
+    monitorHostFiles: true
+```
+
+Please note that this feature requires newer kernels (>= 5.18). Tetragon Enterprise automatically detects if the kernel supports file digests.
+In the case where the user sets `file_config.enableExecDigests` equals to true and the kernel does not support digests, we fallback to not providing
+digests and we also print a warning in the logs.
+
 
 ## Known Limitations
 
