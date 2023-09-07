@@ -8992,11 +8992,92 @@ func (checker *FileIOChecker) FromFileIO(event *tetragon.FileIO) *FileIOChecker 
 	return checker
 }
 
+// FileDigestChecker implements a checker struct to check a FileDigest field
+type FileDigestChecker struct {
+	Algo  *DigestAlgoChecker           `json:"algo,omitempty"`
+	Hash  *stringmatcher.StringMatcher `json:"hash,omitempty"`
+	Error *int64                       `json:"error,omitempty"`
+}
+
+// NewFileDigestChecker creates a new FileDigestChecker
+func NewFileDigestChecker() *FileDigestChecker {
+	return &FileDigestChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *FileDigestChecker) GetCheckerType() string {
+	return "FileDigestChecker"
+}
+
+// Check checks a FileDigest field
+func (checker *FileDigestChecker) Check(event *tetragon.FileDigest) error {
+	if event == nil {
+		return fmt.Errorf("%s: FileDigest field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Algo != nil {
+			if err := checker.Algo.Check(&event.Algo); err != nil {
+				return fmt.Errorf("Algo check failed: %w", err)
+			}
+		}
+		if checker.Hash != nil {
+			if err := checker.Hash.Match(event.Hash); err != nil {
+				return fmt.Errorf("Hash check failed: %w", err)
+			}
+		}
+		if checker.Error != nil {
+			if *checker.Error != event.Error {
+				return fmt.Errorf("Error has value %d which does not match expected value %d", event.Error, *checker.Error)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithAlgo adds a Algo check to the FileDigestChecker
+func (checker *FileDigestChecker) WithAlgo(check tetragon.DigestAlgo) *FileDigestChecker {
+	wrappedCheck := DigestAlgoChecker(check)
+	checker.Algo = &wrappedCheck
+	return checker
+}
+
+// WithHash adds a Hash check to the FileDigestChecker
+func (checker *FileDigestChecker) WithHash(check *stringmatcher.StringMatcher) *FileDigestChecker {
+	checker.Hash = check
+	return checker
+}
+
+// WithError adds a Error check to the FileDigestChecker
+func (checker *FileDigestChecker) WithError(check int64) *FileDigestChecker {
+	checker.Error = &check
+	return checker
+}
+
+//FromFileDigest populates the FileDigestChecker using data from a FileDigest field
+func (checker *FileDigestChecker) FromFileDigest(event *tetragon.FileDigest) *FileDigestChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Algo = NewDigestAlgoChecker(event.Algo)
+	checker.Hash = stringmatcher.Full(event.Hash)
+	{
+		val := event.Error
+		checker.Error = &val
+	}
+	return checker
+}
+
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
-	File  *FileDetailsChecker `json:"file,omitempty"`
-	Io    *FileIOChecker      `json:"io,omitempty"`
-	MntNs *NamespaceChecker   `json:"mntNs,omitempty"`
+	File   *FileDetailsChecker `json:"file,omitempty"`
+	Io     *FileIOChecker      `json:"io,omitempty"`
+	MntNs  *NamespaceChecker   `json:"mntNs,omitempty"`
+	Digest *FileDigestChecker  `json:"digest,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -9031,6 +9112,11 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 				return fmt.Errorf("MntNs check failed: %w", err)
 			}
 		}
+		if checker.Digest != nil {
+			if err := checker.Digest.Check(event.Digest); err != nil {
+				return fmt.Errorf("Digest check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -9057,6 +9143,12 @@ func (checker *GenericFileArgChecker) WithMntNs(check *NamespaceChecker) *Generi
 	return checker
 }
 
+// WithDigest adds a Digest check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithDigest(check *FileDigestChecker) *GenericFileArgChecker {
+	checker.Digest = check
+	return checker
+}
+
 //FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
 func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.GenericFileArg) *GenericFileArgChecker {
 	if event == nil {
@@ -9070,6 +9162,9 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	}
 	if event.MntNs != nil {
 		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	if event.Digest != nil {
+		checker.Digest = NewFileDigestChecker().FromFileDigest(event.Digest)
 	}
 	return checker
 }
@@ -11111,6 +11206,58 @@ func (enum *FileScopeChecker) Check(val *tetragon.FileScope) error {
 	}
 	if *enum != FileScopeChecker(*val) {
 		return fmt.Errorf("FileScopeChecker: FileScope has value %s which does not match expected value %s", (*val), tetragon.FileScope(*enum))
+	}
+	return nil
+}
+
+// DigestAlgoChecker checks a tetragon.DigestAlgo
+type DigestAlgoChecker tetragon.DigestAlgo
+
+// MarshalJSON implements json.Marshaler interface
+func (enum DigestAlgoChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.DigestAlgo_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "HASH_ALGO_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown DigestAlgo %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *DigestAlgoChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.DigestAlgo_value[str]; ok {
+		*enum = DigestAlgoChecker(n)
+	} else if n, ok := tetragon.DigestAlgo_value["HASH_ALGO_"+str]; ok {
+		*enum = DigestAlgoChecker(n)
+	} else {
+		return fmt.Errorf("Unknown DigestAlgo %s", str)
+	}
+
+	return nil
+}
+
+// NewDigestAlgoChecker creates a new DigestAlgoChecker
+func NewDigestAlgoChecker(val tetragon.DigestAlgo) *DigestAlgoChecker {
+	enum := DigestAlgoChecker(val)
+	return &enum
+}
+
+// Check checks a DigestAlgo against the checker
+func (enum *DigestAlgoChecker) Check(val *tetragon.DigestAlgo) error {
+	if val == nil {
+		return fmt.Errorf("DigestAlgoChecker: DigestAlgo is nil and does not match expected value %s", tetragon.DigestAlgo(*enum))
+	}
+	if *enum != DigestAlgoChecker(*val) {
+		return fmt.Errorf("DigestAlgoChecker: DigestAlgo has value %s which does not match expected value %s", (*val), tetragon.DigestAlgo(*enum))
 	}
 	return nil
 }

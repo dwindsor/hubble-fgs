@@ -202,10 +202,42 @@ message FileIO {
     string size = 2;
 }
 
+// from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_info.h
+enum DigestAlgo {
+    HASH_ALGO_MD4 = 0;
+    HASH_ALGO_MD5 = 1;
+    HASH_ALGO_SHA1 = 2;
+    HASH_ALGO_RIPE_MD_160 = 3;
+    HASH_ALGO_SHA256 = 4;
+    HASH_ALGO_SHA384 = 5;
+    HASH_ALGO_SHA512 = 6;
+    HASH_ALGO_SHA224 = 7;
+    HASH_ALGO_RIPE_MD_128 = 8;
+    HASH_ALGO_RIPE_MD_256 = 9;
+    HASH_ALGO_RIPE_MD_320 = 10;
+    HASH_ALGO_WP_256 = 11;
+    HASH_ALGO_WP_384 = 12;
+    HASH_ALGO_WP_512 = 13;
+    HASH_ALGO_TGR_128 = 14;
+    HASH_ALGO_TGR_160 = 15;
+    HASH_ALGO_TGR_192 = 16;
+    HASH_ALGO_SM3_256 = 17;
+    HASH_ALGO_STREEBOG_256 = 18;
+    HASH_ALGO_STREEBOG_512 = 19;
+    HASH_ALGO__LAST = 20;
+}
+
+message FileDigest {
+    DigestAlgo algo = 1;
+    string hash = 2;
+    int64 error = 3;
+}
+
 message GenericFileArg {
     FileDetails file = 1;
     FileIO io = 2 [deprecated=true];
     tetragon.Namespace mnt_ns = 3;
+    FileDigest digest = 4;
 }
 
 message RenameFileArg {

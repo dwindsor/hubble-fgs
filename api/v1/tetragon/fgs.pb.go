@@ -211,6 +211,110 @@ func (FileScope) EnumDescriptor() ([]byte, []int) {
 	return file_tetragon_fgs_proto_rawDescGZIP(), []int{2}
 }
 
+// from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_info.h
+type DigestAlgo int32
+
+const (
+	DigestAlgo_HASH_ALGO_MD4          DigestAlgo = 0
+	DigestAlgo_HASH_ALGO_MD5          DigestAlgo = 1
+	DigestAlgo_HASH_ALGO_SHA1         DigestAlgo = 2
+	DigestAlgo_HASH_ALGO_RIPE_MD_160  DigestAlgo = 3
+	DigestAlgo_HASH_ALGO_SHA256       DigestAlgo = 4
+	DigestAlgo_HASH_ALGO_SHA384       DigestAlgo = 5
+	DigestAlgo_HASH_ALGO_SHA512       DigestAlgo = 6
+	DigestAlgo_HASH_ALGO_SHA224       DigestAlgo = 7
+	DigestAlgo_HASH_ALGO_RIPE_MD_128  DigestAlgo = 8
+	DigestAlgo_HASH_ALGO_RIPE_MD_256  DigestAlgo = 9
+	DigestAlgo_HASH_ALGO_RIPE_MD_320  DigestAlgo = 10
+	DigestAlgo_HASH_ALGO_WP_256       DigestAlgo = 11
+	DigestAlgo_HASH_ALGO_WP_384       DigestAlgo = 12
+	DigestAlgo_HASH_ALGO_WP_512       DigestAlgo = 13
+	DigestAlgo_HASH_ALGO_TGR_128      DigestAlgo = 14
+	DigestAlgo_HASH_ALGO_TGR_160      DigestAlgo = 15
+	DigestAlgo_HASH_ALGO_TGR_192      DigestAlgo = 16
+	DigestAlgo_HASH_ALGO_SM3_256      DigestAlgo = 17
+	DigestAlgo_HASH_ALGO_STREEBOG_256 DigestAlgo = 18
+	DigestAlgo_HASH_ALGO_STREEBOG_512 DigestAlgo = 19
+	DigestAlgo_HASH_ALGO__LAST        DigestAlgo = 20
+)
+
+// Enum value maps for DigestAlgo.
+var (
+	DigestAlgo_name = map[int32]string{
+		0:  "HASH_ALGO_MD4",
+		1:  "HASH_ALGO_MD5",
+		2:  "HASH_ALGO_SHA1",
+		3:  "HASH_ALGO_RIPE_MD_160",
+		4:  "HASH_ALGO_SHA256",
+		5:  "HASH_ALGO_SHA384",
+		6:  "HASH_ALGO_SHA512",
+		7:  "HASH_ALGO_SHA224",
+		8:  "HASH_ALGO_RIPE_MD_128",
+		9:  "HASH_ALGO_RIPE_MD_256",
+		10: "HASH_ALGO_RIPE_MD_320",
+		11: "HASH_ALGO_WP_256",
+		12: "HASH_ALGO_WP_384",
+		13: "HASH_ALGO_WP_512",
+		14: "HASH_ALGO_TGR_128",
+		15: "HASH_ALGO_TGR_160",
+		16: "HASH_ALGO_TGR_192",
+		17: "HASH_ALGO_SM3_256",
+		18: "HASH_ALGO_STREEBOG_256",
+		19: "HASH_ALGO_STREEBOG_512",
+		20: "HASH_ALGO__LAST",
+	}
+	DigestAlgo_value = map[string]int32{
+		"HASH_ALGO_MD4":          0,
+		"HASH_ALGO_MD5":          1,
+		"HASH_ALGO_SHA1":         2,
+		"HASH_ALGO_RIPE_MD_160":  3,
+		"HASH_ALGO_SHA256":       4,
+		"HASH_ALGO_SHA384":       5,
+		"HASH_ALGO_SHA512":       6,
+		"HASH_ALGO_SHA224":       7,
+		"HASH_ALGO_RIPE_MD_128":  8,
+		"HASH_ALGO_RIPE_MD_256":  9,
+		"HASH_ALGO_RIPE_MD_320":  10,
+		"HASH_ALGO_WP_256":       11,
+		"HASH_ALGO_WP_384":       12,
+		"HASH_ALGO_WP_512":       13,
+		"HASH_ALGO_TGR_128":      14,
+		"HASH_ALGO_TGR_160":      15,
+		"HASH_ALGO_TGR_192":      16,
+		"HASH_ALGO_SM3_256":      17,
+		"HASH_ALGO_STREEBOG_256": 18,
+		"HASH_ALGO_STREEBOG_512": 19,
+		"HASH_ALGO__LAST":        20,
+	}
+)
+
+func (x DigestAlgo) Enum() *DigestAlgo {
+	p := new(DigestAlgo)
+	*p = x
+	return p
+}
+
+func (x DigestAlgo) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DigestAlgo) Descriptor() protoreflect.EnumDescriptor {
+	return file_tetragon_fgs_proto_enumTypes[3].Descriptor()
+}
+
+func (DigestAlgo) Type() protoreflect.EnumType {
+	return &file_tetragon_fgs_proto_enumTypes[3]
+}
+
+func (x DigestAlgo) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DigestAlgo.Descriptor instead.
+func (DigestAlgo) EnumDescriptor() ([]byte, []int) {
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{3}
+}
+
 type FileOperation int32
 
 const (
@@ -244,11 +348,11 @@ func (x FileOperation) String() string {
 }
 
 func (FileOperation) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[3].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[4].Descriptor()
 }
 
 func (FileOperation) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[3]
+	return &file_tetragon_fgs_proto_enumTypes[4]
 }
 
 func (x FileOperation) Number() protoreflect.EnumNumber {
@@ -257,7 +361,7 @@ func (x FileOperation) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileOperation.Descriptor instead.
 func (FileOperation) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{3}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{4}
 }
 
 type TlsCertificateError int32
@@ -347,11 +451,11 @@ func (x TlsCertificateError) String() string {
 }
 
 func (TlsCertificateError) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[4].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[5].Descriptor()
 }
 
 func (TlsCertificateError) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[4]
+	return &file_tetragon_fgs_proto_enumTypes[5]
 }
 
 func (x TlsCertificateError) Number() protoreflect.EnumNumber {
@@ -360,7 +464,7 @@ func (x TlsCertificateError) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TlsCertificateError.Descriptor instead.
 func (TlsCertificateError) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{4}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{5}
 }
 
 type HistogramBucket struct {
@@ -1733,6 +1837,69 @@ func (x *FileIO) GetSize() string {
 	return ""
 }
 
+type FileDigest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Algo  DigestAlgo `protobuf:"varint,1,opt,name=algo,proto3,enum=tetragon.DigestAlgo" json:"algo,omitempty"`
+	Hash  string     `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	Error int64      `protobuf:"varint,3,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *FileDigest) Reset() {
+	*x = FileDigest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tetragon_fgs_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *FileDigest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileDigest) ProtoMessage() {}
+
+func (x *FileDigest) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_fgs_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileDigest.ProtoReflect.Descriptor instead.
+func (*FileDigest) Descriptor() ([]byte, []int) {
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *FileDigest) GetAlgo() DigestAlgo {
+	if x != nil {
+		return x.Algo
+	}
+	return DigestAlgo_HASH_ALGO_MD4
+}
+
+func (x *FileDigest) GetHash() string {
+	if x != nil {
+		return x.Hash
+	}
+	return ""
+}
+
+func (x *FileDigest) GetError() int64 {
+	if x != nil {
+		return x.Error
+	}
+	return 0
+}
+
 type GenericFileArg struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1740,14 +1907,15 @@ type GenericFileArg struct {
 
 	File *FileDetails `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
 	// Deprecated: Marked as deprecated in tetragon/fgs.proto.
-	Io    *FileIO    `protobuf:"bytes,2,opt,name=io,proto3" json:"io,omitempty"`
-	MntNs *Namespace `protobuf:"bytes,3,opt,name=mnt_ns,json=mntNs,proto3" json:"mnt_ns,omitempty"`
+	Io     *FileIO     `protobuf:"bytes,2,opt,name=io,proto3" json:"io,omitempty"`
+	MntNs  *Namespace  `protobuf:"bytes,3,opt,name=mnt_ns,json=mntNs,proto3" json:"mnt_ns,omitempty"`
+	Digest *FileDigest `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
 }
 
 func (x *GenericFileArg) Reset() {
 	*x = GenericFileArg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[14]
+		mi := &file_tetragon_fgs_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1760,7 +1928,7 @@ func (x *GenericFileArg) String() string {
 func (*GenericFileArg) ProtoMessage() {}
 
 func (x *GenericFileArg) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[14]
+	mi := &file_tetragon_fgs_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1773,7 +1941,7 @@ func (x *GenericFileArg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenericFileArg.ProtoReflect.Descriptor instead.
 func (*GenericFileArg) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{14}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GenericFileArg) GetFile() *FileDetails {
@@ -1798,6 +1966,13 @@ func (x *GenericFileArg) GetMntNs() *Namespace {
 	return nil
 }
 
+func (x *GenericFileArg) GetDigest() *FileDigest {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 type RenameFileArg struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1812,7 +1987,7 @@ type RenameFileArg struct {
 func (x *RenameFileArg) Reset() {
 	*x = RenameFileArg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[15]
+		mi := &file_tetragon_fgs_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1825,7 +2000,7 @@ func (x *RenameFileArg) String() string {
 func (*RenameFileArg) ProtoMessage() {}
 
 func (x *RenameFileArg) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[15]
+	mi := &file_tetragon_fgs_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1838,7 +2013,7 @@ func (x *RenameFileArg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameFileArg.ProtoReflect.Descriptor instead.
 func (*RenameFileArg) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{15}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RenameFileArg) GetSrc() *FileDetails {
@@ -1881,7 +2056,7 @@ type ReadDirArg struct {
 func (x *ReadDirArg) Reset() {
 	*x = ReadDirArg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[16]
+		mi := &file_tetragon_fgs_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1894,7 +2069,7 @@ func (x *ReadDirArg) String() string {
 func (*ReadDirArg) ProtoMessage() {}
 
 func (x *ReadDirArg) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[16]
+	mi := &file_tetragon_fgs_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1907,7 +2082,7 @@ func (x *ReadDirArg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadDirArg.ProtoReflect.Descriptor instead.
 func (*ReadDirArg) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{16}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReadDirArg) GetFile() *FileDetails {
@@ -1936,7 +2111,7 @@ type AttrChange struct {
 func (x *AttrChange) Reset() {
 	*x = AttrChange{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[17]
+		mi := &file_tetragon_fgs_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1949,7 +2124,7 @@ func (x *AttrChange) String() string {
 func (*AttrChange) ProtoMessage() {}
 
 func (x *AttrChange) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[17]
+	mi := &file_tetragon_fgs_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1962,7 +2137,7 @@ func (x *AttrChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttrChange.ProtoReflect.Descriptor instead.
 func (*AttrChange) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{17}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AttrChange) GetNew() string {
@@ -1992,7 +2167,7 @@ type FileAttr struct {
 func (x *FileAttr) Reset() {
 	*x = FileAttr{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[18]
+		mi := &file_tetragon_fgs_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2005,7 +2180,7 @@ func (x *FileAttr) String() string {
 func (*FileAttr) ProtoMessage() {}
 
 func (x *FileAttr) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[18]
+	mi := &file_tetragon_fgs_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2018,7 +2193,7 @@ func (x *FileAttr) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileAttr.ProtoReflect.Descriptor instead.
 func (*FileAttr) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{18}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *FileAttr) GetPermissions() *AttrChange {
@@ -2055,7 +2230,7 @@ type AttrArg struct {
 func (x *AttrArg) Reset() {
 	*x = AttrArg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[19]
+		mi := &file_tetragon_fgs_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2068,7 +2243,7 @@ func (x *AttrArg) String() string {
 func (*AttrArg) ProtoMessage() {}
 
 func (x *AttrArg) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[19]
+	mi := &file_tetragon_fgs_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2081,7 +2256,7 @@ func (x *AttrArg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttrArg.ProtoReflect.Descriptor instead.
 func (*AttrArg) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{19}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AttrArg) GetFile() *FileDetails {
@@ -2122,7 +2297,7 @@ type FileArgument struct {
 func (x *FileArgument) Reset() {
 	*x = FileArgument{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[20]
+		mi := &file_tetragon_fgs_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2135,7 +2310,7 @@ func (x *FileArgument) String() string {
 func (*FileArgument) ProtoMessage() {}
 
 func (x *FileArgument) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[20]
+	mi := &file_tetragon_fgs_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2148,7 +2323,7 @@ func (x *FileArgument) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileArgument.ProtoReflect.Descriptor instead.
 func (*FileArgument) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{20}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{21}
 }
 
 func (m *FileArgument) GetArg() isFileArgument_Arg {
@@ -2234,7 +2409,7 @@ type ProcessFile struct {
 func (x *ProcessFile) Reset() {
 	*x = ProcessFile{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[21]
+		mi := &file_tetragon_fgs_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2247,7 +2422,7 @@ func (x *ProcessFile) String() string {
 func (*ProcessFile) ProtoMessage() {}
 
 func (x *ProcessFile) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[21]
+	mi := &file_tetragon_fgs_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2260,7 +2435,7 @@ func (x *ProcessFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessFile.ProtoReflect.Descriptor instead.
 func (*ProcessFile) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{21}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ProcessFile) GetProcess() *Process {
@@ -2351,7 +2526,7 @@ type SockInfo struct {
 func (x *SockInfo) Reset() {
 	*x = SockInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[22]
+		mi := &file_tetragon_fgs_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2364,7 +2539,7 @@ func (x *SockInfo) String() string {
 func (*SockInfo) ProtoMessage() {}
 
 func (x *SockInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[22]
+	mi := &file_tetragon_fgs_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2377,7 +2552,7 @@ func (x *SockInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SockInfo.ProtoReflect.Descriptor instead.
 func (*SockInfo) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{22}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SockInfo) GetSourceIp() string {
@@ -2450,7 +2625,7 @@ type ProcessSockStats struct {
 func (x *ProcessSockStats) Reset() {
 	*x = ProcessSockStats{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[23]
+		mi := &file_tetragon_fgs_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2463,7 +2638,7 @@ func (x *ProcessSockStats) String() string {
 func (*ProcessSockStats) ProtoMessage() {}
 
 func (x *ProcessSockStats) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[23]
+	mi := &file_tetragon_fgs_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2476,7 +2651,7 @@ func (x *ProcessSockStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessSockStats.ProtoReflect.Descriptor instead.
 func (*ProcessSockStats) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{23}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ProcessSockStats) GetProcess() *Process {
@@ -2547,7 +2722,7 @@ type Tls struct {
 func (x *Tls) Reset() {
 	*x = Tls{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[24]
+		mi := &file_tetragon_fgs_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2560,7 +2735,7 @@ func (x *Tls) String() string {
 func (*Tls) ProtoMessage() {}
 
 func (x *Tls) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[24]
+	mi := &file_tetragon_fgs_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2573,7 +2748,7 @@ func (x *Tls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tls.ProtoReflect.Descriptor instead.
 func (*Tls) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{24}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *Tls) GetProcess() *Process {
@@ -2775,7 +2950,7 @@ type HttpHeader struct {
 func (x *HttpHeader) Reset() {
 	*x = HttpHeader{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[25]
+		mi := &file_tetragon_fgs_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2788,7 +2963,7 @@ func (x *HttpHeader) String() string {
 func (*HttpHeader) ProtoMessage() {}
 
 func (x *HttpHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[25]
+	mi := &file_tetragon_fgs_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2801,7 +2976,7 @@ func (x *HttpHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpHeader.ProtoReflect.Descriptor instead.
 func (*HttpHeader) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{25}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *HttpHeader) GetName() string {
@@ -2838,7 +3013,7 @@ type HttpRequest struct {
 func (x *HttpRequest) Reset() {
 	*x = HttpRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[26]
+		mi := &file_tetragon_fgs_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2851,7 +3026,7 @@ func (x *HttpRequest) String() string {
 func (*HttpRequest) ProtoMessage() {}
 
 func (x *HttpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[26]
+	mi := &file_tetragon_fgs_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2864,7 +3039,7 @@ func (x *HttpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpRequest.ProtoReflect.Descriptor instead.
 func (*HttpRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{26}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *HttpRequest) GetTimestamp() *timestamppb.Timestamp {
@@ -2955,7 +3130,7 @@ type HttpResponse struct {
 func (x *HttpResponse) Reset() {
 	*x = HttpResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[27]
+		mi := &file_tetragon_fgs_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2968,7 +3143,7 @@ func (x *HttpResponse) String() string {
 func (*HttpResponse) ProtoMessage() {}
 
 func (x *HttpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[27]
+	mi := &file_tetragon_fgs_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2981,7 +3156,7 @@ func (x *HttpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpResponse.ProtoReflect.Descriptor instead.
 func (*HttpResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{27}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *HttpResponse) GetTimestamp() *timestamppb.Timestamp {
@@ -3053,7 +3228,7 @@ type HttpInfo struct {
 func (x *HttpInfo) Reset() {
 	*x = HttpInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[28]
+		mi := &file_tetragon_fgs_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3066,7 +3241,7 @@ func (x *HttpInfo) String() string {
 func (*HttpInfo) ProtoMessage() {}
 
 func (x *HttpInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[28]
+	mi := &file_tetragon_fgs_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3079,7 +3254,7 @@ func (x *HttpInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpInfo.ProtoReflect.Descriptor instead.
 func (*HttpInfo) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{28}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HttpInfo) GetRequest() *HttpRequest {
@@ -3121,7 +3296,7 @@ type ProcessHttp struct {
 func (x *ProcessHttp) Reset() {
 	*x = ProcessHttp{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[29]
+		mi := &file_tetragon_fgs_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3134,7 +3309,7 @@ func (x *ProcessHttp) String() string {
 func (*ProcessHttp) ProtoMessage() {}
 
 func (x *ProcessHttp) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[29]
+	mi := &file_tetragon_fgs_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3147,7 +3322,7 @@ func (x *ProcessHttp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessHttp.ProtoReflect.Descriptor instead.
 func (*ProcessHttp) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{29}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ProcessHttp) GetProcess() *Process {
@@ -3213,7 +3388,7 @@ type ProcessNetworkBurst struct {
 func (x *ProcessNetworkBurst) Reset() {
 	*x = ProcessNetworkBurst{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[30]
+		mi := &file_tetragon_fgs_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3226,7 +3401,7 @@ func (x *ProcessNetworkBurst) String() string {
 func (*ProcessNetworkBurst) ProtoMessage() {}
 
 func (x *ProcessNetworkBurst) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[30]
+	mi := &file_tetragon_fgs_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3239,7 +3414,7 @@ func (x *ProcessNetworkBurst) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessNetworkBurst.ProtoReflect.Descriptor instead.
 func (*ProcessNetworkBurst) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{30}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ProcessNetworkBurst) GetProcess() *Process {
@@ -3326,7 +3501,7 @@ type ProcessNetworkWatermark struct {
 func (x *ProcessNetworkWatermark) Reset() {
 	*x = ProcessNetworkWatermark{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[31]
+		mi := &file_tetragon_fgs_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3339,7 +3514,7 @@ func (x *ProcessNetworkWatermark) String() string {
 func (*ProcessNetworkWatermark) ProtoMessage() {}
 
 func (x *ProcessNetworkWatermark) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[31]
+	mi := &file_tetragon_fgs_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3352,7 +3527,7 @@ func (x *ProcessNetworkWatermark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessNetworkWatermark.ProtoReflect.Descriptor instead.
 func (*ProcessNetworkWatermark) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{31}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ProcessNetworkWatermark) GetProcess() *Process {
@@ -3449,7 +3624,7 @@ type ProcessUdpSeqCheckError struct {
 func (x *ProcessUdpSeqCheckError) Reset() {
 	*x = ProcessUdpSeqCheckError{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_tetragon_fgs_proto_msgTypes[32]
+		mi := &file_tetragon_fgs_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3462,7 +3637,7 @@ func (x *ProcessUdpSeqCheckError) String() string {
 func (*ProcessUdpSeqCheckError) ProtoMessage() {}
 
 func (x *ProcessUdpSeqCheckError) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_fgs_proto_msgTypes[32]
+	mi := &file_tetragon_fgs_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3475,7 +3650,7 @@ func (x *ProcessUdpSeqCheckError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessUdpSeqCheckError.ProtoReflect.Descriptor instead.
 func (*ProcessUdpSeqCheckError) Descriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{32}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ProcessUdpSeqCheckError) GetProcess() *Process {
@@ -3794,16 +3969,25 @@ var file_tetragon_fgs_proto_rawDesc = []byte{
 	0x22, 0x34, 0x0a, 0x06, 0x46, 0x69, 0x6c, 0x65, 0x49, 0x4f, 0x12, 0x16, 0x0a, 0x06, 0x6f, 0x66,
 	0x66, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6f, 0x66, 0x66, 0x73,
 	0x65, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x22, 0x8d, 0x01, 0x0a, 0x0e, 0x47, 0x65, 0x6e, 0x65, 0x72,
-	0x69, 0x63, 0x46, 0x69, 0x6c, 0x65, 0x41, 0x72, 0x67, 0x12, 0x29, 0x0a, 0x04, 0x66, 0x69, 0x6c,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67,
-	0x6f, 0x6e, 0x2e, 0x46, 0x69, 0x6c, 0x65, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x52, 0x04,
-	0x66, 0x69, 0x6c, 0x65, 0x12, 0x24, 0x0a, 0x02, 0x69, 0x6f, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x10, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x46, 0x69, 0x6c, 0x65,
-	0x49, 0x4f, 0x42, 0x02, 0x18, 0x01, 0x52, 0x02, 0x69, 0x6f, 0x12, 0x2a, 0x0a, 0x06, 0x6d, 0x6e,
-	0x74, 0x5f, 0x6e, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x74, 0x65, 0x74,
-	0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x52,
-	0x05, 0x6d, 0x6e, 0x74, 0x4e, 0x73, 0x22, 0xa3, 0x01, 0x0a, 0x0d, 0x52, 0x65, 0x6e, 0x61, 0x6d,
+	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x22, 0x60, 0x0a, 0x0a, 0x46, 0x69, 0x6c, 0x65, 0x44, 0x69,
+	0x67, 0x65, 0x73, 0x74, 0x12, 0x28, 0x0a, 0x04, 0x61, 0x6c, 0x67, 0x6f, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0e, 0x32, 0x14, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x44, 0x69,
+	0x67, 0x65, 0x73, 0x74, 0x41, 0x6c, 0x67, 0x6f, 0x52, 0x04, 0x61, 0x6c, 0x67, 0x6f, 0x12, 0x12,
+	0x0a, 0x04, 0x68, 0x61, 0x73, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x61,
+	0x73, 0x68, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x22, 0xbb, 0x01, 0x0a, 0x0e, 0x47, 0x65, 0x6e,
+	0x65, 0x72, 0x69, 0x63, 0x46, 0x69, 0x6c, 0x65, 0x41, 0x72, 0x67, 0x12, 0x29, 0x0a, 0x04, 0x66,
+	0x69, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x74, 0x65, 0x74, 0x72,
+	0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x46, 0x69, 0x6c, 0x65, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73,
+	0x52, 0x04, 0x66, 0x69, 0x6c, 0x65, 0x12, 0x24, 0x0a, 0x02, 0x69, 0x6f, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x46, 0x69,
+	0x6c, 0x65, 0x49, 0x4f, 0x42, 0x02, 0x18, 0x01, 0x52, 0x02, 0x69, 0x6f, 0x12, 0x2a, 0x0a, 0x06,
+	0x6d, 0x6e, 0x74, 0x5f, 0x6e, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x74,
+	0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x52, 0x05, 0x6d, 0x6e, 0x74, 0x4e, 0x73, 0x12, 0x2c, 0x0a, 0x06, 0x64, 0x69, 0x67, 0x65,
+	0x73, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61,
+	0x67, 0x6f, 0x6e, 0x2e, 0x46, 0x69, 0x6c, 0x65, 0x44, 0x69, 0x67, 0x65, 0x73, 0x74, 0x52, 0x06,
+	0x64, 0x69, 0x67, 0x65, 0x73, 0x74, 0x22, 0xa3, 0x01, 0x0a, 0x0d, 0x52, 0x65, 0x6e, 0x61, 0x6d,
 	0x65, 0x46, 0x69, 0x6c, 0x65, 0x41, 0x72, 0x67, 0x12, 0x27, 0x0a, 0x03, 0x73, 0x72, 0x63, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e,
 	0x2e, 0x46, 0x69, 0x6c, 0x65, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x52, 0x03, 0x73, 0x72,
@@ -4155,51 +4339,83 @@ var file_tetragon_fgs_proto_rawDesc = []byte{
 	0x14, 0x43, 0x4f, 0x4e, 0x54, 0x41, 0x49, 0x4e, 0x45, 0x52, 0x5f, 0x46, 0x49, 0x4c, 0x45, 0x5f,
 	0x4c, 0x4f, 0x43, 0x41, 0x4c, 0x10, 0x02, 0x12, 0x19, 0x0a, 0x15, 0x43, 0x4f, 0x4e, 0x54, 0x41,
 	0x49, 0x4e, 0x45, 0x52, 0x5f, 0x46, 0x49, 0x4c, 0x45, 0x5f, 0x52, 0x45, 0x4d, 0x4f, 0x54, 0x45,
-	0x10, 0x03, 0x2a, 0x49, 0x0a, 0x0d, 0x46, 0x69, 0x6c, 0x65, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x12, 0x13, 0x0a, 0x0f, 0x46, 0x49, 0x4c, 0x45, 0x5f, 0x4f, 0x50, 0x5f, 0x55,
-	0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x49, 0x4c, 0x45,
-	0x5f, 0x4f, 0x50, 0x5f, 0x50, 0x4f, 0x53, 0x54, 0x10, 0x01, 0x12, 0x11, 0x0a, 0x0d, 0x46, 0x49,
-	0x4c, 0x45, 0x5f, 0x4f, 0x50, 0x5f, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x10, 0x02, 0x2a, 0xf1, 0x04,
-	0x0a, 0x13, 0x54, 0x6c, 0x73, 0x43, 0x65, 0x72, 0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x65,
-	0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x18, 0x0a, 0x14, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52,
-	0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x55, 0x4e, 0x44, 0x45, 0x46, 0x10, 0x00, 0x12,
-	0x1a, 0x0a, 0x16, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f,
-	0x52, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x01, 0x12, 0x20, 0x0a, 0x18, 0x54,
-	0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x54, 0x4f,
-	0x4f, 0x5f, 0x4c, 0x41, 0x52, 0x47, 0x45, 0x10, 0x02, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x23, 0x0a,
-	0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f,
-	0x47, 0x45, 0x54, 0x5f, 0x44, 0x41, 0x54, 0x41, 0x5f, 0x48, 0x44, 0x52, 0x10, 0x03, 0x1a, 0x02,
-	0x08, 0x01, 0x12, 0x20, 0x0a, 0x18, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45,
-	0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4e, 0x4f, 0x5f, 0x42, 0x55, 0x46, 0x46, 0x45, 0x52, 0x10, 0x04,
-	0x1a, 0x02, 0x08, 0x01, 0x12, 0x1b, 0x0a, 0x13, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54,
-	0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43, 0x4f, 0x50, 0x59, 0x10, 0x05, 0x1a, 0x02, 0x08,
-	0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52,
-	0x52, 0x4f, 0x52, 0x5f, 0x4c, 0x45, 0x4e, 0x47, 0x54, 0x48, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x10,
-	0x06, 0x12, 0x1c, 0x0a, 0x18, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52,
-	0x52, 0x4f, 0x52, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x10, 0x07, 0x12,
-	0x1f, 0x0a, 0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f,
-	0x52, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x50, 0x41, 0x52, 0x54, 0x49, 0x41, 0x4c, 0x10, 0x08,
-	0x12, 0x1d, 0x0a, 0x19, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52,
-	0x4f, 0x52, 0x5f, 0x50, 0x41, 0x52, 0x53, 0x45, 0x5f, 0x58, 0x35, 0x30, 0x39, 0x10, 0x09, 0x12,
-	0x23, 0x0a, 0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f,
-	0x52, 0x5f, 0x4d, 0x49, 0x53, 0x53, 0x49, 0x4e, 0x47, 0x5f, 0x43, 0x4f, 0x44, 0x45, 0x10, 0x0a,
-	0x1a, 0x02, 0x08, 0x01, 0x12, 0x24, 0x0a, 0x1c, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54,
-	0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x44, 0x41, 0x54, 0x41, 0x5f,
-	0x43, 0x45, 0x52, 0x54, 0x10, 0x0b, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x28, 0x0a, 0x20, 0x54, 0x4c,
-	0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x47, 0x45, 0x54,
-	0x5f, 0x44, 0x41, 0x54, 0x41, 0x5f, 0x4d, 0x4f, 0x52, 0x45, 0x43, 0x45, 0x52, 0x54, 0x10, 0x0c,
-	0x1a, 0x02, 0x08, 0x01, 0x12, 0x20, 0x0a, 0x18, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54,
-	0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43, 0x4f, 0x50, 0x59, 0x5f, 0x43, 0x45, 0x52, 0x54,
-	0x10, 0x0d, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x25, 0x0a, 0x1d, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45,
-	0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43, 0x4f, 0x50, 0x59, 0x5f, 0x4d, 0x4f,
-	0x52, 0x45, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x10, 0x0e, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x1d, 0x0a,
-	0x19, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f,
-	0x42, 0x41, 0x44, 0x5f, 0x48, 0x45, 0x41, 0x44, 0x45, 0x52, 0x10, 0x0f, 0x12, 0x20, 0x0a, 0x1c,
-	0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4d,
-	0x49, 0x53, 0x53, 0x49, 0x4e, 0x47, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x10, 0x12, 0x21,
+	0x10, 0x03, 0x2a, 0xf5, 0x03, 0x0a, 0x0a, 0x44, 0x69, 0x67, 0x65, 0x73, 0x74, 0x41, 0x6c, 0x67,
+	0x6f, 0x12, 0x11, 0x0a, 0x0d, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x4d,
+	0x44, 0x34, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47,
+	0x4f, 0x5f, 0x4d, 0x44, 0x35, 0x10, 0x01, 0x12, 0x12, 0x0a, 0x0e, 0x48, 0x41, 0x53, 0x48, 0x5f,
+	0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x48, 0x41, 0x31, 0x10, 0x02, 0x12, 0x19, 0x0a, 0x15, 0x48,
+	0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x52, 0x49, 0x50, 0x45, 0x5f, 0x4d, 0x44,
+	0x5f, 0x31, 0x36, 0x30, 0x10, 0x03, 0x12, 0x14, 0x0a, 0x10, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41,
+	0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x48, 0x41, 0x32, 0x35, 0x36, 0x10, 0x04, 0x12, 0x14, 0x0a, 0x10,
+	0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x48, 0x41, 0x33, 0x38, 0x34,
+	0x10, 0x05, 0x12, 0x14, 0x0a, 0x10, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f,
+	0x53, 0x48, 0x41, 0x35, 0x31, 0x32, 0x10, 0x06, 0x12, 0x14, 0x0a, 0x10, 0x48, 0x41, 0x53, 0x48,
+	0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x48, 0x41, 0x32, 0x32, 0x34, 0x10, 0x07, 0x12, 0x19,
+	0x0a, 0x15, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x52, 0x49, 0x50, 0x45,
+	0x5f, 0x4d, 0x44, 0x5f, 0x31, 0x32, 0x38, 0x10, 0x08, 0x12, 0x19, 0x0a, 0x15, 0x48, 0x41, 0x53,
+	0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x52, 0x49, 0x50, 0x45, 0x5f, 0x4d, 0x44, 0x5f, 0x32,
+	0x35, 0x36, 0x10, 0x09, 0x12, 0x19, 0x0a, 0x15, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47,
+	0x4f, 0x5f, 0x52, 0x49, 0x50, 0x45, 0x5f, 0x4d, 0x44, 0x5f, 0x33, 0x32, 0x30, 0x10, 0x0a, 0x12,
+	0x14, 0x0a, 0x10, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x57, 0x50, 0x5f,
+	0x32, 0x35, 0x36, 0x10, 0x0b, 0x12, 0x14, 0x0a, 0x10, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c,
+	0x47, 0x4f, 0x5f, 0x57, 0x50, 0x5f, 0x33, 0x38, 0x34, 0x10, 0x0c, 0x12, 0x14, 0x0a, 0x10, 0x48,
+	0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x57, 0x50, 0x5f, 0x35, 0x31, 0x32, 0x10,
+	0x0d, 0x12, 0x15, 0x0a, 0x11, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x54,
+	0x47, 0x52, 0x5f, 0x31, 0x32, 0x38, 0x10, 0x0e, 0x12, 0x15, 0x0a, 0x11, 0x48, 0x41, 0x53, 0x48,
+	0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x54, 0x47, 0x52, 0x5f, 0x31, 0x36, 0x30, 0x10, 0x0f, 0x12,
+	0x15, 0x0a, 0x11, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x54, 0x47, 0x52,
+	0x5f, 0x31, 0x39, 0x32, 0x10, 0x10, 0x12, 0x15, 0x0a, 0x11, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41,
+	0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x4d, 0x33, 0x5f, 0x32, 0x35, 0x36, 0x10, 0x11, 0x12, 0x1a, 0x0a,
+	0x16, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x54, 0x52, 0x45, 0x45,
+	0x42, 0x4f, 0x47, 0x5f, 0x32, 0x35, 0x36, 0x10, 0x12, 0x12, 0x1a, 0x0a, 0x16, 0x48, 0x41, 0x53,
+	0x48, 0x5f, 0x41, 0x4c, 0x47, 0x4f, 0x5f, 0x53, 0x54, 0x52, 0x45, 0x45, 0x42, 0x4f, 0x47, 0x5f,
+	0x35, 0x31, 0x32, 0x10, 0x13, 0x12, 0x13, 0x0a, 0x0f, 0x48, 0x41, 0x53, 0x48, 0x5f, 0x41, 0x4c,
+	0x47, 0x4f, 0x5f, 0x5f, 0x4c, 0x41, 0x53, 0x54, 0x10, 0x14, 0x2a, 0x49, 0x0a, 0x0d, 0x46, 0x69,
+	0x6c, 0x65, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x13, 0x0a, 0x0f, 0x46,
+	0x49, 0x4c, 0x45, 0x5f, 0x4f, 0x50, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00,
+	0x12, 0x10, 0x0a, 0x0c, 0x46, 0x49, 0x4c, 0x45, 0x5f, 0x4f, 0x50, 0x5f, 0x50, 0x4f, 0x53, 0x54,
+	0x10, 0x01, 0x12, 0x11, 0x0a, 0x0d, 0x46, 0x49, 0x4c, 0x45, 0x5f, 0x4f, 0x50, 0x5f, 0x42, 0x4c,
+	0x4f, 0x43, 0x4b, 0x10, 0x02, 0x2a, 0xf1, 0x04, 0x0a, 0x13, 0x54, 0x6c, 0x73, 0x43, 0x65, 0x72,
+	0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x65, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x18, 0x0a,
+	0x14, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f,
+	0x55, 0x4e, 0x44, 0x45, 0x46, 0x10, 0x00, 0x12, 0x1a, 0x0a, 0x16, 0x54, 0x4c, 0x53, 0x5f, 0x43,
+	0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57,
+	0x4e, 0x10, 0x01, 0x12, 0x20, 0x0a, 0x18, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f,
+	0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x54, 0x4f, 0x4f, 0x5f, 0x4c, 0x41, 0x52, 0x47, 0x45, 0x10,
+	0x02, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x23, 0x0a, 0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52,
+	0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x44, 0x41, 0x54, 0x41,
+	0x5f, 0x48, 0x44, 0x52, 0x10, 0x03, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x20, 0x0a, 0x18, 0x54, 0x4c,
+	0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4e, 0x4f, 0x5f,
+	0x42, 0x55, 0x46, 0x46, 0x45, 0x52, 0x10, 0x04, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x1b, 0x0a, 0x13,
+	0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43,
+	0x4f, 0x50, 0x59, 0x10, 0x05, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x54, 0x4c, 0x53,
+	0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4c, 0x45, 0x4e, 0x47,
+	0x54, 0x48, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x10, 0x06, 0x12, 0x1c, 0x0a, 0x18, 0x54, 0x4c, 0x53,
+	0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43, 0x45, 0x52, 0x54,
+	0x5f, 0x52, 0x45, 0x41, 0x44, 0x10, 0x07, 0x12, 0x1f, 0x0a, 0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43,
+	0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x50,
+	0x41, 0x52, 0x54, 0x49, 0x41, 0x4c, 0x10, 0x08, 0x12, 0x1d, 0x0a, 0x19, 0x54, 0x4c, 0x53, 0x5f,
+	0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x50, 0x41, 0x52, 0x53, 0x45,
+	0x5f, 0x58, 0x35, 0x30, 0x39, 0x10, 0x09, 0x12, 0x23, 0x0a, 0x1b, 0x54, 0x4c, 0x53, 0x5f, 0x43,
+	0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4d, 0x49, 0x53, 0x53, 0x49, 0x4e,
+	0x47, 0x5f, 0x43, 0x4f, 0x44, 0x45, 0x10, 0x0a, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x24, 0x0a, 0x1c,
+	0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x47,
+	0x45, 0x54, 0x5f, 0x44, 0x41, 0x54, 0x41, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x10, 0x0b, 0x1a, 0x02,
+	0x08, 0x01, 0x12, 0x28, 0x0a, 0x20, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45,
+	0x52, 0x52, 0x4f, 0x52, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x44, 0x41, 0x54, 0x41, 0x5f, 0x4d, 0x4f,
+	0x52, 0x45, 0x43, 0x45, 0x52, 0x54, 0x10, 0x0c, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x20, 0x0a, 0x18,
+	0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x43,
+	0x4f, 0x50, 0x59, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x10, 0x0d, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x25,
 	0x0a, 0x1d, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52,
-	0x5f, 0x53, 0x50, 0x55, 0x52, 0x49, 0x4f, 0x55, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x53, 0x10,
-	0x11, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x5f, 0x43, 0x4f, 0x50, 0x59, 0x5f, 0x4d, 0x4f, 0x52, 0x45, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x10,
+	0x0e, 0x1a, 0x02, 0x08, 0x01, 0x12, 0x1d, 0x0a, 0x19, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52,
+	0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x42, 0x41, 0x44, 0x5f, 0x48, 0x45, 0x41, 0x44,
+	0x45, 0x52, 0x10, 0x0f, 0x12, 0x20, 0x0a, 0x1c, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45, 0x52, 0x54,
+	0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x4d, 0x49, 0x53, 0x53, 0x49, 0x4e, 0x47, 0x5f, 0x45,
+	0x52, 0x52, 0x4f, 0x52, 0x10, 0x10, 0x12, 0x21, 0x0a, 0x1d, 0x54, 0x4c, 0x53, 0x5f, 0x43, 0x45,
+	0x52, 0x54, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x5f, 0x53, 0x50, 0x55, 0x52, 0x49, 0x4f, 0x55,
+	0x53, 0x5f, 0x43, 0x45, 0x52, 0x54, 0x53, 0x10, 0x11, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -4214,156 +4430,160 @@ func file_tetragon_fgs_proto_rawDescGZIP() []byte {
 	return file_tetragon_fgs_proto_rawDescData
 }
 
-var file_tetragon_fgs_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_tetragon_fgs_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_tetragon_fgs_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_tetragon_fgs_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_tetragon_fgs_proto_goTypes = []interface{}{
 	(SocketProtocol)(0),             // 0: tetragon.SocketProtocol
 	(FileAction)(0),                 // 1: tetragon.FileAction
 	(FileScope)(0),                  // 2: tetragon.FileScope
-	(FileOperation)(0),              // 3: tetragon.FileOperation
-	(TlsCertificateError)(0),        // 4: tetragon.TlsCertificateError
-	(*HistogramBucket)(nil),         // 5: tetragon.HistogramBucket
-	(*Histogram)(nil),               // 6: tetragon.Histogram
-	(*InterfaceStats)(nil),          // 7: tetragon.InterfaceStats
-	(*SocketStats)(nil),             // 8: tetragon.SocketStats
-	(*ProcessConnect)(nil),          // 9: tetragon.ProcessConnect
-	(*ProcessClose)(nil),            // 10: tetragon.ProcessClose
-	(*ProcessListen)(nil),           // 11: tetragon.ProcessListen
-	(*ProcessAccept)(nil),           // 12: tetragon.ProcessAccept
-	(*ProcessIpError)(nil),          // 13: tetragon.ProcessIpError
-	(*FileSystem)(nil),              // 14: tetragon.FileSystem
-	(*Inode)(nil),                   // 15: tetragon.Inode
-	(*FileLocation)(nil),            // 16: tetragon.FileLocation
-	(*FileDetails)(nil),             // 17: tetragon.FileDetails
-	(*FileIO)(nil),                  // 18: tetragon.FileIO
-	(*GenericFileArg)(nil),          // 19: tetragon.GenericFileArg
-	(*RenameFileArg)(nil),           // 20: tetragon.RenameFileArg
-	(*ReadDirArg)(nil),              // 21: tetragon.ReadDirArg
-	(*AttrChange)(nil),              // 22: tetragon.AttrChange
-	(*FileAttr)(nil),                // 23: tetragon.FileAttr
-	(*AttrArg)(nil),                 // 24: tetragon.AttrArg
-	(*FileArgument)(nil),            // 25: tetragon.FileArgument
-	(*ProcessFile)(nil),             // 26: tetragon.ProcessFile
-	(*SockInfo)(nil),                // 27: tetragon.SockInfo
-	(*ProcessSockStats)(nil),        // 28: tetragon.ProcessSockStats
-	(*Tls)(nil),                     // 29: tetragon.Tls
-	(*HttpHeader)(nil),              // 30: tetragon.HttpHeader
-	(*HttpRequest)(nil),             // 31: tetragon.HttpRequest
-	(*HttpResponse)(nil),            // 32: tetragon.HttpResponse
-	(*HttpInfo)(nil),                // 33: tetragon.HttpInfo
-	(*ProcessHttp)(nil),             // 34: tetragon.ProcessHttp
-	(*ProcessNetworkBurst)(nil),     // 35: tetragon.ProcessNetworkBurst
-	(*ProcessNetworkWatermark)(nil), // 36: tetragon.ProcessNetworkWatermark
-	(*ProcessUdpSeqCheckError)(nil), // 37: tetragon.ProcessUdpSeqCheckError
-	(*Pod)(nil),                     // 38: tetragon.Pod
-	(*Process)(nil),                 // 39: tetragon.Process
-	(*wrapperspb.UInt32Value)(nil),  // 40: google.protobuf.UInt32Value
-	(*durationpb.Duration)(nil),     // 41: google.protobuf.Duration
-	(*Namespace)(nil),               // 42: tetragon.Namespace
-	(*timestamppb.Timestamp)(nil),   // 43: google.protobuf.Timestamp
+	(DigestAlgo)(0),                 // 3: tetragon.DigestAlgo
+	(FileOperation)(0),              // 4: tetragon.FileOperation
+	(TlsCertificateError)(0),        // 5: tetragon.TlsCertificateError
+	(*HistogramBucket)(nil),         // 6: tetragon.HistogramBucket
+	(*Histogram)(nil),               // 7: tetragon.Histogram
+	(*InterfaceStats)(nil),          // 8: tetragon.InterfaceStats
+	(*SocketStats)(nil),             // 9: tetragon.SocketStats
+	(*ProcessConnect)(nil),          // 10: tetragon.ProcessConnect
+	(*ProcessClose)(nil),            // 11: tetragon.ProcessClose
+	(*ProcessListen)(nil),           // 12: tetragon.ProcessListen
+	(*ProcessAccept)(nil),           // 13: tetragon.ProcessAccept
+	(*ProcessIpError)(nil),          // 14: tetragon.ProcessIpError
+	(*FileSystem)(nil),              // 15: tetragon.FileSystem
+	(*Inode)(nil),                   // 16: tetragon.Inode
+	(*FileLocation)(nil),            // 17: tetragon.FileLocation
+	(*FileDetails)(nil),             // 18: tetragon.FileDetails
+	(*FileIO)(nil),                  // 19: tetragon.FileIO
+	(*FileDigest)(nil),              // 20: tetragon.FileDigest
+	(*GenericFileArg)(nil),          // 21: tetragon.GenericFileArg
+	(*RenameFileArg)(nil),           // 22: tetragon.RenameFileArg
+	(*ReadDirArg)(nil),              // 23: tetragon.ReadDirArg
+	(*AttrChange)(nil),              // 24: tetragon.AttrChange
+	(*FileAttr)(nil),                // 25: tetragon.FileAttr
+	(*AttrArg)(nil),                 // 26: tetragon.AttrArg
+	(*FileArgument)(nil),            // 27: tetragon.FileArgument
+	(*ProcessFile)(nil),             // 28: tetragon.ProcessFile
+	(*SockInfo)(nil),                // 29: tetragon.SockInfo
+	(*ProcessSockStats)(nil),        // 30: tetragon.ProcessSockStats
+	(*Tls)(nil),                     // 31: tetragon.Tls
+	(*HttpHeader)(nil),              // 32: tetragon.HttpHeader
+	(*HttpRequest)(nil),             // 33: tetragon.HttpRequest
+	(*HttpResponse)(nil),            // 34: tetragon.HttpResponse
+	(*HttpInfo)(nil),                // 35: tetragon.HttpInfo
+	(*ProcessHttp)(nil),             // 36: tetragon.ProcessHttp
+	(*ProcessNetworkBurst)(nil),     // 37: tetragon.ProcessNetworkBurst
+	(*ProcessNetworkWatermark)(nil), // 38: tetragon.ProcessNetworkWatermark
+	(*ProcessUdpSeqCheckError)(nil), // 39: tetragon.ProcessUdpSeqCheckError
+	(*Pod)(nil),                     // 40: tetragon.Pod
+	(*Process)(nil),                 // 41: tetragon.Process
+	(*wrapperspb.UInt32Value)(nil),  // 42: google.protobuf.UInt32Value
+	(*durationpb.Duration)(nil),     // 43: google.protobuf.Duration
+	(*Namespace)(nil),               // 44: tetragon.Namespace
+	(*timestamppb.Timestamp)(nil),   // 45: google.protobuf.Timestamp
 }
 var file_tetragon_fgs_proto_depIdxs = []int32{
-	5,  // 0: tetragon.Histogram.buckets:type_name -> tetragon.HistogramBucket
-	38, // 1: tetragon.InterfaceStats.pod:type_name -> tetragon.Pod
-	6,  // 2: tetragon.InterfaceStats.qlen:type_name -> tetragon.Histogram
-	6,  // 3: tetragon.SocketStats.rtt:type_name -> tetragon.Histogram
-	6,  // 4: tetragon.SocketStats.latency:type_name -> tetragon.Histogram
-	39, // 5: tetragon.ProcessConnect.process:type_name -> tetragon.Process
-	39, // 6: tetragon.ProcessConnect.parent:type_name -> tetragon.Process
-	40, // 7: tetragon.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
-	40, // 8: tetragon.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
-	38, // 9: tetragon.ProcessConnect.destination_pod:type_name -> tetragon.Pod
+	6,  // 0: tetragon.Histogram.buckets:type_name -> tetragon.HistogramBucket
+	40, // 1: tetragon.InterfaceStats.pod:type_name -> tetragon.Pod
+	7,  // 2: tetragon.InterfaceStats.qlen:type_name -> tetragon.Histogram
+	7,  // 3: tetragon.SocketStats.rtt:type_name -> tetragon.Histogram
+	7,  // 4: tetragon.SocketStats.latency:type_name -> tetragon.Histogram
+	41, // 5: tetragon.ProcessConnect.process:type_name -> tetragon.Process
+	41, // 6: tetragon.ProcessConnect.parent:type_name -> tetragon.Process
+	42, // 7: tetragon.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
+	42, // 8: tetragon.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
+	40, // 9: tetragon.ProcessConnect.destination_pod:type_name -> tetragon.Pod
 	0,  // 10: tetragon.ProcessConnect.protocol:type_name -> tetragon.SocketProtocol
-	39, // 11: tetragon.ProcessClose.process:type_name -> tetragon.Process
-	39, // 12: tetragon.ProcessClose.parent:type_name -> tetragon.Process
-	40, // 13: tetragon.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
-	40, // 14: tetragon.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
-	8,  // 15: tetragon.ProcessClose.stats:type_name -> tetragon.SocketStats
-	38, // 16: tetragon.ProcessClose.destination_pod:type_name -> tetragon.Pod
+	41, // 11: tetragon.ProcessClose.process:type_name -> tetragon.Process
+	41, // 12: tetragon.ProcessClose.parent:type_name -> tetragon.Process
+	42, // 13: tetragon.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
+	42, // 14: tetragon.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
+	9,  // 15: tetragon.ProcessClose.stats:type_name -> tetragon.SocketStats
+	40, // 16: tetragon.ProcessClose.destination_pod:type_name -> tetragon.Pod
 	0,  // 17: tetragon.ProcessClose.protocol:type_name -> tetragon.SocketProtocol
-	41, // 18: tetragon.ProcessClose.duration:type_name -> google.protobuf.Duration
-	39, // 19: tetragon.ProcessListen.process:type_name -> tetragon.Process
-	39, // 20: tetragon.ProcessListen.parent:type_name -> tetragon.Process
-	40, // 21: tetragon.ProcessListen.port:type_name -> google.protobuf.UInt32Value
+	43, // 18: tetragon.ProcessClose.duration:type_name -> google.protobuf.Duration
+	41, // 19: tetragon.ProcessListen.process:type_name -> tetragon.Process
+	41, // 20: tetragon.ProcessListen.parent:type_name -> tetragon.Process
+	42, // 21: tetragon.ProcessListen.port:type_name -> google.protobuf.UInt32Value
 	0,  // 22: tetragon.ProcessListen.protocol:type_name -> tetragon.SocketProtocol
-	39, // 23: tetragon.ProcessAccept.process:type_name -> tetragon.Process
-	39, // 24: tetragon.ProcessAccept.parent:type_name -> tetragon.Process
-	40, // 25: tetragon.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
-	40, // 26: tetragon.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
-	38, // 27: tetragon.ProcessAccept.destination_pod:type_name -> tetragon.Pod
+	41, // 23: tetragon.ProcessAccept.process:type_name -> tetragon.Process
+	41, // 24: tetragon.ProcessAccept.parent:type_name -> tetragon.Process
+	42, // 25: tetragon.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
+	42, // 26: tetragon.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
+	40, // 27: tetragon.ProcessAccept.destination_pod:type_name -> tetragon.Pod
 	0,  // 28: tetragon.ProcessAccept.protocol:type_name -> tetragon.SocketProtocol
-	39, // 29: tetragon.ProcessIpError.process:type_name -> tetragon.Process
-	39, // 30: tetragon.ProcessIpError.parent:type_name -> tetragon.Process
-	38, // 31: tetragon.ProcessIpError.destination_pod:type_name -> tetragon.Pod
-	14, // 32: tetragon.Inode.fs:type_name -> tetragon.FileSystem
+	41, // 29: tetragon.ProcessIpError.process:type_name -> tetragon.Process
+	41, // 30: tetragon.ProcessIpError.parent:type_name -> tetragon.Process
+	40, // 31: tetragon.ProcessIpError.destination_pod:type_name -> tetragon.Pod
+	15, // 32: tetragon.Inode.fs:type_name -> tetragon.FileSystem
 	2,  // 33: tetragon.FileLocation.type:type_name -> tetragon.FileScope
-	38, // 34: tetragon.FileLocation.pod:type_name -> tetragon.Pod
-	15, // 35: tetragon.FileDetails.inode:type_name -> tetragon.Inode
-	15, // 36: tetragon.FileDetails.parent_inode:type_name -> tetragon.Inode
-	16, // 37: tetragon.FileDetails.location:type_name -> tetragon.FileLocation
-	17, // 38: tetragon.GenericFileArg.file:type_name -> tetragon.FileDetails
-	18, // 39: tetragon.GenericFileArg.io:type_name -> tetragon.FileIO
-	42, // 40: tetragon.GenericFileArg.mnt_ns:type_name -> tetragon.Namespace
-	17, // 41: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
-	17, // 42: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
-	42, // 43: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
-	17, // 44: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
-	42, // 45: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
-	22, // 46: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
-	22, // 47: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
-	22, // 48: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
-	17, // 49: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
-	23, // 50: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
-	42, // 51: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
-	19, // 52: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
-	20, // 53: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
-	21, // 54: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
-	24, // 55: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
-	39, // 56: tetragon.ProcessFile.process:type_name -> tetragon.Process
-	39, // 57: tetragon.ProcessFile.parent:type_name -> tetragon.Process
-	1,  // 58: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
-	25, // 59: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
-	43, // 60: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
-	3,  // 61: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
-	40, // 62: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
-	40, // 63: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
-	0,  // 64: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
-	38, // 65: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
-	39, // 66: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
-	39, // 67: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
-	27, // 68: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
-	8,  // 69: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
-	39, // 70: tetragon.Tls.process:type_name -> tetragon.Process
-	40, // 71: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
-	40, // 72: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
-	4,  // 73: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
-	39, // 74: tetragon.Tls.parent:type_name -> tetragon.Process
-	43, // 75: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
-	40, // 76: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
-	30, // 77: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
-	43, // 78: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
-	40, // 79: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
-	30, // 80: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
-	31, // 81: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
-	32, // 82: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
-	41, // 83: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
-	39, // 84: tetragon.ProcessHttp.process:type_name -> tetragon.Process
-	27, // 85: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
-	33, // 86: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
-	38, // 87: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
-	39, // 88: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
-	39, // 89: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
-	39, // 90: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
-	39, // 91: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
-	39, // 92: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
-	39, // 93: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
-	39, // 94: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
-	27, // 95: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
-	96, // [96:96] is the sub-list for method output_type
-	96, // [96:96] is the sub-list for method input_type
-	96, // [96:96] is the sub-list for extension type_name
-	96, // [96:96] is the sub-list for extension extendee
-	0,  // [0:96] is the sub-list for field type_name
+	40, // 34: tetragon.FileLocation.pod:type_name -> tetragon.Pod
+	16, // 35: tetragon.FileDetails.inode:type_name -> tetragon.Inode
+	16, // 36: tetragon.FileDetails.parent_inode:type_name -> tetragon.Inode
+	17, // 37: tetragon.FileDetails.location:type_name -> tetragon.FileLocation
+	3,  // 38: tetragon.FileDigest.algo:type_name -> tetragon.DigestAlgo
+	18, // 39: tetragon.GenericFileArg.file:type_name -> tetragon.FileDetails
+	19, // 40: tetragon.GenericFileArg.io:type_name -> tetragon.FileIO
+	44, // 41: tetragon.GenericFileArg.mnt_ns:type_name -> tetragon.Namespace
+	20, // 42: tetragon.GenericFileArg.digest:type_name -> tetragon.FileDigest
+	18, // 43: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
+	18, // 44: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
+	44, // 45: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
+	18, // 46: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
+	44, // 47: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
+	24, // 48: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
+	24, // 49: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
+	24, // 50: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
+	18, // 51: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
+	25, // 52: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
+	44, // 53: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
+	21, // 54: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
+	22, // 55: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
+	23, // 56: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
+	26, // 57: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
+	41, // 58: tetragon.ProcessFile.process:type_name -> tetragon.Process
+	41, // 59: tetragon.ProcessFile.parent:type_name -> tetragon.Process
+	1,  // 60: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
+	27, // 61: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
+	45, // 62: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
+	4,  // 63: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
+	42, // 64: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
+	42, // 65: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
+	0,  // 66: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
+	40, // 67: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
+	41, // 68: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
+	41, // 69: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
+	29, // 70: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
+	9,  // 71: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
+	41, // 72: tetragon.Tls.process:type_name -> tetragon.Process
+	42, // 73: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
+	42, // 74: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
+	5,  // 75: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
+	41, // 76: tetragon.Tls.parent:type_name -> tetragon.Process
+	45, // 77: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
+	42, // 78: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
+	32, // 79: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
+	45, // 80: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
+	42, // 81: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
+	32, // 82: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
+	33, // 83: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
+	34, // 84: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
+	43, // 85: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
+	41, // 86: tetragon.ProcessHttp.process:type_name -> tetragon.Process
+	29, // 87: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
+	35, // 88: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
+	40, // 89: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
+	41, // 90: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
+	41, // 91: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
+	41, // 92: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
+	41, // 93: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
+	41, // 94: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
+	41, // 95: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
+	41, // 96: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
+	29, // 97: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
+	98, // [98:98] is the sub-list for method output_type
+	98, // [98:98] is the sub-list for method input_type
+	98, // [98:98] is the sub-list for extension type_name
+	98, // [98:98] is the sub-list for extension extendee
+	0,  // [0:98] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_fgs_proto_init() }
@@ -4542,7 +4762,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenericFileArg); i {
+			switch v := v.(*FileDigest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4554,7 +4774,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RenameFileArg); i {
+			switch v := v.(*GenericFileArg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4566,7 +4786,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadDirArg); i {
+			switch v := v.(*RenameFileArg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4578,7 +4798,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttrChange); i {
+			switch v := v.(*ReadDirArg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4590,7 +4810,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FileAttr); i {
+			switch v := v.(*AttrChange); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4602,7 +4822,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttrArg); i {
+			switch v := v.(*FileAttr); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4614,7 +4834,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FileArgument); i {
+			switch v := v.(*AttrArg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4626,7 +4846,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessFile); i {
+			switch v := v.(*FileArgument); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4638,7 +4858,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SockInfo); i {
+			switch v := v.(*ProcessFile); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4650,7 +4870,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessSockStats); i {
+			switch v := v.(*SockInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4662,7 +4882,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Tls); i {
+			switch v := v.(*ProcessSockStats); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4674,7 +4894,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpHeader); i {
+			switch v := v.(*Tls); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4686,7 +4906,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpRequest); i {
+			switch v := v.(*HttpHeader); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4698,7 +4918,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpResponse); i {
+			switch v := v.(*HttpRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4710,7 +4930,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpInfo); i {
+			switch v := v.(*HttpResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4722,7 +4942,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessHttp); i {
+			switch v := v.(*HttpInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4734,7 +4954,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessNetworkBurst); i {
+			switch v := v.(*ProcessHttp); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4746,7 +4966,7 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessNetworkWatermark); i {
+			switch v := v.(*ProcessNetworkBurst); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4758,6 +4978,18 @@ func file_tetragon_fgs_proto_init() {
 			}
 		}
 		file_tetragon_fgs_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ProcessNetworkWatermark); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_tetragon_fgs_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ProcessUdpSeqCheckError); i {
 			case 0:
 				return &v.state
@@ -4773,7 +5005,7 @@ func file_tetragon_fgs_proto_init() {
 	file_tetragon_fgs_proto_msgTypes[12].OneofWrappers = []interface{}{
 		(*FileDetails_Str)(nil),
 	}
-	file_tetragon_fgs_proto_msgTypes[20].OneofWrappers = []interface{}{
+	file_tetragon_fgs_proto_msgTypes[21].OneofWrappers = []interface{}{
 		(*FileArgument_GenericArg)(nil),
 		(*FileArgument_RenameArg)(nil),
 		(*FileArgument_ReaddirArg)(nil),
@@ -4784,8 +5016,8 @@ func file_tetragon_fgs_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_tetragon_fgs_proto_rawDesc,
-			NumEnums:      5,
-			NumMessages:   33,
+			NumEnums:      6,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
