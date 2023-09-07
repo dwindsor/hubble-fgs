@@ -134,6 +134,13 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 		File:  fileDetails,
 		MntNs: createMntNs(event.MntNs),
 	}
+	if event.Digest.Ok {
+		args.Digest = &tetragon.FileDigest{
+			Hash:  event.Digest.Hash,
+			Algo:  tetragon.DigestAlgo(event.Digest.Algo),
+			Error: int64(event.Digest.Error),
+		}
+	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
 }
 
@@ -373,6 +380,13 @@ type MsgFsInfoUnix struct {
 	SUuid string
 }
 
+type MsgDigest struct {
+	Ok    bool
+	Hash  string
+	Algo  int32
+	Error int32
+}
+
 type MsgFileEventUnix struct {
 	Common      processapi.MsgCommon
 	ProcessKey  processapi.MsgExecveKey
@@ -396,6 +410,7 @@ type MsgFileEventUnix struct {
 	TpName      string
 	TpRule      string
 	Tid         uint32
+	Digest      MsgDigest
 }
 
 func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {

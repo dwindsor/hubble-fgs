@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -98,6 +99,33 @@ const (
 	EnforceNotSupported
 	EnforceFmodRet
 	EnforceLSM
+)
+
+const IMA_MAX_DIGEST_SIZE = 64
+
+var (
+	HashAlgoLen = map[tetragon.DigestAlgo]int{
+		tetragon.DigestAlgo_HASH_ALGO_MD4:          16,
+		tetragon.DigestAlgo_HASH_ALGO_MD5:          16,
+		tetragon.DigestAlgo_HASH_ALGO_SHA1:         20,
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_160:  20,
+		tetragon.DigestAlgo_HASH_ALGO_SHA256:       32,
+		tetragon.DigestAlgo_HASH_ALGO_SHA384:       48,
+		tetragon.DigestAlgo_HASH_ALGO_SHA512:       64,
+		tetragon.DigestAlgo_HASH_ALGO_SHA224:       28,
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_128:  16,
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_256:  32,
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_320:  40,
+		tetragon.DigestAlgo_HASH_ALGO_WP_256:       32,
+		tetragon.DigestAlgo_HASH_ALGO_WP_384:       48,
+		tetragon.DigestAlgo_HASH_ALGO_WP_512:       64,
+		tetragon.DigestAlgo_HASH_ALGO_TGR_128:      16,
+		tetragon.DigestAlgo_HASH_ALGO_TGR_160:      20,
+		tetragon.DigestAlgo_HASH_ALGO_TGR_192:      24,
+		tetragon.DigestAlgo_HASH_ALGO_SM3_256:      32,
+		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_256: 32,
+		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_512: 64,
+	}
 )
 
 var fsScannerCmd *exec.Cmd
@@ -803,6 +831,22 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		cid = string(m.Path.ContainerID[:])
 	}
 
+	digest := file.MsgDigest{}
+	if m.Digest.Ok == 1 {
+		digest.Ok = true
+		if digest.Error = m.Digest.Algo; digest.Error >= 0 { // we don't have an error here
+			digest.Algo = m.Digest.Algo
+			digestLen := IMA_MAX_DIGEST_SIZE
+			if dlen, ok := HashAlgoLen[tetragon.DigestAlgo(m.Digest.Algo)]; ok {
+				digestLen = dlen
+			}
+			for i := 0; i < digestLen; i++ {
+				digest.Hash += fmt.Sprintf("%02x", m.Digest.Digest[i])
+			}
+			digest.Error = 0
+		}
+	}
+
 	unix := &file.MsgFileEventUnix{
 		Common:      m.Common,
 		ProcessKey:  m.ProcessKey,
@@ -826,6 +870,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:      fileMonitoringTable.getTpName(m.TpId),
 		TpRule:      fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
 		Tid:         m.Tid,
+		Digest:      digest,
 	}
 
 	return []observer.Event{unix}, nil
