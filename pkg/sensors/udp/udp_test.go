@@ -53,6 +53,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
+	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 var (
@@ -189,6 +192,17 @@ spec:
       disableEvents:
         disableClose: `
 
+const udpConfigBasic = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+`
 const BUFSIZE, BUFVAR = 1024, 256
 const hostname = "127.0.0.1"
 const portno = 31337
@@ -1754,4 +1768,80 @@ func TestDisableClose(t *testing.T) {
 
 func TestNoDisableClose(t *testing.T) {
 	testDisableCloseConfig(t, false)
+}
+
+func udpGcMetricGet(ty socketmetrics.UDPGCType) float64 {
+	// ToFloat64 is computationally expensive so only use for testing
+	counter := socketmetrics.SocketStatsUDPGC.WithLabelValues(socketmetrics.UDPGCTypeStrings[ty])
+	return testutil.ToFloat64(counter)
+}
+
+func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns int) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	GCTestConfig := udpConfigBasic
+	if !defaultInterval {
+		GCTestConfig += "\n      statsInterval: " + strconv.Itoa(interval)
+	}
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, GCTestConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	base := base.GetInitialSensor()
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	GCTickerStart := udpGcMetricGet(socketmetrics.UDPGCTypeTicker)
+
+	defaultGCInterval := 60
+	var timeToRun int
+	if defaultInterval {
+		timeToRun = defaultGCInterval * numExpectedGCRuns
+	} else {
+		timeToRun = interval * numExpectedGCRuns
+	}
+
+	time.Sleep(time.Duration(timeToRun) * time.Second)
+
+	GCTickerEnd := udpGcMetricGet(socketmetrics.UDPGCTypeTicker)
+	numActualGCRuns := int(GCTickerEnd - GCTickerStart)
+
+	// Allow +- 1 error to prevent flakes
+	assert.InDelta(t, numExpectedGCRuns, numActualGCRuns, 1.0,
+		"Expected number of runs: %d, actual number: %d",
+		numExpectedGCRuns, numActualGCRuns)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestGCDefaultInterval(t *testing.T) {
+	testGC(t, true, 60, 2)
+}
+
+func TestGCWithNonzeroInterval(t *testing.T) {
+	testGC(t, false, 5, 4)
 }
