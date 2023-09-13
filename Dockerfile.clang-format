@@ -1,8 +1,8 @@
 FROM ubuntu:jammy@sha256:aabed3296a3d45cede1dc866a24476c4d7e093aa806263c27ddaadbdce3c1054
 
 RUN apt-get -y update
-RUN apt-get -y install clang-format-10
-RUN ln -s /bin/clang-format-10 /bin/clang-format
+RUN apt-get -y install clang-format-15
+RUN ln -s /bin/clang-format-15 /bin/clang-format
 
 USER 1000
 WORKDIR /fgs
