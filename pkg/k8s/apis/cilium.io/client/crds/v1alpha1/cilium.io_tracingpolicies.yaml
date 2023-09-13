@@ -265,6 +265,8 @@ spec:
                             - kiocb
                             - iov_iter
                             - cred
+                            - load_info
+                            - module
                             type: string
                         required:
                         - index
@@ -342,6 +344,8 @@ spec:
                           - kiocb
                           - iov_iter
                           - cred
+                          - load_info
+                          - module
                           type: string
                       required:
                       - index
@@ -459,6 +463,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -686,6 +692,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1386,6 +1394,8 @@ spec:
                             - kiocb
                             - iov_iter
                             - cred
+                            - load_info
+                            - module
                             type: string
                         required:
                         - index
@@ -1503,6 +1513,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1730,6 +1742,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -1867,6 +1881,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -2094,6 +2110,8 @@ spec:
                                   - Protocol
                                   - Family
                                   - State
+                                  - InMap
+                                  - NotInMap
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
