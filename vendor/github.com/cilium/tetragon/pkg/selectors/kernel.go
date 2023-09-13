@@ -583,10 +583,10 @@ func writeMatchAddrsInMap(k *KernelSelectorState, values []string) error {
 			return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 		}
 		if len(addr) == 4 {
-			val := KernelLpmTrie4{prefix: maskLen, addr: binary.LittleEndian.Uint32(addr)}
+			val := KernelLPMTrie4{prefixLen: maskLen, addr: binary.LittleEndian.Uint32(addr)}
 			m4[val] = struct{}{}
 		} else if len(addr) == 16 {
-			val := KernelLpmTrie6{prefix: maskLen}
+			val := KernelLPMTrie6{prefixLen: maskLen}
 			copy(val.addr[:], addr)
 			m6[val] = struct{}{}
 		} else {
@@ -665,17 +665,6 @@ func writeMatchValues(k *KernelSelectorState, values []string, ty, op uint32) er
 	for _, v := range values {
 		base := getBase(v)
 		switch ty {
-		case argTypeFd, argTypeFile, argTypePath:
-			value, size := ArgSelectorValue(v)
-			WriteSelectorUint32(k, size)
-			WriteSelectorByteArray(k, value, size)
-		case argTypeString, argTypeCharBuf:
-			if op == SelectorOpNEQ || op == SelectorOpNotPrefix || op == SelectorOpNotPostfix {
-				return fmt.Errorf("MatchArgs types char_buf and string do not support operators NotEqual, NotPrefix, and NotPostfix")
-			}
-			value, size := ArgSelectorValue(v)
-			WriteSelectorUint32(k, size)
-			WriteSelectorByteArray(k, value, size)
 		case argTypeS32, argTypeInt, argTypeSizet:
 			i, err := strconv.ParseInt(v, base, 32)
 			if err != nil {
@@ -709,6 +698,73 @@ func writeMatchValues(k *KernelSelectorState, values []string, ty, op uint32) er
 	return nil
 }
 
+func writeMatchStrings(k *KernelSelectorState, values []string, ty uint32) error {
+	maps := k.createStringMaps()
+
+	for _, v := range values {
+		trimNulSuffix := ty == argTypeString
+		value, size, err := ArgStringSelectorValue(v, trimNulSuffix)
+		if err != nil {
+			return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
+		}
+		for sizeIdx := 0; sizeIdx < StringMapsNumSubMaps; sizeIdx++ {
+			if size == StringMapsSizes[sizeIdx] {
+				maps[sizeIdx][value] = struct{}{}
+				break
+			}
+		}
+	}
+	// write the map ids into the selector
+	mapDetails := k.insertStringMaps(maps)
+	for _, md := range mapDetails {
+		WriteSelectorUint32(k, md)
+	}
+	return nil
+}
+
+func writePrefixStrings(k *KernelSelectorState, values []string) error {
+	mid, m := k.newStringPrefixMap()
+	for _, v := range values {
+		value, size := ArgSelectorValue(v)
+		if size > StringPrefixMaxLength {
+			return fmt.Errorf("MatchArgs value %s invalid: string is longer than %d characters", v, StringPrefixMaxLength)
+		}
+		val := KernelLPMTrieStringPrefix{prefixLen: size * 8} // prefix is in bits, but size is in bytes
+		copy(val.data[:], value)
+		m[val] = struct{}{}
+	}
+	// write the map id into the selector
+	WriteSelectorUint32(k, mid)
+	return nil
+}
+
+func writePostfixStrings(k *KernelSelectorState, values []string, ty uint32) error {
+	mid, m := k.newStringPostfixMap()
+	for _, v := range values {
+		var value []byte
+		var size uint32
+		if ty == argTypeCharBuf {
+			value, size = ArgPostfixSelectorValue(v, false)
+		} else {
+			value, size = ArgPostfixSelectorValue(v, true)
+		}
+		// Due to the constraints of the reverse copy in BPF, we will not be able to match a postfix
+		// longer than 127 characters, so throw an error if the user specified one.
+		if size >= StringPostfixMaxLength {
+			return fmt.Errorf("MatchArgs value %s invalid: string is longer than %d characters", v, StringPostfixMaxLength-1)
+		}
+		val := KernelLPMTrieStringPostfix{prefixLen: size * 8} // postfix is in bits, but size is in bytes
+		// Copy postfix in reverse order, so that it can be used in LPM map
+		for i := 0; i < len(value); i++ {
+			val.data[len(value)-i-1] = value[i]
+		}
+		m[val] = struct{}{}
+	}
+	// write the map id into the selector
+	WriteSelectorUint32(k, mid)
+	return nil
+}
+
 func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
 	WriteSelectorUint32(k, arg.Index)
 
@@ -728,6 +784,29 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 		err := writeMatchValuesInMap(k, arg.Values, ty, op)
 		if err != nil {
 			return fmt.Errorf("writeMatchRangesInMap error: %w", err)
+		}
+	case SelectorOpEQ, SelectorOpNEQ:
+		switch ty {
+		case argTypeFd, argTypeFile, argTypePath, argTypeString, argTypeCharBuf:
+			err := writeMatchStrings(k, arg.Values, ty)
+			if err != nil {
+				return fmt.Errorf("writeMatchStrings error: %w", err)
+			}
+		default:
+			err = writeMatchValues(k, arg.Values, ty, op)
+			if err != nil {
+				return fmt.Errorf("writeMatchValues error: %w", err)
+			}
+		}
+	case SelectorOpPrefix, SelectorOpNotPrefix:
+		err := writePrefixStrings(k, arg.Values)
+		if err != nil {
+			return fmt.Errorf("writePrefixStrings error: %w", err)
+		}
+	case SelectorOpPostfix, SelectorOpNotPostfix:
+		err := writePostfixStrings(k, arg.Values, ty)
+		if err != nil {
+			return fmt.Errorf("writePostfixStrings error: %w", err)
 		}
 	case SelectorOpSport, SelectorOpDport, SelectorOpNotSport, SelectorOpNotDport, SelectorOpProtocol, SelectorOpFamily, SelectorOpState:
 		if ty != argTypeSock && ty != argTypeSkb {
