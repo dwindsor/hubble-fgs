@@ -58,8 +58,7 @@ ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 #endif
 
 static inline __attribute__((always_inline)) void
-post_http_event(ctx_md *msg, struct msg_tls_ip *key,
-		struct msg_http_event *http);
+post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http);
 
 static inline __attribute__((always_inline)) char *
 get_chars(ctx_md *msg, long offset, long cnt)
@@ -227,7 +226,7 @@ get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 	if (offset + max > 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
 		http->state = http_more_headers_needed;
-		post_http_event(msg, key, event);
+		post_http_event_cont(msg, key, event);
 		return;
 	}
 
@@ -663,14 +662,58 @@ http_reset_state(struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) void
-post_http_event(ctx_md *msg, struct msg_tls_ip *key,
-		struct msg_http_event *http)
+post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http)
+{
+	__u32 remaining = key->remaining;
+	struct socketmap_value *process;
+	size_t size;
+
+	key->remaining = 0;
+	process = lookup_tls_socketmap(key);
+	if (!process)
+		return;
+
+	http->execve.pid = process->key.pid;
+	http->execve.pad[0] = 0;
+	http->execve.pad[1] = 0;
+	http->execve.pad[2] = 0;
+	http->execve.pad[3] = 0;
+	http->execve.ktime = process->key.ktime;
+
+	if (http->request.method == http_method_response)
+		http->request.recv_cntr++;
+	else
+		http->request.send_cntr++;
+
+	http->common.ktime = ktime_get_ns();
+	http->common.op = ISO_MSG_OP_HTTP;
+	http->common.size = sizeof(struct __msg_http_event);
+	http->tuple = *key;
+	http->tuple.remaining = remaining;
+
+	size = sizeof(struct __msg_http_event);
+	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
+
+	/* This is a special caller when we know more headers are needed */
+	if (http->request.method == http_method_response)
+		http->request.recv_cntr--;
+	else
+		http->request.send_cntr--;
+
+	http->request.url_offset = 0;
+	get_more_headers(msg);
+	return;
+}
+
+static inline __attribute__((always_inline)) void
+post_http_event(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http)
 {
 	__u32 remaining = key->remaining;
 	struct socketmap_value *process;
 	__u32 skip = 0;
 	size_t size;
 
+	http->request.state = http_done;
 	key->remaining = 0;
 	process = lookup_tls_socketmap(key);
 	if (process) {

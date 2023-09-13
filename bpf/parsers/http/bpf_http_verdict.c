@@ -63,7 +63,6 @@ tg_skskb_http_response(struct __sk_buff *skb)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(skb, &key, http);
 	return SK_PASS;
 }
@@ -83,7 +82,6 @@ tg_skskb_http_request(struct __sk_buff *skb)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(skb, &key, http);
 	return SK_PASS;
 }
@@ -103,7 +101,6 @@ tg_skskb_get_more_headers(struct __sk_buff *skb)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(skb, &key, http);
 	return SK_PASS;
 }

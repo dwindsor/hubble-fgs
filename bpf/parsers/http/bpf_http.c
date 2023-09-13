@@ -44,7 +44,6 @@ tg_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }
@@ -64,7 +63,6 @@ tg_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }
@@ -84,7 +82,6 @@ tg_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 	if (http->request.state == http_more_headers_needed ||
 	    http->request.state == http_more_headers_value_needed)
 		return SK_PASS;
-	http->request.state = http_done;
 	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }
