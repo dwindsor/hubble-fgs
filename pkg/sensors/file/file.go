@@ -1695,10 +1695,6 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, nil
 	}
 
-	if fid != policyfilter.NoFilterID {
-		return nil, fmt.Errorf("file sensor does not implement policy filtering")
-	}
-
 	forceLoad := false
 	if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
 		forceLoad = true
@@ -1733,6 +1729,7 @@ func (k *observerFileSensor) PolicyHandler(
 
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
+		PolicyId:              uint32(fid),
 	}
 	fileMode, digestSupport := probeFileMode(selState)
 	if !enableExecDigests { // we explicitly disable digests if the user has not enabled them

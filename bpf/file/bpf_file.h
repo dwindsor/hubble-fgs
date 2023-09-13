@@ -12,6 +12,7 @@
 #include "retprobe_map.h"
 #include "string_maps.h"
 #include "types/basic.h"
+#include "process/policy_filter.h"
 
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
@@ -555,6 +556,11 @@ eval_selectors(__u32 action, struct digest_key *digest)
 
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
+		return 0;
+
+	// first check whether the policy is subject (or not) to
+	// the policy filter
+	if (!policy_filter_check(conf->policy_id))
 		return 0;
 
 	// no selectors, post all events

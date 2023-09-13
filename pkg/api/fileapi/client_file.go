@@ -149,6 +149,7 @@ type FileConfigMapValue struct {
 	HasSecurityPathRename uint32 `align:"has_security_path_rename"`
 	TpId                  uint32 `align:"tp_id"`
 	NumSelectors          uint32 `align:"num_selectors"`
+	PolicyId              uint32 `align:"policy_id"`
 }
 
 type FileExecConfigMapValue struct {

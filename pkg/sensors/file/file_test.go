@@ -799,6 +799,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},

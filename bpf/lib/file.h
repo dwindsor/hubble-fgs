@@ -218,6 +218,7 @@ struct file_config_map_value {
 	__u32 has_security_path_rename;
 	__u32 tp_id;
 	__u32 num_selectors;
+	__u32 policy_id;
 };
 
 struct file_exec_config_map_value {
