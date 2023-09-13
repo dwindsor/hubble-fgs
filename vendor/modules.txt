@@ -272,6 +272,9 @@ github.com/cilium/tetragon/cmd/tetra/status
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy/generate
 github.com/cilium/tetragon/cmd/tetra/version
+github.com/cilium/tetragon/operator/cmd
+github.com/cilium/tetragon/operator/crd
+github.com/cilium/tetragon/operator/option
 github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/dataapi
@@ -287,6 +290,7 @@ github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cilium
+github.com/cilium/tetragon/pkg/cmdref
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/eventcache
