@@ -67,8 +67,8 @@ func (ctx *TestContext) closeConns() error {
 
 func (ctx *TestContext) waitForEvent(op int) (data []byte, eof bool) {
 	if ch, ok := ctx.perOpChans[op]; ok {
-		data, ok := <-ch
-		return data, ok
+		data, eof := <-ch
+		return data, eof
 	}
 	panic(fmt.Sprintf("Impossible: Not subscribed for op %d", op))
 }
