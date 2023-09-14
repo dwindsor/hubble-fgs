@@ -374,4 +374,27 @@ msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 
 #endif
 
+#ifdef SK_SKB
+static inline __attribute__((always_inline)) void
+msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
+{
+	struct bpf_sock *sk;
+
+	key->daddr[0] = skb->remote_ip4;
+	key->saddr[0] = skb->local_ip4;
+	key->ipv6 = 0;
+
+	sk = skb->sk;
+	if (sk) {
+		key->dport = skb->sk->dst_port;
+		key->sport = skb->sk->src_port;
+
+		if (is_tuple_local(key))
+			key->uid = skskb_netns(skb);
+	}
+	key->remaining = HTTP_RECV;
+	// tbd, cover sk null case for ealier kernels.
+}
+#endif
+
 #endif /* parser_h_INCLUDED */

@@ -18,33 +18,12 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) void
-skskb_http_key(struct __sk_buff *skb, struct msg_tls_ip *key)
-{
-	struct bpf_sock *sk;
-
-	key->daddr[0] = skb->remote_ip4;
-	key->saddr[0] = skb->local_ip4;
-	key->ipv6 = 0;
-
-	sk = skb->sk;
-	if (sk) {
-		key->dport = skb->sk->dst_port;
-		key->sport = skb->sk->src_port;
-
-		if (is_tuple_local(key))
-			key->uid = skskb_netns(skb);
-	}
-	key->remaining = HTTP_RECV;
-	// tbd, cover sk null case for ealier kernels.
-}
-
 __attribute__((section("sk_skb/stream_verdict/fgshttp"), used)) int
 tg_skskb_http_verdict(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 
-	skskb_http_key(skb, &key);
+	msg_tls_tuple(skb, &key);
 	return http_do_parser(skb, &key);
 }
 
@@ -54,7 +33,7 @@ tg_skskb_http_response(struct __sk_buff *skb)
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
 
-	skskb_http_key(skb, &key);
+	msg_tls_tuple(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -73,7 +52,7 @@ tg_skskb_http_request(struct __sk_buff *skb)
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
 
-	skskb_http_key(skb, &key);
+	msg_tls_tuple(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -92,7 +71,7 @@ tg_skskb_get_more_headers(struct __sk_buff *skb)
 	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
 
-	skskb_http_key(skb, &key);
+	msg_tls_tuple(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -110,7 +89,7 @@ tg_skskb_http2(struct __sk_buff *skb)
 {
 	struct msg_tls_ip key = { 0 };
 
-	skskb_http_key(skb, &key);
+	msg_tls_tuple(skb, &key);
 	http2_do_parser(skb, &key);
 	return SK_PASS;
 }
