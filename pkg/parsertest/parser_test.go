@@ -272,9 +272,18 @@ func runTests(t *testing.T, sensor int, dir string) {
 
 }
 
+func maxKernelVersion(max string) bool {
+	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
+}
+
 func Test_tls(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
+	if v := "6.1.0"; !maxKernelVersion(v) {
+		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 	runTests(t, SENS_TLS, "tls")
 }
