@@ -3,6 +3,7 @@
 
 #define SK_SKB
 
+#include "iso_msg_types.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "../bpf_sockops.h"

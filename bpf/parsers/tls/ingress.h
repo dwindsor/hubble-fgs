@@ -1,8 +1,9 @@
 #ifndef ingress_h_INCLUDED
 #define ingress_h_INCLUDED
 
+#include "../../networking/cookie.h"
 /* HTTP used for KTLS handlers */
-#include "../http/http_parser.h"
+// #include "../http/http_parser.h"
 
 /*
  * Certificate parsing

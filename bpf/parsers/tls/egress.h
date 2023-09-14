@@ -1,6 +1,7 @@
 #ifndef egress_h_INCLUDED
 #define egress_h_INCLUDED
 
+#include "iso_msg_types.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "../bpf_sockops.h"
@@ -8,7 +9,7 @@
 #include "tls_parser.h"
 
 /* HTTP used for KTLS handlers */
-#include "../http/http_parser.h"
+// #include "../http/http_parser.h"
 
 static inline __attribute__((always_inline)) void
 egress_post_event(ctx_md *ctx, struct msg_tls_ip *tuple,
