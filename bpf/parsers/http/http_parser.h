@@ -730,13 +730,7 @@ post_http_event(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http
 	else
 		http->request.send_cntr++;
 
-	/* If the http message parsing is complete increment the counters used
-	 * to match request/response pairs.
-	 */
-	if (http->request.state != http_more_headers_needed) {
-		http->request.flags &= ~HTTP_MORE_HEADERS_NEEDED;
-	}
-
+	http->request.flags &= ~HTTP_MORE_HEADERS_NEEDED;
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
@@ -745,20 +739,6 @@ post_http_event(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
-	/* If this is a partial message then tail call to continmue with
-	 * url_offset reset to zero so we copy into start of buffer. And
-	 * also reset the recv_cntr and send_cntr because this is a
-	 * continuation of the previous event.
-	 */
-	if (http->request.state == http_more_headers_needed) {
-		if (http->request.method == http_method_response)
-			http->request.recv_cntr--;
-		else
-			http->request.send_cntr--;
-		http->request.url_offset = 0;
-		get_more_headers(msg);
-		return;
-	}
 	skip = http->request.consume_bytes + http->request.offset;
 	http_reset_state(&http->request);
 #ifdef SK_MSG
