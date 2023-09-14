@@ -57,6 +57,27 @@ ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 }
 #endif
 
+static inline __attribute__((always_inline)) struct msg_http_event *
+get_http_context(struct msg_tls_ip *key)
+{
+	struct msg_http_event *http;
+
+	http = map_lookup_elem(&tg_http_map, key);
+	if (!http) {
+		struct msg_http_event *__http;
+		int zero = 0;
+
+		__http = map_lookup_elem(&tg_http_map_heap, &zero);
+		if (!__http)
+			goto out;
+
+		map_update_elem(&tg_http_map, key, __http, BPF_NOEXIST);
+		http = map_lookup_elem(&tg_http_map, key);
+	}
+out:
+	return http;
+}
+
 static inline __attribute__((always_inline)) void
 post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http);
 
@@ -596,27 +617,6 @@ static inline __attribute__((always_inline)) bool
 is_expected_request(struct msg_http *http)
 {
 	return http->state != http_done && http->state != http_error;
-}
-
-static inline __attribute__((always_inline)) struct msg_http_event *
-get_http_context(struct msg_tls_ip *key)
-{
-	struct msg_http_event *http;
-
-	http = map_lookup_elem(&tg_http_map, key);
-	if (!http) {
-		struct msg_http_event *__http;
-		int zero = 0;
-
-		__http = map_lookup_elem(&tg_http_map_heap, &zero);
-		if (!__http)
-			goto out;
-
-		map_update_elem(&tg_http_map, key, __http, BPF_NOEXIST);
-		http = map_lookup_elem(&tg_http_map, key);
-	}
-out:
-	return http;
 }
 
 #ifndef SK_MSG
