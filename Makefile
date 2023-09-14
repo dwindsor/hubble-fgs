@@ -259,8 +259,9 @@ fgs-bench-image:
 fgs-bench-graph:
 	$(GO) build ./cmd/fgs-bench-graph
 
-parsertest-image:
-	$(GO_BUILD) -c ./pkg/parsertest -o parsertest
+.PHONY: parsertest
+parsertest:
+	$(GO) test -c ./pkg/parsertest -o parsertest
 
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
