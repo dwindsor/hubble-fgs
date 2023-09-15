@@ -292,12 +292,20 @@ func Test_http(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
+	if v := "6.1.0"; !maxKernelVersion(v) {
+		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
+	}
 	runTests(t, SENS_HTTP, "http")
 }
 
 func Test_http2(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
+	if v := "6.1.0"; !maxKernelVersion(v) {
+		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 	runTests(t, SENS_HTTP, "http2")
 }
