@@ -48,7 +48,8 @@ generate:
 	  --go-header-file hack/custom-boilerplate.go.txt \
 	  -o . \
 	  --trim-path-prefix github.com/isovalent/hubble-fgs/pkg/k8s \
-	  --plural-exceptions TracingPolicyNamespaced:TracingPoliciesNamespaced
+	  --plural-exceptions TracingPolicyNamespaced:TracingPoliciesNamespaced \
+	  --plural-exceptions PodInfo:PodInfo
 	find . -type f -name "*.go" -exec sed -i 's/isovalent\/hubble-fgs\/pkg\/k8s/cilium\/tetragon\/pkg\/k8s/g' {} +
 
 .PHONY: vendor
