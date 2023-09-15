@@ -213,6 +213,7 @@ const (
 	UDPGCTypeNanoTimeSinceFailure
 	UDPGCTypeDiffValuesFailure
 	UDPGCTypeDiffValuesFailureGC
+	UDPGCTypeDeleteKeyFailed
 )
 
 var UDPGCTypeStrings = map[UDPGCType]string{
@@ -223,6 +224,7 @@ var UDPGCTypeStrings = map[UDPGCType]string{
 	UDPGCTypeNanoTimeSinceFailure: "NanoTimeSince Failure",
 	UDPGCTypeDiffValuesFailure:    "DiffValues Failure",
 	UDPGCTypeDiffValuesFailureGC:  "DiffValues GC Failure",
+	UDPGCTypeDeleteKeyFailed:      "Delete Key Failed",
 }
 
 var (

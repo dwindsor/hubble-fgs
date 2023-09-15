@@ -515,6 +515,7 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 	if deleteLastKey != nil {
 		if err := m.Delete(deleteLastKey); err != nil {
 			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
+			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
 		}
 		deleteLastKey = nil
 	}
