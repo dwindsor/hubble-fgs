@@ -125,7 +125,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		TrafficDirection: flow.TrafficDirection_EGRESS,
 		IsReply:          &wrappers.BoolValue{Value: false},
 	}
-	assert.True(t, proto.Equal(expectedFlow, actualFlow))
+	assert.Equal(t, expectedFlow, actualFlow)
 
 	// With TCP info
 	event = tetragon.GetEventsResponse{
@@ -167,7 +167,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		IsReply:          &wrappers.BoolValue{Value: false},
 		SocketCookie:     12345,
 	}
-	assert.True(t, proto.Equal(expectedFlow, actualFlow))
+	assert.Equal(t, expectedFlow, actualFlow)
 
 	// With source pod
 	event.GetProcessConnect().Process = &tetragon.Process{
@@ -211,7 +211,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		IsReply:          &wrappers.BoolValue{Value: false},
 		SocketCookie:     12345,
 	}
-	assert.True(t, proto.Equal(expectedFlow, actualFlow))
+	assert.Equal(t, expectedFlow, actualFlow)
 
 	// UDP
 	event.GetProcessConnect().Protocol = tetragon.SocketProtocol_UDP
@@ -246,7 +246,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		IsReply:          &wrappers.BoolValue{Value: false},
 		SocketCookie:     12345,
 	}
-	assert.True(t, proto.Equal(expectedFlow, actualFlow))
+	assert.Equal(t, expectedFlow, actualFlow)
 
 	// With a DNS name
 	event.GetProcessConnect().DestinationNames = []string{"isovalent.com"}
@@ -282,5 +282,48 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		IsReply:          &wrappers.BoolValue{Value: false},
 		SocketCookie:     12345,
 	}
-	assert.True(t, proto.Equal(expectedFlow, actualFlow))
+	assert.Equal(t, expectedFlow, actualFlow)
+
+	// With workload info
+	event.GetProcessConnect().GetProcess().GetPod().WorkloadKind = "DaemonSet"
+	event.GetProcessConnect().GetProcess().GetPod().Workload = "my-daemonset"
+	event.GetProcessConnect().DestinationPod = &tetragon.Pod{
+		Namespace:    "ns-1",
+		Name:         "dst-pod-1",
+		WorkloadKind: "Deployment",
+		Workload:     "my-deployment",
+	}
+	expectedFlow = &flow.Flow{
+		IP: &flow.IP{
+			Source:      "1.1.1.1",
+			Destination: "2.2.2.2",
+		},
+		L4: &flow.Layer4{
+			Protocol: &flow.Layer4_UDP{
+				UDP: &flow.UDP{
+					SourcePort:      54321,
+					DestinationPort: 80,
+				},
+			},
+		},
+		Source: &flow.Endpoint{
+			Namespace: "ns-1",
+			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:   "pod-1",
+			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+		},
+		Destination: &flow.Endpoint{
+			Namespace: "ns-1",
+			PodName:   "dst-pod-1",
+			Labels:    []string{},
+			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+		},
+		DestinationNames: []string{"isovalent.com"},
+		Type:             observer.FlowType_L3_L4,
+		TrafficDirection: flow.TrafficDirection_EGRESS,
+		IsReply:          &wrappers.BoolValue{Value: false},
+		SocketCookie:     12345,
+	}
+	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
+	assert.Equal(t, expectedFlow, actualFlow)
 }

@@ -106,14 +106,29 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		sourceLabels := labels.Map2Labels(sourcePod.PodLabels, labels.LabelSourceK8s).GetModel()
 		sort.Strings(sourceLabels)
 		source.Labels = sourceLabels
+		if sourcePod.Workload != "" && sourcePod.WorkloadKind != "" {
+			source.Workloads = []*flow.Workload{{Name: sourcePod.Workload, Kind: sourcePod.WorkloadKind}}
+		}
 	}
-	k8sDestinationServices, err := h.watcher.FindServiceByIP(ip.Destination)
+	destinationPod := pc.GetDestinationPod()
 	var destinationService *flow.Service
-	if err == nil {
-		destination.Namespace = k8sDestinationServices[0].Namespace
-		destinationService = &flow.Service{
-			Name:      k8sDestinationServices[0].Name,
-			Namespace: k8sDestinationServices[0].Namespace,
+	if destinationPod != nil {
+		destination.Namespace = destinationPod.Namespace
+		destination.PodName = destinationPod.Name
+		destinationLabels := labels.Map2Labels(destinationPod.PodLabels, labels.LabelSourceK8s).GetModel()
+		sort.Strings(destinationLabels)
+		destination.Labels = destinationLabels
+		if destinationPod.Workload != "" && destinationPod.WorkloadKind != "" {
+			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
+		}
+	} else {
+		k8sDestinationServices, err := h.watcher.FindServiceByIP(ip.Destination)
+		if err == nil {
+			destination.Namespace = k8sDestinationServices[0].Namespace
+			destinationService = &flow.Service{
+				Name:      k8sDestinationServices[0].Name,
+				Namespace: k8sDestinationServices[0].Namespace,
+			}
 		}
 	}
 	return &flow.Flow{

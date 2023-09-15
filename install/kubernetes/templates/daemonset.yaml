@@ -101,6 +101,9 @@ spec:
         name: metadata-files
 {{- end }}
 {{- end }}
+      - name: tetragon-operator-config
+        configMap:
+          name: {{ .Release.Name }}-operator-config
       {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 6 }}
       {{- end }}

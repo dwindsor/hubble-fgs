@@ -7,7 +7,6 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -98,7 +97,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	// cache where a retry will happen.
 	// TODO: this field is deprecated in favor of the Socket field, so we can probably
 	// remove this at some point in the future.
-	if option.Config.EnableCilium && proc != nil {
+	if proc != nil {
 		destinationIP := network.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck

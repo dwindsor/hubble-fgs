@@ -9,7 +9,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/oldhubble/cilium"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -71,10 +70,7 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 		Protocol: network.MsgOpToProtocol(op),
 	}
 
-	if option.Config.EnableCilium {
-		destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
-		sockInfo.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-	}
+	sockInfo.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 
 	return sockInfo
 }

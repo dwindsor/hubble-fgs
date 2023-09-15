@@ -211,11 +211,14 @@ tetragon:
   enablePolicyFilterDebug: false
 
 tetragonOperator:
-  # -- Enable the tetragon-operator component (required).
-  enabled: true
-
   # -- tetragon-operator image.
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
     tag: v1.11.1
+  # Skip CRD creation.
+  skipCRDCreation: false
+  podInfo:
+    # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
+    # custom resources.
+    enabled: false

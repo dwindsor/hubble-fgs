@@ -59,3 +59,4 @@ data:
 {{- if .Values.tetragon.enablePolicyFilterDebug }}
   enable-policy-filter-debug: "true"
 {{- end }}
+  enable-pod-info: {{ .Values.tetragonOperator.podInfo.enabled | quote }}

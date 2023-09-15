@@ -79,8 +79,9 @@ Helm chart for Tetragon Enterprise
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.tcpStatsSampleSegs | int | `0` | EXPERIMENTAL: This field may be removed in the future without notice.  Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.  Note that the counter for sampling is global, and it is not per socket. |
-| tetragonOperator.enabled | bool | `true` | Enable the tetragon-operator component (required). |
 | tetragonOperator.image | object | `{"override":null,"repository":"quay.io/isovalent/tetragon-operator","tag":"v1.11.1"}` | tetragon-operator image. |
+| tetragonOperator.podInfo.enabled | bool | `false` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
+| tetragonOperator.skipCRDCreation | bool | `false` |  |
 | tolerations[0].operator | string | `"Exists"` |  |
 | updateStrategy | object | `{}` |  |
 

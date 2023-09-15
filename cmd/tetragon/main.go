@@ -23,6 +23,7 @@ import (
 	metricsconfig "github.com/isovalent/hubble-fgs/pkg/metrics/config"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -34,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
+	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -459,6 +461,7 @@ func hubbleFGSExecute() error {
 	if err := process.InitCache(watcher, processCacheSize); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
+	podinfo.SetK8sResourceWatcher(watcher)
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
 	// due to a signal). This is needed, for example, so that the exported writes full
@@ -717,8 +720,10 @@ func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 			return nil, err
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
-		return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
-
+		if !enterpriseOption.Config.EnablePodInfo {
+			return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
+		}
+		return watcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second), nil
 	}
 	log.Info("Disabling Kubernetes API")
 	return watcher.NewFakeK8sWatcher(nil), nil
@@ -871,6 +876,7 @@ func execute() error {
 	// this is set to false by default.
 	flags.Bool(keyEnablePolicyFilter, false, "Enable policy filter (beta) code")
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
+	flags.Bool(keyEnablePodInfo, false, "Enable getting additional Kubernetes metadata from PodInfo custom resources")
 
 	flags.String(keyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
 

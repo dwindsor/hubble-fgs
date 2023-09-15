@@ -94,6 +94,8 @@ const (
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
 	keyFimRuntimeEndpoint = "fim-runtime-endpoint"
+
+	keyEnablePodInfo = "enable-pod-info"
 )
 
 var (
@@ -190,4 +192,5 @@ func readAndSetFlags() {
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
 
 	enterpriseOption.Config.FimRuntimeEndpoint = viper.GetString(keyFimRuntimeEndpoint)
+	enterpriseOption.Config.EnablePodInfo = viper.GetBool(keyEnablePodInfo)
 }
