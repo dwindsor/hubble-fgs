@@ -63,9 +63,13 @@ jobs:
       fail-fast: false
       matrix:
         kernel:
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.15-20230420.212204"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.10-20230420.212204"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.4-20230420.212204"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "4.19-20230420.212204"
     steps:
       - name: Checkout Git Repo
