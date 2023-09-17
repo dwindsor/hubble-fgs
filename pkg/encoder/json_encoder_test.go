@@ -26,11 +26,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
-	e := NewJSONEncoder(&b, nil, watcher.NewFakeK8sWatcher(nil), false)
+	e := NewJSONEncoder(&b, nil, watcher.NewK8sWatcher(fake.NewSimpleClientset(), 0), false)
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -51,7 +52,7 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 
 func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
-	e := NewJSONEncoder(&b, &flowBuffer, watcher.NewFakeK8sWatcher(nil), true)
+	e := NewJSONEncoder(&b, &flowBuffer, watcher.NewK8sWatcher(fake.NewSimpleClientset(), 0), true)
 	event := tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
 		NodeName: "my-node",
@@ -93,7 +94,7 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 }
 
 func TestJSONEncoder_processConnectToFlow(t *testing.T) {
-	services := []interface{}{
+	client := fake.NewSimpleClientset(
 		&corev1.Service{
 			ObjectMeta: v1.ObjectMeta{Name: "svc-1", Namespace: "ns-1"},
 			Spec: corev1.ServiceSpec{
@@ -105,9 +106,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Spec: corev1.ServiceSpec{
 				ClusterIPs: []string{"2.2.2.2"},
 			},
-		},
-	}
-	k8sWatcher := watcher.NewFakeK8sWatcherWithPodsAndServices(nil, services)
+		})
+	k8sWatcher := watcher.NewK8sWatcher(client, 0)
 	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true)
 
 	// Empty connect event
