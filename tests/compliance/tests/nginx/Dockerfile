@@ -4,14 +4,14 @@ FROM alpine/git:2.36.3 as nginx-tests-clone
 
 WORKDIR /nginx-tests
 RUN git clone https://github.com/nginx/nginx-tests .
-RUN git checkout 64a9195a31680c54ae5a4b71194ca9bb7f186875
+RUN git checkout master
 
 ## Main container image
 
-FROM ubuntu:22.10
+FROM ubuntu:22.04
 
 RUN apt-get update -y
-RUN apt-get install -y nginx nginx-extras libfcgi-perl
+RUN apt-get install -y libfcgi-perl libio-socket-ssl-perl curl gnupg2 ca-certificates lsb-release ubuntu-keyring
 
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -19,14 +19,14 @@ COPY --from=nginx-tests-clone /nginx-tests /nginx-tests
 # FIXME: this test is broken due to bad version string from patched ubuntu package. Get
 # rid of it for now.
 RUN rm /nginx-tests/h2_server_tokens.t
-# These tests don't currently work due to bugs in their TAP output.
-RUN rm /nginx-tests/js_fetch_https.t
-RUN rm /nginx-tests/js_fetch_verify.t
+
+RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
+RUN echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu jammy nginx" > /etc/apt/sources.list.d/nginx.list
+RUN apt-get update -y
+RUN apt install -y nginx
 
 ENV TEST_NGINX_BINARY=/usr/sbin/nginx
 ENV TEST_NGINX_MODULES=/usr/lib/nginx/modules
-
-RUN useradd -ms /bin/sh nginx
 
 WORKDIR /nginx-tests
 USER nginx
