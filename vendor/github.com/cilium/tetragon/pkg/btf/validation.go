@@ -11,7 +11,6 @@ import (
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/pkg/arch"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/syscallinfo"
 )
 
@@ -36,56 +35,22 @@ func (e *ValidationFailed) Error() string {
 	return e.s
 }
 
-/*
-func validate(btf bpf.BTF, spec *v1alpha1.KProbeSpec) (bpf.BtfID, error) {
-
-	llCallID, err := btf.FindByNameKind(llCall, bpf.BtfKindFunc)
-	if err != nil {
-		return bpf.BtfID(0), &ValidationWarn{s: fmt.Sprintf("could not get the function prototype for %s. Arguments will not be verified", spec.Call)}
-	}
-
-	llCallTy, err := btf.TypeByID(llCallID)
-	if err != nil {
-		fmt.Errorf("failed to to find syscall type by id: %w", err)
-	}
-
-	return btf.UnderlyingType(llCallTy)
-}
-*/
-
-func hasSigkillAction(kspec *v1alpha1.KProbeSpec) bool {
-	for i := range kspec.Selectors {
-		s := &kspec.Selectors[i]
-		for j := range s.MatchActions {
-			act := strings.ToLower(s.MatchActions[j].Action)
-			if act == "sigkill" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // ValidateKprobeSpec validates a kprobe spec based on BTF information
 //
 // NB: turns out we need more than BTF information for the validation (see
 // syscalls). We still keep this code in the btf package for now, and we can
 // move it once we found a better home for it.
-func ValidateKprobeSpec(bspec *btf.Spec, kspec *v1alpha1.KProbeSpec) error {
-	if hasSigkillAction(kspec) && !kernels.EnableLargeProgs() {
-		return &ValidationFailed{s: "sigkill action requires kernel >= 5.3.0"}
-	}
-
+func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec) error {
 	var fn *btf.Func
 
-	err := bspec.TypeByName(kspec.Call, &fn)
+	err := bspec.TypeByName(call, &fn)
 	if err != nil {
-		return &ValidationFailed{s: fmt.Sprintf("call %q not found", kspec.Call)}
+		return &ValidationFailed{s: fmt.Sprintf("call %q not found", call)}
 	}
 
 	proto, ok := fn.Type.(*btf.FuncProto)
 	if !ok {
-		return fmt.Errorf("kprobe spec validation failed: proto for call %s not found", kspec.Call)
+		return fmt.Errorf("kprobe spec validation failed: proto for call %s not found", call)
 	}
 
 	// Syscalls are special.
@@ -128,10 +93,10 @@ func ValidateKprobeSpec(bspec *btf.Spec, kspec *v1alpha1.KProbeSpec) error {
 		// next try to deduce the syscall name.
 		// NB: this might change in different kernels so if we fail we treat it as a warning
 		prefix := "__x64_sys_"
-		if !strings.HasPrefix(kspec.Call, prefix) {
-			return &ValidationWarn{s: fmt.Sprintf("could not get the function prototype for %s: arguments will not be verified", kspec.Call)}
+		if !strings.HasPrefix(call, prefix) {
+			return &ValidationWarn{s: fmt.Sprintf("could not get the function prototype for %s: arguments will not be verified", call)}
 		}
-		syscall := strings.TrimPrefix(kspec.Call, prefix)
+		syscall := strings.TrimPrefix(call, prefix)
 		return validateSycall(kspec, syscall)
 	}
 

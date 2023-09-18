@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -106,6 +107,10 @@ func (r *raceK8sWatcher) GetPodInfo(_, _, _ string, _ uint32) (*tetragon.Pod, *h
 
 func (r *raceK8sWatcher) FindServiceByIP(ip string) ([]*corev1.Service, error) {
 	return nil, fmt.Errorf("service with IP %s not found", ip)
+}
+
+func (r *raceK8sWatcher) FindPodInfoByIP(ip string) ([]*v1alpha1.PodInfo, error) {
+	return nil, fmt.Errorf("PodInfo with IP %s not found", ip)
 }
 
 type raceEncoder struct {

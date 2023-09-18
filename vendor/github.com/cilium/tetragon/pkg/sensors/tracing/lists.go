@@ -14,14 +14,14 @@ import (
 	"github.com/cilium/tetragon/pkg/syscallinfo"
 )
 
-func hasList(name string, lists []v1alpha1.ListSpec) bool {
+func getList(name string, lists []v1alpha1.ListSpec) *v1alpha1.ListSpec {
 	for idx := range lists {
-		list := lists[idx]
+		list := &lists[idx]
 		if list.Name == name {
-			return true
+			return list
 		}
 	}
-	return false
+	return nil
 }
 
 const (
@@ -72,7 +72,7 @@ func preValidateList(list *v1alpha1.ListSpec) (err error) {
 	// Generate syscalls list
 	if listTypeFromString(list.Type) == ListTypeGeneratedSyscalls {
 		if len(list.Values) != 0 {
-			return fmt.Errorf("Error generated list '%s' has generate and values", list.Name)
+			return fmt.Errorf("Error generated list '%s' has values", list.Name)
 		}
 		tmp, err := btf.GetSyscallsList()
 		if err != nil {
@@ -84,7 +84,10 @@ func preValidateList(list *v1alpha1.ListSpec) (err error) {
 
 	// Generate ftrace list
 	if listTypeFromString(list.Type) == ListTypeGeneratedFtrace {
-		if list.Pattern != nil && *(list.Pattern) == "" {
+		if len(list.Values) != 0 {
+			return fmt.Errorf("Error generated list '%s' has values", list.Name)
+		}
+		if list.Pattern == nil || (list.Pattern != nil && *(list.Pattern) == "") {
 			return fmt.Errorf("Error generated ftrace list '%s' must specify pattern", list.Name)
 		}
 		list.Values, err = ftrace.ReadAvailFuncs(*(list.Pattern))
