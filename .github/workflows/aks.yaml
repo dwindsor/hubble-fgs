@@ -120,6 +120,7 @@ jobs:
           max_attempts: 30
           retry_wait_seconds: 30
           command: |
+            set -e
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
 
