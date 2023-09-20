@@ -43,6 +43,7 @@ const (
 	SENS_INITIAL = iota
 	SENS_TLS
 	SENS_HTTP
+	SENS_NOP
 )
 
 func init() {
@@ -174,6 +175,26 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				Watermarks:    v1alpha1.TcpWatermarksPolicySpec{},
 			},
 		}
+	case SENS_NOP:
+		spec = v1alpha1.ParserPolicySpec{
+			Tcp: v1alpha1.TcpPolicySpec{
+				Enable:        true,
+				StatsInterval: 0,
+			},
+			Udp: v1alpha1.UdpPolicySpec{
+				Enable:                   true,
+				Cgroup:                   true,
+				StatsInterval:            0,
+				DeleteIdleSocketInterval: 0,
+				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
+			},
+			Nop: v1alpha1.NopSpec{
+				Enable: true,
+				Selectors: []v1alpha1.NopSelector{
+					{MatchPorts: []uint32{8888}},
+				},
+			},
+		}
 	case SENS_INITIAL:
 		spec = v1alpha1.ParserPolicySpec{
 			Tcp: v1alpha1.TcpPolicySpec{
@@ -224,6 +245,22 @@ func addSelfToEvecveMap(t *testing.T) {
 	}
 }
 
+func fixupTestCaseForNopSensor(tc *TestCase) {
+	var steps []TestStep
+	for _, step := range tc.Steps {
+		switch step.(type) {
+		case *TestStepEvent:
+			continue
+		case *TestStepEventDump:
+			continue
+		case *TestStepEvents:
+			continue
+		}
+		steps = append(steps, step)
+	}
+	tc.Steps = steps
+}
+
 func runTests(t *testing.T, sensor int, dir string) {
 	handle := startSensors(sensor, t)
 	defer handle.Close(t)
@@ -246,6 +283,10 @@ func runTests(t *testing.T, sensor int, dir string) {
 				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
 				if err != nil {
 					t.Fatal(err)
+				}
+
+				if sensor == SENS_NOP {
+					fixupTestCaseForNopSensor(tc)
 				}
 
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
@@ -303,6 +344,16 @@ func Test_http2(t *testing.T) {
 		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 	runTests(t, SENS_HTTP, "http2")
+}
+
+func Test_nop(t *testing.T) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	runTests(t, SENS_NOP, "tls")
+	runTests(t, SENS_NOP, "http")
+	runTests(t, SENS_NOP, "http2")
+	runTests(t, SENS_NOP, "tcp")
 }
 
 func Test_tcp(t *testing.T) {
