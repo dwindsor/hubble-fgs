@@ -276,6 +276,7 @@ github.com/cilium/tetragon/cmd/tetra/tracingpolicy
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy/generate
 github.com/cilium/tetragon/cmd/tetra/version
 github.com/cilium/tetragon/operator/cmd
+github.com/cilium/tetragon/operator/cmd/common
 github.com/cilium/tetragon/operator/cmd/serve
 github.com/cilium/tetragon/operator/crd
 github.com/cilium/tetragon/operator/option
