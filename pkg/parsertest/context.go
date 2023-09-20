@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 )
 
 type TestContext struct {
@@ -26,6 +27,7 @@ type TestContext struct {
 }
 
 func (ctx *TestContext) emitEgress(pkt []byte) error {
+	ctx.egressConn.SetWriteDeadline(time.Now().Add(testTimeout))
 	n, err := ctx.egressConn.Write(pkt)
 	if err != nil {
 		return err
@@ -34,10 +36,23 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 		return fmt.Errorf("Write failed to write all bytes (%d < %d)",
 			n, len(pkt))
 	}
+
+	ctx.ingressConn.SetReadDeadline(time.Now().Add(testTimeout))
+	b := make([]byte, n)
+	n, err = ctx.ingressConn.Read(b)
+	if err != nil {
+		return err
+	}
+	if n != len(pkt) {
+		return fmt.Errorf("Read failed to read all bytes (%d < %d)",
+			n, len(pkt))
+	}
+
 	return nil
 }
 
 func (ctx *TestContext) emitIngress(pkt []byte) error {
+	ctx.ingressConn.SetWriteDeadline(time.Now().Add(testTimeout))
 	n, err := ctx.ingressConn.Write(pkt)
 	if err != nil {
 		return err
@@ -46,6 +61,18 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 		return fmt.Errorf("Write failed to write all bytes (%d < %d)",
 			n, len(pkt))
 	}
+
+	ctx.egressConn.SetReadDeadline(time.Now().Add(testTimeout))
+	b := make([]byte, n)
+	n, err = ctx.egressConn.Read(b)
+	if err != nil {
+		return err
+	}
+	if n != len(pkt) {
+		return fmt.Errorf("Read failed to read all bytes (%d < %d)",
+			n, len(pkt))
+	}
+
 	return nil
 }
 

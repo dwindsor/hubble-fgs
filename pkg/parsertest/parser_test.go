@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -29,10 +28,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
-)
-
-const (
-	testTimeout = 10 * time.Second
 )
 
 // Testdata directory. We'll probe for it's location

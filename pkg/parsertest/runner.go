@@ -3,7 +3,6 @@ package parsertest
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"testing"
 	"time"
@@ -104,7 +103,6 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 			}
 			egressConn = eoe.conn
 			defer egressConn.Close()
-			go io.Copy(io.Discard, egressConn)
 
 		case ioe := <-ingressConnOrError:
 			if ioe.err != nil {
@@ -112,7 +110,6 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 			}
 			ingressConn = ioe.conn
 			defer ingressConn.Close()
-			go io.Copy(io.Discard, ingressConn)
 		}
 	}
 
