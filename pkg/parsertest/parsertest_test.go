@@ -35,14 +35,16 @@ var expectedPacketPayload = []byte{
 	110, 103, 10, 1, 63, 18, 31, 104, 101, 108, 108, 111, 119, 111, 114, 108, 100,
 }
 
+const testfileLocation = "testdata/parser/parser-testfile"
+
 func TestParse(t *testing.T) {
 
-	if _, err := os.Stat("testdata/parser-testfile"); err != nil {
+	if _, err := os.Stat(testfileLocation); err != nil {
 		t.Logf("skipping as testdata/parser-testfile not found")
 		return
 	}
 
-	tc, err := ParseTestCase("testdata/parser-testfile")
+	tc, err := ParseTestCase(testfileLocation)
 	if err != nil {
 		t.Errorf("parse of parser-testfile failed: %s", err)
 	}
