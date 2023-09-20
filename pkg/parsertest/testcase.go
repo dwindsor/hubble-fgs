@@ -79,6 +79,7 @@ type TestStepPacket struct {
 type TestStepEgress TestStepPacket
 
 func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	ctx.t.Logf("EGRESS  %-20s => %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitEgress(e.Payload); err != nil {
 		return &TestStepError{
@@ -97,6 +98,7 @@ func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
 type TestStepIngress TestStepPacket
 
 func (e *TestStepIngress) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	ctx.t.Logf("INGRESS %-20s <= %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitIngress(e.Payload); err != nil {
 		return &TestStepError{
@@ -119,6 +121,7 @@ type TestStepEvent struct {
 }
 
 func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	failedEvents := 0
 NEXTEVENT:
 	for {
@@ -189,6 +192,7 @@ func formatErrors(errors []*TestStepError) error {
 }
 
 func (e *TestStepEvents) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	remaining := make(map[int]*Subevent)
 	for i, s := range e.Subevents {
 		remaining[i] = s
@@ -231,6 +235,7 @@ type TestStepEventDump struct {
 }
 
 func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	event, ok := ctx.waitForEvent(e.Op)
 	if !ok {
 		return &TestStepError{e.Position, "waitForEvent", nil}
@@ -279,6 +284,7 @@ type TestStepClose struct {
 }
 
 func (e *TestStepClose) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	var err error
 	switch e.which {
 	case CLOSE_SERVER:
@@ -313,7 +319,8 @@ type TestStepAssert struct {
 	Count    int
 }
 
-func (a *TestStepAssert) Exec(_ *TestContext) *TestStepError {
+func (a *TestStepAssert) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
 	m, err := ebpf.LoadPinnedMap(path.Join(bpf.MapPrefixPath(), a.MapName), nil)
 	if err != nil {
 		return &TestStepError{a.Position, "ASSERT MAP", err}
