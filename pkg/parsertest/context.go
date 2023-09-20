@@ -16,6 +16,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type TestContext struct {
@@ -48,6 +50,10 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 			n, len(pkt))
 	}
 
+	if !assert.Equal(ctx.t, pkt, b) {
+		return fmt.Errorf("Bytes received not equal to bytes sent")
+	}
+
 	return nil
 }
 
@@ -71,6 +77,10 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 	if n != len(pkt) {
 		return fmt.Errorf("Read failed to read all bytes (%d < %d)",
 			n, len(pkt))
+	}
+
+	if !assert.Equal(ctx.t, pkt, b) {
+		return fmt.Errorf("Bytes received not equal to bytes sent")
 	}
 
 	return nil
