@@ -52,21 +52,6 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	 */
 	cookie = (u64)skp;
 
-	probe_read(&tuple.saddr, sizeof(tuple.saddr),
-		   _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&tuple.sport, sizeof(tuple.sport),
-		   _(&(skp->__sk_common.skc_num)));
-	probe_read(&tuple.daddr, sizeof(tuple.daddr),
-		   _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&tuple.dport, sizeof(tuple.dport),
-		   _(&(skp->__sk_common.skc_dport)));
-
-	tuple.remaining = 0;
-	tuple.uid = 0;
-
-	if (is_tuple_local(&tuple))
-		tuple.uid = sock_netns(skp);
-
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_close_event_map,
 						     &zero);
 	if (!val) {
