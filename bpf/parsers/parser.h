@@ -363,7 +363,6 @@ msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 	 * construct so we just reset {s|d}port for now.
 	 */
 	tuple->dport = 0;
-	tuple->sport = msg->local_port;
 	tuple->dport = msg->sk->dst_port;
 	tuple->sport = msg->sk->src_port;
 
