@@ -24,7 +24,8 @@ tg_skskb_http_verdict(struct __sk_buff *skb)
 	struct msg_tls_ip key = { 0 };
 
 	msg_tls_tuple(skb, &key);
-	return http_do_parser(skb, &key);
+	http_do_parser(skb, &key);
+	return SK_PASS;
 }
 
 __attribute__((section("sk_skb/stream_verdict/0"), used)) int
@@ -32,10 +33,8 @@ tg_skskb_http_response(struct __sk_buff *skb)
 {
 	int post = http_parse_response(skb);
 
-	if (post <= 0)
-		return SK_PASS;
-
-	post_http_event(skb);
+	if (post)
+		post_http_event(skb);
 	return SK_PASS;
 }
 
@@ -44,10 +43,8 @@ tg_skskb_http_request(struct __sk_buff *skb)
 {
 	int post = http_parse_request(skb);
 
-	if (post <= 0)
-		return SK_PASS;
-
-	post_http_event(skb);
+	if (post)
+		post_http_event(skb);
 	return SK_PASS;
 }
 
@@ -63,19 +60,20 @@ tg_skskb_get_more_headers(struct __sk_buff *skb)
 		return SK_PASS;
 	http->request.state = http_get_headers;
 	find_host_header(skb, &key, http, &http->request);
-	if (http->request.state == http_more_headers_needed ||
-	    http->request.state == http_more_headers_value_needed)
-		return SK_PASS;
-	post_http_event(skb);
 	return SK_PASS;
 }
 
 __attribute__((section("sk_skb/stream_verdict/3"), used)) int
 tg_skskb_http2(struct __sk_buff *skb)
 {
-	struct msg_tls_ip key = { 0 };
+	struct msg_tls_ip *key;
+	int zero = 0;
 
-	msg_tls_tuple(skb, &key);
-	http2_do_parser(skb, &key);
+	key = (struct msg_tls_ip *)map_lookup_elem(&msg_tls_ip_heap, &zero);
+	if (!key)
+		return SK_PASS;
+
+	msg_tls_tuple(skb, key);
+	http2_do_parser(skb, key);
 	return SK_PASS;
 }

@@ -26,7 +26,8 @@ tg_http_sk_msg_fgs(struct sk_msg_md *msg)
 	msg_apply_bytes(msg, 0);
 
 	msg_tls_tuple(msg, &tuple);
-	return http_do_parser(msg, &tuple);
+	http_do_parser(msg, &tuple);
+	return SK_PASS;
 }
 
 __attribute__((section("sk_msg/0"), used)) int
@@ -34,10 +35,8 @@ tg_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 {
 	int post = http_parse_response(msg);
 
-	if (post <= 0)
-		return SK_PASS;
-
-	post_http_event(msg);
+	if (post)
+		post_http_event(msg);
 	return SK_PASS;
 }
 
@@ -46,10 +45,8 @@ tg_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 {
 	int post = http_parse_request(msg);
 
-	if (post <= 0)
-		return SK_PASS;
-
-	post_http_event(msg);
+	if (post)
+		post_http_event(msg);
 	return SK_PASS;
 }
 
@@ -65,10 +62,6 @@ tg_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 		return SK_PASS;
 	http->request.state = http_get_headers;
 	find_host_header(msg, &tuple, http, &http->request);
-	if (http->request.state == http_more_headers_needed ||
-	    http->request.state == http_more_headers_value_needed)
-		return SK_PASS;
-	post_http_event(msg);
 	return SK_PASS;
 }
 

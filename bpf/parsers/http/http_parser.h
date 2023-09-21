@@ -36,6 +36,13 @@ struct {
 } http1_calls_skb SEC(".maps");
 #endif
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_tls_ip);
+	__uint(max_entries, 1);
+} msg_tls_ip_heap SEC(".maps");
+
 #define MAX_HTTP_HDR   512
 #define MAX_HTTP_CHARS 32
 
@@ -445,18 +452,30 @@ static inline __attribute__((always_inline)) void get_more_headers(ctx_md *msg)
 #endif
 }
 
-static inline __attribute__((always_inline)) void
-continue_header_string(ctx_md *msg, struct msg_tls_ip *key,
-		       struct msg_http_event *event, struct msg_http *http)
+__attribute__((noinline)) int continue_header_string(ctx_md *msg)
 {
-	int t = map_header_to_type(msg, http);
+	int zero = 0;
+	struct msg_tls_ip *key;
+	struct msg_http_event *event;
+	struct msg_http *http;
+	int t;
 
+	key = (struct msg_tls_ip *)map_lookup_elem(&msg_tls_ip_heap, &zero);
+	if (unlikely(!key))
+		return 0;
+	msg_tls_tuple(msg, key);
+	event = get_http_context(key);
+	if (unlikely(!event))
+		return 0;
+	http = &event->request;
+
+	t = map_header_to_type(msg, http);
 	get_string(msg, key, event, http, http->url, t, 256, chr_r);
 	if (http->state == http_more_headers_value_needed)
-		return;
+		return 0;
 	http->scratch[0] = (u32)0;
 	get_more_headers(msg);
-	return;
+	return 0;
 }
 
 #define HTTP_REQUEST_MORE 0
@@ -555,7 +574,7 @@ __attribute__((noinline)) int http_parse_request(ctx_md *msg)
 	msg_tls_tuple(msg, &tuple);
 	http = get_http_context(&tuple);
 	if (unlikely(!http))
-		return -1;
+		return 0;
 
 	http->request.url_offset = 0;
 
@@ -630,7 +649,7 @@ __attribute__((noinline)) int http_parse_response(ctx_md *msg)
 	msg_tls_tuple(msg, &tuple);
 	event = get_http_context(&tuple);
 	if (unlikely(!event))
-		return -1;
+		return 0;
 	http = &event->request;
 
 	http->url_offset = 0;
@@ -667,6 +686,10 @@ put_reverse_http_context(struct msg_tls_ip *key, struct msg_http_event *event)
 	return map_update_elem(&tg_http_map, &rkey, event, BPF_NOEXIST);
 }
 
+/* HTTP Parser is organized into a series of tail calls that splits this into
+ * http1_request, http1_reply, http2, and header_parsing. Entry point from
+ * primary BPF verdict and sk_msg hooks sk_msg/fgs and sk_skb/fgs.
+ */
 static inline __attribute__((always_inline)) void
 http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
 {
@@ -716,16 +739,19 @@ http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
 		tail_call(msg, &http1_calls_skb, 3);
 #endif
 	} else if (http->state == http_more_headers_needed) {
-		get_more_headers(msg);
-		/* get_more_headers is a tail call so this should
-		 * never be reached, added for readability.
-		 */
+#ifdef SK_MSG
+		tail_call(msg, &http1_calls, 2);
+#else
+		tail_call(msg, &http1_calls_skb, 2);
+#endif
 		return;
 	} else if (http->state == http_more_headers_value_needed) {
-		continue_header_string(msg, key, event, http);
+		/* Wrapper around tail call to /2 */
+		continue_header_string(msg);
 		return;
 	}
 
+	// Dead code everything above tail calls from main prog
 	http->state = http_done;
 out:
 	return;
@@ -881,23 +907,21 @@ http_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 
 	http = get_http_context(tuple);
 	if (unlikely(!http))
-		return SK_PASS;
+		return 0;
 
 	if (!is_expected_request(&http->request)) {
-		return SK_PASS;
+		return 0;
 	}
 
 #ifndef SK_MSG
 	if (http->request.consume_bytes) {
 		sk_skb_eat_bytes(msg, http, tuple, http->request.consume_bytes);
-		return SK_PASS;
+		return 0;
 	}
 #endif
 
 	http_parse(msg, http, tuple);
-	if (http->request.state == http_done)
-		post_http_event(msg);
-	return SK_PASS;
+	return 0;
 }
 
 #endif // _HTTP_PARSER_
