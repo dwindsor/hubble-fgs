@@ -263,6 +263,10 @@ fgs-bench-graph:
 parsertest:
 	$(GO) test -c ./pkg/parsertest -o parsertest
 
+.PHONY: parsertest-gen
+parsertest-gen:
+	$(GO_BUILD) ./cmd/parsertest-gen
+
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench

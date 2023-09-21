@@ -29,8 +29,8 @@ in lexicographical order, grouped by sensor type.  Use `NN-` notation
 tests and prefer to use a lower number for simpler test-cases to fail early
 with the simpler case.
 
-A separate command is implemented in `cmd/fgs-parsertest` that enables
-quicker iteration on the tests during development (`make hubble-bpf && fgs-parsertest ...`)
+A separate command is implemented in `cmd/parsertest-gen` that enables
+quicker iteration on the tests during development (`make hubble-bpf && parsertest-gen ...`)
 and includes additional features for manipulating the test-cases.
 
 ## Test definition language

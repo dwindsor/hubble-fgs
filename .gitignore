@@ -10,6 +10,7 @@ lib/*
 /checkerpc
 /build
 /hubble-fgs-fs-scanner
+/parsertest-gen
 observer.test
 go-tests
 fgs-bench-rootfs*
