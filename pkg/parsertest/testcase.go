@@ -80,7 +80,7 @@ type TestStepEgress TestStepPacket
 
 func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
 	ctx.t.Helper()
-	ctx.t.Logf("EGRESS  %-20s => %d bytes\n", e.Description, len(e.Payload))
+	ctx.t.Logf("EGRESS  %-40s => %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitEgress(e.Payload); err != nil {
 		return &TestStepError{
 			Position:    e.Position,
@@ -99,7 +99,7 @@ type TestStepIngress TestStepPacket
 
 func (e *TestStepIngress) Exec(ctx *TestContext) *TestStepError {
 	ctx.t.Helper()
-	ctx.t.Logf("INGRESS %-20s <= %d bytes\n", e.Description, len(e.Payload))
+	ctx.t.Logf("INGRESS %-40s <= %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitIngress(e.Payload); err != nil {
 		return &TestStepError{
 			Position:    e.Position,
