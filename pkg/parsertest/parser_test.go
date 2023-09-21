@@ -156,13 +156,6 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		}
 	case SENS_HTTP:
 		spec = v1alpha1.ParserPolicySpec{
-			Tls: v1alpha1.TlsSpec{
-				Enable: true,
-				Mode:   "socket",
-				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{9999}},
-				},
-			},
 			Http: v1alpha1.HttpSpec{
 				Enable: true,
 				Selectors: []v1alpha1.HttpSelector{
