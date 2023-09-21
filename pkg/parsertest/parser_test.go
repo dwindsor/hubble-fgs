@@ -28,6 +28,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 )
 
 // Testdata directory. We'll probe for it's location
@@ -137,7 +138,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				Enable: true,
 				Mode:   "socket",
 				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{8888}},
+					{MatchPorts: []uint32{TCP_PORT}},
 				},
 			},
 			Udp: v1alpha1.UdpPolicySpec{
@@ -158,7 +159,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Http: v1alpha1.HttpSpec{
 				Enable: true,
 				Selectors: []v1alpha1.HttpSelector{
-					{MatchPorts: []uint32{8888}},
+					{MatchPorts: []uint32{TCP_PORT}},
 				},
 			},
 			Udp: v1alpha1.UdpPolicySpec{
@@ -190,7 +191,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Nop: v1alpha1.NopSpec{
 				Enable: true,
 				Selectors: []v1alpha1.NopSelector{
-					{MatchPorts: []uint32{8888}},
+					{MatchPorts: []uint32{TCP_PORT}},
 				},
 			},
 		}
@@ -204,7 +205,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				Enable:                   true,
 				Cgroup:                   true,
 				StatsInterval:            0,
-				DeleteIdleSocketInterval: 0,
+				DeleteIdleSocketInterval: 1,
 				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
 			},
 		}
@@ -302,7 +303,7 @@ func runTests(t *testing.T, sensor int, dir string) {
 				}
 
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
-					err = tc.Run(t, testTimeout)
+					err = tc.Run(t, TEST_TIMEOUT)
 					if err != nil {
 						if tc.IsBroken() {
 							t.Skipf("Broken test failed as expected:\n%s", err)
@@ -353,6 +354,7 @@ func Test_nop(t *testing.T) {
 	runTests(t, SENS_NOP, "http")
 	runTests(t, SENS_NOP, "http2")
 	runTests(t, SENS_NOP, "tcp")
+	runTests(t, SENS_NOP, "udp")
 }
 
 func Test_tcp(t *testing.T) {
@@ -360,4 +362,11 @@ func Test_tcp(t *testing.T) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	runTests(t, SENS_INITIAL, "tcp")
+}
+
+func Test_udp(t *testing.T) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	runTests(t, SENS_INITIAL, "udp")
 }

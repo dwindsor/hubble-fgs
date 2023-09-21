@@ -8,6 +8,97 @@ import (
 	"time"
 )
 
+func setupTCPPeers(t *testing.T, tcpPort int) (ingressConn, egressConn *net.TCPConn, listener *net.TCPListener, err error) {
+	// TODO(WPF): Pick a random port.
+	srvAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("127.0.0.88:%d", tcpPort))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cliAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.87:0")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	listener, err = net.ListenTCP("tcp4", srvAddr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Concurrently connect and accept. This is a bit funny as we want
+	// to fail right away if either of them fail.
+
+	type ConnOrError struct {
+		conn *net.TCPConn
+		err  error
+	}
+	egressConnOrError := make(chan ConnOrError)
+	go func() {
+		conn, err := net.DialTCP("tcp4", cliAddr, listener.Addr().(*net.TCPAddr))
+		if err != nil {
+			fmt.Printf("DialTCP fail: %s\n", err)
+		}
+		egressConnOrError <- ConnOrError{conn, err}
+	}()
+
+	ingressConnOrError := make(chan ConnOrError)
+	go func() {
+		conn, err := listener.AcceptTCP()
+		ingressConnOrError <- ConnOrError{conn, err}
+	}()
+
+	for ingressConn == nil || egressConn == nil {
+		select {
+		case eoe := <-egressConnOrError:
+			if eoe.err != nil {
+				listener.Close()
+				return nil, nil, nil, eoe.err
+			}
+			egressConn = eoe.conn
+
+		case ioe := <-ingressConnOrError:
+			if ioe.err != nil {
+				listener.Close()
+				egressConn.Close()
+				return nil, nil, nil, ioe.err
+			}
+			ingressConn = ioe.conn
+		}
+	}
+
+	t.Logf("Started TCP peers ingress=%v egress=%v", ingressConn.LocalAddr(), egressConn.LocalAddr())
+
+	return ingressConn, egressConn, listener, nil
+}
+
+func setupUDPPeers(t *testing.T, udpPort int) (ingressConn, egressConn *net.UDPConn, err error) {
+	// TODO(WPF): Pick a random port..
+	srvAddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.88:%d", udpPort))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cliAddr, err := net.ResolveUDPAddr("udp4", "127.0.0.87:0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	egressConn, err = net.ListenUDP("udp4", cliAddr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ingressConn, err = net.ListenUDP("udp4", srvAddr)
+	if err != nil {
+		egressConn.Close()
+		return nil, nil, err
+	}
+
+	t.Logf("Started UDP peers ingress=%v egress=%v", ingressConn.LocalAddr(), egressConn.LocalAddr())
+
+	return ingressConn, egressConn, nil
+}
+
 func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 	dispatch, err := NewEventDispatcher()
 	if err != nil {
@@ -54,64 +145,25 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 	// Create the ingress and egress connections
 	//
 
-	// TODO(JM): Pick a random port. Need to reorganize so we can load TLS and HTTP
-	// with right filter.
-	srvAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.88:8888")
-	if err != nil {
-		return err
-	}
+	var ingressConn, egressConn net.Conn
+	var listener net.Listener
 
-	cliAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.87:0")
-	if err != nil {
-		return err
-	}
-
-	listener, err := net.ListenTCP("tcp4", srvAddr)
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-
-	// Concurrently connect and accept. This is a bit funny as we want
-	// to fail right away if either of them fail.
-
-	type ConnOrError struct {
-		conn *net.TCPConn
-		err  error
-	}
-	egressConnOrError := make(chan ConnOrError)
-	go func() {
-		conn, err := net.DialTCP("tcp4", cliAddr, listener.Addr().(*net.TCPAddr))
+	if tc.IsTcp() {
+		ingressConn, egressConn, listener, err = setupTCPPeers(t, TCP_PORT)
 		if err != nil {
-			fmt.Printf("DialTCP fail: %s\n", err)
-		}
-		egressConnOrError <- ConnOrError{conn, err}
-	}()
-
-	ingressConnOrError := make(chan ConnOrError)
-	go func() {
-		conn, err := listener.AcceptTCP()
-		ingressConnOrError <- ConnOrError{conn, err}
-	}()
-
-	var ingressConn, egressConn *net.TCPConn
-	for ingressConn == nil || egressConn == nil {
-		select {
-		case eoe := <-egressConnOrError:
-			if eoe.err != nil {
-				return eoe.err
-			}
-			egressConn = eoe.conn
-			defer egressConn.Close()
-
-		case ioe := <-ingressConnOrError:
-			if ioe.err != nil {
-				return ioe.err
-			}
-			ingressConn = ioe.conn
-			defer ingressConn.Close()
+			return err
 		}
 	}
+	if tc.IsUdp() {
+		ingressConn, egressConn, err = setupUDPPeers(t, UDP_PORT)
+		if err != nil {
+			return err
+		}
+		listener = &FakeListener{}
+	}
+	defer egressConn.Close()
+	defer ingressConn.Close()
+	defer listener.Close()
 
 	//
 	// Init the context and start the event dispatcher

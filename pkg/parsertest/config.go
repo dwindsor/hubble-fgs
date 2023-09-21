@@ -3,5 +3,7 @@ package parsertest
 import "time"
 
 const (
-	testTimeout = 10 * time.Second
+	TEST_TIMEOUT = 10 * time.Second
+	TCP_PORT     = 8888
+	UDP_PORT     = 9999
 )

@@ -1,0 +1,164 @@
+TAGS udp
+
+EGRESS
+	"hello"
+END
+
+EVENTS UDPCONNECT
+    EVENT
+      ## common
+      $ 12 00 00 00 # op + pad
+      h4 352        # size
+      ? 8           # ktime
+
+      ## tuple
+      A CLI_ADDR
+      $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+      A SRV_ADDR
+      $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+      A SRV_PORT
+      A CLI_PORT_HOST
+
+      $ 00                      # proto
+      $ 00 00 00                # pad
+      $ 00 00 00 00             # post daddr
+      $ 00 00                   # post dport
+      $ 00 00                   # pad
+      $ 00                      # ipv6
+      $ 00 00 00 00 00 00 00    # pad
+
+      ## ret
+      $ 00 00 00 00 00 00 00 00 # ret
+
+      ## process key
+      $ ?? ?? ?? ??         # pid
+      $ 00 00 00 00         # pad
+      h8 0x01020304deadbeef # ktime
+
+      ## socket cookie
+      ? 8                   # socket cookie
+
+      ## socket stats
+      $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+      h8 5 # bytes sent
+      h8 0 # bytes received
+      h4 0 # segs in
+      h4 1 # segs out
+      ? 8  # bytes submitted
+      ? 8  # bytes consumed
+      ? 4  # segs consumed
+      ? 4  # segs submitted
+      ? 4  # srtt
+      h4 0 # retransmitted segs
+      h8 0 # retransmitted bytes
+      h4 0 # to zero window
+      h4 0 # skdrop
+      h4 0 # skbconsumemisses
+      h4 0 # pad
+      $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # latency buckets X 8
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # rtt sum
+      $ 00 00 00 00 00 00 00 00 # latency sum
+
+      $ 00 00 00 00
+      $ 00 00 00 00
+      $ 00 00 00 00  
+      $ 00 00 00 00 00 00 00 00 
+    END
+
+    EVENT
+      ## common
+      $ 12 00 00 00 # op + pad
+      h4 352        # size
+      ? 8           # ktime
+
+      ## tuple
+      A SRV_ADDR
+      $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+      A CLI_ADDR
+      $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+      A CLI_PORT
+      A SRV_PORT_HOST
+
+      $ 00                      # proto
+      $ 00 00 00                # pad
+      $ 00 00 00 00             # post daddr
+      $ 00 00                   # post dport
+      $ 00 00                   # pad
+      $ 00                      # ipv6
+      $ 00 00 00 00 00 00 00    # pad
+
+      ## ret
+      $ 00 00 00 00 00 00 00 00 # ret
+
+      ## process key
+      $ ?? ?? ?? ??         # pid
+      $ 00 00 00 00         # pad
+      h8 0x01020304deadbeef # ktime
+
+      ## socket cookie
+      ? 8                   # socket cookie
+
+      ## socket stats
+      $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+      h8 0 # bytes sent
+      h8 5 # bytes received
+      h4 1 # segs in
+      h4 0 # segs out
+      ? 8  # bytes submitted
+      ? 8  # bytes consumed
+      ? 4  # segs consumed
+      ? 4  # segs submitted
+      ? 4  # srtt
+      h4 0 # retransmitted segs
+      h8 0 # retransmitted bytes
+      h4 0 # to zero window
+      h4 0 # skdrop
+      h4 0 # skbconsumemisses
+      h4 0 # pad
+      $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # latency buckets X 8
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # rtt sum
+      $ 00 00 00 00 00 00 00 00 # latency sum
+
+      $ 00 00 00 00
+      $ 00 00 00 00
+      $ 00 00 00 00  
+      $ 00 00 00 00 00 00 00 00 
+    END
+END
+
+INGRESS
+	"bye"
+END
+
+# Sleep here to give garbage collector a chance to run
+SLEEP 1.2s

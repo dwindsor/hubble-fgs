@@ -21,16 +21,22 @@ import (
 )
 
 type TestContext struct {
-	egressConn  *net.TCPConn
-	ingressConn *net.TCPConn
+	egressConn  net.Conn
+	ingressConn net.Conn
 	listener    net.Listener
 	perOpChans  map[int]chan []byte
 	t           *testing.T
 }
 
 func (ctx *TestContext) emitEgress(pkt []byte) error {
-	ctx.egressConn.SetWriteDeadline(time.Now().Add(testTimeout))
-	n, err := ctx.egressConn.Write(pkt)
+	ctx.egressConn.SetWriteDeadline(time.Now().Add(TEST_TIMEOUT))
+	var n int
+	var err error
+	if udpConn, ok := ctx.egressConn.(*net.UDPConn); ok {
+		n, err = udpConn.WriteTo(pkt, ctx.ingressConn.LocalAddr())
+	} else {
+		n, err = ctx.egressConn.Write(pkt)
+	}
 	if err != nil {
 		return err
 	}
@@ -39,7 +45,7 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 			n, len(pkt))
 	}
 
-	ctx.ingressConn.SetReadDeadline(time.Now().Add(testTimeout))
+	ctx.ingressConn.SetReadDeadline(time.Now().Add(TEST_TIMEOUT))
 	b := make([]byte, n)
 	n, err = ctx.ingressConn.Read(b)
 	if err != nil {
@@ -58,8 +64,14 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 }
 
 func (ctx *TestContext) emitIngress(pkt []byte) error {
-	ctx.ingressConn.SetWriteDeadline(time.Now().Add(testTimeout))
-	n, err := ctx.ingressConn.Write(pkt)
+	ctx.ingressConn.SetWriteDeadline(time.Now().Add(TEST_TIMEOUT))
+	var n int
+	var err error
+	if udpConn, ok := ctx.ingressConn.(*net.UDPConn); ok {
+		n, err = udpConn.WriteTo(pkt, ctx.egressConn.LocalAddr())
+	} else {
+		n, err = ctx.ingressConn.Write(pkt)
+	}
 	if err != nil {
 		return err
 	}
@@ -68,7 +80,7 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 			n, len(pkt))
 	}
 
-	ctx.egressConn.SetReadDeadline(time.Now().Add(testTimeout))
+	ctx.egressConn.SetReadDeadline(time.Now().Add(TEST_TIMEOUT))
 	b := make([]byte, n)
 	n, err = ctx.egressConn.Read(b)
 	if err != nil {

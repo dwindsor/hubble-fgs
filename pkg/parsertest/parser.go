@@ -223,6 +223,8 @@ func (p *Parser) parseOp() (int, string, error) {
 	name := strings.ToUpper(p.scanner.TokenText())
 
 	switch name {
+	case "DNS":
+		return ops.MSG_OP_DNS, name, nil
 	case "TLS":
 		return ops.MSG_OP_TLS, name, nil
 	case "TLSCONT":
@@ -239,8 +241,16 @@ func (p *Parser) parseOp() (int, string, error) {
 		return ops.MSG_OP_TCPCLOSE, name, nil
 	case "TCPSTATS":
 		return ops.MSG_OP_TCPSTATS, name, nil
+	case "UDPCONNECT":
+		return ops.MSG_OP_UDPCONNECT, name, nil
+	case "UDPCLOSE":
+		return ops.MSG_OP_UDPCLOSE, name, nil
+	case "UDPPAYLOAD":
+		return ops.MSG_OP_UDPPAYLOAD, name, nil
+	case "UDPSTATS":
+		return ops.MSG_OP_UDPSTATS, name, nil
 	default:
-		return 0, name, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
+		return 0, name, fmt.Errorf("unrecognized event op '%s'", p.scanner.TokenText())
 	}
 }
 

@@ -53,6 +53,15 @@ func (tc *TestCase) IsBroken() bool {
 	return sort.SearchStrings(tc.Tags, "broken") != len(tc.Tags)
 }
 
+func (tc *TestCase) IsUdp() bool {
+	sort.Strings(tc.Tags)
+	return sort.SearchStrings(tc.Tags, "udp") != len(tc.Tags)
+}
+
+func (tc *TestCase) IsTcp() bool {
+	return !tc.IsUdp()
+}
+
 type TestStepError struct {
 	Position    scanner.Position
 	Description string
@@ -239,10 +248,10 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 	ctx.t.Helper()
 	event, ok := ctx.waitForEvent(e.Op)
 	if !ok {
-		return &TestStepError{e.Position, "waitForEvent", nil}
+		return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
 	}
 
-	fmt.Printf("-- EVENTDUMP %s --\n", e.OpName)
+	ctx.t.Logf("-- EVENTDUMP %s --\n", e.OpName)
 
 	fmt.Printf("EVENT %s\n", e.OpName)
 
@@ -267,7 +276,7 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 	fmt.Printf("\n")
 	fmt.Printf("END\n")
 
-	fmt.Printf("-- cut to here--\n")
+	ctx.t.Logf("-- cut to here --\n")
 
 	return nil
 }
