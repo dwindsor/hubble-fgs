@@ -383,10 +383,10 @@ msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
 	key->saddr[0] = skb->local_ip4;
 	key->ipv6 = 0;
 
-	sk = skb->sk;
+	sk = READ_ONCE(skb->sk);
 	if (sk) {
-		key->dport = skb->sk->dst_port;
-		key->sport = skb->sk->src_port;
+		key->dport = sk->dst_port;
+		key->sport = sk->src_port;
 
 		if (is_tuple_local(key))
 			key->uid = skskb_netns(skb);
