@@ -141,6 +141,13 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 					{MatchPorts: []uint32{8888}},
 				},
 			},
+			Udp: v1alpha1.UdpPolicySpec{
+				Enable:                   true,
+				Cgroup:                   true,
+				StatsInterval:            0,
+				DeleteIdleSocketInterval: 0,
+				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
+			},
 			Tcp: v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
@@ -200,6 +207,13 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Tcp: v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
+			},
+			Udp: v1alpha1.UdpPolicySpec{
+				Enable:                   true,
+				Cgroup:                   true,
+				StatsInterval:            0,
+				DeleteIdleSocketInterval: 0,
+				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
 			},
 		}
 	default:
