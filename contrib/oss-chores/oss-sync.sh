@@ -45,7 +45,7 @@ echo "" >> $outf
 echo "Synching from $old_sha to $new_sha." >> $outf
 echo "Commits:" >> $outf
 echo "" >> $outf
-git -C modules/tetragon-oss log --pretty=' * %h (%s)'  $old_sha..$new_sha >> $outf
+git -C modules/tetragon-oss log --pretty=' * cilium/tetragon@%h (%s)'  $old_sha..$new_sha >> $outf
 
 cp modules/tetragon-oss/pkg/k8s/apis/cilium.io/v1alpha1/types.go pkg/k8s/apis/cilium.io/v1alpha1/oss-types.go
 make generate && make codegen && make vendor
