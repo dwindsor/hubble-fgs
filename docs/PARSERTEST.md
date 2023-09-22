@@ -1,6 +1,6 @@
-# Low-level testing of FGS parsers
+# Low-level testing of Tetragon parsers
 
-Low-level testing of FGS protocol parsers is required to validate that a
+Low-level testing of Tetragon protocol parsers is required to validate that a
 parser handles all edge-cases (e.g. partial, corrupted or malicious packets)
 correctly.
 
@@ -17,7 +17,7 @@ a setup of a single lightweight connection.
 
 A Go "test" is defined by `pkg/parsertest/parser_test.go` that executes
 the test-cases by
-  1. starting FGS with the correct set of sensors
+  1. starting Tetragon with the correct set of sensors
   2. creating a client and server for sending and receiving packets
   3. parsing the test-case file into an in-memory representation
   4. stepping through the test-case steps: send a packet, receive a packet,
@@ -47,9 +47,9 @@ match block.
 The following keywords are supported:
 
 - TAGS <tag>...:
-    Test tags that affect the test execution. Currently the only supported
-    tag is "broken", which denotes a test that is expected to fail and should
-    produce a warning rather than a test error.
+    Test tags that affect the test execution. The "broken" tag denotes a test that is
+    expected to fail and should produce a warning rather than a test error. The "udp" tag
+    indicates a test that should occur over UDP instead of TCP.
 
 - EGRESS <description>:
     A match block (see below) describing an outgoing packet. Usually parsed
@@ -63,25 +63,31 @@ The following keywords are supported:
     A match block for a BPF event with given op. Message structure
     defined by `bpf/lib/hubble_msg.h`.
 
-- EVENTS <op>:
-    A block for matching multiple events of given op in arbitrary order.
-    Events are declared using `EVENT` without arguments, e.g.:
+- EVENTS:
+    A block for matching multiple events in arbitrary order.
+    Events are declared using `EVENT` with an op, e.g.:
 
-      EVENTS HTTP
-        EVENT
+      EVENTS
+        EVENT HTTP
           $ 10 00 00 00
           $ 01
           ...
         END
 
-        EVENT
+        EVENT HTTP
           $ 10 00 00 00
           $ 02
           ...
         END
       END
 
-- END: End of a match block started by EGRESS, INGRESS, EVENT or EVENTS.
+- END:
+    End of a match block started by EGRESS, INGRESS, EVENT or EVENTS.
+
+- SLEEP <duration>:
+    Sleep for <duration> where <duration> is a string that can be parsed by the stdlib's time.ParseDuration().
+    Examples of valid durations: 1m30s, 20s, etc.
+
 
 Comments are marked with `#` and they can be at the start of the line,
 or at the end of the line as usual.
