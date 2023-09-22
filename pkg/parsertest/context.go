@@ -14,6 +14,7 @@ package parsertest
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
@@ -120,4 +121,29 @@ func (ctx *TestContext) waitForEvent(op int) (data []byte, eof bool) {
 		return data, eof
 	}
 	panic(fmt.Sprintf("Impossible: Not subscribed for op %d", op))
+}
+
+func (ctx *TestContext) waitForEvents(ops []int) (data []byte, eof bool) {
+	seen := make(map[int]struct{})
+	var cases []reflect.SelectCase
+	for _, op := range ops {
+		// Don't add an op twice
+		if _, ok := seen[op]; ok {
+			continue
+		}
+		seen[op] = struct{}{}
+		if ch, ok := ctx.perOpChans[op]; ok {
+			cases = append(cases, reflect.SelectCase{
+				Dir:  reflect.SelectRecv,
+				Chan: reflect.ValueOf(ch),
+			})
+		} else {
+			panic(fmt.Sprintf("Impossible: Not subscribed for op %d", op))
+		}
+	}
+	_, recv, ok := reflect.Select(cases)
+	if !ok {
+		return nil, false
+	}
+	return recv.Interface().([]byte), true
 }

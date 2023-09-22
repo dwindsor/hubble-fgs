@@ -159,10 +159,14 @@ func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 
 type Subevent struct {
 	Position scanner.Position
+	Op       int
 	Matchers []AnnMatcher
 }
 
-func (s *Subevent) Match(ctx *TestContext, event []byte) *TestStepError {
+func (s *Subevent) Match(ctx *TestContext, event []byte, op byte) *TestStepError {
+	if int(op) != s.Op {
+		return &TestStepError{s.Position, "match", fmt.Errorf("Wanted event type %d, but got %d", s.Op, op)}
+	}
 	r := bytes.NewReader(event)
 	for _, m := range s.Matchers {
 		_, err := m.Match(ctx, r)
@@ -175,7 +179,7 @@ func (s *Subevent) Match(ctx *TestContext, event []byte) *TestStepError {
 
 type TestStepEvents struct {
 	Position  scanner.Position
-	Op        int
+	Ops       []int
 	Subevents []*Subevent
 }
 
@@ -197,15 +201,19 @@ func (e *TestStepEvents) Exec(ctx *TestContext) *TestStepError {
 
 outer:
 	for len(remaining) > 0 {
-		event, ok := ctx.waitForEvent(e.Op)
+		event, ok := ctx.waitForEvents(e.Ops)
 		if !ok {
-			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
+			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on ops %v event channels", e.Ops)}
 		}
-		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
+		if len(event) == 0 {
+			return &TestStepError{e.Position, "emptyEventError", fmt.Errorf("Events block received empty event")}
+		}
+		op := event[0]
+		ctx.t.Logf("EVENT op=%d bytes=%d\n", op, len(event))
 
 		errors := []*TestStepError{}
 		for i, s := range remaining {
-			err := s.Match(ctx, event)
+			err := s.Match(ctx, event, op)
 			if err == nil {
 				// Found a matching event, delete it and keep
 				// looking for the rest.

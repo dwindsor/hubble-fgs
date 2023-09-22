@@ -4,8 +4,8 @@ EGRESS
 	"hello"
 END
 
-EVENTS UDPCONNECT
-    EVENT
+EVENTS
+    EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
       h4 352        # size
@@ -80,7 +80,7 @@ EVENTS UDPCONNECT
       $ 00 00 00 00 00 00 00 00 
     END
 
-    EVENT
+    EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
       h4 352        # size

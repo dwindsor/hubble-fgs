@@ -122,16 +122,17 @@ func (p *Parser) parseBlock() error {
 			p.testCase.Steps = append(p.testCase.Steps, step)
 
 		case "EVENTS":
-			op, _, err := p.parseOp()
-			if err != nil {
-				return err
-			}
 			subevents, err := p.parseSubevents()
 			if err != nil {
 				return err
 			}
 
-			p.testCase.Steps = append(p.testCase.Steps, &TestStepEvents{pos, op, subevents})
+			var ops []int
+			for _, subevent := range subevents {
+				ops = append(ops, subevent.Op)
+			}
+
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepEvents{pos, ops, subevents})
 
 		case "EVENT":
 			op, _, err := p.parseOp()
@@ -193,11 +194,15 @@ func (p *Parser) parseSubevents() ([]*Subevent, error) {
 			p.skipComment()
 
 		case "EVENT":
+			op, _, err := p.parseOp()
+			if err != nil {
+				return nil, err
+			}
 			matchers, err := p.parseMatchers()
 			if err != nil {
 				return nil, err
 			}
-			subevents = append(subevents, &Subevent{pos, matchers})
+			subevents = append(subevents, &Subevent{pos, op, matchers})
 
 		case "END":
 			return subevents, nil

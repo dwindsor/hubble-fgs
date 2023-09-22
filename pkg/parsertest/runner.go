@@ -122,7 +122,9 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 		case *TestStepEvent:
 			perOpChans[s.Op] = nil
 		case *TestStepEvents:
-			perOpChans[s.Op] = nil
+			for _, op := range s.Ops {
+				perOpChans[op] = nil
+			}
 		case *TestStepEventDump:
 			perOpChans[s.Op] = nil
 		}
