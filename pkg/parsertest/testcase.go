@@ -28,10 +28,6 @@ import (
 	"github.com/yalue/native_endian"
 )
 
-const (
-	maxEventsToSearch = 25
-)
-
 //
 // Test case and step definitions
 //
@@ -137,38 +133,24 @@ type TestStepEvent struct {
 
 func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 	ctx.t.Helper()
-	failedEvents := 0
-NEXTEVENT:
-	for {
-		event, ok := ctx.waitForEvent(e.Op)
-		if !ok {
-			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
-		}
-		r := bytes.NewReader(event)
-		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
-		for _, m := range e.Matchers {
-			_, err := m.Match(ctx, r)
-			if err != nil {
-				// Handle the case where connAddr does not match in the event stream. This
-				// can happen for example because we are seeing other
-				if matcher, ok := m.Matcher.(ConnAddrMatcher); ok {
-					failedEvents++
-					if failedEvents == maxEventsToSearch {
-						return &TestStepError{m.Position, "match", err}
-					}
-					ctx.t.Logf("Retrying ConnAddrMatcher attempt=%d/%d kind=%d isClient=%t err='%s'", failedEvents, maxEventsToSearch, matcher.kind, matcher.isClient, err)
-					continue NEXTEVENT
-				}
-				return &TestStepError{m.Position, "match", err}
-			}
-		}
-
-		n, _ := io.Copy(io.Discard, r)
-		if n != 0 {
-			return &TestStepError{e.Position, "match", fmt.Errorf("%d unmatched bytes remain", n)}
-		}
-		return nil
+	event, ok := ctx.waitForEvent(e.Op)
+	if !ok {
+		return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
 	}
+	r := bytes.NewReader(event)
+	ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
+	for _, m := range e.Matchers {
+		_, err := m.Match(ctx, r)
+		if err != nil {
+			return &TestStepError{m.Position, "match", err}
+		}
+	}
+
+	n, _ := io.Copy(io.Discard, r)
+	if n != 0 {
+		return &TestStepError{e.Position, "match", fmt.Errorf("%d unmatched bytes remain", n)}
+	}
+	return nil
 }
 
 //
