@@ -1,4 +1,5 @@
 TAGS broken
+INGRESSPORT 8888
 
 EGRESS
   "GET / HTTP/1.1\r\n"

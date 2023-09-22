@@ -1,3 +1,5 @@
+INGRESSPORT 8888
+
 # Connection has been established and we should see 3 sockets:
 # accept, connect and listen.
 

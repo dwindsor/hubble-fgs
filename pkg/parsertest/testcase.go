@@ -45,6 +45,12 @@ type TestCase struct {
 
 	// The test steps to execute.
 	Steps []TestStep
+
+	// Port to use for ingress. Default is random.
+	IngressPort int
+
+	// Port to use for egress. Default is random.
+	EgressPort int
 }
 
 func (tc *TestCase) IsBroken() bool {

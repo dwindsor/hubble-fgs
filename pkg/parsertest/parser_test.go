@@ -138,7 +138,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				Enable: true,
 				Mode:   "socket",
 				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{TCP_PORT}},
+					{MatchPorts: []uint32{8888}},
 				},
 			},
 			Udp: v1alpha1.UdpPolicySpec{
@@ -159,7 +159,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Http: v1alpha1.HttpSpec{
 				Enable: true,
 				Selectors: []v1alpha1.HttpSelector{
-					{MatchPorts: []uint32{TCP_PORT}},
+					{MatchPorts: []uint32{8888}},
 				},
 			},
 			Udp: v1alpha1.UdpPolicySpec{
@@ -191,7 +191,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Nop: v1alpha1.NopSpec{
 				Enable: true,
 				Selectors: []v1alpha1.NopSelector{
-					{MatchPorts: []uint32{TCP_PORT}},
+					{MatchPorts: []uint32{8888}},
 				},
 			},
 		}

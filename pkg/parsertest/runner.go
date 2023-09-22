@@ -8,14 +8,13 @@ import (
 	"time"
 )
 
-func setupTCPPeers(t *testing.T, tcpPort int) (ingressConn, egressConn *net.TCPConn, listener *net.TCPListener, err error) {
-	// TODO(WPF): Pick a random port.
-	srvAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("127.0.0.88:%d", tcpPort))
+func setupTCPPeers(t *testing.T, ingressPort, egressPort int) (ingressConn, egressConn *net.TCPConn, listener *net.TCPListener, err error) {
+	srvAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("127.0.0.88:%d", ingressPort))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cliAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.87:0")
+	cliAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("127.0.0.87:%d", egressPort))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -71,14 +70,13 @@ func setupTCPPeers(t *testing.T, tcpPort int) (ingressConn, egressConn *net.TCPC
 	return ingressConn, egressConn, listener, nil
 }
 
-func setupUDPPeers(t *testing.T, udpPort int) (ingressConn, egressConn *net.UDPConn, err error) {
-	// TODO(WPF): Pick a random port..
-	srvAddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.88:%d", udpPort))
+func setupUDPPeers(t *testing.T, ingressPort, egressPort int) (ingressConn, egressConn *net.UDPConn, err error) {
+	srvAddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.88:%d", ingressPort))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	cliAddr, err := net.ResolveUDPAddr("udp4", "127.0.0.87:0")
+	cliAddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.87:%d", egressPort))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -149,13 +147,13 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 	var listener net.Listener
 
 	if tc.IsTcp() {
-		ingressConn, egressConn, listener, err = setupTCPPeers(t, TCP_PORT)
+		ingressConn, egressConn, listener, err = setupTCPPeers(t, tc.IngressPort, tc.EgressPort)
 		if err != nil {
 			return err
 		}
 	}
 	if tc.IsUdp() {
-		ingressConn, egressConn, err = setupUDPPeers(t, UDP_PORT)
+		ingressConn, egressConn, err = setupUDPPeers(t, tc.IngressPort, tc.EgressPort)
 		if err != nil {
 			return err
 		}

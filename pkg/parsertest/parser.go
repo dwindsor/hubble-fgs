@@ -80,6 +80,18 @@ func (p *Parser) parseBlock() error {
 		switch kw {
 		case "#":
 			p.skipComment()
+		case "INGRESSPORT":
+			port, err := p.parsePort()
+			if err != nil {
+				return err
+			}
+			p.testCase.IngressPort = port
+		case "EGRESSPORT":
+			port, err := p.parsePort()
+			if err != nil {
+				return err
+			}
+			p.testCase.EgressPort = port
 		case "TAGS":
 			if err := p.parseTags(); err != nil {
 				return err
@@ -205,6 +217,21 @@ func (p *Parser) parseTags() error {
 		p.testCase.Tags[p.scanner.TokenText()] = struct{}{}
 	}
 	return nil
+}
+
+func (p *Parser) parsePort() (int, error) {
+	s := strings.Builder{}
+	for tok := p.scanner.Scan(); tok != scanner.EOF; tok = p.scanner.Scan() {
+		if tok == '\n' {
+			break
+		}
+		s.WriteString(p.scanner.TokenText())
+	}
+	port, err := strconv.Atoi(s.String())
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse port: %w", err)
+	}
+	return port, nil
 }
 
 func (p *Parser) parseDuration() (time.Duration, error) {

@@ -1,3 +1,5 @@
+INGRESSPORT 8888
+
 EGRESS
 	"POST / HTTP/1.1\r\n"
 	"Host: foobar.baz\r\n"

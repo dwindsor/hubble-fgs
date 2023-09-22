@@ -1,3 +1,5 @@
+INGRESSPORT 8888
+
 EGRESS client hello
   #### TLSv1 Record Layer: Handshake Protocol: Client Hello
   $ 16    # Content Type: Handshake (22)

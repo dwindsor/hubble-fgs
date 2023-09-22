@@ -1,3 +1,5 @@
+INGRESSPORT 8888
+
 # Send a client hello with too many extensions.
 
 EGRESS "client hello (too many exts)"

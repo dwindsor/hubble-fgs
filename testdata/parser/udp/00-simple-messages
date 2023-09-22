@@ -159,6 +159,3 @@ END
 INGRESS
 	"bye"
 END
-
-# Sleep here to give garbage collector a chance to run
-SLEEP 1.2s

@@ -1,3 +1,5 @@
+INGRESSPORT 8888
+
 EGRESS
   ### Stream: Magic
   $ 50 52 49 20 2a 20 48 54 54 50 2f 32 2e 30 0d 0a 0d 0a 53 4d 0d 0a 0d 0a # Magic: PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n
