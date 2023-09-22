@@ -299,7 +299,7 @@ func runTests(t *testing.T, sensor int, dir string) {
 
 				// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
 				if v := "6.1.0"; !maxKernelVersion(v) {
-					tc.Tags = append(tc.Tags, "broken")
+					tc.Tags["broken"] = struct{}{}
 				}
 
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {

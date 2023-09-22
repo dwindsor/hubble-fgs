@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"sort"
 	"strings"
 	"text/scanner"
 	"time"
@@ -42,20 +41,20 @@ type TestCase struct {
 	Name string
 
 	// Test tags
-	Tags []string
+	Tags map[string]struct{}
 
 	// The test steps to execute.
 	Steps []TestStep
 }
 
 func (tc *TestCase) IsBroken() bool {
-	sort.Strings(tc.Tags)
-	return sort.SearchStrings(tc.Tags, "broken") != len(tc.Tags)
+	_, ok := tc.Tags["broken"]
+	return ok
 }
 
 func (tc *TestCase) IsUdp() bool {
-	sort.Strings(tc.Tags)
-	return sort.SearchStrings(tc.Tags, "udp") != len(tc.Tags)
+	_, ok := tc.Tags["udp"]
+	return ok
 }
 
 func (tc *TestCase) IsTcp() bool {

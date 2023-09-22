@@ -45,6 +45,9 @@ func ParseTestCase(file string) (*TestCase, error) {
 
 	parser := &Parser{
 		scanner: &scanner.Scanner{},
+		testCase: TestCase{
+			Tags: make(map[string]struct{}),
+		},
 	}
 	parser.scanner.Init(f)
 	parser.scanner.Filename = file
@@ -199,7 +202,7 @@ func (p *Parser) parseTags() error {
 		if tok == '\n' {
 			return nil
 		}
-		p.testCase.Tags = append(p.testCase.Tags, p.scanner.TokenText())
+		p.testCase.Tags[p.scanner.TokenText()] = struct{}{}
 	}
 	return nil
 }

@@ -57,7 +57,9 @@ func TestParse(t *testing.T) {
 		t.Fatalf("expected parser-testfile as name, but got %s", tc.Name)
 	}
 
-	if len(tc.Tags) != 2 || tc.Tags[0] != "foo" || tc.Tags[1] != "bar" {
+	_, foo := tc.Tags["foo"]
+	_, bar := tc.Tags["bar"]
+	if len(tc.Tags) != 2 || !foo || !bar {
 		t.Fatalf("expected tags 'foo', 'bar', got tags %s", tc.Tags)
 	}
 
