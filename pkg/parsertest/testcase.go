@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 	"text/scanner"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -349,4 +350,20 @@ func count(m *ebpf.Map) (int, error) {
 		count++
 	}
 	return count, itr.Err()
+}
+
+//
+// Sleep step
+//
+
+type TestStepSleep struct {
+	Position scanner.Position
+	Duration time.Duration
+}
+
+func (s *TestStepSleep) Exec(ctx *TestContext) *TestStepError {
+	ctx.t.Helper()
+	ctx.t.Logf("Sleeping for %v...", time.Duration(s.Duration))
+	time.Sleep(time.Duration(s.Duration))
+	return nil
 }

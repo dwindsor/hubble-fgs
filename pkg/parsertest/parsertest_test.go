@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 
@@ -60,8 +61,8 @@ func TestParse(t *testing.T) {
 		t.Fatalf("expected tags 'foo', 'bar', got tags %s", tc.Tags)
 	}
 
-	if len(tc.Steps) != 4 {
-		t.Errorf("expected 4 steps, got %d steps", len(tc.Steps))
+	if len(tc.Steps) != 6 {
+		t.Errorf("expected 6 steps, got %d steps", len(tc.Steps))
 	}
 
 	if egressStep, ok := tc.Steps[0].(*TestStepEgress); !ok {
@@ -135,6 +136,34 @@ func TestParse(t *testing.T) {
 
 		if eventDumpStep.Op != ops.MSG_OP_HTTP {
 			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventDumpStep.Op)
+		}
+	}
+
+	if sleepStep, ok := tc.Steps[4].(*TestStepSleep); !ok {
+		t.Errorf("fifth step was not SLEEP step: %T", tc.Steps[4])
+	} else {
+		expectedLine := 100
+		if sleepStep.Position.Line != expectedLine {
+			t.Errorf("expected SLEEP step to be defined at line %d, but it was %d",
+				expectedLine, sleepStep.Position.Line)
+		}
+
+		if sleepStep.Duration != 1*time.Second {
+			t.Errorf("expected duration %v, got %v", 1*time.Second, sleepStep.Duration)
+		}
+	}
+
+	if sleepStep, ok := tc.Steps[5].(*TestStepSleep); !ok {
+		t.Errorf("sixth step was not SLEEP step: %T", tc.Steps[5])
+	} else {
+		expectedLine := 102
+		if sleepStep.Position.Line != expectedLine {
+			t.Errorf("expected SLEEP step to be defined at line %d, but it was %d",
+				expectedLine, sleepStep.Position.Line)
+		}
+
+		if sleepStep.Duration != 1*time.Minute+30*time.Second {
+			t.Errorf("expected duration %v, got %v", 1*time.Minute+30*time.Second, sleepStep.Duration)
 		}
 	}
 

@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"text/scanner"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/yalue/native_endian"
@@ -149,6 +150,13 @@ func (p *Parser) parseBlock() error {
 			}
 			p.testCase.Steps = append(p.testCase.Steps, a)
 
+		case "SLEEP":
+			d, err := p.parseDuration()
+			if err != nil {
+				return err
+			}
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepSleep{Duration: d, Position: pos})
+
 		default:
 			return fmt.Errorf("unknown keyword '%s'", kw)
 		}
@@ -194,6 +202,17 @@ func (p *Parser) parseTags() error {
 		p.testCase.Tags = append(p.testCase.Tags, p.scanner.TokenText())
 	}
 	return nil
+}
+
+func (p *Parser) parseDuration() (time.Duration, error) {
+	s := strings.Builder{}
+	for tok := p.scanner.Scan(); tok != scanner.EOF; tok = p.scanner.Scan() {
+		if tok == '\n' {
+			break
+		}
+		s.WriteString(p.scanner.TokenText())
+	}
+	return time.ParseDuration(s.String())
 }
 
 func (p *Parser) parseOp() (int, string, error) {

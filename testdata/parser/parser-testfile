@@ -97,3 +97,6 @@ END
 
 EVENTDUMP http
 
+SLEEP 1s
+
+SLEEP 1m30s
