@@ -33,6 +33,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
 	e2ehelpers "github.com/cilium/tetragon/tests/e2e/helpers"
@@ -141,6 +142,11 @@ func TestHttp(t *testing.T) {
 	runner.TestInParallel(t, checkHttp, testHttp)
 }
 
+func maxKernelVersion(max string) bool {
+	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
+}
+
 func TestTls(t *testing.T) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
@@ -149,6 +155,10 @@ func TestTls(t *testing.T) {
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
+	}
+	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
+	if v := "6.1.0"; !maxKernelVersion(v) {
+		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	tlsChecker := checker.NewRPCChecker(TlsChecker(kversion), "tlsChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
