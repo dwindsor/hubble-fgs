@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build !arm
+
 package http_test
 
 import (
