@@ -59,8 +59,43 @@ head_chunk(struct msg_http *http)
 }
 
 /* Helpers for accessing the context, whether it's a sk_buff or sk_msg_md. */
+#ifdef SK_MSG
+static inline __attribute__((always_inline)) void *
+ctx_data(ctx_md *msg)
+{
+	void *data;
 
-#ifdef SK_SKB
+	/* NOTE(JM): llvm emits wrong code that modifies context ptr:
+         * r1 = ctx; r1 += 76; r2 = *(u64*)r1 */
+	asm volatile("%[data] = *(u64 *)(%[msg] + 0);\n"
+		     : [data] "=&r"(data)
+		     : [msg] "r"(msg)
+		     :);
+
+	return data;
+}
+static inline __attribute__((always_inline)) void *
+ctx_data_end(ctx_md *msg)
+{
+	void *data_end;
+	asm volatile("%[data_end] = *(u64 *)(%[msg] + 8);\n"
+		     : [data_end] "=&r"(data_end)
+		     : [msg] "r"(msg)
+		     :);
+	return data_end;
+}
+
+static inline __attribute__((always_inline)) u32 ctx_len(ctx_md *msg)
+{
+	u32 size;
+	asm volatile("%[size] = *(u32 *)(%[msg] + 68);\n"
+		     : [size] "=&r"(size)
+		     : [msg] "r"(msg)
+		     :);
+	return size;
+}
+#define ctx_pull_data(ctx, len) msg_pull_data((ctx), 0, (len), 0)
+#else
 static inline __attribute__((always_inline)) void *
 ctx_data(struct __sk_buff *skb)
 {
@@ -89,43 +124,6 @@ ctx_data_end(struct __sk_buff *skb)
 
 #define ctx_len(msg)		(msg)->len
 #define ctx_pull_data(msg, len) skb_pull_data((msg), (len))
-#else
-
-static inline __attribute__((always_inline)) void *
-ctx_data(struct sk_msg_md *msg)
-{
-	void *data;
-
-	/* NOTE(JM): llvm emits wrong code that modifies context ptr:
-         * r1 = ctx; r1 += 76; r2 = *(u64*)r1 */
-	asm volatile("%[data] = *(u64 *)(%[msg] + 0);\n"
-		     : [data] "=&r"(data)
-		     : [msg] "r"(msg)
-		     :);
-
-	return data;
-}
-static inline __attribute__((always_inline)) void *
-ctx_data_end(struct sk_msg_md *msg)
-{
-	void *data_end;
-	asm volatile("%[data_end] = *(u64 *)(%[msg] + 8);\n"
-		     : [data_end] "=&r"(data_end)
-		     : [msg] "r"(msg)
-		     :);
-	return data_end;
-}
-
-static inline __attribute__((always_inline)) u32 ctx_len(struct sk_msg_md *msg)
-{
-	u32 size;
-	asm volatile("%[size] = *(u32 *)(%[msg] + 68);\n"
-		     : [size] "=&r"(size)
-		     : [msg] "r"(msg)
-		     :);
-	return size;
-}
-#define ctx_pull_data(ctx, len) msg_pull_data((ctx), 0, (len), 0)
 #endif
 
 enum chunk_status {

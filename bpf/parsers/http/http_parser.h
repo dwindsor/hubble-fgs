@@ -11,6 +11,7 @@
 #ifndef _HTTP_PARSER_
 #define _HTTP_PARSER_
 
+#include "vmlinux.h"
 #include "iso_msg_types.h"
 #include "bpf_event.h"
 #include "bpf_task.h"

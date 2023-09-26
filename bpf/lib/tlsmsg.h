@@ -1,6 +1,7 @@
 #ifndef _TLSMSG__
 #define _TLSMSG__
 
+#include "vmlinux.h"
 #include "networkmsg.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the

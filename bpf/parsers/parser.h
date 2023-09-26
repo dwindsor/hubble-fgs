@@ -1,6 +1,8 @@
 #ifndef parser_h_INCLUDED
 #define parser_h_INCLUDED
 
+#include "vmlinux.h"
+#include "parsers/bpf_sockops.h"
 #include "api.h"
 #include "netns.h"
 #include "../lib/tlsmsg.h"
@@ -342,7 +344,6 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 }
 
 #ifdef SK_MSG
-
 static inline __attribute__((always_inline)) void
 msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 {
@@ -370,10 +371,7 @@ msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 		tuple->uid = msg_netns(msg);
 	tuple->remaining = HTTP_SEND;
 }
-
-#endif
-
-#ifdef SK_SKB
+#elif defined(SK_SKB)
 static inline __attribute__((always_inline)) void
 msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
 {
@@ -393,6 +391,12 @@ msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
 	}
 	key->remaining = HTTP_RECV;
 	// tbd, cover sk null case for ealier kernels.
+}
+#else
+static inline __attribute__((always_inline)) void
+msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
+{
+    /* This will never happen but we need this case to properly support LSPs */
 }
 #endif
 
