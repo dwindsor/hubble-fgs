@@ -12,13 +12,11 @@
 package parsertest
 
 import (
-	"bytes"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -39,7 +37,6 @@ var expectedPacketPayload = []byte{
 const testfileLocation = "testdata/parser/parser-testfile"
 
 func TestParse(t *testing.T) {
-
 	if _, err := os.Stat(testfileLocation); err != nil {
 		t.Logf("skipping as testdata/parser-testfile not found")
 		return
@@ -53,120 +50,36 @@ func TestParse(t *testing.T) {
 		t.Fatalf("nil *TestCase")
 	}
 
-	if tc.Name != "parser-testfile" {
-		t.Fatalf("expected parser-testfile as name, but got %s", tc.Name)
+	expected := TestCaseTester{
+		Name:        "parser-testfile",
+		IngressPort: 8888,
+		EgressPort:  9999,
+		Tags:        []string{"foo", "bar"},
+		Steps: []TestStepTester{
+			&TestStepEgressTester{
+				Description: "test egress",
+				Data:        expectedPacketPayload,
+			},
+			&TestStepIngressTester{
+				Description: "test ingress",
+				Data:        expectedPacketPayload,
+			},
+			&TestStepEventTester{
+				Op:   ops.MSG_OP_TLS,
+				Data: expectedPacketPayload,
+			},
+			&TestStepEventDumpTester{
+				Op:     ops.MSG_OP_HTTP,
+				OpName: "HTTP",
+			},
+			&TestStepSleepTester{
+				Duration: time.Second,
+			},
+			&TestStepSleepTester{
+				Duration: time.Minute + 30*time.Second,
+			},
+		},
 	}
 
-	_, foo := tc.Tags["foo"]
-	_, bar := tc.Tags["bar"]
-	if len(tc.Tags) != 2 || !foo || !bar {
-		t.Fatalf("expected tags 'foo', 'bar', got tags %s", tc.Tags)
-	}
-
-	if len(tc.Steps) != 6 {
-		t.Errorf("expected 6 steps, got %d steps", len(tc.Steps))
-	}
-
-	if egressStep, ok := tc.Steps[0].(*TestStepEgress); !ok {
-		t.Errorf("first step was not EGRESS step: %T", tc.Steps[0])
-	} else {
-		expectedLine := 4
-		if egressStep.Position.Line != expectedLine {
-			t.Errorf("expected EGRESS step to be defined at line %d, but it was %d",
-				expectedLine, egressStep.Position.Line)
-		}
-
-		if egressStep.Description != "test egress" {
-			t.Errorf("expected \"test egress\" as step description, got %s", egressStep.Description)
-		}
-
-		if !bytes.Equal(egressStep.Payload, expectedPacketPayload) {
-			t.Errorf("unexpected payload: %v", egressStep.Payload)
-		}
-	}
-
-	if ingressStep, ok := tc.Steps[1].(*TestStepIngress); !ok {
-		t.Errorf("second step was not EGRESS step: %T", tc.Steps[1])
-	} else {
-		expectedLine := 35
-		if ingressStep.Position.Line != expectedLine {
-			t.Errorf("expected INGRESS step to be defined at line %d, but it was %d",
-				expectedLine, ingressStep.Position.Line)
-		}
-
-		if ingressStep.Description != "test ingress" {
-			t.Errorf("expected \"test ingress\" as step description, got %s", ingressStep.Description)
-		}
-
-		if !bytes.Equal(ingressStep.Payload, expectedPacketPayload) {
-			t.Errorf("unexpected payload: %v", ingressStep.Payload)
-		}
-	}
-
-	if eventStep, ok := tc.Steps[2].(*TestStepEvent); !ok {
-		t.Errorf("third step was not EVENT step: %T", tc.Steps[2])
-	} else {
-		expectedLine := 67
-		if eventStep.Position.Line != expectedLine {
-			t.Errorf("expected EVENT step to be defined at line %d, but it was %d",
-				expectedLine, eventStep.Position.Line)
-		}
-
-		if eventStep.Op != ops.MSG_OP_TLS {
-			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventStep.Op)
-		}
-
-		r := bytes.NewReader(expectedPacketPayload)
-		var ctx TestContext
-		for _, m := range eventStep.Matchers {
-			_, err := m.Match(&ctx, r)
-			if err != nil {
-				t.Errorf("matcher at %s failed: %s",
-					m.Position, err)
-			}
-		}
-	}
-
-	if eventDumpStep, ok := tc.Steps[3].(*TestStepEventDump); !ok {
-		t.Errorf("fourth step was not EVENTDUMP step: %T", tc.Steps[3])
-	} else {
-		expectedLine := 98
-		if eventDumpStep.Position.Line != expectedLine {
-			t.Errorf("expected EVENTDUMP step to be defined at line %d, but it was %d",
-				expectedLine, eventDumpStep.Position.Line)
-		}
-
-		if eventDumpStep.Op != ops.MSG_OP_HTTP {
-			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventDumpStep.Op)
-		}
-	}
-
-	if sleepStep, ok := tc.Steps[4].(*TestStepSleep); !ok {
-		t.Errorf("fifth step was not SLEEP step: %T", tc.Steps[4])
-	} else {
-		expectedLine := 100
-		if sleepStep.Position.Line != expectedLine {
-			t.Errorf("expected SLEEP step to be defined at line %d, but it was %d",
-				expectedLine, sleepStep.Position.Line)
-		}
-
-		if sleepStep.Duration != 1*time.Second {
-			t.Errorf("expected duration %v, got %v", 1*time.Second, sleepStep.Duration)
-		}
-	}
-
-	if sleepStep, ok := tc.Steps[5].(*TestStepSleep); !ok {
-		t.Errorf("sixth step was not SLEEP step: %T", tc.Steps[5])
-	} else {
-		expectedLine := 102
-		if sleepStep.Position.Line != expectedLine {
-			t.Errorf("expected SLEEP step to be defined at line %d, but it was %d",
-				expectedLine, sleepStep.Position.Line)
-		}
-
-		if sleepStep.Duration != 1*time.Minute+30*time.Second {
-			t.Errorf("expected duration %v, got %v", 1*time.Minute+30*time.Second, sleepStep.Duration)
-		}
-	}
-
+	expected.Assert(t, tc)
 }

@@ -1,4 +1,6 @@
 # Test file for the test-case parser
+INGRESSPORT 8888
+EGRESSPORT  9999
 
 TAGS foo bar
 EGRESS test egress
