@@ -285,8 +285,9 @@ func runTests(t *testing.T, sensor int, dir string) {
 				return nil
 			}
 
+			brokenTestFailed := false
 			ok := true
-			for i := 0; i < numRunsPerTestcase && ok; i++ {
+			for i := 0; i < numRunsPerTestcase && ok && !brokenTestFailed; i++ {
 				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
 				if err != nil {
 					t.Fatal(err)
@@ -306,6 +307,7 @@ func runTests(t *testing.T, sensor int, dir string) {
 					err = tc.Run(t, TEST_TIMEOUT)
 					if err != nil {
 						if tc.IsBroken() {
+							brokenTestFailed = true
 							t.Skipf("Broken test failed as expected:\n%s", err)
 						} else {
 							t.Fatal(err)
