@@ -5,7 +5,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/cilium"
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/watcher"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -53,7 +52,6 @@ func getPodInfoOfIpFromCilium(ip net.IP) *tetragon.Pod {
 func getPodInfoOfIpFromPodInfo(ip net.IP) *tetragon.Pod {
 	pods, err := k8sResourceWatcher.FindPodInfoByIP(ip.String())
 	if err != nil || len(pods) != 1 {
-		logger.GetLogger().WithError(err).Error("FindPodInfoByIP returned an error")
 		return nil
 	}
 	return &tetragon.Pod{
