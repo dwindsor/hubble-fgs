@@ -206,12 +206,11 @@ static inline __attribute__((always_inline)) bool is_space(char c)
  *
  * Implementing the above logic is TBD.
  */
-__attribute__((noinline)) int get_string_scratch(ctx_md *msg)
+__attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 {
 	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
-	char term = chr_colon;
 
 	msg_tls_tuple(msg, &tuple);
 	event = get_http_context(&tuple);
@@ -514,7 +513,7 @@ find_host_header(ctx_md *msg, struct msg_tls_ip *key,
 	int err;
 
 	// 1
-	get_string_scratch(msg);
+	get_string_scratch(msg, chr_colon);
 	err = get_string_r(msg);
 	if (err <= 0)
 		return;
@@ -524,7 +523,7 @@ find_host_header(ctx_md *msg, struct msg_tls_ip *key,
 	http->scratch[0] = (u32)0;
 
 	// 2
-	get_string_scratch(msg);
+	get_string_scratch(msg, chr_colon);
 	err = get_string_r(msg);
 	if (err <= 0)
 		return;
