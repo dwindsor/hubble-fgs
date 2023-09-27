@@ -60,9 +60,11 @@ TESTER_PROGS_DIR = "contrib/tester-progs"
 #
 JOBS ?= $(shell nproc)
 
+__BPF_DEBUG_FLAGS :=
 ifeq ($(DEBUG),1)
 	NOOPT=1
 	NOSTRIP=1
+	__BPF_DEBUG_FLAGS += DEBUG=1
 endif
 
 # Branch in the OSS repo we want to sync with. Default is origin/main
@@ -178,12 +180,12 @@ endif
 
 .PHONY: tetragon-bpf-local
 tetragon-bpf-local:
-	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
+	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
 .PHONY: tetragon-bpf-container
 tetragon-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang || true
-	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS)
+	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
 .PHONY: tetragon-bpf-verify
 tetragon-bpf-verify: tetragon-bpf
