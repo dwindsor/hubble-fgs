@@ -9,8 +9,6 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-//go:build !arm
-
 package http_test
 
 import (
@@ -19,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,6 +86,9 @@ func maxKernelVersion(max string) bool {
 func TestHttp11Curl(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
 	if v := "6.1.0"; !maxKernelVersion(v) {
@@ -179,6 +181,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
 	if v := "6.1.0"; !maxKernelVersion(v) {
 		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
@@ -243,6 +248,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 func TestLoadHttpSensor(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 
 	bpf.CheckOrMountCgroup2()

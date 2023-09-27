@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -331,6 +332,9 @@ func Test_tls(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 	runTests(t, SENS_TLS, "tls")
 }
 
@@ -338,12 +342,18 @@ func Test_http(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 	runTests(t, SENS_HTTP, "http")
 }
 
 func Test_http2(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 	runTests(t, SENS_HTTP, "http2")
 }
