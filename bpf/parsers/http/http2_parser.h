@@ -209,17 +209,20 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 }
 
 static inline __attribute__((always_inline)) void
-post_http2_event(ctx_md *msg, struct msg_tls_ip *key,
-		 struct msg_http_event *event)
+post_http2_event(ctx_md *msg, struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
 	struct socketmap_value *process;
+	struct msg_tls_ip key = { 0 };
+	u32 remaining;
 	size_t size;
-	u32 remaining = key->remaining;
 
-	key->remaining = 0;
-	process = lookup_tls_socketmap(key);
-	key->remaining = remaining;
+	msg_tls_tuple(msg, &key);
+
+	remaining = key.remaining;
+	key.remaining = 0;
+	process = lookup_tls_socketmap(&key);
+	key.remaining = remaining;
 	if (process) {
 		event->execve.pid = process->key.pid;
 		event->execve.pad[0] = 0;
@@ -242,7 +245,7 @@ post_http2_event(ctx_md *msg, struct msg_tls_ip *key,
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = sizeof(struct __msg_http_event);
-	event->tuple = *key;
+	event->tuple = key;
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
 	 * Without this assignment "llc" takes 90s or more instead of <10s
 	 */
@@ -266,8 +269,7 @@ post_http2_event(ctx_md *msg, struct msg_tls_ip *key,
 }
 
 static inline __attribute__((always_inline)) int
-emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key,
-	     u32 payload_length)
+emit_headers(ctx_md *msg, struct msg_http_event *event, u32 payload_length)
 {
 	struct msg_http *http = &event->request;
 
@@ -291,14 +293,13 @@ emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key,
 	}
 
 	head_chunk(http)->type = http2_header_frame;
-	post_http2_event(msg, key, event);
+	post_http2_event(msg, event);
 
 	return 0;
 }
 
 static inline __attribute__((always_inline)) bool
-http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
-		  struct msg_tls_ip *key)
+http2_parse_frame(ctx_md *msg, struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
 
@@ -332,7 +333,7 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 	switch (type) {
 	case HTTP2_FRAME_TYPE_HEADERS: {
 		if (flags & HTTP2_FLAG_END_HEADERS) {
-			if (emit_headers(msg, event, key, length)) {
+			if (emit_headers(msg, event, length)) {
 				/* Could not yet emit the event, stop and return back later. */
 				return true;
 			}
@@ -359,7 +360,7 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 		msg_apply_bytes(msg, skip);
 #else
 		DEBUG("SKB skip %d bytes", skip);
-		sk_skb_eat_bytes(msg, event, key, skip);
+		sk_skb_eat_bytes(msg, event, skip);
 #endif
 		return true;
 	}
@@ -392,12 +393,12 @@ http2_is_preface(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) int
-http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
+http2_do_parser(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	event = get_http_context(tuple);
+	event = get_http_context(msg);
 	if (unlikely(!event)) {
 		return SK_PASS;
 	}
@@ -413,7 +414,7 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 
 #ifndef SK_MSG
 	if (http->consume_bytes) {
-		sk_skb_eat_bytes(msg, event, tuple, http->consume_bytes);
+		sk_skb_eat_bytes(msg, event, http->consume_bytes);
 		return SK_PASS;
 	}
 #endif
@@ -444,7 +445,7 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 
 #pragma unroll
 	for (int frame = 0; frame < HTTP2_MAX_FRAMES; frame++) {
-		if (http2_parse_frame(msg, event, tuple)) {
+		if (http2_parse_frame(msg, event)) {
 			DEBUG("STOP", 0);
 			http->offset = 0;
 			return SK_PASS;

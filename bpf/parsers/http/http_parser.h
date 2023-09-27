@@ -66,11 +66,12 @@ ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 #endif
 
 static inline __attribute__((always_inline)) struct msg_http_event *
-get_http_context(struct msg_tls_ip *key)
+get_http_context(ctx_md *msg)
 {
 	struct msg_http_event *http;
+	u64 cookie = (u64)msg->sk;
 
-	http = map_lookup_elem(&tg_http_map, key);
+	http = map_lookup_elem(&tg_http_map, &cookie);
 	if (!http) {
 		struct msg_http_event *__http;
 		int zero = 0;
@@ -79,15 +80,15 @@ get_http_context(struct msg_tls_ip *key)
 		if (!__http)
 			goto out;
 
-		map_update_elem(&tg_http_map, key, __http, BPF_NOEXIST);
-		http = map_lookup_elem(&tg_http_map, key);
+		map_update_elem(&tg_http_map, &cookie, __http, BPF_NOEXIST);
+		http = map_lookup_elem(&tg_http_map, &cookie);
 	}
 out:
 	return http;
 }
 
 static inline __attribute__((always_inline)) void
-post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http);
+post_http_event_cont(ctx_md *msg, struct msg_http_event *http);
 
 __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term);
 
@@ -236,12 +237,10 @@ static inline __attribute__((always_inline)) bool is_space(char c)
  */
 __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 {
-	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &tuple);
-	event = get_http_context(&tuple);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
@@ -282,7 +281,7 @@ static inline __attribute__((always_inline)) bool is_digit(int c)
 }
 
 static inline __attribute__((always_inline)) void
-get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
+get_string(ctx_md *msg, struct msg_http_event *event,
 	   struct msg_http *http, char *dst, int ty, __u64 max, char term)
 {
 	int do_push = (ty == http_request_content_length);
@@ -294,7 +293,7 @@ get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 	if (offset + max > 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
 		http->state = http_more_headers_needed;
-		post_http_event_cont(msg, key, event);
+		post_http_event_cont(msg, event);
 		return;
 	}
 
@@ -381,34 +380,30 @@ get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 
 __attribute__((noinline)) int method_get_url(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return SK_PASS;
 
 	http = &event->request;
-	get_string(msg, &key, event, http, http->url, http_request_url, 256, chr_sp);
+	get_string(msg, event, http, http->url, http_request_url, 256, chr_sp);
 	return 0;
 }
 
 __attribute__((noinline)) int method_get_protocol(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return SK_PASS;
 
 	http = &event->request;
 
-	get_string(msg, &key, event, http, http->url, http_request_protocol, 256,
+	get_string(msg, event, http, http->url, http_request_protocol, 256,
 		   chr_r);
 	return 0;
 }
@@ -483,23 +478,17 @@ static inline __attribute__((always_inline)) void get_more_headers(ctx_md *msg)
 
 __attribute__((noinline)) int continue_header_string(ctx_md *msg)
 {
-	int zero = 0;
-	struct msg_tls_ip *key;
 	struct msg_http_event *event;
 	struct msg_http *http;
 	int t;
 
-	key = (struct msg_tls_ip *)map_lookup_elem(&msg_tls_ip_heap, &zero);
-	if (unlikely(!key))
-		return 0;
-	msg_tls_tuple(msg, key);
-	event = get_http_context(key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return 0;
 	http = &event->request;
 
 	t = map_header_to_type(msg, http);
-	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	get_string(msg, event, http, http->url, t, 256, chr_r);
 	if (http->state == http_more_headers_value_needed)
 		return 0;
 	http->scratch[0] = (u32)0;
@@ -513,13 +502,11 @@ __attribute__((noinline)) int continue_header_string(ctx_md *msg)
 
 __attribute__((noinline)) int get_string_r(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 	int t;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
@@ -531,13 +518,12 @@ __attribute__((noinline)) int get_string_r(ctx_md *msg)
 	if (t == http_request_done)
 		return HTTP_REQUEST_DONE;
 
-	get_string(msg, &key, event, http, http->url, t, 256, chr_r);
+	get_string(msg, event, http, http->url, t, 256, chr_r);
 	return HTTP_REQUEST_CONT;
 }
 
 static inline __attribute__((always_inline)) void
-find_host_header(ctx_md *msg, struct msg_tls_ip *key,
-		 struct msg_http_event *event, struct msg_http *http)
+find_host_header(ctx_md *msg, struct msg_http_event *event, struct msg_http *http)
 {
 	int err;
 
@@ -580,28 +566,24 @@ out:
 
 __attribute__((noinline)) int method_get_headers(ctx_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &tuple);
-	event = get_http_context(&tuple);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 
 	http = &event->request;
 	http->state = http_get_headers;
-	find_host_header(msg, &tuple, event, http);
+	find_host_header(msg, event, http);
 	return 0;
 }
 
 __attribute__((noinline)) int http_parse_request(ctx_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_tuple(msg, &tuple);
-	http = get_http_context(&tuple);
+	http = get_http_context(msg);
 	if (unlikely(!http))
 		return 0;
 
@@ -621,62 +603,54 @@ __attribute__((noinline)) int http_parse_request(ctx_md *msg)
 
 __attribute__((noinline)) int response_get_protocol(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
-	get_string(msg, &key, event, http, http->url, http_response_protocol,
+	get_string(msg, event, http, http->url, http_response_protocol,
 		   256, chr_sp);
 	return 0;
 }
 
 __attribute__((noinline)) int response_get_code(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
-	get_string(msg, &key, event, http, http->url, http_response_code, 256, chr_sp);
+	get_string(msg, event, http, http->url, http_response_code, 256, chr_sp);
 	return 0;
 }
 
 __attribute__((noinline)) int response_get_reason(ctx_md *msg)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &key);
-	event = get_http_context(&key);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
-	get_string(msg, &key, event, http, http->url, http_response_reason, 256,
+	get_string(msg, event, http, http->url, http_response_reason, 256,
 		   chr_r);
 	return 0;
 }
 
 __attribute__((noinline)) int http_parse_response(ctx_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *event;
 	struct msg_http *http;
 
-	msg_tls_tuple(msg, &tuple);
-	event = get_http_context(&tuple);
+	event = get_http_context(msg);
 	if (unlikely(!event))
 		return 0;
 	http = &event->request;
@@ -696,31 +670,12 @@ __attribute__((noinline)) int http_parse_response(ctx_md *msg)
 	return 1;
 }
 
-static inline __attribute__((always_inline)) int
-put_reverse_http_context(struct msg_tls_ip *key, struct msg_http_event *event)
-{
-	/* Add the reverse context, so that we'll process the other direction as HTTP/2 */
-	struct msg_tls_ip rkey = {
-		.saddr[0] = key->saddr[0],
-		.saddr[1] = key->saddr[1],
-		.daddr[0] = key->daddr[0],
-		.daddr[1] = key->daddr[1],
-		.ipv6 = key->ipv6,
-		.dport = key->dport,
-		.sport = key->sport,
-		.remaining = !key->remaining,
-		.uid = key->uid,
-	};
-	event->request.state = http2_expect_frame;
-	return map_update_elem(&tg_http_map, &rkey, event, BPF_NOEXIST);
-}
-
 /* HTTP Parser is organized into a series of tail calls that splits this into
  * http1_request, http1_reply, http2, and header_parsing. Entry point from
  * primary BPF verdict and sk_msg hooks sk_msg/fgs and sk_skb/fgs.
  */
 static inline __attribute__((always_inline)) void
-http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
+http_parse(ctx_md *msg, struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
 
@@ -744,7 +699,6 @@ http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
 			break;
 
 		case http_method_pri:
-			put_reverse_http_context(key, event);
 			http->state = http2_expect_preface;
 #ifdef SK_MSG
 			tail_call(msg, &http1_calls, 3);
@@ -804,8 +758,7 @@ is_expected_request(struct msg_http *http)
  * from the next skb as well.
  */
 static inline __attribute__((always_inline)) void
-sk_skb_eat_bytes(ctx_md *skb, struct msg_http_event *event,
-		 struct msg_tls_ip *key, __u32 skip)
+sk_skb_eat_bytes(ctx_md *skb, struct msg_http_event *event, __u32 skip)
 {
 	struct msg_http *http = &event->request;
 
@@ -816,7 +769,7 @@ sk_skb_eat_bytes(ctx_md *skb, struct msg_http_event *event,
 		http->offset = skip;
 		http->consume_bytes =
 			0; // do nothing we eat entire skb with SK_PASS
-		http_parse(skb, event, key); // tail calls into http parser
+		http_parse(skb, event); // tail calls into http parser
 	} else {
 		http->consume_bytes = skip - skb->len;
 	}
@@ -835,14 +788,17 @@ http_reset_state(struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) void
-post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http)
+post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 {
-	__u32 remaining = key->remaining;
 	struct socketmap_value *process;
+	struct msg_tls_ip key = { 0 };
+	__u32 remaining;
 	size_t size;
 
-	key->remaining = 0;
-	process = lookup_tls_socketmap(key);
+	msg_tls_tuple(msg, &key);
+	remaining = key.remaining;
+	key.remaining = 0;
+	process = lookup_tls_socketmap(&key);
 	if (!process)
 		return;
 
@@ -861,7 +817,7 @@ post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event 
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
-	http->tuple = *key;
+	http->tuple = key;
 	http->tuple.remaining = remaining;
 
 	size = sizeof(struct __msg_http_event);
@@ -888,7 +844,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	size_t size;
 
 	msg_tls_tuple(msg, &key);
-	http = get_http_context(&key);
+	http = get_http_context(msg);
 	if (unlikely(!http))
 		return 0;
 
@@ -924,17 +880,17 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 #ifdef SK_MSG
 	msg_apply_bytes(msg, skip);
 #else
-	sk_skb_eat_bytes(msg, http, &key, skip);
+	sk_skb_eat_bytes(msg, http, skip);
 #endif
 	return 0;
 }
 
 static inline __attribute__((always_inline)) int
-http_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
+http_do_parser(ctx_md *msg)
 {
 	struct msg_http_event *http;
 
-	http = get_http_context(tuple);
+	http = get_http_context(msg);
 	if (unlikely(!http))
 		return 0;
 
@@ -944,12 +900,12 @@ http_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 
 #ifndef SK_MSG
 	if (http->request.consume_bytes) {
-		sk_skb_eat_bytes(msg, http, tuple, http->request.consume_bytes);
+		sk_skb_eat_bytes(msg, http, http->request.consume_bytes);
 		return 0;
 	}
 #endif
 
-	http_parse(msg, http, tuple);
+	http_parse(msg, http);
 	return 0;
 }
 

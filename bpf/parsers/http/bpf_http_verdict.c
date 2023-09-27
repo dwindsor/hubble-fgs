@@ -21,10 +21,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 __attribute__((section("sk_skb/stream_verdict/fgshttp"), used)) int
 tg_skskb_http_verdict(struct __sk_buff *skb)
 {
-	struct msg_tls_ip key = { 0 };
-
-	msg_tls_tuple(skb, &key);
-	http_do_parser(skb, &key);
+	http_do_parser(skb);
 	return SK_PASS;
 }
 
@@ -51,29 +48,19 @@ tg_skskb_http_request(struct __sk_buff *skb)
 __attribute__((section("sk_skb/stream_verdict/2"), used)) int
 tg_skskb_get_more_headers(struct __sk_buff *skb)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_tuple(skb, &key);
-	http = get_http_context(&key);
+	http = get_http_context(skb);
 	if (unlikely(!http))
 		return SK_PASS;
 	http->request.state = http_get_headers;
-	find_host_header(skb, &key, http, &http->request);
+	find_host_header(skb, http, &http->request);
 	return SK_PASS;
 }
 
 __attribute__((section("sk_skb/stream_verdict/3"), used)) int
 tg_skskb_http2(struct __sk_buff *skb)
 {
-	struct msg_tls_ip *key;
-	int zero = 0;
-
-	key = (struct msg_tls_ip *)map_lookup_elem(&msg_tls_ip_heap, &zero);
-	if (!key)
-		return SK_PASS;
-
-	msg_tls_tuple(skb, key);
-	http2_do_parser(skb, key);
+	http2_do_parser(skb);
 	return SK_PASS;
 }

@@ -167,7 +167,7 @@ struct __msg_http_event {
 #ifndef ALIGNCHECKER
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ip);
+	__type(key, u64);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1000);
 } tg_http_map SEC(".maps");

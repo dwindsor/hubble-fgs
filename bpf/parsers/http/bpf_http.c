@@ -19,14 +19,12 @@
 __attribute__((section("sk_msg/fgs"), used)) int
 tg_http_sk_msg_fgs(struct sk_msg_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
 
 	/* Workaround to clear any applied bytes from
          * previous execution on the same message. */
 	msg_apply_bytes(msg, 0);
 
-	msg_tls_tuple(msg, &tuple);
-	http_do_parser(msg, &tuple);
+	http_do_parser(msg);
 	return SK_PASS;
 }
 
@@ -53,25 +51,20 @@ tg_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 __attribute__((section("sk_msg/2"), used)) int
 tg_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_tuple(msg, &tuple);
-	http = get_http_context(&tuple);
+	http = get_http_context(msg);
 	if (unlikely(!http))
 		return SK_PASS;
 	http->request.state = http_get_headers;
-	find_host_header(msg, &tuple, http, &http->request);
+	find_host_header(msg, http, &http->request);
 	return SK_PASS;
 }
 
 __attribute__((section("sk_msg/3"), used)) int
 tg_skmsg_http2(struct sk_msg_md *msg)
 {
-	struct msg_tls_ip tuple = { 0 };
-
-	msg_tls_tuple(msg, &tuple);
-	return http2_do_parser(msg, &tuple);
+	return http2_do_parser(msg);
 }
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
