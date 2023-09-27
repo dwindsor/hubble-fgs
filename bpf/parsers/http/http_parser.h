@@ -89,6 +89,8 @@ out:
 static inline __attribute__((always_inline)) void
 post_http_event_cont(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *http);
 
+__attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term);
+
 static inline __attribute__((always_inline)) char *
 get_chars(ctx_md *msg, long offset, long cnt)
 {
@@ -132,59 +134,85 @@ eat_next_char(ctx_md *msg, struct msg_http *http)
 	return c;
 }
 
+static inline __attribute__((always_inline)) int
+strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
+{
+	int diff;
+	int i;
+	for (i = 0; i < s1_sz && i < s2_sz; i++) {
+		diff = s1[i] - s2[i];
+		if (diff != 0) {
+			return diff;
+		}
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) __u32
 __get_method(ctx_md *msg, struct msg_http *http)
 {
-	char *c = get_chars(msg, http->offset, 3);
+	int sz;
+	__u32 old_offset = http->offset;
 
-	if (!c) {
-		return http_method_bytes_needed;
+	sz = get_string_scratch(msg, chr_sp);
+
+	if (http->state == http_more_headers_needed) {
+		return http_method_split;
 	}
 
-	switch (c[0]) {
-	case 'C':
-		http->offset += http_method_connect_off;
+	http->scratch[0] = (u32)0;
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "connect", 7)) {
 		return http_method_connect;
-	case 'D':
-		http->offset += http_method_delete_off;
-		return http_method_delete;
-	case 'G':
-		http->offset += http_method_get_off;
-		return http_method_get;
-	case 'H':
-		if (c[1] == 'T') {
-			http->offset += 0;
-			return http_method_response;
-		}
-		http->offset = http_method_head_off;
-		return http_method_head;
-	case 'O':
-		http->offset += http_method_options_off;
-		return http_method_options;
-	case 'P':
-		if (c[1] == 'O') {
-			http->offset += http_method_post_off;
-			return http_method_post;
-		}
-		if (c[1] == 'U') {
-			http->offset += http_method_put_off;
-			return http_method_put;
-		}
-		if (c[1] == 'A') {
-			http->offset += http_method_patch_off;
-			return http_method_patch;
-		}
-		if (c[1] == 'R' && c[2] == 'I') {
-			return http_method_pri;
-		}
-		return http_method_unknown;
-	case 'T':
-		http->offset += http_method_trace_off;
-		return http_method_trace;
-	default:
-		return http_method_unknown;
 	}
-	return http_method_error;
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "delete", 6)) {
+		return http_method_delete;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "get", 3)) {
+		return http_method_get;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "head", 4)) {
+		return http_method_head;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "options", 7)) {
+		return http_method_options;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "post", 4)) {
+		return http_method_post;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "put", 3)) {
+		return http_method_put;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "patch", 5)) {
+		return http_method_patch;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "trace", 5)) {
+		return http_method_trace;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "pri", 3)) {
+		// We need to walk the parser back here since http2 parser wants to do string
+		// matching on PRI for the http2 preface.
+		http->offset = old_offset;
+		return http_method_pri;
+	}
+
+	if (!strncmp_truncated(http->scratch + 4, sz, "http", 4)) {
+		// We need to walk the parser back here since we also want to parse this out as
+		// the response protocol.
+		http->offset = old_offset;
+		return http_method_response;
+	}
+
+	return http_method_unknown;
 }
 
 static inline __attribute__((always_inline)) __u32
@@ -244,7 +272,8 @@ __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 		http->offset = 0;
 		http->state = http_more_headers_needed;
 	}
-	return 0;
+	DEBUG("read(%d): %s", *dstsz, http->scratch + 4);
+	return *dstsz;
 }
 
 static inline __attribute__((always_inline)) bool is_digit(int c)
@@ -695,16 +724,16 @@ http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
 {
 	struct msg_http *http = &event->request;
 
-	if (http->state == http_start) {
+	if (http->state == http_start || http->state == http_request_state_method_split) {
 		int m = get_method(msg, http);
 
 		switch (m) {
+		case http_method_split:
+			http->state = http_request_state_method_split;
+			goto out;
+
 		case http_method_error:
 			break;
-
-		case http_method_bytes_needed:
-			http->state = http_method_bytes_needed;
-			goto out;
 
 		case http_method_response:
 #ifdef SK_MSG

@@ -33,6 +33,9 @@ enum http_method {
 
 	// a PRI method, likely HTTP/2 with prior knowledge
 	http_method_pri,
+
+	// split http method, need to see more packets
+	http_method_split,
 };
 
 enum http_request_header {
@@ -101,7 +104,7 @@ enum http_request_state {
 	http_more_headers_needed,
 	http_more_headers_value_needed,
 
-	http_method_bytes_needed,
+	http_request_state_method_split,
 
 	/* when state is above this we tail-call into http2 parser */
 
