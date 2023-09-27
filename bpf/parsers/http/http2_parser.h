@@ -213,16 +213,10 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
 	struct socketmap_value *process;
-	struct msg_tls_ip key = { 0 };
-	u32 remaining;
+	u64 cookie = (u64)msg->sk;
 	size_t size;
 
-	msg_tls_tuple(msg, &key);
-
-	remaining = key.remaining;
-	key.remaining = 0;
-	process = lookup_tls_socketmap(&key);
-	key.remaining = remaining;
+	process = lookup_socketmap(&cookie);
 	if (process) {
 		event->execve.pid = process->key.pid;
 		event->execve.pad[0] = 0;
@@ -245,11 +239,6 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = sizeof(struct __msg_http_event);
-	event->tuple = key;
-	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
-	 * Without this assignment "llc" takes 90s or more instead of <10s
-	 */
-	event->tuple.remaining = remaining;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 
          * Due to per-cpu rings the events we send here may be read out-of-order in user-space. Because HTTP/2
