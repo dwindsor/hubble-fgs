@@ -12,6 +12,7 @@
 #include "api.h"
 
 #define SK_MSG
+#define HTTP_DIR HTTP_SEND
 
 #include "http_parser.h"
 #include "http2_parser.h"

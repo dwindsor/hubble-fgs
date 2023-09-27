@@ -12,6 +12,7 @@
 #include "api.h"
 
 #define SK_SKB
+#define HTTP_DIR HTTP_RECV
 
 #include "http_parser.h"
 #include "http2_parser.h"

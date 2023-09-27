@@ -239,6 +239,7 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = sizeof(struct __msg_http_event);
+	event->tuple.remaining = HTTP_DIR;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 
          * Due to per-cpu rings the events we send here may be read out-of-order in user-space. Because HTTP/2

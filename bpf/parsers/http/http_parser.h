@@ -792,12 +792,9 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 {
 	struct socketmap_value *process;
 	struct msg_tls_ip key = { 0 };
-	__u32 remaining;
 	size_t size;
 
 	msg_tls_tuple(msg, &key);
-	remaining = key.remaining;
-	key.remaining = 0;
 	process = lookup_tls_socketmap(&key);
 	if (!process)
 		return;
@@ -818,7 +815,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = key;
-	http->tuple.remaining = remaining;
+	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
@@ -839,7 +836,6 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	struct socketmap_value *process;
 	struct msg_http_event *http;
 	struct msg_tls_ip key = { 0 };
-	__u32 remaining;
 	__u32 skip = 0;
 	size_t size;
 
@@ -849,8 +845,6 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 		return 0;
 
 	http->request.state = http_done;
-	remaining = key.remaining;
-	key.remaining = 0;
 	process = lookup_tls_socketmap(&key);
 	if (process) {
 		http->execve.pid = process->key.pid;
@@ -871,7 +865,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = key;
-	http->tuple.remaining = remaining;
+	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
