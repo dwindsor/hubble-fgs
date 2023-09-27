@@ -793,9 +793,11 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	struct socketmap_value *process;
 	struct msg_tls_ip key = { 0 };
 	size_t size;
+	u64 cookie;
 
 	msg_tls_tuple(msg, &key);
-	process = lookup_tls_socketmap(&key);
+	cookie = (u64)msg->sk;
+	process = lookup_socketmap(&cookie);
 	if (!process)
 		return;
 
@@ -837,6 +839,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	struct msg_http_event *http;
 	struct msg_tls_ip key = { 0 };
 	__u32 skip = 0;
+	__u64 cookie;
 	size_t size;
 
 	msg_tls_tuple(msg, &key);
@@ -845,7 +848,8 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 		return 0;
 
 	http->request.state = http_done;
-	process = lookup_tls_socketmap(&key);
+	cookie = (u64)msg->sk;
+	process = lookup_socketmap(&cookie);
 	if (process) {
 		http->execve.pid = process->key.pid;
 		http->execve.pad[0] = 0;

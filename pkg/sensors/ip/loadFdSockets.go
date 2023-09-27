@@ -36,7 +36,6 @@ const (
 	mapRetryDelay         = 1
 	FdLookupConfigMapName = "fd_lookup_config_map"
 	SocketMapName         = "tg_socket_map"
-	TlsSocketMapName      = "tg_tls_socket_map"
 	SocketMapStatsName    = "tg_socket_map_stats"
 )
 
@@ -81,9 +80,8 @@ var (
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap    = program.MapBuilder(SocketMapName, FdLookup)
-	SocketCookieStats  = program.MapBuilder(SocketMapStatsName, FdLookup)
-	TlsSocketCookieMap = program.MapBuilder(TlsSocketMapName, FdLookup)
+	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
+	SocketCookieStats = program.MapBuilder(SocketMapStatsName, FdLookup)
 )
 
 func (k *FdLookupKey) String() string { return fmt.Sprintf("key=%d", k.Zero) }
@@ -168,7 +166,7 @@ func getFdLookupPrograms() []*program.Program {
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap, SocketCookieMap, TlsSocketCookieMap, SocketCookieStats)
+	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats)
 
 	return maps
 }

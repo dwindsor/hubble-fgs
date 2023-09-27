@@ -392,7 +392,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
-	if (!update_socketmap(&cookie, 0, value->pid)) {
+	if (!update_socketmap(&cookie, value->pid)) {
 		emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
 	}
 
@@ -678,7 +678,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
-	if (!update_socketmap(&cookie, 0, value->pid)) {
+	if (!update_socketmap(&cookie, value->pid)) {
 		emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
 	}
 

@@ -149,7 +149,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	sockmap_process.create_time = ktime_get_ns();
 
 	/* Store the socket even if family or protocol couldn't be read. */
-	add_socketmap(&cookie, 0, &sockmap_process);
+	add_socketmap(&cookie, &sockmap_process);
 
 	/* If we can't read the address family or protocol, then we can't
 	 * report the socket.

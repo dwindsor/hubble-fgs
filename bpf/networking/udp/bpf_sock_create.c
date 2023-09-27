@@ -53,6 +53,6 @@ tg_udp_init_sock(struct pt_regs *ctx)
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
-	add_socketmap(&cookie, 0, &process);
+	add_socketmap(&cookie, &process);
 	return 0;
 }

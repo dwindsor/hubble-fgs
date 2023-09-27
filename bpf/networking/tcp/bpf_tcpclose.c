@@ -31,7 +31,6 @@ __attribute__((section("kprobe/tcp_set_state"), used)) int
 tg_event_tcp_close(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
-	struct msg_tls_ip tuple = { 0 };
 	struct socketmap_value *process;
 	struct msg_ip_event *val;
 	unsigned char old_state;
@@ -67,71 +66,61 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	};
 
 	process = lookup_socketmap(&cookie);
-	if (process) {
-		val->common.op = ISO_MSG_OP_TCPCLOSE;
-		val->key.pid = process->key.pid;
-		val->key.ktime = process->key.ktime;
-		val->duration = ktime_get_ns() - process->create_time;
-		val->socket_flags = process->socket_flags;
-		val->tuple = process->tuple;
+	if (!process)
+		return 0;
 
-		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-		get_socket_stats(skp, netns, process, &val->stats);
+	val->common.op = ISO_MSG_OP_TCPCLOSE;
+	val->key.pid = process->key.pid;
+	val->key.ktime = process->key.ktime;
+	val->duration = ktime_get_ns() - process->create_time;
+	val->socket_flags = process->socket_flags;
+	val->tuple = process->tuple;
 
-		/* Get the state that we are transitioning from */
-		probe_read(&old_state, sizeof(old_state),
-			   _((const void *)&(skp->__sk_common.skc_state)));
+	probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
+	get_socket_stats(skp, netns, process, &val->stats);
 
-		/* When a socket is closing, it may have received a FIN/ACK segment.
-		 * Unfortunately, a FIN/ACK increases the received sequence counter
-		 * by 1 (in order to maintain appropriate state). We use the received
-		 * sequence counter to indicate the number of bytes received, so if
-		 * we have received a FIN/ACK then our counter will be 1 greater than
-		 * it should be.
-		 * 
-		 * The situations where this will be the case are any where we are
-		 * transitioning from LAST_ACK to CLOSE, as all of these imply a
-		 * FIN/ACK was received (as the remote end has initiated the close);
-		 * and the specific case where the local end initiated the close and
-		 * a FIN/ACK was ACKed, recorded in the ack_finack flag on the socket
-		 * (see bpf_tcp_send_check.h for details).
-		 */
-		if ((old_state == TCP_LAST_ACK || process->ack_finack) &&
-		    val->stats.bytes_received > 0)
-			val->stats.bytes_received--;
+	/* Get the state that we are transitioning from */
+	probe_read(&old_state, sizeof(old_state),
+		   _((const void *)&(skp->__sk_common.skc_state)));
 
-		event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
-			&tg_event_disable_config, &zero);
-		if (!event_cfg)
-			return 0;
+	/* When a socket is closing, it may have received a FIN/ACK segment.
+	 * Unfortunately, a FIN/ACK increases the received sequence counter
+	 * by 1 (in order to maintain appropriate state). We use the received
+	 * sequence counter to indicate the number of bytes received, so if
+	 * we have received a FIN/ACK then our counter will be 1 greater than
+	 * it should be.
+	 * 
+	 * The situations where this will be the case are any where we are
+	 * transitioning from LAST_ACK to CLOSE, as all of these imply a
+	 * FIN/ACK was received (as the remote end has initiated the close);
+	 * and the specific case where the local end initiated the close and
+	 * a FIN/ACK was ACKed, recorded in the ack_finack flag on the socket
+	 * (see bpf_tcp_send_check.h for details).
+	 */
+	if ((old_state == TCP_LAST_ACK || process->ack_finack) &&
+	    val->stats.bytes_received > 0)
+		val->stats.bytes_received--;
 
-		size = sizeof(struct msg_ip_event);
-		if (!event_cfg->disableClose) {
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return 0;
+
+	size = sizeof(struct msg_ip_event);
+	if (!event_cfg->disableClose) {
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 					  size);
-		}
 	}
 
-	if (!val->tuple.ipv6) {
-		tuple.saddr[0] = val->tuple.saddr[0];
-		tuple.daddr[0] = val->tuple.daddr[0];
-		tuple.ipv6 = 0;
-		tuple.sport = val->tuple.sport;
-		tuple.dport = val->tuple.dport;
-		tuple.remaining = 0;
-		tuple.uid = 0;
-
-		if (is_tuple_local(&tuple))
-			tuple.uid = sock_netns(skp);
-		del_socketmap(&cookie, &tuple);
+	if (!process->tuple.ipv6) {
+		del_socketmap(&cookie);
 
 		del_tlsmap(&cookie);
-		map_delete_elem(&tg_http_map, &tuple);
-		tuple.remaining = 1;
-		map_delete_elem(&tg_http_map, &tuple);
+		map_delete_elem(&tg_http_map, &cookie);
+		map_delete_elem(&tg_http_map, &cookie);
 		bottle_drop(&cookie);
 	} else {
-		del_socketmap(&cookie, 0);
+		del_socketmap(&cookie);
 	}
 
 	return 1;

@@ -77,6 +77,6 @@ tg_udp_destroy_sock(struct pt_regs *ctx)
 
 	size = sizeof(struct msg_ip_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
-	del_socketmap(&cookie, 0);
+	del_socketmap(&cookie);
 	return 1;
 }

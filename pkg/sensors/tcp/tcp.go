@@ -137,7 +137,6 @@ var (
 
 	// Maps for TCP Sockets
 	SocketMap         = program.MapBuilder("tg_socket_map", Connect)
-	TlsSocketMap      = program.MapBuilder("tg_tls_socket_map", Connect)
 	SocketStats       = program.MapBuilder("tg_socket_map_stats", Accept)
 	FdLookupConfigMap = program.MapBuilder(ip.FdLookupConfigMapName, Accept)
 
@@ -201,7 +200,6 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 	maps := []*program.Map{
 		SocketStats,
 		SocketMap,
-		TlsSocketMap,
 		HTTPContext,
 		TLSContext,
 		TLSMapStats,
