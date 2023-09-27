@@ -396,7 +396,7 @@ msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
 static inline __attribute__((always_inline)) void
 msg_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *key)
 {
-    /* This will never happen but we need this case to properly support LSPs */
+	/* This will never happen but we need this case to properly support LSPs */
 }
 #endif
 
