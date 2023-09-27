@@ -70,7 +70,7 @@ func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 	podList := &corev1.PodList{}
 	r.List(ctx, podList)
 	for _, pod := range podList.Items {
-		if strings.HasPrefix(pod.Name, "tetragon") {
+		if strings.HasPrefix(pod.Name, "tetragon") && !strings.Contains(pod.Name, "operator") {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
 			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "tetragon", stdout, stderr, strings.Fields("tetra file-debug support-enforcement"))
