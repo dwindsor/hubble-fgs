@@ -1,4 +1,3 @@
-TAGS broken # This test is currently broken because our parser does not handle split methods correctly
 INGRESSPORT 8888
 
 # Connection has been established and we should see:
