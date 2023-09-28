@@ -13,9 +13,6 @@
 
 #include "http_parser.h"
 
-#undef HTTP2_DEBUG
-//#define HTTP2_DEBUG
-
 #define HTTP2_MAX_FRAMES	  8
 #define HTTP2_FRAME_HEADER_LENGTH 9
 #define HTTP2_PREFACE_LENGTH	  24
@@ -37,12 +34,6 @@ enum { HTTP2_FLAG_END_STREAM = 0x1,
        HTTP2_FLAG_PADDED = 0x8,
        HTTP2_FLAG_PRIORITY = 0x20,
 };
-
-#ifdef HTTP2_DEBUG
-#define DBG(__fmt, ...) bpf_printk(__fmt, ##__VA_ARGS__)
-#else
-#define DBG(__fmt, ...)
-#endif
 
 /* Helpers for accessing the "typed chunks" stored in (struct msg_http).url */
 
@@ -145,8 +136,8 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	u32 offset = http->offset;
 	u32 requested = len - chunk_len;
 
-	DBG("append_to_chunk, offset=%d, len=%d, chunk_len=%d\n", offset, len,
-	    chunk_len);
+	DEBUG("append_to_chunk, offset=%d, len=%d, chunk_len=%d", offset, len,
+	      chunk_len);
 
 	if (chunk_len >= len) {
 		/* Chunk already full */
@@ -163,8 +154,8 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	if (data + offset + requested > data_end) {
 		if (requested > ctx_len(skb) - offset) {
 			/* Append can be only partially satisfied, read whatever we can. */
-			DBG("skb len=%d, trying to read %d\n", ctx_len(skb),
-			    offset + requested);
+			DEBUG("skb len=%d, trying to read %d", ctx_len(skb),
+			      offset + requested);
 			requested = (ctx_len(skb) - offset) & 0x1ff;
 		}
 
@@ -173,8 +164,8 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 
 		int err = ctx_pull_data(skb, offset + requested);
 		if (err) {
-			DBG("unexpected: skb_pull_data(%d) failed with %d\n",
-			    offset + requested, err);
+			DEBUG("unexpected: skb_pull_data(%d) failed with %d",
+			      offset + requested, err);
 			return CHUNK_ERROR;
 		}
 
@@ -188,10 +179,10 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	asm volatile("%[requested] &= 0x1ff;\n"
 		     : [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
-		DBG("unexpected: data still not available! ctx->len = %d\n",
-		    ctx_len(skb));
-		DBG("offset = %d, requested = %d, linear = %d\n", offset,
-		    requested, data_end - data);
+		DEBUG("unexpected: data still not available! ctx->len = %d",
+		      ctx_len(skb));
+		DEBUG("offset = %d, requested = %d, linear = %d", offset,
+		      requested, data_end - data);
 		return CHUNK_ERROR;
 	}
 
@@ -204,7 +195,7 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 
 	pkt_copy(to, data_end, data + offset, requested);
 
-	DBG("copied %d bytes into chunk\n", requested);
+	DEBUG("copied %d bytes into chunk", requested);
 
 	chunk->length += requested;
 	http->offset += requested;
@@ -287,14 +278,14 @@ emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key,
 		break;
 
 	case CHUNK_EOF:
-		DBG("EOF when reading frame payload (%d bytes, chunk now at %d)\n",
-		    payload_length, head_chunk(http)->length);
+		DEBUG("EOF when reading frame payload (%d bytes, chunk now at %d)",
+		      payload_length, head_chunk(http)->length);
 		return 1;
 
 	case CHUNK_OVERFLOW:
 		/* FIXME(JM): Gracefully handle the overflow! */
 	case CHUNK_ERROR:
-		DBG("failed to append chunk\n", 0);
+		DEBUG("failed to append chunk", 0);
 		event->request.state = http_error;
 		return 1;
 	}
@@ -316,12 +307,12 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 	case CHUNK_OK:
 		break;
 	case CHUNK_EOF:
-		DBG("EOF when reading frame header (chunk now at %d)\n",
-		    head_chunk(http)->length);
+		DEBUG("EOF when reading frame header (chunk now at %d)",
+		      head_chunk(http)->length);
 		return true;
 	case CHUNK_OVERFLOW:
 	case CHUNK_ERROR:
-		DBG("failed to append header to chunk\n", 0);
+		DEBUG("failed to append header to chunk", 0);
 		http->state = http_error;
 		return true;
 	}
@@ -334,9 +325,9 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 #ifdef HTTP2_DEBUG
 	u32 stream_id = (*(data + 5) & 0x7f) << 24 | *(data + 6) << 16 |
 			*(data + 7) << 8 | *(data + 8);
-	DBG("Found frame: offset=%d, type=%d, length=%d\n", http->offset, type,
-	    length);
-	DBG("...........  stream_id=%d, flags=%d\n", stream_id, flags);
+	DEBUG("Found frame: offset=%d, type=%d, length=%d", http->offset, type,
+	      length);
+	DEBUG("...........  stream_id=%d, flags=%d", stream_id, flags);
 #endif
 	switch (type) {
 	case HTTP2_FRAME_TYPE_HEADERS: {
@@ -350,8 +341,8 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 			// that yet, so stop.
 			// To handle it correctly we'd need combine the multiple header frames in
 			// user-space and then decode them in one go.
-			DBG("HTTP2 headers frame found, but it is split. Bailing out.\n",
-			    0);
+			DEBUG("HTTP2 headers frame found, but it is split. Bailing out.",
+			      0);
 			http->state = http_error;
 			return true;
 		}
@@ -364,10 +355,10 @@ http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
 
 		u32 skip = http->offset + length;
 #ifdef SK_MSG
-		DBG("MSG skip %d bytes\n", skip);
+		DEBUG("MSG skip %d bytes", skip);
 		msg_apply_bytes(msg, skip);
 #else
-		DBG("SKB skip %d bytes\n", skip);
+		DEBUG("SKB skip %d bytes", skip);
 		sk_skb_eat_bytes(msg, event, key, skip);
 #endif
 		return true;
@@ -393,7 +384,7 @@ http2_is_preface(ctx_md *msg, struct msg_http *http)
 
 	case CHUNK_ERROR:
 	case CHUNK_OVERFLOW:
-		DBG("http2_is_preface: Error or overflow\n", 0);
+		DEBUG("http2_is_preface: Error or overflow", 0);
 		http->state = http_error;
 	case CHUNK_EOF:
 		return -1;
@@ -413,11 +404,11 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 	http = &event->request;
 
 #ifdef SK_MSG
-	DBG("MSG http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg),
-	    http->offset, http->consume_bytes);
+	DEBUG("MSG http2_do_parser: len %d, skip %d, consume %d", ctx_len(msg),
+	      http->offset, http->consume_bytes);
 #else
-	DBG("SKB http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg),
-	    http->offset, http->consume_bytes);
+	DEBUG("SKB http2_do_parser: len %d, skip %d, consume %d", ctx_len(msg),
+	      http->offset, http->consume_bytes);
 #endif
 
 #ifndef SK_MSG
@@ -431,8 +422,8 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 	case http2_expect_preface:
 		switch (http2_is_preface(msg, http)) {
 		case 1:
-			DBG("Expected HTTP/2 preface, but didn't find it.\n",
-			    0);
+			DEBUG("Expected HTTP/2 preface, but didn't find it.",
+			      0);
 			http->state = http_error;
 			return SK_PASS;
 		case -1:
@@ -446,7 +437,7 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 		break;
 
 	default:
-		DBG("http2_parser: Unhandled state %d\n", http->state);
+		DEBUG("http2_parser: Unhandled state %d", http->state);
 		http->state = http_error;
 		return SK_PASS;
 	}
@@ -454,7 +445,7 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 #pragma unroll
 	for (int frame = 0; frame < HTTP2_MAX_FRAMES; frame++) {
 		if (http2_parse_frame(msg, event, tuple)) {
-			DBG("STOP\n", 0);
+			DEBUG("STOP", 0);
 			http->offset = 0;
 			return SK_PASS;
 		}
@@ -462,7 +453,7 @@ http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 
 	/* Give up when we cannot parse all the frames to avoid desyncing 
          * the HPACK decoder */
-	DBG("http2_parser: Too many frames in message, giving up!\n", 0);
+	DEBUG("http2_parser: Too many frames in message, giving up!", 0);
 	http->offset = 0;
 	http->state = http_error;
 
