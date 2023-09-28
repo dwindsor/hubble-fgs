@@ -246,7 +246,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 }
 
 func TestLoadHttpSensor(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
