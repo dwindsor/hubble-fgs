@@ -14,6 +14,7 @@ package sockmap
 import (
 	"context"
 	"os"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -92,7 +93,9 @@ func TestTLS13(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
-
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
 	if v := "6.1.0"; !maxKernelVersion(v) {
 		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
@@ -155,7 +158,9 @@ func TestTLS12(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
-
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
 	if v := "6.1.0"; !maxKernelVersion(v) {
 		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
@@ -224,6 +229,9 @@ func TestLoadTlsSensor(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -286,6 +294,9 @@ func TestLoadTlsCGSensor(t *testing.T) {
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -342,6 +353,9 @@ spec:
 func TestCGTLS13(t *testing.T) {
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
@@ -405,6 +419,9 @@ func TestCGTLS13(t *testing.T) {
 func TestCGTLS12(t *testing.T) {
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 
 	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
