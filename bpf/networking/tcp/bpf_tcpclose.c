@@ -30,18 +30,17 @@ struct {
 __attribute__((section("kprobe/tcp_set_state"), used)) int
 tg_event_tcp_close(struct pt_regs *ctx)
 {
-	struct msg_ip_event *val;
-	struct socketmap_value *process;
+	struct tcp_event_disable_config *event_cfg;
 	struct msg_tls_ip tuple = { 0 };
+	struct socketmap_value *process;
+	struct msg_ip_event *val;
+	unsigned char old_state;
 	struct net *netns;
 	struct sock *skp;
+	u32 zero = 0;
 	size_t size;
 	int state;
-	u16 family;
-	u32 zero = 0;
 	u64 cookie;
-	unsigned char old_state;
-	struct tcp_event_disable_config *event_cfg;
 
 	state = PT_REGS_PARM2(ctx);
 	if (state != TCP_CLOSE)
@@ -67,29 +66,6 @@ tg_event_tcp_close(struct pt_regs *ctx)
 		.pad = 0,
 	};
 
-	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
-
-	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
-		   _(&(skp->__sk_common.skc_num)));
-	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
-		   _(&(skp->__sk_common.skc_dport)));
-
-	if (family != AF_INET6) {
-		val->tuple.ipv6 = false;
-		probe_read(&val->tuple.saddr[0], sizeof(u32),
-			   _(&(skp->__sk_common.skc_rcv_saddr)));
-		val->tuple.saddr[1] = 0;
-		probe_read(&val->tuple.daddr[0], sizeof(u32),
-			   _(&(skp->__sk_common.skc_daddr)));
-		val->tuple.daddr[1] = 0;
-	} else {
-		val->tuple.ipv6 = true;
-		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
-		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
-			   _(&(skp->__sk_common.skc_v6_daddr)));
-	}
-
 	process = lookup_socketmap(&cookie);
 	if (process) {
 		val->common.op = ISO_MSG_OP_TCPCLOSE;
@@ -97,6 +73,7 @@ tg_event_tcp_close(struct pt_regs *ctx)
 		val->key.ktime = process->key.ktime;
 		val->duration = ktime_get_ns() - process->create_time;
 		val->socket_flags = process->socket_flags;
+		val->tuple = process->tuple;
 
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 		get_socket_stats(skp, netns, process, &val->stats);
@@ -135,7 +112,7 @@ tg_event_tcp_close(struct pt_regs *ctx)
 		}
 	}
 
-	if (family != AF_INET6) {
+	if (!val->tuple.ipv6) {
 		tuple.saddr[0] = val->tuple.saddr[0];
 		tuple.daddr[0] = val->tuple.daddr[0];
 		tuple.ipv6 = 0;

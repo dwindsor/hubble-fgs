@@ -132,6 +132,13 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->sent = 0;
 	acc_process->zero_window = 0;
 	acc_process->ack_finack = 0;
+	acc_process->tuple.saddr[0] = val->tuple.saddr[0];
+	acc_process->tuple.saddr[1] = val->tuple.saddr[1];
+	acc_process->tuple.daddr[0] = val->tuple.daddr[0];
+	acc_process->tuple.daddr[1] = val->tuple.daddr[1];
+	acc_process->tuple.ipv6 = (family == AF_INET6);
+	acc_process->tuple.dport = val->tuple.dport;
+	acc_process->tuple.sport = val->tuple.sport;
 
 	if (family != AF_INET6) {
 		tuple.saddr[0] = val->tuple.saddr[0];

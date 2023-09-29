@@ -19,6 +19,7 @@ struct socketmap_value {
 	__u8 pad[7];
 	__u64 rtt_sum;
 	__u64 latency_sum;
+	struct msg_ip_tuple tuple;
 };
 
 struct {
