@@ -85,7 +85,7 @@ struct msg_tls_ip {
 
 struct msg_tls_event {
 	struct msg_common common;
-	struct msg_tls_ip tuple;
+	struct msg_ip_tuple tuple;
 	struct msg_tls clienthello;
 	struct msg_tls serverhello;
 	struct msg_execve_key execve;

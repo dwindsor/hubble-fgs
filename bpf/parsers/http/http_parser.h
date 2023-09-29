@@ -791,11 +791,9 @@ static inline __attribute__((always_inline)) void
 post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 {
 	struct socketmap_value *process;
-	struct msg_tls_ip key = { 0 };
 	size_t size;
 	u64 cookie;
 
-	msg_tls_tuple(msg, &key);
 	cookie = (u64)msg->sk;
 	process = lookup_socketmap(&cookie);
 	if (!process)
@@ -816,7 +814,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
-	http->tuple = key;
+	http->tuple = process->tuple;
 	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);
@@ -837,27 +835,26 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 {
 	struct socketmap_value *process;
 	struct msg_http_event *http;
-	struct msg_tls_ip key = { 0 };
 	__u32 skip = 0;
 	__u64 cookie;
 	size_t size;
 
-	msg_tls_tuple(msg, &key);
 	http = get_http_context(msg);
 	if (unlikely(!http))
 		return 0;
 
-	http->request.state = http_done;
 	cookie = (u64)msg->sk;
 	process = lookup_socketmap(&cookie);
-	if (process) {
-		http->execve.pid = process->key.pid;
-		http->execve.pad[0] = 0;
-		http->execve.pad[1] = 0;
-		http->execve.pad[2] = 0;
-		http->execve.pad[3] = 0;
-		http->execve.ktime = process->key.ktime;
-	}
+	if (!process)
+		return 0;
+
+	http->request.state = http_done;
+	http->execve.pid = process->key.pid;
+	http->execve.pad[0] = 0;
+	http->execve.pad[1] = 0;
+	http->execve.pad[2] = 0;
+	http->execve.pad[3] = 0;
+	http->execve.ktime = process->key.ktime;
 
 	if (http->request.method == http_method_response)
 		http->request.recv_cntr++;
@@ -868,7 +865,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
-	http->tuple = key;
+	http->tuple = process->tuple;
 	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);

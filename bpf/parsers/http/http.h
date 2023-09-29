@@ -152,14 +152,14 @@ struct msg_http {
 
 struct msg_http_event {
 	struct msg_common common;
-	struct msg_tls_ip tuple;
+	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct msg_http request;
 } __attribute__((packed));
 
 struct __msg_http_event {
 	struct msg_common common;
-	struct msg_tls_ip tuple;
+	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct __msg_http request;
 } __attribute__((packed));

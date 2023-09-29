@@ -217,14 +217,15 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	size_t size;
 
 	process = lookup_socketmap(&cookie);
-	if (process) {
-		event->execve.pid = process->key.pid;
-		event->execve.pad[0] = 0;
-		event->execve.pad[1] = 0;
-		event->execve.pad[2] = 0;
-		event->execve.pad[3] = 0;
-		event->execve.ktime = process->key.ktime;
-	}
+	if (!process)
+		return;
+
+	event->execve.pid = process->key.pid;
+	event->execve.pad[0] = 0;
+	event->execve.pad[1] = 0;
+	event->execve.pad[2] = 0;
+	event->execve.pad[3] = 0;
+	event->execve.ktime = process->key.ktime;
 
 	/* Terminate the chunk */
 	struct http_event_chunk *chunk = head_chunk(http);
@@ -239,6 +240,7 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = sizeof(struct __msg_http_event);
+	event->tuple = process->tuple;
 	event->tuple.remaining = HTTP_DIR;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 

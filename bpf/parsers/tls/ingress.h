@@ -300,14 +300,16 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 		if (!(post->serverhello.flags & TLS_VERSION))
 			post->serverhello.flags |= TLS_CERT;
 
-		post->tuple = *tuple;
 		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
 		execve = lookup_socketmap(cookie);
-		if (execve)
-			post->execve = execve->key;
+		if (!execve)
+			return;
+
+		post->execve = execve->key;
+		post->tuple = execve->tuple;
 
 		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 				  sizeof(struct msg_tls_event));
