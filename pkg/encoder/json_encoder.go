@@ -132,6 +132,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		}
 	}
 	return &flow.Flow{
+		Verdict:            flow.Verdict_TRACED,
 		IP:                 &ip,
 		L4:                 l4,
 		Source:             &source,

@@ -64,6 +64,7 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	expectedFlow := observer.GetFlowsResponse{
 		ResponseTypes: &observer.GetFlowsResponse_Flow{
 			Flow: &flow.Flow{
+				Verdict:          flow.Verdict_TRACED,
 				IP:               &flow.IP{},
 				Source:           &flow.Endpoint{},
 				Destination:      &flow.Endpoint{},
@@ -118,6 +119,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	}
 	actualFlow := e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow := &flow.Flow{
+		Verdict:          flow.Verdict_TRACED,
 		IP:               &flow.IP{},
 		Source:           &flow.Endpoint{},
 		Destination:      &flow.Endpoint{},
@@ -142,6 +144,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
@@ -182,6 +185,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
@@ -217,6 +221,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	event.GetProcessConnect().Protocol = tetragon.SocketProtocol_UDP
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
@@ -252,6 +257,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	event.GetProcessConnect().DestinationNames = []string{"isovalent.com"}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
@@ -294,6 +300,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Workload:     "my-deployment",
 	}
 	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
