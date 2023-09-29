@@ -123,7 +123,7 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	default:
 		eventType = "unknown"
 	}
-	oss.EventsProcessed.WithLabelValues(eventType, namespace, workload, pod, binary).Inc()
+	oss.EventsProcessed.ToProm().WithLabelValues(eventType, namespace, workload, pod, binary).Inc()
 }
 
 func postUDPSocketStats(ns, workload, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
