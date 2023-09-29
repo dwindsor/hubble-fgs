@@ -95,19 +95,20 @@ or at the end of the line as usual.
 Match blocks are a set of lines describing how a packet or an event should
 look like.  The following match clauses are supported:
 
-- `$ 1b 01 3f 4b`   : Match hexadecimal bytes. Any number of them can be specified per line.
-- `"a utf8 string"` : Match a UTF-8 string
-- `2 12345 10 15`   : Match 16-bit network byte-order unsigned integers
-- `4 131072 1 38`   : Match 32-bit network byte-order unsigned integers
-- `h2 12345 10 15`  : Match 16-bit host byte-order unsigned integers
-- `h4 131072 1 38`  : Match 32-bit host byte-order unsigned integers
-- `I 127.0.0.1`     : Match an IP address
-- `? 13`            : Match any N bytes (only EVENT)
-- `NZ 13`           : Match N non-zero bytes (only EVENT)
-- `$ 1b ?? 3f ??`   : Match hexadecimal bytes, unless `??`, which matches any byte (only EVENT).
-- `A SRV_ADDR`      : Match IP of the server
-- `A CLI_ADDR`      : Match IP of the client
-- `A SRV_PORT`      : Match server port (network-endian)
-- `A SRV_PORT_HOST` : Match server port (host's endian)
-- `A CLI_PORT`      : Match client port (network-endian)
-- `A CLI_PORT_HOST` : Match client port (host's endian)
+- `$ 1b 01 3f 4b`    : Match hexadecimal bytes. Any number of them can be specified per line.
+- `"a utf8 string"`  : Match a UTF-8 string
+- `2 12345 10 15`    : Match 16-bit network byte-order unsigned integers
+- `4 131072 1 38`    : Match 32-bit network byte-order unsigned integers
+- `h2 12345 10 15`   : Match 16-bit host byte-order unsigned integers
+- `h4 131072 1 38`   : Match 32-bit host byte-order unsigned integers
+- `I 127.0.0.1`      : Match an IP address
+- `? 13`             : Match any N bytes (only EVENT)
+- `NZ 13`            : Match N non-zero bytes (only EVENT)
+- `$ 1b ?? 3f ??`    : Match hexadecimal bytes, unless `??`, which matches any byte (only EVENT).
+- `A SRV_ADDR`       : Match IP of the server
+- `A CLI_ADDR`       : Match IP of the client
+- `A SRV_PORT`       : Match server port (network-endian)
+- `A SRV_PORT_HOST`  : Match server port (host's endian)
+- `A CLI_PORT`       : Match client port (network-endian)
+- `A CLI_PORT_HOST`  : Match client port (host's endian)
+- `TUPLE <SRC> <DST>`: Match a full tuple where <SRC> and <DST> can be INGRESS, EGRESS, or a full IP:PORT 

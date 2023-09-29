@@ -15,16 +15,7 @@ EVENT http
   NZ 8          # ktime
 
   ## tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # direction (egress)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE CLI SRV
 
   ## process
   NZ 4          # pid
@@ -68,16 +59,7 @@ EVENT http
   NZ 8          # ktime
 
   ## tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # direction (ingress)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE SRV CLI
 
   ## process
   NZ 4          # pid
@@ -128,16 +110,7 @@ EVENT http
   NZ 8          # ktime
 
   ## tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # direction (egress)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE SRV CLI
 
   ## process
   NZ 4          # pid
@@ -147,7 +120,7 @@ EVENT http
   ## http
   h4 11         # method=RESPONSE
   h4 0x0        # flags
-  $ 00 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
 
   ## payload
@@ -186,16 +159,7 @@ EVENT http
   NZ 8          # ktime
 
   ## tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # direction (ingress)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE CLI SRV
 
   ## process
   NZ 4           # pid
@@ -205,7 +169,7 @@ EVENT http
   ## http
   h4 11         # method=RESPONSE
   h4 0x0        # flags
-  $ 00 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
 
   ## payload

@@ -41,16 +41,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE CLI SRV
 
     ## Process
     NZ 4                      # pid
@@ -90,16 +81,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE SRV CLI
 
     ## Process
     NZ 4                      # pid
@@ -157,16 +139,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE SRV CLI
 
     ## Process
     NZ 4                      # pid
@@ -207,16 +180,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE CLI SRV
 
     ## Process
     NZ 4                      # pid
@@ -303,16 +267,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE CLI SRV
 
     ## Process
     NZ 4                      # pid
@@ -352,16 +307,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE SRV CLI
 
     ## Process
     NZ 4                      # pid
@@ -430,16 +376,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A SRV_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE SRV CLI
 
     ## Process
     NZ 4                      # pid
@@ -480,16 +417,7 @@ EVENTS
     NZ 8          # ktime
 
     ## Tuple
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  NZ 8                      # netns id should be set.
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+    TUPLE CLI SRV
 
     ## Process
     NZ 4                      # pid

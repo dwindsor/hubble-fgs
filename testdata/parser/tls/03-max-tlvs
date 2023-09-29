@@ -127,16 +127,8 @@ EVENT tls
   $ 06 00 00 00             # op + pad
   h4 548                    # size
   NZ 8                      # ktime
-  A CLI_ADDR                # saddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR                # daddr
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining
-  NZ 8                      # uid
-  $ 00                      # IPv6
-  $ 00 00 00 00 00 00 00    # pad
+
+  TUPLE CLI SRV
 
   ## Client hello
   $ 03 03

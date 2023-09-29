@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"path"
 	"strconv"
@@ -470,6 +471,8 @@ scan:
 				ms, err = p.parseWildcard()
 			case "NZ":
 				ms, err = p.parseNonZero()
+			case "TUPLE":
+				ms, err = p.parseTupleMatcher()
 
 			case "END":
 				return
@@ -601,6 +604,54 @@ func (p *Parser) parseDoubleWord(network bool) (ms []Matcher, err error) {
 		}
 	}
 	return
+}
+
+func (p *Parser) parseTupleMatcher() (ms []Matcher, err error) {
+	var matcher TupleMatcher
+
+	src, err := p.parseTupleMatcherAddr()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing tuple src: %w", err)
+	}
+	dst, err := p.parseTupleMatcherAddr()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing tuple dst: %w", err)
+	}
+
+	matcher.Source = src
+	matcher.Dest = dst
+
+	return []Matcher{matcher}, nil
+}
+
+func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
+	tm := TupleMatcherIP{}
+	text := ""
+	for tok := p.scanner.Scan(); ; tok = p.scanner.Scan() {
+		if tok == '#' {
+			p.skipComment()
+			break
+		} else if tok == '\n' || tok == scanner.EOF {
+			break
+		} else {
+			text += p.scanner.TokenText()
+		}
+		switch strings.ToUpper(text) {
+		case "CLI", "CLIENT":
+			tm.IsCli = true
+			return tm, nil
+		case "SRV", "SERVER":
+			tm.IsSrv = true
+			return tm, nil
+		}
+	}
+
+	addr, err := netip.ParseAddrPort(text)
+	if err != nil {
+		return tm, fmt.Errorf("failed to parse addr '%s': %w", text, err)
+	}
+	tm.Addr = addr
+	return tm, nil
 }
 
 func (p *Parser) parseIPMatcher() (ms []Matcher, err error) {

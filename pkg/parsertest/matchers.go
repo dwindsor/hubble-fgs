@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"strconv"
 	"text/scanner"
+	"unsafe"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/yalue/native_endian"
 )
 
@@ -177,4 +180,121 @@ func (cam ConnAddrMatcher) Match(ctx *TestContext, r io.Reader) (int, error) {
 
 func (cam ConnAddrMatcher) Serialize() []byte {
 	panic("Cannot serialize a connection address matcher")
+}
+
+func convertPortU16ToHostOrder(port uint16) uint16 {
+	bytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(bytes, port)
+	return native_endian.NativeEndian().Uint16(bytes)
+}
+
+type TupleMatcherIP struct {
+	IsCli bool
+	IsSrv bool
+	Addr  netip.AddrPort
+}
+
+// Matches the full tuple
+type TupleMatcher struct {
+	Source TupleMatcherIP
+	Dest   TupleMatcherIP
+	// TODO: Add IPv6 flag to support IPv6 addrs
+}
+
+func addrToIpPort(addr net.Addr) (net.IP, uint16, error) {
+	addrStr, portStr, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, 0, err
+	}
+
+	ip := net.ParseIP(addrStr)
+	if ip == nil {
+		return nil, 0, fmt.Errorf("failed to parse IP '%s'", addrStr)
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return ip, uint16(port), nil
+}
+
+func convertNetipAddrPort(addr netip.AddrPort) (net.IP, uint16) {
+	return net.IP(addr.Addr().AsSlice()), addr.Port()
+
+}
+
+func (tm TupleMatcher) Match(ctx *TestContext, r io.Reader) (int, error) {
+	var tuple networkapi.MsgIPTuple
+	n := 0
+	if err := binary.Read(r, native_endian.NativeEndian(), &tuple); err != nil {
+		return n, err
+	}
+	n = int(unsafe.Sizeof(tuple))
+
+	var err error
+	var saddr, daddr net.IP
+	var sport, dport uint16
+	if tm.Source.IsCli {
+		saddr, sport, err = addrToIpPort(ctx.egressConn.LocalAddr())
+		if err != nil {
+			return n, err
+		}
+	} else if tm.Source.IsSrv {
+		saddr, sport, err = addrToIpPort(ctx.ingressConn.LocalAddr())
+		if err != nil {
+			return n, err
+		}
+	} else {
+		saddr, sport = convertNetipAddrPort(tm.Source.Addr)
+	}
+	if tm.Dest.IsCli {
+		daddr, dport, err = addrToIpPort(ctx.egressConn.LocalAddr())
+		if err != nil {
+			return n, err
+		}
+	} else if tm.Dest.IsSrv {
+		daddr, dport, err = addrToIpPort(ctx.ingressConn.LocalAddr())
+		if err != nil {
+			return n, err
+		}
+	} else {
+		daddr, dport = convertNetipAddrPort(tm.Dest.Addr)
+	}
+
+	actualIP := net.IP(make([]byte, 4))
+	binary.LittleEndian.PutUint32(actualIP, uint32(tuple.SAddr[0]))
+	if !saddr.Equal(actualIP) {
+		return n, fmt.Errorf("src address mismatch, expected %s, got %s", saddr, actualIP)
+	}
+
+	// Match sport
+	if tuple.SPort != sport {
+		return n, fmt.Errorf("src port mismatch, expected %d, got %d", sport, tuple.SPort)
+	}
+
+	// Match daddr
+	actualIP = net.IP(make([]byte, 4))
+	binary.LittleEndian.PutUint32(actualIP, uint32(tuple.DAddr[0]))
+	if !daddr.Equal(actualIP) {
+		return n, fmt.Errorf("dst address mismatch, expected %s, got %s", daddr, actualIP)
+	}
+
+	// Match dport
+	tuple.DPort = convertPortU16ToHostOrder(tuple.DPort)
+	if tuple.DPort != dport {
+		return n, fmt.Errorf("dst port mismatch, expected %d, got %d", dport, tuple.DPort)
+	}
+
+	// IPv6 is unsupported for now
+	if tuple.IPv6 != 0 {
+		return n, fmt.Errorf("expected IPv6=0, got %d", tuple.IPv6)
+	}
+
+	return n, nil
+}
+
+func (tm TupleMatcher) Serialize() []byte {
+	panic("Cannot serialize a tuple matcher")
 }

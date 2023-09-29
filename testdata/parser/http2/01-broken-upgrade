@@ -75,12 +75,7 @@ EVENT HTTP
   NZ 8          # ktime
 
   ## Tuple
-  A CLI_ADDR                # saddr
-  A SRV_ADDR                # daddr
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  NZ 8                      # netns id
+  TUPLE CLI SRV
 
   ## Process
   $ ?? ?? ?? ??             # pid
@@ -132,12 +127,7 @@ EVENT HTTP
   NZ 8          # ktime
 
   ## Tuple
-  A SRV_ADDR                # saddr
-  A CLI_ADDR                # daddr
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  NZ 8                      # netns id
+  TUPLE SRV CLI
 
   ? 1100
 END
@@ -150,6 +140,7 @@ EVENT HTTP
   NZ 8          # ktime
 
   ## Tuple
+  TUPLE CLI SRV
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
   A SRV_PORT                # dport

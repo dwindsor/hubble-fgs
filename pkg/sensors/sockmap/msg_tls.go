@@ -108,10 +108,6 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 		v := &MsgTLSEventCert{}
 		v.tls = m
 		v.cert = make([]byte, 0)
-		/* We hide a completion bit in the struct, but is not used to
-		 * as part of the key lookup.
-		 */
-		m.Tuple.Remaining = 0
 		cache.Add(m.Tuple, v)
 		return nil, nil
 	}
@@ -143,11 +139,6 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
 		return nil, err
 	}
-
-	/* We hide a completion bit in the struct, but is not used to
-	 * as part of the key lookup.
-	 */
-	key.Remaining = 0
 
 	m, ok := cache.Get(key)
 	/* If m is nil this implies either we incorrectly deleted a map

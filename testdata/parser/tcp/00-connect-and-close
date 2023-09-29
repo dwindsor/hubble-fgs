@@ -17,19 +17,7 @@ EVENT TCPACCEPT
   ? 8           # ktime
 
   ## tuple
-  A SRV_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT
-  A SRV_PORT_HOST
-  $ 00                      # proto
-  $ 00 00 00                # pad
-  $ 00 00 00 00             # post daddr
-  $ 00 00                   # post dport
-  $ 00 00                   # pad
-  $ 00                      # ipv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE SRV CLI
 
   ## ret
   $ 00 00 00 00 00 00 00 00 # ret
@@ -98,19 +86,7 @@ EVENT TCPCONNECTRET
   ? 8           # ktime
 
   ## tuple
-  A CLI_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT
-  A CLI_PORT_HOST
-  $ 00                      # proto
-  $ 00 00 00                # pad
-  $ 00 00 00 00             # post daddr
-  $ 00 00                   # post dport
-  $ 00 00                   # pad
-  $ 00                      # ipv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE CLI SRV
 
   ## ret
   $ 00 00 00 00 00 00 00 00 # ret
@@ -179,19 +155,7 @@ EVENT TCPCLOSE
   ? 8           # ktime
 
   ## tuple
-  A SRV_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A CLI_PORT
-  A SRV_PORT_HOST
-  $ 00                      # proto
-  $ 00 00 00                # pad
-  $ 00 00 00 00             # post daddr
-  $ 00 00                   # post dport
-  $ 00 00                   # pad
-  $ 00                      # ipv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE SRV CLI
 
   ## ret
   $ 00 00 00 00 00 00 00 00 # ret
@@ -260,19 +224,7 @@ EVENT TCPCLOSE
   ? 8           # ktime
 
   ## tuple
-  A CLI_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  A SRV_PORT
-  A CLI_PORT_HOST
-  $ 00                      # proto
-  $ 00 00 00                # pad
-  $ 00 00 00 00             # post daddr
-  $ 00 00                   # post dport
-  $ 00 00                   # pad
-  $ 00                      # ipv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE CLI SRV
 
   ## ret
   $ 00 00 00 00 00 00 00 00 # ret
@@ -340,20 +292,7 @@ EVENT TCPCLOSE
   ? 8           # ktime
 
   ## tuple
-  A SRV_ADDR
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  I 0.0.0.0
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
-  $ 00 00
-  A SRV_PORT_HOST
-
-  $ 00                      # proto
-  $ 00 00 00                # pad
-  $ 00 00 00 00             # post daddr
-  $ 00 00                   # post dport
-  $ 00 00                   # pad
-  $ 00                      # ipv6
-  $ 00 00 00 00 00 00 00    # pad
+  TUPLE SRV 0.0.0.0:0
 
   ## ret
   $ 00 00 00 00 00 00 00 00 # ret
