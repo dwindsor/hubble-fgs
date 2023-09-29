@@ -21,7 +21,7 @@ var (
 		Name:      "http_response_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "HTTP return code statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "host", "code"})
 	// The buckets are defined based on OpenTelemetry semantic conventions for HTTP metrics:
 	// https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/http-metrics/#metric-httpserverduration
 	HttpRequestDurationSeconds = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
@@ -29,7 +29,7 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "Duration of HTTP request processing.",
 		Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10},
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "host"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {

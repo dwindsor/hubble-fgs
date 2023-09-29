@@ -24,12 +24,12 @@ var (
 		Name:      "socket_stats_udp_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPTxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_txbursts_total",
 		Namespace: consts.MetricsNamespace,
@@ -44,12 +44,12 @@ var (
 		Name:      "socket_stats_udp_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPRxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
@@ -64,32 +64,32 @@ var (
 		Name:      "socket_stats_udp_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket drops statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPConsumeMisses = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_consume_misses_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket consume packet misses",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPStackTxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_stack_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP stack TX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPStackTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_stack_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP stack TX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPStackRxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_stack_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP stack RX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPStackRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_stack_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP stack RX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	SocketStatsUDPTxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "socket_stats_udp_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
@@ -108,32 +108,32 @@ var (
 		Name:      "socket_stats_udp_mcast_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_mcast_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastRxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_mcast_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_mcast_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastDrops = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_mcast_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket drops statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	SocketStatsUDPMulticastConsumeMisses = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_mcast_consume_misses_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket consume packet misses",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 )
 
 // UDP metrics collection errors
@@ -157,17 +157,17 @@ var (
 		Name:      "udp_latency_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for UDP socket latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "le"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "le"})
 	UdpLatencyCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "udp_latency_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for UDP socket latency",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 	UdpLatencySum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "udp_latency_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for UDP socket latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 )
 
 // UDP Multicast Latency Histogram
@@ -181,17 +181,17 @@ var (
 		Name:      "udp_mcast_latency_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for UDP socket multicast latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "le"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast", "le"})
 	UdpMulticastLatencyCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "udp_mcast_latency_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for UDP socket multicast latency",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 	UdpMulticastLatencySum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "udp_mcast_latency_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for UDP socket multicast latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
+	}, []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"})
 )
 
 // UDP Sequence Check errors
