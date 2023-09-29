@@ -58,6 +58,9 @@ func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kre
 	case *btf.Struct:
 		arg := myType.(*btf.Struct)
 		sb.WriteString(fmt.Sprintf("struct %s", arg.Name))
+	case *btf.Fwd:
+		arg := myType.(*btf.Fwd)
+		sb.WriteString(fmt.Sprintf("struct %s", arg.Name))
 	default:
 		logger.GetLogger().Warnf("Unknown type %s", t)
 	}
