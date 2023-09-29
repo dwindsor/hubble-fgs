@@ -29,8 +29,7 @@ static inline __attribute__((always_inline)) void
 bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie)
 #else
 static inline __attribute__((always_inline)) void
-bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
-		     struct tcphdr *tcp, u64 *cookie, int payload_off)
+bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie, int payload_off)
 #endif
 {
 	struct socketmap_value *socket;

@@ -44,10 +44,10 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 	return ip_off;
 }
 
-static inline __attribute__((always_inline)) void
-tls_inet_send_handler(struct __sk_buff *skb, u64 send)
+static inline __attribute__((always_inline))
+struct tls_packet_details *tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 {
-	struct tls_packet_details *packet;
+	struct tls_packet_details *packet = 0;
 	struct sock_key filter_key = { 0 };
 	unsigned long int err = 0;
 	int zero = 0;
@@ -57,63 +57,57 @@ tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 
 	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
 	if (!cookie)
-		return;
+		return 0;
 	write_cookie(cookie, (u64)skb->sk);
 	if (!*cookie)
-		return;
+		return 0;
 
 	packet = map_lookup_elem(&tls_header_heap, &zero);
 	if (!packet)
-		return;
+		return 0;
 
 	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0)
-		return;
+		return 0;
 
 	switch (packet->ip.ip4.version) {
 	case 4:
 		if (packet->ip.ip4.protocol != IPPROTO_TCP)
-			return;
+			return 0;
 		packet->ipv6 = false;
 		packet->tcp_off = ip_payload_off(&packet->ip.ip4);
 		break;
 	case 6:
 		if (skb_load_bytes(skb, 0, &packet->ip,
 				   sizeof(struct ipv6hdr)) < 0)
-			return;
+			return 0;
 		packet->ipv6 = true;
 		proto = get_ip6_proto(&packet->tcp_off, &packet->ip.ip6, 0, skb,
 				      0, true, false, &err);
 		if (proto == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
 					    packet->ip.ip4.version, send + 1, 0, err);
-			return;
+			return 0;
 		} else if (proto != IPPROTO_TCP) {
-			return;
+			return 0;
 		}
 		if (!packet->tcp_off)
-			return;
+			return 0;
 		break;
 	default:
-		return;
+		return 0;
 	}
 	if (skb_load_bytes(skb, packet->tcp_off, &packet->tcp,
 			   sizeof(struct tcphdr)) < 0)
-		return;
+		return 0;
 
 	filter_key.sport = packet->tcp.source;
 	filter_key.dport = packet->tcp.dest;
 	result = tls_filter(&filter_key);
 	if (result == PROTO_SKIP)
-		return;
+		return 0;
 
 	packet->payload_off = (packet->tcp.doff * 4) + packet->tcp_off;
-
-	if (send) {
-		bpf_parse_tls_egress(skb, &packet->ip.ip4, packet->ipv6,
-				     &packet->tcp, cookie, packet->payload_off);
-	} else {
-		bpf_parse_ingress_skb(skb, packet->payload_off, *cookie);
-	}
+	return packet;
 }
 
 #endif //__BPF_TLS_INET_SEND_H_

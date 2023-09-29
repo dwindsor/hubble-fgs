@@ -207,8 +207,7 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 		errcode = EBADHEADER;
 		goto fail;
 	}
-	event = bottle_get_data(
-		bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
+	event = bottle_get_data(bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
 	if (!event) {
 		errcode = EBADHEADER;
 		goto fail;
@@ -228,7 +227,7 @@ fail:
 		return TLS_PARSE_ERROR;
 
 	event->op = ISO_MSG_OP_TLS_CONT;
-	event->tuple = *tuple;
+	//event->tuple.saddr[0] = tuple->saddr[0];
 	event->payload_size = 0;
 
 	errout_pack((int *)event->payload, errcode, bottle->len, type, subtype,
@@ -240,22 +239,14 @@ fail:
 }
 
 static inline __attribute__((always_inline)) void
-bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
+bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 {
 	struct socketmap_value *execve;
+	u64 cookie = (u64)skb->sk;
 	struct msg_tls *event;
 	int zero = 0;
-	u64 *cookie;
 
-	if (!cookie_val)
-		return;
-
-	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
-	if (!cookie)
-		return;
-	*cookie = cookie_val;
-
-	event = map_lookup_elem(&tg_tls_map, cookie);
+	event = map_lookup_elem(&tg_tls_map, &cookie);
 	if (!event)
 		return;
 
@@ -267,8 +258,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 		return;
 	}
 
-	execve = lookup_socketmap(cookie);
-	if (execve)
+	execve = lookup_socketmap(&cookie);
+	if (!execve)
 		return;
 
 	if (is_expected_tls_client_hello(event)) {
@@ -280,7 +271,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 		if (!post)
 			return;
 
-		bottle = bottle_fill(skb, cookie, offset);
+		bottle = bottle_fill(skb, &cookie, offset);
 		if (!bottle) {
 			tls_inc_bottle_fill_failed();
 			tls_mark_complete(event);
@@ -306,10 +297,6 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
-
-		execve = lookup_socketmap(cookie);
-		if (!execve)
-			return;
 
 		post->execve = execve->key;
 		post->tuple = execve->tuple;
@@ -338,13 +325,13 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 				tls_inc_ingress_ok();
 
 			tls_mark_complete(event);
-			bottle_drop(cookie);
+			bottle_drop(&cookie);
 		}
 	} else if (is_expected_tls_data(event)) {
 		struct bottle *bottle;
 		int err;
 
-		bottle = bottle_fill(skb, cookie, offset);
+		bottle = bottle_fill(skb, &cookie, offset);
 		if (!bottle) {
 			tls_inc_bottle_fill_failed();
 			return;
@@ -361,7 +348,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 			else
 				tls_inc_ingress_ok();
 			tls_mark_complete(event);
-			bottle_drop(cookie);
+			bottle_drop(&cookie);
 		}
 	}
 }
