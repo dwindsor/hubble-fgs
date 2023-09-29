@@ -48,12 +48,12 @@ static inline __attribute__((always_inline)) void
 tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 {
 	struct tls_packet_details *packet;
-	u64 *cookie;
-	int zero = 0;
-	u8 proto;
-	unsigned long int err = 0;
 	struct sock_key filter_key = { 0 };
+	unsigned long int err = 0;
+	int zero = 0;
+	u64 *cookie;
 	int result;
+	u8 proto;
 
 	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
 	if (!cookie)
@@ -112,8 +112,7 @@ tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 		bpf_parse_tls_egress(skb, &packet->ip.ip4, packet->ipv6,
 				     &packet->tcp, cookie, packet->payload_off);
 	} else {
-		event_tc_ingress_tcp(skb, &packet->ip.ip4, packet->ipv6,
-				     &packet->tcp, cookie, packet->payload_off);
+		bpf_parse_ingress_skb(skb, packet->payload_off, *cookie);
 	}
 }
 

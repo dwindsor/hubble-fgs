@@ -177,7 +177,7 @@ tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
 
 static inline __attribute__((always_inline)) int
 bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
-		   struct msg_tls_ip *tuple, u32 offset)
+		   struct msg_ip_tuple *tuple, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;
@@ -240,8 +240,7 @@ fail:
 }
 
 static inline __attribute__((always_inline)) void
-bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
-		      int offset, u64 cookie_val)
+bpf_parse_ingress_skb(struct __sk_buff *skb, int offset, u64 cookie_val)
 {
 	struct socketmap_value *execve;
 	struct msg_tls *event;
@@ -267,6 +266,10 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 		//	http_do_parser(skb, tuple);
 		return;
 	}
+
+	execve = lookup_socketmap(cookie);
+	if (execve)
+		return;
 
 	if (is_expected_tls_client_hello(event)) {
 		struct msg_tls_event *post;
@@ -318,7 +321,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, tuple,
+			next = bpf_parse_tls_cert(skb, bottle, event, &execve->tuple,
 						  next);
 			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
@@ -347,7 +350,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 			return;
 		}
 
-		err = bpf_parse_tls_cert(skb, bottle, event, tuple,
+		err = bpf_parse_tls_cert(skb, bottle, event, &execve->tuple,
 					 event->bytes);
 		if (err == TLS_PARSE_OUT_OF_DATA) {
 			tls_inc_ingress_out_of_data();
@@ -362,47 +365,4 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
 		}
 	}
 }
-
-static inline __attribute__((always_inline)) void
-event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
-		     struct tcphdr *tcp, u64 *cookie, int payload_off)
-{
-	struct msg_tls_ip tuple = { 0 };
-	u64 cookie_val = (u64)skb->sk;
-
-	if (!ipv6) {
-		tuple.daddr[0] = ip->daddr;
-		tuple.saddr[0] = ip->saddr;
-		tuple.ipv6 = 0;
-	} else {
-		struct ipv6hdr *ip6 = (struct ipv6hdr *)ip;
-		u32 *addr = (u32 *)&tuple.daddr;
-		addr[0] = ip6->daddr.in6_u.u6_addr32[0];
-		addr[1] = ip6->daddr.in6_u.u6_addr32[1];
-		addr[2] = ip6->daddr.in6_u.u6_addr32[2];
-		addr[3] = ip6->daddr.in6_u.u6_addr32[3];
-		addr = (u32 *)&tuple.saddr;
-		addr[0] = ip6->saddr.in6_u.u6_addr32[0];
-		addr[1] = ip6->saddr.in6_u.u6_addr32[1];
-		addr[2] = ip6->saddr.in6_u.u6_addr32[2];
-		addr[3] = ip6->saddr.in6_u.u6_addr32[3];
-		tuple.ipv6 = 1;
-	}
-	tuple.dport = tcp->dest;
-	tuple.sport = tcp->source;
-	tuple.uid = get_socket_cookie(skb);
-	skb_tls_tuple_ct_xchg(&tuple);
-	/* Hooks read sport in network order, but rest of stack
-	 * expects host order for sport so we do conversion here after
-	 * xchg to get correct sport/dports. We do not need to do
-	 * anything with dport because the original pre-xchged sport
-	 * was in network byte order being read directly from packet
-	 * data.
-	 */
-	tuple.sport = bpf_ntohs(tuple.sport);
-	bpf_parse_ingress_skb(skb, &tuple, payload_off, cookie_val);
-
-	return;
-}
-
 #endif // ingress_h_INCLUDED

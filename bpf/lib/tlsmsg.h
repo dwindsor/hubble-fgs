@@ -93,7 +93,7 @@ struct msg_tls_event {
 
 struct msg_tls_cont_event {
 	__u8 op;
-	struct msg_tls_ip tuple;
+	struct msg_ip_tuple tuple;
 	__u32 payload_size; /* Payload size, or if zero an error follows */
 	__u8 payload[0];
 } __attribute__((packed));
