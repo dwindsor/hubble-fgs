@@ -12,10 +12,6 @@
 
 #define SOCKFLAGS_TYPE_MASK 0x7
 
-// These fields are specified and aligned to roughly match up with
-// struct msg_tls_ip in tlsmsg.h.
-// proto + pad = 32bit remaining
-// post_daddr + post_dport + pad2 = 64 bit uid
 struct msg_ip_tuple {
 	__u64 saddr[2];
 	__u64 daddr[2];

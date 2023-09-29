@@ -67,22 +67,6 @@ struct msg_tls {
 
 #define SOCKET_TLS_DONE 0x0001
 
-// These fields are specified and aligned to roughly match up with
-// struct msg_ip_tuple in networkmsg.h.
-// remaining = proto + pad
-// uid = post_daddr + post_dport + pad2
-struct msg_tls_ip {
-	__u64 saddr[2];
-	__u64 daddr[2];
-	/* Both ports are in host byte-order */
-	__u16 dport;
-	__u16 sport;
-	__u32 remaining;
-	__u64 uid;
-	__u8 ipv6;
-	__u8 pad[7];
-}; // All fields aligned so no 'packed' attribute.
-
 struct msg_tls_event {
 	struct msg_common common;
 	struct msg_ip_tuple tuple;
@@ -97,24 +81,4 @@ struct msg_tls_cont_event {
 	__u32 payload_size; /* Payload size, or if zero an error follows */
 	__u8 payload[0];
 } __attribute__((packed));
-
-static inline __attribute__((always_inline)) int
-is_tuple_local(struct msg_tls_ip *tuple)
-{
-	return ((!tuple->ipv6 &&
-		 ( // ipv4
-			 (tuple->daddr[0] & 0xff) == 127 || // daddr lo addr
-			 (tuple->saddr[0] & 0xff) == 127 || // saddr lo addr
-			 tuple->daddr[0] ==
-				 0)) || // listening socket no addr always local
-		(tuple->ipv6 &&
-		 ( // ipv6
-			 (tuple->daddr[0] & 0xc0ff) == 0x80fe || // daddr lo addr
-			 (tuple->saddr[0] & 0xc0ff) == 0x80fe || // saddr lo addr
-			 (tuple->daddr[0] == 0 &&
-			  tuple->daddr[1] ==
-				  0))) // listening socket no addr always local
-	);
-}
-
 #endif

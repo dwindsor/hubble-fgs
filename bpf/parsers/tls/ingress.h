@@ -62,47 +62,6 @@ struct {
 } cilium_snat_v4_external SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-skb_tls_tuple_ct_xchg(struct msg_tls_ip *tuple)
-{
-	struct ipv4_ct_tuple ct = { 0 };
-	struct ipv4_nat_entry *nat;
-	__u32 addr;
-	__u16 port;
-
-	if (tuple->ipv6) {
-		/* Only do NAT translation on IPv4 tuples.
-		 */
-		return;
-	}
-	/* Egress hook runs in-front of Cilium SNAT, so it used same IP addr pairs
-	 * as seen by socket. But, ingress hook is also running in front Cilium
-	 * SNAT so the TCP tuple is before NAT and needs to be translated using
-	 * the BPF map.
-	 */
-	ct.daddr = tuple->daddr[0];
-	ct.saddr = tuple->saddr[0];
-	ct.dport = bpf_htons(tuple->dport);
-	ct.sport = bpf_htons(tuple->sport);
-	ct.nexthdr = IPPROTO_TCP;
-	ct.flags = 1;
-
-	nat = map_lookup_elem(&cilium_snat_v4_external, &ct);
-	if (nat) {
-		tuple->daddr[0] = nat->to_daddr;
-		tuple->dport = bpf_ntohs(nat->to_dport);
-	}
-
-	/* Swap tuple to match egress side */
-	addr = tuple->saddr[0];
-	tuple->saddr[0] = tuple->daddr[0];
-	tuple->daddr[0] = addr;
-
-	port = tuple->sport;
-	tuple->sport = tuple->dport;
-	tuple->dport = port;
-}
-
-static inline __attribute__((always_inline)) void
 errout_pack(int *errout, int code, int a, int b, int c, int d)
 {
 	errout[1] = code;

@@ -37,13 +37,6 @@ struct {
 } http1_calls_skb SEC(".maps");
 #endif
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct msg_tls_ip);
-	__uint(max_entries, 1);
-} msg_tls_ip_heap SEC(".maps");
-
 #define MAX_HTTP_HDR   512
 #define MAX_HTTP_CHARS 32
 
