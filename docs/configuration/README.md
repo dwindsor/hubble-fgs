@@ -54,7 +54,7 @@ This section shows the controlling settings that administrators can set.
 ```
       --btf string                                Location of btf
       --config-dir string                         Configuration directory that contains a file for each option
-      --config-file string                        Location of the TracingPolicy file
+      --tracing-policy string                     Tracing policy file to load at startup
       --data-cache-size int                       Size of the data events cache (default 1024)
   -d, --debug                                     Enable debug messages. Equivalent to '--log-level=debug'
       --dns-cache-size int                        Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones (default 1024)
@@ -153,7 +153,7 @@ Then to access the gRPC API with Tetragon client, set the `--server-address`:
 
 ### Tracing Policy
 
-A [Tracing Policy](https://github.com/cilium/tetragon/tree/main/docs/tracingpolicy) can be specified by the `--config-file` setting or by creating the drop-in file `/etc/hubble-fgs/hubble-fgs.conf.d/config-file` that contains the location of the Tracing Policy file.
+A [Tracing Policy](https://github.com/cilium/tetragon/tree/main/docs/tracingpolicy) can be specified by the `--tracing-policy` setting or by creating the drop-in file `/etc/hubble-fgs/hubble-fgs.conf.d/config-file` that contains the location of the Tracing Policy file.
 
 Example:
 
@@ -172,7 +172,7 @@ Example:
    ```
 
 Tetragon Enterprise will read its configuration, loads the `/etc/hubble-fgs/hubble-fgs.conf.d/config-file` that corresponds to the
-`--config-file` setting and use its value to locate and load the Tracing Policy.
+`--tracing-policy` setting and use its value to locate and load the Tracing Policy.
 
 
 For further details on how to write Tracing Policies, please check

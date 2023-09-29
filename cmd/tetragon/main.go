@@ -349,7 +349,7 @@ func hubbleFGSExecute() error {
 	}
 
 	// Get observer from configFile
-	obs := observer.NewObserver(configFile)
+	obs := observer.NewObserver(option.Config.TracingPolicy)
 	defer func() {
 		file.TerminateFsScanner()
 		obs.PrintStats()
@@ -516,9 +516,9 @@ func hubbleFGSExecute() error {
 	sensorMgWait = nil
 	observer.SensorManager.LogSensorsAndProbes(ctx)
 
-	if len(configFile) > 0 {
+	if len(option.Config.TracingPolicy) > 0 {
 		var sens *sensors.Sensor
-		tp, err := tracingpolicy.PolicyFromYAMLFilename(configFile)
+		tp, err := tracingpolicy.PolicyFromYAMLFilename(option.Config.TracingPolicy)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}
@@ -835,8 +835,11 @@ func execute() error {
 	flags.Int(keyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
 	flags.String(keyFimFifoPath, "/var/run/cilium/hubble", "Path for the FIFO used for fs-scanner and tetragon communication")
 
-	// Config files
-	flags.String(keyConfigFile, "", "Location of the TracingPolicy file")
+	// Tracing Policy files
+	flags.String(keyTracingPolicy, "", "Tracing policy file to load at startup")
+	// --config-file is the deprecated flag for the new --tracing-policy
+	flags.String(keyConfigFile, "", "Configuration file to load from")
+	flags.MarkHidden(keyConfigFile)
 
 	// JSON export aggregation options.
 	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")
