@@ -34,7 +34,8 @@ type MsgIPTuple struct {
 	PostData [6]uint8
 	Pad2     [2]uint8
 	IPv6     uint8
-	Pad3     [7]uint8
+	Pad3     [3]uint8
+	Remaining uint32
 }
 
 func (m *MsgIPTuple) GetPostDAddr() uint32 {

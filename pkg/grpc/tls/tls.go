@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -49,7 +50,7 @@ func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
 
 type MsgTLSEventUnix struct {
 	Common      processapi.MsgCommon
-	Tuple       tlsapi.MsgTLSIP
+	Tuple       networkapi.MsgIPTuple
 	ClientHello tlsapi.MsgTLS
 	ServerHello tlsapi.MsgTLS
 	ServerCert  tlsapi.MsgTLSCertificates

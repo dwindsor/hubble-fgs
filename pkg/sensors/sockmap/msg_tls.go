@@ -23,6 +23,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/yalue/native_endian"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
@@ -45,7 +46,7 @@ type MsgTLSEventCert struct {
 	cert []byte
 }
 
-type tlsCache = lru.Cache[api.MsgTLSIP, *MsgTLSEventCert]
+type tlsCache = lru.Cache[networkapi.MsgIPTuple, *MsgTLSEventCert]
 
 // Return a reference to the tlsCache, allocating it first if necessary.
 func getCache() (*tlsCache, error) {
@@ -54,7 +55,7 @@ func getCache() (*tlsCache, error) {
 	}
 
 	logger.GetLogger().WithField("size", enterpriseOption.Config.TlsCacheSize).Info("Initializing TLS cache")
-	lru, err := lru.New[api.MsgTLSIP, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
+	lru, err := lru.New[networkapi.MsgIPTuple, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TLS cache: %w", err)
 	}
@@ -138,7 +139,7 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	if err = binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
 		return nil, err
 	}
-	key := api.MsgTLSIP{}
+	key := networkapi.MsgIPTuple{}
 	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
 		return nil, err
 	}
