@@ -20,7 +20,7 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.0
 	github.com/miekg/dns v1.1.43
 	github.com/prometheus/client_golang v1.17.0
-	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16
+	github.com/prometheus/client_model v0.4.1-0.20231002172004-cbe84deebbb8
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
