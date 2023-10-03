@@ -133,6 +133,7 @@ strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
 {
 	int diff;
 	int i;
+
 	for (i = 0; i < s1_sz && i < s2_sz; i++) {
 		diff = s1[i] - s2[i];
 		if (diff != 0) {
@@ -778,6 +779,7 @@ http_reset_state(struct msg_http *http)
 	http->url_continue = 0;
 	http->consume_bytes = 0;
 	http->flags = 0;
+	http->scratch[0] = (u32)0;
 }
 
 static inline __attribute__((always_inline)) void

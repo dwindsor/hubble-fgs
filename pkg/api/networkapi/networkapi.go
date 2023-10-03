@@ -31,10 +31,10 @@ type MsgIPTuple struct {
 	VersionByte uint8
 	Pad         uint8
 	// define as uint8 otherwise padding in struct breaks
-	PostData [6]uint8
-	Pad2     [2]uint8
-	IPv6     uint8
-	Pad3     [3]uint8
+	PostData  [6]uint8
+	Pad2      [2]uint8
+	IPv6      uint8
+	Pad3      [3]uint8
 	Remaining uint32
 }
 

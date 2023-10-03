@@ -318,6 +318,8 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
 	// header decoders.
 	unix.Tuple.Proto = 0
+	unix.Tuple.Remaining = 0
+
 	key := api.HttpKey{
 		Tuple: unix.Tuple,
 		Id:    unix.Request.RequestId,
