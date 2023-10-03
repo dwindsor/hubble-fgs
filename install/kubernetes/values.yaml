@@ -152,8 +152,12 @@ tetragon:
   # Access Kubernetes API to associate Tetragon events with Kubernetes pods.
   enableK8sAPI: true
 
+  # -- DEPRECATED: enableCiliumAPI is deprecated in v1.12 and will be removed in v1.13.
+  # Use tetragonOperator.podInfo.enabled and Tetragon's DNS sensor instead to get
+  # destination endpoint information for network events.
+  #
   # Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache.
-  enableCiliumAPI: true
+  enableCiliumAPI: false
 
   # enableProcessCred enables Capabilities visibility in exec and kprobe events.
   enableProcessCred: false
@@ -221,4 +225,4 @@ tetragonOperator:
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
-    enabled: false
+    enabled: true

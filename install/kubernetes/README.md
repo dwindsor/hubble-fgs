@@ -35,7 +35,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.argsOverride | list | `[]` |  |
 | tetragon.btf | string | `""` |  |
 | tetragon.commandOverride | list | `[]` |  |
-| tetragon.enableCiliumAPI | bool | `true` |  |
+| tetragon.enableCiliumAPI | bool | `false` | DEPRECATED: enableCiliumAPI is deprecated in v1.12 and will be removed in v1.13. Use tetragonOperator.podInfo.enabled and Tetragon's DNS sensor instead to get destination endpoint information for network events.  Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache. |
 | tetragon.enableK8sAPI | bool | `true` |  |
 | tetragon.enablePolicyFilter | bool | `false` | Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default. |
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
@@ -80,7 +80,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.tcpStatsSampleSegs | int | `0` | EXPERIMENTAL: This field may be removed in the future without notice.  Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.  Note that the counter for sampling is global, and it is not per socket. |
 | tetragonOperator.image | object | `{"override":null,"repository":"quay.io/isovalent/tetragon-operator","tag":"v1.11.1"}` | tetragon-operator image. |
-| tetragonOperator.podInfo.enabled | bool | `false` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
+| tetragonOperator.podInfo.enabled | bool | `true` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
 | tetragonOperator.skipCRDCreation | bool | `false` |  |
 | tolerations[0].operator | string | `"Exists"` |  |
 | updateStrategy | object | `{}` |  |
