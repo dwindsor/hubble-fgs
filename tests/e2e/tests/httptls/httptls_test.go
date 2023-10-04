@@ -204,11 +204,9 @@ func TlsChecker(_ string) ec.MultiEventChecker {
 	podChecker := ec.NewPodChecker().
 		WithNamespace(sm.Full("curl")).
 		WithName(sm.Prefix("curl")).
-		WithLabels(map[string]sm.StringMatcher{
-			"k8s:app":                                 *sm.Full("curl"),
-			"k8s:io.cilium.k8s.policy.cluster":        *sm.Contains(helpers.GetClusterName()),
-			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
-			"k8s:io.kubernetes.pod.namespace":         *sm.Full("curl"),
+		WithPodLabels(map[string]sm.StringMatcher{
+			"app":               *sm.Full("curl"),
+			"pod-template-hash": *sm.Regex("[a-f0-9]+"),
 		}).
 		WithContainer(containerChecker)
 
@@ -262,11 +260,9 @@ func HttpChecker(_ string) ec.MultiEventChecker {
 	podChecker := ec.NewPodChecker().
 		WithNamespace(sm.Full("curl")).
 		WithName(sm.Prefix("curl")).
-		WithLabels(map[string]sm.StringMatcher{
-			"k8s:app":                                 *sm.Full("curl"),
-			"k8s:io.cilium.k8s.policy.cluster":        *sm.Contains(helpers.GetClusterName()),
-			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
-			"k8s:io.kubernetes.pod.namespace":         *sm.Full("curl"),
+		WithPodLabels(map[string]sm.StringMatcher{
+			"app":               *sm.Full("curl"),
+			"pod-template-hash": *sm.Regex("[a-f0-9]+"),
 		}).
 		WithContainer(containerChecker)
 

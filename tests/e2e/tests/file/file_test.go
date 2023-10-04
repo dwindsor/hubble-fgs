@@ -314,11 +314,9 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 	podChecker := ec.NewPodChecker().
 		WithNamespace(sm.Full("file")).
 		WithName(sm.Prefix("ubuntu")).
-		WithLabels(map[string]sm.StringMatcher{
-			"k8s:app":                                 *sm.Full("ubuntu"),
-			"k8s:io.cilium.k8s.policy.cluster":        *sm.Contains(helpers.GetClusterName()),
-			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
-			"k8s:io.kubernetes.pod.namespace":         *sm.Full("file"),
+		WithPodLabels(map[string]sm.StringMatcher{
+			"app":               *sm.Full("ubuntu"),
+			"pod-template-hash": *sm.Regex("[a-f0-9]+"),
 		}).
 		WithContainer(containerChecker)
 
