@@ -6,7 +6,6 @@
 #include "bpf_task.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
-#include "netns.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tcp_send_check.h"
 #include "bpf_tracing.h"
@@ -34,7 +33,6 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	struct socketmap_value *process;
 	struct msg_ip_event *val;
 	unsigned char old_state;
-	struct net *netns;
 	struct sock *skp;
 	u32 zero = 0;
 	size_t size;
@@ -76,8 +74,7 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	val->socket_flags = process->socket_flags;
 	val->tuple = process->tuple;
 
-	probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-	get_socket_stats(skp, netns, process, &val->stats);
+	get_socket_stats(skp, process, &val->stats);
 
 	/* Get the state that we are transitioning from */
 	probe_read(&old_state, sizeof(old_state),

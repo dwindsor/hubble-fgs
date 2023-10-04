@@ -6,7 +6,6 @@
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "bpf_process_network_watermarks.h"
-#include "netns.h"
 #include "tlsmsg.h"
 
 struct tcp_send_check_sample_cfg {
@@ -45,7 +44,6 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 {
 	struct socketmap_value *process;
 	struct tcp_sock *tcp;
-	struct net *netns;
 	int zero = 0;
 	u64 cookie;
 	u8 state;
@@ -164,8 +162,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 				   _(&(skp->__sk_common.skc_v6_daddr)));
 		}
 
-		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-		get_socket_stats(skp, netns, process, &val->stats);
+		get_socket_stats(skp, process, &val->stats);
 		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 				  size);

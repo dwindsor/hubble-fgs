@@ -53,7 +53,7 @@ struct {
 } ip_error_event_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-get_socket_stats(struct sock *sk, struct net *net,
+get_socket_stats(struct sock *sk,
 		 struct socketmap_value *process,
 		 struct msg_socket_stats *stats)
 {
