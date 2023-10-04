@@ -175,7 +175,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 01 00 00 00 00 00 00 00 # request id
+    $ 02 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
@@ -225,7 +225,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 01 00 00 00 00 00 00 00 # request id
+    $ 02 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
@@ -321,7 +321,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 02 00 00 00 00 00 00 00 # request id
+    $ 03 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
@@ -370,7 +370,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 02 00 00 00 00 00 00 00 # request id
+    $ 03 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
@@ -448,7 +448,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 02 00 00 00 00 00 00 00 # request id
+    $ 04 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
@@ -498,7 +498,7 @@ EVENTS
 
     $ 0c 00 00 00 # method
     $ 00 00 00 00 # flags
-    $ 02 00 00 00 00 00 00 00 # request id
+    $ 04 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
 
     ## Chunks (1024 bytes)
