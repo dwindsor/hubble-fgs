@@ -6,8 +6,14 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/timer"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -42,6 +48,83 @@ func (v *SockStatValue) String() string {
 		"WatermarksBurstTriggerMult: %d, "+
 		"WatermarksDipTriggerMult: %d",
 		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
+}
+
+var (
+	gcTimer    = timer.NewPeriodicTimer("TCP GC Timer", runTcpGC, true)
+	TcpMapName = "tg_socket_map"
+)
+
+func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStatsUnix) {
+	unix := layer3.MsgIPEventUnix{}
+
+	unix.Common = processapi.MsgCommon{
+		Op:    ops.MsgOpTCPStats,
+		Size:  1,
+		Ktime: stats.Ktime,
+	}
+	unix.Tuple = *tuple
+	unix.SockCookie = k.SockCookie
+	unix.Return = 0
+	unix.ProcessKey = processapi.MsgExecveKey{
+		Pid:   v.Key.Pid,
+		Ktime: v.Key.Ktime,
+	}
+	unix.Common.Flags = 0
+	unix.SocketStats = *stats
+	unix.Duration = 0
+
+	observer.AllListeners(&unix)
+}
+
+func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
+	tuple := value.ToMsgIpTuple()
+	tcpStats := value.ToMsgSocketStatsUnix()
+	statsKey := tcpKey{SockCookie: key.SockCookie}
+
+	// This case handles kernels <5.10 where map will have udp stats
+	// that are not yet associated to a process between IP stack and
+	// socket handling of the UDP data.
+	if value.Key.Pid == 0 {
+		return
+	} else if tuple.Proto == IPPROTO_TCP {
+		last, ok := stats.Get(statsKey)
+		if ok {
+			if tcpStats.Ktime != last.Ktime {
+				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
+				if err == nil {
+					stats.Add(statsKey, *tcpStats)
+					emitStatEvent(key, value, tuple, &diffValue)
+				} else {
+					fmt.Printf("diffvalue err %s\n", err)
+				}
+			}
+		} else {
+			emitStatEvent(key, value, tuple, tcpStats)
+			stats.Add(statsKey, *tcpStats)
+		}
+	}
+}
+
+func runTcpGC() {
+	file := filepath.Join(bpf.MapPrefixPath(), TcpMapName)
+
+	m, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", file).Warn("TCP GC failed to open file")
+		return
+	}
+	defer m.Close()
+
+	var (
+		key tcpKey
+		val tcpValue
+	)
+
+	iter := m.Iterate()
+	for iter.Next(&key, &val) {
+		tcpGcCb(m, &key, &val)
+	}
 }
 
 func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
@@ -97,5 +180,11 @@ func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 		"bucket5": value.RttBucket5,
 		"bucket6": value.RttBucket6,
 		"bucket7": value.RttBucket7}).Info("Configured RTT buckets: ")
+
+	// Configure the TCP stats collector that walks the TCP BPF map every
+	// time.Durations and post statistics about that connections. This is
+	// to ensure long lived connections get metrics and SIEM updates.
+	gcTimer.Start(sampleRate)
+
 	return nil
 }

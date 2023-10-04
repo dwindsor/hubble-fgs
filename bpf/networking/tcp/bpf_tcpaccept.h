@@ -138,6 +138,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->tuple.ipv6 = (family == AF_INET6);
 	acc_process->tuple.dport = val->tuple.dport;
 	acc_process->tuple.sport = val->tuple.sport;
+	acc_process->tuple.proto = IPPROTO_TCP;
 
 	add_socketmap(&cookie, acc_process);
 	return 1;

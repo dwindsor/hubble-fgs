@@ -113,6 +113,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.tuple.ipv6 = (family == AF_INET6);
 	v.tuple.dport = val->tuple.dport;
 	v.tuple.sport = val->tuple.sport;
+	v.tuple.proto = IPPROTO_TCP;
 
 	add_socketmap(&cookie, &v);
 	return 1;

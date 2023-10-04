@@ -105,6 +105,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.tuple.ipv6 = (family == AF_INET6);
 	v.tuple.dport = 0;
 	v.tuple.sport = val->tuple.sport;
+	v.tuple.proto = IPPROTO_TCP;
 
 	add_socketmap(&cookie, &v);
 	return 0;

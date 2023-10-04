@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -40,7 +41,7 @@ var (
 	tcpWatermarksDipTriggerMult   uint64
 	watermarksEnabled             = false
 
-	stats          *lru.Cache[tcpStatsKey, networkapi.MsgSocketStatsUnix]
+	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStatsUnix]
 	stataCacheSize = 32000
 
 	configured       = false
@@ -159,9 +160,74 @@ var (
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
 )
 
-type tcpStatsKey struct {
-	Tuple      networkapi.MsgIPTuple
+type tcpKey struct {
 	SockCookie uint64
+}
+
+type tcpValue struct {
+	Key            processapi.MsgExecveKey
+	CreateTime     uint64
+	ZeroWindow     uint32
+	SocketFlags    uint32
+	LastTime       uint64
+	Sent           uint64
+	Recv           uint64
+	RttBuckets     [8]uint64
+	LatencyBuckets [8]uint64
+	AckFinAck      uint8
+	Pad            [7]uint8
+	RttSum         uint64
+	LatencySum     uint64
+	MsgIPTuple     networkapi.MsgIPTuple
+}
+
+func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
+	s := &networkapi.MsgSocketStatsUnix{}
+	s.Ktime = t.LastTime
+	s.BytesSent = t.Sent
+	s.BytesReceived = t.Recv
+	s.SegsIn = 0
+	s.SegsOut = 0
+	s.BytesSubmitted = 0
+	s.BytesConsumed = 0
+	s.ConsumedSegs = 0
+	s.SubmittedSegs = 0
+	s.SRtt = 0
+	s.RetransmitSegs = 0
+	s.RetransmitBytes = 0
+	s.ToZeroWindow = 0
+	s.SkDrop = 0
+	s.SkbConsumeMisses = 0
+
+	s.Rtt = networkapi.Histogram{
+		B00: t.RttBuckets[0],
+		B01: t.RttBuckets[1],
+		B10: t.RttBuckets[2],
+		B25: t.RttBuckets[3],
+		B50: t.RttBuckets[4],
+		B75: t.RttBuckets[5],
+		B90: t.RttBuckets[6],
+		B99: t.RttBuckets[7],
+		Sum: t.RttSum,
+	}
+
+	s.Latency = networkapi.Histogram{
+		B00: t.LatencyBuckets[0],
+		B01: t.LatencyBuckets[1],
+		B10: t.LatencyBuckets[2],
+		B25: t.LatencyBuckets[3],
+		B50: t.LatencyBuckets[4],
+		B75: t.LatencyBuckets[5],
+		B90: t.LatencyBuckets[6],
+		B99: t.LatencyBuckets[7],
+		Sum: t.LatencySum,
+	}
+
+	return s
+}
+
+func (t *tcpValue) ToMsgIpTuple() *networkapi.MsgIPTuple {
+	return &t.MsgIPTuple
 }
 
 func unloadTcpSensor() error {
@@ -387,7 +453,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
 func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
-	statsKey := tcpStatsKey{Tuple: tcp.Tuple, SockCookie: tcp.SockCookie}
+	statsKey := tcpKey{SockCookie: tcp.SockCookie}
 	last, ok := stats.Get(statsKey)
 	if ok {
 		if tcp.SocketStats.Ktime < last.Ktime {
@@ -402,23 +468,8 @@ func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, er
 		}
 		stats.Add(statsKey, tcp.SocketStats)
 		tcp.SocketStats = tmpSocketStats
-	} else {
-		stats.Add(statsKey, tcp.SocketStats)
 	}
 	return tcp, nil
-}
-
-func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
-	m := networkapi.MsgIPEvent{}
-	err := binary.Read(r, binary.LittleEndian, &m)
-	if err != nil {
-		return nil, err
-	}
-	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true, true))
-	if err != nil {
-		return nil, nil
-	}
-	return []observer.Event{tcp}, nil
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
@@ -436,7 +487,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		// Convert to a TCPStats event by simply setting op code
 		c.Common.Op = ops.MsgOpTCPStats
-		statsKey := tcpStatsKey{Tuple: c.Tuple, SockCookie: c.SockCookie}
+		statsKey := tcpKey{SockCookie: c.SockCookie}
 		stats.Remove(statsKey)
 		return []observer.Event{tcp, c}, nil
 	}
@@ -504,7 +555,7 @@ func init() {
 func AddTCP() {
 	var err error
 
-	stats, err = lru.New[tcpStatsKey, networkapi.MsgSocketStatsUnix](stataCacheSize)
+	stats, err = lru.New[tcpKey, networkapi.MsgSocketStatsUnix](stataCacheSize)
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("TCP cache failed. Disabling TCP")
 		return
@@ -516,7 +567,6 @@ func AddTCP() {
 
 	sensors.RegisterProbeType("tcp_sensor", tcp)
 	sensors.RegisterPolicyHandlerAtInit(tcp.name, tcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPSTATS, handleTcpStats)
 
 	/* Core set of TCP events */
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcp)
