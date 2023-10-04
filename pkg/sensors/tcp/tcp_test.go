@@ -147,10 +147,13 @@ func getTcpObserver(t *testing.T, ctx context.Context, config string, docker boo
 	}
 	var obs *observer.Observer
 	var err error
+
+	base := base.GetInitialSensor()
+
 	if docker {
-		obs, err = observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 	} else {
-		obs, err = observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
