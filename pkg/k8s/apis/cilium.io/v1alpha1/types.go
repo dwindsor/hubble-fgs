@@ -84,16 +84,16 @@ type TracingPolicy struct {
 type TracingPolicyNamespacedList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []TracingPolicyNamespaced `json:"items"`
+	Items           []TracingPolicyNamespaced `json:"items,omitempty"`
 }
 
 type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of kprobe specs.
-	KProbes []KProbeSpec `json:"kprobes"`
+	KProbes []KProbeSpec `json:"kprobes,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
-	Tracepoints []TracepointSpec `json:"tracepoints"`
+	Tracepoints []TracepointSpec `json:"tracepoints,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Parser policy specification.
 	Parser ParserPolicySpec `json:"parser"`
@@ -105,7 +105,7 @@ type TracingPolicySpec struct {
 	Loader bool `json:"loader"`
 	// +kubebuilder:validation:Optional
 	// A list of uprobe specs.
-	UProbes []UProbeSpec `json:"uprobes"`
+	UProbes []UProbeSpec `json:"uprobes,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
@@ -113,7 +113,7 @@ type TracingPolicySpec struct {
 
 	// +kubebuilder:validation:Optional
 	// A list of list specs.
-	Lists []ListSpec `json:"lists"`
+	Lists []ListSpec `json:"lists,omitempty"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {
@@ -138,7 +138,7 @@ type OperationSelector struct {
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
-	Values []OperationSelectorValue `json:"values"`
+	Values []OperationSelectorValue `json:"values,omitempty"`
 }
 
 type FileActionSelector struct {
@@ -155,38 +155,38 @@ type DigestSelector struct {
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
-	Values []DigestSelectorValue `json:"values"`
+	Values []DigestSelectorValue `json:"values,omitempty"`
 }
 
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
-	MatchBinaries []BinarySelector `json:"matchBinaries"`
+	MatchBinaries []BinarySelector `json:"matchBinaries,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
-	MatchOperations []OperationSelector `json:"matchOperations"`
+	MatchOperations []OperationSelector `json:"matchOperations,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
-	MatchDigests []DigestSelector `json:"matchDigests"`
+	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
-	MatchActions []FileActionSelector `json:"matchActions"`
+	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
 }
 
 type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// What paths to monitor
-	Paths []string `json:"file_paths"`
+	Paths []string `json:"file_paths,omitempty"`
 	// +kubebuilder:validation:Optional
 	// What paths to exclude from monitored paths
-	PathsExclude []string `json:"file_paths_exclude"`
+	PathsExclude []string `json:"file_paths_exclude,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Config flags to enable/disable specific functionality
-	Config map[string]string `json:"file_config"`
+	Config map[string]string `json:"file_config,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []FileSelector `json:"selectors"`
+	Selectors []FileSelector `json:"selectors,omitempty"`
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	// Do monitoring on host files
@@ -201,31 +201,31 @@ type FileSpec struct {
 type TracingPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []TracingPolicy `json:"items"`
+	Items           []TracingPolicy `json:"items,omitempty"`
 }
 
 type TlsSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
 }
 
 type TlsSpec struct {
 	// TLS enable parser
 	Enable bool `json:"enable"`
-	// +kubebuilder:default="tc"
-	// +kubebuilder:validation:Enum=socket;tc;
+	// +kubebuilder:validation:Enum=socket;tc;cgroup;
+	// +kubebuilder:default=tc
 	// TLS parser type
-	Mode string `json:"mode"`
+	Mode string `json:"mode,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []TlsSelector `json:"selectors"`
+	Selectors []TlsSelector `json:"selectors,omitempty"`
 }
 
 type HttpsSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
 }
 
 type HttpsSpec struct {
@@ -233,13 +233,13 @@ type HttpsSpec struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []HttpsSelector `json:"selectors"`
+	Selectors []HttpsSelector `json:"selectors,omitempty"`
 }
 
 type HttpSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
 }
 
 type HttpSpec struct {
@@ -247,7 +247,7 @@ type HttpSpec struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []HttpSelector `json:"selectors"`
+	Selectors []HttpSelector `json:"selectors,omitempty"`
 }
 
 type InterfacePolicySpec struct {
@@ -266,13 +266,13 @@ type DnsPolicySpec struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// A list of DNS ports
-	Ports []uint16 `json:"ports"`
+	Ports []uint16 `json:"ports,omitempty"`
 }
 
 type NopSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
 }
 
 type NopSpec struct {
@@ -280,7 +280,7 @@ type NopSpec struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply Nop parser against. Selectors are ORed.
-	Selectors []NopSelector `json:"selectors"`
+	Selectors []NopSelector `json:"selectors,omitempty"`
 }
 
 type PromMetrics struct {
@@ -358,7 +358,7 @@ type TcpPolicySpec struct {
 	Latency LatencyPolicySpec `json:"latency"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration
-	Metrics *PromMetrics `json:"metrics"`
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Disable TCP events
 	DisableEvents TcpEventDisablePolicySpec `json:"disableEvents"`
@@ -418,7 +418,7 @@ type UdpPolicySpec struct {
 	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration
-	Metrics *PromMetrics `json:"metrics"`
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Disable UDP events
 	DisableEvents UdpEventDisablePolicySpec `json:"disableEvents"`
@@ -455,10 +455,10 @@ type LatencyPolicySpec struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// Configures the subnets to enable on
-	MatchSubnets []string `json:"matchSubnets"`
+	MatchSubnets []string `json:"matchSubnets,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Configures the ports to enable on
-	MatchPorts []uint16 `json:"matchPorts"`
+	MatchPorts []uint16 `json:"matchPorts,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Configures the expected Max Latency value
 	Max uint32 `json:"max"`
@@ -473,7 +473,7 @@ type LatencyPolicySpec struct {
 	ClockMaxSkew uint32 `json:"clockMaxSkew"`
 	// +kubebuilder:validation:Optional
 	// Configures the interfaces to enable on
-	Interfaces []string `json:"interfaces"`
+	Interfaces []string `json:"interfaces,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Configures the maximum packet size
 	MaxPacketSize uint16 `json:"maxPacketSize"`
@@ -492,7 +492,7 @@ type UdpSeqCheckPolicySpec struct {
 	AppId uint64 `json:"appId"`
 	// +kubebuilder:validation:Optional
 	// Configures the ports to enable on
-	Ports []uint16 `json:"ports"`
+	Ports []uint16 `json:"ports,omitempty"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {
