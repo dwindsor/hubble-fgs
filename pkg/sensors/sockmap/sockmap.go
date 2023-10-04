@@ -31,7 +31,7 @@ import (
 
 var (
 	// Socket mode
-	// Supports 5.4 kernels or newer.
+	// Supports 5.10 kernels or newer.
 
 	Skmsg = program.Builder(
 		"bpf_tls_skmsg.o",
@@ -63,7 +63,7 @@ var (
 	)
 
 	// Cgroup mode
-	// Supports 5.4 kernels or newer.
+	// Supports 5.10 kernels or newer.
 
 	CGIngress = program.Builder(
 		"bpf_tls_inet_send.o",
@@ -228,8 +228,8 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 	}
 
 	if cg {
-		// CGroups only work on 5.4 onwards
-		if kernels.MinKernelVersion("5.4.0") {
+		// CGroups only work on 5.10 onwards
+		if kernels.MinKernelVersion("5.10.0") {
 			logger.GetLogger().Infof("Enable TLS CGroup")
 			progs = append(progs,
 				CGEgress,
@@ -245,7 +245,7 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 				SocketMap, SocketStats,
 			)
 		} else {
-			logger.GetLogger().Warnf("Cannot Enable TLS CGroup on kernel <5.4")
+			logger.GetLogger().Warnf("Cannot Enable TLS CGroup on kernel <5.10")
 		}
 	}
 
@@ -289,8 +289,8 @@ func (tls *tlsSensor) PolicyHandler(
 		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(tlsFilters))
 	}
 
-	if !kernels.MinKernelVersion("5.4") {
-		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.4")
+	if !kernels.MinKernelVersion("5.10") {
+		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.10")
 	}
 
 	return enableTLSParser(enableTLS, enableTLSCG), nil

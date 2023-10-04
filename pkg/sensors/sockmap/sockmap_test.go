@@ -291,7 +291,7 @@ spec:
 }
 
 func TestLoadTlsCGSensor(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -351,7 +351,7 @@ spec:
 }
 
 func TestCGTLS13(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -417,7 +417,7 @@ func TestCGTLS13(t *testing.T) {
 }
 
 func TestCGTLS12(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
