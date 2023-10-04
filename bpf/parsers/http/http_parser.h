@@ -810,7 +810,6 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = process->tuple;
-	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
@@ -861,7 +860,6 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = process->tuple;
-	http->tuple.remaining = HTTP_DIR;
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
