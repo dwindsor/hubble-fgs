@@ -682,7 +682,7 @@ func TestLoadFileSensor(t *testing.T) {
 	specFname := createSpecFile(t, test_path)
 
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
