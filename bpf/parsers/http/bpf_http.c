@@ -20,7 +20,6 @@
 __attribute__((section("sk_msg/fgs"), used)) int
 tg_http_sk_msg_fgs(struct sk_msg_md *msg)
 {
-
 	/* Workaround to clear any applied bytes from
          * previous execution on the same message. */
 	msg_apply_bytes(msg, 0);

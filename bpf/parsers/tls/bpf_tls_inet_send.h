@@ -44,8 +44,7 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 	return ip_off;
 }
 
-static inline __attribute__((always_inline))
-struct tls_packet_details *tls_inet_send_handler(struct __sk_buff *skb, u64 send)
+static inline __attribute__((always_inline)) struct tls_packet_details *tls_inet_send_handler(struct __sk_buff *skb, u64 send)
 {
 	struct tls_packet_details *packet = 0;
 	struct sock_key filter_key = { 0 };
