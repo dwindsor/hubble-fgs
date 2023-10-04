@@ -39,7 +39,8 @@ func TestMain(m *testing.M) {
 
 func nopConfig(port int) string {
 	return fmt.Sprintf(`
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "nop"
 spec:

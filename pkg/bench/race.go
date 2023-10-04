@@ -265,7 +265,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatal(err)
 	}
 
-	tp, err := tracingpolicy.PolicyFromYAMLFilename(f.Name())
+	tp, err := tracingpolicy.FromFile(f.Name())
 	if err != nil {
 		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
 	}

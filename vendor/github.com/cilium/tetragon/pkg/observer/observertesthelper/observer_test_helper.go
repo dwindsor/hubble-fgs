@@ -58,10 +58,9 @@ var (
 )
 
 type testObserverOptions struct {
-	crd        bool
-	config     string
-	lib        string
-	notestfail bool
+	crd    bool
+	config string
+	lib    string
 }
 
 type testExporterOptions struct {
@@ -120,12 +119,6 @@ func withCiliumState(s *hubbleCilium.State) TestOption {
 func WithLib(lib string) TestOption {
 	return func(o *TestOptions) {
 		o.observer.lib = lib
-	}
-}
-
-func withNotestfail(notestfail bool) TestOption {
-	return func(o *TestOptions) {
-		o.observer.notestfail = notestfail
 	}
 }
 
@@ -219,9 +212,8 @@ func newDefaultObserver(oo *testObserverOptions) *observer.Observer {
 	return observer.NewObserver(oo.config)
 }
 
-func getDefaultObserverSensors(tb testing.TB, ctx context.Context, base *sensors.Sensor, opts ...TestOption) (*observer.Observer, []*sensors.Sensor, error) {
+func getDefaultObserver(tb testing.TB, ctx context.Context, base *sensors.Sensor, opts ...TestOption) (*observer.Observer, error) {
 	var cnfSensor *sensors.Sensor
-	var ret []*sensors.Sensor
 
 	testutils.CaptureLog(tb, logger.GetLogger().(*logrus.Logger))
 
@@ -242,33 +234,32 @@ func getDefaultObserverSensors(tb testing.TB, ctx context.Context, base *sensors
 	}
 
 	if err := loadExporter(tb, ctx, obs, &o.exporter, &o.observer); err != nil {
-		return nil, ret, err
+		return nil, err
 	}
 
 	var tp tracingpolicy.TracingPolicy
 	if o.observer.config != "" {
 		var err error
-		tp, err = tracingpolicy.PolicyFromYAMLFilename(o.observer.config)
+		tp, err = tracingpolicy.FromFile(o.observer.config)
 		if err != nil {
-			return nil, ret, fmt.Errorf("failed to parse tracingpolicy: %w", err)
+			return nil, fmt.Errorf("failed to parse tracingpolicy: %w", err)
 		}
 	}
 	if tp != nil {
 		var err error
 		cnfSensor, err = sensors.GetMergedSensorFromParserPolicy(tp)
 		if err != nil {
-			return nil, ret, err
+			return nil, err
 		}
-		ret = append(ret, cnfSensor)
 	}
 
-	if err := loadObserver(tb, base, cnfSensor, o.observer.notestfail); err != nil {
-		return nil, ret, err
+	if err := loadSensor(tb, base, cnfSensor); err != nil {
+		return nil, err
 	}
 
 	exportFname, err := testutils.GetExportFilename(tb)
 	if err != nil {
-		return nil, ret, err
+		return nil, err
 	}
 	saveInitInfo(o, exportFname)
 
@@ -290,16 +281,9 @@ func getDefaultObserverSensors(tb testing.TB, ctx context.Context, base *sensors
 		testDone(tb, obs)
 	})
 
-	ret = append(ret, base)
-
 	obs.PerfConfig = bpf.DefaultPerfEventConfig()
 	obs.PerfConfig.MapName = filepath.Join(bpf.MapPrefixPath(), "tcpmon_map")
-	return obs, ret, nil
-}
-
-func getDefaultObserver(tb testing.TB, ctx context.Context, base *sensors.Sensor, opts ...TestOption) (*observer.Observer, error) {
-	obs, _, err := getDefaultObserverSensors(tb, ctx, base, opts...)
-	return obs, err
+	return obs, nil
 }
 
 func GetDefaultObserverWithWatchers(tb testing.TB, ctx context.Context, base *sensors.Sensor, opts ...TestOption) (*observer.Observer, error) {
@@ -331,22 +315,57 @@ func GetDefaultObserverWithFile(tb testing.TB, ctx context.Context, file, lib st
 	return GetDefaultObserverWithWatchers(tb, ctx, b, opts...)
 }
 
-func GetDefaultSensorsWithFile(tb testing.TB, ctx context.Context, file, lib string, opts ...TestOption) ([]*sensors.Sensor, error) {
+func GetDefaultSensorsWithFile(tb testing.TB, file, lib string, opts ...TestOption) ([]*sensors.Sensor, error) {
 	opts = append(opts, WithConfig(file))
 	opts = append(opts, WithLib(lib))
 
-	b := base.GetInitialSensor()
-	_, sens, err := getDefaultObserverSensors(tb, ctx, b, opts...)
-	return sens, err
-}
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	option.Config.MapDir = bpf.MapPrefixPath()
 
-func GetDefaultObserverWithFileNoTest(tb testing.TB, ctx context.Context, file, lib string, fail bool, opts ...TestOption) (*observer.Observer, error) {
-	opts = append(opts, WithConfig(file))
-	opts = append(opts, WithLib(lib))
-	opts = append(opts, withNotestfail(fail))
+	testutils.CaptureLog(tb, logger.GetLogger().(*logrus.Logger))
 
-	b := base.GetInitialSensor()
-	return GetDefaultObserverWithWatchers(tb, ctx, b, opts...)
+	o := newDefaultTestOptions(opts...)
+
+	option.Config.HubbleLib = os.Getenv("TETRAGON_LIB")
+	if option.Config.HubbleLib == "" {
+		option.Config.HubbleLib = o.observer.lib
+	}
+
+	procfs := os.Getenv("TETRAGON_PROCFS")
+	if procfs != "" {
+		option.Config.ProcFS = procfs
+	}
+
+	if testing.Verbose() {
+		option.Config.Verbosity = 1
+	}
+
+	var tp tracingpolicy.TracingPolicy
+	var err error
+
+	if o.observer.config != "" {
+		tp, err = tracingpolicy.FromFile(o.observer.config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse tracingpolicy: %w", err)
+		}
+	}
+
+	var sensor *sensors.Sensor
+
+	if tp != nil {
+		sensor, err = sensors.GetMergedSensorFromParserPolicy(tp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	base := base.GetInitialSensor()
+
+	if err = loadSensor(tb, base, sensor); err != nil {
+		return nil, err
+	}
+
+	return []*sensors.Sensor{sensor, base}, nil
 }
 
 func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, opts *testExporterOptions, oo *testObserverOptions) error {
@@ -419,15 +438,12 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 	return nil
 }
 
-func loadObserver(tb testing.TB, base *sensors.Sensor, sens *sensors.Sensor, notestfail bool) error {
+func loadSensor(tb testing.TB, base *sensors.Sensor, sens *sensors.Sensor) error {
 	if err := base.Load(option.Config.BpfDir, option.Config.MapDir); err != nil {
 		tb.Fatalf("Load base error: %s\n", err)
 	}
 
 	if err := sens.Load(option.Config.BpfDir, option.Config.MapDir); err != nil {
-		if notestfail {
-			return err
-		}
 		tb.Fatalf("LoadConfig error: %s\n", err)
 	}
 	return nil

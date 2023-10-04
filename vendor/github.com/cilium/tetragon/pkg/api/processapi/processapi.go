@@ -29,18 +29,22 @@ const (
 
 	// MsgUnixSize of msg
 	MsgUnixSize uint32 = 640
+
+	/* Execve extra flags */
+	ExecveSetuid = 0x01
+	ExecveSetgid = 0x02
 )
 
 type MsgExec struct {
-	Size  uint32
-	PID   uint32
-	TID   uint32
-	NSPID uint32
-	PAD   uint32
-	UID   uint32
-	AUID  uint32
-	Flags uint32
-	Ktime uint64
+	Size       uint32
+	PID        uint32
+	TID        uint32
+	NSPID      uint32
+	SecureExec uint32
+	UID        uint32
+	AUID       uint32
+	Flags      uint32
+	Ktime      uint64
 }
 
 type MsgExecveKey struct {
@@ -74,12 +78,26 @@ type MsgK8sUnix struct {
 	Docker string
 }
 
+type MsgGenericCredMinimal struct {
+	Uid        uint32
+	Gid        uint32
+	Suid       uint32
+	Sgid       uint32
+	Euid       uint32
+	Egid       uint32
+	FSuid      uint32
+	FSgid      uint32
+	SecureBits uint32
+	Pad        uint32
+}
+
 type MsgExecveEvent struct {
 	Common         MsgCommon
 	Kube           MsgK8s
 	Parent         MsgExecveKey
 	ParentFlags    uint64
 	Capabilities   MsgCapabilities
+	Creds          MsgGenericCredMinimal
 	Namespaces     MsgNamespaces
 	CleanupProcess MsgExecveKey
 }
@@ -90,6 +108,7 @@ type MsgExecveEventUnix struct {
 	Parent         MsgExecveKey
 	ParentFlags    uint64
 	Capabilities   MsgCapabilities
+	Creds          MsgGenericCredMinimal
 	Namespaces     MsgNamespaces
 	CleanupProcess MsgExecveKey
 	Process        MsgProcess
@@ -133,16 +152,17 @@ type MsgUserNamespace struct {
 
 // API between Userspace tetragon Golang agent and Unix domain socket listener
 type MsgProcess struct {
-	Size     uint32
-	PID      uint32
-	TID      uint32
-	NSPID    uint32
-	UID      uint32
-	AUID     uint32
-	Flags    uint32
-	Ktime    uint64
-	Filename string
-	Args     string
+	Size       uint32
+	PID        uint32
+	TID        uint32
+	NSPID      uint32
+	SecureExec uint32
+	UID        uint32
+	AUID       uint32
+	Flags      uint32
+	Ktime      uint64
+	Filename   string
+	Args       string
 }
 
 type MsgExitInfo struct {

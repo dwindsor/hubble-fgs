@@ -154,7 +154,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		}
 	}
 
-	tp, err := tracingpolicy.PolicyFromYAMLFilename(configFile)
+	tp, err := tracingpolicy.FromFile(configFile)
 	if err != nil {
 		log.Fatalf("readConfig error: %v", err)
 	}

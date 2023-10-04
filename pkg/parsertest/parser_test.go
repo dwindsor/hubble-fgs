@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
@@ -215,7 +216,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	}
 
 	tp := tracingpolicy.GenericTracingPolicy{
-		Metadata: tracingpolicy.Metadata{Name: "name"},
+		Metadata: v1.ObjectMeta{Name: "name"},
 		Spec:     v1alpha1.TracingPolicySpec{Parser: spec},
 	}
 	parserSensors, err := sensors.SensorsFromPolicy(&tp, policyfilter.PolicyID(0))

@@ -518,7 +518,7 @@ func hubbleFGSExecute() error {
 
 	if len(option.Config.TracingPolicy) > 0 {
 		var sens *sensors.Sensor
-		tp, err := tracingpolicy.PolicyFromYAMLFilename(option.Config.TracingPolicy)
+		tp, err := tracingpolicy.FromFile(option.Config.TracingPolicy)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}

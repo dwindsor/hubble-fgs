@@ -5,6 +5,7 @@ package process
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/path"
+	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -41,9 +43,14 @@ type ProcessInternal struct {
 	process *tetragon.Process
 	// additional internal fields below
 	capabilities *tetragon.Capabilities
+	apiCreds     *tetragon.ProcessCredentials
 	namespaces   *tetragon.Namespaces
+	// The BinaryProperties is not stored into the process, this field
+	// will be constructed on the fly when returning these extra fields
+	// about the binary during the corresponding ProcessExec only.
+	apiBinaryProp *tetragon.BinaryProperties
 	// garbage collector metadata
-	color  int
+	color  int // Writes should happen only inside gc select channel
 	refcnt uint32
 }
 
@@ -52,6 +59,10 @@ var (
 	procCache   *Cache
 	ciliumState *hubble.State
 	k8s         watcher.K8sResourceWatcher
+)
+
+var (
+	ErrProcessInfoMissing = errors.New("failed process info missing")
 )
 
 func InitCache(w watcher.K8sResourceWatcher, size int) error {
@@ -97,10 +108,12 @@ func (pi *ProcessInternal) cloneInternalProcessCopy() *ProcessInternal {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
 	return &ProcessInternal{
-		process:      proto.Clone(pi.process).(*tetragon.Process),
-		capabilities: pi.capabilities,
-		namespaces:   pi.namespaces,
-		refcnt:       1, // Explicitly initialize refcnt to 1
+		process:       proto.Clone(pi.process).(*tetragon.Process),
+		capabilities:  pi.capabilities,
+		apiCreds:      pi.apiCreds,
+		apiBinaryProp: pi.apiBinaryProp,
+		namespaces:    pi.namespaces,
+		refcnt:        1, // Explicitly initialize refcnt to 1
 	}
 }
 
@@ -123,6 +136,61 @@ func (pi *ProcessInternal) UnsafeGetProcess() *tetragon.Process {
 	return pi.process
 }
 
+// UpdateExecOutsideCache() checks if we must augment the ProcessExec.Process
+// with more fields without propagating again those fields into the process
+// cache. This means that those added fields will only show up for the
+// returned ProcessExec.Process.
+//
+// This is usually the case where we have the core information of the process
+// that was handled directly or through some event cache retries, in all cases
+// the ProcessInternal.process is properly set and referenced and can't
+// disappear, so we don't take any locks here.
+// It operates on the direct reference and if some fields have to be added then
+// a deep copy will be performed.
+//
+// Returns:
+//  1. The updated Process in case of new or updated fields, otherwise
+//     the old same Process reference.
+//  2. A boolean to indicate if a process information update was performed
+//
+// Current rules to make a copy and add fields for Process part of ProcessExec event are:
+//
+//  1. process_exec.process.binary_properties:
+//     a. if it is a setuid execution
+//     b. if it is a setgid execution
+//     c. if it is a filesystem capability execution
+//
+//     a b and c are subject to the --enable-process-creds flag
+func (pi *ProcessInternal) UpdateExecOutsideCache(cred bool) (*tetragon.Process, bool) {
+	update := false
+	// Get reference on the process
+	process := pi.UnsafeGetProcess()
+
+	prop := &tetragon.BinaryProperties{}
+
+	// Check if we should augment the process
+	if cred && pi.apiBinaryProp != nil {
+		// Annotate privileged execution if it was successfully set
+		if pi.apiBinaryProp.Setuid.GetValue() != proc.InvalidUid {
+			prop.Setuid = pi.apiBinaryProp.Setuid
+			update = true
+		}
+		if pi.apiBinaryProp.Setgid.GetValue() != proc.InvalidUid {
+			prop.Setgid = pi.apiBinaryProp.Setgid
+			update = true
+		}
+	}
+
+	// Take a copy of the process, add the necessary fields to the
+	// final ProcessExec event
+	if update == true {
+		process = pi.GetProcessCopy()
+		process.BinaryProperties = prop
+	}
+
+	return process, update
+}
+
 func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) error {
 	process := pi.getProcess()
 	defer pi.putProcess()
@@ -131,6 +199,7 @@ func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) error {
 	}
 	if cred {
 		process.Cap = pi.capabilities
+		process.ProcessCredentials = pi.apiCreds
 	}
 	if ns {
 		process.Ns = pi.namespaces
@@ -186,12 +255,11 @@ func GetExecIDFromKey(key *tetragonAPI.MsgExecveKey) string {
 // initProcessInternalExec() initialize and returns ProcessInternal and
 // hubblev1.Endpoint objects from an execve event
 func initProcessInternalExec(
-	process tetragonAPI.MsgProcess,
-	containerID string,
+	event *tetragonAPI.MsgExecveEventUnix,
 	parent tetragonAPI.MsgExecveKey,
-	capabilities tetragonAPI.MsgCapabilities,
-	namespaces tetragonAPI.MsgNamespaces,
 ) *ProcessInternal {
+	process := event.Process
+	containerID := event.Kube.Docker
 	args, cwd := ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	if parent.Pid != 0 {
@@ -201,9 +269,35 @@ func initProcessInternalExec(
 	}
 	execID := GetExecID(&process)
 	protoPod := GetPodInfo(containerID, process.Filename, args, process.NSPID)
-	caps := caps.GetMsgCapabilities(capabilities)
-	ns := namespace.GetMsgNamespaces(namespaces)
+	apiCaps := caps.GetMsgCapabilities(event.Capabilities)
+	apiNs := namespace.GetMsgNamespaces(event.Namespaces)
 	binary := path.GetBinaryAbsolutePath(process.Filename, cwd)
+
+	creds := &event.Creds
+	apiCreds := &tetragon.ProcessCredentials{
+		Uid:        &wrapperspb.UInt32Value{Value: creds.Uid},
+		Gid:        &wrapperspb.UInt32Value{Value: creds.Gid},
+		Euid:       &wrapperspb.UInt32Value{Value: creds.Euid},
+		Egid:       &wrapperspb.UInt32Value{Value: creds.Egid},
+		Suid:       &wrapperspb.UInt32Value{Value: creds.Suid},
+		Sgid:       &wrapperspb.UInt32Value{Value: creds.Sgid},
+		Fsuid:      &wrapperspb.UInt32Value{Value: creds.FSuid},
+		Fsgid:      &wrapperspb.UInt32Value{Value: creds.FSgid},
+		Securebits: caps.GetSecureBitsTypes(creds.SecureBits),
+	}
+
+	apiBinaryProp := &tetragon.BinaryProperties{
+		// Initialize with InvalidUid
+		Setuid: &wrapperspb.UInt32Value{Value: proc.InvalidUid},
+		Setgid: &wrapperspb.UInt32Value{Value: proc.InvalidUid},
+	}
+
+	if (process.SecureExec & tetragonAPI.ExecveSetuid) != 0 {
+		apiBinaryProp.Setuid = &wrapperspb.UInt32Value{Value: creds.Euid}
+	}
+	if (process.SecureExec & tetragonAPI.ExecveSetgid) != 0 {
+		apiBinaryProp.Setgid = &wrapperspb.UInt32Value{Value: creds.Egid}
+	}
 
 	// Per thread tracking rules PID == TID
 	//
@@ -240,9 +334,11 @@ func initProcessInternalExec(
 			ParentExecId: parentExecID,
 			Refcnt:       0,
 		},
-		capabilities: caps,
-		namespaces:   ns,
-		refcnt:       1,
+		capabilities:  apiCaps,
+		apiCreds:      apiCreds,
+		apiBinaryProp: apiBinaryProp,
+		namespaces:    apiNs,
+		refcnt:        1,
 	}
 }
 
@@ -328,9 +424,9 @@ func AddExecEvent(event *tetragonAPI.MsgExecveEventUnix) *ProcessInternal {
 	if event.CleanupProcess.Ktime == 0 || event.Process.Flags&api.EventClone != 0 {
 		// there is a case where we cannot find this entry in execve_map
 		// in that case we use as parent what Linux knows
-		proc = initProcessInternalExec(event.Process, event.Kube.Docker, event.Parent, event.Capabilities, event.Namespaces)
+		proc = initProcessInternalExec(event, event.Parent)
 	} else {
-		proc = initProcessInternalExec(event.Process, event.Kube.Docker, event.CleanupProcess, event.Capabilities, event.Namespaces)
+		proc = initProcessInternalExec(event, event.CleanupProcess)
 	}
 
 	procCache.add(proc)

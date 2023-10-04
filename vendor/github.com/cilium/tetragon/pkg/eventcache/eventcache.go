@@ -11,12 +11,18 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
-	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/server"
+)
+
+const (
+	// Event information was completed without cache retries
+	NO_EV_CACHE = iota
+	// Cache retries was triggered in order to complete event information
+	FROM_EV_CACHE
 )
 
 const (
@@ -49,9 +55,9 @@ type Cache struct {
 }
 
 var (
-	ErrFailedToGetPodInfo     = errors.New("failed to get pod info")
-	ErrFailedToGetProcessInfo = errors.New("failed to get process info")
-	ErrFailedToGetParentInfo  = errors.New("failed to get parent info")
+	ErrFailedToGetPodInfo     = errors.New("failed to get pod info from event cache")
+	ErrFailedToGetProcessInfo = errors.New("failed to get process info from event cache")
+	ErrFailedToGetParentInfo  = errors.New("failed to get parent info from event cache")
 )
 
 // Generic internal lookup happens when events are received out of order and
@@ -167,7 +173,6 @@ func (ec *Cache) loop() {
 			 * event anyways.
 			 */
 			ec.handleEvents()
-			mapmetrics.MapSizeSet("eventcache", 0, float64(len(ec.cache)))
 
 		case event := <-ec.objsChan:
 			eventcachemetrics.EventCacheCount.Inc()
@@ -240,4 +245,8 @@ func New(s *server.Server) *Cache {
 
 func Get() *Cache {
 	return cache
+}
+
+func (ec *Cache) len() int {
+	return len(ec.cache)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/tests/compliance"
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 )
@@ -28,7 +29,7 @@ func testCases() []compliance.Test {
 		{
 			Name: "nginx",
 			TracingPolicy: &tracingpolicy.GenericTracingPolicy{
-				Metadata: tracingpolicy.Metadata{
+				Metadata: v1.ObjectMeta{
 					Name: "http",
 				},
 				Spec: v1alpha1.TracingPolicySpec{
