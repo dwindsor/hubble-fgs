@@ -1587,7 +1587,8 @@ func TestDnsEvents(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
