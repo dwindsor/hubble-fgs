@@ -35,9 +35,8 @@ struct {
 } fd_lookup_config_map SEC(".maps");
 
 static inline __attribute__((always_inline)) struct execve_map_value *
-event_find_task(struct task_struct *task, __u32 *ppid, bool *walked)
+event_find_task(struct task_struct *task, __u32 pid, __u32 *ppid, bool *walked)
 {
-	__u32 pid = get_current_pid_tgid() >> 32;
 	struct execve_map_value *value = 0;
 	int i;
 
@@ -133,7 +132,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 
 	cookie = (u64)sk;
 
-	value = event_find_task(p, &ppid, &walked);
+	value = event_find_task(p, pid, &ppid, &walked);
 	if (!value) {
 		emit_ip_error_event(ctx, 0, &cookie, 0,
 				    0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_PROCESS);
