@@ -1,7 +1,8 @@
 
 GCC ?= gcc
 
-PROGS = sigkill-tester capabilities-tester namespace-tester dup-tester fork-tester
+PROGS = sigkill-tester capabilities-tester namespace-tester \
+	dup-tester fork-tester nop
 
 all: $(PROGS)
 	make -C aio/
@@ -24,6 +25,9 @@ dup-tester: dup-tester.c
 	$(GCC) -Wall $< -o $@
 
 fork-tester: fork-tester.c
+	$(GCC) -Wall $< -o $@
+
+nop: nop.c
 	$(GCC) -Wall $< -o $@
 
 .PHONY: clean
