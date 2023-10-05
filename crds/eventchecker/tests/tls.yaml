@@ -1,4 +1,5 @@
 apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   description: TLS checker
   name: tls

@@ -431,7 +431,8 @@ func sigHandler(ctx context.Context, cancel context.CancelFunc) {
 
 func generateCrd(args *Arguments, sinkPort int) string {
 	tmpl := `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "benchmark-spec"
 spec:

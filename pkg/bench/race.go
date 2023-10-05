@@ -190,7 +190,8 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 }
 
 var benchConfig = `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "race"
 spec:

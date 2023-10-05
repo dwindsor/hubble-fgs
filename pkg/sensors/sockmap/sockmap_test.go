@@ -50,7 +50,8 @@ func TestMain(m *testing.M) {
 
 var (
 	tlsConfig = `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "tls"
 spec:
@@ -68,7 +69,8 @@ spec:
 
 var (
 	tlsConfigCG = `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "tls"
 spec:
@@ -236,7 +238,8 @@ func TestLoadTlsSensor(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	config := `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "tls"
 spec:
@@ -301,7 +304,8 @@ func TestLoadTlsCGSensor(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	config := `
-apiVersion: hubble-enterprise.io/v1
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "tls"
 spec:

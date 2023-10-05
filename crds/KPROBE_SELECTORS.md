@@ -46,7 +46,7 @@ This will match if: ([```Pid``` namespace is ```4026531836```] ```OR``` [```Pid`
 “Generate a kprobe event if ```/etc/shadow``` was opened by ```/bin/cat``` which either had host ```Net``` or ```Mnt``` namespace access”
 
 ```yaml
-apiVersion: isovalent.com/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "example1"
@@ -138,7 +138,7 @@ We can modify the previous example as follows:
 “Generate a kprobe event if ```/etc/shadow``` was opened by ```/bin/cat``` which has host ```Net``` and ```Mnt``` namespace access”
 
 ```yaml
-apiVersion: isovalent.com/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "example1"
