@@ -42,7 +42,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/ratelimit"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/tgsyscall"
 	"github.com/cilium/tetragon/pkg/unixlisten"
@@ -517,20 +516,14 @@ func hubbleFGSExecute() error {
 	observer.SensorManager.LogSensorsAndProbes(ctx)
 
 	if len(option.Config.TracingPolicy) > 0 {
-		var sens *sensors.Sensor
 		tp, err := tracingpolicy.FromFile(option.Config.TracingPolicy)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}
-		sens, err = sensors.GetMergedSensorFromParserPolicy(tp)
+		err = observer.SensorManager.AddTracingPolicy(ctx, tp)
 		if err != nil {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}
-
-		if err := sens.Load(observerDir, observerDir); err != nil {
-			return err
-		}
-
 	}
 
 	// k8s should have metrics, so periodically log only in a non k8s
