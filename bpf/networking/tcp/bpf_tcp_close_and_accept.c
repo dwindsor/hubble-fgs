@@ -4,14 +4,16 @@
 #include "bpf_event.h"
 #include "../parsers/tls/tls_map.h"
 #include "bpf_task.h"
-#include "cookie.h"
-#include "bpf_network_helpers.h"
-#include "bpf_fd_to_sk.h"
+#include "../cookie.h"
+#include "../bpf_network_helpers.h"
+#include "netns.h"
+#include "../bpf_fd_to_sk.h"
 #include "bpf_tcp_send_check.h"
 #include "bpf_tracing.h"
 #include "../parsers/http/http.h"
 #include "../parsers/bottle.h"
 #include "bpf_network_event_config.h"
+#include "bpf_tcpaccept.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -27,7 +29,7 @@ struct {
 } tcp_close_event_map SEC(".maps");
 
 __attribute__((section("kprobe/tcp_set_state"), used)) int
-tg_event_tcp_close(struct pt_regs *ctx)
+tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct socketmap_value *process;
@@ -40,13 +42,20 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	u64 cookie;
 
 	state = PT_REGS_PARM2(ctx);
-	if (state != TCP_CLOSE)
-		return 0;
-
 	skp = (struct sock *)PT_REGS_PARM1(ctx);
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;
+
+	/* Get the state that we are transitioning from */
+	probe_read(&old_state, sizeof(old_state),
+		   _((const void *)&(skp->__sk_common.skc_state)));
+
+	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
+		return __event_tcp_accept_state(ctx, skp);
+
+	if (state != TCP_CLOSE)
+		return 0;
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_close_event_map,
 						     &zero);
@@ -75,10 +84,6 @@ tg_event_tcp_close(struct pt_regs *ctx)
 	val->tuple = process->tuple;
 
 	get_socket_stats(skp, process, &val->stats);
-
-	/* Get the state that we are transitioning from */
-	probe_read(&old_state, sizeof(old_state),
-		   _((const void *)&(skp->__sk_common.skc_state)));
 
 	/* When a socket is closing, it may have received a FIN/ACK segment.
 	 * Unfortunately, a FIN/ACK increases the received sequence counter

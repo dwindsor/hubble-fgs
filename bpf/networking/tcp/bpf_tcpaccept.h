@@ -3,9 +3,11 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "cookie.h"
+#include "bpf_tracing.h"
+#include "../cookie.h"
+#include "address_family.h"
+#include "../bpf_network_helpers.h"
 #include "netns.h"
-#include "bpf_fd_lookup.h"
 #include "bpf_network_event_config.h"
 
 struct {
@@ -15,55 +17,67 @@ struct {
 	__uint(max_entries, 1);
 } tcp_accept_event_map SEC(".maps");
 
-struct accept_args {
-	u64 pad;
-	int syscall_nr;
-	int pad2;
-	long ret;
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, __u64);
+	__uint(max_entries, 32000);
+} tg_tcp_accept_sock_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-__event_tcp_acceptret(struct accept_args *ctx)
+__event_tcp_accept(struct pt_regs *ctx)
 {
-	struct task_struct *current = (struct task_struct *)get_current_task();
-	struct tcp_event_disable_config *event_cfg;
-	u64 pid = get_current_pid_tgid() >> 32;
-	struct socketmap_value *acc_process;
-	struct execve_map_value *process;
-	struct fd_lookup_config *config;
-	struct msg_ip_event *val;
-	bool read_ok = false;
-	struct sock *skp;
-	int skp_err = 0;
-	u16 family = 0;
-	u32 zero = 0;
-	size_t size;
-	bool walker;
-	u64 cookie;
-	u32 ppid;
-	int fd;
+	u64 pid_tgid = get_current_pid_tgid();
+	u64 listen_sock = PT_REGS_PARM1(ctx);
 
-	fd = ctx->ret;
-	if (fd < 0)
-		return 0;
+	map_update_elem(&tg_tcp_accept_sock_map, &pid_tgid, &listen_sock, 0);
+	return 1;
+}
 
-	config = (struct fd_lookup_config *)map_lookup_elem(
-		&fd_lookup_config_map, &zero);
-	if (!config)
-		return 0;
-
-	skp_err = fd_to_sk(&skp, current, fd, IPPROTO_TCP, &read_ok, &family);
-	if (skp_err || !skp)
-		return 0;
+static inline __attribute__((always_inline)) int
+__event_tcp_accept_ret(struct pt_regs *ctx)
+{
+	struct socketmap_value *listen_process;
+	u64 *listen_cookie_p;
+	u64 accept_cookie = PT_REGS_RC(ctx);
+	u64 pid_tgid = get_current_pid_tgid();
 
 	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (u64)skp;
+	listen_cookie_p = map_lookup_elem(&tg_tcp_accept_sock_map, &pid_tgid);
+	if (!listen_cookie_p)
+		return 0;
+	listen_process = lookup_socketmap(listen_cookie_p);
+	map_delete_elem(&tg_tcp_accept_sock_map, &pid_tgid);
+	if (!accept_cookie)
+		return 0;
+
+	if (!listen_process)
+		return 0;
+
+	add_socketmap(&accept_cookie, listen_process, true);
+	return 1;
+}
+
+static inline __attribute__((always_inline)) int
+__event_tcp_accept_state(void *ctx, struct sock *skp)
+{
+	struct tcp_event_disable_config *event_cfg;
+	struct socketmap_value *process;
+	struct msg_ip_event *val;
+	u64 cookie = (u64)skp;
+	size_t size;
+	u16 family = 0;
+	u32 zero = 0;
+
+	/* In TCP we use the struct sock address as the socket cookie. */
+	if (!cookie)
+		return 0;
+	process = lookup_socketmap(&cookie);
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,
 						     &zero);
-	if (!val) {
+	if (!val)
 		return 0;
-	}
 
 	*val = (struct msg_ip_event){
 		.common.size = sizeof(struct msg_ip_event),
@@ -79,6 +93,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 		   _(&(skp->__sk_common.skc_num)));
 	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
 		   _(&(skp->__sk_common.skc_dport)));
+	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 
 	if (family != AF_INET6) {
 		val->tuple.ipv6 = false;
@@ -95,13 +110,12 @@ __event_tcp_acceptret(struct accept_args *ctx)
 		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
 			   _(&(skp->__sk_common.skc_v6_daddr)));
 	}
-	process = event_find_curr(&ppid, &walker);
 
 	if (process) {
 		val->key.pid = process->key.pid;
 		val->key.ktime = process->key.ktime;
 	} else {
-		val->key.pid = pid;
+		val->key.pid = 0;
 		val->key.ktime = 0;
 	}
 
@@ -118,28 +132,21 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	if (!process)
 		return 0;
 
-	acc_process = (struct socketmap_value *)map_lookup_elem(&tg_socket_map_heap, &zero);
-	if (!acc_process)
-		return 0;
+	process->create_time = val->common.ktime;
+	process->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
+	process->last_time = 0;
+	process->received = 0;
+	process->sent = 0;
+	process->zero_window = 0;
+	process->ack_finack = 0;
+	process->tuple.saddr[0] = val->tuple.saddr[0];
+	process->tuple.saddr[1] = val->tuple.saddr[1];
+	process->tuple.daddr[0] = val->tuple.daddr[0];
+	process->tuple.daddr[1] = val->tuple.daddr[1];
+	process->tuple.ipv6 = (family == AF_INET6);
+	process->tuple.dport = val->tuple.dport;
+	process->tuple.sport = val->tuple.sport;
 
-	acc_process->key.pid = process->key.pid;
-	acc_process->key.ktime = process->key.ktime;
-	acc_process->create_time = val->common.ktime;
-	acc_process->last_time = val->common.ktime;
-	acc_process->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-	acc_process->received = 0;
-	acc_process->sent = 0;
-	acc_process->zero_window = 0;
-	acc_process->ack_finack = 0;
-	acc_process->tuple.saddr[0] = val->tuple.saddr[0];
-	acc_process->tuple.saddr[1] = val->tuple.saddr[1];
-	acc_process->tuple.daddr[0] = val->tuple.daddr[0];
-	acc_process->tuple.daddr[1] = val->tuple.daddr[1];
-	acc_process->tuple.ipv6 = (family == AF_INET6);
-	acc_process->tuple.dport = val->tuple.dport;
-	acc_process->tuple.sport = val->tuple.sport;
-	acc_process->tuple.proto = IPPROTO_TCP;
-
-	add_socketmap(&cookie, acc_process, true);
+	add_socketmap(&cookie, process, true);
 	return 1;
 }

@@ -48,7 +48,7 @@ NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o
 UDP = bpf_inet_send_lazy_kp.o bpf_udp_send_recv.o bpf_sock_create.o bpf_sock_release.o \
       bpf_inet_send.o bpf_inet_send_lazy.o bpf_tcp_rtt.o bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o
 
-TCP = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_send_check.o \
+TCP = bpf_tcpmon.o bpf_listen.o bpf_tcp_close_and_accept.o bpf_tcpaccept.o bpf_tcp_send_check.o \
       bpf_tcp_recv.o bpf_tcp_recv_lazy.o
 
 L2 = bpf_dev_queue_xmit.o

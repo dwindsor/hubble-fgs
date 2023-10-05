@@ -409,7 +409,7 @@ func TestLoadHttpSensor(t *testing.T) {
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "tg_http_sk_msg_fgs", Type: ebpf.SkMsg},
 		1:  tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
-		2:  tus.SensorProg{Name: "tg_event_tcp_close", Type: ebpf.Kprobe},
+		2:  tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
 		3:  tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
 		4:  tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe},
 		5:  tus.SensorProg{Name: "tg_http_sk_msg_fgs_response", Type: ebpf.SkMsg},
@@ -424,8 +424,8 @@ func TestLoadHttpSensor(t *testing.T) {
 		14: tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
 
 		// new accept sensor
-		15: tus.SensorProg{Name: "tg_event_tcp_acceptret", Type: ebpf.TracePoint},
-		16: tus.SensorProg{Name: "tg_event_tcp_accept4ret", Type: ebpf.TracePoint},
+		15: tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
+		16: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
 
 		// IPv6 sensor
 		17: tus.SensorProg{Name: "tg_event_tcp_v6_send_check", Type: ebpf.Kprobe},
@@ -433,19 +433,19 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	sensorMaps := []tus.SensorMap{
 		// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 4, 15, 16, 17}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 4, 17}},
 
 		// all but base and tg_sockmap
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17}},
+		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17}},
 
 		// event_tcp4_connect, event_tcp4_close, event_sys_listen
-		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{1, 2, 3, 15, 16}},
+		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{1, 2, 3, 16}},
 
 		// all but tg_sockmap
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17}},
 
-		// event_tcp_acceptret, event_tcp_accept4ret
-		tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{15, 16}},
+		// accept and accept_ret
+		tus.SensorMap{Name: "tg_tcp_accept_sock_map", Progs: []uint{15, 16}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

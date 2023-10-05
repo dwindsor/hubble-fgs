@@ -61,8 +61,8 @@ var (
 		"kprobe",
 	)
 
-	Close = program.Builder(
-		"bpf_tcpclose.o",
+	CloseAndAccept = program.Builder(
+		"bpf_tcp_close_and_accept.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
 		"tg_tcp_set_state",
@@ -79,19 +79,19 @@ var (
 
 	Accept = program.Builder(
 		"bpf_tcpaccept.o",
-		"syscalls/sys_exit_accept",
-		"tracepoint/syscalls/sys_exit_accept",
-		"tg_syscalls_sys_exit_accept",
-		"tracepoint",
+		"tcp_create_openreq_child",
+		"kprobe/tcp_create_openreq_child",
+		"tg_event_tcp_accept",
+		"kprobe",
 	)
 
-	Accept4 = program.Builder(
+	AcceptRet = program.Builder(
 		"bpf_tcpaccept.o",
-		"syscalls/sys_exit_accept4",
-		"tracepoint/syscalls/sys_exit_accept4",
-		"tg_syscalls_sys_exit_accept4",
-		"tracepoint",
-	)
+		"tcp_create_openreq_child",
+		"kretprobe/tcp_create_openreq_child",
+		"tg_event_tcp_accept_ret",
+		"kprobe",
+	).SetRetProbe(true)
 
 	SendCheck4 = program.Builder(
 		"bpf_tcp_send_check.o",
@@ -142,14 +142,14 @@ var (
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", Connect)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", Connect)
 	CfgMap             = program.MapBuilder("tg_cfg_map", Connect)
-	FdLookupConfigMap  = program.MapBuilder(ip.FdLookupConfigMapName, Accept)
+	AcceptSocketMap    = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
 
 	// Parser maps
-	HTTPContext    = program.MapBuilder("tg_http_map", Close)
-	TLSContext     = program.MapBuilder("tg_tls_map", Close)
+	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
+	TLSContext     = program.MapBuilder("tg_tls_map", CloseAndAccept)
 	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", Connect)
-	TLSBottles     = program.MapBuilder("tg_bottles", Close)
-	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", Close)
+	TLSBottles     = program.MapBuilder("tg_bottles", CloseAndAccept)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", CloseAndAccept)
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
@@ -263,10 +263,10 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 
 	progs = []*program.Program{
 		Connect,
-		Close,
+		CloseAndAccept,
 		Listen,
 		Accept,
-		Accept4,
+		AcceptRet,
 		SendCheck4,
 		SendCheck6,
 	}
@@ -278,6 +278,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 	maps := []*program.Map{
 		SocketStats,
 		SocketMap,
+		AcceptSocketMap,
 		SocketTupleMap,
 		SocketTupleStats,
 		SocketTupleHintMap,
@@ -289,7 +290,6 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 		TLSBottleStats,
 		SendCheckSampler,
 		ProcessNetworkWatermarksMap,
-		FdLookupConfigMap,
 		EventDisableConfig,
 	}
 
