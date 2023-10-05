@@ -89,6 +89,12 @@ var (
 	ExecveStatsV53       = program.MapBuilder("execve_map_stats", ExecveV53)
 	ExecveStatsV61       = program.MapBuilder("execve_map_stats", ExecveV61)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
+
+	sensor = sensors.Sensor{
+		Name:  "__main__",
+		Progs: GetDefaultPrograms(),
+		Maps:  GetDefaultMaps(),
+	}
 )
 
 func GetExecveMap() *program.Map {
@@ -174,11 +180,7 @@ func GetDefaultMaps() []*program.Map {
 // GetInitialSensor returns the collection of Sensor that is loaded at
 // initialization time.
 func GetInitialSensor() *sensors.Sensor {
-	return &sensors.Sensor{
-		Name:  "__main__",
-		Progs: GetDefaultPrograms(),
-		Maps:  GetDefaultMaps(),
-	}
+	return &sensor
 }
 
 // LoadDefault loads the default sensor, including any from the configuration

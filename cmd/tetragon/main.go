@@ -352,7 +352,6 @@ func hubbleFGSExecute() error {
 	defer func() {
 		file.TerminateFsScanner()
 		obs.PrintStats()
-		obs.RemovePrograms()
 	}()
 
 	defaultLevel := logger.GetLogLevel()
@@ -405,6 +404,9 @@ func hubbleFGSExecute() error {
 	if err := obs.InitSensorManager(sensorMgWait); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
+	defer func() {
+		observer.RemoveSensors(ctx)
+	}()
 
 	// Remove old tcpmon BPF directory
 	//
@@ -482,7 +484,7 @@ func hubbleFGSExecute() error {
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
-		observer.SensorManager,
+		observer.GetSensorManager(),
 		hookRunner)
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
@@ -500,27 +502,31 @@ func hubbleFGSExecute() error {
 	obs.AddListener(pm)
 	saveInitInfo()
 	if option.Config.EnableK8s {
-		go crd.WatchTracePolicy(ctx, observer.SensorManager)
+		go crd.WatchTracePolicy(ctx, observer.GetSensorManager())
 	}
 
 	obs.LogPinnedBpf(observerDir)
 
 	// Load default base sensors
-	if err := base.LoadDefault(observerDir, observerDir); err != nil {
-		return err
+	base := base.GetInitialSensor()
+	if err := base.Load(observerDir, observerDir); err != nil {
+		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
+	defer func() {
+		base.Unload()
+	}()
 
 	// now that the base sensor was loaded, we can start the sensor manager
 	close(sensorMgWait)
 	sensorMgWait = nil
-	observer.SensorManager.LogSensorsAndProbes(ctx)
+	observer.GetSensorManager().LogSensorsAndProbes(ctx)
 
 	if len(option.Config.TracingPolicy) > 0 {
 		tp, err := tracingpolicy.FromFile(option.Config.TracingPolicy)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
 		}
-		err = observer.SensorManager.AddTracingPolicy(ctx, tp)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
 		if err != nil {
 			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}

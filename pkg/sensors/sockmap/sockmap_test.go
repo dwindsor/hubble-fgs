@@ -289,8 +289,7 @@ spec:
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll()
-	assert.NoError(t, err)
+	sensors.UnloadSensors(sens)
 }
 
 func TestLoadTlsCGSensor(t *testing.T) {
@@ -350,8 +349,7 @@ spec:
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll()
-	assert.NoError(t, err)
+	sensors.UnloadSensors(sens)
 }
 
 func TestCGTLS13(t *testing.T) {

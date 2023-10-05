@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -105,4 +106,6 @@ func TestLoadNopSensor(t *testing.T) {
 	assert.NoError(t, err, "nop sensor should load")
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadSensors(sens)
 }

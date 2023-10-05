@@ -165,7 +165,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	processManager, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&wg,
-		observer.SensorManager,
+		observer.GetSensorManager(),
 		glblHookRunner,
 	)
 	if err != nil {

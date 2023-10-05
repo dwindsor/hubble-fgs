@@ -1308,7 +1308,7 @@ func TestLoadTcpSensor(t *testing.T) {
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll()
+	sensors.UnloadSensors(sens)
 }
 
 func TestConnectEvent6(t *testing.T) {
