@@ -11,7 +11,7 @@
 package config
 
 import (
-	oss "github.com/cilium/tetragon/pkg/metrics/config"
+	oss "github.com/cilium/tetragon/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"

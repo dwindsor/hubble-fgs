@@ -325,15 +325,15 @@ github.com/cilium/tetragon/pkg/matchers/listmatcher
 github.com/cilium/tetragon/pkg/matchers/stringmatcher
 github.com/cilium/tetragon/pkg/matchers/timestampmatcher
 github.com/cilium/tetragon/pkg/metrics
-github.com/cilium/tetragon/pkg/metrics/config
 github.com/cilium/tetragon/pkg/metrics/consts
 github.com/cilium/tetragon/pkg/metrics/errormetrics
 github.com/cilium/tetragon/pkg/metrics/eventcachemetrics
 github.com/cilium/tetragon/pkg/metrics/eventmetrics
 github.com/cilium/tetragon/pkg/metrics/kprobemetrics
 github.com/cilium/tetragon/pkg/metrics/mapmetrics
+github.com/cilium/tetragon/pkg/metrics/metricsconfig
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
-github.com/cilium/tetragon/pkg/metrics/policyfilter
+github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics
 github.com/cilium/tetragon/pkg/metrics/processexecmetrics
 github.com/cilium/tetragon/pkg/metrics/ratelimitmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufmetrics

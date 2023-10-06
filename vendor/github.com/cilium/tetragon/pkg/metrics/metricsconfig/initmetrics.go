@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
 
-package config
+package metricsconfig
 
 import (
 	"github.com/cilium/tetragon/pkg/eventcache"
@@ -12,7 +12,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/kprobemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
-	pfmetrics "github.com/cilium/tetragon/pkg/metrics/policyfilter"
+	"github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics"
 	"github.com/cilium/tetragon/pkg/metrics/processexecmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ratelimitmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
@@ -25,8 +25,6 @@ import (
 	grpcmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-
-	"strings"
 )
 
 func InitAllMetrics(registry *prometheus.Registry) {
@@ -36,7 +34,7 @@ func InitAllMetrics(registry *prometheus.Registry) {
 	kprobemetrics.InitMetrics(registry)
 	mapmetrics.InitMetrics(registry)
 	opcodemetrics.InitMetrics(registry)
-	pfmetrics.InitMetrics(registry)
+	policyfiltermetrics.InitMetrics(registry)
 	processexecmetrics.InitMetrics(registry)
 	ringbufmetrics.InitMetrics(registry)
 	ringbufqueuemetrics.InitMetrics(registry)
@@ -58,12 +56,4 @@ func InitAllMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	registry.MustRegister(grpcmetrics.NewServerMetrics())
 	version.InitMetrics(registry)
-}
-
-func ParseMetricsLabelFilter(labels string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for _, label := range strings.Split(labels, ",") {
-		result[label] = nil
-	}
-	return result
 }
