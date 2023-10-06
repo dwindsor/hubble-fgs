@@ -95,6 +95,15 @@ var GetFilter = func() *tetragon.Filter {
 	if len(destPods) > 0 {
 		filter.DestinationPodRegex = destPods
 	}
+	// Is used to filter on the event types i.e. PROCESS_EXEC, PROCESS_EXIT etc.
+	if len(ossGetevents.Options.EventTypes) > 0 {
+		var eventType tetragon.EventType
+
+		for _, v := range ossGetevents.Options.EventTypes {
+			eventType = tetragon.EventType(tetragon.EventType_value[v])
+			filter.EventSet = append(filter.EventSet, eventType)
+		}
+	}
 
 	return &filter
 }
