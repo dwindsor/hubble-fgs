@@ -281,6 +281,26 @@ func (event *ProcessFile) SetParent(p *Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessFileExec) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessFileExec{
+		ProcessFileExec: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessFileExec) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessFileExec) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessSockStats) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessSockStats{
 		ProcessSockStats: event,
@@ -462,6 +482,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessIpError
 	case *GetEventsResponse_ProcessFile:
 		return ev.ProcessFile
+	case *GetEventsResponse_ProcessFileExec:
+		return ev.ProcessFileExec
 	case *GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats
 	case *GetEventsResponse_Tls:

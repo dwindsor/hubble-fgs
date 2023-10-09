@@ -297,6 +297,16 @@ message ProcessFile {
     repeated FileOperation operation = 10;
 }
 
+// ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
+// They are configured in the "exec:" section of the TracingPolicy.
+message ProcessFileExec {
+    tetragon.Process process = 1;
+    tetragon.Process parent = 2;
+    FileDetails file = 3;
+    FileDigest digest = 4;
+    repeated FileOperation operations = 5;
+}
+
 message SockInfo {
     string source_ip = 1;
     google.protobuf.UInt32Value source_port = 2;

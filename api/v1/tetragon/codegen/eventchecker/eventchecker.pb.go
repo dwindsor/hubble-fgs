@@ -293,6 +293,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessIpErrorChecker("").FromProcessIpError(ev), nil
 	case *tetragon.ProcessFile:
 		return NewProcessFileChecker("").FromProcessFile(ev), nil
+	case *tetragon.ProcessFileExec:
+		return NewProcessFileExecChecker("").FromProcessFileExec(ev), nil
 	case *tetragon.ProcessSockStats:
 		return NewProcessSockStatsChecker("").FromProcessSockStats(ev), nil
 	case *tetragon.Tls:
@@ -381,6 +383,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessIpError, nil
 	case *tetragon.GetEventsResponse_ProcessFile:
 		return ev.ProcessFile, nil
+	case *tetragon.GetEventsResponse_ProcessFileExec:
+		return ev.ProcessFileExec, nil
 	case *tetragon.GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats, nil
 	case *tetragon.GetEventsResponse_Tls:
@@ -3425,6 +3429,149 @@ nextCheck:
 	}
 
 	return nil
+}
+
+// ProcessFileExecChecker implements a checker struct to check a ProcessFileExec event
+type ProcessFileExecChecker struct {
+	CheckerName string                    `json:"checkerName"`
+	Process     *ProcessChecker           `json:"process,omitempty"`
+	Parent      *ProcessChecker           `json:"parent,omitempty"`
+	File        *FileDetailsChecker       `json:"file,omitempty"`
+	Digest      *FileDigestChecker        `json:"digest,omitempty"`
+	Operations  *FileOperationListMatcher `json:"operations,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessFileExecChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessFileExec); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessFileExec event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessFileExecChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessFileExecChecker creates a new ProcessFileExecChecker
+func NewProcessFileExecChecker(name string) *ProcessFileExecChecker {
+	return &ProcessFileExecChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessFileExecChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessFileExecChecker) GetCheckerType() string {
+	return "ProcessFileExecChecker"
+}
+
+// Check checks a ProcessFileExec event
+func (checker *ProcessFileExecChecker) Check(event *tetragon.ProcessFileExec) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessFileExec event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.File != nil {
+			if err := checker.File.Check(event.File); err != nil {
+				return fmt.Errorf("File check failed: %w", err)
+			}
+		}
+		if checker.Digest != nil {
+			if err := checker.Digest.Check(event.Digest); err != nil {
+				return fmt.Errorf("Digest check failed: %w", err)
+			}
+		}
+		if checker.Operations != nil {
+			if err := checker.Operations.Check(event.Operations); err != nil {
+				return fmt.Errorf("Operations check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) WithProcess(check *ProcessChecker) *ProcessFileExecChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) WithParent(check *ProcessChecker) *ProcessFileExecChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithFile adds a File check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) WithFile(check *FileDetailsChecker) *ProcessFileExecChecker {
+	checker.File = check
+	return checker
+}
+
+// WithDigest adds a Digest check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) WithDigest(check *FileDigestChecker) *ProcessFileExecChecker {
+	checker.Digest = check
+	return checker
+}
+
+// WithOperations adds a Operations check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) WithOperations(check *FileOperationListMatcher) *ProcessFileExecChecker {
+	checker.Operations = check
+	return checker
+}
+
+//FromProcessFileExec populates the ProcessFileExecChecker using data from a ProcessFileExec event
+func (checker *ProcessFileExecChecker) FromProcessFileExec(event *tetragon.ProcessFileExec) *ProcessFileExecChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	if event.File != nil {
+		checker.File = NewFileDetailsChecker().FromFileDetails(event.File)
+	}
+	if event.Digest != nil {
+		checker.Digest = NewFileDigestChecker().FromFileDigest(event.Digest)
+	}
+	{
+		var checks []*FileOperationChecker
+		for _, check := range event.Operations {
+			var convertedCheck *FileOperationChecker
+			convertedCheck = NewFileOperationChecker(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewFileOperationListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Operations = lm
+	}
+	return checker
 }
 
 // ProcessSockStatsChecker implements a checker struct to check a ProcessSockStats event
