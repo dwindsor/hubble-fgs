@@ -101,6 +101,9 @@ type TracingPolicySpec struct {
 	// File monitoring policy specification.
 	FileMonitoring FileSpec `json:"file"`
 	// +kubebuilder:validation:Optional
+	// File exec monitoring policy specification.
+	FileExecMonitoring FileExecSpec `json:"exec"`
+	// +kubebuilder:validation:Optional
 	// Enable loader events
 	Loader bool `json:"loader"`
 	// +kubebuilder:validation:Optional
@@ -199,6 +202,12 @@ type FileSpec struct {
 	// This is a label selector which selects Pods. This field follows standard label
 	// selector semantics; if present but empty, it selects all pods.
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
+}
+
+type FileExecSpec struct {
+	// +kubebuilder:default=false
+	// Enables process_file_exec events
+	Enable bool `json:"enable"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

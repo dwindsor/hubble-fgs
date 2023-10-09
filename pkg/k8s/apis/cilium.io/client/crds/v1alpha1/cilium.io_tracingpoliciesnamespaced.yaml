@@ -35,6 +35,16 @@ spec:
           spec:
             description: Tracing policy specification.
             properties:
+              exec:
+                description: File exec monitoring policy specification.
+                properties:
+                  enable:
+                    default: false
+                    description: Enables process_file_exec events
+                    type: boolean
+                required:
+                - enable
+                type: object
               file:
                 description: File monitoring policy specification.
                 properties:
