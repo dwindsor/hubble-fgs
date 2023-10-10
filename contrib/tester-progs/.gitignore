@@ -4,3 +4,4 @@ fork-tester
 namespace-tester
 sigkill-tester
 capabilities-tester
+nop
