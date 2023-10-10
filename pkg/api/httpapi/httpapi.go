@@ -35,19 +35,16 @@ type MsgHttpUnix struct {
 }
 
 type MsgHttp struct {
-	Method uint32
-	Flags  uint32
-	ReqId  uint64
-	RespId uint64
-	Url    [1024]byte
-	Pad1   uint32
-	Pad2   uint32
-	Pad3   uint32
+	Method uint32     `align:"method"`
+	Flags  uint32     `align:"flags"`
+	ReqId  uint64     `align:"send_cntr"`
+	RespId uint64     `align:"recv_cntr"`
+	Url    [1024]byte `align:"url"`
 }
 
 type MsgHttpEvent struct {
-	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPTuple
-	ProcessKey processapi.MsgExecveKey
-	Request    MsgHttp
+	Common     processapi.MsgCommon    `align:"common"`
+	Tuple      networkapi.MsgIPTuple   `align:"tuple"`
+	ProcessKey processapi.MsgExecveKey `align:"execve"`
+	Request    MsgHttp                 `align:"request"`
 }
