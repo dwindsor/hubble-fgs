@@ -9,6 +9,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/stretchr/testify/assert"
+
+	tetragonAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 )
 
 func Test_EnterpriseAlignments(t *testing.T) {
@@ -42,4 +44,10 @@ func Test_EnterpriseAlignments(t *testing.T) {
 
 	err := alignchecker.CheckStructAlignments(bpfObjPath, entrpriseAligntments, true)
 	assert.NoError(t, err, "enterprise types must align")
+}
+
+func Test_OSSAlignments(t *testing.T) {
+	bpfObjPath := filepath.Join(tetragonLib, "bpf_alignchecker_oss.o")
+	err := tetragonAlignchecker.CheckStructAlignments(bpfObjPath)
+	assert.NoError(t, err, "oss types must align")
 }

@@ -290,7 +290,9 @@ github.com/cilium/tetragon/operator/crd
 github.com/cilium/tetragon/operator/option
 github.com/cilium/tetragon/operator/podinfo
 github.com/cilium/tetragon/pkg/aggregator
+github.com/cilium/tetragon/pkg/alignchecker
 github.com/cilium/tetragon/pkg/api
+github.com/cilium/tetragon/pkg/api/confapi
 github.com/cilium/tetragon/pkg/api/dataapi
 github.com/cilium/tetragon/pkg/api/ops
 github.com/cilium/tetragon/pkg/api/processapi
@@ -380,6 +382,7 @@ github.com/cilium/tetragon/pkg/rthooks
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/base
+github.com/cilium/tetragon/pkg/sensors/cgroup/cgrouptrackmap
 github.com/cilium/tetragon/pkg/sensors/config/confmap
 github.com/cilium/tetragon/pkg/sensors/exec/execvemap
 github.com/cilium/tetragon/pkg/sensors/program
