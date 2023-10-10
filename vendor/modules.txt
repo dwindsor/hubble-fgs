@@ -10,7 +10,7 @@ github.com/AdaLogics/go-fuzz-headers
 # github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0
 ## explicit; go 1.18
 github.com/AdamKorcz/go-118-fuzz-build/testing
-# github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1
+# github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
@@ -539,8 +539,8 @@ github.com/containerd/typeurl/v2
 # github.com/containernetworking/plugins v1.3.0
 ## explicit; go 1.20
 github.com/containernetworking/plugins/pkg/ns
-# github.com/containers/storage v1.46.1
-## explicit; go 1.18
+# github.com/containers/storage v1.49.0
+## explicit; go 1.19
 github.com/containers/storage/pkg/idtools
 github.com/containers/storage/pkg/mount
 github.com/containers/storage/pkg/regexp
@@ -554,7 +554,7 @@ github.com/coreos/go-systemd/v22/journal
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/cri-o/cri-o v1.27.1
+# github.com/cri-o/cri-o v1.28.1
 ## explicit; go 1.20
 github.com/cri-o/cri-o/pkg/types
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -917,7 +917,7 @@ github.com/moby/sys/sequential
 # github.com/moby/sys/signal v0.7.0
 ## explicit; go 1.16
 github.com/moby/sys/signal
-# github.com/moby/term v0.0.0-20221205130635-1aeaba878587
+# github.com/moby/term v0.5.0
 ## explicit; go 1.18
 github.com/moby/term
 github.com/moby/term/windows
@@ -947,7 +947,7 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v1.1.9
 ## explicit; go 1.17
 github.com/opencontainers/runc/libcontainer/user
-# github.com/opencontainers/runtime-spec v1.1.0
+# github.com/opencontainers/runtime-spec v1.1.1-0.20230823135140-4fec88fd00a4
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/opencontainers/selinux v1.11.0
