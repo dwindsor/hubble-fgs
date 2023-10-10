@@ -12,7 +12,6 @@ type config struct {
 	DisableKprobeMulti     bool
 	FimRuntimeEndpoint     string
 	DetachOldBpf           bool
-	EnablePodInfo          bool
 }
 
 var (
@@ -24,6 +23,5 @@ var (
 		NetNsCacheSize:         256,
 		FimFifoPath:            "/var/run/cilium/hubble",
 		FimRuntimeEndpoint:     "",
-		EnablePodInfo:          false,
 	}
 )

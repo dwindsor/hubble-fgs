@@ -191,7 +191,6 @@ func readAndSetFlags() {
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
 
 	enterpriseOption.Config.FimRuntimeEndpoint = viper.GetString(keyFimRuntimeEndpoint)
-	enterpriseOption.Config.EnablePodInfo = viper.GetBool(keyEnablePodInfo)
 
 	// deprecation timeline: deprecated -> v1.12.0
 	// manually handle the deprecation of --config-file
@@ -199,6 +198,9 @@ func readAndSetFlags() {
 		log.Warnf("Flag --%s has been deprecated, please use --%s instead", keyConfigFile, keyTracingPolicy)
 		option.Config.TracingPolicy = viper.GetString(keyConfigFile)
 	}
+
+	option.Config.EnablePodInfo = viper.GetBool(keyEnablePodInfo)
+
 	// if both --config-file and --tracing-policy are set, the latter takes priority
 	if viper.IsSet(keyTracingPolicy) {
 		option.Config.TracingPolicy = viper.GetString(keyTracingPolicy)

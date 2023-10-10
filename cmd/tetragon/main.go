@@ -719,7 +719,7 @@ func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 			return nil, err
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
-		if !enterpriseOption.Config.EnablePodInfo {
+		if !option.Config.EnablePodInfo {
 			return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
 		}
 		return watcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second), nil
