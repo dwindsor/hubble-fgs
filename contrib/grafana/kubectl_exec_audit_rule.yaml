@@ -1,0 +1,66 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: Tetragon "kubectl exec" audit
+      folder: Tetragon "Out-Of-The-Box" Ruleset
+      interval: 1m
+      rules:
+        - uid: beca222a-fcb0-4daf-88cd-575e5da59484
+          title: 'Malicious "kubectl exec" events '
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: grafanacloud-logs
+              model:
+                datasource:
+                    type: loki
+                    uid: grafanacloud-logs
+                editorMode: code
+                expr: sum(count_over_time({cluster="df-pleiades",job="fgs_log"} |~"process_exec" |~"otel-demo" | json | process_exec_parent_binary=`/usr/sbin/runc` and process_exec_parent_pid != 1 [$__range]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 1m
+          annotations:
+            summary: Malicious "kubectl exec" events detected
+          labels:
+            rule: kubectl_exec
+            severity: high
+            team: security
+          isPaused: false
+
