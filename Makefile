@@ -99,7 +99,7 @@ endif
 GO_BUILD = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
 
 .PHONY: all
-all: tetragon-bpf tetragon tetra fgs-bench fgs-alignchecker test-compile tester-progs
+all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 
 -include Makefile.docker
 -include modules/tetragon-oss/Makefile.cli
@@ -207,11 +207,6 @@ tetragon-operator:
 hubble-fgs-fs-scanner:
 	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
-
-.PHONY: fgs-alignchecker
-fgs-alignchecker:
-	make -C $(OSS_DIR) tetragon-alignchecker
-	cp $(OSS_DIR)/tetragon-alignchecker fgs-alignchecker
 
 .PHONY: ksyms
 ksyms:
