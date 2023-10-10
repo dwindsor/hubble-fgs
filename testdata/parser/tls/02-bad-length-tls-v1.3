@@ -92,7 +92,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 548                    # size
+  h4 552                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
   TUPLE CLI SRV
@@ -105,5 +105,7 @@ EVENT tls
   # flags: cipher too large
   h4 0x020
 
-  ? 464
+  ? 468
+
+  $ 00 00 00 00 # padding inserted by the perf ring
 END

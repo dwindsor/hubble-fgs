@@ -421,7 +421,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 548 # size
+  h4 552                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
   TUPLE CLI SRV
@@ -462,6 +462,7 @@ EVENT tls
   # supported versions
   $ 00
   ? 16
+  $ 00 00 # pad
 
   ## Server hello
   $ 03 03 # version
@@ -495,11 +496,14 @@ EVENT tls
   # supported versions
   $ 00
   ? 16
+  $ 00 00 # pad
 
   # process key
   NZ 4          # pid
   $ 00 00 00 00 # pad
   NZ 8          # ktime
+
+  $ 00 00 00 00 # padding inserted by the perf ring
 END
 
 EVENT tlscont

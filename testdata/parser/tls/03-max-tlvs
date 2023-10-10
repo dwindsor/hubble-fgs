@@ -125,7 +125,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 548                    # size
+  h4 552                    # size
   NZ 8                      # ktime
 
   TUPLE CLI SRV
@@ -138,6 +138,8 @@ EVENT tls
   # flags: TLS_MAX_TLVS
   h4 0x02
 
-  ? 464
+  ? 468
+
+  $ 00 00 00 00 # padding inserted by the perf ring
 END
 

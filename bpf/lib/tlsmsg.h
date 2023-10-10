@@ -63,6 +63,8 @@ struct msg_tls {
 	flv_sni;
 	FLV(EXT_VERSION_LENGTH)
 	flv_supported_versions;
+
+	__u8 pad[2];
 } __attribute__((packed));
 
 #define SOCKET_TLS_DONE 0x0001

@@ -83,19 +83,20 @@ const (
 )
 
 type MsgTLS struct {
-	Version           uint16
-	Length            uint16
-	Type              uint8
-	Subtype           uint8
-	LegacyyVersion    uint16
-	Flags             uint32
-	Bytes             uint32
-	AlertLevel        uint8
-	AlertDescription  uint8
-	Session           FLV64
-	Cipher            FLV64
-	SNI               FLV64
-	SupportedVersions FLV16
+	Version           uint16   `align:"version"`
+	Length            uint16   `align:"length"`
+	Type              uint8    `align:"type"`
+	Subtype           uint8    `align:"subtype"`
+	LegacyVersion     uint16   `align:"negotiated_version"`
+	Flags             uint32   `align:"flags"`
+	Bytes             uint32   `align:"bytes"`
+	AlertLevel        uint8    `align:"alert_level"`
+	AlertDescription  uint8    `align:"alert_description"`
+	Session           FLV64    `align:"flv_session_id"`
+	Cipher            FLV64    `align:"flv_cipher"`
+	SNI               FLV64    `align:"flv_sni"`
+	SupportedVersions FLV16    `align:"flv_supported_versions"`
+	Pad               [2]uint8 `align:"pad"`
 }
 
 type MsgTLSParserState struct {
