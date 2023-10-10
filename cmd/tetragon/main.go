@@ -35,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
@@ -47,6 +48,7 @@ import (
 	"github.com/cilium/tetragon/pkg/unixlisten"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
+	k8sconf "github.com/cilium/tetragon/pkg/watcher/conf"
 	"github.com/cilium/tetragon/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -64,8 +66,11 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiextensionsinformer "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 )
 
 var (
@@ -450,19 +455,71 @@ func hubbleFGSExecute() error {
 	// Probe runtime configuration and do not fail on errors
 	obs.UpdateRuntimeConf(option.Config.MapDir)
 
-	watcher, err := getWatcher(option.Config.EnableK8s)
-	if err != nil {
-		return fmt.Errorf("failed to get k8s API watcher: %w", err)
+	var k8sWatcher watcher.K8sResourceWatcher
+	if option.Config.EnableK8s {
+		log.Info("Enabling Kubernetes API")
+		crds := map[string]struct{}{
+			v1alpha1.TPName:           {},
+			v1alpha1.TPNamespacedName: {},
+		}
+		if option.Config.EnablePodInfo {
+			crds[v1alpha1.PIName] = struct{}{}
+		}
+		config, err := k8sconf.K8sConfig()
+		if err != nil {
+			return err
+		}
+		log.WithField("crds", crds).Info("Waiting for required CRDs")
+		var wg sync.WaitGroup
+		wg.Add(1)
+		k8sClient := kubernetes.NewForConfigOrDie(config)
+		crdClient := apiextensionsclientset.NewForConfigOrDie(config)
+		crdInformer := apiextensionsinformer.NewCustomResourceDefinitionInformer(crdClient, 0*time.Second, nil)
+		_, err = crdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				crdObject, ok := obj.(*v1.CustomResourceDefinition)
+				if !ok {
+					log.WithField("obj", obj).Warn("Received an invalid object")
+					return
+				}
+				if _, ok := crds[crdObject.Name]; ok {
+					log.WithField("crd", crdObject.Name).Info("Found CRD")
+					delete(crds, crdObject.Name)
+					if len(crds) == 0 {
+						log.Info("Found all the required CRDs")
+						wg.Done()
+					}
+				}
+			},
+		})
+		if err != nil {
+			log.WithError(err).Error("failed to add event handler")
+			return err
+		}
+		stop := make(chan struct{})
+		go func() {
+			crdInformer.Run(stop)
+		}()
+		wg.Wait()
+		close(stop)
+		if option.Config.EnablePodInfo {
+			k8sWatcher = watcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
+		} else {
+			k8sWatcher = watcher.NewK8sWatcher(k8sClient, 60*time.Second)
+		}
+	} else {
+		log.Info("Disabling Kubernetes API")
+		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
 	_, err = cilium.InitCiliumState(ctx, option.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
 
-	if err := process.InitCache(watcher, processCacheSize); err != nil {
+	if err := process.InitCache(k8sWatcher, processCacheSize); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
-	podinfo.SetK8sResourceWatcher(watcher)
+	podinfo.SetK8sResourceWatcher(k8sWatcher)
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
 	// due to a signal). This is needed, for example, so that the exported writes full
@@ -479,7 +536,7 @@ func hubbleFGSExecute() error {
 	ctx, cancel2 := context.WithCancel(ctx)
 	defer cancel2()
 
-	hookRunner := rthooks.GlobalRunner().WithWatcher(watcher)
+	hookRunner := rthooks.GlobalRunner().WithWatcher(k8sWatcher)
 
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
@@ -493,7 +550,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if exportFilename != "" {
-		if err = startExporter(ctx, pm.Server, watcher); err != nil {
+		if err = startExporter(ctx, pm.Server, k8sWatcher); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
@@ -709,23 +766,6 @@ func Serve(ctx context.Context, listenAddr string, srv *server.Server) error {
 		}
 	}(proto, addr)
 	return nil
-}
-
-func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
-	if enableK8sAPI {
-		log.Info("Enabling Kubernetes API")
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
-		k8sClient := kubernetes.NewForConfigOrDie(config)
-		if !option.Config.EnablePodInfo {
-			return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
-		}
-		return watcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second), nil
-	}
-	log.Info("Disabling Kubernetes API")
-	return watcher.NewFakeK8sWatcher(nil), nil
 }
 
 func startGopsServer() error {
