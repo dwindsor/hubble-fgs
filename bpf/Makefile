@@ -25,6 +25,7 @@ HTTPDIR := parsers/http/
 NOPDIR := parsers/nop/
 PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
+ALIGNCHECKEROSSDIR = $(OSSBPFDIR)/alignchecker/
 NETWORKINGDIR := networking/
 UDPDIR := networking/udp/
 TCPDIR := networking/tcp/
@@ -36,6 +37,7 @@ PROCESSDIR := $(OSSBPFDIR)/process/
 BPFTESTDIR := $(OSSBPFDIR)/test/
 
 ALIGNCHECKER = bpf_alignchecker.o
+ALIGNCHECKEROSS = bpf_alignchecker_oss.o
 PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
 TLS = bpf_tls_inet_send.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o bpf_setsockopt.o
 NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
@@ -118,7 +120,8 @@ PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ)
+ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -142,6 +145,13 @@ objs/%.ll: $(ALIGNCHECKERDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(ALIGNCHECKERDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+# ALIGNCHECKER
+objs/%_oss.ll: $(ALIGNCHECKEROSSDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%_oss.d: $(ALIGNCHECKEROSSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # PARSERDIR
