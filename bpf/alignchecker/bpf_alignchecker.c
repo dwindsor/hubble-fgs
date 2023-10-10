@@ -9,40 +9,24 @@
 #include "networking/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
 
-// from perf_event_output
-struct msg_generic_kprobe _1;
-struct msg_execve_event _2;
-struct msg_exit _3;
-struct msg_http_event _4;
-struct msg_tls_cont_event _5;
-struct msg_tls_event _6;
-struct msg_test _7;
-// Old, unused event.
-// struct msg_ipv4_tcp_connect _8;
-struct msg_ip_event _9;
-struct msg_kfree_skb _10;
-struct msg_udp_event _11;
+// Layer 3
+struct msg_ip_event _msg_ip_event;
 
-// from maps
-struct event _12;
-struct msg_execve_key _13;
-struct execve_map_value _14;
-// struct msg_tls_ip _15;
-struct socketmap_value _16;
+// Layer 7
+struct __msg_http_event _msg_http_event;
+struct msg_tls_event _msg_tls_event;
 
-// from FIM
-struct hash_map_file_key _17;
-struct hash_map_file_val _18;
-struct msg_file_path _19;
-struct msg_fs_info _20;
-struct msg_file_ops _21;
-struct msg_file_split_path _22;
-struct msg_rename_elem _23;
-struct msg_file_rename_ops _24;
-struct file_config_map_value _25;
-struct lpm_key _26;
-struct lpm_val _27;
-struct digest_key _28;
-
-// from bpf_fd_lookup.h
-struct fd_lookup_config;
+// FIM
+struct hash_map_file_key _hash_map_file_key;
+struct hash_map_file_val _hash_map_file_val;
+struct msg_file_path _msg_file_path;
+struct msg_fs_info _msg_fs_info;
+struct msg_file_ops _msg_file_ops;
+struct msg_file_split_path _msg_file_split_path;
+struct msg_rename_elem _msg_rename_elem;
+struct msg_file_rename_ops _msg_file_rename_ops;
+struct file_config_map_value _file_config_map_value;
+struct lpm_key _lpm_key;
+struct lpm_val _lpm_val;
+struct digest_key _digest_key;
+struct fd_lookup_config _fd_lookup_config;

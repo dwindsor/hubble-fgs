@@ -20,12 +20,12 @@ import (
 )
 
 func init() {
-	sensors.ConfigDefaults.TetragonLib = filepath.Join(tetragonBpfPath(), "objs")
+	sensors.ConfigDefaults.TetragonLib = filepath.Join(TetragonBpfPath(), "objs")
 	fmt.Println("default bpf dir is: ", sensors.ConfigDefaults.TetragonLib)
 }
 
 // tetragonBpfPath retrieves bpf code path
-func tetragonBpfPath() string {
+func TetragonBpfPath() string {
 	_, testFname, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(testFname), "..", "..", "..", "bpf")
 }
