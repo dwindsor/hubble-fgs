@@ -373,6 +373,61 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	return tetragonEvent
 }
 
+func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
+	var tetragonParent, tetragonProcess *tetragon.Process
+
+	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if internal == nil {
+		tetragonProcess = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+		}
+	} else {
+		tetragonProcess = internal.UnsafeGetProcess()
+	}
+	if parent != nil {
+		tetragonParent = parent.UnsafeGetProcess()
+	}
+
+	tetragonEvent := &tetragon.ProcessFileExec{
+		Process:    tetragonProcess,
+		Parent:     tetragonParent,
+		Operations: []tetragon.FileOperation{normalizeOp(event.Operation)},
+	}
+
+	tetragonEvent.File = &tetragon.FileDetails{
+		Filename: &tetragon.FileDetails_Str{Str: event.Path},
+		Inode: &tetragon.Inode{
+			Number: event.Ino,
+			Fs:     createFileSystem(event.Fs),
+		},
+		ParentInode: &tetragon.Inode{
+			Number: event.ParentIno,
+			Fs:     createFileSystem(event.ParentFs),
+		},
+	}
+
+	if event.Digest.Ok {
+		tetragonEvent.Digest = &tetragon.FileDigest{
+			Hash:  event.Digest.Hash,
+			Algo:  tetragon.DigestAlgo(event.Digest.Algo),
+			Error: int64(event.Digest.Error),
+		}
+	}
+
+	ec := eventcache.Get()
+	if ec != nil && (ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		return nil
+	}
+
+	if internal != nil {
+		tetragonEvent.Process = internal.GetProcessCopy()
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+	}
+	return tetragonEvent
+}
+
 type MsgFsInfoUnix struct {
 	SDev  uint32
 	SName string
@@ -441,7 +496,22 @@ func (msg *MsgFileEventUnix) Notify() bool {
 	return true
 }
 
+func (msg *MsgFileEventUnix) isFileExecEvent() bool {
+	return msg.Action == 0xFFFFFFFF && msg.Hook == 0xFFFFFFFF
+}
+
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	if msg.isFileExecEvent() {
+		f := GetProcessFileExec(msg)
+		if f == nil {
+			return nil
+		}
+		return &tetragon.GetEventsResponse{
+			Event:    &tetragon.GetEventsResponse_ProcessFileExec{ProcessFileExec: f},
+			NodeName: nodeName,
+			Time:     ktime.ToProto(msg.Common.Ktime),
+		}
+	}
 	f := GetProcessFile(msg)
 	if f == nil {
 		return nil

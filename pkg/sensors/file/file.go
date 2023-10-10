@@ -249,6 +249,11 @@ var (
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check"}}},
 	}
 
+	FileExecHooksLsmDigests = [...]FimHook{
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security"}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check"}}},
+	}
+
 	SharedMaps = [...]string{
 		"mkdir_retprobe_map",
 		"rename_retprobe_map",
@@ -495,12 +500,17 @@ type observerFileSensor struct {
 	name string
 }
 
+type observerFileExecSensor struct {
+	name string
+}
+
 var (
 	fileMonitoringTable = fimTable{
 		mp: make(map[uint32]*fileMonitoring),
 	}
 
-	sensorCounter uint32
+	sensorCounter     uint32
+	sensorExecCounter uint32
 )
 
 type fileMonitoring struct {
@@ -758,6 +768,13 @@ func init() {
 	}
 	sensors.RegisterProbeType("file_monitoring", file)
 	sensors.RegisterPolicyHandlerAtInit(file.name, file)
+
+	fileExec := &observerFileExecSensor{
+		name: "file exec sensor",
+	}
+	sensors.RegisterProbeType("file_exec_monitoring", fileExec)
+	sensors.RegisterPolicyHandlerAtInit(fileExec.name, fileExec)
+
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
@@ -1518,6 +1535,15 @@ func probeImaFileHashHelper() error {
 	return err
 }
 
+func SupportDigests() bool {
+	if probeImaFileHashHelper() == nil {
+		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
+			return strings.Contains(string(lsm), "bpf")
+		}
+	}
+	return false
+}
+
 // returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
 func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	supportTracing := (probeTracingModifyReturn() == nil)
@@ -1551,7 +1577,6 @@ func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	return EnforceNotSupported, digestSupport
 }
 
-// PolicyHandler (called on init)
 func (k *observerFileSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
@@ -1635,6 +1660,76 @@ func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if v.tp == "kprobe" || v.tp == "kretprobe" {
+		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else if v.tp == "fentry" || v.tp == "fexit" || v.tp == "fmod_ret" {
+		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else if v.tp == "lsm" || v.tp == "lsm.s" {
+		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	} else {
+		return fmt.Errorf("file: %s programs are not supported", v.tp)
+	}
+}
+
+func (k *observerFileExecSensor) PolicyHandler(
+	policy tracingpolicy.TracingPolicy,
+	fid policyfilter.PolicyID,
+) (*sensors.Sensor, error) {
+	if !policy.TpSpec().FileExecMonitoring.Enable {
+		return nil, nil
+	}
+
+	var progs []*program.Program
+	var maps []*program.Map
+	tpid := atomic.AddUint32(&sensorExecCounter, 1)
+	name := fmt.Sprintf("fim_exec_sensor_%d", tpid)
+
+	// having support for bpf_ima_file_hash helper means that we have everything that
+	// we need to enable process_file_exec events
+	if !SupportDigests() {
+		return nil, fmt.Errorf("FileExecMonitoring is not supported in this kernel")
+	}
+
+	fimProgs := make([]FimProg, 0)
+	for _, h := range FileExecHooksLsmDigests {
+		if len(h.prog) != 1 {
+			return nil, fmt.Errorf("FileExecMonitoring has more than one function prototypes per hook")
+		}
+		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection})
+	}
+
+	for _, h := range fimProgs {
+		load := program.Builder(
+			path.Join(option.Config.HubbleLib, h.progName),
+			h.name,
+			fmt.Sprintf("%s/%s", h.tp, h.progSection),
+			sensors.PathJoin(name, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
+			"file_exec_monitoring")
+		load.SetLoaderData(FimLoaderData{
+			s:  nil,
+			tp: h.tp,
+		})
+
+		progs = append(progs, load)
+
+		m := "exec_retprobe_map"
+		maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
+	}
+
+	return &sensors.Sensor{
+		Name:  name,
+		Progs: progs,
+		Maps:  maps,
+	}, nil
+}
+
+// LoadProbe() (called when the eBPF programs are actually loaded)
+func (k *observerFileExecSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	v, ok := args.Load.LoaderData.(FimLoaderData)
+	if !ok {
+		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
 	}
 
 	if v.tp == "kprobe" || v.tp == "kretprobe" {

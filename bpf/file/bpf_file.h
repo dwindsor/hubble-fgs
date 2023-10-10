@@ -109,6 +109,9 @@
 #define ATTR_TIMES_SET (1 << 16)
 #define ATTR_TOUCH     (1 << 17)
 
+static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
+static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
+
 struct mnt_idmap {
 	struct user_namespace *owner;
 	refcount_t count;
@@ -191,6 +194,18 @@ struct {
 	__type(value, struct hash_map_file_val);
 	__uint(max_entries, 1);
 } file_val_map SEC(".maps");
+
+struct exec_key {
+	__u64 pid_tgid;
+	__u64 bprm_ptr;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct exec_key);
+	__type(value, struct msg_file_ops);
+	__uint(max_entries, 128);
+} exec_retprobe_map SEC(".maps");
 
 /*
  * For matchBinaries we use two maps:

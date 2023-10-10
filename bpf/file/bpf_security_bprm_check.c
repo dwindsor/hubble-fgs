@@ -2,22 +2,6 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-#ifdef __FILE_DIGEST_LSM
-struct exec_key {
-	__u64 pid_tgid;
-	__u64 bprm_ptr;
-};
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct exec_key);
-	__type(value, struct msg_file_ops);
-	__uint(max_entries, 128);
-} exec_retprobe_map SEC(".maps");
-
-static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
-#endif
-
 /*
  * This function handles all exec operations.
  * Returns:
