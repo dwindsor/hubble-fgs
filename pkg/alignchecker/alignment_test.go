@@ -6,7 +6,9 @@ import (
 
 	"github.com/cilium/cilium/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/stretchr/testify/assert"
 
@@ -22,10 +24,10 @@ func Test_EnterpriseAlignments(t *testing.T) {
 
 		// Layer 7
 		// TODO: layer 7 is currently not aligned properly, will fix
-		//"__msg_http_event": {httpapi.MsgHttpEvent{}},
-		//"__msg_http":       {httpapi.MsgHttp{}},
-		//"msg_tls_event":    {tlsapi.MsgTLSEvent{}},
-		//"msg_tls":          {tlsapi.MsgTLS{}},
+		"__msg_http_event": {httpapi.MsgHttpEvent{}},
+		"__msg_http":       {httpapi.MsgHttp{}},
+		"msg_tls_event":    {tlsapi.MsgTLSEvent{}},
+		"msg_tls":          {tlsapi.MsgTLS{}},
 
 		// FIM
 		"hash_map_file_key":   {fileapi.HashMapFileKey{}},
