@@ -5,7 +5,7 @@ lib/*
 /tetra
 /tetragon-operator
 /fgs-bench
-/fgs-alignchecker
+/alignchecker
 /parsertest
 /checkerpc
 /build

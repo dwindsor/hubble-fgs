@@ -264,6 +264,10 @@ parsertest:
 parsertest-gen:
 	$(GO_BUILD) ./cmd/parsertest-gen
 
+.PHONY: alignchecker
+alignchecker:
+	$(GO) test -c ./pkg/alignchecker -o alignchecker
+
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
