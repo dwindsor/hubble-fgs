@@ -29,6 +29,10 @@ func testCases() []compliance.Test {
 		{
 			Name: "nginx",
 			TracingPolicy: &tracingpolicy.GenericTracingPolicy{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "TracingPolicy",
+					APIVersion: "cilium.io/v1alpha1",
+				},
 				Metadata: v1.ObjectMeta{
 					Name: "http",
 				},
