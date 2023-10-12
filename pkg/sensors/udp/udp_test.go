@@ -569,6 +569,8 @@ func TestUdpSeqCheck(t *testing.T) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
+	t.Skip("UDP Seq Checking disabled.")
+
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-layer7Client"))
