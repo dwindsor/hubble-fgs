@@ -22,6 +22,7 @@ struct {
 	__uint(max_entries, 1);
 } udp_seq_err_event_heap SEC(".maps");
 
+#ifdef SEQ_CHECK_ENABLED
 static inline __attribute__((always_inline)) bool
 old_seq_num(uint32_t datagram_sn, uint32_t expected_sn, uint32_t max_sn)
 {
@@ -43,6 +44,8 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
 		      struct udp_info_value *v, struct udp_sensor_config *config)
 {
+	Compile error if this is enabled!!!
+
 	u8 flags;
 	u8 line_id_sz;
 	u8 seq_num_sz;
@@ -185,6 +188,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		seq_nums[line_id & 0xffff] = next_seq_num;
 	}
 }
+#endif
 
 static inline __attribute__((always_inline)) bool
 match_seq_check_ports(u16 *ports, uint16_t port1, uint16_t port2)
@@ -215,10 +219,13 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 		return;
 
 	switch (config->seq_check_app_id) {
+#ifdef SEQ_CHECK_ENABLED
+	Compile error if this is enabled
 	case UDPSEQERR_APP_MTP:
 		udp_seq_err_check_mtp(skb, skb_head, ip, ipv6, cookie,
 				      payload_off, payload_sz, process, v, config);
 		return;
+#endif
 	}
 #endif
 }
