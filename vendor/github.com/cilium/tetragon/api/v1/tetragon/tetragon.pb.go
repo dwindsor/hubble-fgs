@@ -1,3 +1,5 @@
+// This file is copied from OSS, DO NOT EDIT
+
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Hubble
 

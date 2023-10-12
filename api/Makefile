@@ -10,11 +10,24 @@ all: proto
 .PHONY: proto
 proto: v1
 
+.PHONY: copy_oss_files
+copy_oss_files:
+	for oss_file in  $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon/*.proto; do \
+		dst_file="v1/tetragon/$$(basename $$oss_file)"; \
+		if [ $$dst_file = "v1/tetragon/events.proto" ]; then \
+			echo "Skipping $$dst_file"; \
+			continue; \
+		fi; \
+		echo "$$oss_file -> $$dst_file"; \
+		truncate -s 0 $$dst_file; \
+		printf '// This file is copied from OSS, DO NOT EDIT\n\n' >> $$dst_file; \
+		cat $$oss_file >> $$dst_file; \
+	done
+
 .PHONY: v1
-v1:
+v1: copy_oss_files
 	docker container run --rm \
 		--volume $(CURDIR)/v1:/src \
-		--volume $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon:/tetragon \
 		--user "$(shell id -u):$(shell id -g)" \
 		$(BUILDER_IMAGE) \
 		make -C /src -f Makefile.protoc
