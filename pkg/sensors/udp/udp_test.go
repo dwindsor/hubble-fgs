@@ -286,7 +286,7 @@ func udpWatermarksClient() {
 }
 
 func testUdpWatermarks(t *testing.T, legacy bool) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
