@@ -44,8 +44,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
 		      struct udp_info_value *v, struct udp_sensor_config *config)
 {
-	Compile error if this is enabled!!!
-
+#error "DO NOT COMPILE IF THIS IS ENABLED"
 	u8 flags;
 	u8 line_id_sz;
 	u8 seq_num_sz;
@@ -220,7 +219,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 
 	switch (config->seq_check_app_id) {
 #ifdef SEQ_CHECK_ENABLED
-	Compile error if this is enabled
+#error "DO NOT COMPILE IF THIS IS ENABLED"
 	case UDPSEQERR_APP_MTP:
 		udp_seq_err_check_mtp(skb, skb_head, ip, ipv6, cookie,
 				      payload_off, payload_sz, process, v, config);
