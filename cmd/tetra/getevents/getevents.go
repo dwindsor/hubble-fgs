@@ -25,7 +25,7 @@ import (
 )
 
 // GetEncoder returns an encoder for an event stream based on configuration options.
-var GetEncoder = func(w io.Writer, colorMode ossEncoder.ColorMode, timestamps bool, compact bool, tty string) ossEncoder.EventEncoder {
+var GetEncoder = func(w io.Writer, colorMode ossEncoder.ColorMode, timestamps bool, compact bool, tty string, stackTraces bool) ossEncoder.EventEncoder {
 	if compact {
 		return encoder.NewEnterpriseEncoder(w, colorMode, timestamps)
 	}
