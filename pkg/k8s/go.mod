@@ -69,6 +69,11 @@ require (
 )
 
 replace (
+	// Access to the OSS pkg/k8s via this fake module
+	github.com/cilium/tetragon-oss/pkg/k8s => ../../modules/tetragon-oss/pkg/k8s
+	// Set EE pkg/k8s to be this module
+	github.com/cilium/tetragon/pkg/k8s => ./
+
 	github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
 
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically

@@ -221,6 +221,9 @@ replace (
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss
 
+	// Access to the OSS pkg/k8s via this fake module
+	github.com/cilium/tetragon-oss/pkg/k8s => ./modules/tetragon-oss/pkg/k8s
+
 	// use local API
 	github.com/cilium/tetragon/api => ./api
 	github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
