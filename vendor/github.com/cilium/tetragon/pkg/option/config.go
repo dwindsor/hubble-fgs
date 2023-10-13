@@ -59,6 +59,7 @@ type config struct {
 	ExportFileMaxBackups       int
 	ExportFileCompress         bool
 	ExportRateLimit            int
+	ExportFilePerm             string
 
 	// Export aggregation options
 	EnableExportAggregation     bool
@@ -83,6 +84,8 @@ type config struct {
 	KMods []string
 
 	EnablePodInfo bool
+
+	ExposeKernelAddresses bool
 }
 
 var (

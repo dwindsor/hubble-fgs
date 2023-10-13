@@ -460,6 +460,9 @@ func createGenericTracepointSensor(
 
 		selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), prog0)
 		maps = append(maps, selNamesMap)
+
+		killerDataMap := program.MapBuilderPin("killer_data", "killer_data", prog0)
+		maps = append(maps, killerDataMap)
 	}
 
 	return &sensors.Sensor{
@@ -508,7 +511,7 @@ func (tp *genericTracepoint) InitKernelSelectors(lists []v1alpha1.ListSpec) erro
 		}
 	}
 
-	selectors, err := selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs, &listReader{lists})
+	selectors, err := selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs, &listReader{lists}, nil)
 	if err != nil {
 		return err
 	}
@@ -619,6 +622,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 		Tid:        m.Tid,
 		Subsys:     "UNKNOWN",
 		Event:      "UNKNOWN",
+		Action:     m.ActionId,
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(int(m.FuncId))

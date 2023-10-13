@@ -19,49 +19,52 @@ import (
 )
 
 const (
-	ActionTypeInvalid     = -1
-	ActionTypePost        = 0
-	ActionTypeFollowFd    = 1
-	ActionTypeSigKill     = 2
-	ActionTypeUnfollowFd  = 3
-	ActionTypeOverride    = 4
-	ActionTypeCopyFd      = 5
-	ActionTypeGetUrl      = 6
-	ActionTypeDnsLookup   = 7
-	ActionTypeNoPost      = 8
-	ActionTypeSignal      = 9
-	ActionTypeTrackSock   = 10
-	ActionTypeUntrackSock = 11
+	ActionTypeInvalid      = -1
+	ActionTypePost         = 0
+	ActionTypeFollowFd     = 1
+	ActionTypeSigKill      = 2
+	ActionTypeUnfollowFd   = 3
+	ActionTypeOverride     = 4
+	ActionTypeCopyFd       = 5
+	ActionTypeGetUrl       = 6
+	ActionTypeDnsLookup    = 7
+	ActionTypeNoPost       = 8
+	ActionTypeSignal       = 9
+	ActionTypeTrackSock    = 10
+	ActionTypeUntrackSock  = 11
+	ActionTypeNotifyKiller = 12
 )
 
 var actionTypeTable = map[string]uint32{
-	"post":        ActionTypePost,
-	"followfd":    ActionTypeFollowFd,
-	"unfollowfd":  ActionTypeUnfollowFd,
-	"sigkill":     ActionTypeSigKill,
-	"override":    ActionTypeOverride,
-	"copyfd":      ActionTypeCopyFd,
-	"geturl":      ActionTypeGetUrl,
-	"dnslookup":   ActionTypeDnsLookup,
-	"nopost":      ActionTypeNoPost,
-	"signal":      ActionTypeSignal,
-	"tracksock":   ActionTypeTrackSock,
-	"untracksock": ActionTypeUntrackSock,
+	"post":         ActionTypePost,
+	"followfd":     ActionTypeFollowFd,
+	"unfollowfd":   ActionTypeUnfollowFd,
+	"sigkill":      ActionTypeSigKill,
+	"override":     ActionTypeOverride,
+	"copyfd":       ActionTypeCopyFd,
+	"geturl":       ActionTypeGetUrl,
+	"dnslookup":    ActionTypeDnsLookup,
+	"nopost":       ActionTypeNoPost,
+	"signal":       ActionTypeSignal,
+	"tracksock":    ActionTypeTrackSock,
+	"untracksock":  ActionTypeUntrackSock,
+	"notifykiller": ActionTypeNotifyKiller,
 }
 
 var actionTypeStringTable = map[uint32]string{
-	ActionTypePost:        "post",
-	ActionTypeFollowFd:    "followfd",
-	ActionTypeUnfollowFd:  "unfollowfd",
-	ActionTypeSigKill:     "sigkill",
-	ActionTypeOverride:    "override",
-	ActionTypeCopyFd:      "copyfd",
-	ActionTypeGetUrl:      "geturl",
-	ActionTypeDnsLookup:   "dnslookup",
-	ActionTypeNoPost:      "nopost",
-	ActionTypeSignal:      "signal",
-	ActionTypeTrackSock:   "tracksock",
-	ActionTypeUntrackSock: "untracksock",
+	ActionTypePost:         "post",
+	ActionTypeFollowFd:     "followfd",
+	ActionTypeUnfollowFd:   "unfollowfd",
+	ActionTypeSigKill:      "sigkill",
+	ActionTypeOverride:     "override",
+	ActionTypeCopyFd:       "copyfd",
+	ActionTypeGetUrl:       "geturl",
+	ActionTypeDnsLookup:    "dnslookup",
+	ActionTypeNoPost:       "nopost",
+	ActionTypeSignal:       "signal",
+	ActionTypeTrackSock:    "tracksock",
+	ActionTypeUntrackSock:  "untracksock",
+	ActionTypeNotifyKiller: "notifykiller",
 }
 
 // Action argument table entry (for URL and FQDN arguments)
@@ -943,11 +946,19 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 		WriteSelectorUint32(k, action.ArgSock)
 	case ActionTypePost:
 		WriteSelectorUint32(k, rateLimit)
+		stackTrace := uint32(0)
+		if action.StackTrace {
+			stackTrace = 1
+		}
+		WriteSelectorUint32(k, stackTrace)
 	case ActionTypeNoPost:
 		// no arguments
 	case ActionTypeSigKill:
 		// no arguments
 		// NB: we should deprecate this action and just use ActionTypeSignal with SIGKILL
+	case ActionTypeNotifyKiller:
+		WriteSelectorInt32(k, action.ArgError)
+		WriteSelectorUint32(k, action.ArgSig)
 	default:
 		return fmt.Errorf("ParseMatchAction: act %d (%s) is missing a handler", act, actionTypeStringTable[act])
 	}
@@ -1253,7 +1264,7 @@ func parseSelector(
 //
 // For some examples, see kernel_test.go
 func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg, actionArgTable *idtable.Table) ([4096]byte, error) {
-	kernelSelectors, err := InitKernelSelectorState(selectors, args, actionArgTable, nil)
+	kernelSelectors, err := InitKernelSelectorState(selectors, args, actionArgTable, nil, nil)
 	if err != nil {
 		return [4096]byte{}, err
 	}
@@ -1261,8 +1272,8 @@ func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KP
 }
 
 func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg,
-	actionArgTable *idtable.Table, listReader ValueReader) (*KernelSelectorState, error) {
-	kernelSelectors := NewKernelSelectorState(listReader)
+	actionArgTable *idtable.Table, listReader ValueReader, maps *KernelSelectorMaps) (*KernelSelectorState, error) {
+	kernelSelectors := NewKernelSelectorState(listReader, maps)
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))

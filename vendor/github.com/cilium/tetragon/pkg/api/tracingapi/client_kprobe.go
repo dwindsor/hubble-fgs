@@ -12,16 +12,19 @@ const (
 )
 
 const (
-	ActionPost       = 0
-	ActionFollowFd   = 1
-	ActionSigKill    = 2
-	ActionUnfollowFd = 3
-	ActionOverride   = 4
-	ActionCopyFd     = 5
-	ActionGetUrl     = 6
-	ActionLookupDns  = 7
-	ActionNoPost     = 8
-	ActionSignal     = 9
+	ActionPost         = 0
+	ActionFollowFd     = 1
+	ActionSigKill      = 2
+	ActionUnfollowFd   = 3
+	ActionOverride     = 4
+	ActionCopyFd       = 5
+	ActionGetUrl       = 6
+	ActionLookupDns    = 7
+	ActionNoPost       = 8
+	ActionSignal       = 9
+	ActionTrackSock    = 10
+	ActionUntrackSock  = 11
+	ActionNotifyKiller = 12
 )
 
 const (
@@ -50,6 +53,7 @@ type MsgGenericKprobe struct {
 	ActionId     uint64
 	ActionArgId  uint32
 	Tid          uint32 // The recorded TID that triggered the event
+	StackID      int64
 }
 
 type MsgGenericKprobeArgPath struct {

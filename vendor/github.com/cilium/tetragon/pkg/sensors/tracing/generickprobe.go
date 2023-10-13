@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/dataapi"
 	"github.com/cilium/tetragon/pkg/api/ops"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/arch"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -126,6 +127,10 @@ type genericKprobe struct {
 
 	// is there override defined for the kprobe
 	hasOverride bool
+
+	// reference to a stack trace map, must be closed when unloading the kprobe,
+	// this is done in the sensor PostUnloadHook
+	stackTraceMapRef *ebpf.Map
 }
 
 // pendingEvent is an event waiting to be merged with another event.
@@ -193,6 +198,10 @@ func getMetaValue(arg *v1alpha1.KProbeArg) (int, error) {
 	return meta, nil
 }
 
+func multiKprobePinPath(sensorPath string) string {
+	return sensors.PathJoin(sensorPath, "multi_kprobe")
+}
+
 func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.EntryID) ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 	var maps []*program.Map
@@ -204,7 +213,7 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 		loadProgRetName = "bpf_multi_retkprobe_v61.o"
 	}
 
-	pinPath := sensors.PathJoin(sensorPath, "multi_kprobe")
+	pinPath := multiKprobePinPath(sensorPath)
 
 	load := program.Builder(
 		path.Join(option.Config.HubbleLib, loadProgName),
@@ -270,6 +279,9 @@ func createMultiKprobeSensor(sensorPath string, multiIDs, multiRetIDs []idtable.
 	selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
 	maps = append(maps, selNamesMap)
 
+	stackTraceMap := program.MapBuilderPin("stack_trace_map", sensors.PathJoin(pinPath, "stack_trace_map"), load)
+	maps = append(maps, stackTraceMap)
+
 	if kernels.EnableLargeProgs() {
 		socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), load)
 		maps = append(maps, socktrack)
@@ -328,13 +340,9 @@ func preValidateKprobes(name string, kprobes []v1alpha1.KProbeSpec, lists []v1al
 	}
 
 	// validate lists first
-	for i := range lists {
-		list := &lists[i]
-
-		err := preValidateList(list)
-		if err != nil {
-			return err
-		}
+	err = preValidateLists(lists)
+	if err != nil {
+		return err
 	}
 
 	for i := range kprobes {
@@ -361,6 +369,14 @@ func preValidateKprobes(name string, kprobes []v1alpha1.KProbeSpec, lists []v1al
 				}).WithError(err).Warn("Kprobe spec pre-validation of syscall prefix failed")
 			} else {
 				f.Call = prefixedName
+			}
+		}
+
+		for sid, selector := range f.Selectors {
+			for mid, matchAction := range selector.MatchActions {
+				if matchAction.StackTrace && matchAction.Action != "Post" {
+					return fmt.Errorf("stackTrace can only be used along Post action: got stackTrace enabled in kprobes[%d].selectors[%d].matchActions[%d] with action '%s'", i, sid, mid, matchAction.Action)
+				}
 			}
 		}
 
@@ -483,6 +499,7 @@ func createGenericKprobeSensor(
 	var maps []*program.Map
 	var multiIDs, multiRetIDs []idtable.EntryID
 	var useMulti bool
+	var selMaps *selectors.KernelSelectorMaps
 
 	// use multi kprobe only if:
 	// - it's not disabled by user
@@ -498,6 +515,9 @@ func createGenericKprobeSensor(
 	}
 
 	addedKprobeIndices := []int{}
+	if useMulti {
+		selMaps = &selectors.KernelSelectorMaps{}
+	}
 	for i := range kprobes {
 		syms, syscall, err := getKprobeSymbols(kprobes[i].Call, kprobes[i].Syscall, lists)
 		if err != nil {
@@ -508,7 +528,7 @@ func createGenericKprobeSensor(
 		kprobes[i].Syscall = syscall
 
 		for idx := range syms {
-			out, err := addKprobe(syms[idx], &kprobes[i], &in)
+			out, err := addKprobe(syms[idx], &kprobes[i], &in, selMaps)
 			if err != nil {
 				return nil, err
 			}
@@ -535,9 +555,22 @@ func createGenericKprobeSensor(
 		PostUnloadHook: func() error {
 			var errs error
 			for _, idx := range addedKprobeIndices {
-				_, err := genericKprobeTable.RemoveEntry(idtable.EntryID{ID: idx})
+				entry, err := genericKprobeTable.RemoveEntry(idtable.EntryID{ID: idx})
 				if err != nil {
 					errs = errors.Join(errs, err)
+				}
+
+				// close the eventual reference to the stack trace map
+				gk, ok := entry.(*genericKprobe)
+				if !ok {
+					errs = errors.Join(errs, fmt.Errorf("entry removed from genericKprobeTable with invalid type: %T (%v)", entry, entry))
+				} else {
+					if gk.stackTraceMapRef != nil {
+						err = gk.stackTraceMapRef.Close()
+						if err != nil {
+							errs = errors.Join(errs, fmt.Errorf("failed to close map: %v", gk.stackTraceMapRef))
+						}
+					}
 				}
 			}
 			return errs
@@ -548,7 +581,7 @@ func createGenericKprobeSensor(
 // addKprobe will, amongst other things, create a generic kprobe entry and add
 // it to the genericKprobeTable. The caller should make sure that this entry is
 // properly removed on kprobe unload.
-func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (out *addKprobeOut, err error) {
+func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn, selMaps *selectors.KernelSelectorMaps) (out *addKprobeOut, err error) {
 	var argSigPrinters []argPrinters
 	var argReturnPrinters []argPrinters
 	var setRetprobe bool
@@ -714,7 +747,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (out *a
 	}
 
 	// Parse Filters into kernel filter logic
-	kprobeEntry.loadArgs.selectors, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs, nil)
+	kprobeEntry.loadArgs.selectors, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs, nil, selMaps)
 	if err != nil {
 		return nil, err
 	}
@@ -727,10 +760,10 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (out *a
 	genericKprobeTable.AddEntry(&kprobeEntry)
 	tidx := kprobeEntry.tableId.ID
 	out.tableEntryIndex = tidx
-	kprobeEntry.pinPathPrefix = sensors.PathJoin(in.sensorPath, fmt.Sprintf("gkp-%d", tidx))
 	config.FuncId = uint32(tidx)
 
 	if in.useMulti {
+		kprobeEntry.pinPathPrefix = multiKprobePinPath(in.sensorPath)
 		if setRetprobe {
 			out.multiRetIDs = append(out.multiRetIDs, kprobeEntry.tableId)
 		}
@@ -743,6 +776,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (out *a
 		return out, nil
 	}
 
+	kprobeEntry.pinPathPrefix = sensors.PathJoin(in.sensorPath, fmt.Sprintf("gkp-%d", tidx))
 	pinPath := kprobeEntry.pinPathPrefix
 	pinProg := sensors.PathJoin(pinPath, fmt.Sprintf("%s_prog", kprobeEntry.funcName))
 
@@ -834,6 +868,9 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (out *a
 
 	selNamesMap := program.MapBuilderPin("sel_names_map", sensors.PathJoin(pinPath, "sel_names_map"), load)
 	out.maps = append(out.maps, selNamesMap)
+
+	stackTraceMap := program.MapBuilderPin("stack_trace_map", sensors.PathJoin(pinPath, "stack_trace_map"), load)
+	out.maps = append(out.maps, stackTraceMap)
 
 	if kernels.EnableLargeProgs() {
 		socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(in.sensorPath, "socktrack_map"), load)
@@ -1140,7 +1177,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 	unix.Capabilities = m.Capabilities
 	unix.PolicyName = gk.policyName
 
-	returnEvent := m.Common.Flags > 0
+	returnEvent := m.Common.Flags&processapi.MSG_COMMON_FLAG_RETURN != 0
 
 	var ktimeEnter uint64
 	var printers []argPrinters
@@ -1154,6 +1191,36 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 	} else {
 		ktimeEnter = m.Common.Ktime
 		printers = gk.argSigPrinters
+	}
+
+	if m.Common.Flags&processapi.MSG_COMMON_FLAG_STACKTRACE != 0 {
+		if m.StackID < 0 {
+			logger.GetLogger().Warnf("failed to retrieve stacktrace: id equal to errno %d", m.StackID)
+		} else {
+			// remove the error part
+			id := uint32(m.StackID)
+
+			// lazy load the map reference if needed
+			if gk.stackTraceMapRef == nil {
+				bpf.MapPrefixPath()
+				gk.stackTraceMapRef, err = ebpf.LoadPinnedMap(path.Join(bpf.MapPrefixPath(), gk.pinPathPrefix)+"-stack_trace_map", &ebpf.LoadPinOptions{
+					ReadOnly: true,
+				})
+				if err != nil {
+					logger.GetLogger().WithError(err).Warn("failed to load the stacktrace map")
+				}
+				// close this in cleanup postHook defer stackTraceMap.Close()
+			}
+
+			// this can't be an else statement in the previous block since it
+			// must execute as well when the reference is first initialized
+			if gk.stackTraceMapRef != nil {
+				err = gk.stackTraceMapRef.Lookup(id, &unix.StackTrace)
+				if err != nil {
+					logger.GetLogger().WithError(err).Warn("failed to lookup the stacktrace map")
+				}
+			}
+		}
 	}
 
 	for _, a := range printers {

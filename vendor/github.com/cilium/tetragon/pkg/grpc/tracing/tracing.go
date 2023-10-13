@@ -6,12 +6,14 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/reader/kernel"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
+	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -52,6 +54,12 @@ func kprobeAction(act uint64) tetragon.KprobeAction {
 		return tetragon.KprobeAction_KPROBE_ACTION_NOPOST
 	case tracingapi.ActionSignal:
 		return tetragon.KprobeAction_KPROBE_ACTION_SIGNAL
+	case tracingapi.ActionTrackSock:
+		return tetragon.KprobeAction_KPROBE_ACTION_TRACKSOCK
+	case tracingapi.ActionUntrackSock:
+		return tetragon.KprobeAction_KPROBE_ACTION_UNTRACKSOCK
+	case tracingapi.ActionNotifyKiller:
+		return tetragon.KprobeAction_KPROBE_ACTION_NOTIFYKILLER
 	default:
 		return tetragon.KprobeAction_KPROBE_ACTION_UNKNOWN
 	}
@@ -256,6 +264,35 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 		}
 	}
 
+	var stackTrace []*tetragon.StackTraceEntry
+	for _, addr := range event.StackTrace {
+		if addr == 0 {
+			// the stack trace from the MsgGenericKprobeUnix is a fixed size
+			// array, [unix.PERF_MAX_STACK_DEPTH]uint64, used for binary decode,
+			// it might contain multiple zeros to ignore since stack trace might
+			// be less than PERF_MAX_STACK_DEPTH most of the time.
+			continue
+		}
+		kernelSymbols, err := ksyms.KernelSymbols()
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("stacktrace: failed to read kernel symbols")
+		}
+		fnOffset, err := kernelSymbols.GetFnOffset(addr)
+		if err != nil {
+			// maybe group those errors as they might come in pack
+			logger.GetLogger().WithField("address", fmt.Sprintf("0x%x", addr)).Warn("stacktrace: failed to retrieve symbol and offset")
+			continue
+		}
+		entry := &tetragon.StackTraceEntry{
+			Offset: fnOffset.Offset,
+			Symbol: fnOffset.SymName,
+		}
+		if option.Config.ExposeKernelAddresses {
+			entry.Address = addr
+		}
+		stackTrace = append(stackTrace, entry)
+	}
+
 	tetragonEvent := &tetragon.ProcessKprobe{
 		Process:      tetragonProcess,
 		Parent:       tetragonParent,
@@ -263,6 +300,8 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 		Args:         tetragonArgs,
 		Return:       tetragonReturnArg,
 		Action:       kprobeAction(event.Action),
+		StackTrace:   stackTrace,
+		PolicyName:   event.PolicyName,
 	}
 
 	if ec := eventcache.Get(); ec != nil &&
@@ -299,6 +338,7 @@ type MsgGenericTracepointUnix struct {
 	Event      string
 	Args       []tracingapi.MsgGenericTracepointArg
 	PolicyName string
+	Action     uint64
 }
 
 func (msg *MsgGenericTracepointUnix) Notify() bool {
@@ -364,11 +404,13 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 	}
 
 	tetragonEvent := &tetragon.ProcessTracepoint{
-		Process: tetragonProcess,
-		Parent:  tetragonParent,
-		Subsys:  msg.Subsys,
-		Event:   msg.Event,
-		Args:    tetragonArgs,
+		Process:    tetragonProcess,
+		Parent:     tetragonParent,
+		Subsys:     msg.Subsys,
+		Event:      msg.Event,
+		Args:       tetragonArgs,
+		PolicyName: msg.PolicyName,
+		Action:     kprobeAction(msg.Action),
 	}
 
 	if ec := eventcache.Get(); ec != nil &&
@@ -420,6 +462,7 @@ type MsgGenericKprobeUnix struct {
 	FuncName     string
 	Args         []tracingapi.MsgGenericKprobeArg
 	PolicyName   string
+	StackTrace   [unix.PERF_MAX_STACK_DEPTH]uint64
 }
 
 func (msg *MsgGenericKprobeUnix) Notify() bool {
@@ -589,10 +632,11 @@ func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 	}
 
 	tetragonEvent := &tetragon.ProcessUprobe{
-		Process: tetragonProcess,
-		Parent:  tetragonParent,
-		Path:    event.Path,
-		Symbol:  event.Symbol,
+		Process:    tetragonProcess,
+		Parent:     tetragonParent,
+		Path:       event.Path,
+		Symbol:     event.Symbol,
+		PolicyName: event.PolicyName,
 	}
 
 	if ec := eventcache.Get(); ec != nil &&

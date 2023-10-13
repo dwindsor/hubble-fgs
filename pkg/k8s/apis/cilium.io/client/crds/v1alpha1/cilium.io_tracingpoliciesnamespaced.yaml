@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   creationTimestamp: null
   name: tracingpoliciesnamespaced.cilium.io
 spec:
@@ -214,6 +214,19 @@ spec:
                       type: object
                     type: array
                 type: object
+              killers:
+                description: A killer spec.
+                items:
+                  properties:
+                    syscalls:
+                      description: syscalls where killer is executed in
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - syscalls
+                  type: object
+                type: array
               kprobes:
                 description: A list of kprobe specs.
                 items:
@@ -406,6 +419,7 @@ spec:
                                   - Signal
                                   - TrackSock
                                   - UntrackSock
+                                  - NotifyKiller
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -441,8 +455,13 @@ spec:
                                   description: A time period within which repeated
                                     messages will not be posted. Can be specified
                                     in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix).
+                                    ('m' suffix) or hours ('h' suffix). Only valid
+                                    with the post action.
                                   type: string
+                                stackTrace:
+                                  description: Enable stack trace export. Only valid
+                                    with the post action.
+                                  type: boolean
                               required:
                               - action
                               type: object
@@ -755,6 +774,9 @@ spec:
                       - generated_syscalls
                       - generated_ftrace
                       type: string
+                    validated:
+                      description: List was validated
+                      type: boolean
                     values:
                       description: Values of the list
                       items:
@@ -1457,6 +1479,7 @@ spec:
                                   - Signal
                                   - TrackSock
                                   - UntrackSock
+                                  - NotifyKiller
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1492,8 +1515,13 @@ spec:
                                   description: A time period within which repeated
                                     messages will not be posted. Can be specified
                                     in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix).
+                                    ('m' suffix) or hours ('h' suffix). Only valid
+                                    with the post action.
                                   type: string
+                                stackTrace:
+                                  description: Enable stack trace export. Only valid
+                                    with the post action.
+                                  type: boolean
                               required:
                               - action
                               type: object
@@ -1824,6 +1852,7 @@ spec:
                                   - Signal
                                   - TrackSock
                                   - UntrackSock
+                                  - NotifyKiller
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1859,8 +1888,13 @@ spec:
                                   description: A time period within which repeated
                                     messages will not be posted. Can be specified
                                     in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix).
+                                    ('m' suffix) or hours ('h' suffix). Only valid
+                                    with the post action.
                                   type: string
+                                stackTrace:
+                                  description: Enable stack trace export. Only valid
+                                    with the post action.
+                                  type: boolean
                               required:
                               - action
                               type: object

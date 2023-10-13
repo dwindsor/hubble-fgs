@@ -1,5 +1,13 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright Authors of Tetragon
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+//
 
 package v1alpha1
 
@@ -35,18 +43,6 @@ const (
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:singular="tracingpolicy",path="tracingpolicies",scope="Cluster",shortName={}
-type TracingPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
-	// Tracing policy specification.
-	Spec TracingPolicySpec `json:"spec"`
-}
-
-// +genclient
-// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:singular="tracingpolicynamespaced",path="tracingpoliciesnamespaced",scope="Namespaced",shortName={}
 type TracingPolicyNamespaced struct {
@@ -72,19 +68,44 @@ func (tp *TracingPolicyNamespaced) TpNamespace() string {
 	return tp.ObjectMeta.Namespace
 }
 
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:singular="tracingpolicy",path="tracingpolicies",scope="Cluster",shortName={}
+type TracingPolicy struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Tracing policy specification.
+	Spec TracingPolicySpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type TracingPolicyNamespacedList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []TracingPolicyNamespaced `json:"items,omitempty"`
+}
+
 type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of kprobe specs.
-	KProbes []KProbeSpec `json:"kprobes"`
+	KProbes []KProbeSpec `json:"kprobes,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
-	Tracepoints []TracepointSpec `json:"tracepoints"`
+	Tracepoints []TracepointSpec `json:"tracepoints,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Parser policy specification.
+	Parser ParserPolicySpec `json:"parser"`
+	// +kubebuilder:validation:Optional
+	// File monitoring policy specification.
+	FileMonitoring FileSpec `json:"file"`
 	// +kubebuilder:validation:Optional
 	// Enable loader events
 	Loader bool `json:"loader"`
 	// +kubebuilder:validation:Optional
 	// A list of uprobe specs.
-	UProbes []UProbeSpec `json:"uprobes"`
+	UProbes []UProbeSpec `json:"uprobes,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
@@ -92,11 +113,11 @@ type TracingPolicySpec struct {
 
 	// +kubebuilder:validation:Optional
 	// A list of list specs.
-	Lists []ListSpec `json:"lists"`
-}
+	Lists []ListSpec `json:"lists,omitempty"`
 
-func (tp *TracingPolicy) TpName() string {
-	return tp.ObjectMeta.Name
+	// +kubebuilder:validation:Optional
+	// A killer spec.
+	Killers []KillerSpec `json:"killers,omitempty"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {
@@ -107,246 +128,437 @@ func (tp *TracingPolicy) TpInfo() string {
 	return fmt.Sprintf("%s (object:%d/%s) (type:%s/%s)", tp.ObjectMeta.Name, tp.ObjectMeta.Generation, tp.ObjectMeta.UID, tp.TypeMeta.Kind, tp.TypeMeta.APIVersion)
 }
 
-type KProbeSpec struct {
-	// Name of the function to apply the kprobe spec to.
-	Call string `json:"call"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Indicates whether to collect return value of the traced function.
-	Return bool `json:"return"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=true
-	// Indicates whether the traced function is a syscall.
-	Syscall bool `json:"syscall"`
-	// +kubebuilder:validation:Optional
-	// A list of function arguments to include in the trace output.
-	Args []KProbeArg `json:"args"`
-	// +kubebuilder:validation:Optional
-	// A return argument to include in the trace output.
-	ReturnArg KProbeArg `json:"returnArg"`
-	// +kubebuilder:validation:Optional
-	// An action to perform on the return argument.
-	// Available actions are: Post;TrackSock;UntrackSock
-	ReturnArgAction string `json:"returnArgAction"`
-	// +kubebuilder:validation:Optional
-	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []KProbeSelector `json:"selectors"`
+func (tp *TracingPolicy) TpName() string {
+	return tp.ObjectMeta.Name
 }
 
-type KProbeArg struct {
-	// +kubebuilder:validation:Minimum=0
-	// Position of the argument.
-	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;
-	// Argument type.
-	Type string `json:"type"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Minimum=0
-	// Specifies the position of the corresponding size argument for this argument.
-	// This field is used only for char_buf and char_iovec types.
-	SizeArgIndex uint32 `json:"sizeArgIndex"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// This field is used only for char_buf and char_iovec types. It indicates
-	// that this argument should be read later (when the kretprobe for the
-	// symbol is triggered) because it might not be populated when the kprobe
-	// is triggered at the entrance of the function. For example, a buffer
-	// supplied to read(2) won't have content until kretprobe is triggered.
-	ReturnCopy bool `json:"returnCopy"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Read maximum possible data (currently 327360). This field is only used
-	// for char_buff data. When this value is false (default), the bpf program
-	// will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
-	// supports fetching up to 327360 bytes if this flag is turned on
-	MaxData bool `json:"maxData"`
-	// +kubebuilder:validation:Optional
-	// Label to output in the JSON
-	Label string `json:"label"`
-}
+// OperationSelectorValue represents the value for MatchOperations.
+//
+// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR;FILE_EXEC
+type OperationSelectorValue = string
 
-type BinarySelector struct {
+type OperationSelector struct {
 	// +kubebuilder:validation:Enum=In;NotIn
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
-	Values []string `json:"values"`
+	Values []OperationSelectorValue `json:"values,omitempty"`
 }
 
-// KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
-// results of MatchPIDs and MatchArgs are ANDed.
-type KProbeSelector struct {
-	// +kubebuilder:validation:Optional
-	// A list of process ID filters. MatchPIDs are ANDed.
-	MatchPIDs []PIDSelector `json:"matchPIDs"`
-	// +kubebuilder:validation:Optional
-	// A list of argument filters. MatchArgs are ANDed.
-	MatchArgs []ArgSelector `json:"matchArgs"`
-	// +kubebuilder:validation:Optional
-	// A list of actions to execute when this selector matches
-	MatchActions []ActionSelector `json:"matchActions"`
-	// +kubebuilder:validation:Optional
-	// A list of argument filters. MatchArgs are ANDed.
-	MatchReturnArgs []ArgSelector `json:"matchReturnArgs"`
+type FileActionSelector struct {
+	// +kubebuilder:validation:Enum=Post;Block
+	// Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).
+	Action string `json:"action"`
+}
+
+// Example: "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f"
+type DigestSelectorValue = string
+
+type DigestSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []DigestSelectorValue `json:"values,omitempty"`
+}
+
+// FileSelector selects file operations.
+type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
-	MatchBinaries []BinarySelector `json:"matchBinaries"`
+	MatchBinaries []BinarySelector `json:"matchBinaries,omitempty"`
 	// +kubebuilder:validation:Optional
-	// A list of namespaces and IDs
-	MatchNamespaces []NamespaceSelector `json:"matchNamespaces"`
+	// A list of operation filters.
+	MatchOperations []OperationSelector `json:"matchOperations,omitempty"`
 	// +kubebuilder:validation:Optional
-	// IDs for namespace changes
-	MatchNamespaceChanges []NamespaceChangesSelector `json:"matchNamespaceChanges"`
+	// A list of operation filters.
+	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
 	// +kubebuilder:validation:Optional
-	// A list of capabilities and IDs
-	MatchCapabilities []CapabilitiesSelector `json:"matchCapabilities"`
-	// +kubebuilder:validation:Optional
-	// IDs for capabilities changes
-	MatchCapabilityChanges []CapabilitiesSelector `json:"matchCapabilityChanges"`
+	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
+	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
 }
 
-type NamespaceChangesSelector struct {
-	// +kubebuilder:validation:Enum=In;NotIn
-	// Namespace selector operator.
-	Operator string `json:"operator"`
-	// Namespace types (e.g., Mnt, Pid) to match.
-	Values []string `json:"values"`
-}
-
-type NamespaceSelector struct {
-	// +kubebuilder:validation:Enum=Uts;Ipc;Mnt;Pid;PidForChildren;Net;Time;TimeForChildren;Cgroup;User
-	// Namespace selector name.
-	Namespace string `json:"namespace"`
-	// +kubebuilder:validation:Enum=In;NotIn
-	// Namespace selector operator.
-	Operator string `json:"operator"`
-	// Namespace IDs (or host_ns for host namespace) of namespaces to match.
-	Values []string `json:"values"`
-}
-
-type CapabilitiesSelector struct {
+type FileSpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=Effective;Inheritable;Permitted
-	// +kubebuilder:default=Effective
-	// Type of capabilities
-	Type string `json:"type"`
-	// +kubebuilder:validation:Enum=In;NotIn
-	// Namespace selector operator.
-	Operator string `json:"operator"`
+	// What paths to monitor
+	Paths []string `json:"file_paths,omitempty"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Indicates whether these caps are namespace caps.
-	IsNamespaceCapability bool `json:"isNamespaceCapability"`
-	// Capabilities to match.
-	Values []string `json:"values"`
-}
-
-type PIDSelector struct {
-	// +kubebuilder:validation:Enum=In;NotIn
-	// PID selector operator.
-	Operator string `json:"operator"`
-	// Process IDs to match.
-	Values []uint32 `json:"values"`
+	// What paths to exclude from monitored paths
+	PathsExclude []string `json:"file_paths_exclude,omitempty"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Indicates whether PIDs are namespace PIDs.
-	IsNamespacePID bool `json:"isNamespacePID"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Matches any descendant processes of the matching PIDs.
-	FollowForks bool `json:"followForks"`
-}
-
-type ArgSelector struct {
-	// +kubebuilder:validation:Minimum=0
-	// Position of the argument to apply fhe filter to.
-	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;NotPrefix;Postfix;NotPostfix;GreaterThan;LessThan;GT;LT;Mask;SPort;NotSPort;SPortPriv;NotSportPriv;DPort;NotDPort;DPortPriv;NotDPortPriv;SAddr;NotSAddr;DAddr;NotDAddr;Protocol;Family;State
-	// Filter operation.
-	Operator string `json:"operator"`
-	// Value to compare the argument against.
-	Values []string `json:"values"`
-}
-
-type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost;TrackSock;UntrackSock
-	// Action to execute.
-	Action string `json:"action"`
-	// +kubebuilder:validation:Optional
-	// An arg index for the fd for fdInstall action
-	ArgFd uint32 `json:"argFd"`
-	// +kubebuilder:validation:Optional
-	// An arg index for the filename for fdInstall action
-	ArgName uint32 `json:"argName"`
-	// +kubebuilder:validation:Optional
-	// A URL for the getUrl action
-	ArgUrl string `json:"argUrl"`
-	// +kubebuilder:validation:Optional
-	// A FQDN to lookup for the dnsLookup action
-	ArgFqdn string `json:"argFqdn"`
-	// +kubebuilder:validation:Optional
-	// error value for override action
-	ArgError int32 `json:"argError"`
-	// +kubebuilder:validation:Optional
-	// A signal number for signal action
-	ArgSig uint32 `json:"argSig"`
-	// +kubebuilder:validation:Optional
-	// An arg index for the sock for trackSock and untrackSock actions
-	ArgSock uint32 `json:"argSock"`
-	// +kubebuilder:validation:Optional
-	// A time period within which repeated messages will not be posted. Can be specified in seconds (default or with
-	// 's' suffix), minutes ('m' suffix) or hours ('h' suffix).
-	RateLimit string `json:"rateLimit"`
-}
-
-type TracepointSpec struct {
-	// Tracepoint subsystem
-	Subsystem string `json:"subsystem"`
-	// Tracepoint event
-	Event string `json:"event"`
-	// +kubebuilder:validation:Optional
-	// A list of function arguments to include in the trace output.
-	Args []KProbeArg `json:"args"`
+	// Config flags to enable/disable specific functionality
+	Config map[string]string `json:"file_config,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []KProbeSelector `json:"selectors"`
+	Selectors []FileSelector `json:"selectors,omitempty"`
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	// Do monitoring on host files
+	MonitorHostFiles bool `json:"monitorHostFiles"`
+	// +kubebuilder:validation:Optional
+	// This is a label selector which selects Pods. This field follows standard label
+	// selector semantics; if present but empty, it selects all pods.
+	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TracingPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []TracingPolicy `json:"items"`
+	Items           []TracingPolicy `json:"items,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TracingPolicyNamespacedList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []TracingPolicyNamespaced `json:"items"`
+type TlsSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
 }
 
-type UProbeSpec struct {
-	// Name of the traced binary
-	Path string `json:"path"`
-	// Name of the traced symbol
-	Symbol string `json:"symbol"`
+type TlsSpec struct {
+	// TLS enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Enum=socket;tc;cgroup;
+	// +kubebuilder:default=tc
+	// TLS parser type
+	Mode string `json:"mode,omitempty"`
 	// +kubebuilder:validation:Optional
-	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []KProbeSelector `json:"selectors"`
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []TlsSelector `json:"selectors,omitempty"`
 }
 
-type ListSpec struct {
-	// Name of the list
-	Name string `json:"name"`
+type HttpsSelector struct {
 	// +kubebuilder:validation:Optional
-	// Values of the list
-	Values []string `json:"values"`
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
+}
+
+type HttpsSpec struct {
+	// HTTPS enable parser
+	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=syscalls;generated_syscalls;generated_ftrace
-	// Indicates the type of the list values.
-	Type string `json:"type"`
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []HttpsSelector `json:"selectors,omitempty"`
+}
+
+type HttpSelector struct {
 	// +kubebuilder:validation:Optional
-	// Pattern for 'generated' lists.
-	Pattern string `json:"pattern"`
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
+}
+
+type HttpSpec struct {
+	// Http enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []HttpSelector `json:"selectors,omitempty"`
+}
+
+type InterfacePolicySpec struct {
+	// Interface enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Interface interval in seconds
+	StatsInterval uint32 `json:"statsInterval"`
+	// +kubebuilder:validation:Optional
+	// Interface packet level BPF
+	Packet bool `json:"packet"`
+}
+
+type DnsPolicySpec struct {
+	// DNS enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// A list of DNS ports
+	Ports []uint16 `json:"ports,omitempty"`
+}
+
+type NopSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts,omitempty"`
+}
+
+type NopSpec struct {
+	// Nop enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply Nop parser against. Selectors are ORed.
+	Selectors []NopSelector `json:"selectors,omitempty"`
+}
+
+type PromMetrics struct {
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+}
+
+type ParserPolicySpec struct {
+	// +kubebuilder:validation:Optional
+	// A Tls specs.
+	Tls TlsSpec `json:"tls"`
+	// +kubebuilder:validation:Optional
+	// A Tls specs.
+	Https HttpsSpec `json:"https"`
+	// +kubebuilder:validation:Optional
+	// A Http spec.
+	Http HttpSpec `json:"http"`
+	// +kubebuilder:validation:Optional
+	// UDP policy specification
+	Udp UdpPolicySpec `json:"udp"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Interface InterfacePolicySpec `json:"interface"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Dns DnsPolicySpec `json:"dns"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Nop NopSpec `json:"nop"`
+	// +kubebuilder:validation:Optional
+	// TCP policy specification
+	Tcp TcpPolicySpec `json:"tcp"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP burst exit checking policy specification
+	// +kubebuilder:deprecatedversion:warning="burstExitGen is deprecated. Use networkWatermarksExitGen instead"
+	BurstExitGen NetworkWatermarksExitGenPolicySpec `json:"burstExitGen"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP watermarks exit checking policy specification
+	NetworkWatermarksExitGen NetworkWatermarksExitGenPolicySpec `json:"networkWatermarksExitGen"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP heartbeat policy specification
+	Heartbeat HeartbeatPolicySpec `json:"heartbeat"`
+}
+
+type TcpRttHistogram struct {
+	// Enable TCP RTT Histogram
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected RTT Max value
+	Max uint32 `json:"max"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected RTT Min value
+	Min uint32 `json:"min"`
+}
+
+type TcpPolicySpec struct {
+	// Enable TCP statistics
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the Stat collection interval in seconds
+	StatsInterval uint32 `json:"statsInterval"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	// +kubebuilder:deprecatedversion:warning="burst is deprecated. Use watermarks instead"
+	Burst TcpWatermarksPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Watermarks TcpWatermarksPolicySpec `json:"watermarks"`
+	// +kubebuilder:validation:Optional
+	// Rtt Histogram
+	RttHistogram TcpRttHistogram `json:"histogram"`
+	// +kubebuilder:validation:Optional
+	// TCP latency observability policy specification
+	Latency LatencyPolicySpec `json:"latency"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Disable TCP events
+	DisableEvents TcpEventDisablePolicySpec `json:"disableEvents"`
+}
+
+type TcpWatermarksPolicySpec struct {
+	// Enable TCP watermarks observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the watermarks window size in milliseconds
+	WindowSize uint32 `json:"windowSize"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	// +kubebuilder:deprecatedversion:warning="triggerPercent is deprecated. Use burstTriggerPercent instead"
+	TriggerPercent uint32 `json:"triggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent under average deemed to be a dip
+	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
+}
+
+type UdpPolicySpec struct {
+	// Enable UDP observability
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	// UDP has two modes one for newer kernels (cgroup) and then an
+	// older fallback mode for kprobe use cases. Allow running older
+	// kprobe version on newer kernels by setting cgroup knob to false.
+	Cgroup bool `json:"cgroup"`
+	// +kubebuilder:validation:Optional
+	// Configures the Stat collection interval in seconds
+	StatsInterval uint32 `json:"statsInterval"`
+	// +kubebuilder:validation:Optional
+	// Configure socket idle time to delete sockets in seconds
+	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	// kubebuilder:deprecatedversion:warning="burst is deprecated. Use watermarks instead"
+	Burst UdpWatermarksPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Watermarks UdpWatermarksPolicySpec `json:"watermarks"`
+	// +kubebuilder:validation:Optional
+	// UDP latency observability policy specification
+	Latency LatencyPolicySpec `json:"latency"`
+	// +kubebuilder:validation:Optional
+	// UDP sequence check observability policy specification
+	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Disable UDP events
+	DisableEvents UdpEventDisablePolicySpec `json:"disableEvents"`
+}
+
+type UdpWatermarksPolicySpec struct {
+	// Enable UDP watermarks observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the burst window size in milliseconds
+	WindowSize uint32 `json:"windowSize"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	// +kubebuilder:deprecatedversion:warning="triggerPercent is deprecated. Use burstTriggerPercent instead"
+	TriggerPercent uint32 `json:"triggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent under average deemed to be a dip
+	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
+}
+
+type LatencyPolicySpec struct {
+	// Enable UDP latency observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the subnets to enable on
+	MatchSubnets []string `json:"matchSubnets,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Configures the ports to enable on
+	MatchPorts []uint16 `json:"matchPorts,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected Max Latency value
+	Max uint32 `json:"max"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected Min Latency value
+	Min uint32 `json:"min"`
+	// +kubebuilder:validation:Optional
+	// Configures the clock check interval in seconds
+	ClockCheckInterval uint32 `json:"clockCheckInterval"`
+	// +kubebuilder:validation:Optional
+	// Configures the maximum acceptable clock skew before updating in microseconds
+	ClockMaxSkew uint32 `json:"clockMaxSkew"`
+	// +kubebuilder:validation:Optional
+	// Configures the interfaces to enable on
+	Interfaces []string `json:"interfaces,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Configures the maximum packet size
+	MaxPacketSize uint16 `json:"maxPacketSize"`
+	// +kubebuilder:validation:Optional
+	// Configures the interfaces check interval in seconds
+	InterfacesCheckInterval uint32 `json:"interfacesCheckInterval"`
+}
+
+type UdpSeqCheckPolicySpec struct {
+	// Enable UDP sequence check observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the UDP sequence checker application
+	AppId uint64 `json:"appId"`
+	// +kubebuilder:validation:Optional
+	// Configures the ports to enable on
+	Ports []uint16 `json:"ports,omitempty"`
+}
+
+type NetworkWatermarksExitGenPolicySpec struct {
+	// Enable watermarks checks for end events from userland
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the checking interval in milliseconds
+	Interval uint32 `json:"interval"`
+}
+
+type HeartbeatPolicySpec struct {
+	// Enable heartbeat
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=60
+	// +kubebuilder:validation:Optional
+	// Configures the heartbeat interval in seconds
+	Interval uint32 `json:"interval"`
+	// +kubebuilder:default=6399
+	// +kubebuilder:validation:Optional
+	// Configures the UDP port
+	UdpPort uint32 `json:"udpPort"`
+	// +kubebuilder:default=6399
+	// +kubebuilder:validation:Optional
+	// Configures the TCP port
+	TcpPort uint32 `json:"tcpPort"`
+}
+
+type TcpEventDisablePolicySpec struct {
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable connect events
+	DisableConnect bool `json:"disableConnect"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable close events
+	DisableClose bool `json:"disableClose"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable accept events
+	DisableAccept bool `json:"disableAccept"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable listen events
+	DisableListen bool `json:"disableListen"`
+}
+
+type UdpEventDisablePolicySpec struct {
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable connect events
+	DisableConnect bool `json:"disableConnect"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable close events
+	DisableClose bool `json:"disableClose"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Disable stats events, write to metrics directly
+	DisableStats bool `json:"disableStats"`
 }
