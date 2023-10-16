@@ -1685,6 +1685,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 	var maps []*program.Map
 	tpid := atomic.AddUint32(&sensorExecCounter, 1)
 	name := fmt.Sprintf("fim_exec_sensor_%d", tpid)
+	spec := policy.TpSpec()
 
 	// having support for bpf_ima_file_hash helper means that we have everything that
 	// we need to enable process_file_exec events
@@ -1700,14 +1701,26 @@ func (k *observerFileExecSensor) PolicyHandler(
 		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection})
 	}
 
-	selState, err := fm.InitKernelExecSelectorState(policy.TpSpec().FileExecMonitoring.Selectors)
+	selState, err := fm.InitKernelExecSelectorState(spec.FileExecMonitoring.Selectors)
 	if err != nil {
 		return nil, fmt.Errorf("FileExecMonitoring failed to parse selectors: %w", err)
 	}
 
+	defaultAction, err := fm.GetActions(spec.FileExecMonitoring.DefaultActions)
+	if err != nil {
+		return nil, fmt.Errorf("FileExecMonitoring failed to parse default actions: %s", err)
+	}
+
+	// Block action results also in a post. We can introduce
+	// support for nopost later if needed.
+	if defaultAction&fm.FileOperationTypeBlock != 0 {
+		defaultAction |= fm.FileOperationTypePost
+	}
+
 	config := fileapi.FileExecConfigMapValue{
-		PolicyId:     uint32(fid),
-		NumSelectors: selState.GetNumSelectors(),
+		PolicyId:      uint32(fid),
+		NumSelectors:  selState.GetNumSelectors(),
+		DefaultAction: defaultAction,
 	}
 
 	for _, h := range fimProgs {

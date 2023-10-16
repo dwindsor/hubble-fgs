@@ -513,7 +513,8 @@ eval_exec_selectors(struct digest_key *digest)
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
-	return 0; // not selector matches
+
+	return conf->default_action;
 }
 
 static inline __attribute__((always_inline)) int get_tp_id()

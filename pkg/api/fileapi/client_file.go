@@ -128,6 +128,7 @@ type FileConfigMapValue struct {
 }
 
 type FileExecConfigMapValue struct {
-	PolicyId     uint32 `align:"policy_id"`
-	NumSelectors uint32 `align:"num_selectors"`
+	PolicyId      uint32 `align:"policy_id"`
+	NumSelectors  uint32 `align:"num_selectors"`
+	DefaultAction uint32 `align:"default_action"`
 }

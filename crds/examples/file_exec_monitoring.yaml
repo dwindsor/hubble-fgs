@@ -5,6 +5,8 @@ metadata:
 spec:
   exec:
     enable: true
+    defaultActions:
+    - action: Post
     selectors:
     - matchDigests:
       - operator: "In"

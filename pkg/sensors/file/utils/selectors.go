@@ -459,17 +459,25 @@ func ParseMatchDigests(k *KernelSelectorState, digests []v1alpha1.DigestSelector
 	return nil
 }
 
-func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector, selIdx int) error {
+func GetActions(actions []v1alpha1.FileActionSelector) (uint32, error) {
 	if len(actions) > 1 {
-		return fmt.Errorf("only support single actions selector")
+		return 0, fmt.Errorf("only support single actions selector")
 	}
 	action := uint32(0)
 	for _, a := range actions {
 		act, ok := fileActionTypeTable[strings.ToLower(a.Action)]
 		if !ok {
-			return fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
+			return 0, fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
 		}
 		action |= act
+	}
+	return action, nil
+}
+
+func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector, selIdx int) error {
+	action, err := GetActions(actions)
+	if err != nil {
+		return err
 	}
 	k.action[uint32(selIdx)] = action
 	return nil

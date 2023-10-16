@@ -2459,6 +2459,22 @@ func TestFileExecBasic(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func getFileExecChecker(t *testing.T, path, digest string, operation tetragon.FileOperation) *ec.ProcessFileExecChecker {
+	ino, dev := getInodeInfo(t, path)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(path)).WithInode(i)
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(operation),
+		)
+
+	return ec.NewProcessFileExecChecker("").WithFile(f).WithDigest(d).WithOperations(o)
+}
+
 func TestFileExecEnforcement(t *testing.T) {
 	if !SupportDigests() {
 		t.Skip("Kernel does not support file exec events")
@@ -2479,6 +2495,11 @@ func TestFileExecEnforcement(t *testing.T) {
 	headBin, err := filepath.EvalSymlinks("/bin/head")
 	if err != nil {
 		t.Fatalf("failed to evaluate symlink of executable: err %s", err)
+	}
+
+	headDigest, err := getFileDigest(headBin)
+	if err != nil {
+		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
 	}
 
 	specData := map[string]string{
@@ -2518,20 +2539,10 @@ func TestFileExecEnforcement(t *testing.T) {
 		t.Fatalf("failed to run %s: err %s", headBin, err)
 	}
 
-	ino, dev := getInodeInfo(t, catBin)
-
-	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
-	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
-	f := ec.NewFileDetailsChecker().WithStr(sm.Full(catBin)).WithInode(i)
-	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(catDigest))
-	o := ec.NewFileOperationListMatcher().
-		WithOperator(lm.Ordered).
-		WithValues(
-			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
-		)
-
-	fileExecChecker := ec.NewProcessFileExecChecker("").WithFile(f).WithDigest(d).WithOperations(o)
-	checker := ec.NewUnorderedEventChecker(fileExecChecker)
+	checker := ec.NewUnorderedEventChecker(
+		getFileExecChecker(t, catBin, catDigest, tetragon.FileOperation_FILE_OP_BLOCK),
+		getFileExecChecker(t, headBin, headDigest, tetragon.FileOperation_FILE_OP_POST),
+	)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
