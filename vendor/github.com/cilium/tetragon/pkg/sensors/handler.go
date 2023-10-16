@@ -123,6 +123,7 @@ func (h *handler) addTracingPolicy(op *tracingPolicyAdd) error {
 	if err := col.load(h.bpfDir, h.mapDir); err != nil {
 		return err
 	}
+	col.enabled = true
 
 	// NB: in some cases it might make sense to keep the policy registered if there was an
 	// error. For now, however, we only keep it if it was successfully loaded
@@ -135,20 +136,17 @@ func (h *handler) deleteTracingPolicy(op *tracingPolicyDelete) error {
 	if !exists {
 		return fmt.Errorf("tracing policy %s does not exist", op.name)
 	}
-	err := col.unload()
-	if err != nil {
-		col.err = fmt.Errorf("failed to unload tracing policy: %w", err)
-		return err
-	}
+	defer delete(h.collections, op.name)
+
+	col.destroy()
 
 	filterID := policyfilter.PolicyID(col.policyfilterID)
-	err = h.pfState.DelPolicy(filterID)
+	err := h.pfState.DelPolicy(filterID)
 	if err != nil {
 		col.err = fmt.Errorf("failed to remove from policyfilter: %w", err)
 		return err
 	}
 
-	delete(h.collections, op.name)
 	return nil
 }
 
@@ -160,9 +158,11 @@ func (h *handler) listTracingPolicies(op *tracingPolicyList) error {
 		}
 
 		pol := tetragon.TracingPolicyStatus{
-			Id:   col.tracingpolicyID,
-			Name: name,
-			Info: fmt.Sprintf("%s filterID:%d error:%v", col.tracingpolicy.TpInfo(), col.policyfilterID, col.err),
+			Id:       col.tracingpolicyID,
+			Name:     name,
+			Enabled:  col.enabled,
+			FilterId: col.policyfilterID,
+			Error:    fmt.Sprint(col.err),
 		}
 
 		pol.Namespace = ""
@@ -178,6 +178,46 @@ func (h *handler) listTracingPolicies(op *tracingPolicyList) error {
 
 	}
 	op.result = &ret
+	return nil
+}
+
+func (h *handler) disableTracingPolicy(op *tracingPolicyDisable) error {
+	col, exists := h.collections[op.name]
+	if !exists {
+		return fmt.Errorf("tracing policy %s does not exist", op.name)
+	}
+
+	if !col.enabled {
+		return fmt.Errorf("tracing policy %s is already disabled", op.name)
+	}
+
+	err := col.unload()
+	if err != nil {
+		col.err = fmt.Errorf("failed to unload tracing policy: %w", err)
+		return err
+	}
+
+	col.enabled = false
+	h.collections[op.name] = col
+	return nil
+}
+
+func (h *handler) enableTracingPolicy(op *tracingPolicyEnable) error {
+	col, exists := h.collections[op.name]
+	if !exists {
+		return fmt.Errorf("tracing policy %s does not exist", op.name)
+	}
+
+	if col.enabled {
+		return fmt.Errorf("tracing policy %s is already enabled", op.name)
+	}
+
+	if err := col.load(h.bpfDir, h.mapDir); err != nil {
+		return err
+	}
+
+	col.enabled = true
+	h.collections[op.name] = col
 	return nil
 }
 
@@ -215,9 +255,10 @@ func (h *handler) removeSensor(op *sensorRemove) error {
 	if !exists {
 		return fmt.Errorf("sensor %s does not exist", op.name)
 	}
-	err := col.unload()
+
+	col.destroy()
 	delete(h.collections, op.name)
-	return err
+	return nil
 }
 
 func (h *handler) enableSensor(op *sensorEnable) error {

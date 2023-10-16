@@ -42,7 +42,12 @@ message TracingPolicyStatus {
 	string info = 4;
 	// sensors loaded in the scope of this policy
 	repeated string sensors = 5;
-
+	// indicating if the policy is enabled
+	bool enabled = 6;
+	// filter ID of the policy used for k8s filtering
+	uint64 filter_id = 7;
+	// potential error of the policy
+	string error = 8;
 }
 
 message ListTracingPoliciesResponse {
@@ -58,6 +63,16 @@ message DeleteTracingPolicyRequest {
 	string name = 1;
 }
 message DeleteTracingPolicyResponse {}
+
+message EnableTracingPolicyRequest {
+	string name = 1;
+}
+message EnableTracingPolicyResponse {}
+
+message DisableTracingPolicyRequest {
+	string name = 1;
+}
+message DisableTracingPolicyResponse {}
 
 message RemoveSensorRequest {
 	string name = 1;
@@ -98,6 +113,8 @@ service FineGuidanceSensors {
     rpc DeleteTracingPolicy(DeleteTracingPolicyRequest) returns (DeleteTracingPolicyResponse) {}
     rpc RemoveSensor(RemoveSensorRequest) returns (RemoveSensorResponse) {}
     rpc ListTracingPolicies(ListTracingPoliciesRequest) returns (ListTracingPoliciesResponse) {}
+    rpc EnableTracingPolicy(EnableTracingPolicyRequest) returns (EnableTracingPolicyResponse) {}
+    rpc DisableTracingPolicy(DisableTracingPolicyRequest) returns (DisableTracingPolicyResponse) {}
 
     rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {}
     rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}

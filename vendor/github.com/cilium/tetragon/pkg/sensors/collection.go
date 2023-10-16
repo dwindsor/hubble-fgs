@@ -21,6 +21,8 @@ type collection struct {
 	tracingpolicyID uint64
 	// if this is not zero, then the policy is filtered
 	policyfilterID uint64
+	// indicates if the collection is enabled or disabled
+	enabled bool
 }
 
 func (c *collection) info() string {
@@ -79,4 +81,11 @@ func (c *collection) unload() error {
 		return fmt.Errorf("failed to unload all sensors from collection %s: %w", c.name, err)
 	}
 	return nil
+}
+
+// destroy will attempt to destroy all the sensors in a collection
+func (c *collection) destroy() {
+	for _, s := range c.sensors {
+		s.Destroy()
+	}
 }
