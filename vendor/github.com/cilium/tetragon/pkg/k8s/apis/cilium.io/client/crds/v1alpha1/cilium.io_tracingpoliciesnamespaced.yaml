@@ -38,6 +38,23 @@ spec:
               exec:
                 description: File exec monitoring policy specification.
                 properties:
+                  defaultActions:
+                    description: Sets the default actions (i.e. what to do if we have
+                      selectors and none macthed)
+                    items:
+                      properties:
+                        action:
+                          description: Action to Execute. Post will post an event;
+                            Block will also post an event, and additionally block
+                            the operation (application will receive an error).
+                          enum:
+                          - Post
+                          - Block
+                          type: string
+                      required:
+                      - action
+                      type: object
+                    type: array
                   enable:
                     default: false
                     description: Enables process_file_exec events

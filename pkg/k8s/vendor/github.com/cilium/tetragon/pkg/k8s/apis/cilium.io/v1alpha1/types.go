@@ -222,6 +222,9 @@ type FileExecSpec struct {
 	// Enables process_file_exec events
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
+	// Sets the default actions (i.e. what to do if we have selectors and none macthed)
+	DefaultActions []FileActionSelector `json:"defaultActions,omitempty"`
+	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []FileExecSelector `json:"selectors,omitempty"`
 }
