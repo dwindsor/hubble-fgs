@@ -468,7 +468,15 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	} else {
-		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpWatermarksDipTriggerMult, tcpconfig.RttHistogramMax, tcpconfig.RttHistogramMin)
+		if tcpStatsEnabled {
+			configureSockStatSampler(tcpInterval,
+				tcpWatermarksEnable,
+				tcpWatermarksWindowSize,
+				tcpWatermarksBurstTriggerMult,
+				tcpWatermarksDipTriggerMult,
+				tcpconfig.RttHistogramMax,
+				tcpconfig.RttHistogramMin)
+		}
 		configureTCPDisableEvents(disableConnect, disableClose, disableAccept, disableListen)
 		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
