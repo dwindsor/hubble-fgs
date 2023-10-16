@@ -12,6 +12,11 @@ type config struct {
 	DisableKprobeMulti     bool
 	FimRuntimeEndpoint     string
 	DetachOldBpf           bool
+
+	FlowExportFilename       string
+	FlowExportFileMaxSizeMB  int
+	FlowExportFileMaxBackups int
+	FlowExportFileCompress   bool
 }
 
 var (

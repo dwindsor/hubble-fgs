@@ -679,9 +679,9 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 		return err
 	}
 	var flowWriter *lumberjack.Logger
-	enableFlowExport := flowExportFilename != ""
+	enableFlowExport := enterpriseOption.Config.FlowExportFilename != ""
 	if enableFlowExport {
-		flowWriter, err = getWriter(flowExportFilename, flowExportFileMaxSizeMB, flowExportFileMaxBackups, flowExportFileCompress)
+		flowWriter, err = getWriter(enterpriseOption.Config.FlowExportFilename, enterpriseOption.Config.FlowExportFileMaxSizeMB, enterpriseOption.Config.FlowExportFileMaxBackups, enterpriseOption.Config.FlowExportFileCompress)
 		if err != nil {
 			return err
 		}
@@ -703,9 +703,9 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 						log.WithError(rotationErr).WithField("file", exportFilename).Warn("Failed to rotate JSON export file")
 					}
 					if flowWriter != nil {
-						log.WithField("file", flowExportFilename).Info("Rotating JSON flow export file")
+						log.WithField("file", enterpriseOption.Config.FlowExportFilename).Info("Rotating JSON flow export file")
 						if rotationErr := flowWriter.Rotate(); rotationErr != nil {
-							log.WithError(rotationErr).WithField("file", flowExportFilename).Warn("Failed to rotate JSON flow export file")
+							log.WithError(rotationErr).WithField("file", enterpriseOption.Config.FlowExportFilename).Warn("Failed to rotate JSON flow export file")
 						}
 					}
 				}
@@ -806,6 +806,7 @@ func execute() error {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			readAndSetFlags()
+			enterpriseOption.ReadAndSetEnterpriseFlags()
 
 			// Unfortunately, due to an over-reliance on init() throughout the codebase,
 			// we have to rely on resizing the caches here rather than simply initializing
@@ -851,17 +852,10 @@ func execute() error {
 	flags.Bool(keyExportFileCompress, false, "Compress rotated JSON export files")
 	flags.Int(keyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
 
-	// Parameters for Hubble flow export.
-	flags.String(keyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")
-	flags.Int(keyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
-	flags.Int(keyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
-	flags.Bool(keyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
-
 	flags.String(keyLogLevel, "info", "Set log level")
 	flags.String(keyLogFormat, "text", "Set log format")
 	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
 	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
-	flags.Bool(keyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')")
 	flags.String(keyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
@@ -869,10 +863,6 @@ func execute() error {
 	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
 	flags.String(keyProtocolShift, "auto", "(deprecated)")
-	flags.Int(keyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
-	flags.Int(keyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
-	flags.Int(keyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
-	flags.String(keyFimFifoPath, "/var/run/cilium/hubble", "Path for the FIFO used for fs-scanner and tetragon communication")
 
 	// Tracing Policy files
 	flags.String(keyTracingPolicy, "", "Tracing policy file to load at startup")
@@ -900,13 +890,6 @@ func execute() error {
 	// disable.
 	flags.Bool(keyReleasePinnedBPF, true, "Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable")
 
-	// Provide option to detach old programs even when using old names that make it
-	// hard to find Tetragon specific programs. Use with some caution because we
-	// could remove progs associated with other agents. But this is necessary in
-	// cases where upgrading from older versions to fix bug where we failed to
-	// detach programs and left stale progs attached at cgroups and tc hooks.
-	flags.Bool(keyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
-
 	// Allow to disable kprobe multi interface
 	flags.Bool(keyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
 
@@ -920,7 +903,7 @@ func execute() error {
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 	flags.Bool(keyEnablePodInfo, false, "Enable getting additional Kubernetes metadata from PodInfo custom resources")
 
-	flags.String(keyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
+	enterpriseOption.AddEnterpriseFlags(flags)
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

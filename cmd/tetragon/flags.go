@@ -15,9 +15,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
-
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-
 	"github.com/spf13/viper"
 )
 
@@ -36,9 +33,8 @@ const (
 	keyLogLevel  = "log-level"
 	keyLogFormat = "log-format"
 
-	keyEnableK8sAPI           = "enable-k8s-api"
-	keyEnableCiliumAPI        = "enable-cilium-api"
-	keyEnableProcessAncestors = "enable-process-ancestors"
+	keyEnableK8sAPI    = "enable-k8s-api"
+	keyEnableCiliumAPI = "enable-cilium-api"
 
 	keyMetricsServer     = "metrics-server"
 	keyServerAddress     = "server-address"
@@ -64,25 +60,13 @@ const (
 
 	keyFieldFilters = "field-filters"
 
-	keyFlowExportFilename       = "flow-export-filename"
-	keyFlowExportFileMaxSizeMB  = "flow-export-file-max-size-mb"
-	keyFlowExportFileMaxBackups = "flow-export-file-max-backups"
-	keyFlowExportFileCompress   = "flow-export-file-compress"
-
 	keyNetnsDir = "netns-dir"
 
 	keyEventQueueSize = "event-queue-size"
 
 	keyReleasePinnedBPF = "release-pinned-bpf"
-	keyDetatchOldBPF    = "detach-old-bpf"
 
 	keyProtocolShift = "protocol-shift"
-
-	keyDnsCacheSize   = "dns-cache-size"
-	keyTlsCacheSize   = "tls-cache-size"
-	keyNetNsCacheSize = "net-ns-cache-size"
-
-	keyFimFifoPath = "fim-fifo-path"
 
 	keyDisableKprobeMulti = "disable-kprobe-multi"
 
@@ -93,8 +77,6 @@ const (
 	keyEnablePolicyFilterDebug = "enable-policy-filter-debug"
 
 	keyEnablePidSetFilter = "enable-pid-set-filter"
-
-	keyFimRuntimeEndpoint = "fim-runtime-endpoint"
 
 	keyEnablePodInfo = "enable-pod-info"
 )
@@ -117,12 +99,6 @@ var (
 	enableExportAggregation     bool
 	exportAggregationWindowSize time.Duration
 	exportAggregationBufferSize uint64
-
-	// Flow export options
-	flowExportFilename       string
-	flowExportFileMaxSizeMB  int
-	flowExportFileMaxBackups int
-	flowExportFileCompress   bool
 )
 
 func readAndSetFlags() {
@@ -140,8 +116,6 @@ func readAndSetFlags() {
 	option.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
 
 	option.Config.GopsAddr = viper.GetString(keyGopsAddr)
-
-	enterpriseOption.Config.EnableProcessAncestors = viper.GetBool(keyEnableProcessAncestors)
 
 	logLevel := viper.GetString(keyLogLevel)
 	logFormat := viper.GetString(keyLogFormat)
@@ -164,21 +138,9 @@ func readAndSetFlags() {
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
 
-	flowExportFilename = viper.GetString(keyFlowExportFilename)
-	flowExportFileMaxSizeMB = viper.GetInt(keyFlowExportFileMaxSizeMB)
-	flowExportFileMaxBackups = viper.GetInt(keyFlowExportFileMaxBackups)
-	flowExportFileCompress = viper.GetBool(keyFlowExportFileCompress)
-
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 
 	option.Config.ReleasePinned = viper.GetBool(keyReleasePinnedBPF)
-	enterpriseOption.Config.DetachOldBpf = viper.GetBool(keyDetatchOldBPF)
-
-	enterpriseOption.Config.DnsCacheSize = viper.GetInt(keyDnsCacheSize)
-	enterpriseOption.Config.TlsCacheSize = viper.GetInt(keyTlsCacheSize)
-	enterpriseOption.Config.NetNsCacheSize = viper.GetInt(keyNetNsCacheSize)
-
-	enterpriseOption.Config.FimFifoPath = viper.GetString(keyFimFifoPath)
 
 	option.Config.DisableKprobeMulti = viper.GetBool(keyDisableKprobeMulti)
 
@@ -189,8 +151,6 @@ func readAndSetFlags() {
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
 
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
-
-	enterpriseOption.Config.FimRuntimeEndpoint = viper.GetString(keyFimRuntimeEndpoint)
 
 	// deprecation timeline: deprecated -> v1.12.0
 	// manually handle the deprecation of --config-file
