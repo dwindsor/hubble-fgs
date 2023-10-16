@@ -27,8 +27,9 @@
     "^/tmp/install-buildx$",
     "^make codegen$",
     "^make generate$",
+    "^make vendor$",
     "^install/kubernetes/test.sh$",
     "^go mod vendor$",
-    "^install-tool golang [0-9]\\.[0-9]+\\.[0-9]+$"
+    "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$"
   ],
 }
