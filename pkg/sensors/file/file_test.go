@@ -15,8 +15,10 @@ package file
 
 import (
 	"context"
+	"crypto/sha1"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -2376,4 +2378,82 @@ func TestFileOps(t *testing.T) {
 	t.Run("multipleselectors", func(lt *testing.T) {
 		testFileReadWriteMultipleSelectors(t, lt)
 	})
+}
+
+func getFileDigest(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha1.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%2x", hash.Sum(nil)), nil
+}
+
+func TestFileExecBasic(t *testing.T) {
+	if !SupportDigests() {
+		t.Skip("Kernel does not support file exec events")
+	}
+
+	specFile, err := testutils.GetSpecFromTemplate("file_exec_monitoring.yaml.tmpl", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		if err := os.Remove(specFile); err != nil {
+			t.Log(err)
+		}
+	})
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	// check if /bin/cat is a symbolic link and follow that if needed
+	catBin, err := filepath.EvalSymlinks("/bin/cat")
+	if err != nil {
+		t.Fatalf("failed to evaluate symlink of executable: err %s", err)
+	}
+
+	if err := exec.Command(catBin, "/etc/passwd").Run(); err != nil {
+		t.Fatalf("failed to run %s: err %s", catBin, err)
+	}
+
+	digest, err := getFileDigest(catBin)
+	if err != nil {
+		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
+	}
+
+	ino, dev := getInodeInfo(t, catBin)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(catBin)).WithInode(i)
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_POST),
+		)
+
+	fileExecChecker := ec.NewProcessFileExecChecker("").WithFile(f).WithDigest(d).WithOperations(o)
+	checker := ec.NewUnorderedEventChecker(fileExecChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }
