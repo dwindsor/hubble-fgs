@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	cachedbtf "github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -131,6 +132,8 @@ type genericKprobe struct {
 	// reference to a stack trace map, must be closed when unloading the kprobe,
 	// this is done in the sensor PostUnloadHook
 	stackTraceMapRef *ebpf.Map
+
+	customHandler eventhandler.Handler
 }
 
 // pendingEvent is an event waiting to be merged with another event.
@@ -459,10 +462,11 @@ func isLTOperator(op string) bool {
 }
 
 type addKprobeIn struct {
-	useMulti   bool
-	sensorPath string
-	policyName string
-	policyID   policyfilter.PolicyID
+	useMulti      bool
+	sensorPath    string
+	policyName    string
+	policyID      policyfilter.PolicyID
+	customHandler eventhandler.Handler
 }
 
 type addKprobeOut struct {
@@ -494,6 +498,7 @@ func createGenericKprobeSensor(
 	policyID policyfilter.PolicyID,
 	policyName string,
 	lists []v1alpha1.ListSpec,
+	customHandler eventhandler.Handler,
 ) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
@@ -508,10 +513,11 @@ func createGenericKprobeSensor(
 		bpf.HasKprobeMulti()
 
 	in := addKprobeIn{
-		useMulti:   useMulti,
-		sensorPath: name,
-		policyID:   policyID,
-		policyName: policyName,
+		useMulti:      useMulti,
+		sensorPath:    name,
+		policyID:      policyID,
+		policyName:    policyName,
+		customHandler: customHandler,
 	}
 
 	addedKprobeIndices := []int{}
@@ -755,6 +761,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn, selMaps
 		tableId:           idtable.UninitializedEntryID,
 		policyName:        in.policyName,
 		hasOverride:       selectors.HasOverride(f),
+		customHandler:     in.customHandler,
 	}
 
 	// Parse Filters into kernel filter logic
@@ -1158,6 +1165,16 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 		logger.GetLogger().WithError(err).Warnf("Failed to match id:%d", m.FuncId)
 		return nil, fmt.Errorf("Failed to match id")
 	}
+
+	ret, err := handleMsgGenericKprobe(&m, gk, r)
+	if gk.customHandler != nil {
+		ret, err = gk.customHandler(ret, err)
+	}
+	return ret, err
+}
+
+func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes.Reader) ([]observer.Event, error) {
+	var err error
 
 	switch m.ActionId {
 	case selectors.ActionTypeGetUrl, selectors.ActionTypeDnsLookup:

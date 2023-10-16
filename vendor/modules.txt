@@ -292,7 +292,6 @@ github.com/cilium/tetragon/operator/podinfo
 github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/alignchecker
 github.com/cilium/tetragon/pkg/api
-github.com/cilium/tetragon/pkg/api/confapi
 github.com/cilium/tetragon/pkg/api/dataapi
 github.com/cilium/tetragon/pkg/api/ops
 github.com/cilium/tetragon/pkg/api/processapi
@@ -311,6 +310,7 @@ github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/eventcache
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
+github.com/cilium/tetragon/pkg/eventhandler
 github.com/cilium/tetragon/pkg/exporter
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/ftrace
@@ -1357,7 +1357,7 @@ google.golang.org/genproto/googleapis/api/expr/v1alpha1
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.58.2
+# google.golang.org/grpc v1.58.3
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes
