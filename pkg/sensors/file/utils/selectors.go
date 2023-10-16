@@ -475,22 +475,6 @@ func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSele
 	return nil
 }
 
-func parseSelector(k *KernelSelectorState, fileSel *v1alpha1.FileSelector, selIdx int) error {
-	if err := selectors.ParseMatchBinaries(&k.KernelSelectorState, fileSel.MatchBinaries, selIdx); err != nil {
-		return fmt.Errorf("parseMatchBinaries error: %w", err)
-	}
-	if err := ParseMatchOperations(k, fileSel.MatchOperations, selIdx); err != nil {
-		return fmt.Errorf("parseMatchOperations error: %w", err)
-	}
-	if err := ParseMatchDigests(k, fileSel.MatchDigests, selIdx); err != nil {
-		return fmt.Errorf("parseMatchDigests error: %w", err)
-	}
-	if err := ParseMatchActions(k, fileSel.MatchActions, selIdx); err != nil {
-		return fmt.Errorf("parseMatchActions error: %w", err)
-	}
-	return nil
-}
-
 func (k *KernelSelectorState) NeedEnforcement() bool {
 	for _, v := range k.action {
 		if v&FileOperationTypeBlock != 0 {
@@ -506,8 +490,37 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 	}
 	kernelSelectors := NewKernelSelectorState()
 	for i, s := range fileSel {
-		if err := parseSelector(kernelSelectors, &s, i); err != nil {
-			return nil, err
+		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i); err != nil {
+			return nil, fmt.Errorf("parseMatchBinaries error: %w", err)
+		}
+		if err := ParseMatchOperations(kernelSelectors, s.MatchOperations, i); err != nil {
+			return nil, fmt.Errorf("parseMatchOperations error: %w", err)
+		}
+		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
+			return nil, fmt.Errorf("parseMatchDigests error: %w", err)
+		}
+		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
+			return nil, fmt.Errorf("parseMatchActions error: %w", err)
+		}
+	}
+	kernelSelectors.num = uint32(len(fileSel))
+	return kernelSelectors, nil
+}
+
+func InitKernelExecSelectorState(fileSel []v1alpha1.FileExecSelector) (*KernelSelectorState, error) {
+	if len(fileSel) > MaxFimSelectors {
+		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
+	}
+	kernelSelectors := NewKernelSelectorState()
+	for i, s := range fileSel {
+		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i); err != nil {
+			return nil, fmt.Errorf("parseMatchBinaries error: %w", err)
+		}
+		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
+			return nil, fmt.Errorf("parseMatchDigests error: %w", err)
+		}
+		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
+			return nil, fmt.Errorf("parseMatchActions error: %w", err)
 		}
 	}
 	kernelSelectors.num = uint32(len(fileSel))

@@ -1700,8 +1700,14 @@ func (k *observerFileExecSensor) PolicyHandler(
 		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection})
 	}
 
+	selState, err := fm.InitKernelExecSelectorState(policy.TpSpec().FileExecMonitoring.Selectors)
+	if err != nil {
+		return nil, fmt.Errorf("FileExecMonitoring failed to parse selectors: %w", err)
+	}
+
 	config := fileapi.FileExecConfigMapValue{
-		PolicyId: uint32(fid),
+		PolicyId:     uint32(fid),
+		NumSelectors: selState.GetNumSelectors(),
 	}
 
 	for _, h := range fimProgs {
@@ -1712,13 +1718,47 @@ func (k *observerFileExecSensor) PolicyHandler(
 			sensors.PathJoin(name, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
 			"file_exec_monitoring")
 		load.SetLoaderData(FimLoaderData{
-			s:  nil,
+			s:  selState,
 			tp: h.tp,
 		})
+		load.MaxEntriesInnerMap = map[string]uint32{
+			"file_names_maps":   fm.GetMaxInnerEntriesNamesMap(selState),
+			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(selState),
+		}
 
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{
+			{
+				Index: 0,
+				Name:  "file_names_maps",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileNamesMap(m, selState, name); err != nil {
+						return fmt.Errorf("file_names_maps: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "file_digests_maps",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileDigestsMap(m, selState, name); err != nil {
+						return fmt.Errorf("file_digests_maps: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "file_actions_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileActionsMap(m, selState); err != nil {
+						return fmt.Errorf("file_actions_map: %w", err)
+					}
+					return nil
+				},
+			},
 			{
 				Index: 0,
 				Name:  "file_exec_config_map",
@@ -1731,6 +1771,9 @@ func (k *observerFileExecSensor) PolicyHandler(
 		for _, m := range []string{
 			"exec_retprobe_map",
 			"file_exec_config_map",
+			"file_names_maps",
+			"file_digests_maps",
+			"file_actions_map",
 			policyfilter.MapName,
 		} {
 			maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
@@ -1749,6 +1792,16 @@ func (k *observerFileExecSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	v, ok := args.Load.LoaderData.(FimLoaderData)
 	if !ok {
 		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
+	}
+
+	// this should be done after initializing the base sensor
+	var err error
+	loadProbeInit.Do(func() {
+		// get the pinPathPrefix
+		err = fm.UpdateNamesMap(args.MapDir, v.s)
+	})
+	if err != nil {
+		return err
 	}
 
 	if v.tp == "kprobe" || v.tp == "kretprobe" {

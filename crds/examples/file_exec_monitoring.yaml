@@ -5,3 +5,10 @@ metadata:
 spec:
   exec:
     enable: true
+    selectors:
+    - matchDigests:
+      - operator: "In"
+        values:
+        - "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f" # /bin/cat
+      matchActions:
+      - action: Block

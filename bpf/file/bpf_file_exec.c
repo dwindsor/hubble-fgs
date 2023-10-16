@@ -28,6 +28,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		.pid_tgid = get_current_pid_tgid(),
 		.bprm_ptr = (__u64)bprm,
 	};
+	__u32 operation = 0;
 	long retval = 0;
 
 	if (!policy_filter_allow())
@@ -60,6 +61,10 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
 	msg->digest.ok = 1;
 
+	operation = eval_exec_selectors(&msg->digest);
+	if (!(operation & FILE_OP_POST))
+		return 0;
+
 	retval = d_path(&bprm->file->f_path, msg->path.str, 256);
 	msg->path.size = (retval <= 0) ? (0) : (retval - 1); // exclude '\0'
 	msg->path.flags = 0;
@@ -67,7 +72,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	msg->action = msg->hook = 0xFFFFFFFF;
 	msg->ktime = ktime_get_ns();
 	msg->tid = (__u32)get_current_pid_tgid();
-	msg->operation = FILE_OP_POST;
+	msg->operation = operation;
 
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.
@@ -76,7 +81,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	// the lsm.s program and they communicate through the exec_retprobe_map map.
 	map_update_elem(&exec_retprobe_map, &key, msg, 0);
 
-	return 0;
+	return (operation & FILE_OP_BLOCK) ? -EPERM : 0;
 }
 
 SEC("fexit/security_bprm_check")
