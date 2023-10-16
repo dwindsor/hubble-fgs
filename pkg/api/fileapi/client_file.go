@@ -126,3 +126,7 @@ type FileConfigMapValue struct {
 	TpId                  uint32 `align:"tp_id"`
 	NumSelectors          uint32 `align:"num_selectors"`
 }
+
+type FileExecConfigMapValue struct {
+	PolicyId uint32 `align:"policy_id"`
+}

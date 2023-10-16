@@ -1,6 +1,21 @@
 #include "bpf_file.h"
 
+#include "process/policy_filter.h"
+
 char _license[] __attribute__((section("license"), used)) = "GPL";
+
+static inline __attribute__((always_inline)) int policy_filter_allow()
+{
+	__u32 zero = 0;
+	struct file_exec_config_map_value *conf;
+
+	conf = map_lookup_elem(&file_exec_config_map, &zero);
+	if (!conf)
+		return 0;
+	if (!policy_filter_check(conf->policy_id))
+		return 0;
+	return 1;
+}
 
 SEC("lsm.s/bprm_check_security")
 int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
@@ -14,6 +29,9 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		.bprm_ptr = (__u64)bprm,
 	};
 	long retval = 0;
+
+	if (!policy_filter_allow())
+		return 0;
 
 	file = BPF_CORE_READ(bprm, file);
 	if (!file)

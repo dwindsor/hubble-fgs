@@ -26,6 +26,7 @@ struct msg_file_split_path _msg_file_split_path;
 struct msg_rename_elem _msg_rename_elem;
 struct msg_file_rename_ops _msg_file_rename_ops;
 struct file_config_map_value _file_config_map_value;
+struct file_exec_config_map_value _file_exec_config_map_value;
 struct lpm_key _lpm_key;
 struct lpm_val _lpm_val;
 struct digest_key _digest_key;

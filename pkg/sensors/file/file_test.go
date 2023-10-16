@@ -90,18 +90,19 @@ func TestStructAlignments(t *testing.T) {
 	path := filepath.Join(runner.Conf().TetragonLib, "bpf_alignchecker.o")
 	// Validate alignments of C and Go equivalent structs
 	toCheck := map[string][]any{
-		"hash_map_file_key":     {fileapi.HashMapFileKey{}},
-		"hash_map_file_val":     {fileapi.HashMapFileVal{}},
-		"msg_file_path":         {fileapi.MsgFilePath{}},
-		"msg_fs_info":           {fileapi.MsgFsInfo{}},
-		"msg_file_ops":          {fileapi.MsgFileEvent{}},
-		"msg_file_split_path":   {fileapi.MsgFileSplitPath{}},
-		"msg_rename_elem":       {fileapi.MsgRenameElem{}},
-		"msg_file_rename_ops":   {fileapi.MsgFileRenameEvent{}},
-		"file_config_map_value": {fileapi.FileConfigMapValue{}},
-		"lpm_key":               {fileapi.LPMMapKey{}},
-		"lpm_val":               {fileapi.LPMMapValue{}},
-		"digest_key":            {fileapi.DigestKey{}},
+		"hash_map_file_key":          {fileapi.HashMapFileKey{}},
+		"hash_map_file_val":          {fileapi.HashMapFileVal{}},
+		"msg_file_path":              {fileapi.MsgFilePath{}},
+		"msg_fs_info":                {fileapi.MsgFsInfo{}},
+		"msg_file_ops":               {fileapi.MsgFileEvent{}},
+		"msg_file_split_path":        {fileapi.MsgFileSplitPath{}},
+		"msg_rename_elem":            {fileapi.MsgRenameElem{}},
+		"msg_file_rename_ops":        {fileapi.MsgFileRenameEvent{}},
+		"file_config_map_value":      {fileapi.FileConfigMapValue{}},
+		"file_exec_config_map_value": {fileapi.FileExecConfigMapValue{}},
+		"lpm_key":                    {fileapi.LPMMapKey{}},
+		"lpm_val":                    {fileapi.LPMMapValue{}},
+		"digest_key":                 {fileapi.DigestKey{}},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

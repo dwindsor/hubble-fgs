@@ -1700,6 +1700,10 @@ func (k *observerFileExecSensor) PolicyHandler(
 		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection})
 	}
 
+	config := fileapi.FileExecConfigMapValue{
+		PolicyId: uint32(fid),
+	}
+
 	for _, h := range fimProgs {
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),
@@ -1714,8 +1718,23 @@ func (k *observerFileExecSensor) PolicyHandler(
 
 		progs = append(progs, load)
 
-		m := "exec_retprobe_map"
-		maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
+		load.MapLoad = []*program.MapLoad{
+			{
+				Index: 0,
+				Name:  "file_exec_config_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					return m.Update(uint32(0), config, ebpf.UpdateAny)
+				},
+			},
+		}
+
+		for _, m := range []string{
+			"exec_retprobe_map",
+			"file_exec_config_map",
+			policyfilter.MapName,
+		} {
+			maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
+		}
 	}
 
 	return &sensors.Sensor{
