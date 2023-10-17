@@ -139,17 +139,6 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		return 0;
 	}
 
-	sockmap_process.key.pid = value->key.pid;
-	sockmap_process.key.ktime = value->key.ktime;
-
-	// Store the create time as the current time (e.g. Tetragon start up time).
-	// This is far from perfect, but at least the discovered flag will indicate
-	// how we found this create time in case we want to exclude these.
-	sockmap_process.create_time = ktime_get_ns();
-
-	/* Store the socket even if family or protocol couldn't be read. */
-	add_socketmap(&cookie, &sockmap_process);
-
 	/* If we can't read the address family or protocol, then we can't
 	 * report the socket.
 	 */
@@ -186,6 +175,28 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		probe_read(config->daddr, sizeof(config->daddr),
 			   _(&(sk->__sk_common.skc_v6_daddr)));
 	}
+
+	sockmap_process.key.pid = value->key.pid;
+	sockmap_process.key.ktime = value->key.ktime;
+	// Store the create time as the current time (e.g. Tetragon start up time).
+	// This is far from perfect, but at least the discovered flag will indicate
+	// how we found this create time in case we want to exclude these.
+	sockmap_process.create_time = ktime_get_ns();
+	sockmap_process.socket_flags = SOCKFLAGS_TYPE_UNKNOWN;
+	sockmap_process.tuple.saddr[0] = config->saddr[0];
+	sockmap_process.tuple.saddr[1] = config->saddr[1];
+	sockmap_process.tuple.daddr[0] = config->daddr[0];
+	sockmap_process.tuple.daddr[1] = config->daddr[1];
+	sockmap_process.tuple.ipv6 = (family == AF_INET6);
+	sockmap_process.tuple.dport = config->dport;
+	sockmap_process.tuple.sport = config->sport;
+	sockmap_process.tuple.proto = required_protocol;
+
+	if (required_protocol == IPPROTO_TCP)
+		tcp_socketmap_stats(sk, &sockmap_process);
+
+	/* Store the socket even if family or protocol couldn't be read. */
+	add_socketmap(&cookie, &sockmap_process);
 
 	return 0;
 }
