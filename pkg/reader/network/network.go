@@ -171,6 +171,10 @@ func MsgOpToProtocol(op uint8) tetragon.SocketProtocol {
 		ops.MSG_OP_UDPCLOSE,
 		ops.MSG_OP_UDPSTATS:
 		return tetragon.SocketProtocol_UDP
+	case ops.MSG_OP_ICMP:
+		return tetragon.SocketProtocol_ICMP
+	case ops.MSG_OP_ICMPV6:
+		return tetragon.SocketProtocol_ICMPV6
 	default:
 		return tetragon.SocketProtocol_UNKNOWN
 	}

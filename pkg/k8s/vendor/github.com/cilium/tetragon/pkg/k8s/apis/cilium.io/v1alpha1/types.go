@@ -340,6 +340,9 @@ type ParserPolicySpec struct {
 	// A Http spec.
 	Http HttpSpec `json:"http"`
 	// +kubebuilder:validation:Optional
+	// ICMP policy specification
+	Icmp IcmpPolicySpec `json:"icmp"`
+	// +kubebuilder:validation:Optional
 	// UDP policy specification
 	Udp UdpPolicySpec `json:"udp"`
 	// +kubebuilder:validation:Optional
@@ -426,6 +429,17 @@ type TcpWatermarksPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent under average deemed to be a dip
 	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
+}
+
+type IcmpPolicySpec struct {
+	// Enable ICMP observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// Enable ICMPv6 info message observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	V6Info bool `json:"v6info"`
 }
 
 type UdpPolicySpec struct {

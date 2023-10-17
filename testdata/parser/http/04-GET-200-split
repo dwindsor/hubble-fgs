@@ -22,7 +22,7 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1136       # size
+  h4 1128       # size
   NZ 8          # ktime
 
   ## tuple
@@ -62,7 +62,7 @@ END
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1136       # size
+  h4 1128       # size
   NZ 8          # ktime
 
   ## tuple
@@ -109,7 +109,7 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1136       # size
+  h4 1128       # size
   NZ 8          # ktime
 
   ## tuple
@@ -157,7 +157,7 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1136       # size
+  h4 1128       # size
   NZ 8          # ktime
 
   ## tuple

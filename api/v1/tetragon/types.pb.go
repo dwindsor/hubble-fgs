@@ -241,6 +241,26 @@ func (event *ProcessAccept) SetParent(p *Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessIcmp) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessIcmp{
+		ProcessIcmp: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessIcmp) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessIcmp) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessIpError) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessIpError{
 		ProcessIpError: event,
@@ -478,6 +498,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessListen
 	case *GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept
+	case *GetEventsResponse_ProcessIcmp:
+		return ev.ProcessIcmp
 	case *GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError
 	case *GetEventsResponse_ProcessFile:

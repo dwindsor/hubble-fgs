@@ -95,6 +95,9 @@ const (
 	MSG_OP_PROCESS_NETWORK_WATERMARK = 132
 
 	MSG_OP_UDP_SEQ_ERROR = 133
+
+	MSG_OP_ICMP   = 134
+	MSG_OP_ICMPV6 = 135
 )
 
 type OpCode int
@@ -133,6 +136,8 @@ const (
 	MsgOpFileRename              = 131
 	MsgOpProcessNetworkWatermark = 132
 	MsgOpUdpSeqError             = 133
+	MsgOpIcmp                    = 134
+	MsgOpIcmpV6                  = 135
 )
 
 func (op OpCode) String() string {
@@ -170,6 +175,8 @@ func (op OpCode) String() string {
 		MsgOpFileRename:              "FileRename",
 		MsgOpProcessNetworkWatermark: "ProcessNetworkWatermark",
 		MsgOpUdpSeqError:             "UDPSeqError",
+		MsgOpIcmp:                    "Icmp",
+		MsgOpIcmpV6:                  "IcmpV6",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val

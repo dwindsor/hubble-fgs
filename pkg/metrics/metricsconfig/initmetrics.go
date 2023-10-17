@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
@@ -38,6 +39,7 @@ func initAllEEMetrics(registry *prometheus.Registry) {
 	httpmetrics.InitMetrics(registry)
 	interfacemetrics.InitMetrics(registry)
 	iperrormetrics.InitMetrics(registry)
+	icmpmetrics.InitMetrics(registry)
 	lrumetrics.InitMetrics(registry)
 	socketmetrics.InitMetrics(registry)
 	tlsmetrics.InitMetrics(registry)

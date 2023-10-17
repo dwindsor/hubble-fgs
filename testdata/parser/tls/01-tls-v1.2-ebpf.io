@@ -421,7 +421,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 552                    # size
+  h4 544                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
   TUPLE CLI SRV

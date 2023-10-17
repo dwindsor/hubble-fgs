@@ -1,6 +1,7 @@
 #ifndef _NETWORKMSG__
 #define _NETWORKMSG__
 
+#include "vmlinux.h"
 #include "common.h"
 #include "process.h"
 
@@ -20,13 +21,10 @@ struct msg_ip_tuple {
 	__u8 proto;
 	__u8 send;
 	__u8 version_byte;
-	__u8 pad;
+	__u8 ipv6;
 	__u32 post_daddr;
 	__u16 post_dport;
-	__u16 pad2;
-	__u8 ipv6;
-	__u8 pad3[3];
-	__u32 remaining;
+	__u16 pad;
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_socket_stats {
@@ -63,6 +61,22 @@ struct msg_ip_event {
 	__u32 socket_flags;
 	__u32 pad;
 	__u64 duration; // only used on close events.
+}; // All fields aligned so no 'packed' attribute.
+
+struct msg_icmp_event {
+	struct msg_common common;
+	struct msg_ip_tuple tuple;
+	struct msg_execve_key key;
+	__u64 socket_cookie;
+	__u8 icmp_type;
+	__u8 icmp_code;
+	__u8 icmp_data[4];
+	__u16 icmp_len;
+	__u8 icmp_ip_proto;
+	__u8 icmp_ip_ttl;
+	__u16 icmp_ip_port;
+	__u32 icmp_ip_pointer;
+	__u64 icmp_gateway[2];
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_ipv4_key {

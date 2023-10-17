@@ -80,8 +80,10 @@ message SocketStats {
 
 enum SocketProtocol {
     UNKNOWN = 0;
+    ICMP = 1;
     TCP = 6;
     UDP = 17;
+    ICMPV6 = 58;
 }
 
 message ProcessConnect {
@@ -133,6 +135,30 @@ message ProcessAccept {
     uint64 sock_cookie = 8;
     tetragon.Pod destination_pod = 9;
     SocketProtocol protocol = 10;
+}
+
+message ProcessIcmp {
+    tetragon.Process process = 1;
+    tetragon.Process parent = 2;
+    string source_ip = 3;
+    string destination_ip = 4;
+    repeated string destination_names = 5;
+    uint64 sock_cookie = 6;
+    tetragon.Pod destination_pod = 7;
+    SocketProtocol protocol = 8;
+    string icmp_type = 9;
+    string icmp_code = 10;
+    uint32 icmp_type_value = 11;
+    uint32 icmp_code_value = 12;
+    uint32 identifier = 13;
+    uint32 sequence_number = 14;
+    uint32 icmp_data_len = 15;
+    string direction = 16;
+    SocketProtocol icmp_ip_protocol = 17;
+    uint32 icmp_ip_port = 18;
+    uint32 icmp_ip_ttl = 19;
+    uint32 icmp_ip_pointer = 20;
+    string icmp_ip_gateway = 21;
 }
 
 message ProcessIpError {

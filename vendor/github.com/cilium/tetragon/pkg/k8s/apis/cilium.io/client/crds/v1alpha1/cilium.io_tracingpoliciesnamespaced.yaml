@@ -1000,6 +1000,18 @@ spec:
                     required:
                     - enable
                     type: object
+                  icmp:
+                    description: ICMP policy specification
+                    properties:
+                      enable:
+                        default: false
+                        description: Enable ICMP observability
+                        type: boolean
+                      v6info:
+                        default: false
+                        description: Enable ICMPv6 info message observability
+                        type: boolean
+                    type: object
                   interface:
                     description: Network policy specification
                     properties:

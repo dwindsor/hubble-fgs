@@ -30,6 +30,7 @@ import (
 	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
@@ -346,6 +347,19 @@ func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
 
 func HandleSocketEvent(res *tetragon.ProcessSockStats) {
 	postStatsEventSocketStats(res)
+}
+
+func postIcmpStats(res *tetragon.ProcessIcmp) {
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
+	dstPod := res.DestinationPod
+	dstpod, dstworkload, dstns := getDstPodInfo(dstPod)
+	dstLabels := strings.Join(res.DestinationNames, ",")
+
+	icmpmetrics.IcmpStatsVol.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstLabels).Inc()
+}
+
+func HandleIcmpEvent(res *tetragon.ProcessIcmp) {
+	postIcmpStats(res)
 }
 
 func postUDPBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkBurst) {

@@ -64,6 +64,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_UDP_SEQ_CHECK_ERROR.String(), nil
 	case *tetragon.GetEventsResponse_ProcessFileExec:
 		return tetragon.EventType_PROCESS_FILE_EXEC.String(), nil
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return tetragon.EventType_PROCESS_ICMP.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -110,6 +112,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessListen.Process
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Process
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return ev.ProcessIcmp.Process
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Process
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -170,6 +174,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessListen.Parent
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Parent
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return ev.ProcessIcmp.Parent
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Parent
 	case *tetragon.GetEventsResponse_ProcessFile:

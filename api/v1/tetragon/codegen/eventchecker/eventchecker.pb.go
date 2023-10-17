@@ -289,6 +289,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessListenChecker("").FromProcessListen(ev), nil
 	case *tetragon.ProcessAccept:
 		return NewProcessAcceptChecker("").FromProcessAccept(ev), nil
+	case *tetragon.ProcessIcmp:
+		return NewProcessIcmpChecker("").FromProcessIcmp(ev), nil
 	case *tetragon.ProcessIpError:
 		return NewProcessIpErrorChecker("").FromProcessIpError(ev), nil
 	case *tetragon.ProcessFile:
@@ -379,6 +381,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessListen, nil
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept, nil
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return ev.ProcessIcmp, nil
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError, nil
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -2902,6 +2906,384 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAc
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	return checker
+}
+
+// ProcessIcmpChecker implements a checker struct to check a ProcessIcmp event
+type ProcessIcmpChecker struct {
+	CheckerName      string                       `json:"checkerName"`
+	Process          *ProcessChecker              `json:"process,omitempty"`
+	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
+	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
+	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
+	IcmpType         *stringmatcher.StringMatcher `json:"icmpType,omitempty"`
+	IcmpCode         *stringmatcher.StringMatcher `json:"icmpCode,omitempty"`
+	IcmpTypeValue    *uint32                      `json:"icmpTypeValue,omitempty"`
+	IcmpCodeValue    *uint32                      `json:"icmpCodeValue,omitempty"`
+	Identifier       *uint32                      `json:"identifier,omitempty"`
+	SequenceNumber   *uint32                      `json:"sequenceNumber,omitempty"`
+	IcmpDataLen      *uint32                      `json:"icmpDataLen,omitempty"`
+	Direction        *stringmatcher.StringMatcher `json:"direction,omitempty"`
+	IcmpIpProtocol   *SocketProtocolChecker       `json:"icmpIpProtocol,omitempty"`
+	IcmpIpPort       *uint32                      `json:"icmpIpPort,omitempty"`
+	IcmpIpTtl        *uint32                      `json:"icmpIpTtl,omitempty"`
+	IcmpIpPointer    *uint32                      `json:"icmpIpPointer,omitempty"`
+	IcmpIpGateway    *stringmatcher.StringMatcher `json:"icmpIpGateway,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessIcmpChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessIcmp); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessIcmp event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessIcmpChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessIcmpChecker creates a new ProcessIcmpChecker
+func NewProcessIcmpChecker(name string) *ProcessIcmpChecker {
+	return &ProcessIcmpChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessIcmpChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessIcmpChecker) GetCheckerType() string {
+	return "ProcessIcmpChecker"
+}
+
+// Check checks a ProcessIcmp event
+func (checker *ProcessIcmpChecker) Check(event *tetragon.ProcessIcmp) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessIcmp event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationNames != nil {
+			if err := checker.DestinationNames.Check(event.DestinationNames); err != nil {
+				return fmt.Errorf("DestinationNames check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.DestinationPod != nil {
+			if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+				return fmt.Errorf("DestinationPod check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Check(&event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.IcmpType != nil {
+			if err := checker.IcmpType.Match(event.IcmpType); err != nil {
+				return fmt.Errorf("IcmpType check failed: %w", err)
+			}
+		}
+		if checker.IcmpCode != nil {
+			if err := checker.IcmpCode.Match(event.IcmpCode); err != nil {
+				return fmt.Errorf("IcmpCode check failed: %w", err)
+			}
+		}
+		if checker.IcmpTypeValue != nil {
+			if *checker.IcmpTypeValue != event.IcmpTypeValue {
+				return fmt.Errorf("IcmpTypeValue has value %d which does not match expected value %d", event.IcmpTypeValue, *checker.IcmpTypeValue)
+			}
+		}
+		if checker.IcmpCodeValue != nil {
+			if *checker.IcmpCodeValue != event.IcmpCodeValue {
+				return fmt.Errorf("IcmpCodeValue has value %d which does not match expected value %d", event.IcmpCodeValue, *checker.IcmpCodeValue)
+			}
+		}
+		if checker.Identifier != nil {
+			if *checker.Identifier != event.Identifier {
+				return fmt.Errorf("Identifier has value %d which does not match expected value %d", event.Identifier, *checker.Identifier)
+			}
+		}
+		if checker.SequenceNumber != nil {
+			if *checker.SequenceNumber != event.SequenceNumber {
+				return fmt.Errorf("SequenceNumber has value %d which does not match expected value %d", event.SequenceNumber, *checker.SequenceNumber)
+			}
+		}
+		if checker.IcmpDataLen != nil {
+			if *checker.IcmpDataLen != event.IcmpDataLen {
+				return fmt.Errorf("IcmpDataLen has value %d which does not match expected value %d", event.IcmpDataLen, *checker.IcmpDataLen)
+			}
+		}
+		if checker.Direction != nil {
+			if err := checker.Direction.Match(event.Direction); err != nil {
+				return fmt.Errorf("Direction check failed: %w", err)
+			}
+		}
+		if checker.IcmpIpProtocol != nil {
+			if err := checker.IcmpIpProtocol.Check(&event.IcmpIpProtocol); err != nil {
+				return fmt.Errorf("IcmpIpProtocol check failed: %w", err)
+			}
+		}
+		if checker.IcmpIpPort != nil {
+			if *checker.IcmpIpPort != event.IcmpIpPort {
+				return fmt.Errorf("IcmpIpPort has value %d which does not match expected value %d", event.IcmpIpPort, *checker.IcmpIpPort)
+			}
+		}
+		if checker.IcmpIpTtl != nil {
+			if *checker.IcmpIpTtl != event.IcmpIpTtl {
+				return fmt.Errorf("IcmpIpTtl has value %d which does not match expected value %d", event.IcmpIpTtl, *checker.IcmpIpTtl)
+			}
+		}
+		if checker.IcmpIpPointer != nil {
+			if *checker.IcmpIpPointer != event.IcmpIpPointer {
+				return fmt.Errorf("IcmpIpPointer has value %d which does not match expected value %d", event.IcmpIpPointer, *checker.IcmpIpPointer)
+			}
+		}
+		if checker.IcmpIpGateway != nil {
+			if err := checker.IcmpIpGateway.Match(event.IcmpIpGateway); err != nil {
+				return fmt.Errorf("IcmpIpGateway check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithProcess(check *ProcessChecker) *ProcessIcmpChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithParent(check *ProcessChecker) *ProcessIcmpChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithSourceIp(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithDestinationIp adds a DestinationIp check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithDestinationIp(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.DestinationIp = check
+	return checker
+}
+
+// WithDestinationNames adds a DestinationNames check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithDestinationNames(check *StringListMatcher) *ProcessIcmpChecker {
+	checker.DestinationNames = check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithSockCookie(check uint64) *ProcessIcmpChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithDestinationPod adds a DestinationPod check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithDestinationPod(check *PodChecker) *ProcessIcmpChecker {
+	checker.DestinationPod = check
+	return checker
+}
+
+// WithProtocol adds a Protocol check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithProtocol(check tetragon.SocketProtocol) *ProcessIcmpChecker {
+	wrappedCheck := SocketProtocolChecker(check)
+	checker.Protocol = &wrappedCheck
+	return checker
+}
+
+// WithIcmpType adds a IcmpType check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpType(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.IcmpType = check
+	return checker
+}
+
+// WithIcmpCode adds a IcmpCode check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpCode(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.IcmpCode = check
+	return checker
+}
+
+// WithIcmpTypeValue adds a IcmpTypeValue check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpTypeValue(check uint32) *ProcessIcmpChecker {
+	checker.IcmpTypeValue = &check
+	return checker
+}
+
+// WithIcmpCodeValue adds a IcmpCodeValue check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpCodeValue(check uint32) *ProcessIcmpChecker {
+	checker.IcmpCodeValue = &check
+	return checker
+}
+
+// WithIdentifier adds a Identifier check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIdentifier(check uint32) *ProcessIcmpChecker {
+	checker.Identifier = &check
+	return checker
+}
+
+// WithSequenceNumber adds a SequenceNumber check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithSequenceNumber(check uint32) *ProcessIcmpChecker {
+	checker.SequenceNumber = &check
+	return checker
+}
+
+// WithIcmpDataLen adds a IcmpDataLen check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpDataLen(check uint32) *ProcessIcmpChecker {
+	checker.IcmpDataLen = &check
+	return checker
+}
+
+// WithDirection adds a Direction check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithDirection(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.Direction = check
+	return checker
+}
+
+// WithIcmpIpProtocol adds a IcmpIpProtocol check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpIpProtocol(check tetragon.SocketProtocol) *ProcessIcmpChecker {
+	wrappedCheck := SocketProtocolChecker(check)
+	checker.IcmpIpProtocol = &wrappedCheck
+	return checker
+}
+
+// WithIcmpIpPort adds a IcmpIpPort check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpIpPort(check uint32) *ProcessIcmpChecker {
+	checker.IcmpIpPort = &check
+	return checker
+}
+
+// WithIcmpIpTtl adds a IcmpIpTtl check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpIpTtl(check uint32) *ProcessIcmpChecker {
+	checker.IcmpIpTtl = &check
+	return checker
+}
+
+// WithIcmpIpPointer adds a IcmpIpPointer check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpIpPointer(check uint32) *ProcessIcmpChecker {
+	checker.IcmpIpPointer = &check
+	return checker
+}
+
+// WithIcmpIpGateway adds a IcmpIpGateway check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithIcmpIpGateway(check *stringmatcher.StringMatcher) *ProcessIcmpChecker {
+	checker.IcmpIpGateway = check
+	return checker
+}
+
+//FromProcessIcmp populates the ProcessIcmpChecker using data from a ProcessIcmp event
+func (checker *ProcessIcmpChecker) FromProcessIcmp(event *tetragon.ProcessIcmp) *ProcessIcmpChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	checker.DestinationIp = stringmatcher.Full(event.DestinationIp)
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.DestinationNames {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.DestinationNames = lm
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	if event.DestinationPod != nil {
+		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+	}
+	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	checker.IcmpType = stringmatcher.Full(event.IcmpType)
+	checker.IcmpCode = stringmatcher.Full(event.IcmpCode)
+	{
+		val := event.IcmpTypeValue
+		checker.IcmpTypeValue = &val
+	}
+	{
+		val := event.IcmpCodeValue
+		checker.IcmpCodeValue = &val
+	}
+	{
+		val := event.Identifier
+		checker.Identifier = &val
+	}
+	{
+		val := event.SequenceNumber
+		checker.SequenceNumber = &val
+	}
+	{
+		val := event.IcmpDataLen
+		checker.IcmpDataLen = &val
+	}
+	checker.Direction = stringmatcher.Full(event.Direction)
+	checker.IcmpIpProtocol = NewSocketProtocolChecker(event.IcmpIpProtocol)
+	{
+		val := event.IcmpIpPort
+		checker.IcmpIpPort = &val
+	}
+	{
+		val := event.IcmpIpTtl
+		checker.IcmpIpTtl = &val
+	}
+	{
+		val := event.IcmpIpPointer
+		checker.IcmpIpPointer = &val
+	}
+	checker.IcmpIpGateway = stringmatcher.Full(event.IcmpIpGateway)
 	return checker
 }
 

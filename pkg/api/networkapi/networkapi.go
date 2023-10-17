@@ -32,13 +32,10 @@ type MsgIPTuple struct {
 	Proto       uint8
 	Send        uint8
 	VersionByte uint8
-	Pad         uint8
+	IPv6        uint8
 	// define as uint8 otherwise padding in struct breaks
-	PostData  [6]uint8
-	Pad2      [2]uint8
-	IPv6      uint8
-	Pad3      [3]uint8
-	Remaining uint32
+	PostData [6]uint8
+	Pad      uint16
 }
 
 func (m *MsgIPTuple) GetPostDAddr() uint32 {
@@ -126,6 +123,26 @@ type MsgIPEvent struct {
 	SocketFlags uint32                  `align:"socket_flags"`
 	Pad         uint32                  `align:"pad"`
 	Duration    uint64                  `align:"duration"`
+}
+
+type MsgICMPData struct {
+	IcmpType      uint8
+	IcmpCode      uint8
+	IcmpData      [4]uint8
+	IcmpLen       uint16
+	IcmpIpProto   uint8
+	IcmpIpTtl     uint8
+	IcmpIpPort    uint16
+	IcmpIpPointer uint32
+	IcmpGateway   [2]uint64
+}
+
+type MsgICMPEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	Tuple      MsgIPTuple              `align:"tuple"`
+	ProcessKey processapi.MsgExecveKey `align:"key"`
+	SockCookie uint64                  `align:"socket_cookie"`
+	IcmpData   MsgICMPData
 }
 
 type MsgSocketStatsUnix struct {

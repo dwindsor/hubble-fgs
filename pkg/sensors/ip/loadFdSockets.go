@@ -362,11 +362,15 @@ func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, 
 
 func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol uint16) error {
 	var socketFiles []string
-	if protocol == syscall.IPPROTO_TCP {
+	switch protocol {
+	case syscall.IPPROTO_TCP:
 		socketFiles = append(socketFiles, "tcp", "tcp6")
-	} else if protocol == syscall.IPPROTO_UDP {
+	case syscall.IPPROTO_UDP:
 		socketFiles = append(socketFiles, "udp", "udp6")
+	case syscall.IPPROTO_ICMP:
+		socketFiles = append(socketFiles, "icmp", "icmp6")
 	}
+
 	for _, file := range socketFiles {
 		err := getSocketsForNsFromFile(sockets, filepath.Join(netPath, file), protocol)
 		if err != nil {

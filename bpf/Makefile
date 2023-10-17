@@ -30,6 +30,7 @@ NETWORKINGDIR := networking/
 UDPDIR := networking/udp/
 TCPDIR := networking/tcp/
 L2DIR  := networking/l2/
+L3DIR  := networking/l3/
 TIMESTAMPDIR := networking/timestamp/
 ISOPROCESS := process/
 FILEDIR := file/
@@ -51,6 +52,8 @@ TCP = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_send_chec
       bpf_tcp_recv.o bpf_tcp_recv_lazy.o
 
 L2 = bpf_dev_queue_xmit.o
+
+L3 = bpf_icmp.o bpf_icmp_lazy.o bpf_pingsock_create.o bpf_pingsock_release.o
 
 TIMESTAMP =  bpf_timestamp.o
 
@@ -115,13 +118,14 @@ NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 UDPOBJ	      := $(addprefix $(OBJSDIR),$(UDP))
 TCPOBJ        := $(addprefix $(OBJSDIR),$(TCP))
 L2OBJ	      := $(addprefix $(OBJSDIR),$(L2))
+L3OBJ	      := $(addprefix $(OBJSDIR),$(L3))
 TIMESTAMPOBJ  := $(addprefix $(OBJSDIR),$(TIMESTAMP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -209,6 +213,13 @@ objs/%.ll: $(L2DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(L2DIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+# L3DIR
+objs/%.ll: $(L3DIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(L3DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # TIMESTAMPDIR
