@@ -33,6 +33,8 @@ const (
 	keyEnableK8sAPI    = "enable-k8s-api"
 	keyEnableCiliumAPI = "enable-cilium-api"
 
+	keyK8sKubeConfigPath = "k8s-kubeconfig-path"
+
 	keyMetricsServer     = "metrics-server"
 	keyServerAddress     = "server-address"
 	keyGopsAddr          = "gops-address"
@@ -139,6 +141,8 @@ func readAndSetFlags() {
 	}
 
 	option.Config.EnablePodInfo = viper.GetBool(keyEnablePodInfo)
+
+	option.Config.K8sKubeConfigPath = viper.GetString(keyK8sKubeConfigPath)
 
 	// if both --config-file and --tracing-policy are set, the latter takes priority
 	if viper.IsSet(keyTracingPolicy) {

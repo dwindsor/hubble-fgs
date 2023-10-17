@@ -969,6 +969,8 @@ func execute() error {
 
 	enterpriseOption.AddEnterpriseFlags(flags)
 
+	flags.String(keyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }
