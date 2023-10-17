@@ -13,10 +13,17 @@ struct socketmap_value {
 	__u64 last_time;
 	__u64 sent;
 	__u64 received;
+	__u32 segs_out;
+	__u32 segs_in;
+	__u64 retransbytes;
+	__u32 retranssegs;
+	__u32 sk_drops;
+	__u32 srtt;
+	__u32 pad1;
 	__u64 rtt_buckets[8];
 	__u64 latency_buckets[8];
 	__u8 ack_finack;
-	__u8 pad[7];
+	__u8 pad2[7];
 	__u64 rtt_sum;
 	__u64 latency_sum;
 	struct msg_ip_tuple tuple;

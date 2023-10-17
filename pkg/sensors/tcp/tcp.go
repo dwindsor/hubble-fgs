@@ -165,20 +165,27 @@ type tcpKey struct {
 }
 
 type tcpValue struct {
-	Key            processapi.MsgExecveKey
-	CreateTime     uint64
-	ZeroWindow     uint32
-	SocketFlags    uint32
-	LastTime       uint64
-	Sent           uint64
-	Recv           uint64
-	RttBuckets     [8]uint64
-	LatencyBuckets [8]uint64
-	AckFinAck      uint8
-	Pad            [7]uint8
-	RttSum         uint64
-	LatencySum     uint64
-	MsgIPTuple     networkapi.MsgIPTuple
+	Key             processapi.MsgExecveKey
+	CreateTime      uint64
+	ZeroWindow      uint32
+	SocketFlags     uint32
+	LastTime        uint64
+	Sent            uint64
+	Recv            uint64
+	SegsOut         uint32
+	SegsIn          uint32
+	RetransmitBytes uint64
+	RetransmitSegs  uint32
+	SkDrops         uint32
+	Srtt            uint32
+	Pad1            uint32
+	RttBuckets      [8]uint64
+	LatencyBuckets  [8]uint64
+	AckFinAck       uint8
+	Pad2            [7]uint8
+	RttSum          uint64
+	LatencySum      uint64
+	MsgIPTuple      networkapi.MsgIPTuple
 }
 
 func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
@@ -186,17 +193,17 @@ func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
 	s.Ktime = t.LastTime
 	s.BytesSent = t.Sent
 	s.BytesReceived = t.Recv
-	s.SegsIn = 0
-	s.SegsOut = 0
-	s.BytesSubmitted = 0
-	s.BytesConsumed = 0
+	s.SegsIn = t.SegsIn
+	s.SegsOut = t.SegsOut
+	s.BytesSubmitted = t.Sent
+	s.BytesConsumed = t.Recv
 	s.ConsumedSegs = 0
 	s.SubmittedSegs = 0
-	s.SRtt = 0
-	s.RetransmitSegs = 0
-	s.RetransmitBytes = 0
-	s.ToZeroWindow = 0
-	s.SkDrop = 0
+	s.SRtt = t.Srtt
+	s.RetransmitSegs = t.RetransmitSegs
+	s.RetransmitBytes = t.RetransmitBytes
+	s.ToZeroWindow = t.ZeroWindow
+	s.SkDrop = t.SkDrops
 	s.SkbConsumeMisses = 0
 
 	s.Rtt = networkapi.Histogram{

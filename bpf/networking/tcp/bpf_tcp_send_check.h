@@ -102,9 +102,6 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	u64 tcp_bytes_sent, tcp_bytes_received;
 	probe_read(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
-	process->sent = tcp_bytes_sent;
-	process->received = tcp_bytes_received;
-	process->last_time = ktime_get_ns();
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
 	if (cfg && cfg->watermarksEnable && process->key.pid != 0) {
@@ -133,5 +130,6 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 				&c);
 		}
 	}
+	tcp_socketmap_stats(skp, process);
 	return 1;
 }
