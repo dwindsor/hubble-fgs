@@ -107,35 +107,6 @@ type ProtocolConfig struct {
 
 func (k *configKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
-func (v *configValue) String() string {
-	return fmt.Sprintf("UDP: {Enable: %d, "+
-		"MaxPacketSize: %d, "+
-		"B00: %d, "+
-		"B01: %d, "+
-		"B10: %d, "+
-		"B25: %d, "+
-		"B50: %d, "+
-		"B75: %d, "+
-		"B90: %d, "+
-		"B99: %d}, "+
-		"TCP: {Enable: %d, "+
-		"MaxPacketSize: %d, "+
-		"B00: %d, "+
-		"B01: %d, "+
-		"B10: %d, "+
-		"B25: %d, "+
-		"B50: %d, "+
-		"B75: %d, "+
-		"B90: %d, "+
-		"B99: %d}, "+
-		"BootNs: %d",
-		v.Udp.Enable, v.Udp.MaxPacketSize, v.Udp.LatBucket00, v.Udp.LatBucket01, v.Udp.LatBucket10, v.Udp.LatBucket25,
-		v.Udp.LatBucket50, v.Udp.LatBucket75, v.Udp.LatBucket90, v.Udp.LatBucket99,
-		v.Tcp.Enable, v.Tcp.MaxPacketSize, v.Tcp.LatBucket00, v.Tcp.LatBucket01, v.Tcp.LatBucket10, v.Tcp.LatBucket25,
-		v.Tcp.LatBucket50, v.Tcp.LatBucket75, v.Tcp.LatBucket90, v.Tcp.LatBucket99,
-		v.BootNs)
-}
-
 // ParseLatencySpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to observe latency.
 func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (ProtocolConfig, error) {
@@ -391,7 +362,7 @@ func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) err
 	latencyConfig, _ = configureBootTime(latencyConfig)
 
 	m.Put(key, &latencyConfig)
-	logger.GetLogger().Infof("Configured latency: %s", latencyConfig)
+	logger.GetLogger().Infof("Configured latency: %+v", latencyConfig)
 	return nil
 }
 
