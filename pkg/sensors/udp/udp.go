@@ -677,7 +677,12 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	configured = false
 
-	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
+	if !kernels.MinKernelVersion("5.4.0") {
+		logger.GetLogger().Infof("Minimum kernel version (5.4) not met for UDP cgroup mode, falling back to socket mode")
+		cgroup = false
+	}
+
+	if !cgroup {
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
