@@ -44,9 +44,19 @@ var (
 		v1alpha1.PIName,
 		crdsv1Alpha1PodInfo)
 
+	//go:embed crds/v1alpha1/cilium.io_sandboxpolicies.yaml
+	crdsv1Alpha1SandboxPolicy []byte
+
+	SandboxPolicyCRD = osscrdutils.NewCRDBytes(
+		"SandboxPolicy/v1alpha1",
+		"sandboxpolicies.cilium.io",
+		crdsv1Alpha1SandboxPolicy,
+	)
+
 	AllCRDs = []crdutils.CRD{
 		TracingPolicyCRD,
 		TracingPolicyNamespacedCRD,
 		PodInfoCRD,
+		SandboxPolicyCRD,
 	}
 )
