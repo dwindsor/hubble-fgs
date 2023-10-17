@@ -11,8 +11,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/viper"
@@ -81,26 +79,6 @@ const (
 	keyEnablePodInfo = "enable-pod-info"
 )
 
-var (
-	processCacheSize int
-	dataCacheSize    int
-
-	metricsServer string
-	serverAddress string
-
-	exportFilename             string
-	exportFileMaxSizeMB        int
-	exportFileRotationInterval time.Duration
-	exportFileMaxBackups       int
-	exportFileCompress         bool
-	exportRateLimit            int
-
-	// Export aggregation options
-	enableExportAggregation     bool
-	exportAggregationWindowSize time.Duration
-	exportAggregationBufferSize uint64
-)
-
 func readAndSetFlags() {
 	option.Config.HubbleLib = viper.GetString(keyHubbleLib)
 	option.Config.BTF = viper.GetString(keyBTF)
@@ -121,22 +99,22 @@ func readAndSetFlags() {
 	logFormat := viper.GetString(keyLogFormat)
 	logger.PopulateLogOpts(option.Config.LogOpts, logLevel, logFormat)
 
-	processCacheSize = viper.GetInt(keyProcessCacheSize)
-	dataCacheSize = viper.GetInt(keyDataCacheSize)
+	option.Config.ProcessCacheSize = viper.GetInt(keyProcessCacheSize)
+	option.Config.DataCacheSize = viper.GetInt(keyDataCacheSize)
 
-	metricsServer = viper.GetString(keyMetricsServer)
-	serverAddress = viper.GetString(keyServerAddress)
+	option.Config.MetricsServer = viper.GetString(keyMetricsServer)
+	option.Config.ServerAddress = viper.GetString(keyServerAddress)
 
-	exportFilename = viper.GetString(keyExportFilename)
-	exportFileMaxSizeMB = viper.GetInt(keyExportFileMaxSizeMB)
-	exportFileRotationInterval = viper.GetDuration(keyExportFileRotationInterval)
-	exportFileMaxBackups = viper.GetInt(keyExportFileMaxBackups)
-	exportFileCompress = viper.GetBool(keyExportFileCompress)
-	exportRateLimit = viper.GetInt(keyExportRateLimit)
+	option.Config.ExportFilename = viper.GetString(keyExportFilename)
+	option.Config.ExportFileMaxSizeMB = viper.GetInt(keyExportFileMaxSizeMB)
+	option.Config.ExportFileRotationInterval = viper.GetDuration(keyExportFileRotationInterval)
+	option.Config.ExportFileMaxBackups = viper.GetInt(keyExportFileMaxBackups)
+	option.Config.ExportFileCompress = viper.GetBool(keyExportFileCompress)
+	option.Config.ExportRateLimit = viper.GetInt(keyExportRateLimit)
 
-	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
-	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
-	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
+	option.Config.EnableExportAggregation = viper.GetBool(keyEnableExportAggregation)
+	option.Config.ExportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
+	option.Config.ExportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
 
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 

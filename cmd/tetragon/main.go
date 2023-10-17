@@ -109,11 +109,11 @@ func getFieldFilters() ([]*tetragon.FieldFilter, error) {
 
 func saveInitInfo() error {
 	info := bugtool.InitInfo{
-		ExportFname: exportFilename,
+		ExportFname: option.Config.ExportFilename,
 		LibDir:      option.Config.HubbleLib,
 		BtfFname:    option.Config.BTF,
-		MetricsAddr: metricsServer,
-		ServerAddr:  serverAddress,
+		MetricsAddr: option.Config.MetricsServer,
+		ServerAddr:  option.Config.ServerAddress,
 	}
 	return bugtool.SaveInitInfo(&info)
 }
@@ -440,12 +440,12 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
 
-	if err := observer.InitDataCache(dataCacheSize); err != nil {
+	if err := observer.InitDataCache(option.Config.DataCacheSize); err != nil {
 		return err
 	}
 
-	if metricsServer != "" {
-		go metrics.EnableMetrics(metricsServer)
+	if option.Config.MetricsServer != "" {
+		go metrics.EnableMetrics(option.Config.MetricsServer)
 		metricsconfig.InitAllMetrics(metrics.GetRegistry())
 		go enterpriseMetrics.StartPodDeleteHandler()
 		// Handler must be registered before the watcher is started
@@ -516,7 +516,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
 
-	if err := process.InitCache(k8sWatcher, processCacheSize); err != nil {
+	if err := process.InitCache(k8sWatcher, option.Config.ProcessCacheSize); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 	podinfo.SetK8sResourceWatcher(k8sWatcher)
@@ -546,16 +546,16 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
-	if err = Serve(ctx, serverAddress, pm.Server); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
-	if exportFilename != "" {
+	if option.Config.ExportFilename != "" {
 		if err = startExporter(ctx, pm.Server, k8sWatcher); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
 
-	log.WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
+	log.WithField("enabled", option.Config.ExportFilename != "").WithField("fileName", option.Config.ExportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
 	if option.Config.EnableK8s {
@@ -674,7 +674,7 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 	if err != nil {
 		return err
 	}
-	writer, err := getWriter(exportFilename, exportFileMaxSizeMB, exportFileMaxBackups, exportFileCompress)
+	writer, err := getWriter(option.Config.ExportFilename, option.Config.ExportFileMaxSizeMB, option.Config.ExportFileMaxBackups, option.Config.ExportFileCompress)
 	if err != nil {
 		return err
 	}
@@ -687,20 +687,20 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 		}
 	}
 
-	if exportFileRotationInterval < 0 {
+	if option.Config.ExportFileRotationInterval < 0 {
 		// Passed an invalid interval let's error out
-		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", exportFileRotationInterval.String())
-	} else if exportFileRotationInterval > 0 {
-		log.WithFields(logrus.Fields{"frequency": exportFileRotationInterval.String()}).Info("Periodically rotating JSON export files")
+		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
+	} else if option.Config.ExportFileRotationInterval > 0 {
+		log.WithFields(logrus.Fields{"frequency": option.Config.ExportFileRotationInterval.String()}).Info("Periodically rotating JSON export files")
 		go func() {
-			ticker := time.NewTicker(exportFileRotationInterval)
+			ticker := time.NewTicker(option.Config.ExportFileRotationInterval)
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
 					if rotationErr := writer.Rotate(); rotationErr != nil {
-						log.WithError(rotationErr).WithField("file", exportFilename).Warn("Failed to rotate JSON export file")
+						log.WithError(rotationErr).WithField("file", option.Config.ExportFilename).Warn("Failed to rotate JSON export file")
 					}
 					if flowWriter != nil {
 						log.WithField("file", enterpriseOption.Config.FlowExportFilename).Info("Rotating JSON flow export file")
@@ -715,14 +715,14 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 
 	encoder := encoder.NewJSONEncoder(writer, flowWriter, watcher, enableFlowExport)
 	var rateLimiter *ratelimit.RateLimiter
-	if exportRateLimit >= 0 {
-		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
+	if option.Config.ExportRateLimit >= 0 {
+		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, option.Config.ExportRateLimit, encoder)
 	}
 	var aggregationOptions *tetragon.AggregationOptions
-	if enableExportAggregation {
+	if option.Config.EnableExportAggregation {
 		aggregationOptions = &tetragon.AggregationOptions{
-			WindowSize:        durationpb.New(exportAggregationWindowSize),
-			ChannelBufferSize: exportAggregationBufferSize,
+			WindowSize:        durationpb.New(option.Config.ExportAggregationWindowSize),
+			ChannelBufferSize: option.Config.ExportAggregationBufferSize,
 		}
 	}
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions, FieldFilters: fieldFilters}
