@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -57,7 +58,7 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
 	k8sconf "github.com/cilium/tetragon/pkg/watcher/conf"
-	"github.com/cilium/tetragon/pkg/watcher/crd"
+	osscrd "github.com/cilium/tetragon/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -666,7 +667,8 @@ func hubbleFGSExecute() error {
 	obs.AddListener(pm)
 	saveInitInfo()
 	if option.Config.EnableK8s {
-		go crd.WatchTracePolicy(ctx, observer.GetSensorManager())
+		go osscrd.WatchTracePolicy(ctx, observer.GetSensorManager())
+		go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
 	}
 
 	obs.LogPinnedBpf(observerDir)
