@@ -8,7 +8,7 @@
 #
 # Terminal 1:
 # $ rm -f events.json
-# $ ./hubble-fgs --btf /sys/kernel/btf/vmlinux  --hubble-lib ./bpf/objs/ --export-filename events.json --enable-process-ns --tracing-policy crds/examples/match_namespace_changes.yaml
+# $ ./hubble-fgs --btf /sys/kernel/btf/vmlinux  --bpf-lib ./bpf/objs/ --export-filename events.json --enable-process-ns --tracing-policy crds/examples/match_namespace_changes.yaml
 # $ # <wait for events>
 # $ # kill hubble-fgs
 # $ grep kprobe events.json | grep \"__x64_sys_write\" | grep strange | jq . # get the write kprobe events
@@ -25,7 +25,7 @@
 #
 # Terminal 1:
 # $ rm -f events.json
-# $ ./hubble-fgs --btf /sys/kernel/btf/vmlinux  --hubble-lib ./bpf/objs/ --export-filename events.json --enable-process-ns --tracing-policy crds/examples/match_namespace_changes.yaml
+# $ ./hubble-fgs --btf /sys/kernel/btf/vmlinux  --bpf-lib ./bpf/objs/ --export-filename events.json --enable-process-ns --tracing-policy crds/examples/match_namespace_changes.yaml
 # $ # <wait for events>
 # $ # kill hubble-fgs
 # $ grep kprobe events.json | grep \"__x64_sys_write\" | grep strange | jq . # get the write kprobe events

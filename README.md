@@ -117,7 +117,7 @@ make hubble-bpf hubble-fgs hubble-enterprise
 
 Run FGS locally:
 ```
-sudo ./hubble-fgs --hubble-lib bpf/objs
+sudo ./hubble-fgs --bpf-lib bpf/objs
 ```
 
 Once the agent (`hubble-fgs`) is running, events can be observed using the

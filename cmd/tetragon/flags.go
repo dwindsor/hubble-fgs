@@ -19,7 +19,6 @@ import (
 const (
 	keyConfigDir        = "config-dir"
 	keyDebug            = "debug"
-	keyHubbleLib        = "hubble-lib"
 	keyBTF              = "btf"
 	keyProcFS           = "procfs"
 	keyKernelVersion    = "kernel"
@@ -80,7 +79,7 @@ const (
 )
 
 func readAndSetFlags() {
-	option.Config.HubbleLib = viper.GetString(keyHubbleLib)
+	option.Config.HubbleLib = viper.GetString(option.KeyHubbleLib)
 	option.Config.BTF = viper.GetString(keyBTF)
 	option.Config.ProcFS = viper.GetString(keyProcFS)
 	option.Config.KernelVersion = viper.GetString(keyKernelVersion)

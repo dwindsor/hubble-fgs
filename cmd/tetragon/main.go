@@ -836,7 +836,7 @@ func execute() error {
 
 	flags.String(keyConfigDir, "", "Configuration directory that contains a file for each option")
 	flags.BoolP(keyDebug, "d", false, "Enable debug messages. Equivalent to '--log-level=debug'")
-	flags.String(keyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	flags.String(option.KeyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.String(keyBTF, "", "Location of btf")
 
 	flags.String(keyProcFS, "/proc/", "Location of procfs to consume existing PIDs")

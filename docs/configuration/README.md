@@ -52,6 +52,7 @@ local administrator, who may use this logic to override package managers or the 
 This section shows the controlling settings that administrators can set.
 
 ```
+      --bpf-lib string                            Location of hubble libs (btf and bpf files) (default "/var/lib/hubble-fgs/")
       --btf string                                Location of btf
       --config-dir string                         Configuration directory that contains a file for each option
       --tracing-policy string                     Tracing policy file to load at startup
@@ -80,7 +81,6 @@ This section shows the controlling settings that administrators can set.
       --force-small-progs                         Force loading small programs, even in kernels with >= 5.3 versions
       --gops-address string                       gops server address (e.g. 'localhost:8118'). Disabled by default
   -h, --help                                      help for hubble-fgs
-      --hubble-lib string                         Location of hubble libs (btf and bpf files) (default "/var/lib/hubble-fgs/")
       --kernel string                             Kernel version
       --log-format string                         Set log format (default "text")
       --log-level string                          Set log level (default "info")
@@ -108,7 +108,7 @@ The examples below shows how to override the control settings. Each filename map
 
 Default control settings example:
 
-* `/etc/hubble-fgs/hubble-fgs.conf.d/hubble-lib` that is the location of BPF objects:
+* `/etc/hubble-fgs/hubble-fgs.conf.d/bpf-lib` that is the location of BPF objects:
 
    ```
    /var/lib/hubble-fgs/

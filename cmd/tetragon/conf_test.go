@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	opt "github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "/var/lib/hubble-fgs/",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -77,7 +78,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -92,7 +93,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "",
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -127,7 +128,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "/var/log/hubble-fgs.log_0",
-				keyHubbleLib:       "/usr/lib/hubble-fgs/bpf/_0",
+				opt.KeyHubbleLib:   "/usr/lib/hubble-fgs/bpf/_0",
 				keyBTF:             "/sys/kernel/btf/vmlinux-usr-lib_0",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -141,7 +142,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 					},
 				},
@@ -174,7 +175,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -194,7 +195,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "",
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -224,7 +225,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "/var/log/hubble-fgs.log_1",
-				keyHubbleLib:       "/usr/local/lib/hubble-fgs/bpf/_1",
+				opt.KeyHubbleLib:   "/usr/local/lib/hubble-fgs/bpf/_1",
 				keyBTF:             "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 				keyVerbosity:       1,
 				keyEnableK8sAPI:    false,
@@ -238,7 +239,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      0,
 						keyEventQueueSize: uint(0),
@@ -250,7 +251,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      1,
 						keyEventQueueSize: uint(10000),
@@ -280,7 +281,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -294,7 +295,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      1,
 					},
@@ -305,7 +306,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      2,
 					},
@@ -317,7 +318,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "",
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -344,7 +345,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "/var/lib/hubble-fgs/",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/",
 				keyBTF:             "/sys/kernel/btf/vmlinux",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -389,7 +390,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "/var/lib/hubble-fgs/",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -429,7 +430,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "/var/run/hubble-fgs/hubble-fgs.log_2",
-				keyHubbleLib:       "/var/lib/hubble-fgs/bpf/_2",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/bpf/_2",
 				keyBTF:             "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
 				keyVerbosity:       2,
 				keyEnableK8sAPI:    false,
@@ -443,7 +444,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      0,
 						keyEventQueueSize: uint(5000),
@@ -455,7 +456,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      1,
 					},
@@ -466,7 +467,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/run/hubble-fgs/hubble-fgs.log_2",
-						keyHubbleLib:       "/var/lib/hubble-fgs/bpf/_2",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/bpf/_2",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
 						keyVerbosity:       2,
 						keyEnableK8sAPI:    false,
@@ -493,7 +494,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -523,7 +524,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "",
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -543,7 +544,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "",
 				keyExportFilename:  "/var/log/hubble-fgs.log_3",
-				keyHubbleLib:       "/var/lib/hubble-fgs/_3",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_3",
 				keyBTF:             "/sys/kernel/btf/vmlinux-etc_3",
 				keyVerbosity:       3,
 				keyEnableK8sAPI:    false,
@@ -557,7 +558,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      0,
 						keyEventQueueSize: uint(5000),
@@ -569,7 +570,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      1,
 						keyEventQueueSize: uint(10000),
@@ -581,7 +582,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/run/hubble-fgs/hubble-fgs.log_2",
-						keyHubbleLib:       "/var/lib/hubble-fgs/bpf/_2",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/bpf/_2",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
 						keyVerbosity:       2,
 						keyEnableK8sAPI:    false,
@@ -595,7 +596,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/log/hubble-fgs.log_3",
-						keyHubbleLib:       "/var/lib/hubble-fgs/_3",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_3",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc_3",
 						keyVerbosity:       3,
 						keyEnableCiliumAPI: false,
@@ -616,7 +617,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -671,7 +672,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -688,7 +689,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -744,7 +745,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -761,7 +762,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -818,7 +819,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -835,7 +836,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				keyExportFilename:  "",
-				keyHubbleLib:       "",
+				opt.KeyHubbleLib:   "",
 				keyBTF:             "",
 				keyVerbosity:       0,
 				keyEnableK8sAPI:    false,
@@ -893,7 +894,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "",
-						keyHubbleLib:       "",
+						opt.KeyHubbleLib:   "",
 						keyBTF:             "",
 						keyVerbosity:       0,
 						keyEnableK8sAPI:    false,
@@ -908,7 +909,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				keyExportFilename:  "/var/log/hubble-fgs.log_4",
-				keyHubbleLib:       "/var/lib/hubble-fgs/_4",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_4",
 				keyBTF:             "/sys/kernel/btf/vmlinux-etc_4",
 				keyVerbosity:       4,
 				keyEnableK8sAPI:    false,
@@ -922,7 +923,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      0,
 						keyEventQueueSize: uint(5000),
@@ -934,7 +935,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      1,
 						keyEventQueueSize: uint(10000),
@@ -947,7 +948,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						keyExportFilename:  "/var/run/hubble-fgs/hubble-fgs.log_2",
-						keyHubbleLib:       "/var/lib/hubble-fgs/bpf/_2",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/bpf/_2",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
 						keyVerbosity:       2,
 						keyEnableCiliumAPI: true,
@@ -961,7 +962,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/log/hubble-fgs.log_3",
-						keyHubbleLib:       "/var/lib/hubble-fgs/_3",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_3",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc_3",
 						keyVerbosity:       3,
 						keyEnableCiliumAPI: true,
@@ -974,7 +975,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/log/hubble-fgs.log_4",
-						keyHubbleLib:       "/var/lib/hubble-fgs/_4",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_4",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc_4",
 						keyVerbosity:       4,
 						keyEnableK8sAPI:    false,
@@ -989,7 +990,7 @@ var (
 			expectedOptions: map[string]interface{}{
 				keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				keyExportFilename:  "/var/log/hubble-fgs.log_4",
-				keyHubbleLib:       "/var/lib/hubble-fgs/_4",
+				opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_4",
 				keyBTF:             "/sys/kernel/btf/vmlinux-etc_4",
 				keyVerbosity:       4,
 				keyEnableK8sAPI:    false,
@@ -1003,7 +1004,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_0",
-						keyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
+						opt.KeyHubbleLib:  "/usr/lib/hubble-fgs/bpf/_0",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
 						keyVerbosity:      0,
 						keyEventQueueSize: uint(5000),
@@ -1015,7 +1016,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename: "/var/log/hubble-fgs.log_1",
-						keyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
+						opt.KeyHubbleLib:  "/usr/local/lib/hubble-fgs/bpf/_1",
 						keyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
 						keyVerbosity:      1,
 						keyEventQueueSize: uint(10000),
@@ -1028,7 +1029,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						keyExportFilename:  "/var/run/hubble-fgs/hubble-fgs.log_2",
-						keyHubbleLib:       "/var/lib/hubble-fgs/bpf/_2",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/bpf/_2",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
 						keyVerbosity:       2,
 						keyEnableCiliumAPI: true,
@@ -1043,7 +1044,7 @@ var (
 					options: map[string]interface{}{
 						keyConfigDir:       "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 						keyExportFilename:  "/var/log/hubble-fgs.log_3",
-						keyHubbleLib:       "/var/lib/hubble-fgs/_3",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_3",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc_3",
 						keyVerbosity:       3,
 						keyEnableCiliumAPI: true,
@@ -1056,7 +1057,7 @@ var (
 					write:  true,
 					options: map[string]interface{}{
 						keyExportFilename:  "/var/log/hubble-fgs.log_4",
-						keyHubbleLib:       "/var/lib/hubble-fgs/_4",
+						opt.KeyHubbleLib:   "/var/lib/hubble-fgs/_4",
 						keyBTF:             "/sys/kernel/btf/vmlinux-etc_4",
 						keyVerbosity:       4,
 						keyEnableK8sAPI:    false,
@@ -1199,7 +1200,7 @@ func TestReadConfigSettings(t *testing.T) {
 
 		flags := rootCmd.PersistentFlags()
 		flags.String(keyConfigDir, "", "Configuration directory that contains a file for each option")
-		flags.String(keyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble-fgs libs (btf and bpf files)")
+		flags.String(opt.KeyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble-fgs libs (btf and bpf files)")
 		flags.String(keyBTF, "", "Location of btf")
 		flags.String(keyExportFilename, "", "Filename for JSON export. Disabled by default")
 		flags.Int(keyVerbosity, 0, "set verbosity level for eBPF verifier dumps. Pass 0 for silent, 1 for truncated logs, 2 for a full dump")

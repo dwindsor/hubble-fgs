@@ -12,7 +12,7 @@ make build
 ```
 2. Load Tetragon with the correct tracing policy.
 ```
-sudo ./hubble-fgs --hubble-lib bpf/objs --tracing-policy tests/compliance/nginx/http_tracingpolicy.yaml
+sudo ./hubble-fgs --bpf-lib bpf/objs --tracing-policy tests/compliance/nginx/http_tracingpolicy.yaml
 ```
 3. In another terminal, run the tests.
 ```

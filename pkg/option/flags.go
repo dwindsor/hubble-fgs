@@ -11,11 +11,15 @@
 package option
 
 import (
+	"fmt"
+
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 const (
+	KeyHubbleLib                = "hubble-lib"
 	KeyFlowExportFilename       = "flow-export-filename"
 	KeyFlowExportFileMaxSizeMB  = "flow-export-file-max-size-mb"
 	KeyFlowExportFileMaxBackups = "flow-export-file-max-backups"
@@ -30,6 +34,9 @@ const (
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
+	flags.String(KeyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	// TODO(michi) Remove after branching v1.12.
+	flags.MarkDeprecated(KeyHubbleLib, fmt.Sprintf("Use --%s instead.", option.KeyHubbleLib))
 	flags.String(KeyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")
 	flags.Int(KeyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
@@ -61,4 +68,8 @@ func ReadAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxSizeMB = viper.GetInt(KeyFlowExportFileMaxSizeMB)
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
+	// TODO(michi) Remove after branching v1.12.
+	if viper.IsSet(KeyHubbleLib) {
+		option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
+	}
 }

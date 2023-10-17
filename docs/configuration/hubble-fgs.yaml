@@ -8,7 +8,7 @@
 # all drop-ins.
 #
 
-hubble-lib: /var/lib/hubble-fgs/
+bpf-lib: /var/lib/hubble-fgs/
 btf:
 config-dir:
 config-file:
