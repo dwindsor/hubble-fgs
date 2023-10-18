@@ -67,9 +67,6 @@ jobs:
         with:
            version: 'v3.11.0'
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8 # v3.2
-
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58 # v0.6.2
         with:
