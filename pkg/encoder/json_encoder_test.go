@@ -65,7 +65,7 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 		ResponseTypes: &observer.GetFlowsResponse_Flow{
 			Flow: &flow.Flow{
 				Verdict:          flow.Verdict_TRACED,
-				IP:               &flow.IP{},
+				IP:               nil,
 				Source:           &flow.Endpoint{},
 				Destination:      &flow.Endpoint{},
 				IsReply:          &wrappers.BoolValue{Value: false},
@@ -120,7 +120,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	actualFlow := e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow := &flow.Flow{
 		Verdict:          flow.Verdict_TRACED,
-		IP:               &flow.IP{},
+		IP:               nil,
 		Source:           &flow.Endpoint{},
 		Destination:      &flow.Endpoint{},
 		Type:             observer.FlowType_L3_L4,
@@ -146,6 +146,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
 		},
@@ -187,6 +188,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
 		},
@@ -223,6 +225,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
 		},
@@ -259,6 +262,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
 		},
@@ -302,8 +306,87 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
 		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
 			Source:      "1.1.1.1",
 			Destination: "2.2.2.2",
+		},
+		L4: &flow.Layer4{
+			Protocol: &flow.Layer4_UDP{
+				UDP: &flow.UDP{
+					SourcePort:      54321,
+					DestinationPort: 80,
+				},
+			},
+		},
+		Source: &flow.Endpoint{
+			Namespace: "ns-1",
+			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:   "pod-1",
+			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+		},
+		Destination: &flow.Endpoint{
+			Namespace: "ns-1",
+			PodName:   "dst-pod-1",
+			Labels:    []string{},
+			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+		},
+		DestinationNames: []string{"isovalent.com"},
+		Type:             observer.FlowType_L3_L4,
+		TrafficDirection: flow.TrafficDirection_EGRESS,
+		IsReply:          &wrappers.BoolValue{Value: false},
+		SocketCookie:     12345,
+	}
+	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
+	assert.Equal(t, expectedFlow, actualFlow)
+
+	// With IPv6
+	event.GetProcessConnect().SourceIp = "9889:550b:e6f4:0e1c:4d26:063a:e248:675f"
+	event.GetProcessConnect().DestinationIp = "f23b:2837:2f2a:f4aa:cc1d:3360:f3c2:41d5"
+	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
+		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv6,
+			Source:      "9889:550b:e6f4:0e1c:4d26:063a:e248:675f",
+			Destination: "f23b:2837:2f2a:f4aa:cc1d:3360:f3c2:41d5",
+		},
+		L4: &flow.Layer4{
+			Protocol: &flow.Layer4_UDP{
+				UDP: &flow.UDP{
+					SourcePort:      54321,
+					DestinationPort: 80,
+				},
+			},
+		},
+		Source: &flow.Endpoint{
+			Namespace: "ns-1",
+			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:   "pod-1",
+			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+		},
+		Destination: &flow.Endpoint{
+			Namespace: "ns-1",
+			PodName:   "dst-pod-1",
+			Labels:    []string{},
+			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+		},
+		DestinationNames: []string{"isovalent.com"},
+		Type:             observer.FlowType_L3_L4,
+		TrafficDirection: flow.TrafficDirection_EGRESS,
+		IsReply:          &wrappers.BoolValue{Value: false},
+		SocketCookie:     12345,
+	}
+	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
+	assert.Equal(t, expectedFlow, actualFlow)
+
+	// With IPv4-mapped IPv6 addresses
+	event.GetProcessConnect().SourceIp = "::ffff:1.1.1.1"
+	event.GetProcessConnect().DestinationIp = "::ffff:2.2.2.2"
+	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
+		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv6,
+			Source:      "::ffff:1.1.1.1",
+			Destination: "::ffff:2.2.2.2",
 		},
 		L4: &flow.Layer4{
 			Protocol: &flow.Layer4_UDP{

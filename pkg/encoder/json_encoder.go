@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/netip"
 	"sort"
 
 	"github.com/cilium/cilium/api/v1/flow"
@@ -73,9 +74,20 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 }
 
 func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Flow {
-	ip := flow.IP{
-		Source:      pc.GetSourceIp(),
-		Destination: pc.GetDestinationIp(),
+	var ip *flow.IP
+	switch addr, _ := netip.ParseAddr(pc.GetSourceIp()); {
+	case addr.Is4():
+		ip = &flow.IP{
+			Source:      pc.GetSourceIp(),
+			Destination: pc.GetDestinationIp(),
+			IpVersion:   flow.IPVersion_IPv4,
+		}
+	case addr.Is6():
+		ip = &flow.IP{
+			Source:      pc.GetSourceIp(),
+			Destination: pc.GetDestinationIp(),
+			IpVersion:   flow.IPVersion_IPv6,
+		}
 	}
 	var l4 *flow.Layer4
 	switch pc.GetProtocol() {
@@ -122,7 +134,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
 		}
 	} else {
-		k8sDestinationServices, err := h.watcher.FindServiceByIP(ip.Destination)
+		k8sDestinationServices, err := h.watcher.FindServiceByIP(pc.GetDestinationIp())
 		if err == nil {
 			destination.Namespace = k8sDestinationServices[0].Namespace
 			destinationService = &flow.Service{
@@ -133,7 +145,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 	}
 	return &flow.Flow{
 		Verdict:            flow.Verdict_TRACED,
-		IP:                 &ip,
+		IP:                 ip,
 		L4:                 l4,
 		Source:             &source,
 		Destination:        &destination,
