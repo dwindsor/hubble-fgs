@@ -115,7 +115,7 @@ spec:
       deleteIdleSocketInterval: 60
       burst:
         enable: true
-        windowSize: 1000
+        windowSize: 500
         triggerPercent: 50
     burstExitGen:
       enable: true
@@ -139,7 +139,7 @@ spec:
       deleteIdleSocketInterval: 60
       watermarks:
         enable: true
-        windowSize: 1000
+        windowSize: 500
         burstTriggerPercent: 50
         dipTriggerPercent: 10
     networkWatermarksExitGen:
