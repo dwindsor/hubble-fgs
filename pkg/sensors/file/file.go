@@ -1589,7 +1589,7 @@ func (k *observerFileSensor) PolicyHandler(
 	spec := policy.TpSpec()
 	if len(spec.FileMonitoring.Paths) == 0 {
 		if len(spec.FileMonitoring.PathsExclude) > 0 {
-			logger.GetLogger().Warnf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
+			return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
 		}
 		return nil, nil
 	}
@@ -1608,8 +1608,7 @@ func (k *observerFileSensor) PolicyHandler(
 	}
 
 	if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
-		logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
-		return nil, nil
+		return nil, fmt.Errorf("FileMonitoring requires at least 4.19.0 version")
 	}
 	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 
@@ -1627,8 +1626,7 @@ func (k *observerFileSensor) PolicyHandler(
 		var err error
 		fsScannerCmd, err = startFsScanner()
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Failed to start hubble-fgs-fs-scanner")
-			return nil, nil
+			return nil, fmt.Errorf("FileMonitoring failed to start hubble-fgs-fs-scanner: %w", err)
 		}
 	}
 
@@ -1644,8 +1642,7 @@ func (k *observerFileSensor) PolicyHandler(
 	}
 	progs, err := findHooks(&config, fileMode, digestSupport)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
-		return nil, nil
+		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks")
 	}
 	return addFileMonitoringSensor(policy, spec.FileMonitoring, progs, config, selState)
 }
