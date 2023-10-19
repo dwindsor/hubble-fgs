@@ -104,7 +104,6 @@ const (
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
-var loadProbeInit sync.Once
 
 type FimFunc struct {
 	proto, progName, progSection string
@@ -1067,8 +1066,9 @@ func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
 }
 
 type FimLoaderData struct {
-	s  *fm.KernelSelectorState
-	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
+	s              *fm.KernelSelectorState
+	tp             string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
+	updateNamesMap func() error
 }
 
 func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
@@ -1207,6 +1207,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
+	nameMap := sync.OnceValue(func() error {
+		return fm.UpdateNamesMap(option.Config.MapDir, sel)
+	})
+
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
@@ -1219,8 +1223,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			load = load.SetRetProbe(true)
 		}
 		load.SetLoaderData(FimLoaderData{
-			s:  sel,
-			tp: h.tp,
+			s:              sel,
+			tp:             h.tp,
+			updateNamesMap: nameMap,
 		})
 		load.MaxEntriesInnerMap = map[string]uint32{
 			"file_names_maps":   fm.GetMaxInnerEntriesNamesMap(sel),
@@ -1653,12 +1658,7 @@ func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	// this should be done after initializing the base sensor
-	var err error
-	loadProbeInit.Do(func() {
-		// get the pinPathPrefix
-		err = fm.UpdateNamesMap(args.MapDir, v.s)
-	})
-	if err != nil {
+	if err := v.updateNamesMap(); err != nil {
 		return err
 	}
 
@@ -1723,6 +1723,10 @@ func (k *observerFileExecSensor) PolicyHandler(
 		DefaultAction: defaultAction,
 	}
 
+	nameMap := sync.OnceValue(func() error {
+		return fm.UpdateNamesMap(option.Config.MapDir, selState)
+	})
+
 	for _, h := range fimProgs {
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, h.progName),
@@ -1731,8 +1735,9 @@ func (k *observerFileExecSensor) PolicyHandler(
 			sensors.PathJoin(name, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
 			"file_exec_monitoring")
 		load.SetLoaderData(FimLoaderData{
-			s:  selState,
-			tp: h.tp,
+			s:              selState,
+			tp:             h.tp,
+			updateNamesMap: nameMap,
 		})
 		load.MaxEntriesInnerMap = map[string]uint32{
 			"file_names_maps":   fm.GetMaxInnerEntriesNamesMap(selState),
@@ -1808,12 +1813,7 @@ func (k *observerFileExecSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	// this should be done after initializing the base sensor
-	var err error
-	loadProbeInit.Do(func() {
-		// get the pinPathPrefix
-		err = fm.UpdateNamesMap(args.MapDir, v.s)
-	})
-	if err != nil {
+	if err := v.updateNamesMap(); err != nil {
 		return err
 	}
 
