@@ -69,9 +69,6 @@ func InitMetrics(registry *prometheus.Registry) {
 	// UDP metrics collection errors
 	registry.MustRegister(SocketStatsUDPGC)
 
-	// UDP Sequence Check errors
-	registry.MustRegister(SocketStatsUDPSeqCheckErrors)
-
 	// UDP Latency Histogram
 	registry.MustRegister(UdpLatencyBucket)
 	registry.MustRegister(UdpLatencyCount)

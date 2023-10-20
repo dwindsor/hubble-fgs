@@ -204,6 +204,8 @@ var (
 )
 
 // UDP Sequence Check errors
+// NB: This metric is specific to a proprietary protocol transmitting sequence
+// numbers on top of UDP. It shouldn't be registered by default.
 var (
 	SocketStatsUDPSeqCheckErrors = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_udp_sequence_check_errors_total",
