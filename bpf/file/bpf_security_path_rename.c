@@ -37,7 +37,7 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 {
 	struct retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
-		.reg = PT_REGS_FP_CORE(ctx),
+		.reg = 0,
 		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
@@ -62,7 +62,7 @@ int BPF_KRETPROBE(security_path_rename_exit, long ret)
 	if (ret) {
 		struct retprobe_key k = {
 			.pid_tgid = get_current_pid_tgid(),
-			.reg = PT_REGS_FP_CORE(ctx),
+			.reg = 0,
 			.flags = KRETPROBE_KEY,
 		};
 		map_delete_elem(&rename_retprobe_map, &k);

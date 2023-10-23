@@ -68,7 +68,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 {
 	struct retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
-		.reg = PT_REGS_FP_CORE(ctx),
+		.reg = 0,
 		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
@@ -83,7 +83,14 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	if (!conf)
 		return 0;
 
+	// Now we check for an entry that was generated from security_path_rename.
+	// This will always have .reg equals to zero. After that we need to change
+	// .reg to PT_REGS_FP_CORE because calls to vfs_rename can be nested (due
+	// to overlayfs). This is not an issue as security_path_rename calls cannot
+	// be nested. Then we need to also update the entry in the rename_retprobe_map.
 	v = map_lookup_elem(&rename_retprobe_map, &k);
+	k.reg = PT_REGS_FP_CORE(ctx); // once we do the lookup, change to what we need for the key
+
 	// If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
 	// There is a case where we didn't manage to load security_path_rename due to missing CONFIG_SECURITY_PATH. In that case we can continue.
 	if (!v) {
@@ -101,6 +108,24 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			v = map_lookup_elem(&rename_retprobe_map, &k);
 			if (!v) // this should never happen
 				return 0;
+		}
+	} else {
+		// Here we change the key of the entry in rename_retprobe_map and
+		// inlcude PT_REGS_FP_CORE. There may be cases where PT_REGS_FP_CORE
+		// is 0 (have seen them only in 4.19). In that case, there is no need
+		// to do anything.
+		if (k.reg != 0) {
+			map_update_elem(&rename_retprobe_map, &k, v, 0);
+			v = map_lookup_elem(&rename_retprobe_map, &k);
+			if (!v) // this should never happen
+				return 0;
+
+			// Now we can delete the old entry with .reg equals to zero.
+			map_delete_elem(&rename_retprobe_map, &(struct retprobe_key){
+								      .pid_tgid = k.pid_tgid,
+								      .reg = 0,
+								      .flags = k.flags,
+							      });
 		}
 	}
 
