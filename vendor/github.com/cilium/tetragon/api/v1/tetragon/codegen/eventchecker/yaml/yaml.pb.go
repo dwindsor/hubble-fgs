@@ -165,6 +165,7 @@ type eventCheckerHelper struct {
 	ProcessNetworkWatermark *eventchecker.ProcessNetworkWatermarkChecker `json:"networkWatermark,omitempty"`
 	ProcessUdpSeqCheckError *eventchecker.ProcessUdpSeqCheckErrorChecker `json:"udpSeqCheckError,omitempty"`
 	ProcessDns              *eventchecker.ProcessDnsChecker              `json:"dns,omitempty"`
+	ProcessSandboxSyscall   *eventchecker.ProcessSandboxSyscallChecker   `json:"sandboxSyscall,omitempty"`
 	RateLimitInfo           *eventchecker.RateLimitInfoChecker           `json:"rateLimitInfo,omitempty"`
 }
 
@@ -330,6 +331,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessDns
 	}
+	if helper.ProcessSandboxSyscall != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessSandboxSyscall, eventChecker)
+		}
+		eventChecker = helper.ProcessSandboxSyscall
+	}
 	if helper.RateLimitInfo != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.RateLimitInfo, eventChecker)
@@ -394,6 +401,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessUdpSeqCheckError = c
 	case *eventchecker.ProcessDnsChecker:
 		helper.ProcessDns = c
+	case *eventchecker.ProcessSandboxSyscallChecker:
+		helper.ProcessSandboxSyscall = c
 	case *eventchecker.RateLimitInfoChecker:
 		helper.RateLimitInfo = c
 	default:

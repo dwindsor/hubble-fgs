@@ -70,6 +70,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_RAWSOCK_CREATE.String(), nil
 	case *tetragon.GetEventsResponse_ProcessRawsockClose:
 		return tetragon.EventType_PROCESS_RAWSOCK_CLOSE.String(), nil
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return tetragon.EventType_PROCESS_SANDBOX_SYSCALL.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -142,6 +144,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessUdpSeqCheckError.Process
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Process
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return ev.ProcessSandboxSyscall.Process
 
 	}
 	return nil
@@ -217,6 +221,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessUdpSeqCheckError.Parent
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Parent
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return ev.ProcessSandboxSyscall.Parent
 
 	}
 	return nil

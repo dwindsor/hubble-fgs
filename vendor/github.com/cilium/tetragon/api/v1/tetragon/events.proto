@@ -19,6 +19,7 @@ package tetragon;
 import "tetragon/tetragon.proto";
 import "tetragon/fgs.proto";
 import "tetragon/dns.proto";
+import "tetragon/sandbox.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
@@ -59,6 +60,7 @@ enum EventType {
 	PROCESS_ICMP = 23;
 	PROCESS_RAWSOCK_CREATE = 24;
 	PROCESS_RAWSOCK_CLOSE = 25;
+	PROCESS_SANDBOX_SYSCALL = 26;
 
 	TEST = 40000;
     RATE_LIMIT_INFO = 40001;
@@ -207,6 +209,7 @@ message GetEventsResponse {
         ProcessIcmp process_icmp = 23;
         ProcessRawsockCreate process_rawsock_create = 24;
         ProcessRawsockClose process_rawsock_close = 25;
+	ProcessSandboxSyscall process_sandbox_syscall = 26;
 
         Test test = 40000;
         RateLimitInfo rate_limit_info = 40001;

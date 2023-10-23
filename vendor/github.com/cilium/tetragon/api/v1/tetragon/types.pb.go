@@ -501,6 +501,26 @@ func (event *ProcessDns) SetParent(p *Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessSandboxSyscall) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessSandboxSyscall{
+		ProcessSandboxSyscall: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessSandboxSyscall) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessSandboxSyscall) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *RateLimitInfo) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_RateLimitInfo{
 		RateLimitInfo: event,
@@ -564,6 +584,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessUdpSeqCheckError
 	case *GetEventsResponse_ProcessDns:
 		return ev.ProcessDns
+	case *GetEventsResponse_ProcessSandboxSyscall:
+		return ev.ProcessSandboxSyscall
 	case *GetEventsResponse_RateLimitInfo:
 		return ev.RateLimitInfo
 	}

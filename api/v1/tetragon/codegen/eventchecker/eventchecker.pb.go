@@ -315,6 +315,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessUdpSeqCheckErrorChecker("").FromProcessUdpSeqCheckError(ev), nil
 	case *tetragon.ProcessDns:
 		return NewProcessDnsChecker("").FromProcessDns(ev), nil
+	case *tetragon.ProcessSandboxSyscall:
+		return NewProcessSandboxSyscallChecker("").FromProcessSandboxSyscall(ev), nil
 	case *tetragon.RateLimitInfo:
 		return NewRateLimitInfoChecker("").FromRateLimitInfo(ev), nil
 
@@ -411,6 +413,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessUdpSeqCheckError, nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns, nil
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return ev.ProcessSandboxSyscall, nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
 		return ev.RateLimitInfo, nil
 
@@ -5722,6 +5726,109 @@ func (checker *ProcessDnsChecker) FromProcessDns(event *tetragon.ProcessDns) *Pr
 	if event.Parent != nil {
 		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
 	}
+	return checker
+}
+
+// ProcessSandboxSyscallChecker implements a checker struct to check a ProcessSandboxSyscall event
+type ProcessSandboxSyscallChecker struct {
+	CheckerName string                       `json:"checkerName"`
+	Process     *ProcessChecker              `json:"process,omitempty"`
+	Parent      *ProcessChecker              `json:"parent,omitempty"`
+	Name        *stringmatcher.StringMatcher `json:"name,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessSandboxSyscallChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessSandboxSyscall); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessSandboxSyscall event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessSandboxSyscallChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessSandboxSyscallChecker creates a new ProcessSandboxSyscallChecker
+func NewProcessSandboxSyscallChecker(name string) *ProcessSandboxSyscallChecker {
+	return &ProcessSandboxSyscallChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessSandboxSyscallChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessSandboxSyscallChecker) GetCheckerType() string {
+	return "ProcessSandboxSyscallChecker"
+}
+
+// Check checks a ProcessSandboxSyscall event
+func (checker *ProcessSandboxSyscallChecker) Check(event *tetragon.ProcessSandboxSyscall) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessSandboxSyscall event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) WithProcess(check *ProcessChecker) *ProcessSandboxSyscallChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) WithParent(check *ProcessChecker) *ProcessSandboxSyscallChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithName adds a Name check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) WithName(check *stringmatcher.StringMatcher) *ProcessSandboxSyscallChecker {
+	checker.Name = check
+	return checker
+}
+
+//FromProcessSandboxSyscall populates the ProcessSandboxSyscallChecker using data from a ProcessSandboxSyscall event
+func (checker *ProcessSandboxSyscallChecker) FromProcessSandboxSyscall(event *tetragon.ProcessSandboxSyscall) *ProcessSandboxSyscallChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.Name = stringmatcher.Full(event.Name)
 	return checker
 }
 
