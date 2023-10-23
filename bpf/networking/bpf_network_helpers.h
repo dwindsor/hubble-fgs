@@ -77,6 +77,7 @@ tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
 	probe_read(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	v->srtt = v->srtt / 8; // SRTT is reported <<3 in us.
 	probe_read(&v->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
 }
 
@@ -112,6 +113,7 @@ get_socket_stats(struct sock *sk,
 		   _(&(tcp->bytes_received)));
 	probe_read(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	stats->srtt = stats->srtt / 8; // SRTT is reported <<3 in us.
 	probe_read(&stats->retranssegs, sizeof(__u32),
 		   _(&(tcp->total_retrans)));
 

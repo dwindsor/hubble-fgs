@@ -7,8 +7,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
+// Copied from struct tcp_sock defined in include/linux/tcp.h
 struct rcv_rtt_est {
-	s32 rtt_us;
+	u32 rtt_us;
 	u32 seq;
 	u64 time;
 };
@@ -47,7 +48,7 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 	}
 
-	rtt_us = rtt.rtt_us;
+	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
 
 	if (rtt_us <= 0)
 		return 0;
