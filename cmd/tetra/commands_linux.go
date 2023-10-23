@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
 	"github.com/spf13/cobra"
 )
 
@@ -28,4 +29,5 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(policyfilter.New())
 	rootCmd.AddCommand(rthooks.New())
 	rootCmd.AddCommand(probe.New())
+	rootCmd.AddCommand(sandboxpolicy.New())
 }
