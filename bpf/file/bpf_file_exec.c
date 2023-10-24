@@ -58,14 +58,14 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 
 	get_parent_ino_fs(msg, parent_dentry);
 
-	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
 	msg->digest.ok = 1;
 
 	operation = eval_exec_selectors(&msg->digest);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
-	retval = d_path(&bprm->file->f_path, msg->path.str, 256);
+	retval = d_path(_(&bprm->file->f_path), msg->path.str, 256);
 	msg->path.size = (retval <= 0) ? (0) : (retval - 1); // exclude '\0'
 	msg->path.flags = 0;
 

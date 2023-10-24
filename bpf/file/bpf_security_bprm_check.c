@@ -60,7 +60,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 
 #ifdef __FILE_DIGEST_LSM
 	msg->digest.ok = 1;
-	msg->digest.algo = ima_file_hash(bprm->file, msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
 	digest = &msg->digest;
 #endif
 
