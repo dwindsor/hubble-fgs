@@ -197,11 +197,13 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				if !strings.Contains(n, "inet_send") &&
 					!strings.Contains(n, "inet_recv") &&
 					!strings.Contains(n, "inet_lazy_recv") &&
-					!strings.HasPrefix(n, "tg_") {
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSKB(tg_") {
 					break
 				}
 			} else if tgTypes {
-				if !strings.HasPrefix(n, "tg_") {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSKB(tg_") {
 					break
 				}
 			} else {
@@ -220,11 +222,13 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				if !strings.Contains(n, "http_skmsg") &&
 					!strings.Contains(n, "tls_skmsg") &&
 					!strings.Contains(n, "nop_skmsg") &&
-					!strings.HasPrefix(n, "tg_") {
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SkMsg(tg_") {
 					break
 				}
 			} else if tgTypes {
-				if !strings.HasPrefix(n, "tg_") {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SkMsg(tg_") {
 					break
 				}
 			} else {
@@ -248,11 +252,13 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 					!strings.Contains(n, "bpf_http_verdict") &&
 					!strings.Contains(n, "bpf_tls_skskb") &&
 					!strings.Contains(n, "bpf_nop_") &&
-					!strings.HasPrefix(n, "tg_") {
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SkSKB(tg_") {
 					break
 				}
 			} else if tgTypes {
-				if !strings.HasPrefix(n, "tg_") {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SkSKB(tg_") {
 					break
 				}
 			} else {
@@ -277,11 +283,13 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 		case ebpf.SockOps:
 			if bestEffort {
 				if !strings.Contains(n, "fgs") &&
-					!strings.HasPrefix(n, "tg_") {
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SockOps(tg_") {
 					break
 				}
 			} else if tgTypes {
-				if !strings.HasPrefix(n, "tg_") {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "SockOps(tg_") {
 					break
 				}
 			} else {
