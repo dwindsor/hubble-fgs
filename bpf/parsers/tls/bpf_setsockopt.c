@@ -38,7 +38,7 @@ struct {
 } https_filter_map SEC(".maps");
 
 __attribute__((section("cgroup/setsockopt"), used)) int
-setsockopt(struct bpf_sockopt *ctx)
+tg_setsockopt(struct bpf_sockopt *ctx)
 {
 	struct msg_tls *event;
 	struct bpf_sock *sk = ctx->sk;
