@@ -53,7 +53,7 @@ TCP = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcp_send_chec
 
 L2 = bpf_dev_queue_xmit.o
 
-L3 = bpf_icmp.o bpf_icmp_lazy.o bpf_pingsock_create.o bpf_pingsock_release.o
+L3 = bpf_icmp.o bpf_icmp_lazy.o bpf_icmp_rcv.o bpf_pingsock_create.o bpf_pingsock_release.o
 
 TIMESTAMP =  bpf_timestamp.o
 

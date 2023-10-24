@@ -87,6 +87,7 @@ func TestLoadIcmpSensor(t *testing.T) {
 			2: tus.SensorProg{Name: "tg_sk_free", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "tg_icmp_send_lazy", Type: ebpf.CGroupSKB},
 			4: tus.SensorProg{Name: "tg_icmp_recv_lazy", Type: ebpf.CGroupSKB},
+			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
 		}
 	} else { // 5.10 -
 		sensorProgs = []tus.SensorProg{
@@ -95,18 +96,19 @@ func TestLoadIcmpSensor(t *testing.T) {
 			2: tus.SensorProg{Name: "tg_sk_free", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "tg_icmp_send", Type: ebpf.CGroupSKB},
 			4: tus.SensorProg{Name: "tg_icmp_recv", Type: ebpf.CGroupSKB},
+			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
 		}
 	}
 
 	sensorMaps := []tus.SensorMap{
 		// all
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4}},
+		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4, 5}},
 
 		// all but egress and ingress
 		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2}},
 
 		// all but close
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 3, 4}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 3, 4, 5}},
 
 		// just init
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1}},
@@ -121,21 +123,27 @@ func TestLoadIcmpSensor(t *testing.T) {
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getIcmpObserver(t *testing.T, ctx context.Context, config string) *observer.Observer {
+func getIcmpObserver(t *testing.T, ctx context.Context, config string, filtered bool) *observer.Observer {
 	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	var obs *observer.Observer
+	var err error
+	if filtered {
+		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	} else {
+		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	return obs
 }
 
-func getBasicIcmpObserver(t *testing.T, ctx context.Context) *observer.Observer {
-	return getIcmpObserver(t, ctx, icmpBasicConfig)
+func getBasicIcmpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
+	return getIcmpObserver(t, ctx, icmpBasicConfig, filtered)
 }
 
 func TestPingOutbound(t *testing.T) {
@@ -165,7 +173,7 @@ func TestPingOutbound(t *testing.T) {
 		ec.NewProcessExecChecker("pingExec").
 			WithProcess(pingChecker).
 			WithParent(selfChecker),
-		ec.NewProcessIcmpChecker("ping").
+		ec.NewProcessIcmpChecker("pingEcho").
 			WithProcess(pingChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
@@ -175,7 +183,7 @@ func TestPingOutbound(t *testing.T) {
 			WithSequenceNumber(1).
 			WithIcmpDataLen(56).
 			WithDirection(sm.Full("egress")),
-		ec.NewProcessIcmpChecker("ping").
+		ec.NewProcessIcmpChecker("pingEchoReply").
 			WithProcess(pingChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
@@ -187,7 +195,89 @@ func TestPingOutbound(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getBasicIcmpObserver(t, ctx)
+	obs := getBasicIcmpObserver(t, ctx, true)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestPingInAndOutbound(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	cmd := "ping"
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	pingChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(cmd)).
+		WithArguments(sm.Full("-c1 127.0.0.1"))
+
+	kernelChecker := ec.NewProcessChecker().
+		WithBinary(sm.Full("<kernel>"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("pingExec").
+			WithProcess(pingChecker).
+			WithParent(selfChecker),
+		ec.NewProcessIcmpChecker("pingEchoOutbound").
+			WithProcess(pingChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("egress")),
+		ec.NewProcessIcmpChecker("pingEchoInbound").
+			WithProcess(kernelChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("ingress")),
+		ec.NewProcessIcmpChecker("pingEchoReplyOutbound").
+			WithProcess(kernelChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo Reply")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("egress")),
+		ec.NewProcessIcmpChecker("pingEchoReplyInbound").
+			WithProcess(pingChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo Reply")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("ingress")),
+	)
+
+	obs := getBasicIcmpObserver(t, ctx, false)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()

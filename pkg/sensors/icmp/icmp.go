@@ -124,6 +124,14 @@ var (
 		"cgrp_icmp_ingress",
 	)
 
+	IcmpRcv = program.Builder(
+		"bpf_icmp_rcv.o",
+		"icmp_rcv",
+		"kprobe/icmp_rcv",
+		"tg_icmp_rcv",
+		"kprobe",
+	)
+
 	// Shared socket cookie infrastructure
 	SocketCookieMap       = program.MapBuilder(SocketMapName, IcmpSend)
 	SocketCookieStats     = program.MapBuilder("tg_socket_map_stats", IcmpSend)
@@ -176,6 +184,7 @@ func EnableIcmpParser() *sensors.Sensor {
 			SkSockRelease,
 			IcmpSendLazy,
 			IcmpRecvLazy,
+			IcmpRcv,
 		}
 		maps = []*program.Map{
 			SocketCookieMap,
@@ -191,6 +200,7 @@ func EnableIcmpParser() *sensors.Sensor {
 			SkSockRelease,
 			IcmpSend,
 			IcmpRecv,
+			IcmpRcv,
 		}
 		maps = []*program.Map{
 			SocketCookieMap,
