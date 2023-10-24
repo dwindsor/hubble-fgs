@@ -301,6 +301,19 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Attach:  ebpf.AttachCGroupSockOps,
 			}
 			link.RawDetachProgram(opts)
+		case ebpf.CGroupSockopt:
+			if tgTypes {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSockopt(tg_") {
+					break
+				}
+			}
+			opts := link.RawDetachProgramOptions{
+				Target:  cgrpfd,
+				Program: prog,
+				Attach:  ebpf.AttachCGroupSetsockopt,
+			}
+			link.RawDetachProgram(opts)
 		}
 	}
 	return nil
