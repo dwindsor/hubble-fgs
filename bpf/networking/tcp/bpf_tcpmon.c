@@ -103,6 +103,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.key.pid = process->key.pid;
 	v.key.ktime = process->key.ktime;
 	v.create_time = val->common.ktime;
+	v.last_time = v.create_time;
 	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
 	v.sent = 0;
 	v.received = 0;

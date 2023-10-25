@@ -60,6 +60,7 @@ type MsgIPEvent struct {
 
 type MsgSocketStatsUnix struct {
 	Ktime            uint64
+	CreateKtime      uint64
 	BytesSubmitted   uint64
 	BytesSent        uint64
 	BytesConsumed    uint64

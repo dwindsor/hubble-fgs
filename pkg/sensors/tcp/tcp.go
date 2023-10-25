@@ -191,6 +191,7 @@ type tcpValue struct {
 func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
 	s := &networkapi.MsgSocketStatsUnix{}
 	s.Ktime = t.LastTime
+	s.CreateKtime = t.CreateTime
 	s.BytesSent = t.Sent
 	s.BytesReceived = t.Recv
 	s.SegsIn = t.SegsIn

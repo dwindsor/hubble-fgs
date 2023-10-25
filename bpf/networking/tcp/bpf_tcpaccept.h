@@ -125,8 +125,8 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->key.pid = process->key.pid;
 	acc_process->key.ktime = process->key.ktime;
 	acc_process->create_time = val->common.ktime;
+	acc_process->last_time = val->common.ktime;
 	acc_process->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-	acc_process->last_time = 0;
 	acc_process->received = 0;
 	acc_process->sent = 0;
 	acc_process->zero_window = 0;

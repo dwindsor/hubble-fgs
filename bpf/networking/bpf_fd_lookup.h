@@ -182,6 +182,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	// This is far from perfect, but at least the discovered flag will indicate
 	// how we found this create time in case we want to exclude these.
 	sockmap_process.create_time = ktime_get_ns();
+	sockmap_process.last_time = sockmap_process.create_time;
 	sockmap_process.socket_flags = SOCKFLAGS_TYPE_UNKNOWN;
 	sockmap_process.tuple.saddr[0] = config->saddr[0];
 	sockmap_process.tuple.saddr[1] = config->saddr[1];
