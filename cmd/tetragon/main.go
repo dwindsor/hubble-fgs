@@ -212,11 +212,20 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			opts := link.RawDetachProgramOptions{
 				Target:  cgrpfd,
 				Program: prog,
-				Attach:  ebpf.AttachCGroupInetIngress,
 			}
-			link.RawDetachProgram(opts)
-			opts.Attach = ebpf.AttachCGroupInetEgress
-			link.RawDetachProgram(opts)
+			if strings.Contains(n, "recv") {
+				opts.Attach = ebpf.AttachCGroupInetIngress
+				if err := link.RawDetachProgram(opts); err != nil {
+					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSKB Ingress error")
+				}
+			} else if strings.Contains(n, "send") {
+				opts.Attach = ebpf.AttachCGroupInetEgress
+				if err := link.RawDetachProgram(opts); err != nil {
+					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSKB Egress error")
+				}
+			} else {
+				logger.GetLogger().Warn("unknown tg_ CgroupSkb Programm")
+			}
 		case ebpf.SkMsg:
 			if bestEffort {
 				if !strings.Contains(n, "http_skmsg") &&
@@ -245,7 +254,9 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Program: prog,
 				Attach:  ebpf.AttachSkMsgVerdict,
 			}
-			link.RawDetachProgram(opts)
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Warn("RawDetachProgram SkMsg error")
+			}
 		case ebpf.SkSKB:
 			if bestEffort {
 				if !strings.Contains(n, "bpf_http_parser") &&
@@ -275,11 +286,20 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Program: prog,
 				Attach:  ebpf.AttachSkSKBStreamVerdict,
 			}
-			link.RawDetachProgram(opts)
+			// These errors are debug only because we are expect an error here we don't
+			// know the type so we just guess and try to remove all of them.
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBStreamVerdict error")
+			}
 			opts.Attach = ebpf.AttachSkSKBStreamParser
-			link.RawDetachProgram(opts)
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBStreamParser error")
+			}
 			opts.Attach = ebpf.AttachSkSKBVerdict
 			link.RawDetachProgram(opts)
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBVerdict error")
+			}
 		case ebpf.SockOps:
 			if bestEffort {
 				if !strings.Contains(n, "fgs") &&
@@ -300,7 +320,9 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Program: prog,
 				Attach:  ebpf.AttachCGroupSockOps,
 			}
-			link.RawDetachProgram(opts)
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Warn("RawDetachProgram SockOps error")
+			}
 		case ebpf.CGroupSockopt:
 			if tgTypes {
 				if !strings.HasPrefix(n, "tg_") &&
@@ -313,7 +335,9 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Program: prog,
 				Attach:  ebpf.AttachCGroupSetsockopt,
 			}
-			link.RawDetachProgram(opts)
+			if err := link.RawDetachProgram(opts); err != nil {
+				logger.GetLogger().WithError(err).Warn("RawDetachProgram Sockopt error")
+			}
 		}
 	}
 	return nil
