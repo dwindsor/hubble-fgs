@@ -262,20 +262,20 @@ spec:
 	}
 
 	var sensorProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
-		1: tus.SensorProg{Name: "setsockopt", Type: ebpf.CGroupSockopt},
+		0: tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
+		1: tus.SensorProg{Name: "tg_setsockopt", Type: ebpf.CGroupSockopt},
 		2: tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
 		3: tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB},
 	}
 
 	var sensorMaps = []tus.SensorMap{
-		// all but base and bpf_sockmap
+		// all but base and tg_sockmap
 		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{1, 2, 3}},
 
 		// all but base and bpf_tls_skskb_verdict
 		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0, 1}},
 
-		// bpf_sockmap
+		// tg_sockmap
 		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{0}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
