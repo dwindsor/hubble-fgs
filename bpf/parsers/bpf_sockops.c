@@ -56,7 +56,7 @@ static inline void bpf_sock_ops_ip(struct bpf_sock_ops *skops)
 		sock_hash_update(skops, &tg_nop_sock_map, &key, BPF_NOEXIST);
 }
 
-__section("sockops/fgs_sockops") int bpf_sockmap(struct bpf_sock_ops *skops)
+__section("sockops/fgs_sockops") int tg_sockmap(struct bpf_sock_ops *skops)
 {
 	__u32 family, op;
 
