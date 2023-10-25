@@ -446,7 +446,7 @@ func udpDiffLatency(last, curr *[8]uint64) [8]uint64 {
 	}
 }
 
-func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
+func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
 	// unlucky timing but here we go.
@@ -472,7 +472,7 @@ func udpDiffValues(_ *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error
 	if udpResetEvent(curr, last) {
 		ipDst := network.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
 		ipSrc := network.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
-		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last}).Warnf("UDP stats underflow")
+		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key}).Warnf("UDP stats underflow")
 		return udpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
 
@@ -564,7 +564,8 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 			delete(pseudoSockets[udpKey.Cookie], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
-		deleteLastKey = udpKey
+		deleteLastKey = &udpInfoKey{}
+		*deleteLastKey = *udpKey
 	}
 }
 
