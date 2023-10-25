@@ -47,7 +47,7 @@ tg_skskb_http_request(struct __sk_buff *skb)
 }
 
 __attribute__((section("sk_skb/stream_verdict/2"), used)) int
-tg_skskb_get_more_headers(struct __sk_buff *skb)
+tg_skskb_http_get_more_headers(struct __sk_buff *skb)
 {
 	struct msg_http_event *http;
 
