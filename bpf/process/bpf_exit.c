@@ -1,6 +1,9 @@
 #include "vmlinux.h"
 #include "../../modules/tetragon-oss/bpf/process/bpf_exit.h"
 #include "../networking/bpf_process_network_watermarks.h"
+#include "../lib/config.h"
+#include "../networking/cookie.h"
+#include "../networking/l3/icmp_cookie.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

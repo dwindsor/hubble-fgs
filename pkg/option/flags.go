@@ -33,6 +33,7 @@ const (
 	KeyNetNsCacheSize           = "net-ns-cache-size"
 	KeyDetatchOldBPF            = "detach-old-bpf"
 	KeyEnableProcessAncestors   = "enable-process-ancestors"
+	keyEnableIcmpTracking       = "enable-icmp-tracking"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -56,6 +57,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	// cases where upgrading from older versions to fix bug where we failed to
 	// detach programs and left stale progs attached at cgroups and tc hooks.
 	flags.Bool(KeyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
+
+	// Provide option to enable extra socket tracking for ICMP matching.
+	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -70,6 +74,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxSizeMB = viper.GetInt(KeyFlowExportFileMaxSizeMB)
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
+	Config.EnableIcmpTracking = viper.GetBool(keyEnableIcmpTracking)
 	// TODO(michi) Remove after branching v1.12.
 	// We parse shared flags with OSS then we parse Enterprise ones
 	if viper.IsSet(KeyHubbleLib) {

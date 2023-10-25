@@ -77,6 +77,12 @@ var (
 	ExecveMapV53                = program.MapBuilder("execve_map", ExecveV53)
 	ExecveMapV61                = program.MapBuilder("execve_map", ExecveV61)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
+	SocketMap                   = program.MapBuilder("tg_socket_map", Exit)
+	SocketStats                 = program.MapBuilder("tg_socket_map_stats", Exit)
+	SocketTupleMap              = program.MapBuilder("tg_socket_tuple_map", Exit)
+	SocketTupleStats            = program.MapBuilder("tg_socket_tuple_map_stats", Exit)
+	SocketTupleHintMap          = program.MapBuilder("tg_socket_tuple_hint_map", Exit)
+	CfgMap                      = program.MapBuilder("tg_cfg_map", Exit)
 
 	ExecveTailCallsMap    = program.MapBuilderPin("execve_calls", "execve_calls", Execve)
 	ExecveTailCallsMapV53 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV53)
@@ -156,6 +162,12 @@ func GetDefaultMaps() []*program.Map {
 	maps := []*program.Map{
 		PNWatermarksMapStats,
 		ProcessNetworkWatermarksMap,
+		SocketMap,
+		SocketStats,
+		SocketTupleMap,
+		SocketTupleStats,
+		SocketTupleHintMap,
+		CfgMap,
 		ExecveJoinMap,
 		ExecveJoinMapStats,
 		StatsMap,

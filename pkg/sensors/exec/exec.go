@@ -20,6 +20,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
 
@@ -236,6 +237,7 @@ type execSensor struct {
 func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err := program.LoadTracepointProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	if err == nil {
+		configureSettings(enterpriseOption.Config.EnableIcmpTracking)
 		procevents.GetRunningProcs()
 	}
 	return err

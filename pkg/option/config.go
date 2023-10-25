@@ -17,6 +17,7 @@ type config struct {
 	FlowExportFileMaxSizeMB  int
 	FlowExportFileMaxBackups int
 	FlowExportFileCompress   bool
+	EnableIcmpTracking       bool
 }
 
 var (
@@ -28,5 +29,6 @@ var (
 		NetNsCacheSize:         256,
 		FimFifoPath:            "/var/run/cilium/hubble",
 		FimRuntimeEndpoint:     "",
+		EnableIcmpTracking:     false,
 	}
 )
