@@ -78,13 +78,13 @@ func TestLoadNopSensor(t *testing.T) {
 
 	if kernels.MinKernelVersion("5.8.0") {
 		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
-			1: tus.SensorProg{Name: "bpf_nop_sk_msg_fgs", Type: ebpf.SkMsg},
-			2: tus.SensorProg{Name: "bpf_skskb_http_verdict", Type: ebpf.SkSKB},
+			0: tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
+			1: tus.SensorProg{Name: "tg_nop_sk_msg_fgs", Type: ebpf.SkMsg},
+			2: tus.SensorProg{Name: "tg_skskb_http_verdict", Type: ebpf.SkSKB},
 		}
 
 		sensorMaps = []tus.SensorMap{
-			// maps are loaded only in bpf_sockmap program
+			// maps are loaded only in tg_sockmap program
 			tus.SensorMap{Name: "tg_nop_sock_map", Progs: []uint{0}},
 			tus.SensorMap{Name: "tg_http_sock_map", Progs: []uint{0}},
 			tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{0}},
@@ -94,13 +94,13 @@ func TestLoadNopSensor(t *testing.T) {
 		}
 	} else {
 		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "bpf_nop_sk_msg_fgs", Type: ebpf.SkMsg},
-			1: tus.SensorProg{Name: "bpf_skskb_http_verdict", Type: ebpf.SkSKB},
+			0: tus.SensorProg{Name: "tg_nop_sk_msg_fgs", Type: ebpf.SkMsg},
+			1: tus.SensorProg{Name: "tg_skskb_http_verdict", Type: ebpf.SkSKB},
 		}
 	}
 
 	if utils.SkSkbParserRequired() {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "bpf_skskb_nop_parser", Type: ebpf.SkSKB})
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_skskb_nop_parser", Type: ebpf.SkSKB})
 	}
 
 	assert.NoError(t, err, "nop sensor should load")
