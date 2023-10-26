@@ -1647,8 +1647,7 @@ func (k *observerFileSensor) PolicyHandler(
 	return addFileMonitoringSensor(policy, spec.FileMonitoring, progs, config, selState)
 }
 
-// LoadProbe() (called when the eBPF programs are actually loaded)
-func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+func loadProbe(args sensors.LoadProbeArgs) error {
 	v, ok := args.Load.LoaderData.(FimLoaderData)
 	if !ok {
 		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
@@ -1659,15 +1658,21 @@ func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	if v.tp == "kprobe" || v.tp == "kretprobe" {
+	switch v.tp {
+	case "kprobe", "kretprobe":
 		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else if v.tp == "fentry" || v.tp == "fexit" || v.tp == "fmod_ret" {
+	case "fentry", "fexit", "fmod_ret":
 		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else if v.tp == "lsm" || v.tp == "lsm.s" {
+	case "lsm", "lsm.s":
 		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else {
+	default:
 		return fmt.Errorf("file: %s programs are not supported", v.tp)
 	}
+}
+
+// LoadProbe() (called when the eBPF programs are actually loaded)
+func (k observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return loadProbe(args)
 }
 
 func (k *observerFileExecSensor) PolicyHandler(
@@ -1803,24 +1808,6 @@ func (k *observerFileExecSensor) PolicyHandler(
 }
 
 // LoadProbe() (called when the eBPF programs are actually loaded)
-func (k *observerFileExecSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	v, ok := args.Load.LoaderData.(FimLoaderData)
-	if !ok {
-		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
-	}
-
-	// this should be done after initializing the base sensor
-	if err := v.updateNamesMap(); err != nil {
-		return err
-	}
-
-	if v.tp == "kprobe" || v.tp == "kretprobe" {
-		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else if v.tp == "fentry" || v.tp == "fexit" || v.tp == "fmod_ret" {
-		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else if v.tp == "lsm" || v.tp == "lsm.s" {
-		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
-	} else {
-		return fmt.Errorf("file: %s programs are not supported", v.tp)
-	}
+func (k observerFileExecSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return loadProbe(args)
 }
