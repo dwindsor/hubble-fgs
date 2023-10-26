@@ -272,7 +272,6 @@ func ContainerIdToRootFs(cid, endpoint string) (string, error) {
 			return "", err
 		}
 		return rootDir, nil
-	} else {
-		return "", fmt.Errorf("fim supports only containerd and docker engines [%s]", cid)
 	}
+	return "", fmt.Errorf("fim supports only containerd and docker engines [%s]", cid)
 }

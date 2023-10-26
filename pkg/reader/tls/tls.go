@@ -186,12 +186,11 @@ func GetTLSNegotitatedVersion12(clientVersion, serverVersion string) string {
 		return tlsVersion1_1
 	} else if clientVersion == tlsVersion1_2 || serverVersion == tlsVersion1_2 {
 		return tlsVersion1_2
-	} else {
-		// We should never get here if we do lets use the
-		// code below and we can count it in metrics because
-		// it is unique from grpc layers unknown(#) syntax.
-		return fmt.Sprintf("unknown(%s|%s)", clientVersion, serverVersion)
 	}
+	// We should never get here if we do lets use the
+	// code below and we can count it in metrics because
+	// it is unique from grpc layers unknown(#) syntax.
+	return fmt.Sprintf("unknown(%s|%s)", clientVersion, serverVersion)
 }
 
 //func GetTLSRdns(rdns []byte) []string {

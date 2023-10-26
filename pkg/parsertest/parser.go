@@ -633,9 +633,8 @@ func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
 			break
 		} else if tok == '\n' || tok == scanner.EOF {
 			break
-		} else {
-			text += p.scanner.TokenText()
 		}
+		text += p.scanner.TokenText()
 		switch strings.ToUpper(text) {
 		case "CLI", "CLIENT":
 			tm.IsCli = true
@@ -662,9 +661,8 @@ func (p *Parser) parseIPMatcher() (ms []Matcher, err error) {
 			break
 		} else if tok == scanner.EOF || tok == '\n' {
 			break
-		} else {
-			text += p.scanner.TokenText()
 		}
+		text += p.scanner.TokenText()
 	}
 	addr := net.ParseIP(text)
 	if addr == nil {

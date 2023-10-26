@@ -190,11 +190,11 @@ func PDMLToTestCase(pdmlFile string, w io.Writer) error {
 			if portString == "" {
 				fmt.Fprintf(w, "# WARNING: no dstport in tcp proto, cannot deduce EGRESS/INGRESS. Did you include 'tcp' in '-J' flag?\n")
 			} else {
-				if n, err := strconv.ParseUint(portString, 10, 16); err != nil {
+				n, err := strconv.ParseUint(portString, 10, 16)
+				if err != nil {
 					panic(err)
-				} else {
-					pktDstPort = uint16(n)
 				}
+				pktDstPort = uint16(n)
 				if pktIndex == 0 {
 					dstPort = pktDstPort
 				}
