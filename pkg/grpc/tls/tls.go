@@ -14,7 +14,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -63,10 +62,10 @@ func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
 
 	log.WithFields(logrus.Fields{
 		"op":                           ops.OpCode(op).String(),
-		"saddr":                        network.GetIP(msg.Tuple.SAddr, op, msg.Tuple.IPv6 != 0).String(),
-		"sport":                        network.GetSport(msg.Tuple.SPort),
+		"saddr":                        networkapi.GetIP(msg.Tuple.SAddr, op, msg.Tuple.IPv6 != 0).String(),
+		"sport":                        networkapi.GetSport(msg.Tuple.SPort),
 		"dport":                        msg.Tuple.DPort,
-		"daddr":                        network.GetIP(msg.Tuple.DAddr, op, msg.Tuple.IPv6 != 0).String(),
+		"daddr":                        networkapi.GetIP(msg.Tuple.DAddr, op, msg.Tuple.IPv6 != 0).String(),
 		"Client-TLS-Version":           readertls.GetTLSVersion(msg.ClientHello.Version),
 		"Server-TLS-Version":           readertls.GetTLSVersion(msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,
@@ -87,7 +86,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(network.SwapByte(event.Tuple.DPort)),
+			Value: uint32(networkapi.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -119,9 +118,9 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	fgsEvent := &tetragon.Tls{
 		Process:             proc,
 		Parent:              parent,
-		SourceIp:            network.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:            networkapi.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:          sourcePort,
-		DestinationIp:       network.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		DestinationIp:       networkapi.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		DestinationPort:     destinationPort,
 		NegotiatedVersion:   negotiatedVersion,
 		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),

@@ -42,7 +42,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -241,14 +240,14 @@ type udpInfoValue struct {
 }
 
 func (k *udpInfoKey) String() string {
-	ipDst := network.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
+	ipDst := api.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
 	return fmt.Sprintf("Cookie=%d\n"+
 		"DAddr=%s:%d\n", k.Cookie, ipDst, k.DPort)
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
-	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
+	ipDst := api.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
+	ipSrc := api.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -258,7 +257,7 @@ func (v *udpInfoValue) String() string {
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
 			"SkbConsumeMisses: %d\n",
-		ipSrc, v.SPort, ipDst, network.SwapByte(v.DPort),
+		ipSrc, v.SPort, ipDst, api.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
@@ -470,8 +469,8 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 	// datapath caused a map_value to replace the last entry. In this case
 	// to avoid dropping bytes on the counter we do not diff the values.
 	if udpResetEvent(curr, last) {
-		ipDst := network.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
-		ipSrc := network.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
+		ipDst := api.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
+		ipSrc := api.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
 		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key}).Warnf("UDP stats underflow")
 		return udpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
@@ -601,8 +600,8 @@ type udpSensor struct {
 }
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
-	saddr := network.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
-	daddr := network.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
+	saddr := api.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
+	daddr := api.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
 }
 

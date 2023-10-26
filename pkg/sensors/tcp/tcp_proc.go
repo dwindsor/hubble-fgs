@@ -19,9 +19,9 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
 )
@@ -39,8 +39,8 @@ var (
 )
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
-	saddr := network.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
-	daddr := network.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
+	saddr := networkapi.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
+	daddr := networkapi.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
 
 	if socket.State == 0 {
@@ -68,7 +68,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Tuple.SAddr[1] = socket.Saddr[1]
 	tcp.Tuple.DAddr[0] = socket.Daddr[0]
 	tcp.Tuple.DAddr[1] = socket.Daddr[1]
-	tcp.Tuple.DPort = network.SwapByte(socket.Dport)
+	tcp.Tuple.DPort = networkapi.SwapByte(socket.Dport)
 	tcp.Tuple.SPort = socket.Sport
 	tcp.Tuple.Proto = 2
 	tcp.SockCookie = socket.Sockaddr

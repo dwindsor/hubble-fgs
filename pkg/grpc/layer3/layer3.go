@@ -134,12 +134,12 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(api.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
+			Value: uint32(api.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -156,11 +156,11 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := api.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	fgsEvent := &tetragon.ProcessConnect{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:        api.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -179,7 +179,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := api.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
@@ -213,12 +213,12 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(api.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
+			Value: uint32(api.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -235,13 +235,13 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := api.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	socketStats := reader.GetSocketStats(&event.SocketStats)
 
 	fgsEvent := &tetragon.ProcessClose{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:        api.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -264,7 +264,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := api.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
@@ -289,7 +289,7 @@ func GetProcessListen(
 
 	if event.Tuple.SPort != 0 {
 		port = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(api.GetSport(event.Tuple.SPort)),
 		}
 	}
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -307,7 +307,7 @@ func GetProcessListen(
 	fgsEvent := &tetragon.ProcessListen{
 		Process:  fgsProcess,
 		Parent:   fgsParent,
-		Ip:       reader.GetIP(event.Tuple.SAddr, 0, event.Tuple.IPv6 != 0).String(),
+		Ip:       api.GetIP(event.Tuple.SAddr, 0, event.Tuple.IPv6 != 0).String(),
 		Port:     port,
 		Protocol: msgToProtocol(event),
 	}
@@ -339,12 +339,12 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(api.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
+			Value: uint32(api.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -361,11 +361,11 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := api.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	fgsEvent := &tetragon.ProcessAccept{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:        api.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -386,7 +386,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := api.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
@@ -617,8 +617,8 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	sourceIP := reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0)
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	sourceIP := api.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := api.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 
 	var version string
 	if event.Tuple.IPv6 == 0 {
@@ -668,7 +668,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+		destinationIP := api.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 

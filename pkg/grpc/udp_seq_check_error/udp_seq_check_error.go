@@ -16,7 +16,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -77,12 +76,12 @@ func createProcessUdpSeqCheckError(
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(networkapi.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
+			Value: uint32(networkapi.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -99,10 +98,10 @@ func createProcessUdpSeqCheckError(
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := networkapi.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 
 	socket := &tetragon.SockInfo{
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:        networkapi.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -116,7 +115,7 @@ func createProcessUdpSeqCheckError(
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 

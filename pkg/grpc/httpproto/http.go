@@ -20,7 +20,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -125,7 +124,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if proc != nil {
-		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}

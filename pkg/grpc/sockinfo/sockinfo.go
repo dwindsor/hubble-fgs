@@ -10,6 +10,7 @@ import (
 	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/oldhubble/cilium"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -22,20 +23,20 @@ func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockIn
 
 	if tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(network.GetSport(tuple.SPort)),
+			Value: uint32(networkapi.GetSport(tuple.SPort)),
 		}
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(network.SwapByte(tuple.DPort)),
+			Value: uint32(networkapi.SwapByte(tuple.DPort)),
 		}
 	}
 
-	destinationIP := network.GetIP(tuple.DAddr, op, false)
+	destinationIP := networkapi.GetIP(tuple.DAddr, op, false)
 
 	return &tetragon.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        network.GetIP(tuple.SAddr, op, false).String(),
+		SourceIp:        networkapi.GetIP(tuple.SAddr, op, false).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,
@@ -49,20 +50,20 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 
 	if tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(network.GetSport(tuple.SPort)),
+			Value: uint32(networkapi.GetSport(tuple.SPort)),
 		}
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(network.SwapByte(tuple.DPort)),
+			Value: uint32(networkapi.SwapByte(tuple.DPort)),
 		}
 	}
 
-	destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
+	destinationIP := networkapi.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
 
 	sockInfo := &tetragon.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        network.GetIP(tuple.SAddr, op, tuple.IPv6 != 0).String(),
+		SourceIp:        networkapi.GetIP(tuple.SAddr, op, tuple.IPv6 != 0).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,

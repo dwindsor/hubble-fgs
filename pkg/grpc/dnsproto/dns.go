@@ -17,7 +17,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -98,7 +97,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	// TODO: this field is deprecated in favor of the Socket field, so we can probably
 	// remove this at some point in the future.
 	if proc != nil {
-		destinationIP := network.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}

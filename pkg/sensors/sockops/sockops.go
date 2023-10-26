@@ -21,7 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
@@ -117,7 +117,7 @@ func SetFilter(mapDir string, mapName string, filters []uint32) error {
 		 * throughout BPF side. But we swap here to avoid doing the swap on data
 		 * read from sock/packet.
 		 */
-		filter = uint32(network.SwapByte(uint16(filter)))
+		filter = uint32(networkapi.SwapByte(uint16(filter)))
 		if err := selectorMap.Update(filter, zero, ebpf.UpdateAny); err != nil {
 			return err
 		}

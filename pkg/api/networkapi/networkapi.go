@@ -2,8 +2,11 @@ package networkapi
 
 import (
 	"encoding/binary"
+	"fmt"
+	"net"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
 // Socket Flags
@@ -46,6 +49,73 @@ func (m *MsgIPTuple) GetPostDPort() uint16 {
 	return binary.LittleEndian.Uint16(m.PostData[4:6])
 }
 
+func GetIPv4(i uint32, op uint8) net.IP {
+	if op == ops.MSG_OP_BIND {
+		return net.IPv4zero
+	}
+	ip := make(net.IP, 4)
+	binary.LittleEndian.PutUint32(ip, i)
+	return ip
+}
+
+func GetIP(i [2]uint64, op uint8, ipv6 bool) net.IP {
+	if !ipv6 {
+		return GetIPv4(uint32(i[0]), op)
+	}
+	if op == ops.MSG_OP_BIND {
+		return net.IPv6zero
+	}
+	a := make([]byte, 8)
+	b := make([]byte, 8)
+
+	binary.LittleEndian.PutUint64(a, i[0])
+	binary.LittleEndian.PutUint64(b, i[1])
+	ip := append(a, b...)
+	return ip
+}
+
+func GetDport(dport uint16, op uint8) uint16 {
+	if op == ops.MSG_OP_BIND || op == ops.MSG_OP_LISTEN {
+		return 0
+	}
+	return SwapByte(dport)
+}
+
+func GetSport(sport uint16) uint16 {
+	return sport
+}
+
+func SwapByte(b uint16) uint16 {
+	return (b << 8) | (b >> 8)
+}
+
+// TupleAddrString returns two strings to represent the tuple addresses.
+// The first is the source, and the second is the destination.
+func TupleAddrString(tuple *MsgIPTuple, op uint8) (string, string) {
+	var saddr, daddr net.IP
+	var sport, dport uint16
+
+	saddr = GetIP(tuple.SAddr, op, tuple.IPv6 == 1)
+	daddr = GetIP(tuple.DAddr, op, tuple.IPv6 == 1)
+
+	sport = tuple.SPort
+	dport = GetDport(tuple.DPort, op)
+
+	wrapAddr := func(ip net.IP) string {
+		if tuple.IPv6 == 1 {
+			return fmt.Sprintf("[%s]", ip)
+		}
+		return fmt.Sprint(ip)
+	}
+
+	return fmt.Sprintf("%s:%d", wrapAddr(saddr), sport), fmt.Sprintf("%s:%d", wrapAddr(daddr), dport)
+}
+
+func (m *MsgIPTuple) String() string {
+	source, dest := TupleAddrString(m, ops.MSG_OP_TCPSTATS)
+	return fmt.Sprintf("%s:%d -> %s:%d", source, m.SPort, dest, m.DPort)
+}
+
 type MsgIPEvent struct {
 	Common      processapi.MsgCommon    `align:"common"`
 	Tuple       MsgIPTuple              `align:"tuple"`
@@ -77,6 +147,12 @@ type MsgSocketStatsUnix struct {
 	SkbConsumeMisses uint32
 	Latency          Histogram
 	Rtt              Histogram
+}
+
+func (m *MsgSocketStatsUnix) String() string {
+	type _MsgSocketStatsUnix MsgSocketStatsUnix
+
+	return fmt.Sprintf("%+v", _MsgSocketStatsUnix(*m))
 }
 
 type MsgSocketStats struct {
