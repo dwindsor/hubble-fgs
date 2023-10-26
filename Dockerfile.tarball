@@ -1,4 +1,4 @@
-FROM isovalent/hubble-fgs:latest as tetragon-release
+FROM isovalent/tetragon:latest as tetragon-release
 
 FROM scratch as linux-tarball-1
 

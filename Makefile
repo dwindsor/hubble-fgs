@@ -3,6 +3,8 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
+TETRAGON_IMAGE_NAME ?= isovalent/tetragon
+OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
 LOCAL_CLANG ?= 0
 LOCAL_CLANG_FORMAT ?= 0
 FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.h' -not -path 'bpf/include/api.h' -not -path 'bpf/libbpf/*'
@@ -360,15 +362,17 @@ tarball-release: tarball
 tarball-clean:
 	rm -fr $(BUILD_PKG_DIR)
 
+.PHONY: image
 image:
-	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" --target release .
+	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --target release .
 	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push ${IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
+.PHONY: image-operator
 image-operator:
-	$(CONTAINER_ENGINE) build -f Dockerfile.operator -t "isovalent/hubble-enterprise-operator:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -f Dockerfile.operator -t "${OPERATOR_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 image-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
