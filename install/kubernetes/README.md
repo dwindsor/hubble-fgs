@@ -13,6 +13,17 @@ Helm chart for Tetragon Enterprise
 | daemonSetLabelsOverride | object | `{}` |  |
 | dnsPolicy | string | `"Default"` |  |
 | enabled | bool | `true` |  |
+| export.argsOverride | list | `[]` |  |
+| export.commandOverride | list | `[]` |  |
+| export.extraArgs | object | `{}` |  |
+| export.extraEnv | list | `[]` |  |
+| export.extraVolumeMounts | list | `[]` |  |
+| export.filenames[0] | string | `"fgs.log"` |  |
+| export.mode | string | `""` |  |
+| export.securityContext | object | `{}` |  |
+| export.stdout.image.override | string | `nil` |  |
+| export.stdout.image.repository | string | `"quay.io/isovalent/hubble-export-stdout"` |  |
+| export.stdout.image.tag | string | `"v1.0.3"` |  |
 | exportDirectory | string | `"/var/run/cilium/hubble"` |  |
 | exportFileCreationInterval | string | `"120s"` |  |
 | extraConfigmapMounts | list | `[]` |  |

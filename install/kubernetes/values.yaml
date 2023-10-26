@@ -226,3 +226,27 @@ tetragonOperator:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
     enabled: true
+
+export:
+  # Valid values: "stdout". Disabled by default, populate the value to enable.
+  mode: ""
+  extraArgs: {}
+  extraEnv: []
+  extraVolumeMounts: []
+  securityContext: {}
+
+  # Override the command. For advanced users only.
+  commandOverride: [ ]
+
+  # Override the arguments. For advanced users only.
+  argsOverride: [ ]
+
+  # filenames defines list of files for fluentd to tail and export.
+  filenames:
+  - fgs.log
+
+  stdout:
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-export-stdout
+      tag: v1.0.3

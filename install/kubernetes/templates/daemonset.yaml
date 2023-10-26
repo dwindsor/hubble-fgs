@@ -54,6 +54,9 @@ spec:
       {{- include "container.tetragon.init" . | nindent 6 -}}
 {{- end }}
       containers:
+{{- if eq .Values.export.mode "stdout" }}
+      {{- include "container.export.stdout" . | nindent 6 -}}
+{{- end }}
 {{- if .Values.tetragon.enabled }}
       {{- include "container.tetragon" . | nindent 6 -}}
 {{- end }}
