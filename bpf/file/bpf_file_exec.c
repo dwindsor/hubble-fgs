@@ -4,6 +4,21 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct file_exec_stats);
+	__uint(max_entries, 1);
+} file_exec_stats_map SEC(".maps");
+
+#define INC_STATS(x)                                                                        \
+	do {                                                                                \
+		__u32 key = 0;                                                              \
+		struct file_exec_stats *valp = map_lookup_elem(&file_exec_stats_map, &key); \
+		if (valp)                                                                   \
+			__sync_fetch_and_add(&valp->x, 1);                                  \
+	} while (0)
+
 static inline __attribute__((always_inline)) int policy_filter_allow()
 {
 	__u32 zero = 0;
@@ -59,6 +74,8 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	get_parent_ino_fs(msg, parent_dentry);
 
 	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	if (msg->digest.algo < 0)
+		INC_STATS(failed_digest);
 	msg->digest.ok = 1;
 
 	operation = eval_exec_selectors(&msg->digest);
@@ -66,6 +83,8 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		return 0;
 
 	retval = d_path(_(&bprm->file->f_path), msg->path.str, 256);
+	if (retval <= 0)
+		INC_STATS(failed_path);
 	msg->path.size = (retval <= 0) ? (0) : (retval - 1); // exclude '\0'
 	msg->path.flags = 0;
 
@@ -81,6 +100,10 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	// the lsm.s program and they communicate through the exec_retprobe_map map.
 	map_update_elem(&exec_retprobe_map, &key, msg, 0);
 
+	INC_STATS(events_generated);
+	if (operation & FILE_OP_BLOCK)
+		INC_STATS(events_blocked);
+
 	return (operation & FILE_OP_BLOCK) ? -EPERM : 0;
 }
 
@@ -92,12 +115,15 @@ int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
 		.pid_tgid = get_current_pid_tgid(),
 		.bprm_ptr = (__u64)bprm,
 	};
+	long retval;
 
 	msg = map_lookup_elem(&exec_retprobe_map, &key);
 	if (!msg)
 		return 0;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	retval = perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	if (retval >= 0)
+		INC_STATS(events_sent);
 
 	// after sending the message we can delete the map entry
 	map_delete_elem(&exec_retprobe_map, &key);

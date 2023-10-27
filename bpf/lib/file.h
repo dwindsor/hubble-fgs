@@ -195,4 +195,12 @@ struct file_exec_config_map_value {
 	__u32 default_action;
 };
 
+struct file_exec_stats {
+	__u64 events_generated;
+	__u64 events_blocked;
+	__u64 events_sent;
+	__u64 failed_path;
+	__u64 failed_digest;
+};
+
 #endif

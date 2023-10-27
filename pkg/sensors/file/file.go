@@ -1805,6 +1805,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 			"file_names_maps",
 			"file_digests_maps",
 			"file_actions_map",
+			"file_exec_stats_map",
 			policyfilter.MapName,
 		} {
 			maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
