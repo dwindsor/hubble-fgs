@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -27,6 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/bugtool"
@@ -82,6 +84,15 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+}
+
+func checkStructAlignments() error {
+	bpfObjPath := path.Join(option.Config.HubbleLib, "bpf_alignchecker_oss.o")
+	if err := ossAlignchecker.CheckStructAlignments(bpfObjPath); err != nil {
+		return err
+	}
+	bpfObjPath = path.Join(option.Config.HubbleLib, "bpf_alignchecker.o")
+	return alignchecker.CheckStructAlignments(bpfObjPath)
 }
 
 func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
@@ -365,6 +376,10 @@ func hubbleFGSExecute() error {
 
 	if viper.IsSet(keyNetnsDir) {
 		defaults.NetnsDir = viper.GetString(keyNetnsDir)
+	}
+
+	if err := checkStructAlignments(); err != nil {
+		return fmt.Errorf("struct alignment checks failed: %w", err)
 	}
 
 	// Setup file system mounts
