@@ -823,6 +823,10 @@ func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
 	}
 }
 
+func isFileExecEvent(action, hook uint32) bool {
+	return action == 0xFFFFFFFF && hook == 0xFFFFFFFF
+}
+
 func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -854,6 +858,13 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 				digest.Hash += fmt.Sprintf("%02x", m.Digest.Digest[i])
 			}
 			digest.Error = 0
+		} else {
+			// failed to get file digest
+			if isFileExecEvent(m.Action, m.Hook) {
+				filemetrics.FileFailedDigestInc("process_file_exec")
+			} else {
+				filemetrics.FileFailedDigestInc("process_file")
+			}
 		}
 	}
 

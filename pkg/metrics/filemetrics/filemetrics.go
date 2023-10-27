@@ -40,6 +40,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total number of process_file event errors (can be from the grpc or sensor).",
 	}, []string{"reason"})
+
+	fileFailedDigest = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name:      "file_digest_fail_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of failures in getting the file digest.",
+	}, []string{"event"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -47,6 +53,7 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalCacheEvents)
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
+	registry.MustRegister(fileFailedDigest)
 }
 
 func FileTotalEventsInc() {
@@ -67,4 +74,8 @@ func FileTotalActionEventsInc(node, namespace, workload, pod, policy, rule, acti
 
 func FileTotalErrorsInc(reason string) {
 	fileTotalErrors.WithLabelValues(reason).Inc()
+}
+
+func FileFailedDigestInc(event string) {
+	fileFailedDigest.WithLabelValues(event).Inc()
 }
