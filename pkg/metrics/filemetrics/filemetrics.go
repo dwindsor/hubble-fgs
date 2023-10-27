@@ -23,6 +23,12 @@ var (
 		Help:      "Total number of process_file events (independently of going through the eventcache).",
 	})
 
+	fileExecTotalEvents = prometheus.NewCounter(prometheus.CounterOpts{
+		Name:      "file_exec_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of process_file_exec events (independently of going through the eventcache).",
+	})
+
 	fileTotalCacheEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_cache_events_total",
 		Namespace: consts.MetricsNamespace,
@@ -50,6 +56,7 @@ var (
 
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalEvents)
+	registry.MustRegister(fileExecTotalEvents)
 	registry.MustRegister(fileTotalCacheEvents)
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
@@ -58,6 +65,10 @@ func InitMetrics(registry *prometheus.Registry) {
 
 func FileTotalEventsInc() {
 	fileTotalEvents.Inc()
+}
+
+func FileExecTotalEventsInc() {
+	fileExecTotalEvents.Inc()
 }
 
 func FileTotalCacheInEventsInc() {

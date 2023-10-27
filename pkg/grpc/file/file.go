@@ -415,6 +415,8 @@ func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 		}
 	}
 
+	filemetrics.FileExecTotalEventsInc()
+
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
