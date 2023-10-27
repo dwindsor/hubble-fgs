@@ -41,7 +41,9 @@ func Test_EnterpriseAlignments(t *testing.T) {
 		"lpm_key":             {fileapi.LPMMapKey{}},
 		"lpm_val":             {fileapi.LPMMapValue{}},
 		"digest_key":          {fileapi.DigestKey{}},
-		"fd_lookup_config":    {ip.FdLookupValue{}},
+		"file_exec_stats":     {fileapi.FileExecStats{}},
+
+		"fd_lookup_config": {ip.FdLookupValue{}},
 	}
 
 	err := alignchecker.CheckStructAlignments(bpfObjPath, entrpriseAligntments, true)

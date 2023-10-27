@@ -103,6 +103,7 @@ func TestStructAlignments(t *testing.T) {
 		"lpm_key":                    {fileapi.LPMMapKey{}},
 		"lpm_val":                    {fileapi.LPMMapValue{}},
 		"digest_key":                 {fileapi.DigestKey{}},
+		"file_exec_stats":            {fileapi.FileExecStats{}},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {
