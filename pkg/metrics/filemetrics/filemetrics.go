@@ -13,6 +13,7 @@ package filemetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,8 +51,20 @@ var (
 	fileFailedDigest = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_digest_fail_total",
 		Namespace: consts.MetricsNamespace,
-		Help:      "Total number of failures in getting the file digest.",
+		Help:      "Total number of failures in getting the digest for process_file events.",
 	}, []string{"event"})
+
+	fileExecEventsSent = metrics.NewBPFCounter(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "file_exec_ebpf_total"),
+		"Metrics generated directly from eBPF.",
+		[]string{"metric"}, nil,
+	))
+
+	fileExecCollectorErrors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name:      "file_exec_collector_errors_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of errors during the collector runs for process_file_exec events.",
+	})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -61,6 +74,11 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
+	registry.MustRegister(fileExecCollectorErrors)
+
+	registry.MustRegister(mapmetrics.NewBPFCollector(
+		NewBPFCollector(),
+	))
 }
 
 func FileTotalEventsInc() {
@@ -89,4 +107,8 @@ func FileTotalErrorsInc(reason string) {
 
 func FileFailedDigestInc(event string) {
 	fileFailedDigest.WithLabelValues(event).Inc()
+}
+
+func FileExecCollectorErrorsInc() {
+	fileExecCollectorErrors.Inc()
 }

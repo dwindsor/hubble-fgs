@@ -132,3 +132,11 @@ type FileExecConfigMapValue struct {
 	NumSelectors  uint32 `align:"num_selectors"`
 	DefaultAction uint32 `align:"default_action"`
 }
+
+type FileExecStats struct {
+	EventsGenerated uint64 `align:"events_generated"`
+	EventsBlocked   uint64 `align:"events_blocked"`
+	EventsSent      uint64 `align:"events_sent"`
+	FailedPath      uint64 `align:"failed_path"`
+	FailedDigest    uint64 `align:"failed_digest"`
+}
