@@ -280,6 +280,10 @@ type HttpSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
 	Selectors []HttpSelector `json:"selectors,omitempty"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	// Enable HTTP2 parser
+	Http2 bool `json:"http2"`
 }
 
 type InterfacePolicySpec struct {

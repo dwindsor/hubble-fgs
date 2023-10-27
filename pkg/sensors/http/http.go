@@ -65,6 +65,9 @@ var (
 	// and frames are potentially lost. This may potentially confuse the header decoder and some future
 	// frames may fail to decode.
 	frameQueueSize = 128
+
+	// Enable HTTP2 handling
+	enableHttp2 = true
 )
 
 var (
@@ -139,6 +142,12 @@ func (http *httpSensor) PolicyHandler(
 	httpParser := &spec.Parser.Http
 	if !httpParser.Enable {
 		return nil, nil
+	}
+
+	if httpParser.Http2 {
+		enableHttp2 = true
+	} else {
+		enableHttp2 = false
 	}
 
 	if fid != policyfilter.NoFilterID {
@@ -305,6 +314,9 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 
 	switch m.Request.Method {
 	case MethodPRI:
+		if !enableHttp2 {
+			return nil, nil
+		}
 		return http2ToHTTPEventUnix(m)
 	case MethodResponse:
 		unix.Request.RequestId = m.Request.RespId

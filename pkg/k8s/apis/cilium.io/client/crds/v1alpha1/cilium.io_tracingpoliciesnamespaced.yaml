@@ -944,6 +944,10 @@ spec:
                       enable:
                         description: Http enable parser
                         type: boolean
+                      http2:
+                        default: false
+                        description: Enable HTTP2 parser
+                        type: boolean
                       selectors:
                         description: Selectors to apply TLS parser against. Selectors
                           are ORed.
