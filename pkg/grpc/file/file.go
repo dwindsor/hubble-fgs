@@ -475,6 +475,8 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {
 	switch e := event.(type) {
 	case *tetragon.GetEventsResponse_ProcessFile:
 		handleFileTotalActionEvents(e.ProcessFile, tpName, tpRule)
+	case *tetragon.GetEventsResponse_ProcessFileExec:
+		// nothing to do here
 	default:
 		filemetrics.FileTotalErrorsInc("grpc_eventcache_retry")
 	}
@@ -494,7 +496,9 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 }
 
 func (msg *MsgFileEventUnix) Notify() bool {
-	filemetrics.FileTotalCacheOutEventsInc()
+	if !msg.isFileExecEvent() {
+		filemetrics.FileTotalCacheOutEventsInc()
+	}
 	return true
 }
 
