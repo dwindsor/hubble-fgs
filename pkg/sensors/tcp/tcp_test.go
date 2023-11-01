@@ -880,7 +880,7 @@ func tcpClient() {
 	burstRate := 10
 	baselineDuration := 1
 	burstDuration := 1
-	numBursts := 3
+	numBursts := 5
 
 	baselineWait := time.Duration(1000000 / baselineRate)
 	burstWait := time.Duration(1000000 / burstRate)
