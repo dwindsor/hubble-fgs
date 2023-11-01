@@ -7,6 +7,7 @@
 package bpf
 
 import (
+	"fmt"
 	"sync"
 	"unsafe"
 
@@ -25,6 +26,7 @@ var (
 	overrideHelper Feature
 	kprobeMulti    Feature
 	buildid        Feature
+	modifyReturn   Feature
 )
 
 func detectOverrideHelper() bool {
@@ -107,4 +109,43 @@ func HasBuildId() bool {
 		buildid.detected = detectBuildId()
 	})
 	return buildid.detected
+}
+
+func detectModifyReturn() bool {
+	prog, err := ebpf.NewProgram(&ebpf.ProgramSpec{
+		Name: "probe_fmod_ret",
+		Type: ebpf.Tracing,
+		Instructions: asm.Instructions{
+			asm.Mov.Imm(asm.R0, 0),
+			asm.Return(),
+		},
+		AttachType: ebpf.AttachModifyReturn,
+		License:    "MIT",
+		AttachTo:   "security_task_prctl",
+	})
+	if err != nil {
+		return false
+	}
+	defer prog.Close()
+
+	link, err := link.AttachTracing(link.TracingOptions{
+		Program: prog,
+	})
+	if err != nil {
+		return false
+	}
+	link.Close()
+	return true
+}
+
+func HasModifyReturn() bool {
+	modifyReturn.init.Do(func() {
+		modifyReturn.detected = detectModifyReturn()
+	})
+	return modifyReturn.detected
+}
+
+func LogFeatures() string {
+	return fmt.Sprintf("override_return: %t, buildid: %t, kprobe_multi: %t, fmodret: %t",
+		HasOverrideHelper(), HasBuildId(), HasKprobeMulti(), HasModifyReturn())
 }

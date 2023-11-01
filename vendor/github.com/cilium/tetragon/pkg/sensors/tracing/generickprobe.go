@@ -155,13 +155,15 @@ var (
 )
 
 func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
-	if entry, err := genericKprobeTable.GetEntry(id); err != nil {
+	entry, err := genericKprobeTable.GetEntry(id)
+	if err != nil {
 		return nil, fmt.Errorf("getting entry from genericKprobeTable failed with: %w", err)
-	} else if val, ok := entry.(*genericKprobe); !ok {
-		return nil, fmt.Errorf("getting entry from genericKprobeTable failed with: got invalid type: %T (%v)", entry, entry)
-	} else {
-		return val, nil
 	}
+	val, ok := entry.(*genericKprobe)
+	if !ok {
+		return nil, fmt.Errorf("getting entry from genericKprobeTable failed with: got invalid type: %T (%v)", entry, entry)
+	}
+	return val, nil
 }
 
 var (
@@ -493,11 +495,10 @@ func getKprobeSymbols(symbol string, syscall bool, lists []v1alpha1.ListSpec) ([
 }
 
 func createGenericKprobeSensor(
+	spec *v1alpha1.TracingPolicySpec,
 	name string,
-	kprobes []v1alpha1.KProbeSpec,
 	policyID policyfilter.PolicyID,
 	policyName string,
-	lists []v1alpha1.ListSpec,
 	customHandler eventhandler.Handler,
 ) (*sensors.Sensor, error) {
 	var progs []*program.Program
@@ -506,11 +507,22 @@ func createGenericKprobeSensor(
 	var useMulti bool
 	var selMaps *selectors.KernelSelectorMaps
 
+	kprobes := spec.KProbes
+	lists := spec.Lists
+
+	options, err := getKprobeOptions(spec.Options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set options: %s", err)
+	}
+
 	// use multi kprobe only if:
-	// - it's not disabled by user
+	// - it's not disabled by spec option
+	// - it's not disabled by command line option
 	// - there's support detected
-	useMulti = !option.Config.DisableKprobeMulti &&
-		bpf.HasKprobeMulti()
+	if !options.DisableKprobeMulti {
+		useMulti = !option.Config.DisableKprobeMulti &&
+			bpf.HasKprobeMulti()
+	}
 
 	in := addKprobeIn{
 		useMulti:      useMulti,
@@ -618,6 +630,19 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn, selMaps
 		config.ArgReturnAction = selectors.ActionTypeFromString(f.ReturnArgAction)
 		if config.ArgReturnAction == selectors.ActionTypeInvalid {
 			return nil, fmt.Errorf("ReturnArgAction type '%s' unsupported", f.ReturnArgAction)
+		}
+	}
+
+	isSecurityFunc := strings.HasPrefix(funcName, "security_")
+
+	if selectors.HasOverride(f) {
+		if isSecurityFunc && in.useMulti {
+			return nil, fmt.Errorf("Error: can't override '%s' function with kprobe_multi, use --disable-kprobe-multi option",
+				funcName)
+		}
+		if isSecurityFunc && !bpf.HasModifyReturn() {
+			return nil, fmt.Errorf("Error: can't override '%s' function without fmodret support",
+				funcName)
 		}
 	}
 
@@ -806,6 +831,9 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn, selMaps
 		"generic_kprobe").
 		SetLoaderData(kprobeEntry.tableId)
 	load.Override = kprobeEntry.hasOverride
+	if load.Override {
+		load.OverrideFmodRet = isSecurityFunc && bpf.HasModifyReturn()
+	}
 	out.progs = append(out.progs, load)
 
 	fdinstall := program.MapBuilderPin("fdinstall_map", sensors.PathJoin(in.sensorPath, "fdinstall_map"), load)
@@ -1001,6 +1029,7 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *p
 	}
 
 	load.Override = len(data.Overrides) > 0
+	load.OverrideFmodRet = false
 	load.SetAttachData(data)
 
 	if err := program.LoadMultiKprobeProgram(bpfDir, mapDir, load, verbose); err == nil {

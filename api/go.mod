@@ -1,6 +1,6 @@
 module github.com/isovalent/hubble-fgs/api
 
-go 1.21.1
+go 1.21.3
 
 replace (
 	github.com/cilium/tetragon => ../modules/tetragon-oss
