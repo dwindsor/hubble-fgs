@@ -46,6 +46,15 @@ If you create a `X.Y` branch:
 ```
 export RELEASE=v1.9.0
 ```
+- [ ] Open a pull request to update the Helm chart version:
+```
+git checkout -b pr/prepare-$RELEASE
+./modules/tetragon-oss/contrib/update-helm-chart.sh $RELEASE
+./install/kubernetes/test.sh
+git add install/kubernetes/
+git commit -s -m "Prepare for $RELEASE release"
+git push origin HEAD
+```
 - [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.9.0`:
 ```
 export BRANCH=v1.9
