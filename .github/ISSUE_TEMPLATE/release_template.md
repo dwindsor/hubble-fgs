@@ -43,43 +43,43 @@ If you create a `X.Y` branch:
 
 - [ ] Check that there are no [release blockers].
 - [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.9.0`:
-```
-export RELEASE=v1.9.0
-```
+  ```
+  export RELEASE=v1.9.0
+  ```
 - [ ] Open a pull request to update the Helm chart version:
-```
-git checkout -b pr/prepare-$RELEASE
-./modules/tetragon-oss/contrib/update-helm-chart.sh $RELEASE
-./install/kubernetes/test.sh
-git add install/kubernetes/
-git commit -s -m "Prepare for $RELEASE release"
-git push origin HEAD
-```
+  ```
+  git checkout -b pr/prepare-$RELEASE
+  ./modules/tetragon-oss/contrib/update-helm-chart.sh $RELEASE
+  ./install/kubernetes/test.sh
+  git add install/kubernetes/
+  git commit -s -m "Prepare for $RELEASE release"
+  git push origin HEAD
+  ```
 - [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.9.0`:
-```
-export BRANCH=v1.9
-```
+  ```
+  export BRANCH=v1.9
+  ```
 - [ ] Check that there are no open PRs (that need to be urgently merged) targeting `$BRANCH`
-```
-xdg-open "https://github.com/isovalent/hubble-fgs/pulls?q=is%3Apr+is%3Aopen+base%3A$BRANCH"
-```
+  ```
+  xdg-open "https://github.com/isovalent/hubble-fgs/pulls?q=is%3Apr+is%3Aopen+base%3A$BRANCH"
+  ```
 - [ ] Create the release tags (a "main" tag, and an "api" tag):
-```
-git checkout $BRANCH && git pull origin $BRANCH
-git tag -a "$RELEASE" -m "$RELEASE release" -s
-git tag -a "api/$RELEASE" -m "api/$RELEASE release" -s
-git push origin "$RELEASE"
-git push origin "api/$RELEASE"
-```
+  ```
+  git checkout $BRANCH && git pull origin $BRANCH
+  git tag -a "$RELEASE" -m "$RELEASE release" -s
+  git tag -a "api/$RELEASE" -m "api/$RELEASE release" -s
+  git push origin "$RELEASE"
+  git push origin "api/$RELEASE"
+  ```
 - [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
 - [ ] Create standalone tarball release:
-```
-make tarball
-```
+  ```
+  make tarball
+  ```
 - [ ] Upload standalone tarball to the S3 bucket (for this step, you need to configure the `aws` CLI, for more information see [here](https://docs.aws.amazon.com/cli/latest/reference/configure/#examples))
-```
-aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isovalent-tetragon-enterprise-public/hubble-enterprise-standalone-tarball/
-```
+  ```
+  aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isovalent-tetragon-enterprise-public/hubble-enterprise-standalone-tarball/
+  ```
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"
@@ -89,29 +89,29 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 - [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in Alpo-2
   - [ ] Edit the file flux/clusters/alp-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
-  ```diff
-  diff --git a/flux/clusters/alp-2/hubble-enterprise/hr.yaml b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-  index 4bca3d5..5c178eb 100644
-  --- a/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-  +++ b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-  @@ -21,14 +21,14 @@ spec:
-         btf: /sys/kernel/btf/vmlinux
-         image:
-           repository: quay.io/isovalent/hubble-enterprise
-  -        tag: v1.8.5
-  +        tag: v1.9.0
-         processCacheSize: 64000
-         exportDenyList: |-
-           {"event_set":["INTERFACE_STATS"]}
-       hubbleEnterpriseOperator:
-         image:
-           repository: quay.io/isovalent/hubble-enterprise-operator
-  -        tag: v1.8.5
-  +        tag: v1.9.0
-       export:
-         mode: fluentd
-         fluentd:
-  ```
+    ```diff
+    diff --git a/flux/clusters/alp-2/hubble-enterprise/hr.yaml b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
+    index 4bca3d5..5c178eb 100644
+    --- a/flux/clusters/alp-2/hubble-enterprise/hr.yaml
+    +++ b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
+    @@ -21,14 +21,14 @@ spec:
+           btf: /sys/kernel/btf/vmlinux
+           image:
+             repository: quay.io/isovalent/hubble-enterprise
+    -        tag: v1.8.5
+    +        tag: v1.9.0
+           processCacheSize: 64000
+           exportDenyList: |-
+             {"event_set":["INTERFACE_STATS"]}
+         hubbleEnterpriseOperator:
+           image:
+             repository: quay.io/isovalent/hubble-enterprise-operator
+    -        tag: v1.8.5
+    +        tag: v1.9.0
+         export:
+           mode: fluentd
+           fluentd:
+    ```
   - [ ] NOTE: Depending on the current status of the Alpo-2 configuration, the above fields may not be present (for example when we are currently using default values from the Helm chart). You can just add them if needed.
   - [ ] Make sure everything looks good in the Alpo-2 cluster. You can refer to the README in dogfooding for how to configure your kubectl to work with Alpo-2
 
@@ -119,42 +119,42 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 ### Documentation
 
-- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise
-  - [ ] Check out a new release branch:
+- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise.
+  Check out a new release branch:
   ```
   git checkout master && git pull origin master
   git checkout -b pr/document-fgs-$RELEASE
   ```
 - [ ] Add release notes to the docs
   - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:
-  ```
-  diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  index 98284b7..92a1d34 100644
-  --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-  @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
-   .. toctree::
-     :maxdepth: 1
+    ```diff
+    diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+    index 98284b7..92a1d34 100644
+    --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+    +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+    @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
+     .. toctree::
+       :maxdepth: 1
 
-  +  v1.9.3
-     v1.9.2
-     v1.9.1
-     v1.9.0
-   ```
+    +  v1.9.3
+       v1.9.2
+       v1.9.1
+       v1.9.0
+    ```
    - [ ] Create a new file `docs/operations-guide/releases/release-notes/hubble-enterprise/$RELEASE.md`. Use the release notes you generated for the `hubble-enterprise` chart as a basis for what goes into the file. You can use the following as a template:
-   ```markdown
-    # vX.Y.Z
+     ```markdown
+     # vX.Y.Z
 
-    ## Features
-    * Features here
+     ## Features
+     * Features here
 
-    ## Enhancements
-    * Update to hubble-fgs vX.Y.Z
-    * Other enhancements here
+     ## Enhancements
+     * Update to hubble-fgs vX.Y.Z
+     * Other enhancements here
 
-    ## Breaking changes
-    * Breaking changes here
-   ```
+     ## Breaking changes
+     * Breaking changes here
+     ```
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
@@ -164,42 +164,42 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 - [ ] Navigate to the [hubble-enterprise chart] repo and file a PR to update the Helm chart version
   - [ ] Check out a new release branch:
-  ```
-  git checkout master && git pull origin master
-  git checkout -b pr/prepare-fgs-$RELEASE
-  ```
+    ```
+    git checkout master && git pull origin master
+    git checkout -b pr/prepare-fgs-$RELEASE
+    ```
   - [ ] Update `values.yaml` and change the `hubble-enterprise` and `hubble-enterprise-operator` image `tag` values to the new "main" release tag. Example diff:
-  ```diff
-  diff --git a/values.yaml b/values.yaml
-  index 85166d0..f86ba0e 100644
-  --- a/values.yaml
-  +++ b/values.yaml
-  @@ -61,7 +61,7 @@ enterprise:
-     image:
-       override: ~
-       repository: quay.io/isovalent/hubble-enterprise
-  -    tag: v1.8.5
-  +    tag: v1.9.0
-     metadataImage:
-       override: ~
-       repository: quay.io/isovalent/hubble-enterprise-metadata
-  @@ -182,7 +182,7 @@ hubbleEnterpriseOperator:
-     image:
-       override: ~
-       repository: quay.io/isovalent/hubble-enterprise-operator
-  -    tag: v1.8.5
-  +    tag: v1.9.0
-       # hubble-enterprise-operator image-digest
-       suffix: ""
-  ```
+    ```diff
+    diff --git a/values.yaml b/values.yaml
+    index 85166d0..f86ba0e 100644
+    --- a/values.yaml
+    +++ b/values.yaml
+    @@ -61,7 +61,7 @@ enterprise:
+       image:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise
+    -    tag: v1.8.5
+    +    tag: v1.9.0
+       metadataImage:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise-metadata
+    @@ -182,7 +182,7 @@ hubbleEnterpriseOperator:
+       image:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise-operator
+    -    tag: v1.8.5
+    +    tag: v1.9.0
+         # hubble-enterprise-operator image-digest
+         suffix: ""
+    ```
   - [ ] Run `test.sh` to generate new documentation and verify that there are no issues in the Helm templating. Ensure that the script executes without any failures:
-  ```
-  ./test.sh
-  ```
+    ```
+    ./test.sh
+    ```
   - [ ] Add and commit the results and file a pull request on [GitHub][hubble-enterprise chart] (HINT: you can just click the link in the output of the `git push` command):
-  ```
-  git commit -a -m "Prepare for $RELEASE Tetragon Enterprise release" -s && git push origin HEAD
-  ```
+    ```
+    git commit -a -m "Prepare for $RELEASE Tetragon Enterprise release" -s && git push origin HEAD
+    ```
   - [ ] After your PR is merged, tag a [new release][hubble-enterprise chart release] of `hubble-enterprise-chart`.
     - [ ] Click "generate release notes" and create a new tag with the appropriate version bump
     - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version, so don't worry if they don't match
@@ -209,34 +209,34 @@ aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isoval
 
 - [ ] Navigate to the [umbrella chart] and file a PR to update the hubble-enterprise version
   - [ ] Check out a new release branch:
-  ```
-  git checkout master && git pull origin master
-  git checkout -b pr/pick-up-latest-hubble-enterprise
-  ```
+    ```
+    git checkout master && git pull origin master
+    git checkout -b pr/pick-up-latest-hubble-enterprise
+    ```
   - [ ] Edit `cilium-enterprise/Chart.yaml` to bump the hubble-enterprise version. IMPORTANT NOTE: this should be the version of the `hubble-enterprise-chart` that you released in the previous step, **NOT** the version of Tetragon Enterprise. Example diff:
-  ```diff
-  diff --git a/cilium-enterprise/Chart.yaml b/cilium-enterprise/Chart.yaml
-  index ffcacbe..ee663d9 100644
-  --- a/cilium-enterprise/Chart.yaml
-  +++ b/cilium-enterprise/Chart.yaml
-  @@ -26,7 +26,7 @@ dependencies:
-     repository: "https://helm.isovalent.com"
-     condition: cilium.enabled
-   - name: hubble-enterprise
-  -  version: "1.9.2"
-  +  version: "1.9.3"
-     repository: "https://helm.isovalent.com"
-     condition: hubble-enterprise.enabled
-   - name: hubble-ui
-   ```
+    ```diff
+    diff --git a/cilium-enterprise/Chart.yaml b/cilium-enterprise/Chart.yaml
+    index ffcacbe..ee663d9 100644
+    --- a/cilium-enterprise/Chart.yaml
+    +++ b/cilium-enterprise/Chart.yaml
+    @@ -26,7 +26,7 @@ dependencies:
+       repository: "https://helm.isovalent.com"
+       condition: cilium.enabled
+     - name: hubble-enterprise
+    -  version: "1.9.2"
+    +  version: "1.9.3"
+       repository: "https://helm.isovalent.com"
+       condition: hubble-enterprise.enabled
+     - name: hubble-ui
+    ```
   - [ ] Run `test.sh` to generate new documentation and verify that there are no issues in the Helm templating. Ensure that the script executes without any failures:
-  ```
-  ./test.sh
-  ```
+    ```
+    ./test.sh
+    ```
   - [ ] Add and commit the results and file a pull request on [GitHub][umbrella chart] (HINT: you can just click the link in the output of the `git push` command):
-  ```
-  git commit -a -m "Pick up latest hubble-enterprise" -s && git push origin HEAD
-  ```
+    ```
+    git commit -a -m "Pick up latest hubble-enterprise" -s && git push origin HEAD
+    ```
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
