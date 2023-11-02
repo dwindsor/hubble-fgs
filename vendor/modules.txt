@@ -74,8 +74,8 @@ github.com/bombsimon/logrusr/v4
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cilium/cilium v1.15.0-pre.1
-## explicit; go 1.21.1
+# github.com/cilium/cilium v1.15.0-pre.2
+## explicit; go 1.21.0
 github.com/cilium/cilium/api/v1/client
 github.com/cilium/cilium/api/v1/client/bgp
 github.com/cilium/cilium/api/v1/client/daemon
@@ -134,7 +134,9 @@ github.com/cilium/cilium/pkg/health/client
 github.com/cilium/cilium/pkg/health/defaults
 github.com/cilium/cilium/pkg/hive
 github.com/cilium/cilium/pkg/hive/cell
+github.com/cilium/cilium/pkg/hive/cell/lifecycle
 github.com/cilium/cilium/pkg/hive/internal
+github.com/cilium/cilium/pkg/hive/metrics
 github.com/cilium/cilium/pkg/hubble/api/v1
 github.com/cilium/cilium/pkg/hubble/parser/getters
 github.com/cilium/cilium/pkg/iana
@@ -196,11 +198,11 @@ github.com/cilium/cilium/pkg/k8s/slim/k8s/client/clientset/versioned/typed/netwo
 github.com/cilium/cilium/pkg/k8s/types
 github.com/cilium/cilium/pkg/k8s/utils
 github.com/cilium/cilium/pkg/k8s/version
+github.com/cilium/cilium/pkg/k8s/watchers/resources
 github.com/cilium/cilium/pkg/kvstore
 github.com/cilium/cilium/pkg/kvstore/allocator
 github.com/cilium/cilium/pkg/kvstore/store
 github.com/cilium/cilium/pkg/labels
-github.com/cilium/cilium/pkg/labels/cidr
 github.com/cilium/cilium/pkg/loadbalancer
 github.com/cilium/cilium/pkg/lock
 github.com/cilium/cilium/pkg/logging
@@ -233,6 +235,7 @@ github.com/cilium/cilium/pkg/slices
 github.com/cilium/cilium/pkg/source
 github.com/cilium/cilium/pkg/spanstat
 github.com/cilium/cilium/pkg/stream
+github.com/cilium/cilium/pkg/time
 github.com/cilium/cilium/pkg/trigger
 github.com/cilium/cilium/pkg/types
 github.com/cilium/cilium/pkg/u8proto
@@ -261,7 +264,7 @@ github.com/cilium/ebpf/rlimit
 # github.com/cilium/lumberjack/v2 v2.3.0
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/proxy v0.0.0-20230914115435-e8543968fd3d
+# github.com/cilium/proxy v0.0.0-20231018073547-ab187719b71b
 ## explicit; go 1.20
 github.com/cilium/proxy/go/cilium/api
 github.com/cilium/proxy/go/envoy/annotations
@@ -626,7 +629,7 @@ github.com/emicklei/go-restful/v3/log
 # github.com/envoyproxy/protoc-gen-validate v1.0.2
 ## explicit; go 1.19
 github.com/envoyproxy/protoc-gen-validate/validate
-# github.com/evanphx/json-patch v5.6.0+incompatible
+# github.com/evanphx/json-patch v5.7.0+incompatible
 ## explicit
 github.com/evanphx/json-patch
 # github.com/evanphx/json-patch/v5 v5.6.0
@@ -635,8 +638,8 @@ github.com/evanphx/json-patch/v5
 # github.com/fatih/color v1.15.0
 ## explicit; go 1.17
 github.com/fatih/color
-# github.com/fsnotify/fsnotify v1.6.0
-## explicit; go 1.16
+# github.com/fsnotify/fsnotify v1.7.0
+## explicit; go 1.17
 github.com/fsnotify/fsnotify
 # github.com/go-logr/logr v1.2.4
 ## explicit; go 1.16
@@ -1007,7 +1010,7 @@ github.com/prometheus/client_model/go
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.11.1
+# github.com/prometheus/procfs v0.12.0
 ## explicit; go 1.19
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
@@ -1084,7 +1087,7 @@ github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.6.0
 ## explicit; go 1.13
 github.com/tklauser/numcpus
-# github.com/vishvananda/netlink v1.2.1-beta.2.0.20230807190133-6afddb37c1f0 => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
+# github.com/vishvananda/netlink v1.2.1-beta.2.0.20231024175852-77df5d35f725 => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
 ## explicit; go 1.12
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
@@ -1155,8 +1158,8 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# go.opentelemetry.io/otel v1.17.0
-## explicit; go 1.19
+# go.opentelemetry.io/otel v1.19.0
+## explicit; go 1.20
 go.opentelemetry.io/otel
 go.opentelemetry.io/otel/attribute
 go.opentelemetry.io/otel/baggage
@@ -1171,15 +1174,15 @@ go.opentelemetry.io/otel/semconv/internal/v2
 go.opentelemetry.io/otel/semconv/v1.12.0
 go.opentelemetry.io/otel/semconv/v1.17.0
 go.opentelemetry.io/otel/semconv/v1.17.0/httpconv
-# go.opentelemetry.io/otel/metric v1.17.0
-## explicit; go 1.19
+# go.opentelemetry.io/otel/metric v1.19.0
+## explicit; go 1.20
 go.opentelemetry.io/otel/metric
 go.opentelemetry.io/otel/metric/embedded
-# go.opentelemetry.io/otel/trace v1.17.0
-## explicit; go 1.19
+# go.opentelemetry.io/otel/trace v1.19.0
+## explicit; go 1.20
 go.opentelemetry.io/otel/trace
-# go.uber.org/dig v1.17.0
-## explicit; go 1.18
+# go.uber.org/dig v1.17.1
+## explicit; go 1.20
 go.uber.org/dig
 go.uber.org/dig/internal/digerror
 go.uber.org/dig/internal/digreflect
@@ -1188,7 +1191,7 @@ go.uber.org/dig/internal/graph
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# go.uber.org/zap v1.25.0
+# go.uber.org/zap v1.26.0
 ## explicit; go 1.19
 go.uber.org/zap
 go.uber.org/zap/buffer
@@ -1197,8 +1200,12 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
+go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
+# go4.org/netipx v0.0.0-20230824141953-6213f710f925
+## explicit; go 1.18
+go4.org/netipx
 # golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
 golang.org/x/crypto/chacha20
@@ -1208,7 +1215,7 @@ golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-# golang.org/x/exp v0.0.0-20230905200255-921286631fa9
+# golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
@@ -1216,8 +1223,8 @@ golang.org/x/exp/slices
 golang.org/x/exp/slog
 golang.org/x/exp/slog/internal
 golang.org/x/exp/slog/internal/buffer
-# golang.org/x/mod v0.12.0
-## explicit; go 1.17
+# golang.org/x/mod v0.13.0
+## explicit; go 1.18
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
@@ -1293,7 +1300,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.3.0
 ## explicit
 golang.org/x/time/rate
-# golang.org/x/tools v0.13.0
+# golang.org/x/tools v0.14.0
 ## explicit; go 1.18
 golang.org/x/tools/cmd/stringer
 golang.org/x/tools/go/ast/astutil
@@ -1576,6 +1583,7 @@ k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/cache
 k8s.io/apimachinery/pkg/util/diff
 k8s.io/apimachinery/pkg/util/dump
+k8s.io/apimachinery/pkg/util/duration
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/framer
 k8s.io/apimachinery/pkg/util/httpstream
