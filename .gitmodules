@@ -1,4 +1,4 @@
 [submodule "modules/tetragon-oss"]
 	path = modules/tetragon-oss
 	url = https://github.com/cilium/tetragon
-	branch = main
+	branch = v1.0
