@@ -4,6 +4,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "../lib/tlsmsg.h"
+#include "l3/icmp_cookie.h"
 
 struct socketmap_value {
 	struct msg_execve_key key;
@@ -115,14 +116,18 @@ static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
 }
 
 static inline __attribute__((always_inline)) void
-add_socketmap(u64 *cookie, struct socketmap_value *v)
+add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 {
 	int err = map_update_elem(&tg_socket_map, cookie, v, 0);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
-		*cntr = *cntr + 1;
+	if (!err) {
+		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
+			*cntr = *cntr + 1;
+		if (update_tuple_map)
+			add_socket_tuple_map(cookie);
+	}
 }
 
 static inline __attribute__((always_inline)) void
@@ -132,8 +137,11 @@ del_socketmap(u64 *cookie)
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
-		*cntr = *cntr - 1;
+	if (!err) {
+		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
+			*cntr = *cntr - 1;
+		del_socket_tuple_map(cookie);
+	}
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *
@@ -182,7 +190,7 @@ update_socketmap(u64 *cookie, u32 pid)
 			}
 			process->rtt_sum = 0;
 			process->latency_sum = 0;
-			add_socketmap(cookie, process);
+			add_socketmap(cookie, process, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;

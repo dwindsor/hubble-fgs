@@ -28,6 +28,7 @@ struct {
 __attribute__((section("kprobe/tcp_connect"), used)) int
 tg_event_tcp_connect(struct pt_regs *ctx)
 {
+	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
 	struct msg_ip_event *val;
 	__u32 ppid = 0, zero = 0;
@@ -36,7 +37,6 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	u16 family;
 	uint64_t size;
 	u64 cookie;
-	struct tcp_event_disable_config *event_cfg;
 
 	process = event_find_curr(&ppid, &walker);
 	if (!process)
@@ -116,6 +116,6 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
 
-	add_socketmap(&cookie, &v);
+	add_socketmap(&cookie, &v, true);
 	return 1;
 }

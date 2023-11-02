@@ -133,10 +133,18 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap       = program.MapBuilder(SocketMapName, IcmpSend)
-	SocketCookieStats     = program.MapBuilder("tg_socket_map_stats", IcmpSend)
-	SocketCookieMapLazy   = program.MapBuilder(SocketMapName, IcmpSendLazy)
-	SocketCookieStatsLazy = program.MapBuilder("tg_socket_map_stats", IcmpSendLazy)
+	SocketCookieMap        = program.MapBuilder(SocketMapName, IcmpSend)
+	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", IcmpSend)
+	SocketCookieMapLazy    = program.MapBuilder(SocketMapName, IcmpSendLazy)
+	SocketCookieStatsLazy  = program.MapBuilder("tg_socket_map_stats", IcmpSendLazy)
+	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", IcmpSend)
+	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSend)
+	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSend)
+	CfgMap                 = program.MapBuilder("tg_cfg_map", IcmpSend)
+	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", IcmpSendLazy)
+	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSendLazy)
+	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSendLazy)
+	CfgMapLazy             = program.MapBuilder("tg_cfg_map", IcmpSendLazy)
 )
 
 type icmpSensor struct {
@@ -187,8 +195,12 @@ func EnableIcmpParser() *sensors.Sensor {
 			IcmpRcv,
 		}
 		maps = []*program.Map{
-			SocketCookieMap,
-			SocketCookieStats,
+			SocketCookieMapLazy,
+			SocketCookieStatsLazy,
+			SocketTupleMapLazy,
+			SocketTupleStatsLazy,
+			SocketTupleHintMapLazy,
+			CfgMapLazy,
 		}
 		versionStr = "__icmp_sensor_probe__"
 	} else {
@@ -205,6 +217,10 @@ func EnableIcmpParser() *sensors.Sensor {
 		maps = []*program.Map{
 			SocketCookieMap,
 			SocketCookieStats,
+			SocketTupleMap,
+			SocketTupleStats,
+			SocketTupleHintMap,
+			CfgMap,
 		}
 		versionStr = "__icmp_sensor_probe__"
 	}

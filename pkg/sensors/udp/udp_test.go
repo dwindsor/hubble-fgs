@@ -1226,6 +1226,11 @@ func TestLoadUdpSensor(t *testing.T) {
 			tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 4, 6, 7}},
 			tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 4, 6, 7}},
 
+			// udp_destroy_sock, inet_lazy_send_kp,
+			tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{1}},
+			tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{1}},
+			//			tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{1, 2, 4, 6, 7}},
+
 			// udp_init_sock, udp_destroy_sock, inet_lazy_send_kp, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
@@ -1267,6 +1272,11 @@ func TestLoadUdpSensor(t *testing.T) {
 			tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
 			tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 5, 7, 8}},
 
+			// udp_destroy_sock, inet_lazy_send, inet_lazy_recv
+			tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{1, 2, 3, 5, 7, 8}},
+
 			// udp_init_sock, udp_destroy_sock, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
@@ -1307,6 +1317,11 @@ func TestLoadUdpSensor(t *testing.T) {
 			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
 			tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 5, 7, 8}},
+
+			// udp_destroy_sock, inet_send, inet_recv
+			tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{1, 2, 3, 5, 7, 8}},
 
 			// udp_init_sock, udp_destroy_sock, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe

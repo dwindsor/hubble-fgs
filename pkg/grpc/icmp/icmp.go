@@ -34,8 +34,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const ()
-
 var (
 	nodeName = node.GetNodeNameForExport()
 )

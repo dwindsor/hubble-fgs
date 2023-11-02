@@ -26,14 +26,14 @@ struct {
 __attribute__((section("kprobe/__inet_hash"), used)) int
 tg_event_sys_listen(struct pt_regs *ctx)
 {
-	struct msg_ip_event *val;
+	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
 	__u32 pid, ppid = 0, zero = 0;
+	struct msg_ip_event *val;
 	struct sock *skp;
 	bool walker = 0;
 	u16 family;
 	u64 cookie;
-	struct tcp_event_disable_config *event_cfg;
 
 	pid = (get_current_pid_tgid() >> 32);
 	process = event_find_curr(&ppid, &walker);
@@ -108,6 +108,6 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
 
-	add_socketmap(&cookie, &v);
+	add_socketmap(&cookie, &v, true);
 	return 0;
 }

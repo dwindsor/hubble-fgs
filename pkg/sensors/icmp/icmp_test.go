@@ -31,12 +31,14 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
@@ -58,6 +60,20 @@ metadata:
   name: "icmp"
 spec:
   parser:
+    icmp:
+      enable: true
+`
+
+const icmpAndUdpBasicConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "icmp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
     icmp:
       enable: true
 `
@@ -107,6 +123,15 @@ func TestLoadIcmpSensor(t *testing.T) {
 		// all but egress and ingress
 		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2}},
 
+		// free and rcv
+		tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{2, 5}},
+
+		// just free
+		tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{2}},
+
+		// free, send, recv, and rcv
+		tus.SensorMap{Name: "tg_cfg_map", Progs: []uint{2, 3, 4, 5}},
+
 		// all but close
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 3, 4, 5}},
 
@@ -144,6 +169,10 @@ func getIcmpObserver(t *testing.T, ctx context.Context, config string, filtered 
 
 func getBasicIcmpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
 	return getIcmpObserver(t, ctx, icmpBasicConfig, filtered)
+}
+
+func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
+	return getIcmpObserver(t, ctx, icmpAndUdpBasicConfig, filtered)
 }
 
 func TestPingOutbound(t *testing.T) {
@@ -286,5 +315,80 @@ func TestPingInAndOutbound(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestInboundDestUnreach(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	oldEnableIcmpTrackingValue := enterpriseOption.Config.EnableIcmpTracking
+	enterpriseOption.Config.EnableIcmpTracking = true
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableIcmpTracking = oldEnableIcmpTrackingValue
+	})
+
+	cmd := "nc"
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(cmd)).
+		WithArguments(sm.Full("-u 127.0.0.1 10043"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("ncConnect").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithDestinationPort(10043),
+		ec.NewProcessIcmpChecker("destUnreach").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Destination Unreachable")).
+			WithIcmpCode(sm.Full("port unreachable")).
+			WithIcmpIpProtocol(tetragon.SocketProtocol_UDP).
+			WithIcmpIpPort(10043).
+			WithDirection(sm.Full("ingress")),
+		ec.NewProcessExitChecker("ncExit").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+	)
+
+	obs := getIcmpAndUdpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdClient := exec.Command(cmd, "-u", "127.0.0.1", "10043")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	time.Sleep(100 * time.Millisecond)
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }

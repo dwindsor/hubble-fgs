@@ -25,23 +25,23 @@ struct accept_args {
 static inline __attribute__((always_inline)) int
 __event_tcp_acceptret(struct accept_args *ctx)
 {
-	struct msg_ip_event *val;
-	struct execve_map_value *process;
-	struct socketmap_value *acc_process;
-	size_t size;
-	u32 zero = 0;
-	u64 cookie;
-	int fd;
-	u64 pid = get_current_pid_tgid() >> 32;
 	struct task_struct *current = (struct task_struct *)get_current_task();
-	struct sock *skp;
-	bool read_ok = false;
-	u16 family = 0;
-	bool walker;
-	u32 ppid;
-	struct fd_lookup_config *config;
-	int skp_err = 0;
 	struct tcp_event_disable_config *event_cfg;
+	u64 pid = get_current_pid_tgid() >> 32;
+	struct socketmap_value *acc_process;
+	struct execve_map_value *process;
+	struct fd_lookup_config *config;
+	struct msg_ip_event *val;
+	bool read_ok = false;
+	struct sock *skp;
+	int skp_err = 0;
+	u16 family = 0;
+	u32 zero = 0;
+	size_t size;
+	bool walker;
+	u64 cookie;
+	u32 ppid;
+	int fd;
 
 	fd = ctx->ret;
 	if (fd < 0)
@@ -140,6 +140,6 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->tuple.sport = val->tuple.sport;
 	acc_process->tuple.proto = IPPROTO_TCP;
 
-	add_socketmap(&cookie, acc_process);
+	add_socketmap(&cookie, acc_process, true);
 	return 1;
 }

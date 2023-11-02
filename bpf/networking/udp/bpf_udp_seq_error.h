@@ -5,7 +5,7 @@
 #include "../lib/bpf_helpers.h"
 #include "../lib/networkmsg.h"
 #include "../lib/iso_msg_types.h"
-#include "cookie.h"
+#include "../cookie.h"
 #include "bpf_tracing.h"
 
 struct {

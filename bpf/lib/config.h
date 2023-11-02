@@ -6,7 +6,8 @@
 
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
-	__u8 pad[7];
+	__u8 icmp_net_match;
+	__u8 pad[6];
 };
 
 struct {

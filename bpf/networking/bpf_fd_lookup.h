@@ -197,7 +197,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_socketmap_stats(sk, &sockmap_process);
 
 	/* Store the socket even if family or protocol couldn't be read. */
-	add_socketmap(&cookie, &sockmap_process);
+	add_socketmap(&cookie, &sockmap_process, true);
 
 	return 0;
 }

@@ -54,6 +54,8 @@ tg_udp_init_sock(struct pt_regs *ctx)
 	}
 	process.create_time = ktime_get_ns();
 	process.last_time = process.create_time;
-	add_socketmap(&cookie, &process);
+	// Don't update the tuple map here because the socket hasn't yet
+	// been populated.
+	add_socketmap(&cookie, &process, false);
 	return 0;
 }

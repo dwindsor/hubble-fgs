@@ -6,6 +6,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/sirupsen/logrus"
@@ -19,7 +20,8 @@ func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type ConfigValue struct {
 	EnableIcmpTracking uint8
-	Pad                [7]uint8
+	IcmpNetMatch       uint8
+	Pad                [6]uint8
 }
 
 func (v *ConfigValue) String() string {
@@ -42,8 +44,14 @@ func configureSettings(enableIcmpTracking bool) error {
 		icmpTracking = 1
 	}
 
+	icmpNetMatch := uint8(1)
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		icmpNetMatch = 0
+	}
+
 	value := &ConfigValue{
 		EnableIcmpTracking: icmpTracking,
+		IcmpNetMatch:       icmpNetMatch,
 	}
 	m.Put(key, value)
 	logger.GetLogger().WithFields(logrus.Fields{"enableIcmpTracking": icmpTracking}).Info("Config:")

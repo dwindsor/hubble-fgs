@@ -73,6 +73,7 @@ store_socket(void *ctx, u64 cookie)
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
-	add_socketmap(&cookie, &process);
+	// Don't update the tuple map because this is a ping/raw socket.
+	add_socketmap(&cookie, &process, false);
 	return 0;
 }

@@ -7,10 +7,10 @@
 #include "bpf_task.h"
 #include "bpf_udp_event.h"
 #include "bpf_udp_config.h"
-#include "bpf_latency.h"
-#include "bpf_process_network_watermarks.h"
-#include "cookie.h"
-#include "bpf_network_helpers.h"
+#include "../bpf_latency.h"
+#include "../bpf_process_network_watermarks.h"
+#include "../cookie.h"
+#include "../bpf_network_helpers.h"
 #include "bpf_udp_seq_error.h"
 #include "address_family.h"
 #include "bpf_tracing.h"
@@ -133,6 +133,13 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 		emit_udp_connect_event(skb, cookie, value);
+#ifndef IS_KPROBE
+#ifdef TRACK_ICMP_FROM_SKB
+		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
+#else
+		add_socket_tuple_map(cookie);
+#endif
+#endif
 	}
 
 	map_update_elem(&tg_udp_map, &key, value, 0);

@@ -1300,6 +1300,15 @@ func TestLoadTcpSensor(t *testing.T) {
 		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
 		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 4, 5}},
 
+		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+		tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{0, 1, 2, 4, 5}},
+
+		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+		tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{0, 1, 2, 4, 5}},
+
+		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+		tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{0, 1, 2, 4, 5}},
+
 		// all programs
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
 

@@ -185,8 +185,16 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap   = program.MapBuilder(SocketMapName, Udp4Send)
-	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", Udp4Send)
+	SocketCookieMap        = program.MapBuilder(SocketMapName, Udp4Send)
+	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", Udp4Send)
+	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", InetSend)
+	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", InetSend)
+	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", InetSend)
+	CfgMap                 = program.MapBuilder("tg_cfg_map", InetSend)
+	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", InetSendLazy)
+	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", InetSendLazy)
+	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", InetSendLazy)
+	CfgMapLazy             = program.MapBuilder("tg_cfg_map", InetSendLazy)
 
 	// UDP maps
 	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)
@@ -726,6 +734,10 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			UdpPayloadLazyMap,
 			SocketCookieMap,
 			SocketCookieStats,
+			SocketTupleMapLazy,
+			SocketTupleStatsLazy,
+			SocketTupleHintMapLazy,
+			CfgMapLazy,
 			FdLookupConfigMap,
 			LatencyConfigMapLazy,
 		}
@@ -751,6 +763,10 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			UdpPayloadMap,
 			SocketCookieMap,
 			SocketCookieStats,
+			SocketTupleMap,
+			SocketTupleStats,
+			SocketTupleHintMap,
+			CfgMap,
 			FdLookupConfigMap,
 			LatencyConfigMap,
 		}

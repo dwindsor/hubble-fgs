@@ -1,4 +1,5 @@
-#define MISSING_PERFEVENT 1
+#define MISSING_PERFEVENT   1
+#define TRACK_ICMP_FROM_SKB 1
 #include "vmlinux.h"
 #include "bpf_inet.h"
 
