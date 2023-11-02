@@ -19,6 +19,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -161,6 +162,7 @@ func TestExecProcessCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to run observer: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 

@@ -54,6 +54,7 @@ import (
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -417,6 +418,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -642,6 +644,7 @@ func TestUdpSeqCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -738,6 +741,7 @@ func getUdpObserver(t *testing.T, ctx context.Context, config string) *observer.
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	return obs
 }
 
@@ -1594,6 +1598,7 @@ func TestDnsEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -1726,6 +1731,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1802,6 +1808,7 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 

@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/testutils"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/stretchr/testify/assert"
@@ -147,6 +148,7 @@ func (tc *testCase) run(t *testing.T) {
 			base := base.GetInitialSensor()
 			_, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 			require.NoError(t, err, "observer should start")
+			metricsconfig.RegisterEEMetrics()
 		}
 
 		for i := 0; i < tc.numConnections; i++ {

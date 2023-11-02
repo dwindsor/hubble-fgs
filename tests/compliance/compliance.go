@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
@@ -111,6 +112,7 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen for events: %w", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx.Ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()

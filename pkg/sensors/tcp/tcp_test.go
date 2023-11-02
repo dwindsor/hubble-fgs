@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -158,6 +159,7 @@ func getTcpObserver(t *testing.T, ctx context.Context, config string, docker boo
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -1054,6 +1056,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1178,6 +1181,7 @@ func TestNamespaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()

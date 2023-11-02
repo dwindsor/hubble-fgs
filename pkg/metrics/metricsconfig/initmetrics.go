@@ -11,6 +11,9 @@
 package metricsconfig
 
 import (
+	"sync"
+
+	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -24,8 +27,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func InitAllMetrics(registry *prometheus.Registry) {
-	oss.InitAllMetrics(registry)
+var (
+	registryOnce sync.Once
+)
+
+func initAllEEMetrics(registry *prometheus.Registry) {
 	dnsmetrics.InitMetrics(registry)
 	eventmetrics.InitMetrics(registry)
 	filemetrics.InitMetrics(registry)
@@ -35,4 +41,15 @@ func InitAllMetrics(registry *prometheus.Registry) {
 	lrumetrics.InitMetrics(registry)
 	socketmetrics.InitMetrics(registry)
 	tlsmetrics.InitMetrics(registry)
+}
+
+func InitAllMetrics(registry *prometheus.Registry) {
+	oss.InitAllMetrics(registry)
+	initAllEEMetrics(registry)
+}
+
+func RegisterEEMetrics() {
+	registryOnce.Do(func() {
+		initAllEEMetrics(metrics.GetRegistry())
+	})
 }

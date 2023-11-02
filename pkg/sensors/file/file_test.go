@@ -47,6 +47,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -828,6 +829,7 @@ func TestFileEnforceCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
@@ -878,6 +880,7 @@ func TestFileEnforceWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
@@ -933,6 +936,7 @@ func TestFileEnforceExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
@@ -2211,6 +2215,7 @@ func TestFileOps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		ClearFIMTracingPolicies()
@@ -2423,6 +2428,7 @@ func TestFileExecBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2527,6 +2533,7 @@ func TestFileExecEnforcement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
