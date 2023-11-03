@@ -1,0 +1,81 @@
+name: Container vulnerability scan (twistcli)
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  container-scan-twistcli:
+    name: scan-container
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        image: [
+          {name: hubble-enterprise, dockerfile: ./Dockerfile},
+          {name: hubble-enterprise-operator, dockerfile: ./operator.Dockerfile},
+        ]
+        branch: [v1.10, v1.11]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          persist-credentials: false
+          ref: ${{ matrix.branch }}
+          submodules: true
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4b4e9c3e2d4531116a6f8ba8e71fc6e2cb6e6c8c # v2.5.0
+      - name: Build local container
+        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
+        with:
+          context: .
+          tags: ${{ matrix.image.name }}:${{ matrix.branch }}
+          push: false
+          load: true
+          platforms: linux/arm64
+          file: ${{ matrix.image.dockerfile }}
+          build-args: |
+            OPERATOR_VARIANT=${{ matrix.image.name }}
+      - name: Scan image
+        id: scan-image
+        uses: PaloAltoNetworks/prisma-cloud-scan@v1
+        with:
+          pcc_console_url: https://us-east1.cloud.twistlock.com/us-1-111576212
+          pcc_user: 0541c4a6-1f9a-4dfd-8e86-86829fda7205
+          pcc_pass: ${{ secrets.TWISTCLI_PASSWORD }}
+          image_name: ${{ matrix.image.name }}:${{ matrix.branch }}
+      - name: Set up Go
+        uses: actions/setup-go@v4
+      - name: Install vexctl
+        run: go install github.com/openvex/vexctl@latest
+      - name: Checkout latest VEX data
+        uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            vex-data.vex.json
+          sparse-checkout-cone-mode: false
+          path: isovalent-tetragon-vex
+      - name: Filter false positives
+        run: vexctl filter ${{ steps.scan-image.outputs.sarif_file }} isovalent-tetragon-vex/vex-data.vex.json > filtered-results.json
+      - name: Upload SARIF scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.branch }}.sarif.json
+          path: filtered-results.json
+          retention-days: 3
+      - name: Output scan results
+        run: >
+          OUTPUT=$(jq -r '.runs[].results[] as $r |
+                   .runs[].tool.driver.rules[] | select(.id == $r.ruleId) |
+                   [.id, $r.locations[].physicalLocation.artifactLocation.uri, .shortDescription.text] |
+                   @tsv' filtered-results.json
+                  )
+          if [[ ! -z "$OUTPUT" ]]; then
+            echo "$OUTPUT"
+            exit 1
+          fi

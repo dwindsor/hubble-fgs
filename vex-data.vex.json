@@ -1,0 +1,17 @@
+{
+  "@context": "https://openvex.dev/ns",
+  "author": "Isovalent Security Team",
+  "role": "vendor",
+  "timestamp": "2023-11-03T14:14:12.004221+00:00",
+  "version": "1",
+  "statements": [
+     {
+       "vulnerability": "CVE-2023-29002",
+       "products": [
+           "hubble-enterprise-operator:v1.10"
+        ],
+       "status": "not_affected",
+       "justification": "vulnerable_code_not_in_execute_path"
+     }
+  ]
+}
