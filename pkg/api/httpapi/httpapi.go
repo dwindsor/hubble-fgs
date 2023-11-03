@@ -35,11 +35,11 @@ type MsgHttpUnix struct {
 }
 
 type MsgHttp struct {
-	Method uint32     `align:"method"`
-	Flags  uint32     `align:"flags"`
-	ReqId  uint64     `align:"send_cntr"`
-	RespId uint64     `align:"recv_cntr"`
-	Url    [1024]byte `align:"url"`
+	Method uint32 `align:"method"`
+	Flags  uint32 `align:"flags"`
+	ReqId  uint64 `align:"send_cntr"`
+	RespId uint64 `align:"recv_cntr"`
+	Length uint64 `align:"url_length"`
 }
 
 type MsgHttpEvent struct {

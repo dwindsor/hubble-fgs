@@ -369,13 +369,16 @@ __attribute__((noinline)) int method_get_url(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 
 	event = get_http_context(msg);
 	if (unlikely(!event))
 		return SK_PASS;
 
 	http = &event->request;
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, http_request_url, 256, chr_sp);
+	http->url_length += (http->url_offset - orig);
 	return 0;
 }
 
@@ -383,6 +386,7 @@ __attribute__((noinline)) int method_get_protocol(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 
 	event = get_http_context(msg);
 	if (unlikely(!event))
@@ -390,8 +394,10 @@ __attribute__((noinline)) int method_get_protocol(ctx_md *msg)
 
 	http = &event->request;
 
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, http_request_protocol, 256,
 		   chr_r);
+	http->url_length += (http->url_offset - orig);
 	return 0;
 }
 
@@ -467,6 +473,7 @@ __attribute__((noinline)) int continue_header_string(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 	int t;
 
 	event = get_http_context(msg);
@@ -475,7 +482,9 @@ __attribute__((noinline)) int continue_header_string(ctx_md *msg)
 	http = &event->request;
 
 	t = map_header_to_type(msg, http);
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, t, 256, chr_r);
+	http->url_length += (http->url_offset - orig);
 	if (http->state == http_more_headers_value_needed)
 		return 0;
 	http->scratch[0] = (u32)0;
@@ -491,6 +500,7 @@ __attribute__((noinline)) int get_string_r(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 	int t;
 
 	event = get_http_context(msg);
@@ -505,7 +515,9 @@ __attribute__((noinline)) int get_string_r(ctx_md *msg)
 	if (t == http_request_done)
 		return HTTP_REQUEST_DONE;
 
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, t, 256, chr_r);
+	http->url_length += (http->url_offset - orig);
 	return HTTP_REQUEST_CONT;
 }
 
@@ -592,14 +604,17 @@ __attribute__((noinline)) int response_get_protocol(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 
 	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, http_response_protocol,
 		   256, chr_sp);
+	http->url_length += (http->url_offset - orig);
 	return 0;
 }
 
@@ -607,13 +622,16 @@ __attribute__((noinline)) int response_get_code(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 
 	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
+	orig = http->url_offset;
 	get_string(msg, event, http, http->url, http_response_code, 256, chr_sp);
+	http->url_length += (http->url_offset - orig);
 	return 0;
 }
 
@@ -621,14 +639,16 @@ __attribute__((noinline)) int response_get_reason(ctx_md *msg)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
+	u64 orig;
 
 	event = get_http_context(msg);
 	if (unlikely(!event))
 		return -1;
 	http = &event->request;
 
-	get_string(msg, event, http, http->url, http_response_reason, 256,
-		   chr_r);
+	orig = http->url_offset;
+	get_string(msg, event, http, http->url, http_response_reason, 256, chr_r);
+	http->url_length += (http->url_offset - orig);
 	return 0;
 }
 
@@ -773,6 +793,7 @@ http_reset_state(struct msg_http *http)
 	http->offset = 0;
 	http->url_offset = 0;
 	http->url_continue = 0;
+	http->url_length = 0;
 	http->consume_bytes = 0;
 	http->flags = 0;
 	http->scratch[0] = (u32)0;
@@ -804,10 +825,12 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
-	http->common.size = sizeof(struct __msg_http_event);
+	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
 	http->tuple = process->tuple;
 
-	size = sizeof(struct __msg_http_event);
+	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
+	if (size > sizeof(struct msg_http_event))
+		size = sizeof(struct msg_http_event);
 	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
 
 	/* This is a special caller when we know more headers are needed */
@@ -854,10 +877,12 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->request.flags &= ~HTTP_MORE_HEADERS_NEEDED;
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
-	http->common.size = sizeof(struct __msg_http_event);
+	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
 	http->tuple = process->tuple;
 
-	size = sizeof(struct __msg_http_event);
+	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
+	if (size > sizeof(struct msg_http_event))
+		size = sizeof(struct msg_http_event);
 	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
 	skip = http->request.consume_bytes + http->request.offset;
 	http_reset_state(&http->request);

@@ -38,6 +38,7 @@ enum {
 };
 
 /* Helpers for accessing the "typed chunks" stored in (struct msg_http).url */
+#define NULL_CHUNK_EVENT_SZ 8
 
 struct http_event_chunk {
 	u32 type;
@@ -201,6 +202,7 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 
 	chunk->length += requested;
 	http->offset += requested;
+	http->url_length += requested;
 
 	if (chunk->length >= len) {
 		/* Chunk is now complete */
@@ -239,9 +241,14 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 		chunk->length = 0;
 	}
 
+	http->url_length += sizeof(struct http_event_chunk) + NULL_CHUNK_EVENT_SZ;
+	size = sizeof(struct __msg_http_event) + http->url_length;
+	if (size > sizeof(struct msg_http_event))
+		size = sizeof(struct msg_http_event);
+
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
-	event->common.size = sizeof(struct __msg_http_event);
+	event->common.size = size;
 	event->tuple = process->tuple;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 
@@ -251,11 +258,10 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
          */
 	http->send_cntr++;
 
-	size = sizeof(struct __msg_http_event);
-
 	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 
 	http->url_offset = 0;
+	http->url_length = 0;
 	chunk = head_chunk(http);
 	chunk->type = 0;
 	chunk->length = 0;

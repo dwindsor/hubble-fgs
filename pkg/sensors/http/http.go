@@ -302,14 +302,20 @@ func handleHTTP(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	return msgToHTTPEventUnix(m)
+	return msgToHTTPEventUnix(m, r)
 }
 
-func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
+func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event, error) {
 	unix := &httpproto.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		ProcessKey: m.ProcessKey,
+	}
+
+	url := make([]byte, int(m.Request.Length))
+	if _, err := r.Read(url); err != nil {
+		logger.GetLogger().WithError(err).Warnf("HTTP URL read error")
+		return nil, err
 	}
 
 	switch m.Request.Method {
@@ -317,7 +323,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		if !enableHttp2 {
 			return nil, nil
 		}
-		return http2ToHTTPEventUnix(m)
+		return http2ToHTTPEventUnix(m, url)
 	case MethodResponse:
 		unix.Request.RequestId = m.Request.RespId
 	default:
@@ -346,7 +352,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		}
 	}
 
-	iter := chunks.NewTypedChunkIterator(m.Request.Url[:])
+	iter := chunks.NewTypedChunkIterator(url[:])
 
 	for {
 		chunk, typ, ok := iter.NextString()
@@ -450,7 +456,7 @@ type http2State struct {
 	frameQueue *http2FrameQueue
 }
 
-func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent, url []byte) ([]observer.Event, error) {
 	state, ok := http2StateCache.Get(m.Tuple)
 	if !ok {
 		reader := bytes.NewReader(nil)
@@ -473,7 +479,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		if m == nil {
 			break
 		}
-		iter := chunks.NewTypedChunkIterator(m.Request.Url[:])
+		iter := chunks.NewTypedChunkIterator(url[:])
 
 		for {
 			chunk, typ, ok := iter.Next()
