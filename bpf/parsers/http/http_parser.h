@@ -292,13 +292,6 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	}
 
 	offset += http->url_continue;
-	/* Playing games with the verifier here, in order to get a good prune
-	 * point we introduce a nop. TBD sort out the details around this and
-	 * see if we can fix verifier/clang to do the right thing without
-	 * introducing cryptic and ugly asm.
-	 */
-	asm volatile("%[i] += 0;\n"
-		     : [i] "+r"(i)::);
 	asm volatile("%[offset] &= 0x3ff;\n"
 		     : [offset] "+r"(offset)::);
 
