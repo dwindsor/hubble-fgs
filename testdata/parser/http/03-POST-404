@@ -11,7 +11,7 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 167        # size
   NZ 8          # ktime
 
   ## tuple
@@ -27,6 +27,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 55			    # length
 
   ## payload
   h4 1 # type: request_url
@@ -45,17 +46,13 @@ EVENT http
   h4 3 # length
   " 10"
 
-  # termination
-  h4 0
-  h4 0
-
-  ? 965
+  $ 00 00 00 00 00
 END
 
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 167        # size
   NZ 8          # ktime
 
   ## tuple
@@ -71,6 +68,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 55			    # length
 
   ## payload
   h4 1 # type: request_url
@@ -89,11 +87,7 @@ EVENT http
   h4 3 # length
   " 10"
 
-  # termination
-  h4 0
-  h4 0
-
-  ? 965
+  $ 00 00 00 00 00
 END
 
 INGRESS
@@ -106,7 +100,7 @@ END
 # Event from client socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 192        # size
   NZ 8          # ktime
 
   ## tuple
@@ -122,6 +116,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 80			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -144,18 +139,13 @@ EVENT http
   h4 2 # length
   " 0"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 924
+  $ 00 00 00 00
 END
 
 # Event from server socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 192        # size
   NZ 8          # ktime
 
   ## tuple
@@ -171,6 +161,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 80			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -193,10 +184,5 @@ EVENT http
   h4 2 # length
   " 0"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 924
+  $ 00 00 00 00
 END

@@ -22,7 +22,7 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 156        # size
   NZ 8          # ktime
 
   ## tuple
@@ -38,6 +38,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 44 		    # length
 
   ## payload
   h4 1 # type: request_url
@@ -51,18 +52,12 @@ EVENT http
   h4 2  # type: request_host
   h4 11 # length
   " foobar.baz"
-
-  # termination
-  h4 0
-  h4 0
-
-  ? 976
 END
 
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 156        # size
   NZ 8          # ktime
 
   ## tuple
@@ -78,6 +73,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 44			    # length
 
   ## payload
   h4 1 # type: request_url
@@ -91,12 +87,6 @@ EVENT http
   h4 2  # type: request_host
   h4 11 # length
   " foobar.baz"
-
-  # termination
-  h4 0
-  h4 0
-
-  ? 976
 END
 
 INGRESS
@@ -109,7 +99,7 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 185        # size
   NZ 8          # ktime
 
   ## tuple
@@ -125,6 +115,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 73			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -147,17 +138,12 @@ EVENT http
   h4 2 # length
   " 5"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 931
+  $ 00 00 00
 END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 185        # size
   NZ 8          # ktime
 
   ## tuple
@@ -173,6 +159,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 73			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -195,12 +182,7 @@ EVENT http
   h4 2 # length
   " 5"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 931
+  $ 00 00 00
 END
 
 # Close both sockets.

@@ -37,7 +37,7 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 217        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -52,6 +52,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 01 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -65,15 +66,13 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 952
   END
 
   # Event from the server socket
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 217        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -88,6 +87,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 01 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -101,8 +101,6 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 952
   END
 
 END
@@ -127,7 +125,7 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 186        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -142,6 +140,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 02 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -156,15 +155,13 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 950
   END
 
   # Event from the client socket
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 186        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -179,6 +176,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 02 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -193,8 +191,6 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 950
   END
 
 END
@@ -247,7 +243,7 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 202        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -262,6 +258,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 03 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -275,15 +272,13 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 952
   END
 
   # Event from the server socket
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 202        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -298,6 +293,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 03 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -311,8 +307,6 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 952
   END
 
 END
@@ -348,7 +342,7 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 195        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -363,6 +357,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 04 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -377,15 +372,13 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 950
   END
 
   # Event from the client socket
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 1128       # size
+    h4 195        # size
     NZ 8          # ktime
 
     ## Tuple
@@ -400,6 +393,7 @@ EVENTS
     $ 00 00 00 00 # flags
     $ 04 00 00 00 00 00 00 00 # request id
     $ 00 00 00 00 00 00 00 00 # response id
+    NZ 8
 
     ## Chunks (1024 bytes)
     h4 11 # http2_header_frame
@@ -414,7 +408,5 @@ EVENTS
 
     h4 0 # termination
     h4 0
-
-    ? 950
   END
 END

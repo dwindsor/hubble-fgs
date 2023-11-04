@@ -12,7 +12,7 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 159        # size
   ? 8           # ktime
 
   ## tuple
@@ -28,6 +28,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 47			    # length
 
   ## payload
   h4 1 # type: request_url
@@ -42,17 +43,13 @@ EVENT http
   h4 11 # length
   " foobar.baz"
 
-  # termination
-  h4 0
-  h4 0
-
-  ? 973
+  $ 00 00 00 00 00 # mystery bytes
 END
 
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 159        # size
   ? 8           # ktime
 
   ## tuple
@@ -68,6 +65,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 00 00 00 00 00 00 00 00 # recv
+  h8 47			    # length
 
   ## payload
   h4 1 # type: request_url
@@ -82,12 +80,7 @@ EVENT http
   h4 11 # length
   " foobar.baz"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 957
+  $ 00 00 00 00 00 # mystery bytes
 END
 
 INGRESS
@@ -100,7 +93,7 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 192        # size
   ? 8           # ktime
 
   ## tuple
@@ -116,6 +109,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 80			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -138,17 +132,12 @@ EVENT http
   h4 2 # length
   " 4"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 924
+  $ 00 00 00 00
 END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 1128       # size
+  h4 192        # size
   ? 8           # ktime
 
   ## tuple
@@ -164,6 +153,7 @@ EVENT http
   h4 0x0        # flags
   $ 01 00 00 00 00 00 00 00 # send
   $ 01 00 00 00 00 00 00 00 # recv
+  h8 80			    # length
 
   ## payload
   h4 8 # type: response_protocol
@@ -186,12 +176,7 @@ EVENT http
   h4 2 # length
   " 4"
 
-  # termination
-  h4 0
-  h4 0
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ? 924
+  $ 00 00 00 00
 END
 
 # Close both sockets.
