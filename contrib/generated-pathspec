@@ -1,0 +1,8 @@
+:(exclude)vendor
+:(exclude)pkg/k8s/vendor
+:(exclude)api/vendor
+:(exclude)api/v1/tetragon/*.go
+:(exclude)api/v1/README.md
+:(exclude)*go.mod
+:(exclude)*go.sum
+:(exclude)pkg/k8s/apis/cilium.io/client/crds/v1alpha1/*.yaml
