@@ -12,11 +12,14 @@
     "v1.10",
   ],
   "cloneSubmodules": true,
+  // remove the following is when already set in OSS config
+  "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
       // no updates into stable branches (apart from security ones)
       "enabled": false,
-      matchBaseBranches: [
+      "matchPackagePatterns": ["*"],
+      "matchBaseBranches": [
         "v1.11",
         "v1.10",
       ]
