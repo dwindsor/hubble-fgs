@@ -17,6 +17,8 @@ systemctl disable tetragon-enterprise
 rm -fr /usr/lib/systemd/system/hubble-fgs.service
 rm -fr /usr/lib/systemd/system/tetragon-enterprise.service
 
+# Cleanup old systemd service
+rm -f /etc/systemd/system/default.target.wants/tetragon-enterprise.service
 
 # Cleanup systemd state
 systemctl daemon-reload
