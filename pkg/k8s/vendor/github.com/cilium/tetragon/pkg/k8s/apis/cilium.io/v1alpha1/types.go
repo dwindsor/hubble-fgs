@@ -221,6 +221,16 @@ type FileCapabilitiesSelector struct {
 	Values []string `json:"values"`
 }
 
+type FileNamespaceSelector struct {
+	// +kubebuilder:validation:Enum=Uts;Ipc;Mnt;Pid;PidForChildren;Net;Time;TimeForChildren;Cgroup;User
+	// Namespace selector name.
+	Namespace string `json:"namespace"`
+	// +kubebuilder:validation:Enum=All;Host;NoHost
+	// +kubebuilder:default=All
+	// Namespace selector filter type.
+	Filter string `json:"filter"`
+}
+
 // FileExecSelector selects file operations.
 type FileExecSelector struct {
 	// +kubebuilder:validation:Optional
@@ -229,6 +239,9 @@ type FileExecSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
 	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of namespaces and IDs
+	MatchNamespaces []FileNamespaceSelector `json:"matchLinuxNamespaces,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of capabilities and IDs
 	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`

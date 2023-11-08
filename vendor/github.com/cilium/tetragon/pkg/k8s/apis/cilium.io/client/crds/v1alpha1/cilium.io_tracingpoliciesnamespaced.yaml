@@ -153,6 +153,37 @@ spec:
                             - values
                             type: object
                           type: array
+                        matchLinuxNamespaces:
+                          description: A list of namespaces and IDs
+                          items:
+                            properties:
+                              filter:
+                                default: All
+                                description: Namespace selector filter type.
+                                enum:
+                                - All
+                                - Host
+                                - NoHost
+                                type: string
+                              namespace:
+                                description: Namespace selector name.
+                                enum:
+                                - Uts
+                                - Ipc
+                                - Mnt
+                                - Pid
+                                - PidForChildren
+                                - Net
+                                - Time
+                                - TimeForChildren
+                                - Cgroup
+                                - User
+                                type: string
+                            required:
+                            - filter
+                            - namespace
+                            type: object
+                          type: array
                       type: object
                     type: array
                 required:
