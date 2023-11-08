@@ -126,6 +126,11 @@ help:
 	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
 	@echo 'Helpers: '
 	@echo '    version     - retrieve the current git tag version of the project'
+	@echo 'End-to-end tests: '
+	@echo '    e2e-test                                        - run e2e tests'
+	@echo '    e2e-test E2E_BUILD_IMAGES=0                     - run e2e tests without (re-)building images'
+	@echo '    e2e-test E2E_TESTS=./tests/e2e/tests/skeleton   - run a specific e2e test'
+
 
 .PHONY: oss-sync
 oss-sync:
