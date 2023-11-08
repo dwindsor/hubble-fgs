@@ -115,15 +115,30 @@ static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
 		     :);
 }
 
+/* Handle the case where an entry already exists for this cookie. This could
+ * be the correct entry (so do nothing) or an incorrect entry (correct it).
+ * Neither of these affect the count of entries. The duplicate existing entry
+ * condition is most likely to occur on systems where initialisation of an
+ * IPv6 UDP socket calls both the v6 and v4 hooks, which appears to happen on
+ * some systems but not others.
+ */
 static inline __attribute__((always_inline)) void
 add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 {
-	int err = map_update_elem(&tg_socket_map, cookie, v, 0);
+	struct socketmap_value *existing = map_lookup_elem(&tg_socket_map, cookie);
+	int err;
 	int zero = 0;
 	__s64 *cntr;
 
+	if (existing) {
+		if (existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime)
+			return;
+		map_delete_elem(&tg_socket_map, cookie);
+	}
+
+	err = map_update_elem(&tg_socket_map, cookie, v, 0);
 	if (!err) {
-		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
+		if (!existing && (cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		if (update_tuple_map)
 			add_socket_tuple_map(cookie);

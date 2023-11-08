@@ -97,6 +97,14 @@ var (
 		"kprobe",
 	)
 
+	SkUdpAlloc6 = program.Builder(
+		"bpf_sock_create.o",
+		"udpv6_init_sock",
+		"kprobe/udpv6_init_sock",
+		"tg_udpv6_init_sock",
+		"kprobe",
+	)
+
 	SkUdpDestroy = program.Builder(
 		"bpf_sock_release.o",
 		"udp_destroy_sock",
@@ -693,6 +701,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	if !cgroup {
 		progs = []*program.Program{
 			SkUdpAlloc,
+			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSendRecvLazy,
 			Udp4Send,
@@ -717,6 +726,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
 			SkUdpAlloc,
+			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSendLazy,
 			InetRecvLazy,
@@ -746,6 +756,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	} else {
 		progs = []*program.Program{
 			SkUdpAlloc,
+			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSend,
 			InetRecv,

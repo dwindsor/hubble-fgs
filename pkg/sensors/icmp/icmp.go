@@ -14,7 +14,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"path/filepath"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -39,14 +41,23 @@ const (
 
 var (
 	configured = false
+	config     ConfigValue
 )
 
 var (
-	SkRawAlloc = program.Builder(
+	SkRawAllocV4 = program.Builder(
 		"bpf_pingsock_create.o",
 		"raw_sk_init",
 		"kprobe/raw_sk_init",
 		"tg_raw_sk_init",
+		"kprobe",
+	)
+
+	SkRawAllocV6 = program.Builder(
+		"bpf_pingsock_create.o",
+		"rawv6_init_sk",
+		"kprobe/rawv6_init_sk",
+		"tg_rawv6_init_sk",
 		"kprobe",
 	)
 
@@ -132,6 +143,14 @@ var (
 		"kprobe",
 	)
 
+	IcmpRcv6 = program.Builder(
+		"bpf_icmp_rcv.o",
+		"icmpv6_rcv",
+		"kprobe/icmpv6_rcv",
+		"tg_icmpv6_rcv",
+		"kprobe",
+	)
+
 	// Shared socket cookie infrastructure
 	SocketCookieMap        = program.MapBuilder(SocketMapName, IcmpSend)
 	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", IcmpSend)
@@ -141,14 +160,29 @@ var (
 	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSend)
 	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSend)
 	CfgMap                 = program.MapBuilder("tg_cfg_map", IcmpSend)
+	IcmpCfgMap             = program.MapBuilder("tg_icmp_cfg_map", IcmpSend)
 	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", IcmpSendLazy)
 	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSendLazy)
 	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSendLazy)
 	CfgMapLazy             = program.MapBuilder("tg_cfg_map", IcmpSendLazy)
+	IcmpCfgMapLazy         = program.MapBuilder("tg_icmp_cfg_map", IcmpSendLazy)
 )
 
 type icmpSensor struct {
 	name string
+}
+
+type icmpSensorConfigKey struct {
+	Zero uint32
+}
+
+type ConfigValue struct {
+	v6info uint8
+	Pad    [7]uint8
+}
+
+func (v *ConfigValue) String() string {
+	return fmt.Sprintf("v6info: %d, ", v.v6info)
 }
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
@@ -167,6 +201,17 @@ func (icmp *icmpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	}
 	if !configured {
+		m, err := ebpf.LoadPinnedMap(filepath.Join(args.MapDir, "tg_icmp_cfg_map"), nil)
+		if err != nil {
+			return err
+		}
+		defer m.Close()
+
+		key := &icmpSensorConfigKey{
+			Zero: uint32(0),
+		}
+		m.Put(key, &config)
+
 		configured = true
 	}
 	return nil
@@ -185,7 +230,8 @@ func EnableIcmpParser() *sensors.Sensor {
 		return nil
 	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
-			SkRawAlloc,
+			SkRawAllocV4,
+			SkRawAllocV6,
 			SkPingAlloc,
 			// SkRawRelease, // see comment above
 			// SkPingRelease, // see comment above
@@ -193,6 +239,7 @@ func EnableIcmpParser() *sensors.Sensor {
 			IcmpSendLazy,
 			IcmpRecvLazy,
 			IcmpRcv,
+			IcmpRcv6,
 		}
 		maps = []*program.Map{
 			SocketCookieMapLazy,
@@ -201,11 +248,13 @@ func EnableIcmpParser() *sensors.Sensor {
 			SocketTupleStatsLazy,
 			SocketTupleHintMapLazy,
 			CfgMapLazy,
+			IcmpCfgMapLazy,
 		}
 		versionStr = "__icmp_sensor_probe__"
 	} else {
 		progs = []*program.Program{
-			SkRawAlloc,
+			SkRawAllocV4,
+			SkRawAllocV6,
 			SkPingAlloc,
 			// SkRawRelease, // see comment above
 			// SkPingRelease, // see comment above
@@ -213,6 +262,7 @@ func EnableIcmpParser() *sensors.Sensor {
 			IcmpSend,
 			IcmpRecv,
 			IcmpRcv,
+			IcmpRcv6,
 		}
 		maps = []*program.Map{
 			SocketCookieMap,
@@ -221,6 +271,7 @@ func EnableIcmpParser() *sensors.Sensor {
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
+			IcmpCfgMap,
 		}
 		versionStr = "__icmp_sensor_probe__"
 	}
@@ -242,6 +293,12 @@ func (icmp *icmpSensor) PolicyHandler(
 
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("icmp sensor does not implement policy filtering")
+	}
+
+	if spec.Parser.Icmp.V6Info {
+		config.v6info = 1
+	} else {
+		config.v6info = 0
 	}
 
 	return EnableIcmpParser(), nil

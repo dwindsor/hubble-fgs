@@ -145,16 +145,11 @@ struct ihlver {
 };
 
 static inline __attribute__((always_inline)) struct socket_tuple_key *
-make_tuple_key_from_skb(struct sk_buff *skb, struct msg_icmp_event *val, void *reported_datagram)
+make_tuple_key_from_skb(struct sk_buff *skb, struct msg_icmp_event *val, u8 protocol, u16 sport)
 {
 	struct socket_tuple_key *key;
 	struct net_device *skb_dev;
-	struct udphdr *udp;
-	struct tcphdr *tcp;
-	struct iphdr *ip4;
-	struct ihlver iv;
 	int zero = 0;
-	u8 protocol;
 
 	key = map_lookup_elem(&tg_socket_tuple_heap, &zero);
 	if (!key)
@@ -178,30 +173,9 @@ make_tuple_key_from_skb(struct sk_buff *skb, struct msg_icmp_event *val, void *r
 	// bound_dev_if will be filled in during look up.
 	key->bound_dev_if = 0;
 
-	// Extract protocol and sport from embedded datagram headers.
-	if (!val->tuple.ipv6) {
-		ip4 = (struct iphdr *)reported_datagram;
-		// Read the IHL/Version byte from the start of the IPv4 header.
-		probe_read_kernel(&iv, sizeof(iv), ip4);
-		probe_read_kernel(&protocol, sizeof(protocol), _(&(ip4->protocol)));
-		key->protocol = protocol;
-		switch (protocol) {
-		case IPPROTO_UDP:
-			udp = (struct udphdr *)(reported_datagram + (iv.ihl * sizeof(u32)));
-			probe_read_kernel(&key->sport, sizeof(key->sport), _(&(udp->source)));
-			key->sport = bpf_ntohs(key->sport);
-			break;
-		case IPPROTO_TCP:
-			tcp = (struct tcphdr *)(reported_datagram + (iv.ihl * sizeof(u32)));
-			probe_read_kernel(&key->sport, sizeof(key->sport), _(&(tcp->source)));
-			key->sport = bpf_ntohs(key->sport);
-			break;
-		default:
-			return 0;
-		}
-	} else {
-		return 0;
-	}
+	key->protocol = protocol;
+	key->sport = sport;
+
 	return key;
 }
 

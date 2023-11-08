@@ -7,47 +7,12 @@
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 
-char _license[] __attribute__((section("license"), used)) = "GPL";
-#ifdef VMLINUX_KERNEL_VERSION
-int _version __attribute__((section(("version")), used)) =
-	VMLINUX_KERNEL_VERSION;
-#endif
-
 static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie);
-
-// raw sockets are used for ping in some environments
-__attribute__((section("kprobe/raw_sk_init"), used)) int
-tg_raw_sk_init(struct pt_regs *ctx)
-{
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
-
-	return store_socket(ctx, cookie);
-}
-
-// IPv6 version
-__attribute__((section("kprobe/rawv6_init_sk"), used)) int
-tg_rawv6_init_sk(struct pt_regs *ctx)
-{
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
-
-	return store_socket(ctx, cookie);
-}
-
-// ping sockets are used for ping in other environments (handles IPv4 and IPv6)
-__attribute__((section("kprobe/ping_init_sock"), used)) int
-tg_ping_init_sock(struct pt_regs *ctx)
-{
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
-
-	return store_socket(ctx, cookie);
-}
-
-static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie)
+__tg_udp_init_sock(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
 	struct socketmap_value process = { 0 };
+	u64 cookie = (u64)PT_REGS_PARM1(ctx);
 	struct execve_map_value *value;
 	bool walked;
 	u32 ppid;
@@ -59,7 +24,7 @@ store_socket(void *ctx, u64 cookie)
 	}
 
 	if (pid < 1) {
-		emit_ip_error_event(ctx, 0, &cookie, false,
+		emit_ip_error_event(ctx, 0, 0, false,
 				    0, 0, 0, IP_ERROR_SOCK_CREATE_PID_0);
 		return 0;
 	}
@@ -77,12 +42,14 @@ store_socket(void *ctx, u64 cookie)
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
 	} else {
-		emit_ip_error_event(ctx, 0, &cookie, false,
+		emit_ip_error_event(ctx, 0, 0, false,
 				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_PROCESS);
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
-	// Don't update the tuple map because this is a ping/raw socket.
+	process.last_time = process.create_time;
+	// Don't update the tuple map here because the socket hasn't yet
+	// been populated.
 	add_socketmap(&cookie, &process, false);
 	return 0;
 }

@@ -28,6 +28,16 @@
 #define ICMP_ADDRESS	    17 /* Address Mask Request		*/
 #define ICMP_ADDRESSREPLY   18 /* Address Mask Reply		*/
 
+// Taken from include/uapi/linux/icmpv6.h
+#define ICMPV6_DEST_UNREACH 1
+#define ICMPV6_PKT_TOOBIG   2
+#define ICMPV6_TIME_EXCEED  3
+#define ICMPV6_PARAMPROB    4
+#define ICMPV6_ERRMSG_MAX   127
+#define ICMPV6_INFOMSG_MASK 0x80
+#define ICMPV6_ECHO_REQUEST 128
+#define ICMPV6_ECHO_REPLY   129
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
@@ -42,7 +52,20 @@ struct {
 	__uint(max_entries, 1);
 } icmp_event_heap SEC(".maps");
 
-#define IPSKB_L3SLAVE (1 << 7)
+struct icmp_config {
+	u8 v6_info;
+	u8 pad[7];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct icmp_config);
+	__uint(max_entries, 1);
+} tg_icmp_cfg_map SEC(".maps");
+
+#define IPSKB_L3SLAVE  (1 << 7) // As defined in kernel
+#define IP6SKB_L3SLAVE 64 // As defined in kernel
 
 static inline __attribute__((always_inline)) int
 inet_sdif(struct sk_buff *skb)
@@ -66,8 +89,30 @@ inet_sdif(struct sk_buff *skb)
 	return 0;
 }
 
+static inline __attribute__((always_inline)) int
+inet6_sdif(struct sk_buff *skb)
+{
+	struct netns_ipv4___with_l3mdev *ipv4; // Only used to check for config option
+	struct inet6_skb_parm *ipcb;
+	struct net *net = 0;
+	__u16 flags;
+	int iif;
+
+	ipv4 = (struct netns_ipv4___with_l3mdev *)&net->ipv4;
+	if (!bpf_core_field_exists(ipv4->sysctl_raw_l3mdev_accept))
+		return 0;
+
+	ipcb = (struct inet6_skb_parm *)_(&(skb->cb));
+	probe_read_kernel(&flags, sizeof(flags), _(&(ipcb->flags)));
+	if (flags & IP6SKB_L3SLAVE) {
+		probe_read_kernel(&iif, sizeof(iif), _(&(ipcb->iif)));
+		return iif;
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) void
-send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_buff *skb, void *reported_datagram)
+send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_buff *skb, u8 protocol, u16 sport)
 {
 	struct socketmap_value *process = 0;
 	struct socket_tuple_key *key;
@@ -77,12 +122,15 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 
 	if (*cookie)
 		process = lookup_socketmap(cookie);
-	if (!process && icmp_tracking_enabled() && skb && reported_datagram) {
-		key = make_tuple_key_from_skb(skb, val, reported_datagram);
+	if (!process && icmp_tracking_enabled() && skb && protocol && sport) {
+		key = make_tuple_key_from_skb(skb, val, protocol, sport);
 		if (key) {
 			probe_read_kernel(&dev, sizeof(dev), _(&(skb->dev)));
-			probe_read_kernel(&dif, sizeof(dif), _(&(dev->ifindex)));
-			sdif = inet_sdif(skb);
+			probe_read_kernel(&dif, sizeof(dif), _(&(dev->ifindex))); // might need additional checks for IPv6
+			if (val->tuple.ipv6)
+				sdif = inet_sdif(skb);
+			else
+				sdif = inet6_sdif(skb);
 			new_cookie = lookup_socket_tuple_map(key, dif, sdif);
 			if (new_cookie && *new_cookie)
 				process = lookup_socketmap(new_cookie);
@@ -107,10 +155,15 @@ icmp_handler_lazy(struct __sk_buff *skb, bool send)
 {
 	u8 icmp_data[ICMP_HDR_LEN * 2];
 	struct msg_icmp_event *val;
+	struct icmp_config *cfg;
+	struct ipv6hdr rep_ip6;
 	struct iphdr rep_ip4;
+	struct ipv6hdr ip6;
 	struct tcphdr tcp;
 	struct iphdr ip;
+	u16 payload_off;
 	int zero = 0;
+	u8 protocol;
 	u64 *cookie;
 
 	cookie = (u64 *)map_lookup_elem(&icmp_cookie_heap, &zero);
@@ -193,9 +246,74 @@ icmp_handler_lazy(struct __sk_buff *skb, bool send)
 		if (val->icmp_type == ICMP_REDIRECT)
 			val->icmp_gateway[0] = *(__u32 *)(val->icmp_data);
 
-		send_icmp_event(skb, val, cookie, 0, 0);
+		send_icmp_event(skb, val, cookie, 0, 0, 0);
 		break;
 	case 6:
+		if (skb_load_bytes(skb, 0, &ip6, sizeof(struct ipv6hdr)) < 0) {
+			emit_ip_error_event(skb, 0, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			return;
+		}
+		protocol = get_ip6_proto(&payload_off, &ip6, 0, skb, 0, true, false, 0);
+		if (protocol == IP_HEADER_ERROR) {
+			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			return;
+		} else if (protocol != IPPROTO_ICMP6) {
+			return;
+		}
+		if (!payload_off) {
+			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+			return;
+		}
+
+		if (skb_load_bytes(skb, payload_off, icmp_data, sizeof(icmp_data)) < 0) {
+			emit_ip_error_event(skb, &ip6, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+			return;
+		}
+
+		val->icmp_type = icmp_data[0];
+		val->icmp_code = icmp_data[1];
+
+		cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
+		if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
+			return;
+
+		val->common.op = ISO_MSG_OP_ICMP;
+		val->icmp_len = skb->len - payload_off - ICMP_HDR_LEN - sizeof(u32); // total len - payload offset - ICMP header
+		*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
+
+		if (send) {
+			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6.saddr);
+			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6.daddr);
+		} else {
+			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6.daddr);
+			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6.saddr);
+		}
+		val->tuple.ipv6 = 1;
+		val->tuple.proto = IPPROTO_ICMP6;
+
+		switch (val->icmp_type) {
+		case ICMPV6_DEST_UNREACH:
+		case ICMPV6_PKT_TOOBIG:
+		case ICMPV6_TIME_EXCEED:
+		case ICMPV6_PARAMPROB:
+			if (skb_load_bytes(skb, payload_off + sizeof(icmp_data), &rep_ip6, sizeof(rep_ip6)) == 0) {
+				val->icmp_ip_ttl = rep_ip6.hop_limit;
+
+				switch (rep_ip6.nexthdr) {
+				case IPPROTO_TCP:
+				case IPPROTO_UDP:
+					if (skb_load_bytes(skb, payload_off + sizeof(icmp_data) + sizeof(rep_ip6), &tcp, sizeof(tcp)) == 0)
+						val->icmp_ip_port = bpf_ntohs(tcp.dest);
+					val->icmp_ip_proto = IPPROTO_TCP;
+					break;
+				}
+				break;
+			}
+		}
+		if (val->icmp_type == ICMPV6_PARAMPROB)
+			val->icmp_ip_pointer = *(u32 *)val->icmp_data;
+
+		send_icmp_event(skb, val, cookie, 0, 0, 0);
 		break;
 	default:
 		emit_ip_error_event(skb, 0, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
@@ -209,11 +327,16 @@ icmp_handler(struct __sk_buff *skb, bool send)
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	struct msg_icmp_event *val;
+	struct icmp_config *cfg;
+	struct ipv6hdr *rep_ip6;
 	struct iphdr *rep_ip4;
+	struct ipv6hdr *ip6;
 	struct tcphdr *tcp;
 	struct iphdr *ip;
+	u16 payload_off;
 	u8 *icmp_data;
 	int zero = 0;
+	u8 protocol;
 	u8 *rep_ptr;
 	u64 cookie;
 
@@ -299,9 +422,76 @@ icmp_handler(struct __sk_buff *skb, bool send)
 		if (val->icmp_type == ICMP_REDIRECT)
 			val->icmp_gateway[0] = *(__u32 *)(val->icmp_data);
 
-		send_icmp_event(skb, val, &cookie, 0, 0);
+		send_icmp_event(skb, val, &cookie, 0, 0, 0);
 		break;
 	case 6:
+		if (data + sizeof(struct ipv6hdr) > data_end) {
+			emit_ip_error_event(skb, 0, &cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			return;
+		}
+		ip6 = (struct ipv6hdr *)data;
+		protocol = get_ip6_proto(&payload_off, ip6, 0, data, data_end, false, false, 0);
+		if (protocol != IPPROTO_ICMP6)
+			return;
+
+		if (data + payload_off + ICMP_HDR_LEN + sizeof(u32) > data_end) {
+			emit_ip_error_event(skb, ip, &cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+			return;
+		}
+		icmp_data = (u8 *)data + payload_off;
+		val->icmp_type = icmp_data[0];
+		val->icmp_code = icmp_data[1];
+
+		cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
+		if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
+			return;
+
+		val->common.op = ISO_MSG_OP_ICMP;
+		val->icmp_len = (data_end - data) - payload_off - ICMP_HDR_LEN - sizeof(u32); // total len - payload offset - ICMP header
+		*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
+
+		if (send) {
+			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->saddr);
+			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->daddr);
+		} else {
+			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->daddr);
+			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->saddr);
+		}
+		val->tuple.ipv6 = 1;
+		val->tuple.proto = IPPROTO_ICMP6;
+
+		if (icmp_data + ICMP_HDR_LEN + sizeof(u32) + sizeof(struct ipv6hdr) <= data_end) {
+			switch (val->icmp_type) {
+			case ICMPV6_DEST_UNREACH:
+			case ICMPV6_PKT_TOOBIG:
+			case ICMPV6_TIME_EXCEED:
+			case ICMPV6_PARAMPROB:
+				rep_ptr = icmp_data + ICMP_HDR_LEN + sizeof(u32);
+				rep_ip6 = (struct ipv6hdr *)rep_ptr;
+				val->icmp_ip_ttl = rep_ip6->hop_limit;
+				// For the reported datagram header, we're taking the short cut of assuming there
+				// are no IPv6 header extensions. This seems bold and risky, but actually, it just
+				// means that we will not report the protocol or port if the reported datagram
+				// includes IPv6 header extensions. If this becomes a problem, we can revisit it,
+				// but the complexity arising from parsing IPv6 header extensions within the
+				// reported datagram header was just too much for clang+verifier combined, hence
+				// this short cut for now.
+				switch (rep_ip6->nexthdr) {
+				case IPPROTO_TCP:
+				case IPPROTO_UDP:
+					if (rep_ptr + sizeof(struct ipv6hdr) + sizeof(struct tcphdr) > data_end)
+						break;
+					tcp = (struct tcphdr *)(rep_ptr + sizeof(struct ipv6hdr));
+					val->icmp_ip_port = bpf_ntohs(tcp->dest);
+					val->icmp_ip_proto = IPPROTO_TCP;
+					break;
+				}
+			}
+		}
+		if (val->icmp_type == ICMPV6_PARAMPROB)
+			val->icmp_ip_pointer = *(u32 *)val->icmp_data;
+
+		send_icmp_event(skb, val, &cookie, 0, 0, 0);
 		break;
 	default:
 		emit_ip_error_event(skb, 0, &cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
