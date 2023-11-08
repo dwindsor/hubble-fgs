@@ -43,6 +43,14 @@ var (
 		"execve",
 	)
 
+	ExecveBprmCommit = program.Builder(
+		"bpf_execve_bprm_commit_creds.o",
+		"security_bprm_committing_creds",
+		"kprobe/security_bprm_committing_creds",
+		"tg_kp_bprm_committing_creds",
+		"kprobe",
+	)
+
 	Exit = program.Builder(
 		"bpf_exit.o",
 		"acct_process",
@@ -74,6 +82,8 @@ var (
 	ExecveTailCallsMapV53 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV53)
 	ExecveTailCallsMapV61 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV61)
 
+	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
+
 	/* Policy maps populated from base programs */
 	NamesMap    = program.MapBuilder("names_map", Execve)
 	NamesMapV53 = program.MapBuilder("names_map", ExecveV53)
@@ -89,6 +99,7 @@ var (
 	ExecveStatsV53       = program.MapBuilder("execve_map_stats", ExecveV53)
 	ExecveStatsV61       = program.MapBuilder("execve_map_stats", ExecveV61)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
+	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 
 	sensor = sensors.Sensor{
 		Name:  "__main__",
@@ -128,6 +139,7 @@ func GetDefaultPrograms() []*program.Program {
 	progs := []*program.Program{
 		Exit,
 		Fork,
+		ExecveBprmCommit,
 	}
 	if kernels.EnableV61Progs() {
 		progs = append(progs, ExecveV61)
@@ -143,6 +155,8 @@ func GetDefaultMaps() []*program.Map {
 	maps := []*program.Map{
 		PNWatermarksMapStats,
 		ProcessNetworkWatermarksMap,
+		ExecveJoinMap,
+		ExecveJoinMapStats,
 	}
 
 	if kernels.EnableV61Progs() {
