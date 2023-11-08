@@ -472,12 +472,47 @@ eval_selectors(__u32 action, struct digest_key *digest)
 	return 0; // not selector matches
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_capabilities(__u32 sel_idx)
+{
+	struct file_sel_caps *sel_caps;
+	struct msg_capabilities c;
+	const struct cred *cred;
+	struct task_struct *task;
+	__u64 caps;
+
+	sel_caps = map_lookup_elem(&file_capabilities_map, &sel_idx);
+	if (!sel_caps) // no matchOperations for this selector
+		return 1;
+
+	task = (struct task_struct *)get_current_task();
+	if (!task)
+		return 0; // we cannot apply matchCapabilities without the task_struct
+
+	cred = BPF_CORE_READ(task, cred);
+	if (!cred)
+		return 0; // we cannot apply matchCapabilities without task->cred
+
+	__get_caps(&c, cred);
+
+	if (sel_caps->type > caps_inheritable)
+		return 0; // We should not reach that. Userspace checks that, but we need to do some bound checking.
+
+	caps = c.c[sel_caps->type];
+
+	if (sel_caps->op == op_filter_in)
+		return (caps & sel_caps->filter) ? 1 : 0;
+	return (caps & sel_caps->filter) ? 0 : 1; // op_filter_notin
+}
+
 static inline __attribute__((always_inline)) __u32
 __eval_exec_selectors(__u32 sel_idx, struct digest_key *digest, struct execve_map_value *execve)
 {
 	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
 	if (!check_match_digests(sel_idx, digest, action_exec))
+		goto nopost;
+	if (!check_match_capabilities(sel_idx))
 		goto nopost;
 	if (!check_enforcement(sel_idx))
 		goto post;
