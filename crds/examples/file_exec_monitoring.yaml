@@ -12,5 +12,12 @@ spec:
       - operator: "In"
         values:
         - "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f" # /bin/cat
+      matchLinuxCapabilities:
+      - type: Effective
+        operator: In
+        values:
+        - "CAP_CHOWN"
+        - "CAP_NET_RAW"
+        - "CAP_SYS_ADMIN"
       matchActions:
       - action: Block
