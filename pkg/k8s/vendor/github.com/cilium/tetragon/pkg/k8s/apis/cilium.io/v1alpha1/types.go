@@ -208,6 +208,19 @@ type FileSpec struct {
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 }
 
+type FileCapabilitiesSelector struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=Effective;Inheritable;Permitted
+	// +kubebuilder:default=Effective
+	// Type of capabilities
+	Type string `json:"type"`
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Namespace selector operator.
+	Operator string `json:"operator"`
+	// Capabilities to match.
+	Values []string `json:"values"`
+}
+
 // FileExecSelector selects file operations.
 type FileExecSelector struct {
 	// +kubebuilder:validation:Optional
@@ -216,6 +229,9 @@ type FileExecSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of operation filters.
 	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of capabilities and IDs
+	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

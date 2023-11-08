@@ -125,6 +125,34 @@ spec:
                             - operator
                             type: object
                           type: array
+                        matchLinuxCapabilities:
+                          description: A list of capabilities and IDs
+                          items:
+                            properties:
+                              operator:
+                                description: Namespace selector operator.
+                                enum:
+                                - In
+                                - NotIn
+                                type: string
+                              type:
+                                default: Effective
+                                description: Type of capabilities
+                                enum:
+                                - Effective
+                                - Inheritable
+                                - Permitted
+                                type: string
+                              values:
+                                description: Capabilities to match.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - operator
+                            - values
+                            type: object
+                          type: array
                       type: object
                     type: array
                 required:
