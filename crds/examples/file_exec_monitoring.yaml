@@ -16,8 +16,11 @@ spec:
       - type: Effective
         operator: In
         values:
-        - "CAP_CHOWN"
-        - "CAP_NET_RAW"
         - "CAP_SYS_ADMIN"
+      matchLinuxNamespaces:
+      - namespace: Pid
+        filter: Host
+      - namespace: Mnt
+        filter: Host
       matchActions:
       - action: Block
