@@ -268,9 +268,9 @@ test: tester-progs hubble-bpf
 
 E2E_TIMEOUT ?= 20m
 # Agent image to use for end-to-end tests
-E2E_AGENT ?= isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)
+E2E_AGENT ?= $(TETRAGON_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
 # Operator image to use for end-to-end tests
-E2E_OPERATOR ?= isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)
+E2E_OPERATOR ?= $(OPERATOR_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
 # BTF file to use in the E2E test. Set to nothing to use system BTF.
 E2E_BTF ?=
 # Actual flags to use for BTF file in e2e test. Use E2E_BTF instead.
