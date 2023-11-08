@@ -36,6 +36,18 @@ const (
 	MaxFimSelectors = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
 )
 
+const (
+	capsPermitted   = 0
+	capsEffective   = 1
+	capsInheritable = 2
+)
+
+var capabilitiesTypeTable = map[string]uint32{
+	"effective":   capsEffective,
+	"inheritable": capsInheritable,
+	"permitted":   capsPermitted,
+}
+
 var fileActionTypeTable = map[string]uint32{
 	"post":  FileOperationTypePost,
 	"block": FileOperationTypeBlock,
@@ -55,6 +67,9 @@ type KernelSelectorState struct {
 	// matchDigests mappings
 	digests map[uint32]*SelDigests
 
+	// matchLinuxCapabilities
+	capabilities map[uint32]*fileapi.SelCaps
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -67,12 +82,23 @@ func NewKernelSelectorState() *KernelSelectorState {
 		KernelSelectorState: *selectors.NewKernelSelectorState(nil, nil),
 		operations:          map[uint32]*SelOps{},
 		digests:             map[uint32]*SelDigests{},
+		capabilities:        map[uint32]*fileapi.SelCaps{},
 		action:              map[uint32]uint32{},
 	}
 }
 
 func (k *KernelSelectorState) GetNumSelectors() uint32 {
 	return k.num
+}
+
+func (k *KernelSelectorState) InitOrGetCapabilities(selIdx uint32) *fileapi.SelCaps {
+	val, ok := k.capabilities[selIdx]
+	if ok {
+		return val
+	}
+	inner := &fileapi.SelCaps{}
+	k.capabilities[selIdx] = inner
+	return inner
 }
 
 func (k *SelOps) SetOperationOp(op uint32) {
@@ -372,6 +398,15 @@ func GenerateFileDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPat
 	return nil
 }
 
+func GenerateFileCapabilitiesMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, caps := range sel.capabilities {
+		if err := m.Update(idx, caps, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -492,6 +527,53 @@ func (k *KernelSelectorState) NeedEnforcement() bool {
 	return false
 }
 
+func ParseLinuxMatchCapability(k *KernelSelectorState, cap *v1alpha1.FileCapabilitiesSelector, selIdx int) error {
+	val := k.InitOrGetCapabilities(uint32(selIdx))
+	var err error
+	var ok bool
+
+	// operator
+	val.Op, err = selectors.SelectorOp(cap.Operator)
+	if err != nil {
+		return fmt.Errorf("matchLinuxCapabilities error: %w", err)
+	}
+	if (val.Op != selectors.SelectorOpIn) && (val.Op != selectors.SelectorOpNotIn) {
+		return fmt.Errorf("matchLinuxCapabilities supports only In and NotIn operators")
+	}
+
+	// type
+	tystr := strings.ToLower(cap.Type)
+	val.Type, ok = capabilitiesTypeTable[tystr]
+	if !ok {
+		return fmt.Errorf("parseMatchLinuxCapability: actionType %s unknown", cap.Type)
+	}
+
+	// values
+	val.Filter = uint64(0)
+	for _, v := range cap.Values {
+		valstr := strings.ToUpper(v)
+		c, ok := tetragon.CapabilitiesType_value[valstr]
+		if !ok {
+			return fmt.Errorf("parseMatchLinuxCapability: value %s unknown", valstr)
+		}
+		val.Filter |= (1 << c)
+	}
+
+	return nil
+}
+
+func ParseLinuxMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.FileCapabilitiesSelector, selIdx int) error {
+	if len(caps) > 1 {
+		return fmt.Errorf("only support one capabilities filter inside a single selector")
+	}
+	for _, c := range caps {
+		if err := ParseLinuxMatchCapability(k, &c, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > MaxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -523,6 +605,9 @@ func InitKernelExecSelectorState(fileSel []v1alpha1.FileExecSelector) (*KernelSe
 	for i, s := range fileSel {
 		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i); err != nil {
 			return nil, fmt.Errorf("parseMatchBinaries error: %w", err)
+		}
+		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
+			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
 		}
 		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
 			return nil, fmt.Errorf("parseMatchDigests error: %w", err)

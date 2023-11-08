@@ -64,6 +64,12 @@ type DigestKey struct {
 	Ok     int32     `align:"ok"`
 }
 
+type SelCaps struct {
+	Op     uint32 `align:"op"`     // In or NotIn
+	Type   uint32 `align:"type"`   // Effective or Inheritable or Permitted
+	Filter uint64 `align:"filter"` // Capabilities to match (ORed)
+}
+
 type MsgFileEvent struct {
 	Common     processapi.MsgCommon    `align:"common"`
 	ProcessKey processapi.MsgExecveKey `align:"current"`

@@ -44,6 +44,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"lpm_val":             {fileapi.LPMMapValue{}},
 		"digest_key":          {fileapi.DigestKey{}},
 		"file_exec_stats":     {fileapi.FileExecStats{}},
+		"file_sel_caps":       {fileapi.SelCaps{}},
 
 		"fd_lookup_config": {ip.FdLookupValue{}},
 	}

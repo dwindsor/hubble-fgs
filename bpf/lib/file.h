@@ -111,6 +111,12 @@ struct digest_key {
 	__s32 ok; // 1 if the event tried to generate a digest, 0 otherwise
 };
 
+struct file_sel_caps {
+	__u32 op; // In or NotIn
+	__u32 type; // Effective or Inheritable or Permitted
+	__u64 filter; // Capabilities to match (ORed)
+};
+
 struct msg_file_ops {
 	struct msg_common common;
 	struct msg_execve_key current;

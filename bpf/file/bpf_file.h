@@ -264,7 +264,14 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
-	__type(key, __u32);
+	__type(key, __u32); /* selector id */
+	__type(value, struct file_sel_caps);
+} file_capabilities_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__type(key, __u32); /* selector id */
 	__type(value, __u32);
 } file_actions_map SEC(".maps");
 
