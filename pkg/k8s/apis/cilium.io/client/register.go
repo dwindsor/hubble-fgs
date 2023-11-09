@@ -60,3 +60,13 @@ var (
 		SandboxPolicyCRD,
 	}
 )
+
+func RemoveSandboxPolicyCRD() {
+	// NB: This is ugly, but we do it to avoid changes in OSS
+	for i := range AllCRDs {
+		if AllCRDs[i].CRDName == SandboxPolicyCRD.CRDName {
+			AllCRDs = append(AllCRDs[:i], AllCRDs[i+1:]...)
+			break
+		}
+	}
+}
