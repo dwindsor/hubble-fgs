@@ -1,0 +1,192 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+//
+
+package sandboxpolicy_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"testing"
+	"time"
+
+	// Fix up OSS configuration defaults.
+	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
+	"github.com/sirupsen/logrus"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/tests/e2e/checker"
+	"github.com/cilium/tetragon/tests/e2e/helpers"
+	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"
+	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
+	"github.com/cilium/tetragon/tests/e2e/runners"
+
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/e2e-framework/pkg/envconf"
+	"sigs.k8s.io/e2e-framework/pkg/features"
+)
+
+var (
+	testNamespace = "sandboxpolicy"
+)
+
+// This holds our test environment which we get from calling runners.NewRunner().Setup()
+var runner *runners.Runner
+
+func TestMain(m *testing.M) {
+	runner = runners.
+		NewRunner().
+		NoInstallCilium().
+		WithInstallTetragon(
+			install.WithHelmOptions(map[string]string{
+				"tetragon.exportAllowList":       "",
+				"tetragon.enablePolicyFilter":    "true",
+				"tetragon.enableSandboxpolicies": "true",
+			}),
+		).
+		Init()
+
+	runner.Setup(func(ctx context.Context, c *envconf.Config) (context.Context, error) {
+		// placeholder for future functionaility
+		ctx, _ = helpers.DeleteNamespace(testNamespace, true)(ctx, c)
+		ctx, err := helpers.CreateNamespace(testNamespace, true)(ctx, c)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to create namespace: %w", err)
+		}
+		return ctx, nil
+	})
+
+	// Run the tests using the test runner.
+	runner.Run(m)
+}
+
+func TestSandboxPolicy(t *testing.T) {
+	runner.SetupExport(t)
+
+	checker := sandboxChecker().WithTimeLimit(5 * time.Minute).WithEventLimit(10)
+	runEventChecker := features.New("Run Event Checks").
+		Assess("Run Event Checks", checker.CheckWithFilters(
+			30*time.Second,
+			// allow list
+			[]*tetragon.Filter{{
+				EventSet: []tetragon.EventType{
+					tetragon.EventType_PROCESS_TRACEPOINT,
+					tetragon.EventType_PROCESS_SANDBOX_SYSCALL,
+				},
+			}},
+			// deny list
+			[]*tetragon.Filter{},
+		)).Feature()
+
+	runWorkload := features.New("SandboxPolicy test").
+		Assess("Install policy", func(ctx context.Context, _ *testing.T, c *envconf.Config) context.Context {
+			ctx, err := helpers.LoadCRDString("", policy, false)(ctx, c)
+			if err != nil {
+				klog.ErrorS(err, "failed to install policy")
+				t.FailNow()
+			}
+			t.Cleanup(func() {
+				// NB: the policy is cluster-wide, so it will not be deleted when we
+				// delete the namespace. Delete it here.
+				helpers.UnloadCRDString("", policy, true)(ctx, c)
+			})
+			return ctx
+		}).
+		// NB(kkourt): This is buggy at the moment. We need to fix WaitForTracingPolicy in
+		// OSS for this to work, so skip it for now.
+		Assess("Wait for policy", func(ctx context.Context, _ *testing.T, _ *envconf.Config) context.Context {
+			if err := grpc.WaitForTracingPolicy(ctx, "tpsp-getcpu"); err != nil {
+				klog.ErrorS(err, "failed to wait for policy")
+				t.FailNow()
+			}
+			return ctx
+		}).
+		Assess("Start pods", func(ctx context.Context, _ *testing.T, c *envconf.Config) context.Context {
+			ctx, err := helpers.LoadCRDString(testNamespace, getcpuPod, true)(ctx, c)
+			if err != nil {
+				klog.ErrorS(err, "failed to load pod")
+				t.FailNow()
+			}
+			return ctx
+		}).
+		Assess("Wait for Checker", checker.Wait(30*time.Second)).
+		Feature()
+
+	runner.TestInParallel(t, runWorkload, runEventChecker)
+}
+
+// policy monitors getcpu() system call.
+const policy = `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicy
+metadata:
+  name: "getcpu"
+spec:
+  syscalls:
+    - op: "In"
+      list:
+      - name: "sys_getcpu"
+      actions:
+        - type: "Post"
+`
+
+// getcpuPod just does getcpu() systemcalls and then sleeps
+const getcpuPod = `
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: getcpu-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "getcpu"
+  template:
+    metadata:
+      labels:
+        app: "getcpu"
+    spec:
+      containers:
+      - name: getcpu
+        image: ghcr.io/kkourt/getcpu:v0.3
+        imagePullPolicy: Always
+`
+
+func sandboxChecker() *checker.RPCChecker {
+	return checker.NewRPCChecker(&sandboxEventChecker{}, "sandboxpolicy-checker")
+}
+
+type sandboxEventChecker struct {
+	matches int
+}
+
+func (c *sandboxEventChecker) NextEventCheck(event ec.Event, _ *logrus.Logger) (bool, error) {
+	switch ev := event.(type) {
+	case *tetragon.ProcessTracepoint:
+		return true, errors.New("got an unexpected tracepoint event")
+	case *tetragon.ProcessSandboxSyscall:
+		if ev.Name != "getcpu" {
+			return true, fmt.Errorf("got an unexpected systemcall (%s)", ev.Name)
+		}
+		c.matches++
+	}
+
+	// if we see 5 sandbox events, success!
+	return c.matches >= 5, nil
+}
+
+func (c *sandboxEventChecker) FinalCheck(_ *logrus.Logger) error {
+	if c.matches > 0 {
+		return nil
+	}
+	return fmt.Errorf("sandbox checker failed, had %d matches", c.matches)
+}
