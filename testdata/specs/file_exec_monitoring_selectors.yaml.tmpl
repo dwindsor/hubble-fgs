@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-exec-monitoring"
+spec:
+  exec:
+    enable: true
+    selectors:
+    - matchLinuxCapabilities:
+      - type: Effective
+        operator: In
+        values:
+        - "CAP_SYS_ADMIN"
+      matchLinuxNamespaces:
+      - namespace: Pid
+        filter: Host
+      - namespace: Mnt
+        filter: Host

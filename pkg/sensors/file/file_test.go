@@ -2609,3 +2609,69 @@ func TestFileExecEnforcement(t *testing.T) {
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
+
+func TestFileExecSelectors(t *testing.T) {
+	if !SupportDigests() {
+		t.Skip("Kernel does not support file exec events")
+	}
+
+	// These tests normally run inside a VM, on the host mnt and pid namespace with CAP_SYS_ADMIN.
+	// The selectors in this tracing opolicy ensure these.
+	specFile, err := testutils.GetSpecFromTemplate("file_exec_monitoring_selectors.yaml.tmpl", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		if err := os.Remove(specFile); err != nil {
+			t.Log(err)
+		}
+	})
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	metricsconfig.RegisterEEMetrics()
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	// check if /bin/cat is a symbolic link and follow that if needed
+	catBin, err := filepath.EvalSymlinks("/bin/cat")
+	if err != nil {
+		t.Fatalf("failed to evaluate symlink of executable: err %s", err)
+	}
+
+	if err := exec.Command(catBin, "/etc/passwd").Run(); err != nil {
+		t.Fatalf("failed to run %s: err %s", catBin, err)
+	}
+
+	digest, err := getFileDigest(catBin)
+	if err != nil {
+		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
+	}
+
+	ino, dev := getInodeInfo(t, catBin)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(catBin)).WithInode(i)
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_POST),
+		)
+
+	fileExecChecker := ec.NewProcessFileExecChecker("").WithFile(f).WithDigest(d).WithOperations(o)
+	checker := ec.NewUnorderedEventChecker(fileExecChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
