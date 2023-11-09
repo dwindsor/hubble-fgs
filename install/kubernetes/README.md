@@ -58,6 +58,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.exportFileCompress | bool | `false` |  |
 | tetragon.exportFileMaxBackups | int | `5` |  |
 | tetragon.exportFileMaxSizeMB | int | `10` |  |
+| tetragon.exportFilePerm | string | `"644"` |  |
 | tetragon.exportFilename | string | `"fgs.log"` |  |
 | tetragon.exportRateLimit | int | `-1` |  |
 | tetragon.extraArgs | object | `{}` |  |

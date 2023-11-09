@@ -88,6 +88,9 @@ tetragon:
   # JSON export filename. Set it to an empty string to disable JSON export altogether.
   exportFilename: fgs.log
 
+  # JSON export file permissions as a string. Set it to "600" to restrict access to owner.
+  exportFilePerm: "644"
+
   # Size in megabytes at which to rotate JSON export files.
   exportFileMaxSizeMB: 10
 
