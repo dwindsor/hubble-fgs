@@ -223,6 +223,7 @@ tetragonOperator:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
     tag: v1.11.1
+    pullPolicy: IfNotPresent
   # Skip CRD creation.
   skipCRDCreation: false
   podInfo:
