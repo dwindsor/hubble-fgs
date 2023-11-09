@@ -316,6 +316,7 @@ github.com/cilium/tetragon/pkg/eventcache
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
 github.com/cilium/tetragon/pkg/eventhandler
 github.com/cilium/tetragon/pkg/exporter
+github.com/cilium/tetragon/pkg/fileutils
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/ftrace
 github.com/cilium/tetragon/pkg/generictypes

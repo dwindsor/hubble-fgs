@@ -35,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
+	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -704,11 +705,13 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 		MaxBackups: maxBackups,
 		Compress:   compress,
 	}
-	// For non k8s deployments we explicitly want log files
-	// with permission 0600
-	if !option.Config.EnableK8s {
-		writer.FileMode = os.FileMode(0600)
+
+	perms, err := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
+	if err != nil {
+		log.WithError(err).Warnf("Failed to parse export file permission '%s', failing back to %v",
+			keyExportFilePerm, perms)
 	}
+	writer.FileMode = perms
 
 	finfo, err := os.Stat(filepath.Clean(writer.Filename))
 	if err == nil && finfo.IsDir() {
@@ -910,6 +913,7 @@ func execute() error {
 	flags.Duration(keyExportFileRotationInterval, 0, "Interval at which to rotate JSON export files in addition to rotating them by size")
 	flags.Int(keyExportFileMaxBackups, 5, "Number of rotated JSON export files to retain")
 	flags.Bool(keyExportFileCompress, false, "Compress rotated JSON export files")
+	flags.String(keyExportFilePerm, defaults.DefaultLogsPermission, "Access permissions on JSON export files")
 	flags.Int(keyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
 
 	flags.String(keyLogLevel, "info", "Set log level")
