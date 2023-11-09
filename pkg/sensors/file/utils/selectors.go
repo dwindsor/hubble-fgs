@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
@@ -48,6 +49,44 @@ var capabilitiesTypeTable = map[string]uint32{
 	"permitted":   capsPermitted,
 }
 
+const (
+	namespaceTypeUts             = 0
+	namespaceTypeIpc             = 1
+	namespaceTypeMnt             = 2
+	namespaceTypePid             = 3
+	namespaceTypePidForChildren  = 4
+	namespaceTypeNet             = 5
+	namespaceTypeTime            = 6
+	namespaceTypeTimeForChildren = 7
+	namespaceTypeCgroup          = 8
+	namespaceTypeUser            = 9
+)
+
+var namespaceTypeTable = map[string]uint32{
+	"uts":             namespaceTypeUts,
+	"ipc":             namespaceTypeIpc,
+	"mnt":             namespaceTypeMnt,
+	"pid":             namespaceTypePid,
+	"pidforchildren":  namespaceTypePidForChildren,
+	"net":             namespaceTypeNet,
+	"time":            namespaceTypeTime,
+	"timeforchildren": namespaceTypeTimeForChildren,
+	"cgroup":          namespaceTypeCgroup,
+	"user":            namespaceTypeUser,
+}
+
+const (
+	namespaceFilterAll    = 0
+	namespaceFilterHost   = 1
+	namespaceFilterNoHost = 2
+)
+
+var namespaceFilterTable = map[string]uint32{
+	"all":    namespaceFilterAll,
+	"host":   namespaceFilterHost,
+	"nohost": namespaceFilterNoHost,
+}
+
 var fileActionTypeTable = map[string]uint32{
 	"post":  FileOperationTypePost,
 	"block": FileOperationTypeBlock,
@@ -70,6 +109,9 @@ type KernelSelectorState struct {
 	// matchLinuxCapabilities
 	capabilities map[uint32]*fileapi.SelCaps
 
+	// matchLinuxNamespaces
+	namespaces map[uint32]*fileapi.SelNs
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -83,6 +125,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		operations:          map[uint32]*SelOps{},
 		digests:             map[uint32]*SelDigests{},
 		capabilities:        map[uint32]*fileapi.SelCaps{},
+		namespaces:          map[uint32]*fileapi.SelNs{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -98,6 +141,16 @@ func (k *KernelSelectorState) InitOrGetCapabilities(selIdx uint32) *fileapi.SelC
 	}
 	inner := &fileapi.SelCaps{}
 	k.capabilities[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) InitOrGetNamespaces(selIdx uint32) *fileapi.SelNs {
+	val, ok := k.namespaces[selIdx]
+	if ok {
+		return val
+	}
+	inner := &fileapi.SelNs{}
+	k.namespaces[selIdx] = inner
 	return inner
 }
 
@@ -407,6 +460,15 @@ func GenerateFileCapabilitiesMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	return nil
 }
 
+func GenerateFileNamespacesMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, ns := range sel.namespaces {
+		if err := m.Update(idx, ns, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -574,6 +636,75 @@ func ParseLinuxMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.FileCap
 	return nil
 }
 
+func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespaceSelector, selIdx int) error {
+	val := k.InitOrGetNamespaces(uint32(selIdx))
+
+	nsStr := strings.ToLower(ns.Namespace)
+	nsId, ok := namespaceTypeTable[nsStr]
+	if !ok {
+		return fmt.Errorf("parseMatchLinuxNamespace: namespaceType %s unknown", ns.Namespace)
+	}
+
+	filterSr := strings.ToLower(ns.Filter)
+	filterId, ok := namespaceFilterTable[filterSr]
+	if !ok {
+		return fmt.Errorf("parseMatchLinuxNamespace: filterType %s unknown", ns.Filter)
+	}
+
+	switch nsId {
+	case namespaceTypeUts:
+		val.Filter.UtsFilter = filterId
+		val.Ns.UtsInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeIpc:
+		val.Filter.IpcFilter = filterId
+		val.Ns.IpcInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeMnt:
+		val.Filter.MntFilter = filterId
+		val.Ns.MntInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypePid:
+		val.Filter.PidFilter = filterId
+		val.Ns.PidInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypePidForChildren:
+		val.Filter.PidChildFilter = filterId
+		val.Ns.PidChildInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeNet:
+		val.Filter.NetFilter = filterId
+		val.Ns.NetInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeTime:
+		val.Filter.TimeFilter = filterId
+		val.Ns.TimeInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeTimeForChildren:
+		val.Filter.TimeChildFilter = filterId
+		val.Ns.TimeChildInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeCgroup:
+		val.Filter.CgroupFilter = filterId
+		val.Ns.CgroupInum = namespace.GetPidNsInode(1, nsStr)
+	case namespaceTypeUser:
+		val.Filter.UserFilter = filterId
+		val.Ns.UserInum = namespace.GetPidNsInode(1, nsStr)
+	}
+	return nil
+}
+
+func ParseLinuxMatchNamespaces(k *KernelSelectorState, nses []v1alpha1.FileNamespaceSelector, selIdx int) error {
+	// we only support one filter per namespace
+	nsFilter := make(map[string]int)
+	for _, ns := range nses {
+		nsStr := strings.ToLower(ns.Namespace)
+		_, ok := nsFilter[nsStr]
+		if ok {
+			return fmt.Errorf("only support one namespace filter per type inside a single selector: %s appears twice", ns.Namespace)
+		}
+		nsFilter[nsStr] = 0
+	}
+	for _, c := range nses {
+		if err := ParseLinuxMatchNamespace(k, &c, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > MaxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -608,6 +739,9 @@ func InitKernelExecSelectorState(fileSel []v1alpha1.FileExecSelector) (*KernelSe
 		}
 		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
+		}
+		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
+			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)
 		}
 		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
 			return nil, fmt.Errorf("parseMatchDigests error: %w", err)

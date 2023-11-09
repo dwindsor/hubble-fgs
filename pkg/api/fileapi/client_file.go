@@ -70,6 +70,24 @@ type SelCaps struct {
 	Filter uint64 `align:"filter"` // Capabilities to match (ORed)
 }
 
+type SelNsFilter struct {
+	UtsFilter       uint32 // 0 Equal, 1 NotEqual
+	IpcFilter       uint32
+	MntFilter       uint32
+	PidFilter       uint32
+	PidChildFilter  uint32
+	NetFilter       uint32
+	TimeFilter      uint32
+	TimeChildFilter uint32
+	CgroupFilter    uint32
+	UserFilter      uint32
+}
+
+type SelNs struct {
+	Ns     processapi.MsgNamespaces `align:"ns"`
+	Filter SelNsFilter              `align:"filter"`
+}
+
 type MsgFileEvent struct {
 	Common     processapi.MsgCommon    `align:"common"`
 	ProcessKey processapi.MsgExecveKey `align:"current"`

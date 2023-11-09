@@ -117,6 +117,29 @@ struct file_sel_caps {
 	__u64 filter; // Capabilities to match (ORed)
 };
 
+struct ns_filter {
+	union {
+		struct {
+			__u32 uts_filter;
+			__u32 ipc_filter;
+			__u32 mnt_filter;
+			__u32 pid_filter;
+			__u32 pid_for_children_filter;
+			__u32 net_filter;
+			__u32 time_filter;
+			__u32 time_for_children_filter;
+			__u32 cgroup_filter;
+			__u32 user_filter;
+		};
+		__u32 filter[ns_max_types];
+	};
+}; // All fields aligned so no 'packed' attribute.
+
+struct file_sel_namespaces {
+	struct msg_ns ns;
+	struct ns_filter filter;
+};
+
 struct msg_file_ops {
 	struct msg_common common;
 	struct msg_execve_key current;

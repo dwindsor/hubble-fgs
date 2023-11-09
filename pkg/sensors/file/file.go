@@ -1798,6 +1798,16 @@ func (k *observerFileExecSensor) PolicyHandler(
 			},
 			{
 				Index: 0,
+				Name:  "file_namespaces_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileNamespacesMap(m, selState); err != nil {
+						return fmt.Errorf("file_namespaces_map: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
 				Name:  "file_actions_map",
 				Load: func(m *ebpf.Map, index uint32) error {
 					if err := fm.GenerateFileActionsMap(m, selState); err != nil {
@@ -1821,6 +1831,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 			"file_names_maps",
 			"file_digests_maps",
 			"file_capabilities_map",
+			"file_namespaces_map",
 			"file_actions_map",
 			"file_exec_stats_map",
 			policyfilter.MapName,

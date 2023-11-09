@@ -109,6 +109,10 @@
 #define ATTR_TIMES_SET (1 << 16)
 #define ATTR_TOUCH     (1 << 17)
 
+#define NS_FILTER_ALL	 0
+#define NS_FILTER_HOST	 1
+#define NS_FILTER_NOHOST 2
+
 static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
@@ -267,6 +271,13 @@ struct {
 	__type(key, __u32); /* selector id */
 	__type(value, struct file_sel_caps);
 } file_capabilities_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__type(key, __u32); /* selector id */
+	__type(value, struct file_sel_namespaces);
+} file_namespaces_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
