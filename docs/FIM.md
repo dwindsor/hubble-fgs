@@ -547,3 +547,4 @@ digests and we also print a warning in the logs.
 4. Only path prefixes are supported for matching files.
 5. We do not track `mount`/`unmount`/`chroot` operations inside a watched directory (i.e. if we monitor `/etc/` and we mount a new tree at `/etc/test/` we will not get any events from files/directories inside `/etc/test/`).
 6. We check for invalid UTF-8 bytes in path names. If we find any, we replace that with "�", which leads to information being lost. We may need to use alterative ways to handle them (i.e. strconv.Quote()) or represent paths with bytes to avoid lost information.
+7. File monitoring combined with process filtering for facilities that perform I/O in kernel threads on behalf of processes (e.g., io_uring) might lead to missing events.
