@@ -54,10 +54,10 @@ var (
 		Help:      "Total number of failures in getting the digest for process_file events.",
 	}, []string{"event"})
 
-	fileExecEventsSent = metrics.NewBPFCounter(prometheus.NewDesc(
+	fileExecEbpfErrors = metrics.NewBPFCounter(prometheus.NewDesc(
 		prometheus.BuildFQName(consts.MetricsNamespace, "", "file_exec_ebpf_total"),
-		"Metrics generated directly from eBPF.",
-		[]string{"metric"}, nil,
+		"Total number of eBPF errors for process_file_exec events.",
+		[]string{"error"}, nil,
 	))
 
 	fileExecCollectorErrors = prometheus.NewCounter(prometheus.CounterOpts{
@@ -107,8 +107,4 @@ func FileTotalErrorsInc(reason string) {
 
 func FileFailedDigestInc(event string) {
 	fileFailedDigest.WithLabelValues(event).Inc()
-}
-
-func FileExecCollectorErrorsInc() {
-	fileExecCollectorErrors.Inc()
 }

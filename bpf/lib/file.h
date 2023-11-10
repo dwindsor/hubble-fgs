@@ -195,12 +195,13 @@ struct file_exec_config_map_value {
 	__u32 default_action;
 };
 
+#define FILE_EXEC_METRIC_DIGEST_FAIL	   0
+#define FILE_EXEC_METRIC_PATH_FAIL	   1
+#define FILE_EXEC_METRIC_RETPROBE_ADD_FAIL 2
+#define FILE_EXEC_METRIC_MAX		   3
+
 struct file_exec_stats {
-	__u64 events_generated;
-	__u64 events_blocked;
-	__u64 events_sent;
-	__u64 failed_path;
-	__u64 failed_digest;
+	__u64 m[FILE_EXEC_METRIC_MAX];
 };
 
 #endif

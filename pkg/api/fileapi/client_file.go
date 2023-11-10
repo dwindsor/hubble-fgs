@@ -133,10 +133,19 @@ type FileExecConfigMapValue struct {
 	DefaultAction uint32 `align:"default_action"`
 }
 
+const (
+	FileExecMetricDigestFail      = 0
+	FileExecMetricPathFail        = 1
+	FileExecMetricRetprobeAddFail = 2
+	FileExecMetricMax             = 3
+)
+
+var FileExecMetricTable = map[int]string{
+	FileExecMetricDigestFail:      "digest_fail",
+	FileExecMetricPathFail:        "path_fail",
+	FileExecMetricRetprobeAddFail: "retprobe_add_fail",
+}
+
 type FileExecStats struct {
-	EventsGenerated uint64 `align:"events_generated"`
-	EventsBlocked   uint64 `align:"events_blocked"`
-	EventsSent      uint64 `align:"events_sent"`
-	FailedPath      uint64 `align:"failed_path"`
-	FailedDigest    uint64 `align:"failed_digest"`
+	M [FileExecMetricMax]uint64 `align:"m"`
 }

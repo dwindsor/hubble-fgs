@@ -29,7 +29,7 @@ func NewBPFCollector() prometheus.Collector {
 }
 
 func (c *bpfCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- fileExecEventsSent.Desc()
+	ch <- fileExecEbpfErrors.Desc()
 }
 
 func collectMapStats(mapPath string, sum *fileapi.FileExecStats) error {
@@ -46,11 +46,9 @@ func collectMapStats(mapPath string, sum *fileapi.FileExecStats) error {
 	}
 
 	for _, val := range allCpuValue {
-		sum.EventsGenerated += val.EventsGenerated
-		sum.EventsSent += val.EventsSent
-		sum.EventsBlocked += val.EventsBlocked
-		sum.FailedDigest += val.FailedDigest
-		sum.FailedPath += val.FailedPath
+		for i := 0; i < fileapi.FileExecMetricMax; i++ {
+			sum.M[i] += val.M[i]
+		}
 	}
 	return nil
 }
@@ -70,32 +68,11 @@ func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 		return nil
 	})
 	if err != nil {
-		FileExecCollectorErrorsInc()
+		fileExecCollectorErrors.Inc()
 		return
 	}
 
-	ch <- fileExecEventsSent.MustMetric(
-		float64(sum.EventsGenerated),
-		"EventsGenerated",
-	)
-
-	ch <- fileExecEventsSent.MustMetric(
-		float64(sum.EventsSent),
-		"EventsSent",
-	)
-
-	ch <- fileExecEventsSent.MustMetric(
-		float64(sum.EventsBlocked),
-		"EventsBlocked",
-	)
-
-	ch <- fileExecEventsSent.MustMetric(
-		float64(sum.FailedDigest),
-		"FailedDigest",
-	)
-
-	ch <- fileExecEventsSent.MustMetric(
-		float64(sum.FailedPath),
-		"FailedPath",
-	)
+	for i := 0; i < fileapi.FileExecMetricMax; i++ {
+		ch <- fileExecEbpfErrors.MustMetric(float64(sum.M[i]), fileapi.FileExecMetricTable[i])
+	}
 }
