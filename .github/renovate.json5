@@ -25,6 +25,15 @@
       ]
     },
     {
+      // update the base image for stable branches
+      "enabled": true,
+      "matchPackageNames": ["docker.io/library/alpine"],
+      "matchBaseBranches": [
+        "v1.11",
+        "v1.10",
+      ]
+    },
+    {
       "enabled": true,
       "matchPackageNames": [
         "docker.io/library/golang",
