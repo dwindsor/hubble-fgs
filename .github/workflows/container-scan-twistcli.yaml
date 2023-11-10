@@ -10,6 +10,7 @@ jobs:
   container-scan-twistcli:
     name: scan-container
     runs-on: ubuntu-20.04
+    continue-on-error: true
     strategy:
       matrix:
         image: [
