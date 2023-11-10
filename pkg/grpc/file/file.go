@@ -419,6 +419,7 @@ func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		filemetrics.FileExecTotalCacheInEventsInc()
 		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -498,6 +499,8 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 func (msg *MsgFileEventUnix) Notify() bool {
 	if !msg.isFileExecEvent() {
 		filemetrics.FileTotalCacheOutEventsInc()
+	} else {
+		filemetrics.FileExecTotalCacheOutEventsInc()
 	}
 	return true
 }

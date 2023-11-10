@@ -36,6 +36,12 @@ var (
 		Help:      "Total number of process_file events (that go in/out the eventcache).",
 	}, []string{"direction"})
 
+	fileExecTotalCacheEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name:      "file_exec_cache_events_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of process_exec_file events (that go in/out the eventcache).",
+	}, []string{"direction"})
+
 	fileTotalActionEvents = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "file_actions_total",
 		Namespace: consts.MetricsNamespace,
@@ -71,6 +77,7 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalEvents)
 	registry.MustRegister(fileExecTotalEvents)
 	registry.MustRegister(fileTotalCacheEvents)
+	registry.MustRegister(fileExecTotalCacheEvents)
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
@@ -95,6 +102,14 @@ func FileTotalCacheInEventsInc() {
 
 func FileTotalCacheOutEventsInc() {
 	fileTotalCacheEvents.WithLabelValues("out").Inc()
+}
+
+func FileExecTotalCacheInEventsInc() {
+	fileExecTotalCacheEvents.WithLabelValues("in").Inc()
+}
+
+func FileExecTotalCacheOutEventsInc() {
+	fileExecTotalCacheEvents.WithLabelValues("out").Inc()
 }
 
 func FileTotalActionEventsInc(node, namespace, workload, pod, policy, rule, action, operation string) {
