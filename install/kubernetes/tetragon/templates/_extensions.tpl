@@ -10,6 +10,7 @@ flow-export-file-compress: {{ .Values.tetragon.flowExportFileCompress | quote }}
 {{- if .Values.tetragon.enableCiliumAPI }}
 enable-cilium-api: "true"
 {{- end }}
+enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
 {{- end }}
 
 {{- define "volumes.extra" -}}

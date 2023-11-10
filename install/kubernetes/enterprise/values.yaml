@@ -48,6 +48,8 @@ tetragon:
   #
   # Note that the counter for sampling is global, and it is not per socket.
   tcpStatsSampleSegs: 0
+  # -- Enable sandboxpolicies.
+  enableSandboxpolicies: false
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
