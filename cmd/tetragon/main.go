@@ -571,7 +571,9 @@ func hubbleFGSExecute() error {
 		if option.Config.EnablePodInfo {
 			crds[v1alpha1.PIName] = struct{}{}
 		}
-		crds[client.SandboxPolicyCRD.ResName] = struct{}{}
+		if enterpriseOption.Config.EnableSandboxPolicies {
+			crds[client.SandboxPolicyCRD.ResName] = struct{}{}
+		}
 
 		config, err := k8sconf.K8sConfig()
 		if err != nil {
@@ -668,7 +670,9 @@ func hubbleFGSExecute() error {
 	saveInitInfo()
 	if option.Config.EnableK8s {
 		go osscrd.WatchTracePolicy(ctx, observer.GetSensorManager())
-		go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
+		if enterpriseOption.Config.EnableSandboxPolicies {
+			go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
+		}
 	}
 
 	obs.LogPinnedBpf(observerDir)

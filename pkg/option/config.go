@@ -20,6 +20,8 @@ type config struct {
 	EnableIcmpTracking       bool
 
 	EnableDnsDebug bool
+
+	EnableSandboxPolicies bool
 }
 
 var (

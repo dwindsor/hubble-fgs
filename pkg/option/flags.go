@@ -34,6 +34,7 @@ const (
 	KeyDetatchOldBPF            = "detach-old-bpf"
 	KeyEnableProcessAncestors   = "enable-process-ancestors"
 	keyEnableIcmpTracking       = "enable-icmp-tracking"
+	keyEnableSandboxPolicies    = "enable-sandboxpolicies"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -60,6 +61,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
+	flags.Bool(keyEnableSandboxPolicies, false, "Enable sandboxpolicies (beta)")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -84,4 +86,5 @@ func ReadAndSetEnterpriseFlags() {
 			option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
 		}
 	}
+	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
 }
