@@ -41,6 +41,7 @@ import (
 	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -569,6 +570,8 @@ func hubbleFGSExecute() error {
 		if option.Config.EnablePodInfo {
 			crds[v1alpha1.PIName] = struct{}{}
 		}
+		crds[client.SandboxPolicyCRD.ResName] = struct{}{}
+
 		config, err := k8sconf.K8sConfig()
 		if err != nil {
 			return err
