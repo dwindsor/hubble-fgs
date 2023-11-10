@@ -48,6 +48,12 @@ var (
 		Help:      "Total file events per action",
 	}, []string{"node", "namespace", "workload", "pod", "policy", "rule", "action", "operation"})
 
+	fileExecTotalActionEvents = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+		Name:      "file_exec_actions_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total file exec events per action",
+	}, []string{"node", "namespace", "workload", "pod", "file", "digest", "action"})
+
 	fileTotalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "file_errors_total",
 		Namespace: consts.MetricsNamespace,
@@ -79,6 +85,7 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalCacheEvents)
 	registry.MustRegister(fileExecTotalCacheEvents)
 	registry.MustRegister(fileTotalActionEvents)
+	registry.MustRegister(fileExecTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
 	registry.MustRegister(fileExecCollectorErrors)
@@ -114,6 +121,10 @@ func FileExecTotalCacheOutEventsInc() {
 
 func FileTotalActionEventsInc(node, namespace, workload, pod, policy, rule, action, operation string) {
 	fileTotalActionEvents.WithLabelValues(node, namespace, workload, pod, policy, rule, action, operation).Inc()
+}
+
+func FileExecTotalActionEventsInc(node, namespace, workload, pod, file, digest, action string) {
+	fileExecTotalActionEvents.WithLabelValues(node, namespace, workload, pod, file, digest, action).Inc()
 }
 
 func FileTotalErrorsInc(reason string) {

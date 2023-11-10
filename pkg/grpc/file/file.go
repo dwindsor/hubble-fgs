@@ -294,6 +294,40 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName, tp
 	)
 }
 
+func handleFileExecTotalActionEvents(tetragonEvent *tetragon.ProcessFileExec, execFile, execDigest string) {
+	if tetragonEvent == nil || tetragonEvent.Process == nil { // we don't expect these
+		return
+	}
+
+	if len(tetragonEvent.Operations) != 1 { // for now we will always have a single operation
+		return
+	}
+
+	opr, ok := tetragon.FileOperation_name[int32(tetragonEvent.Operations[0])]
+	if !ok {
+		return
+	}
+
+	namespace := "<host>" // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
+	workload := "<host>"  // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
+	pod := "<host>"       // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
+	if tetragonEvent.Process.Pod != nil {
+		namespace = tetragonEvent.Process.Pod.Namespace
+		workload = tetragonEvent.Process.Pod.Workload
+		pod = tetragonEvent.Process.Pod.Name
+	}
+
+	filemetrics.FileExecTotalActionEventsInc(
+		nodeName,
+		namespace,
+		workload,
+		pod,
+		execFile,
+		execDigest,
+		opr,
+	)
+}
+
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -428,6 +462,11 @@ func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 		tetragonEvent.Process = internal.GetProcessCopy()
 		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
 	}
+	handleFileExecTotalActionEvents(
+		tetragonEvent,
+		tetragonEvent.File.GetStr(),
+		fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[event.Digest.Algo], tetragonEvent.Digest.Hash),
+	)
 	return tetragonEvent
 }
 
@@ -471,13 +510,13 @@ type MsgFileEventUnix struct {
 	Digest      MsgDigest
 }
 
-func handleFileEventCacheRetryMetrics(ev notify.Event, tpName, tpRule string) {
+func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
 	event := ev.Encapsulate()
 	switch e := event.(type) {
 	case *tetragon.GetEventsResponse_ProcessFile:
-		handleFileTotalActionEvents(e.ProcessFile, tpName, tpRule)
+		handleFileTotalActionEvents(e.ProcessFile, msg.TpName, msg.TpRule)
 	case *tetragon.GetEventsResponse_ProcessFileExec:
-		// nothing to do here
+		handleFileExecTotalActionEvents(e.ProcessFileExec, msg.Path, fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[msg.Digest.Algo], msg.Digest.Hash))
 	default:
 		filemetrics.FileTotalErrorsInc("grpc_eventcache_retry")
 	}
@@ -492,7 +531,7 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
 		return err
 	}
-	handleFileEventCacheRetryMetrics(ev, msg.TpName, msg.TpRule)
+	handleFileEventCacheRetryMetrics(ev, msg)
 	return nil
 }
 
@@ -709,7 +748,7 @@ func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev n
 	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
 		return err
 	}
-	handleFileEventCacheRetryMetrics(ev, msg.TpName, msg.TpRule)
+	handleFileEventCacheRetryMetrics(ev, &MsgFileEventUnix{TpName: msg.TpName, TpRule: msg.TpRule})
 	return nil
 }
 
