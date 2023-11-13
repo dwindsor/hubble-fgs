@@ -32,7 +32,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -80,21 +79,12 @@ spec:
 `, port)
 }
 
-func maxKernelVersion(max string) bool {
-	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
-}
-
 func TestHttp11Curl(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	bpf.CheckOrMountCgroup2()
@@ -186,10 +176,6 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	var doneWG, readyWG sync.WaitGroup

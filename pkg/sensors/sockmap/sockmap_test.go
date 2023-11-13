@@ -29,7 +29,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -87,21 +86,12 @@ spec:
 `
 )
 
-func maxKernelVersion(max string) bool {
-	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
-}
-
 func TestTLS13(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	bpf.CheckOrMountCgroup2()
@@ -164,10 +154,6 @@ func TestTLS12(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	bpf.CheckOrMountCgroup2()
@@ -363,11 +349,6 @@ func TestCGTLS13(t *testing.T) {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
 
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
-	}
-
 	bpf.CheckOrMountCgroup2()
 
 	selfChecker := ec.NewProcessChecker().
@@ -428,11 +409,6 @@ func TestCGTLS12(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-
-	// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("TLS parser is currently flaky on this kernel version (%v), skipping", v)
 	}
 
 	bpf.CheckOrMountCgroup2()

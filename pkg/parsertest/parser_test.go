@@ -300,11 +300,6 @@ func runTests(t *testing.T, sensor int, dir string) {
 					fixupTestCaseForNopSensor(tc)
 				}
 
-				// FIXME: remove this restriction once the kernel bug impacting TLS is fixed in 6.1.X
-				if v := "6.1.0"; !maxKernelVersion(v) {
-					tc.Tags["broken"] = struct{}{}
-				}
-
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
 					err = tc.Run(t, TEST_TIMEOUT)
 					if err != nil {
@@ -322,11 +317,6 @@ func runTests(t *testing.T, sensor int, dir string) {
 			return nil
 		})
 
-}
-
-func maxKernelVersion(max string) bool {
-	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
 }
 
 func Test_tls(t *testing.T) {
