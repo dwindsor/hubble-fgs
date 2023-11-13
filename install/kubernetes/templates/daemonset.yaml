@@ -23,8 +23,9 @@ spec:
     {{- end }}
   template:
     metadata:
-    {{- with .Values.podAnnotations }}
       annotations:
+        checksum/configmap: {{ toJson .Values.tetragon | sha256sum }}
+    {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
     {{- end }}
       labels:
