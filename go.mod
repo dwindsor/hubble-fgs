@@ -4,7 +4,7 @@ go 1.21.3
 
 require (
 	github.com/cilium/cilium v1.15.0-pre.2
-	github.com/cilium/ebpf v0.12.2
+	github.com/cilium/ebpf v0.12.3
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
@@ -30,7 +30,7 @@ require (
 	github.com/yalue/native_endian v1.0.2
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.17.0
-	golang.org/x/sys v0.13.0
+	golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c
 	golang.org/x/time v0.4.0
 	google.golang.org/api v0.149.0
 	google.golang.org/grpc v1.59.0
