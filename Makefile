@@ -104,7 +104,7 @@ GO_BUILD = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
 all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 
 -include Makefile.docker
--include modules/tetragon-oss/Makefile.cli
+-include Makefile.cli
 
 .PHONY: help
 help:
