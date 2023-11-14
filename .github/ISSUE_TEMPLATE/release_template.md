@@ -72,14 +72,6 @@ If you create a `X.Y` branch:
   git push origin "api/$RELEASE"
   ```
 - [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
-- [ ] Create standalone tarball release:
-  ```
-  make tarball
-  ```
-- [ ] Upload standalone tarball to the S3 bucket (for this step, you need to configure the `aws` CLI, for more information see [here](https://docs.aws.amazon.com/cli/latest/reference/configure/#examples))
-  ```
-  aws s3 cp build/amd64/linux-tarball/hubble-fgs-$RELEASE-amd64.tar.gz s3://isovalent-tetragon-enterprise-public/hubble-enterprise-standalone-tarball/
-  ```
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"

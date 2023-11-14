@@ -56,6 +56,8 @@ jobs:
 
       - name: Upload Tetragon EE Tarball to AWS s3
         run: |
-          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
-          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/hubble-enterprise-standalone-tarball/
+          # new naming, 1.12 onwards
+          # NB: before 1.12, we pushed to <bucket>/hubble-enterprise-standalone-tetragon
+          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
+          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
         working-directory: ./release
