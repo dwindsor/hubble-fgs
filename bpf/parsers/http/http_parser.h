@@ -812,7 +812,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->tuple = process->tuple;
 
 	size = sizeof(struct __msg_http_event);
-	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
+	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
 
 	/* This is a special caller when we know more headers are needed */
 	if (http->request.method == http_method_response)
@@ -862,7 +862,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->tuple = process->tuple;
 
 	size = sizeof(struct __msg_http_event);
-	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
+	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
 	skip = http->request.consume_bytes + http->request.offset;
 	http_reset_state(&http->request);
 #ifdef SK_MSG

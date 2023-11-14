@@ -114,7 +114,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	msg->digest.ok = 0;
 
 	if (operation & FILE_OP_BLOCK) { // otherwise we will get the event after the actual create to have the inode info
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+		perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 		return 1;
 	}
 	return 0;

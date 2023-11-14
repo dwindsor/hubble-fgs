@@ -112,7 +112,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 
 	size = sizeof(struct msg_ip_event);
 	if (!event_cfg->disableAccept) {
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+		perf_event_output_metric(ctx, ISO_MSG_OP_TCPACCEPT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
 	if (!process)

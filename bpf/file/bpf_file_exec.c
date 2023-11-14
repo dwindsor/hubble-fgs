@@ -115,15 +115,12 @@ int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
 		.pid_tgid = get_current_pid_tgid(),
 		.bprm_ptr = (__u64)bprm,
 	};
-	long retval;
 
 	msg = map_lookup_elem(&exec_retprobe_map, &key);
 	if (!msg)
 		return 0;
 
-	retval = perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
-	if (retval >= 0)
-		INC_STATS(events_sent);
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 	// after sending the message we can delete the map entry
 	map_delete_elem(&exec_retprobe_map, &key);

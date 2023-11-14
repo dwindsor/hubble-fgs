@@ -113,8 +113,8 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 			       watermarks_log->last_win_vol +
 			       watermarks_log->win_vol) *
 			      1000000000 / (e->common.ktime - e->key.ktime);
-		perf_event_output(
-			ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e,
+		perf_event_output_metric(
+			ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, e,
 			sizeof(struct msg_process_network_watermarks_event));
 	}
 
@@ -359,15 +359,15 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 			// send burst end.
 			val->type = WATERMARKS_BURST;
 			val->state = WATERMARKS_END;
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-					  sizeof(struct msg_process_network_watermarks_event));
+			perf_event_output_metric(ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+						 sizeof(struct msg_process_network_watermarks_event));
 			new_watermarks_state = WATERMARKS_STATE_NONE;
 			// check if dip start needed.
 			if (new_win_rate < hist_dip_avg_trigger) {
 				val->type = WATERMARKS_STATE_DIP;
 				val->state = WATERMARKS_START;
-				perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-						  sizeof(struct msg_process_network_watermarks_event));
+				perf_event_output_metric(ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+							 sizeof(struct msg_process_network_watermarks_event));
 				new_watermarks_state = WATERMARKS_STATE_DIP;
 			}
 			break;
@@ -375,15 +375,15 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 			// send dip end.
 			val->type = WATERMARKS_DIP;
 			val->state = WATERMARKS_END;
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-					  sizeof(struct msg_process_network_watermarks_event));
+			perf_event_output_metric(ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+						 sizeof(struct msg_process_network_watermarks_event));
 			new_watermarks_state = WATERMARKS_STATE_NONE;
 			// check if burst start needed.
 			if (new_win_rate > hist_burst_avg_trigger) {
 				val->type = WATERMARKS_BURST;
 				val->state = WATERMARKS_START;
-				perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-						  sizeof(struct msg_process_network_watermarks_event));
+				perf_event_output_metric(ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+							 sizeof(struct msg_process_network_watermarks_event));
 				new_watermarks_state = WATERMARKS_STATE_BURST;
 			}
 			break;
@@ -397,8 +397,8 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 				val->state = WATERMARKS_START;
 				new_watermarks_state = WATERMARKS_STATE_DIP;
 			}
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-					  sizeof(struct msg_process_network_watermarks_event));
+			perf_event_output_metric(ctx, ISO_MSG_OP_PROCESS_NETWORK_WATERMARK, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+						 sizeof(struct msg_process_network_watermarks_event));
 		}
 
 		WRITE_ONCE(watermarks_log->watermarks_state, new_watermarks_state);

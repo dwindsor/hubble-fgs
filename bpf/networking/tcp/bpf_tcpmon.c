@@ -96,7 +96,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 
 	if (!event_cfg->disableConnect) {
 		size = sizeof(struct msg_ip_event);
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
 	struct socketmap_value v = { 0 };

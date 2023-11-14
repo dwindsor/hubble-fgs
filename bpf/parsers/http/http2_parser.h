@@ -251,7 +251,7 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 
 	size = sizeof(struct __msg_http_event);
 
-	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
+	perf_event_output_metric(msg, ISO_MSG_OP_HTTP, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 
 	http->url_offset = 0;
 	chunk = head_chunk(http);

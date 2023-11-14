@@ -257,8 +257,8 @@ net_ns_net_exit(struct pt_regs *ctx)
 	val->common.size = sizeof(struct msg_netns_exit);
 	val->inum = nscommon.inum;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-			  sizeof(struct msg_netns_exit));
+	perf_event_output_metric(ctx, ISO_MSG_OP_NETNS_EXIT, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+				 sizeof(struct msg_netns_exit));
 	return 0;
 }
 

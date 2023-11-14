@@ -623,8 +623,8 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	if (!(msg->operation & FILE_OP_POST))
 		return 0;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
-			  sizeof(struct msg_file_rename_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE_RENAME, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+				 sizeof(struct msg_file_rename_ops));
 
 	return 0;
 }
@@ -669,8 +669,8 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 
 		map_delete_elem(&rename_retprobe_map, &rkey);
 
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
-				  sizeof(struct msg_file_rename_ops));
+		perf_event_output_metric(ctx, ISO_MSG_OP_FILE_RENAME, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+					 sizeof(struct msg_file_rename_ops));
 
 		return -EPERM;
 	}

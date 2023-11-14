@@ -105,8 +105,8 @@ tg_event_tcp_close(struct pt_regs *ctx)
 
 	size = sizeof(struct msg_ip_event);
 	if (!event_cfg->disableClose) {
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-				  size);
+		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCLOSE, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					 size);
 	}
 
 	if (!process->tuple.ipv6) {

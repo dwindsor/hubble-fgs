@@ -77,7 +77,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 	return (operation & FILE_OP_BLOCK) != 0;
 }

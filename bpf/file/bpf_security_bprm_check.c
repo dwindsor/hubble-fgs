@@ -99,7 +99,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	// the lsm.s program and they communicate through the exec_retprobe_map map.
 #ifndef __FILE_DIGEST_LSM
 	msg->digest.ok = 0;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 #else
 	map_update_elem(&exec_retprobe_map, &key, msg, 0);
 #endif
@@ -130,7 +130,7 @@ int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
 	if (!msg)
 		return 0;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 	// after sending the message we can delete the map entry
 	map_delete_elem(&exec_retprobe_map, &key);

@@ -86,8 +86,8 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		return 0;
 
 	if (!event_cfg->disableListen) {
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-				  sizeof(struct msg_ip_event));
+		perf_event_output_metric(ctx, ISO_MSG_OP_LISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					 sizeof(struct msg_ip_event));
 	}
 
 	struct socketmap_value v = { 0 };

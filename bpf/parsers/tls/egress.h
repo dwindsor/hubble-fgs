@@ -20,8 +20,8 @@ egress_post_event(ctx_md *ctx, struct msg_ip_tuple *tuple,
 	post->common.op = ISO_MSG_OP_TLS;
 	post->common.size = sizeof(struct msg_tls_event);
 	post->common.ktime = ktime_get_ns();
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,
-			  sizeof(struct msg_tls_event));
+	perf_event_output_metric(ctx, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+				 sizeof(struct msg_tls_event));
 }
 
 #ifdef SK_MSG

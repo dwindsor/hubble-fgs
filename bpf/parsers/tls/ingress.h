@@ -176,8 +176,8 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 	event->tuple = *tuple;
 	event->payload_size = end_offset - offset;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event,
-			  event_len);
+	perf_event_output_metric(ctx, ISO_MSG_OP_TLS_CONT, &tcpmon_map, BPF_F_CURRENT_CPU, event,
+				 event_len);
 	return 0;
 
 fail:
@@ -192,8 +192,8 @@ fail:
 	errout_pack((int *)event->payload, errcode, bottle->len, type, subtype,
 		    offset);
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event,
-			  sizeof(*event) + ERROUT_LEN);
+	perf_event_output_metric(ctx, ISO_MSG_OP_TLS_CONT, &tcpmon_map, BPF_F_CURRENT_CPU, event,
+				 sizeof(*event) + ERROUT_LEN);
 	return 0;
 }
 
@@ -260,8 +260,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		post->execve = execve->key;
 		post->tuple = execve->tuple;
 
-		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
-				  sizeof(struct msg_tls_event));
+		perf_event_output_metric(skb, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+					 sizeof(struct msg_tls_event));
 		post->serverhello.alert_level = 0;
 		post->clienthello.alert_level = 0;
 

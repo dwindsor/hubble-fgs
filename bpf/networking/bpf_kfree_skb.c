@@ -83,8 +83,8 @@ tg_event_kfree_skb(struct pt_regs *ctx)
 	msg.common.op = ISO_MSG_OP_KFREE_SKB;
 	msg.calltrace.ret = get_stack(ctx, &msg.calltrace.stack,
 				      sizeof(msg.calltrace.stack), 0);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &msg,
-			  sizeof(msg));
+	perf_event_output_metric(ctx, ISO_MSG_OP_KFREE_SKB, &tcpmon_map, BPF_F_CURRENT_CPU, &msg,
+				 sizeof(msg));
 	return 1;
 }
 

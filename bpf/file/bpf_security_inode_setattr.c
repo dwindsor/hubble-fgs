@@ -109,7 +109,7 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 
 	msg->hook = hook_security_inode_setattr;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 	return (msg->operation & FILE_OP_BLOCK) != 0;
 }

@@ -266,8 +266,8 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	 * be block by lsm/fmod_ret programs */
 	msg->operation = FILE_OP_POST;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
-			  sizeof(struct msg_file_ops));
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+				 sizeof(struct msg_file_ops));
 
 	return 0;
 }
@@ -298,7 +298,7 @@ static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx,
 		msg->hook = hook_security_inode_mkdir;
 		msg->operation = FILE_OP_BLOCK;
 
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+		perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 		return -EPERM;
 	}

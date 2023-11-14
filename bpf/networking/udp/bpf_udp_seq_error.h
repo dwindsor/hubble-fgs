@@ -178,7 +178,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	e->app_specific_id = line_id;
 	e->seq_num_expected = expected_seq_num;
 	e->seq_num_received = seq_num;
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, e, sizeof(struct msg_udp_seq_error_event));
+	perf_event_output_metric(skb, ISO_MSG_OP_UDP_SEQ_ERROR, &tcpmon_map, BPF_F_CURRENT_CPU, e, sizeof(struct msg_udp_seq_error_event));
 
 	// Update the expected sequence number to the next one.
 	if (line_id == 0x10000) {

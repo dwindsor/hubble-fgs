@@ -339,10 +339,12 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	struct udp_packet_details *packet;
 	int zero = 0;
 	u64 cookie;
-	u8 proto;
+	u8 proto, packetver = 0;
 	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
 	u16 ethertype;
+	bool ipv6 = false;
+	void *ip = 0;
 
 	if (probe_read(&ethertype, sizeof(ethertype), _(&(skb->protocol))) < 0)
 		return;
@@ -368,9 +370,9 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	case 4:
 		if (!get_ip4_header(&packet->ip.ip4, packet->network_header_off,
 				    packet->skb_head)) {
-			emit_ip_error_event(ctx, 0, &cookie, false,
-					    packet->version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
+			err = IP_ERROR_INET_READ_IP;
+			packetver = packet->version;
+			goto inet_handler_lazy_kp_emit_error;
 		}
 		packet->ipv6 = false;
 
@@ -403,40 +405,43 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
 				    packet->skb_head, skb)) {
-			emit_ip_error_event(ctx, &packet->ip, &cookie, false,
-					    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-			return;
+			err = IP_ERROR_INET_READ_UDP;
+			packetver = packet->ip.ip4.version;
+			ip = &packet->ip;
+			goto inet_handler_lazy_kp_emit_error;
 		}
 		break;
 	case 6:
+		ipv6 = true;
 		if (!get_ip6_header(&packet->ip.ip6, packet->network_header_off,
 				    packet->skb_head)) {
-			emit_ip_error_event(ctx, 0, &cookie, true,
-					    packet->version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
+			err = IP_ERROR_INET_READ_IP;
+			packetver = packet->version;
+			goto inet_handler_lazy_kp_emit_error;
 		}
 		packet->ipv6 = true;
 		proto = get_ip6_proto(0, &packet->ip.ip6,
 				      packet->network_header_off,
 				      packet->skb_head, 0, true, true, &err);
 		if (proto == IP_HEADER_ERROR) {
-			emit_ip_error_event(ctx, &packet->ip.ip6, &cookie, true,
-					    packet->ip.ip6.version, send + 1, 0, err);
-			return;
+			packetver = packet->ip.ip6.version;
+			ip = &packet->ip.ip6;
+			goto inet_handler_lazy_kp_emit_error;
 		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
 				    packet->skb_head, skb)) {
-			emit_ip_error_event(ctx, &packet->ip, &cookie, true,
-					    packet->ip.ip6.version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-			return;
+			err = IP_ERROR_INET_READ_UDP;
+			packetver = packet->ip.ip6.version;
+			ip = &packet->ip;
+			goto inet_handler_lazy_kp_emit_error;
 		}
 		break;
 	default:
-		emit_ip_error_event(ctx, 0, &cookie, false,
-				    packet->version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
+		err = IP_ERROR_INET_NO_VERSION;
+		packetver = packet->version;
+		goto inet_handler_lazy_kp_emit_error;
 	}
 
 	// skb might be non-linear (skb->data_len > 0). If so, we need to do more
@@ -452,6 +457,10 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz, send);
 	udp_watermarks(ctx, &cookie, packet, send);
+	return;
+
+inet_handler_lazy_kp_emit_error:
+	emit_ip_error_event(ctx, ip, &cookie, ipv6, packetver, send + 1, 0, err);
 }
 
 static inline __attribute__((always_inline)) void

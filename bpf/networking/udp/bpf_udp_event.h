@@ -118,7 +118,7 @@ emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
 	if (!val)
 		return;
 	val->common.op = op;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	perf_event_output_metric(ctx, ISO_MSG_OP_UDPCONNECT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
 }
 
@@ -172,7 +172,7 @@ emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	// Having moved the constraint on payload_size in create_udp_payload_event()
 	// above, we now need to do it here as well.
 	size &= 0x7ff;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	perf_event_output_metric(ctx, ISO_MSG_OP_UDPPAYLOAD, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
 static inline __attribute__((always_inline)) void
@@ -199,7 +199,7 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	if (!val)
 		return;
 	size &= 0x7ff;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	perf_event_output_metric(ctx, ISO_MSG_OP_UDPPAYLOAD, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
 static inline __attribute__((always_inline)) void
