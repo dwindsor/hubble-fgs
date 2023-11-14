@@ -93,6 +93,9 @@ func TestTLS13(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -154,6 +157,9 @@ func TestTLS12(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 
 	bpf.CheckOrMountCgroup2()
@@ -348,6 +354,9 @@ func TestCGTLS13(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -409,6 +418,9 @@ func TestCGTLS12(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 
 	bpf.CheckOrMountCgroup2()

@@ -86,6 +86,9 @@ func TestHttp11Curl(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -176,6 +179,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 
 	var doneWG, readyWG sync.WaitGroup

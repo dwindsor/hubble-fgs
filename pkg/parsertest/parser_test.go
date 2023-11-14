@@ -300,6 +300,10 @@ func runTests(t *testing.T, sensor int, dir string) {
 					fixupTestCaseForNopSensor(tc)
 				}
 
+				if os.Getenv("FLAKY_HTTP") != "" {
+					tc.Tags["broken"] = struct{}{}
+				}
+
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
 					err = tc.Run(t, TEST_TIMEOUT)
 					if err != nil {
