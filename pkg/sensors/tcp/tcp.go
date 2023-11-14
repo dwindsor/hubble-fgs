@@ -161,6 +161,7 @@ var (
 
 type tcpKey struct {
 	SockCookie uint64
+	CreateTime uint64
 }
 
 type tcpValue struct {
@@ -462,13 +463,18 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
 func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
-	statsKey := tcpKey{SockCookie: tcp.SockCookie}
+	statsKey := tcpKey{SockCookie: tcp.SockCookie, CreateTime: tcp.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
 	if ok {
 		if tcp.SocketStats.Ktime < last.Ktime {
 			// Current stats message is older than last stats message.
 			// This indicates the race has occurred, so we discard.
 			return nil, fmt.Errorf("TCP stats message is older than previous")
+		}
+
+		// If we already posted an entry and nothings changed skip it.
+		if tcp.SocketStats.Ktime == last.Ktime {
+			return nil, fmt.Errorf("TCP stats message duplicate")
 		}
 
 		tmpSocketStats, err := tcpDiffValues(&last, &tcp.SocketStats, &tcp.Tuple)
@@ -496,7 +502,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		// Convert to a TCPStats event by simply setting op code
 		c.Common.Op = ops.MsgOpTCPStats
-		statsKey := tcpKey{SockCookie: c.SockCookie}
+		statsKey := tcpKey{SockCookie: c.SockCookie, CreateTime: c.SocketStats.CreateKtime}
 		stats.Remove(statsKey)
 		return []observer.Event{tcp, c}, nil
 	}

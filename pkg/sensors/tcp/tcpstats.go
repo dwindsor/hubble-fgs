@@ -80,7 +80,7 @@ func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *
 func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
 	tuple := value.ToMsgIpTuple()
 	tcpStats := value.ToMsgSocketStatsUnix()
-	statsKey := tcpKey{SockCookie: key.SockCookie}
+	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: key.CreateTime}
 
 	// This case handles kernels <5.10 where map will have udp stats
 	// that are not yet associated to a process between IP stack and
@@ -90,10 +90,8 @@ func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
 	} else if tuple.Proto == IPPROTO_TCP {
 		last, ok := stats.Get(statsKey)
 		if ok {
-			// If this is the same socket checked by monotonic creation time
-			// and its been updated checked by comparing Ktime (the LastTime)
-			// then we have a new entry.
-			if tcpStats.CreateKtime == last.CreateKtime && tcpStats.Ktime != last.Ktime {
+			// If Ktime is the same as last read then nothing has changed.
+			if tcpStats.Ktime != last.Ktime {
 				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
 				if err == nil {
 					stats.Add(statsKey, *tcpStats)
@@ -101,15 +99,7 @@ func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
 				} else {
 					fmt.Printf("diffvalue err %s\n", err)
 				}
-				// If the CreateKtimes differ its not the same socket and only the
-				// cookie was recycled, where cookie is a u64 address of the
-				// socket in memory
-			} else if tcpStats.CreateKtime != last.CreateKtime {
-				// Appears golang-lru Add() will remove existing entry
-				emitStatEvent(key, value, tuple, tcpStats)
-				stats.Add(statsKey, *tcpStats)
 			}
-			// Otherwise entry hasn't changed from last read so nothing to do.
 		} else {
 			emitStatEvent(key, value, tuple, tcpStats)
 			stats.Add(statsKey, *tcpStats)
