@@ -21,6 +21,8 @@ jobs:
         include:
           - os: ubuntu-22.04
             arch: amd64
+          - os: buildjet-2vcpu-ubuntu-2204-arm
+            arch: arm64
 
     steps:
       # https://github.com/docker/setup-buildx-action
@@ -46,6 +48,13 @@ jobs:
       - name: Checksum Tetragon EE Tarball
         run: sha256sum -c tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum
         working-directory: ./release
+
+      - name: Install AWC CLI for arm64
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+        if: ${{ matrix.arch == 'arm64' }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
