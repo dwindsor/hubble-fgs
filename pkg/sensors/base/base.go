@@ -100,6 +100,7 @@ var (
 	ExecveStatsV61       = program.MapBuilder("execve_map_stats", ExecveV61)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
+	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	sensor = sensors.Sensor{
 		Name:  "__main__",
@@ -157,6 +158,7 @@ func GetDefaultMaps() []*program.Map {
 		ProcessNetworkWatermarksMap,
 		ExecveJoinMap,
 		ExecveJoinMapStats,
+		StatsMap,
 	}
 
 	if kernels.EnableV61Progs() {
