@@ -10,7 +10,7 @@
   {{- toYaml . | nindent 2 }}
 {{- end }}
   args:
-    - --config-dir=/etc/hubble-enterprise
+    - --config-dir=/etc/tetragon/tetragon.conf.d/
 {{- with .Values.tetragon.argsOverride }}
   {{- toYaml . | nindent 2 }}
 {{- else }}
@@ -30,7 +30,7 @@
     - mountPath: /var/lib/hubble-fgs/metadata
       name: metadata-files
     {{- end }}
-    - mountPath: /etc/hubble-enterprise
+    - mountPath: /etc/tetragon/tetragon.conf.d/
       name: tetragon-config
       readOnly: true
     - mountPath: /sys/fs/bpf
