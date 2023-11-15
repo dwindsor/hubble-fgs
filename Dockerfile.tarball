@@ -13,17 +13,17 @@ COPY install/linux-tarball/usr /usr
 COPY install/linux-tarball/systemd/tetragon-enterprise.service /usr/lib/systemd/system/
 
 # Make a copy of the systemd resources into our location
-COPY install/linux-tarball/systemd /usr/local/lib/hubble-fgs/systemd
+COPY install/linux-tarball/systemd /usr/local/lib/tetragon/systemd
 
 # Our binaries
 COPY --from=tetragon-release /usr/bin/tetragon /usr/local/bin/
 COPY --from=tetragon-release /usr/bin/tetra /usr/local/bin/
 
 # Helper binaries
-COPY --from=tetragon-release /usr/bin/bpftool /usr/local/lib/hubble-fgs/bpftool
+COPY --from=tetragon-release /usr/bin/bpftool /usr/local/lib/tetragon/bpftool
 
 # BPF files and hubble-fgs-fs-scanner
-COPY --from=tetragon-release /var/lib/hubble-fgs /usr/local/lib/hubble-fgs/bpf
+COPY --from=tetragon-release /var/lib/tetragon /usr/local/lib/tetragon/bpf
 
 # We need one layer
 FROM scratch as linux-tarball-2

@@ -10,7 +10,7 @@ ln -s /usr/local/bin/tetragon /usr/local/bin/hubble-fgs
 ln -s /usr/local/bin/tetra /usr/local/bin/hubble-enterprise
 ln -s /usr/local/bin/tetra /usr/local/bin/hubble-fgs-printer
 
-cp -vf /usr/local/lib/hubble-fgs/systemd/tetragon-enterprise.service /usr/lib/systemd/system/tetragon-enterprise.service
+cp -vf /usr/local/lib/tetragon/systemd/tetragon-enterprise.service /usr/lib/systemd/system/tetragon-enterprise.service
 
 install -d /etc/hubble-fgs/hubble-fgs.conf.d/
 

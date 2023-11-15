@@ -2,5 +2,5 @@ FROM docker.io/library/busybox:1.36.1@sha256:3fbc632167424a6d997e74f52b878d7cc47
 
 ARG VMLINUX
 
-WORKDIR /var/run/hubble-fgs/
+WORKDIR /var/run/tetragon-ee-metadata/
 COPY ${VMLINUX} .

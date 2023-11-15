@@ -81,16 +81,16 @@ RUN curl -L https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_TAG}/b
 FROM docker.io/library/alpine:3.18.4@sha256:eece025e432126ce23f223450a0326fbebde39cdf496a85d8c016293fc851978 as base-build
 RUN apk add iproute2
 RUN addgroup hubble	       && \
-    mkdir /var/lib/hubble-fgs/ && \
+    mkdir /var/lib/tetragon/ && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetra /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
-COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
-COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/hubble-fgs/
-COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/hubble-fgs/
+COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/tetragon/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/tetragon/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/tetragon/
 # legacy aliases
 RUN ln -s /usr/bin/tetra /usr/bin/hubble-fgs-printer
 RUN ln -s /usr/bin/tetra /usr/bin/hubble-enterprise

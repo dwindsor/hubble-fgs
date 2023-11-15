@@ -13,6 +13,7 @@ package option
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
@@ -35,7 +36,7 @@ const (
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
-	flags.String(KeyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	flags.String(KeyHubbleLib, defaults.DefaultTetragonLib, "Location of hubble libs (btf and bpf files)")
 	// TODO(michi) Remove after branching v1.12.
 	flags.MarkDeprecated(KeyHubbleLib, fmt.Sprintf("Use --%s instead.", option.KeyHubbleLib))
 	flags.String(KeyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")

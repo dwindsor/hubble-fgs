@@ -10,7 +10,7 @@ FROM docker.io/library/golang:1.19.3-alpine3.15@sha256:eabc3aca6f6c4386369b5b067
 RUN apt-get update
 RUN apt-get install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
-COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
+COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/tetragon/
 
-ENV FGS_BTF=/var/lib/hubble-fgs/btf
+ENV FGS_BTF=/var/lib/tetragon/btf
 ENV FGS_PROCFS=/procRoot/

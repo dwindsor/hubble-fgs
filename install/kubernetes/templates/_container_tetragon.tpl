@@ -27,7 +27,7 @@
       {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- if .Values.tetragon.metadata.enabled }}
-    - mountPath: /var/lib/hubble-fgs/metadata
+    - mountPath: /var/lib/tetragon/metadata
       name: metadata-files
     {{- end }}
     - mountPath: /etc/tetragon/tetragon.conf.d/
@@ -95,12 +95,12 @@
   args:
     - -c
     - |
-        cp -r /var/run/hubble-fgs/* /var/lib/hubble-fgs/metadata
+        cp -r /var/run/tetragon-ee-metadata/* /var/lib/tetragon/metadata
 {{- if .Values.tetragon.enableCiliumAPI }}
         until [ -S /var/run/cilium/cilium.sock -a -S /var/run/cilium/monitor1_2.sock ]; do sleep 3; done
 {{- end }}
   volumeMounts:
-    - mountPath: /var/lib/hubble-fgs/metadata
+    - mountPath: /var/lib/tetragon/metadata
       name: metadata-files
 {{- if .Values.tetragon.enableCiliumAPI }}
     - mountPath: /var/run/cilium

@@ -27,6 +27,9 @@ systemctl daemon-reload
 rm -f /usr/local/bin/tetragon
 rm -f /usr/local/bin/tetra
 
+# remove resources
+rm -fr /usr/local/lib/tetragon/
+
 # remove legacy symbolic links
 rm -f /usr/local/bin/hubble-fgs
 rm -f /usr/local/bin/hubble-enterprise

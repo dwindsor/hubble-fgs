@@ -395,7 +395,7 @@ fetch-testdata:
 	docker rm fgs-md-temp || true
 	docker create --name fgs-md-temp $(METADATA_IMAGE)
 	mkdir -p testdata/btf
-	docker cp fgs-md-temp:/var/run/hubble-fgs/vmlinux-5.4.104+ testdata/btf
+	docker cp fgs-md-temp:/var/run/tetragon-ee-metadata/vmlinux-5.4.104+ testdata/btf
 	docker stop fgs-md-temp || true
 
 generate:
