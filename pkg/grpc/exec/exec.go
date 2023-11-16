@@ -417,6 +417,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	}
 
 	if internal != nil {
+		ev.SetProcess(internal.UnsafeGetProcess())
 		if !msg.RefCntDone[ProcessRefCnt] {
 			internal.RefDec()
 			msg.RefCntDone[ProcessRefCnt] = true
