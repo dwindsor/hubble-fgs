@@ -90,6 +90,11 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
+	// Remove any tracing policies or pods here.
+	runner.Finish(func(ctx context.Context, c *envconf.Config) (context.Context, error) {
+		return ctx, nil
+	})
+
 	// Run the tests using the test runner.
 	runner.Run(m)
 }

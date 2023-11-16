@@ -142,6 +142,39 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
+	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		if supportEnforcement {
+			var err error
+			ctx, err = helpers.UnloadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
+			if err != nil {
+				return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
+			}
+		}
+		return ctx, nil
+	})
+
+	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		var err error
+		ctx, err = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
+		}
+		return ctx, nil
+	})
+
+	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		pr := os.Getenv("HOST_PROC")
+		if pr == "" {
+			pr = "/proc"
+		}
+		var err error
+		ctx, err = helpers.UnloadCRDString(namespace, strings.Replace(ubuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
+		}
+		return ctx, nil
+	})
+
 	runner.Run(m)
 }
 
