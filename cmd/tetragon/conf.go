@@ -22,13 +22,69 @@ import (
 )
 
 var (
-	adminFgsConfDir       = "/etc/hubble-fgs/"
-	adminFgsConfDropIn    = "/etc/hubble-fgs/hubble-fgs.conf.d/"
-	packageFgsConfDropIns = []string{
-		"/usr/lib/hubble-fgs/hubble-fgs.conf.d/",
-		"/usr/local/lib/hubble-fgs/hubble-fgs.conf.d/",
+	oldAdminFgsConfDir    = "/etc/hubble-fgs/"
+	oldAdminFgsConfDropIn = "/etc/hubble-fgs/hubble-fgs.conf.d/"
+
+	adminTgConfDir    = "/etc/tetragon/"
+	adminTgConfDropIn = "/etc/tetragon/tetragon.conf.d/"
+
+	// These we ship them
+	packageTgConfDropIns = []string{
+		"/usr/lib/tetragon/tetragon.conf.d/",
+		"/usr/local/lib/tetragon/tetragon.conf.d/",
 	}
+
+	// If both /etc/hubble-fgs and /etc/tetragon/ contain files then report an error
+	errConfigBoth = fmt.Errorf("both %s and %s exist and contain configurations", oldAdminFgsConfDir, adminTgConfDir)
 )
+
+// validateConfig() checks both /etc/hubble-fgs/ and /etc/tetragon/ for configurations
+//
+// Returns:
+//
+//	On success returns bool, true to indicate /etc/tetragon/tetragon.conf.d/ should be used,
+//	            false to indicate if /etc/hubble-fgs/hubble-fgs.conf.d/ should be used.
+//	On failures an error is returned. Having both /etc/tetragon/tetragon.conf.d/ and
+//		    /etc/hubble-fgs/hubble-fgs.conf.d/ contain configurations is an error.
+func validateConfig() (bool, error) {
+	oldConfDirs, _ := os.ReadDir(oldAdminFgsConfDropIn)
+	newConfDirs, _ := os.ReadDir(adminTgConfDropIn)
+
+	// If the directory exists then that's fine since we had
+	// scripts that created directories and maybe users's create
+	// directories too, so we explicitly check if there are files inside
+	// and if yes then we fail
+	if len(newConfDirs) > 0 && len(oldConfDirs) > 0 {
+		return false, errConfigBoth
+	}
+
+	oldConfYaml := false
+	_, err := os.Stat(filepath.Join(oldAdminFgsConfDir, "hubble-fgs.yaml"))
+	if err == nil {
+		oldConfYaml = true
+	}
+
+	newConfYaml := false
+	_, err = os.Stat(filepath.Join(adminTgConfDir, "tetragon.yaml"))
+	if err == nil {
+		newConfYaml = true
+	}
+
+	if newConfYaml && oldConfYaml {
+		return false, errConfigBoth
+	}
+
+	if len(newConfDirs) > 0 && oldConfYaml == true ||
+		len(oldConfDirs) > 0 && newConfYaml == true {
+		return false, errConfigBoth
+	}
+
+	if len(oldConfDirs) > 0 || oldConfYaml {
+		return false, nil
+	}
+
+	return true, nil
+}
 
 func readConfigFile(path string, file string) error {
 	filePath := filepath.Join(path, file)
@@ -69,14 +125,18 @@ func readConfigDir(path string) error {
 	return nil
 }
 
-func readConfigSettings(defaultConfDir string, defaultConfDropIn string, dropInsDir []string) {
+func readConfigSettings(newConf bool, defaultConfDir string, defaultConfDropIn string, dropInsDir []string) {
 	viper.SetEnvPrefix("fgs")
 	replacer := strings.NewReplacer("-", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 
 	// First set default conf file and format
-	viper.SetConfigName("hubble-fgs")
+	if newConf == true {
+		viper.SetConfigName("tetragon")
+	} else {
+		viper.SetConfigName("hubble-fgs")
+	}
 	viper.SetConfigType("yaml")
 
 	// Read default drop-ins directories
@@ -85,10 +145,14 @@ func readConfigSettings(defaultConfDir string, defaultConfDropIn string, dropIns
 	}
 
 	// Look into cwd first, this is needed for quick development only
-	readConfigFile(".", "hubble-fgs.yaml")
+	readConfigFile(".", "tetragon.yaml")
 
-	// Look for /etc/hubble-fgs/hubble-fgs.yaml
-	readConfigFile(defaultConfDir, "hubble-fgs.yaml")
+	if newConf == true {
+		readConfigFile(defaultConfDir, "tetragon.yaml")
+	} else {
+		// Look for /etc/hubble-fgs/hubble-fgs.yaml
+		readConfigFile(defaultConfDir, "hubble-fgs.yaml")
+	}
 
 	// Look into default /etc/hubble-fgs/hubble-fgs.conf.d/ now
 	readConfigDir(defaultConfDropIn)

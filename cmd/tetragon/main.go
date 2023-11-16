@@ -892,7 +892,18 @@ func execute() error {
 	}
 
 	cobra.OnInitialize(func() {
-		readConfigSettings(adminFgsConfDir, adminFgsConfDropIn, packageFgsConfDropIns)
+		newConf, err := validateConfig()
+		if err != nil {
+			log.WithError(err).Fatal("Failed to validate configuration")
+		}
+		if newConf {
+			readConfigSettings(newConf, adminTgConfDir, adminTgConfDropIn, packageTgConfDropIns)
+		} else {
+			// Warn users about using old configuration directories /etc/hubble-fgs/
+			log.Warnf("Configuration directory '%s' has been deprecated, please use '%s' instead or --%s flag",
+				oldAdminFgsConfDir, adminTgConfDir, option.KeyConfigDir)
+			readConfigSettings(newConf, oldAdminFgsConfDir, oldAdminFgsConfDropIn, packageTgConfDropIns)
+		}
 	})
 
 	flags := rootCmd.PersistentFlags()
