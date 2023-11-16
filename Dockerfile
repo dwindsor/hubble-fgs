@@ -85,6 +85,7 @@ RUN addgroup hubble	       && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     mkdir -p /etc/tetragon/tetragon.conf.d/ && \
+    mkdir -p /etc/tetragon/tetragon.tp.d/ && \
     apk add --no-cache --update bash
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetra /usr/bin/

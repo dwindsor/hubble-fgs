@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/signal"
@@ -369,6 +370,11 @@ func hubbleFGSExecute() error {
 		log.Fatal(err)
 	}
 
+	if filepath.IsAbs(option.Config.TracingPolicyDir) == false {
+		log.Fatalf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir)
+	}
+	option.Config.TracingPolicyDir = filepath.Clean(option.Config.TracingPolicyDir)
+
 	if option.Config.RBSize != 0 && option.Config.RBSizeTotal != 0 {
 		log.Fatalf("Can't specify --rb-size and --rb-size-total together")
 	}
@@ -640,7 +646,16 @@ func hubbleFGSExecute() error {
 	sensorMgWait = nil
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
 
+	err = loadTpFromDir(ctx, option.Config.TracingPolicyDir)
+	if err != nil {
+		return err
+	}
+
 	if len(option.Config.TracingPolicy) > 0 {
+		err = addTracingPolicy(ctx, option.Config.TracingPolicy)
+		if err != nil {
+			return err
+		}
 		tp, err := tracingpolicy.FromFile(option.Config.TracingPolicy)
 		if err != nil {
 			return fmt.Errorf("failed to read config: %w", err)
@@ -657,6 +672,78 @@ func hubbleFGSExecute() error {
 	}
 
 	return obs.Start(ctx)
+}
+
+func loadTpFromDir(ctx context.Context, dir string) error {
+	tpMaxDepth := 1
+	tpFS := os.DirFS(dir)
+
+	if dir == defaults.DefaultTpDir {
+		// If the default directory does not exist then do not fail
+		// Probably tetragon not fully installed, users did not create
+		// /etc/tetragon/tetragon.tp.d/
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			log.WithField("tracing-policy-dir", dir).Info("Loading Tracing Policies from directory ignored, directory does not exist")
+			return nil
+		}
+	}
+
+	err := fs.WalkDir(tpFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			if strings.Count(path, string(os.PathSeparator)) >= tpMaxDepth {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		file := filepath.Join(dir, path)
+		st, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
+
+		if st.Mode().IsRegular() == false {
+			return nil
+		}
+
+		return addTracingPolicy(ctx, file)
+	})
+
+	return err
+}
+
+func addTracingPolicy(ctx context.Context, file string) error {
+	f, err := filepath.Abs(filepath.Clean(file))
+	if err != nil {
+		return err
+	}
+
+	tp, err := tracingpolicy.FromFile(f)
+	if err != nil {
+		return fmt.Errorf("failed to read tracing policy: %w", err)
+	}
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	if err != nil {
+		return fmt.Errorf("failed to get sensors from parser policy: %w", err)
+	}
+
+	namespace := ""
+	if tpNs, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
+		namespace = tpNs.TpNamespace()
+	}
+
+	logger.GetLogger().WithFields(logrus.Fields{
+		"TracingPolicy":      file,
+		"metadata.namespace": namespace,
+		"metadata.name":      tp.TpName(),
+	}).Info("Added TracingPolicy with success")
+
+	return nil
 }
 
 // Periodically log current status every 24 hours. For lost or error
@@ -945,6 +1032,8 @@ func execute() error {
 	// --config-file is the deprecated flag for the new --tracing-policy
 	flags.String(keyConfigFile, "", "Configuration file to load from")
 	flags.MarkHidden(keyConfigFile)
+
+	flags.String(keyTracingPolicyDir, defaults.DefaultTpDir, "Directory from where to load Tracing Policies")
 
 	// JSON export aggregation options.
 	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")

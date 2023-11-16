@@ -42,6 +42,7 @@ const (
 	keyEnableProcessNs   = "enable-process-ns"
 	keyConfigFile        = "config-file"
 	keyTracingPolicy     = "tracing-policy"
+	keyTracingPolicyDir  = "tracing-policy-dir"
 
 	keyExportFilename             = "export-filename"
 	keyExportFileMaxSizeMB        = "export-file-max-size-mb"
@@ -132,6 +133,8 @@ func readAndSetFlags() {
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
 
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
+
+	option.Config.TracingPolicyDir = viper.GetString(keyTracingPolicyDir)
 
 	// deprecation timeline: deprecated -> v1.12.0
 	// manually handle the deprecation of --config-file

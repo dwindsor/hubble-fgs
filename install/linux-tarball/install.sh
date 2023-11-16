@@ -13,6 +13,7 @@ ln -s /usr/local/bin/tetra /usr/local/bin/hubble-fgs-printer
 cp -vf /usr/local/lib/tetragon/systemd/tetragon-enterprise.service /usr/lib/systemd/system/tetragon-enterprise.service
 
 install -d /etc/tetragon/tetragon.conf.d/
+install -d /etc/tetragon/tetragon.tp.d/
 
 systemctl daemon-reload
 systemctl enable tetragon-enterprise
