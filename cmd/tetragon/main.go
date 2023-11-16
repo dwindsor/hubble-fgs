@@ -947,7 +947,7 @@ func resizeCaches() error {
 func execute() error {
 	rootCmd := &cobra.Command{
 		Use:   "tetragon",
-		Short: "Run the Tetragon Enterprise agent",
+		Short: "Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement",
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if len(os.Args) > 0 {
 				if path.Base(os.Args[0]) == "hubble-fgs" {
