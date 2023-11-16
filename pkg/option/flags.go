@@ -13,6 +13,7 @@ package option
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -69,7 +70,12 @@ func ReadAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
 	// TODO(michi) Remove after branching v1.12.
+	// We parse shared flags with OSS then we parse Enterprise ones
 	if viper.IsSet(KeyHubbleLib) {
-		option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
+		logger.GetLogger().Warnf("Flag --%s has been deprecated, please use --%s instead", KeyHubbleLib, option.KeyHubbleLib)
+		// If option.KeyHubbleLib has been set then it takes precedence.
+		if viper.IsSet(option.KeyHubbleLib) == false {
+			option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
+		}
 	}
 }
