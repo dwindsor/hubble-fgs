@@ -41,8 +41,8 @@ jobs:
 
       - name: Install Tetragon EE Tarball
         run: |
-          tar zxvf tetragon-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
-          sudo ./tetragon-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/install.sh
+          tar zxvf tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
+          sudo ./tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/install.sh
         working-directory: ./build/${{ matrix.arch }}/linux-tarball/
 
       - name: Wait for Tetragon EE service
@@ -69,5 +69,5 @@ jobs:
 
       - name: Uninstall Tetragon EE Tarball
         run: |
-          sudo ./tetragon-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/uninstall.sh
+          sudo ./tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/uninstall.sh
         working-directory: ./build/${{ matrix.arch }}/linux-tarball/

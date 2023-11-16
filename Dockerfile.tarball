@@ -32,4 +32,4 @@ ARG TETRAGON_VERSION
 ARG TARGET_ARCH
 
 # We explicitly prefix the filesystem with tetragon-${TETRAGON_VERSION}-${TARGET_ARCH}
-COPY --from=linux-tarball-1 / /tetragon-${TETRAGON_VERSION}-${TARGET_ARCH}/
+COPY --from=linux-tarball-1 / /tetragon-ee-${TETRAGON_VERSION}-${TARGET_ARCH}/
