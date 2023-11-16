@@ -1815,7 +1815,7 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 	}
 
 	// now we apply the existing tracing policy (i.e. /etc/) for the root filesystem of a running container
-	if err := TracingPolicyInitContainerFsScanner(containerId, "", "", rootDir); err != nil {
+	if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerId, "", "", rootDir); err != nil {
 		t.Fatalf("failed to call TracingPolicyInitContainerFsScanner(%s, %s): %s", containerId, rootDir, err)
 	}
 

@@ -50,9 +50,13 @@ type FsScannerRename struct {
 	RuleID      uint32
 }
 
+type SpecPinPath struct {
+	PinPath string
+	Spec    v1alpha1.FileSpec
+}
+
 type FsScannerContainerInit struct {
-	Spec        []v1alpha1.FileSpec
-	PinPath     []string
+	Tp          []SpecPinPath
 	ContainerID string
 	PodNs       string
 	PodName     string
@@ -61,7 +65,7 @@ type FsScannerContainerInit struct {
 }
 
 type FsScannerContainerDestroy struct {
-	PinPath     []string
+	Tp          []SpecPinPath
 	ContainerID string
 	MapDir      string
 }

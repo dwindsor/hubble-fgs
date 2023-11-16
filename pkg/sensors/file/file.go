@@ -336,11 +336,12 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 	return client.Call("FsScannerRpc.RenameDir", &f, &struct{}{})
 }
 
-func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir string) error {
-	pinPath, spec := fileMonitoringTable.getValuesFIM()
+func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string) error {
+	if len(specPath) == 0 {
+		specPath = fileMonitoringTable.getValuesFIM()
+	}
 	f := fm.FsScannerContainerInit{
-		Spec:        spec,
-		PinPath:     pinPath,
+		Tp:          specPath,
 		MapDir:      option.Config.MapDir,
 		ContainerID: containerID,
 		PodNs:       podNs,
@@ -359,10 +360,10 @@ func TracingPolicyInitContainerFsScanner(containerID, podNs, podName, rootDir st
 }
 
 func TracingPolicyDestroyContainerFsScanner(containerID string) error {
-	pinPath, _ := fileMonitoringTable.getValuesFIM()
+	specPath := fileMonitoringTable.getValuesFIM()
 	f := fm.FsScannerContainerDestroy{
+		Tp:          specPath,
 		MapDir:      option.Config.MapDir,
-		PinPath:     pinPath,
 		ContainerID: containerID,
 	}
 
@@ -566,16 +567,17 @@ func (t *fimTable) rmFIM(id uint32) {
 	delete(t.mp, id)
 }
 
-func (t *fimTable) getValuesFIM() ([]string, []v1alpha1.FileSpec) {
-	var pinPaths []string
-	var specs []v1alpha1.FileSpec
+func (t *fimTable) getValuesFIM() []fm.SpecPinPath {
+	var vals []fm.SpecPinPath
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for _, elem := range t.mp {
-		pinPaths = append(pinPaths, elem.pinPathPrefix)
-		specs = append(specs, *elem.Spec)
+		vals = append(vals, fm.SpecPinPath{
+			PinPath: elem.pinPathPrefix,
+			Spec:    *elem.Spec,
+		})
 	}
-	return pinPaths, specs
+	return vals
 }
 
 func ClearFIMTracingPolicies() {
@@ -1212,7 +1214,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
-		if err := TracingPolicyInitContainerFsScanner(i.cid, i.namespace, i.name, i.root); err != nil {
+		s := fm.SpecPinPath{
+			PinPath: e.pinPathPrefix,
+			Spec:    kprobes,
+		}
+		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_container_scanner")
 			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
 		}

@@ -254,21 +254,17 @@ func chroot(path string) (func() error, error) {
 }
 
 func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
-	if len(args.Spec) != len(args.PinPath) {
-		return fmt.Errorf("TracingPolicyContainerInit: spec and pinpath arrays have different lengths")
-	}
-
-	for i := 0; i < len(args.PinPath); i++ {
+	for _, tp := range args.Tp {
 		// check if we care about this namespace
-		if !fm.MatchPodSelector(args.Spec[i].PodSelector, args.PodNs, args.PodName) {
+		if !fm.MatchPodSelector(tp.Spec.PodSelector, args.PodNs, args.PodName) {
 			continue
 		}
 
 		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Info("fim: Adding container files")
 
-		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath[i])
+		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, tp.PinPath)
 		if err != nil {
-			return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, args.PinPath[i], err)
+			return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, tp.PinPath, err)
 		}
 		defer cleanup()
 
@@ -292,7 +288,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 			return fmt.Errorf("chroot to %s: %w", rootDir, err)
 		}
 
-		for i, p := range args.Spec[i].Paths {
+		for i, p := range tp.Spec.Paths {
 			if fNum, dNum, err := fm.WalkPathRaw(p, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Adding files/directories failed")
 			} else {
@@ -300,7 +296,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 			}
 		}
 
-		for _, p := range args.Spec[i].PathsExclude {
+		for _, p := range tp.Spec.PathsExclude {
 			if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
 			} else {
@@ -319,8 +315,8 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 
 func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
-	for _, pinPath := range args.PinPath {
-		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, pinPath)
+	for _, tp := range args.Tp {
+		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, tp.PinPath)
 		if err != nil {
 			return err
 		}
