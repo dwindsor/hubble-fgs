@@ -980,17 +980,23 @@ func execute() error {
 	}
 
 	cobra.OnInitialize(func() {
+		newEnv, err := validateEnv()
+		if err != nil {
+			// Warn about errors but do not fail, we will default to old
+			// FGS_ environment to not break users.
+			log.WithError(err).Warn("Failed to validate environment variables, using old 'FGS_' environment vars")
+		}
 		newConf, err := validateConfig()
 		if err != nil {
 			log.WithError(err).Fatal("Failed to validate configuration")
 		}
 		if newConf {
-			readConfigSettings(newConf, adminTgConfDir, adminTgConfDropIn, packageTgConfDropIns)
+			readConfigSettings(newEnv, newConf, adminTgConfDir, adminTgConfDropIn, packageTgConfDropIns)
 		} else {
 			// Warn users about using old configuration directories /etc/hubble-fgs/
 			log.Warnf("Configuration directory '%s' has been deprecated, please use '%s' instead or --%s flag",
 				oldAdminFgsConfDir, adminTgConfDir, option.KeyConfigDir)
-			readConfigSettings(newConf, oldAdminFgsConfDir, oldAdminFgsConfDropIn, packageTgConfDropIns)
+			readConfigSettings(newEnv, newConf, oldAdminFgsConfDir, oldAdminFgsConfDropIn, packageTgConfDropIns)
 		}
 	})
 

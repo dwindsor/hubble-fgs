@@ -2203,7 +2203,8 @@ func runTestCases(t *testing.T, newConf bool, testCases []testCase, confDir, con
 		packageConfDropIns = append(packageConfDropIns, filepath.Join(testDir, c))
 	}
 	log.Infof("Test %s index %d dumping settings before: %+v", c.description, testGlobalIndex, viper.AllSettings())
-	readConfigSettings(newConf, defaultConfYamlFile, defaultConfDropIn, packageConfDropIns)
+	// use newConf as newEnv here
+	readConfigSettings(newConf, newConf, defaultConfYamlFile, defaultConfDropIn, packageConfDropIns)
 	log.Infof("Test %s index %d expected settings: %+v", c.description, testGlobalIndex, c.expectedOptions)
 	log.Infof("Test %s index %d dumping settings after: %+v", c.description, testGlobalIndex, viper.AllSettings())
 

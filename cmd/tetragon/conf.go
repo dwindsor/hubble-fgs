@@ -38,6 +38,44 @@ var (
 	errConfigBoth = fmt.Errorf("both %s and %s exist and contain configurations", oldAdminFgsConfDir, adminTgConfDir)
 )
 
+// validateEnv() check environment variables for FGS_ and TETRAGON_
+//
+// Returns:
+//
+//	On success returns bool, true if only TETRAGON_ env vars are being used,
+//	       or false if only FGS_ env vars are being used.
+//	       If related env vars are not set, then return true to indicate we
+//	       want to default to TETRAGON_.
+//	On failures an error is returned. Having both TETRAGON_ and FGS_ is considered
+//	       an error.
+func validateEnv() (bool, error) {
+	envs := os.Environ()
+	fgs, tetragon := "", ""
+	for _, v := range envs {
+		s := strings.SplitN(v, "=", 2)
+		if strings.HasPrefix(s[0], "FGS_") {
+			fgs = s[0]
+			// Warn users about using old environment variable prefix  FGS_
+			log.Warnf("Environment variable with a prefix  FGS_  '%q'  has been deprecated, please use  TETRAGON_  prefix instead", fgs)
+			tgenv := strings.Replace(fgs, "FGS_", "TETRAGON_", 1)
+			log.Warnf("Environment variable  '%q'  will take precedence over  '%q'", fgs, tgenv)
+		}
+		if strings.HasPrefix(s[0], "TETRAGON_") {
+			tetragon = s[0]
+		}
+		// If both env are set return an error
+		if fgs != "" && tetragon != "" {
+			return false, fmt.Errorf("both environment variables are set: %q and %q", fgs, tetragon)
+		}
+	}
+
+	if fgs != "" {
+		return false, nil
+	}
+
+	return true, nil
+}
+
 // validateConfig() checks both /etc/hubble-fgs/ and /etc/tetragon/ for configurations
 //
 // Returns:
@@ -125,8 +163,12 @@ func readConfigDir(path string) error {
 	return nil
 }
 
-func readConfigSettings(newConf bool, defaultConfDir string, defaultConfDropIn string, dropInsDir []string) {
-	viper.SetEnvPrefix("fgs")
+func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaultConfDropIn string, dropInsDir []string) {
+	if newEnv == true {
+		viper.SetEnvPrefix("tetragon")
+	} else {
+		viper.SetEnvPrefix("fgs")
+	}
 	replacer := strings.NewReplacer("-", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
