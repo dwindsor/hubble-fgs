@@ -35,7 +35,7 @@ See [tagging] for more details.
 
 If you create a `X.Y` branch:
  - Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
-    - update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/edca86cf0e4c5c8e3e064666f84561ae7b05b88b/pkg/k8s/apis/cilium.io/v1alpha1/register.go#L26) to `X.Y+1.0`.
+    - update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/c6d2699d9d1829a2ea6a6276d410da22fef71629/pkg/k8s/apis/cilium.io/v1alpha1/version.go#L21) to `X.Y+1.0`.
  - Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
    `vX.Y+1.0-pre.0`.
 
@@ -77,35 +77,27 @@ If you create a `X.Y` branch:
   - [ ] Click "generate release notes"
   - [ ] Click "publish release"
 
-### Deploy the new release to Alpo-2
+### Deploy the new release to tetragon-dev
 
-- [ ] Natigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in Alpo-2
-  - [ ] Edit the file flux/clusters/alp-2/hubble-enterprise/hr.yaml and change the agent and operator versions. Example diff:
-    ```diff
-    diff --git a/flux/clusters/alp-2/hubble-enterprise/hr.yaml b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-    index 4bca3d5..5c178eb 100644
-    --- a/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-    +++ b/flux/clusters/alp-2/hubble-enterprise/hr.yaml
-    @@ -21,14 +21,14 @@ spec:
-           btf: /sys/kernel/btf/vmlinux
-           image:
-             repository: quay.io/isovalent/hubble-enterprise
-    -        tag: v1.8.5
-    +        tag: v1.9.0
-           processCacheSize: 64000
-           exportDenyList: |-
-             {"event_set":["INTERFACE_STATS"]}
-         hubbleEnterpriseOperator:
-           image:
-             repository: quay.io/isovalent/hubble-enterprise-operator
-    -        tag: v1.8.5
-    +        tag: v1.9.0
-         export:
-           mode: fluentd
-           fluentd:
-    ```
-  - [ ] NOTE: Depending on the current status of the Alpo-2 configuration, the above fields may not be present (for example when we are currently using default values from the Helm chart). You can just add them if needed.
-  - [ ] Make sure everything looks good in the Alpo-2 cluster. You can refer to the README in dogfooding for how to configure your kubectl to work with Alpo-2
+- [ ] Navigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in tetragon-dev
+  - [ ] Edit the `infra/df-tetragon-dev-ce-01/apps/tetragon/kustomization.yaml` file and change the Helm chart version.
+  - [ ] If the `infra/df-tetragon-dev-ce-01/apps/tetragon/values.yaml` file overwrites the agent or operator image, remove the overwrite.
+  - [ ] Make sure that the `infra/df-tetragon-dev-ce-01/apps/tracing-policies/templates/` directory contains relevant TracingPolicies.
+- [ ] Merge the PR and wait for the new release to be deployed.
+
+### Validate the new release in tetragon-dev
+
+- [ ] Check that all Tetragon pods are up and running. Refer to the [cilium-enterprise-dogfooding] README for the access instructions.
+- [ ] Check the [Tetragon Health](https://grafana.dev.tetragon.isovalent.com/d/f4589e8b-6b8b-4431-9a8a-82616810d76b/tetragon-health) dashboard in Grafana
+  - [ ] error logs
+  - [ ] resources usage
+  - [ ] any suspicious patterns
+- [ ] Check in Grafana if Timescape is ingesting Tetragon events: [Timescape Ingestion](https://grafana.dev.tetragon.isovalent.com/d/XDyOH21Vk/timescape-ingestion). TODO: link a dashboard specific to Tetragon events.
+- [ ] Check in Hubble UI if the [Process Ancestry Tree](https://hubble-ui.dev.tetragon.isovalent.com/ps-tree) is rendered correctly. Select a few sample namespaces/pods.
+- [ ] Check in Hubble UI if the [Service Map](https://hubble-ui.dev.tetragon.isovalent.com/service-map) is rendered correctly. Uncheck the "Live View" toggle (this enables the Timescape mode) and select a few sample namespaces.
+- [ ] Check in Grafana Timescape queries for Tetragon events: [Timescape Queries](https://grafana.dev.tetragon.isovalent.com/d/8v3KZJ14k/timescape-server). TODO: link a dashboard specific to Tetragon events.
+
+Issues found when validating the release in tetragon-dev might not block the release, but should be communicated and documented.
 
 **IF YOU ARE DOING A RELEASE CANDIDATE, STOP HERE.**
 
