@@ -24,9 +24,7 @@ import (
 	"time"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
 	"github.com/cilium/tetragon/tests/e2e/runners"
@@ -96,19 +94,9 @@ func TestMain(m *testing.M) {
 	runner.Run(m)
 }
 
-func maxKernelVersion(max string) bool {
-	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	return int64(kernelVer) < kernels.KernelStringToNumeric(max)
-}
-
 func TestSkeletonBasic(t *testing.T) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
-
-	// FIXME: remove this restriction
-	if v := "6.1.0"; !maxKernelVersion(v) {
-		t.Skipf("Skeleton test is currently flaky on this kernel version (%v), skipping", v)
-	}
 
 	// Grab the minimum kernel version in all cluster nodes and define an RPC checker with it
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
