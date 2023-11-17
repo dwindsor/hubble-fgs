@@ -38,7 +38,7 @@ serviceLabelsOverride: {}
 dnsPolicy: Default
 
 # exportDirectory specifies directory to put Tetragon JSON export files.
-exportDirectory: "/var/run/cilium/hubble"
+exportDirectory: "/var/run/cilium/tetragon"
 # exportFileRotationInterval specifies file creation interval for hubble-export-s3.
 exportFileCreationInterval: "120s"
 
@@ -86,7 +86,7 @@ tetragon:
   processCacheSize: 65536
 
   # JSON export filename. Set it to an empty string to disable JSON export altogether.
-  exportFilename: fgs.log
+  exportFilename: tetragon.log
 
   # JSON export file permissions as a string. Set it to "600" to restrict access to owner.
   exportFilePerm: "644"
@@ -247,7 +247,7 @@ export:
 
   # filenames defines list of files for fluentd to tail and export.
   filenames:
-  - fgs.log
+  - tetragon.log
 
   stdout:
     image:

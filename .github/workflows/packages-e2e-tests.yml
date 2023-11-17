@@ -69,7 +69,7 @@ jobs:
       - name: Test Tetragon EE
         run: |
           sudo tetra status
-          sudo grep "tetra" /var/log/hubble-fgs/hubble-fgs.log
+          sudo grep "tetra" /var/log/tetragon/tetragon.log
           sudo tetra tracingpolicy list | grep dns -
           sudo tetra tracingpolicy add crds/examples/udp.yaml
           sudo tetra tracingpolicy list | grep udp -
@@ -93,7 +93,7 @@ jobs:
           command: |
             sudo systemctl is-active tetragon-enterprise
             sudo tetra status
-            sudo grep "tetra" /var/log/hubble-fgs/hubble-fgs.log
+            sudo grep "tetra" /var/log/tetragon/tetragon.log
             sudo tetra tracingpolicy list | grep dns -
             sudo tetra bugtool
 

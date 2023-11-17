@@ -18,13 +18,13 @@ Helm chart for Tetragon Enterprise
 | export.extraArgs | object | `{}` |  |
 | export.extraEnv | list | `[]` |  |
 | export.extraVolumeMounts | list | `[]` |  |
-| export.filenames[0] | string | `"fgs.log"` |  |
+| export.filenames[0] | string | `"tetragon.log"` |  |
 | export.mode | string | `""` |  |
 | export.securityContext | object | `{}` |  |
 | export.stdout.image.override | string | `nil` |  |
 | export.stdout.image.repository | string | `"quay.io/isovalent/hubble-export-stdout"` |  |
 | export.stdout.image.tag | string | `"v1.0.3"` |  |
-| exportDirectory | string | `"/var/run/cilium/hubble"` |  |
+| exportDirectory | string | `"/var/run/cilium/tetragon"` |  |
 | exportFileCreationInterval | string | `"120s"` |  |
 | extraConfigmapMounts | list | `[]` |  |
 | extraHostPathMounts | list | `[]` |  |
@@ -59,7 +59,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.exportFileMaxBackups | int | `5` |  |
 | tetragon.exportFileMaxSizeMB | int | `10` |  |
 | tetragon.exportFilePerm | string | `"644"` |  |
-| tetragon.exportFilename | string | `"fgs.log"` |  |
+| tetragon.exportFilename | string | `"tetragon.log"` |  |
 | tetragon.exportRateLimit | int | `-1` |  |
 | tetragon.extraArgs | object | `{}` |  |
 | tetragon.extraEnv | list | `[]` |  |

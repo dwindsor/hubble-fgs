@@ -14,5 +14,5 @@ package enterprise
 import "github.com/cilium/tetragon/tests/e2e/helpers"
 
 func init() {
-	helpers.TetragonJsonPathname = "/var/run/cilium/hubble/fgs.log"
+	helpers.TetragonJsonPathname = "/var/run/cilium/tetragon/tetragon.log"
 }
