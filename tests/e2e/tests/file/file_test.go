@@ -130,9 +130,6 @@ func TestMain(m *testing.M) {
 			return ctx, nil
 		}
 
-		// FIXME: Seems that this cases issues in other e2e tests.
-		supportEnforcement = false
-
 		if supportEnforcement {
 			klog.Info("Kernel supports file enforcement")
 			ctx, _ = helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
