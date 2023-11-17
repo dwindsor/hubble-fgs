@@ -37,6 +37,9 @@ func New() *cobra.Command {
 		},
 	}
 
+	// by default, it fallbacks to stderr
+	rootCmd.SetOut(os.Stdout)
+
 	addCommands(rootCmd)
 
 	flags := rootCmd.PersistentFlags()
