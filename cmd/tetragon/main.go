@@ -477,9 +477,6 @@ func hubbleFGSExecute() error {
 	if err := obs.InitSensorManager(sensorMgWait); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
-	defer func() {
-		observer.RemoveSensors(ctx)
-	}()
 
 	// Remove old tcpmon BPF directory
 	//
@@ -645,6 +642,9 @@ func hubbleFGSExecute() error {
 	close(sensorMgWait)
 	sensorMgWait = nil
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
+	defer func() {
+		observer.RemoveSensors(ctx)
+	}()
 
 	err = loadTpFromDir(ctx, option.Config.TracingPolicyDir)
 	if err != nil {
