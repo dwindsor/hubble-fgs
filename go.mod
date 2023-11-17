@@ -32,7 +32,7 @@ require (
 	golang.org/x/net v0.18.0
 	golang.org/x/sys v0.14.1-0.20231113162313-11eadc05e9bf
 	golang.org/x/time v0.4.0
-	google.golang.org/api v0.150.0
+	google.golang.org/api v0.151.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
