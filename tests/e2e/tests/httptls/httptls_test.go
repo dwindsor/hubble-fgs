@@ -94,9 +94,6 @@ func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) 
 }
 
 func TestHttp(t *testing.T) {
-	// FIXME: re-enable this when the kernel patches are merged
-	t.Skipf("Test temporarily disabled pending kernel fixes.")
-
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
 
