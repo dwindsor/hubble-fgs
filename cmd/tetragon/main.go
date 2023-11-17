@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
@@ -111,7 +112,7 @@ func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
 func getFieldFilters() ([]*tetragon.FieldFilter, error) {
 	fieldFilters := viper.GetString(keyFieldFilters)
 
-	filters, err := filters.ParseFieldFilterList(fieldFilters)
+	filters, err := fieldfilters.ParseFieldFilterList(fieldFilters)
 	if err != nil {
 		return nil, err
 	}
