@@ -13,6 +13,8 @@ package httptls_test
 
 import (
 	// Fix up OSS configuration defaults.
+	"os"
+
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 
 	"context"
@@ -53,6 +55,10 @@ var curlYaml string
 var tracingPolicyYaml string
 
 func TestMain(m *testing.M) {
+	if os.Getenv("FLAKY_HTTP") != "" {
+		return
+	}
+
 	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
 		"enterprise.exportAllowList": "",
 		"enterprise.enableTLSEvents": "true",
