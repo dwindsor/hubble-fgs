@@ -14,6 +14,7 @@ data:
   enable-process-ns: {{ .Values.tetragon.enableProcessNs | quote }}
   fim-runtime-endpoint: {{ .Values.tetragon.fimRuntimeEndpoint | quote }}
   process-cache-size: {{ .Values.tetragon.processCacheSize | quote }}
+  fim-fifo-path: {{ .Values.exportDirectory | quote }}
 {{- if .Values.tetragon.exportFilename }}
   export-filename: {{ .Values.exportDirectory}}/{{ .Values.tetragon.exportFilename }}
   export-file-perm: {{ .Values.tetragon.exportFilePerm | quote }}
