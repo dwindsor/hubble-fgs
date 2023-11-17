@@ -249,8 +249,11 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
 	}
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
+
 	ino, dev := getInodeInfo(t, test_file)
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(act).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
@@ -270,7 +273,8 @@ func testDlopenRead(gt *testing.T, t *testing.T) {
 		t.Skip("/lib/x86_64-linux-gnu/libm.so.6 does not exist")
 	}
 
-	testBin := testutils.RepoRootPath("contrib/tester-progs/dlopen")
+	execPath := "contrib/tester-progs/dlopen"
+	testBin := testutils.RepoRootPath(execPath)
 	testCmd := exec.CommandContext(ctx, testBin)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
@@ -298,8 +302,11 @@ func testDlopenRead(gt *testing.T, t *testing.T) {
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
 	}
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	ino, dev := getInodeInfo(t, libFile)
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(libFile, ino, dev))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
@@ -348,12 +355,16 @@ func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
 	}
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
+
 	in_ino, in_dev := getInodeInfo(t, in_file)
 	inFileChecker := ec.NewProcessFileChecker("inFile").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(in_file, in_ino, in_dev))
 	out_ino, out_dev := getInodeInfo(t, out_file)
 	outFileChecker := ec.NewProcessFileChecker("outFile").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(out_file, out_ino, out_dev))
 	checker := ec.NewUnorderedEventChecker(
@@ -403,11 +414,15 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
 	}
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
+
 	ino, dev := getInodeInfo(t, test_file)
 	fileCheckerRead := ec.NewProcessFileChecker("readChecker").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	fileCheckerWrite := ec.NewProcessFileChecker("writeChecker").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(
@@ -581,12 +596,19 @@ func testFileDelete(gt *testing.T, t *testing.T) {
 		t.Errorf("os.Remove failed (%s)", errOp)
 	}
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	inFileChecker := ec.NewProcessFileChecker("inFileChecker").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(in_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -697,25 +719,36 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 
 	fileCleanup(t, test_path)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	file1CreateChecker := ec.NewProcessFileChecker("file1Create").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp1, ino1, dev1)).
 		WithPermissions(sm.Full(perm1)).
 		WithUid(sm.Full(uid1)).
 		WithGid(sm.Full(gid1))
 	file2CreateChecker := ec.NewProcessFileChecker("file2Create").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2)).
 		WithPermissions(sm.Full(perm2)).
 		WithUid(sm.Full(uid2)).
 		WithGid(sm.Full(gid2))
 	file2WriteChecker := ec.NewProcessFileChecker("file2Write").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2))
 	file1DeleteChecker := ec.NewProcessFileChecker("file1Delete").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp1, ino1, dev1))
 	file2DeleteChecker := ec.NewProcessFileChecker("file2Delete").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp2, ino2, dev2))
 	checker := ec.NewUnorderedEventChecker(
@@ -726,7 +759,7 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 		file2DeleteChecker,
 	)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -901,7 +934,14 @@ func TestFileEnforceCreate(t *testing.T) {
 			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
 		)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("hook_security_inode_create")).
@@ -958,7 +998,14 @@ func TestFileEnforceWrite(t *testing.T) {
 			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
 		)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("security_file_permission")).
@@ -1010,7 +1057,14 @@ func TestFileEnforceExec(t *testing.T) {
 			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_BLOCK),
 		)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_EXEC).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("hook_security_bprm_check")).
@@ -1041,29 +1095,49 @@ func fileRemove(t *testing.T, f string) {
 	}
 }
 
-func renameDeleteChecker(f string) *ec.ProcessFileChecker {
+func renameDeleteChecker(t *testing.T, f string) *ec.ProcessFileChecker {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
 	d := ec.NewFileDetailsChecker().WithStr(sm.Full(f)).WithLocation(l)
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
 	return ec.NewProcessFileChecker(fmt.Sprintf("renameDelete(%s)", f)).
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(a)
 }
 
-func renameReadChecker(f string) *ec.ProcessFileChecker {
+func renameReadChecker(t *testing.T, f string) *ec.ProcessFileChecker {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
 	d := ec.NewFileDetailsChecker().WithStr(sm.Full(f)).WithLocation(l)
 	g := ec.NewGenericFileArgChecker().WithFile(d)
 	a := ec.NewFileArgumentChecker().WithGenericArg(g)
 
 	return ec.NewProcessFileChecker(fmt.Sprintf("renameRead(%s)", f)).
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(a)
 }
 
-func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
+func renameRenameChecker(t *testing.T, file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
 	d1 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_a)).WithLocation(l)
 	d2 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_b)).WithLocation(l)
@@ -1078,6 +1152,7 @@ func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChe
 	a := ec.NewFileArgumentChecker().WithRenameArg(c)
 
 	return ec.NewProcessFileChecker(fmt.Sprintf("renameRename(%s -> %s)", src, dst)).
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_RENAME).
 		WithArgs(a)
 }
@@ -1122,9 +1197,9 @@ func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	fileRemove(t, out_file)
 
 	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(out_file)
-	fileCheckers[2] = renameDeleteChecker(out_file)
+	fileCheckers[0] = renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(t, out_file)
+	fileCheckers[2] = renameDeleteChecker(t, out_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1158,9 +1233,9 @@ func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	fileRemove(t, out_file)
 
 	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(out_file)
-	fileCheckers[2] = renameDeleteChecker(out_file)
+	fileCheckers[0] = renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(t, out_file)
+	fileCheckers[2] = renameDeleteChecker(t, out_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1196,9 +1271,9 @@ func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	fileRemove(t, in_file)
 
 	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(in_file)
-	fileCheckers[2] = renameDeleteChecker(in_file)
+	fileCheckers[0] = renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(t, in_file)
+	fileCheckers[2] = renameDeleteChecker(t, in_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1235,9 +1310,9 @@ func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	fileRemove(t, in_file)
 
 	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(in_file)
-	fileCheckers[2] = renameDeleteChecker(in_file)
+	fileCheckers[0] = renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(t, in_file)
+	fileCheckers[2] = renameDeleteChecker(t, in_file)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1272,8 +1347,8 @@ func testFileRename5(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	fileRead(t, out_file)
 	fileRemove(t, out_file)
 
-	noErrorFileCheckers := renameRenameChecker(in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	errorFileCheckers := renameReadChecker(in_file)
+	noErrorFileCheckers := renameRenameChecker(t, in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	errorFileCheckers := renameReadChecker(t, in_file)
 
 	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1313,8 +1388,8 @@ func testFileRename6(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	fileRead(t, out_file)
 	fileRemove(t, out_file)
 
-	noErrorFileCheckers := renameRenameChecker(in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_REG_FILE")
-	errorFileCheckers := renameReadChecker(in_file)
+	noErrorFileCheckers := renameRenameChecker(t, in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	errorFileCheckers := renameReadChecker(t, in_file)
 
 	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1368,11 +1443,11 @@ func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	fileRemove(t, iFile2)
 
 	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(iFile1)
-	fileCheckers[2] = renameReadChecker(iFile2)
-	fileCheckers[3] = renameDeleteChecker(iFile1)
-	fileCheckers[4] = renameDeleteChecker(iFile2)
+	fileCheckers[0] = renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(t, iFile1)
+	fileCheckers[2] = renameReadChecker(t, iFile2)
+	fileCheckers[3] = renameDeleteChecker(t, iFile1)
+	fileCheckers[4] = renameDeleteChecker(t, iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1422,11 +1497,11 @@ func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	fileRemove(t, iFile2)
 
 	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
-	fileCheckers[1] = renameReadChecker(iFile1)
-	fileCheckers[2] = renameReadChecker(iFile2)
-	fileCheckers[3] = renameDeleteChecker(iFile1)
-	fileCheckers[4] = renameDeleteChecker(iFile2)
+	fileCheckers[0] = renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
+	fileCheckers[1] = renameReadChecker(t, iFile1)
+	fileCheckers[2] = renameReadChecker(t, iFile2)
+	fileCheckers[3] = renameDeleteChecker(t, iFile1)
+	fileCheckers[4] = renameDeleteChecker(t, iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1474,13 +1549,13 @@ func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUT
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	noErrorFileCheckers := renameRenameChecker(out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+	noErrorFileCheckers := renameRenameChecker(t, out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
 
 	errorFileCheckers := make([]ec.EventChecker, 4)
-	errorFileCheckers[0] = renameReadChecker(iFile1)
-	errorFileCheckers[1] = renameReadChecker(iFile2)
-	errorFileCheckers[2] = renameDeleteChecker(iFile1)
-	errorFileCheckers[3] = renameDeleteChecker(iFile2)
+	errorFileCheckers[0] = renameReadChecker(t, iFile1)
+	errorFileCheckers[1] = renameReadChecker(t, iFile2)
+	errorFileCheckers[2] = renameDeleteChecker(t, iFile1)
+	errorFileCheckers[3] = renameDeleteChecker(t, iFile2)
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker1)
@@ -1533,13 +1608,13 @@ func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OU
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	noErrorFileCheckers := renameRenameChecker(out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
+	noErrorFileCheckers := renameRenameChecker(t, out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
 
 	errorFileCheckers := make([]ec.EventChecker, 4)
-	errorFileCheckers[0] = renameReadChecker(iFile1)
-	errorFileCheckers[1] = renameReadChecker(iFile2)
-	errorFileCheckers[2] = renameDeleteChecker(iFile1)
-	errorFileCheckers[3] = renameDeleteChecker(iFile2)
+	errorFileCheckers[0] = renameReadChecker(t, iFile1)
+	errorFileCheckers[1] = renameReadChecker(t, iFile2)
+	errorFileCheckers[2] = renameDeleteChecker(t, iFile1)
+	errorFileCheckers[3] = renameDeleteChecker(t, iFile2)
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker1)
@@ -1589,11 +1664,11 @@ func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	fileRemove(t, iFile2)
 
 	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(iFile1)
-	fileCheckers[2] = renameReadChecker(iFile2)
-	fileCheckers[3] = renameDeleteChecker(iFile1)
-	fileCheckers[4] = renameDeleteChecker(iFile2)
+	fileCheckers[0] = renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(t, iFile1)
+	fileCheckers[2] = renameReadChecker(t, iFile2)
+	fileCheckers[3] = renameDeleteChecker(t, iFile1)
+	fileCheckers[4] = renameDeleteChecker(t, iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1640,11 +1715,11 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	fileRemove(t, iFile2)
 
 	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_DIRECTORY")
-	fileCheckers[1] = renameReadChecker(iFile1)
-	fileCheckers[2] = renameReadChecker(iFile2)
-	fileCheckers[3] = renameDeleteChecker(iFile1)
-	fileCheckers[4] = renameDeleteChecker(iFile2)
+	fileCheckers[0] = renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_DIRECTORY")
+	fileCheckers[1] = renameReadChecker(t, iFile1)
+	fileCheckers[2] = renameReadChecker(t, iFile2)
+	fileCheckers[3] = renameDeleteChecker(t, iFile1)
+	fileCheckers[4] = renameDeleteChecker(t, iFile2)
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1696,9 +1771,9 @@ func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 
 	// we should see these events
 	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(inFile1, outFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameRenameChecker(outFile1, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[2] = renameReadChecker(inFile1)
+	fileCheckers[0] = renameRenameChecker(t, inFile1, outFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameRenameChecker(t, outFile1, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[2] = renameReadChecker(t, inFile1)
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -1707,7 +1782,7 @@ func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	fileCheckersFail := make([]ec.EventChecker, 3)
 	fileCheckersFail[0] = renameRenameCheckerNoFlags(inFile2, outFile2)
 	fileCheckersFail[1] = renameRenameCheckerNoFlags(outFile2, inFile2)
-	fileCheckersFail[2] = renameReadChecker(inFile2)
+	fileCheckersFail[2] = renameReadChecker(t, inFile2)
 	checkerFail := ec.NewUnorderedEventChecker(fileCheckersFail...)
 	err = jsonchecker.JsonTestCheck(gt, checkerFail)
 	assert.Error(t, err)
@@ -1740,8 +1815,8 @@ func testFileRename14(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	fileRead(t, inFile1)
 
 	fileCheckers := make([]ec.EventChecker, 2)
-	fileCheckers[0] = renameRenameChecker(inFile2, inFile1, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(inFile1)
+	fileCheckers[0] = renameRenameChecker(t, inFile2, inFile1, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(t, inFile1)
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -1772,12 +1847,19 @@ func testFileRmdir(gt *testing.T, t *testing.T) {
 		t.Fatalf("Remove directory failed: %s\n", err)
 	}
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	dirChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_RMDIR).
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -1799,12 +1881,19 @@ func testFileMkdir(gt *testing.T, t *testing.T) {
 	createTestDir(t, a)
 	ino, dev := getInodeInfo(t, a)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	dirChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_MKDIR).
 		WithArgs(genericArgFilenameChecker(fmt.Sprintf("%s/", a), ino, dev)) // all directory names end with '/'
 	checker := ec.NewUnorderedEventChecker(dirChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 }
@@ -1818,7 +1907,14 @@ func readdirArgChecker(t *testing.T, path string) *ec.ReadDirArgChecker {
 }
 
 func readdirChecker(t *testing.T, path string) *ec.ProcessFileChecker {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	return ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READDIR).
 		WithArgs(ec.NewFileArgumentChecker().WithReaddirArg(readdirArgChecker(t, path))).
 		WithHook(sm.Full("iterate_dir"))
@@ -1904,13 +2000,20 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("hook_security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(gt, err)
 }
 
@@ -1989,11 +2092,12 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 		t.Fatalf("failed to call TracingPolicyDestroyContainerFsScanner(%s): %s", containerId, err)
 	}
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix("cat"))
 	locChecker := ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL).WithContainerId(sm.Full(containerId))
 	fdChecker := ec.NewFileDetailsChecker().WithStr(sm.Full("/etc/shadow")).WithLocation(locChecker)
 	gfileChecker := ec.NewGenericFileArgChecker().WithFile(fdChecker)
 	argChecker := ec.NewFileArgumentChecker().WithGenericArg(gfileChecker)
-	readChecker := ec.NewProcessFileChecker("").WithAction(tetragon.FileAction_FILE_READ).WithArgs(argChecker)
+	readChecker := ec.NewProcessFileChecker("").WithProcess(binChecker).WithAction(tetragon.FileAction_FILE_READ).WithArgs(argChecker)
 	checker := ec.NewUnorderedEventChecker(readChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -2037,7 +2141,10 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix("/usr/bin/cat"))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("security_file_permission"))
@@ -2084,13 +2191,20 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("security_file_permission"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(gt, err)
 }
 
@@ -2113,13 +2227,20 @@ func testExactFileDelete(gt *testing.T, t *testing.T) {
 	os.Remove(a)          // delete the file that we are monitoring
 	createFileInDir(t, a) // create a new file with the same name
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	ino, dev := getInodeInfo(t, a)
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(a, ino, dev))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(gt, err)
 }
 
@@ -2162,7 +2283,14 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 	a := ec.NewFileAttrChecker().WithPermissions(p)
 	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
 		WithHook(sm.Full("hook_security_inode_setattr"))
@@ -2212,13 +2340,20 @@ func testFileChown(gt *testing.T, t *testing.T) {
 	a := ec.NewFileAttrChecker().WithUid(u).WithGid(g)
 	c := ec.NewAttrArgChecker().WithFile(f).WithAttr(a)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
 		WithHook(sm.Full("hook_security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(gt, err)
 }
 
@@ -2277,11 +2412,19 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(oFile)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	fileReadChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("security_file_permission"))
 	fileWriteChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("security_file_permission"))
@@ -2299,7 +2442,14 @@ func getExecChecker(t *testing.T, path string) *ec.ProcessFileChecker {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(path)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
 	return ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_EXEC).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
 		WithHook(sm.Full("hook_security_bprm_check"))
