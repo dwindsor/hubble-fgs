@@ -226,6 +226,46 @@ func RemoveContainerEntries(maps FimMaps, containerID string) error {
 	return ret
 }
 
+// This function gets a prefix and returns all paths that match this prefix.
+// For example let's say that both /etc/ (directory) and /etcfoo (file) exists.
+// The user provides /etc, which means that we care for everything that have
+// this prefix. This function will return an array of /etc and /etcfoo that
+// will be used by filepath.Walk() to be walked.
+func GetPrefixMatch(path string) ([]string, error) {
+	// we only accept absolute paths
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("only absolute paths are supported: [%s]", path)
+	}
+
+	// User provided a path that ends with "/" (i.e. /etc/)
+	// This means that we care only for everything inside /etc/.
+	// Nothing more to do here.
+	if strings.HasSuffix(path, "/") {
+		return []string{path}, nil
+	}
+
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+	pattern := fmt.Sprintf("%s*", base)
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for _, file := range files {
+		match, err := filepath.Match(pattern, file.Name())
+		if err != nil {
+			return nil, err
+		}
+		if match {
+			result = append(result, filepath.Join(dir, file.Name()))
+		}
+	}
+	return result, nil
+}
+
 func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
@@ -350,8 +390,15 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 		return nil
 	}
 
-	if err := filepath.Walk(path, walkFn); err != nil {
+	paths, err := GetPrefixMatch(path)
+	if err != nil {
 		return 0, 0, err
+	}
+
+	for _, p := range paths {
+		if err := filepath.Walk(p, walkFn); err != nil {
+			return 0, 0, err
+		}
 	}
 
 	// we are doing a rename operation so no need to follow all
