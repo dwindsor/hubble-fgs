@@ -10,7 +10,7 @@ podAnnotations: {}
 podSecurityContext: {}
 nodeSelector: {}
 tolerations:
-- operator: Exists
+  - operator: Exists
 affinity: {}
 extraHostPathMounts: []
 extraConfigmapMounts: []
@@ -22,7 +22,6 @@ daemonSetLabelsOverride: {}
 selectorLabelsOverride: {}
 podLabelsOverride: {}
 serviceLabelsOverride: {}
-
 # Set DNS policy for tetragon pods.
 #
 # Recommended DNS policy for tetragon pod depends on whether the export container
@@ -36,12 +35,10 @@ serviceLabelsOverride: {}
 #
 # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
 dnsPolicy: Default
-
 # exportDirectory specifies directory to put Tetragon JSON export files.
 exportDirectory: "/var/run/cilium/tetragon"
 # exportFileRotationInterval specifies file creation interval for hubble-export-s3.
 exportFileCreationInterval: "120s"
-
 #
 # Configures whether Tetragon pods run on the host network.
 #
@@ -56,13 +53,12 @@ exportFileCreationInterval: "120s"
 # Reference: https://github.com/uswitch/kiam/issues/119
 #
 hostNetwork: true
-
 tetragon:
   enabled: true
   image:
     override: ~
     repository: quay.io/isovalent/tetragon
-    tag: v1.11.1
+    tag: v1.12.0-rc.1
   metadata:
     enabled: false
     image:
@@ -80,42 +76,30 @@ tetragon:
   extraVolumeMounts: []
   securityContext:
     privileged: true
-
   # Tetragon puts processes in an LRU cache. The cache is used to find ancestors
   # for subsequently exec'ed processes.
   processCacheSize: 65536
-
   # JSON export filename. Set it to an empty string to disable JSON export altogether.
   exportFilename: tetragon.log
-
   # JSON export file permissions as a string. Set it to "600" to restrict access to owner.
   exportFilePerm: "644"
-
   # Size in megabytes at which to rotate JSON export files.
   exportFileMaxSizeMB: 10
-
   # Number of rotated files to retain.
   exportFileMaxBackups: 5
-
   # Compress rotated JSON export files.
   exportFileCompress: false
-
   # Rate-limit event export (events per minute), Set to -1 to export all events.
   exportRateLimit: -1
-
   # -- EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports
   # ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON.
   flowExportFilename: ""
-
   # Size in megabytes at which to rotate flow JSON export files.
   flowExportFileMaxSizeMB: 10
-
   # Number of rotated flow JSON export files to retain.
   flowExportFileMaxBackups: 5
-
   # Compress rotated flow JSON export files.
   flowExportFileCompress: false
-
   # Allowlist for JSON export. For example, to export only process_connect events from
   # the default namespace:
   #
@@ -123,7 +107,6 @@ tetragon:
   #   {"namespace":["default"],"event_set":["PROCESS_CONNECT"]}
   exportAllowList: |-
     {"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_TLS"]}
-
   # Denylist for JSON export. For example, to exclude exec events that look similar to
   # Kubernetes health checks and all the events from kube-system namespace and the host:
   #
@@ -134,7 +117,6 @@ tetragon:
   exportDenyList: |-
     {"health_check":true}
     {"namespace":["", "cilium", "kube-system"]}
-
   # Filters to include or exclude fields from Tetragon events. Without any filters, all
   # fields are included by default. The presence of at least one inclusion filter implies
   # default-exclude (i.e. any fields that don't match an inclusion filter will be
@@ -151,42 +133,32 @@ tetragon:
   #
   fieldFilters: |-
     {}
-
   # Access Kubernetes API to associate Tetragon events with Kubernetes pods.
   enableK8sAPI: true
-
   # -- DEPRECATED: enableCiliumAPI is deprecated in v1.12 and will be removed in v1.13.
   # Use tetragonOperator.podInfo.enabled and Tetragon's DNS sensor instead to get
   # destination endpoint information for network events.
   #
   # Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache.
   enableCiliumAPI: false
-
   # enableProcessCred enables Capabilities visibility in exec and kprobe events.
   enableProcessCred: false
-
   # enableProcessNs enables Namespaces visibility in exec and kprobe events.
   enableProcessNs: false
-
   # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
   fimRuntimeEndpoint: ""
-
   # Set --btf option to explicitly specify an absolute path to the metadata file. For advanced users only.
   btf: ""
-
   # Override the command. For advanced users only.
   commandOverride: []
-
   # Override the arguments. For advanced users only.
   argsOverride: []
-
   # -- EXPERIMENTAL: This field may be removed in the future without notice.
   #
   # Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.
   #
   # Note that the counter for sampling is global, and it is not per socket.
   tcpStatsSampleSegs: 0
-
   prometheus:
     # -- Whether to enable exposing Tetragon metrics.
     enabled: true
@@ -199,30 +171,26 @@ tetragon:
       enabled: false
       # -- The set of labels to place on the 'ServiceMonitor' resource.
       labelsOverride: {}
-
   grpc:
     # -- Whether to enable exposing Tetragon gRPC.
     enabled: true
     # -- The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
     address: "localhost:54321"
-
   gops:
-     # -- The address at which to expose gops.
-     address: "localhost"
-     # -- The port at which to expose gops.
-     port: 8118
-
+    # -- The address at which to expose gops.
+    address: "localhost"
+    # -- The port at which to expose gops.
+    port: 8118
   # -- Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default.
   enablePolicyFilter: false
   # -- Enable policy filter debug messages.
   enablePolicyFilterDebug: false
-
 tetragonOperator:
   # -- tetragon-operator image.
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.11.1
+    tag: v1.12.0-rc.1
     pullPolicy: IfNotPresent
   # Skip CRD creation.
   skipCRDCreation: false
@@ -230,7 +198,6 @@ tetragonOperator:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
     enabled: true
-
 export:
   # Valid values: "stdout". Disabled by default, populate the value to enable.
   mode: ""
@@ -238,17 +205,13 @@ export:
   extraEnv: []
   extraVolumeMounts: []
   securityContext: {}
-
   # Override the command. For advanced users only.
-  commandOverride: [ ]
-
+  commandOverride: []
   # Override the arguments. For advanced users only.
-  argsOverride: [ ]
-
+  argsOverride: []
   # filenames defines list of files for fluentd to tail and export.
   filenames:
-  - tetragon.log
-
+    - tetragon.log
   stdout:
     image:
       override: ~
