@@ -59,7 +59,7 @@ func installDemoApp() features.Func {
 		if err := manager.RunInstall(
 			helm.WithName("jobs-app"),
 			helm.WithChart("isovalent/jobs-app"),
-			helm.WithVersion("v0.7.0"),
+			helm.WithVersion("v0.9.1"),
 			helm.WithNamespace(namespace),
 			helm.WithArgs("--create-namespace"),
 		); err != nil {
