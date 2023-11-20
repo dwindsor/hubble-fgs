@@ -196,20 +196,21 @@ func (hb *heartbeatSensor) PolicyHandler(
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	spec := policy.TpSpec()
+
+	if !spec.Parser.Heartbeat.Enable {
+		return nil, nil
+	}
+
 	// Attempting to reconfigure an already running heartbeat is an error.
 	if running {
 		logger.GetLogger().Error("Heartbeat is already running")
 		return nil, fmt.Errorf("heartbeat is already running")
 	}
 
-	spec := policy.TpSpec()
 	interval := heartbeatIntervalDefault
 	tcpPort := uint32(heartbeatTCPPortDefault)
 	udpPort := uint32(heartbeatUDPPortDefault)
-
-	if !spec.Parser.Heartbeat.Enable {
-		return nil, nil
-	}
 
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("heartbeat sensor does not implement policy filtering")
