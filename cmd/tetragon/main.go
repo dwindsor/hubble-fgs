@@ -656,14 +656,6 @@ func hubbleFGSExecute() error {
 		if err != nil {
 			return err
 		}
-		tp, err := tracingpolicy.FromFile(option.Config.TracingPolicy)
-		if err != nil {
-			return fmt.Errorf("failed to read config: %w", err)
-		}
-		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-		if err != nil {
-			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
-		}
 	}
 
 	// k8s should have metrics, so periodically log only in a non k8s
