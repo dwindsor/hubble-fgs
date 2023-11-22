@@ -1066,6 +1066,8 @@ func execute() error {
 	flags.Bool(keyEnablePolicyFilterDebug, false, "Enable policy filter debug messages")
 	flags.Bool(keyEnablePodInfo, false, "Enable getting additional Kubernetes metadata from PodInfo custom resources")
 
+	flags.Bool(keyEnableDnsDebug, false, "Enable DNS debug messages")
+
 	enterpriseOption.AddEnterpriseFlags(flags)
 
 	flags.String(keyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")

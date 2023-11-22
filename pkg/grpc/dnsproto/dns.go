@@ -15,8 +15,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
+	"github.com/isovalent/hubble-fgs/pkg/logutils"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -31,6 +34,37 @@ type MsgDnsUnix struct {
 	ProcessKey processapi.MsgExecveKey
 	SockCookie uint64
 	Dns        dnsapi.MsgDns
+}
+
+// Returns whether an integer t corresponds to an expected value
+// for DNS Question/Response type.
+func isValidDnsType(t uint32) bool {
+	// Unknown is not considered a valid type,
+	// even though it technically exists in the enum
+	if t == 0 {
+		return false
+	}
+	_, ok := tetragon.DnsType_name[int32(t)]
+	return ok
+}
+
+func addDnsType(t uint32, types []tetragon.DnsType, msg *MsgDnsUnix, answer bool) []tetragon.DnsType {
+	if !isValidDnsType(t) {
+		if option.Config.EnableDnsDebug {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"type":   t,
+				"pid":    msg.ProcessKey.Pid,
+				"src":    logutils.FormatTupleSrc(&msg.Common, &msg.Tuple),
+				"dst":    logutils.FormatTupleDst(&msg.Common, &msg.Tuple),
+				"answer": answer,
+				"proto":  msg.Tuple.Proto,
+			}).Warn("Invalid DNS type")
+		}
+		types = append(types, tetragon.DnsType_DNS_TYPE_UNDEF)
+		return types
+	}
+	types = append(types, tetragon.DnsType(t))
+	return types
 }
 
 func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
@@ -57,10 +91,10 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	var aTypesEnum []tetragon.DnsType
 
 	for _, a := range msg.Dns.AnswerTypes {
-		aTypesEnum = append(aTypesEnum, tetragon.DnsType(a))
+		aTypesEnum = addDnsType(a, aTypesEnum, msg, true)
 	}
 	for _, q := range msg.Dns.QuestionTypes {
-		qTypesEnum = append(qTypesEnum, tetragon.DnsType(q))
+		qTypesEnum = addDnsType(q, aTypesEnum, msg, false)
 	}
 
 	fgsDns := &tetragon.DnsInfo{

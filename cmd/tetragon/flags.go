@@ -13,6 +13,7 @@ package main
 import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/spf13/viper"
 )
 
@@ -77,6 +78,8 @@ const (
 	keyEnablePolicyFilter      = "enable-policy-filter"
 	keyEnablePolicyFilterDebug = "enable-policy-filter-debug"
 
+	keyEnableDnsDebug = "enable-dns-debug"
+
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
 	keyEnablePodInfo = "enable-pod-info"
@@ -131,6 +134,8 @@ func readAndSetFlags() {
 
 	option.Config.EnablePolicyFilter = viper.GetBool(keyEnablePolicyFilter)
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
+
+	enterpriseOption.Config.EnableDnsDebug = viper.GetBool(keyEnableDnsDebug)
 
 	option.Config.EnablePidSetFilter = viper.GetBool(keyEnablePidSetFilter)
 
