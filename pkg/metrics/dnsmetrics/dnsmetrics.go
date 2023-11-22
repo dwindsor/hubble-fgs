@@ -11,8 +11,11 @@
 package dnsmetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 var (
@@ -27,6 +30,18 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "DNS cache evictions. Some churn is expected, but this metric can be useful to determine the rate of churn",
 	})
+
+	dnsQtypes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+		Name:      "dns_qtypes_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "DNS question types total",
+	}, []string{"namespace", "workload", "pod", "binary", "names", "qtype"})
+
+	dnsRtypes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+		Name:      "dns_rtypes_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "DNS response types total",
+	}, []string{"namespace", "workload", "pod", "binary", "names", "rtype"})
 )
 
 func DnsCacheMisses() prometheus.Counter {
@@ -37,7 +52,21 @@ func DnsCacheEvictions() prometheus.Counter {
 	return dnsCacheEvictions
 }
 
+func AddDnsQType(ns, workload, pod, binary, names string, qtype dnsmessage.Type) {
+	if option.Config.EnableDnsDebug {
+		dnsQtypes.WithLabelValues(ns, workload, pod, binary, names, qtype.String()).Inc()
+	}
+}
+
+func AddDnsRType(ns, workload, pod, binary, names string, rtype dnsmessage.Type) {
+	if option.Config.EnableDnsDebug {
+		dnsRtypes.WithLabelValues(ns, workload, pod, binary, names, rtype.String()).Inc()
+	}
+}
+
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(dnsCacheErrors)
 	registry.MustRegister(dnsCacheEvictions)
+	registry.MustRegister(dnsQtypes)
+	registry.MustRegister(dnsRtypes)
 }

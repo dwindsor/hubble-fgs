@@ -1,12 +1,15 @@
 package dnsproto
 
 import (
+	"strings"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	ossEventmetrics "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -16,10 +19,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/logutils"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/dns/dnsmessage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -90,10 +95,15 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	var qTypesEnum []tetragon.DnsType
 	var aTypesEnum []tetragon.DnsType
 
+	binary, pod, workload, ns := ossEventmetrics.GetProcessInfo(proc)
+
 	for _, a := range msg.Dns.AnswerTypes {
+		dnsmetrics.AddDnsRType(ns, workload, pod, binary, strings.Join(msg.Dns.Names, ","), dnsmessage.Type(a))
 		aTypesEnum = addDnsType(a, aTypesEnum, msg, true)
 	}
+
 	for _, q := range msg.Dns.QuestionTypes {
+		dnsmetrics.AddDnsQType(ns, workload, pod, binary, strings.Join(msg.Dns.Names, ","), dnsmessage.Type(q))
 		qTypesEnum = addDnsType(q, aTypesEnum, msg, false)
 	}
 
