@@ -46,7 +46,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.argsOverride | list | `[]` |  |
 | tetragon.btf | string | `""` |  |
 | tetragon.commandOverride | list | `[]` |  |
-| tetragon.enableCiliumAPI | bool | `false` | DEPRECATED: enableCiliumAPI is deprecated in v1.12 and will be removed in v1.13. Use tetragonOperator.podInfo.enabled and Tetragon's DNS sensor instead to get destination endpoint information for network events.  Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache. |
+| tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
 | tetragon.enableK8sAPI | bool | `true` |  |
 | tetragon.enablePolicyFilter | bool | `false` | Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default. |
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
