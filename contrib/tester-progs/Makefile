@@ -2,7 +2,7 @@
 GCC ?= gcc
 
 PROGS = sigkill-tester capabilities-tester namespace-tester \
-	dup-tester fork-tester nop
+	dup-tester fork-tester nop dlopen
 
 all: $(PROGS)
 	make -C aio/
@@ -28,6 +28,9 @@ fork-tester: fork-tester.c
 	$(GCC) -Wall $< -o $@
 
 nop: nop.c
+	$(GCC) -Wall $< -o $@
+
+dlopen: dlopen.c
 	$(GCC) -Wall $< -o $@
 
 .PHONY: clean

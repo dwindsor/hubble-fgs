@@ -5,3 +5,4 @@ namespace-tester
 sigkill-tester
 capabilities-tester
 nop
+dlopen

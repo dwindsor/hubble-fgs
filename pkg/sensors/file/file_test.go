@@ -256,6 +256,55 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 	assert.NoError(t, err)
 }
 
+func testDlopenRead(gt *testing.T, t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	// this should match the path that we use in contrib/tester-progs/dlopen.c
+	libFile := "/lib/x86_64-linux-gnu/libm.so.6"
+
+	if _, err := os.Stat(libFile); errors.Is(err, os.ErrNotExist) {
+		t.Skip("/lib/x86_64-linux-gnu/libm.so.6 does not exist")
+	}
+
+	testBin := testutils.RepoRootPath("contrib/tester-progs/dlopen")
+	testCmd := exec.CommandContext(ctx, testBin)
+	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testPipes.Close()
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{libFile},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := testCmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	logWG := testPipes.ParseAndLogCmdOutput(t, nil, nil)
+	logWG.Wait()
+
+	if err := testCmd.Wait(); err != nil {
+		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
+	}
+
+	ino, dev := getInodeInfo(t, libFile)
+	fileChecker := ec.NewProcessFileChecker("").
+		WithAction(tetragon.FileAction_FILE_READ).
+		WithArgs(genericArgFilenameChecker(libFile, ino, dev))
+	checker := ec.NewUnorderedEventChecker(fileChecker)
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(t, err)
+}
+
 func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
@@ -2282,6 +2331,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("fallocate", func(lt *testing.T) {
 		testFileFallocate(t, lt)
+	})
+	t.Run("dlopen", func(lt *testing.T) {
+		testDlopenRead(t, lt)
 	})
 	t.Run("aiopread", func(lt *testing.T) {
 		testFileAioPRead(t, lt)
