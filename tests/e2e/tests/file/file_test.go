@@ -90,8 +90,9 @@ func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 }
 
 func TestMain(m *testing.M) {
-	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
+	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragon(install.WithHelmOptions(map[string]string{
 		"tetragon.exportAllowList": "",
+		"tetragon.enableCiliumAPI": "false",
 	})).Init()
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
