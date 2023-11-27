@@ -42,6 +42,13 @@ If you create a `X.Y` branch:
 ### Cutting the Tetragon Enterprise release
 
 - [ ] Check that there are no [release blockers].
+- [ ] Check that there are no Critical or High severity CVEs reported in the latest
+      [container vulnerability scan](https://github.com/isovalent/hubble-fgs/actions/workflows/container-scan-twistcli.yaml)
+      for the version you are releasing (X.Y) – look at the 'Output scan results' step for the list of
+      relevant CVES. If there are any reported issues, either bump the relevant
+      dependency (preferred) or work with [#sig-security](https://isovalent.slack.com/archives/CHAA21WJU)
+      to triage the issue and add it to the [Tetragon VEX doc](https://github.com/isovalent/hubble-fgs/blob/master/.github/vex-data.vex.json),
+      which will exclude it from the scan results if it is a false positive.
 - [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.9.0`:
   ```
   export RELEASE=v1.9.0

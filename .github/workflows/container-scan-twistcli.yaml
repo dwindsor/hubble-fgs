@@ -15,8 +15,17 @@ jobs:
     continue-on-error: true
     strategy:
       matrix:
-        image: [tetragon-ci, tetragon-operator-ci]
-        branch: [v1.12]
+        image: [hubble-enterprise-ci, hubble-enterprise-operator-ci, tetragon-ci, tetragon-operator-ci]
+        branch: [v1.10, v1.11, v1.12]
+        exclude:
+          - image: tetragon-ci
+            branch: v1.10
+          - image: tetragon-operator-ci
+            branch: v1.10
+          - image: tetragon-ci
+            branch: v1.11
+          - image: tetragon-operator-ci
+            branch: v1.11
     steps:
       - name: Pull Docker image
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
