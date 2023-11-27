@@ -1778,7 +1778,7 @@ func (k *observerFileSensor) PolicyHandler(
 	}
 	progs, err := findHooks(&config, fileMode, digestSupport)
 	if err != nil {
-		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks")
+		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
 	return addFileMonitoringSensor(policy, spec.FileMonitoring, progs, config, selState)
 }
