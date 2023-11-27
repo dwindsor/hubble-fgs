@@ -546,6 +546,74 @@ func testFileCpIouring(gt *testing.T, t *testing.T) {
 	runCopyTest(gt, t, "tester-progs/io_uring/cp_liburing")
 }
 
+func testFilePollingIouring(gt *testing.T, t *testing.T) {
+	// io_uring introduced in kernel 5.10: https://lwn.net/Articles/810414/
+	// but this test requires kernels >= 5.10.
+	if !kernels.MinKernelVersion("5.10.0") {
+		t.Skip("File monitoring (sq_poll) requires at least 5.10.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, test_path)
+
+	test_file := filepath.Join(test_path, "test1")
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	execPath := "contrib/tester-progs/io_uring/sq_poll"
+	testBin := testutils.RepoRootPath(execPath)
+	testCmd := exec.CommandContext(ctx, testBin, test_file)
+	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testPipes.Close()
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{test_path},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := testCmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	logWG := testPipes.ParseAndLogCmdOutput(t, nil, nil)
+	logWG.Wait()
+
+	if err := testCmd.Wait(); err != nil {
+		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
+	}
+
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(filepath.Base(execPath)))
+
+	ino, dev := getInodeInfo(t, test_file)
+	fileWriteChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(genericArgFilenameChecker(test_file, ino, dev)).
+		WithHook(sm.Full("security_file_permission"))
+	fileReadChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_READ).
+		WithArgs(genericArgFilenameChecker(test_file, ino, dev)).
+		WithHook(sm.Full("security_file_permission"))
+	checker := ec.NewUnorderedEventChecker(
+		fileWriteChecker,
+		fileWriteChecker,
+		fileReadChecker,
+		fileReadChecker,
+	)
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(t, err)
+}
+
 // tests in hubble-fgs/contrib/tester-progs/mmap
 
 func testFileMmapReadPopulate(gt *testing.T, t *testing.T) {
@@ -2678,6 +2746,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("writeiouring", func(lt *testing.T) {
 		testFileWriteIouring(t, lt)
+	})
+	t.Run("polliouring", func(lt *testing.T) {
+		testFilePollingIouring(t, lt)
 	})
 	t.Run("create", func(lt *testing.T) {
 		testFileCreate(t, lt)

@@ -1,6 +1,6 @@
 GCC ?= gcc
 
-PROGS = cp_liburing cat_liburing write_liburing
+PROGS = cp_liburing cat_liburing write_liburing sq_poll
 
 all: $(PROGS)
 
@@ -12,6 +12,9 @@ cat_liburing: cat_liburing.c
 
 write_liburing: write_liburing.c
 	$(GCC) -Wall -o write_liburing write_liburing.c -luring
+
+sq_poll: sq_poll.c
+	$(GCC) -Wall -o sq_poll sq_poll.c -luring
 
 .PHONY: clean
 clean:
