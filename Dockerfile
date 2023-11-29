@@ -31,8 +31,8 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
 RUN ldconfig /usr/local/
 COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
-    then make tetragon-image TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
-    else make tetragon-image TARGET_ARCH=$TARGETARCH; fi
+    then make tetragon tetra hubble-fgs-fs-scanner TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
+    else make tetragon tetra hubble-fgs-fs-scanner TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.21.4-alpine@sha256:110b07af87238fbdc5f1df52b00927cf58ce3de358eeeb1854f10a8b5e5e1411 as gops

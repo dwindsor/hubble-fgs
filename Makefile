@@ -215,17 +215,6 @@ ksyms:
 	make -C $(OSS_DIR) ksyms
 	cp $(OSS_DIR)/ksyms ksyms
 
-.PHONY: tetragon-image
-tetragon-image:
-	$(GO_BUILD) -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
-	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
-	$(GO_BUILD) ./cmd/tetragon
-	$(GO_BUILD) ./cmd/tetra
-
-.PHONY: tetragon-operator-image
-tetragon-operator-image:
-	$(GO_BUILD) -o tetragon-operator ./operator
-
 install:
 	groupadd -f hubble
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)

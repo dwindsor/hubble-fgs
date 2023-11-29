@@ -20,7 +20,7 @@ ARG NOSTRIP
 
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs --mount=target=/root/.cache,type=cache --mount=target=/go/pkg/mod,type=cache \
-    make GOARCH=${TARGETARCH} tetragon-operator-image \
+    make GOARCH=${TARGETARCH} tetragon-operator \
     && mkdir -p /out/${TARGETOS}/${TARGETARCH}/usr/bin && mv tetragon-operator /out/${TARGETOS}/${TARGETARCH}/usr/bin
 # this is a workaround to copy symlinks to a scratch image without following the symlink
 # see https://github.com/moby/moby/issues/40449#issuecomment-1545819389
