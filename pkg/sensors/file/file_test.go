@@ -1712,6 +1712,40 @@ func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	assert.Error(t, err)
 }
 
+// This test check the case where we monitor a specific file but
+// the file does not exist when we start monitoring.
+func testFileRename14(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	testPath := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testPath)
+
+	inFile1 := filepath.Join(testPath, "in1")
+	createFileInDir(t, inFile1)
+
+	inFile2 := filepath.Join(testPath, "in2")
+	createFileInDir(t, inFile2)
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{inFile1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := os.Rename(inFile2, inFile1); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+	fileRead(t, inFile1)
+
+	fileCheckers := make([]ec.EventChecker, 2)
+	fileCheckers[0] = renameRenameChecker(inFile2, inFile1, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(inFile1)
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(t, err)
+}
+
 func testFileRmdir(gt *testing.T, t *testing.T) {
 	out := filepath.Join(workingDir, fmt.Sprintf("fim_test_outdir_%s", filepath.Base(t.Name())))
 	createTestDir(t, out)
@@ -2476,6 +2510,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("rename13", func(lt *testing.T) {
 		testFileRename13(t, lt)
+	})
+	t.Run("rename14", func(lt *testing.T) {
+		testFileRename14(t, lt)
 	})
 	t.Run("mkdir", func(lt *testing.T) {
 		testFileMkdir(t, lt)
