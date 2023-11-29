@@ -223,7 +223,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 				(struct bpf_map_def *)&hash_map_dir_alloc,
 				v->msg.src.parent_ino,
 				v->msg.src.parent_fs.dev);
-			if (fv && fv->action == FILTER_MATCH)
+			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
 				src_watched = 1;
 		}
 
@@ -234,7 +234,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 				(struct bpf_map_def *)&hash_map_dir_alloc,
 				v->msg.dst.parent_ino,
 				v->msg.dst.parent_fs.dev);
-			if (fv && fv->action == FILTER_MATCH)
+			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
 				dst_watched = 1;
 		}
 
@@ -248,13 +248,30 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	{
 		struct hash_map_file_val *fval = 0;
 
-		if ((v->msg.flags & SRC_REG_FILE) ||
-		    (v->msg.flags & SRC_DIRECTORY)) {
+		// first check if we care about the specific (source) file or directory
+		if (v->msg.flags & SRC_REG_FILE) {
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_file_alloc,
+				v->msg.src.ino,
+				v->msg.src.fs.dev);
+		} else if (v->msg.flags & SRC_DIRECTORY) {
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.src.ino,
+				v->msg.src.fs.dev);
+			if (!(fval && fval->action == FILTER_MATCH))
+				fval = 0;
+		}
+
+		// we need to get the parent path here in order to create the final path
+		if ((v->msg.flags & SRC_REG_FILE || v->msg.flags & SRC_DIRECTORY) && fval != 0) {
 			fval = find_inode_in_map(
 				(struct bpf_map_def *)&hash_map_dir_alloc,
 				v->msg.src.parent_ino,
 				v->msg.src.parent_fs.dev);
-		} // otherwise we don't care
+			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
+				fval = 0;
+		}
 
 		if (fval == 0) { // we care for the path not for the action
 			v->need_old = 1;
@@ -277,14 +294,30 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	{
 		struct hash_map_file_val *fval = 0;
 
-		if ((v->msg.flags & DST_REG_FILE) ||
-		    (v->msg.flags & DST_DIRECTORY) ||
-		    (v->msg.flags & DST_NOT_EXISTS)) {
+		// first check if we care about the specific (destination) file or directory
+		if (v->msg.flags & DST_REG_FILE) {
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_file_alloc,
+				v->msg.dst.ino,
+				v->msg.dst.fs.dev);
+		} else if (v->msg.flags & DST_DIRECTORY) {
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.dst.ino,
+				v->msg.dst.fs.dev);
+			if (!(fval && fval->action == FILTER_MATCH))
+				fval = 0;
+		}
+
+		// we need to get the parent path here in order to create the final path
+		if (((v->msg.flags & DST_REG_FILE || v->msg.flags & DST_DIRECTORY) && fval != 0) || (v->msg.flags & DST_NOT_EXISTS)) {
 			fval = find_inode_in_map(
 				(struct bpf_map_def *)&hash_map_dir_alloc,
 				v->msg.dst.parent_ino,
 				v->msg.dst.parent_fs.dev);
-		} // otherwise we don't care
+			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
+				fval = 0;
+		}
 
 		if (fval == 0) { // we care for the path not for the action
 			v->need_new = 1;
@@ -438,7 +471,11 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 
 	// copy file name
 	name_size = name->path.name_size;
+	// next, we will limit name up to 64 bytes and dir to be up to 192 bytes
+	// to make verifier happy.
 	asm volatile("%[name_size] &= 0x3f;\n" ::[name_size] "+r"(name_size)
+		     :);
+	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
 		     :);
 	probe_read(buf + dir_size, name_size, name->path.name);
 	file_val->size += name_size;
@@ -509,40 +546,51 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 
 	if (val->msg.flags & SRC_REG_FILE) {
 		if (val->msg.flags & MOVE_INSIDE) {
+			struct msg_rename_elem *name = 0;
+
 			// remove dst.inode from hash_map_file_alloc
 			if (val->msg.flags & DST_REG_FILE) {
 				remove_inode_rename(&(val->msg.dst));
 			}
 
-			// add add src.inode to hash_map_file_alloc
-			if ((val->msg.flags & DST_NOT_EXISTS) ||
-			    (val->msg.flags & DST_REG_FILE)) {
-				file_val = generate_file_val(&(val->msg.dst),
-							     &(val->msg.src));
-				if (!file_val)
-					return 0;
+			// now we need to generate the destination name
+			// if the dst already exists we keep the same name
+			// if the dst does not exist we keep the file name
+			// from the src/
+			if (val->msg.flags & DST_REG_FILE)
+				name = &(val->msg.dst);
+			else // (val->msg.flags & DST_NOT_EXISTS)
+				name = &(val->msg.src);
 
-				// check if we care about the new file
-				// if not just not add it in the inode map
-				key = map_lookup_elem(&lpm_trie_heap_key,
-						      &zero);
-				if (!key)
-					return 0;
+			file_val = generate_file_val(&(val->msg.dst), name);
+			if (!file_val)
+				return 0;
 
-				key->prefixlen = file_val->size * 8;
-				memcpy(key->data, file_val->path, 256);
+			// check if we care about the new file
+			// if not just not add it in the inode map
+			key = map_lookup_elem(&lpm_trie_heap_key,
+					      &zero);
+			if (!key)
+				return 0;
 
-				action = filter_match(key, &rule_id);
-				file_val->action = action;
+			key->prefixlen = file_val->size * 8;
+			memcpy(key->data, file_val->path, 256);
 
-				if (val->msg.src.path.flags & CONTAINER_FILE) {
-					memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
-				}
-				file_val->location_flags = val->msg.src.path.flags;
-				file_val->rule_id = rule_id;
-
-				update_inode_rename(&(val->msg.src), file_val);
+			action = filter_match(key, &rule_id);
+			// we care only for FILTER_MATCH actions here
+			if (action != FILTER_MATCH) {
+				val->operation = 0; // do not send an event to the user
+				goto vfs_rename_exit_out;
 			}
+			file_val->action = action;
+
+			if (val->msg.src.path.flags & CONTAINER_FILE) {
+				memcpy(file_val->container_id, val->msg.src.path.container_id, CONTAINER_ID_LEN);
+			}
+			file_val->location_flags = val->msg.src.path.flags;
+			file_val->rule_id = rule_id;
+
+			update_inode_rename(&(val->msg.src), file_val);
 		} else if (val->msg.flags & MOVE_INTERNALLY) {
 			// remove dst.inode from hash_map_file_alloc
 			if (val->msg.flags & DST_REG_FILE) {
@@ -587,6 +635,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 		}
 	}
 
+vfs_rename_exit_out:
 	// now we are all done, so create the meesage to send
 	msg = map_lookup_elem(&file_rename_heap_map, &zero);
 	if (!msg)
