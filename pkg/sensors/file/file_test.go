@@ -1081,6 +1081,18 @@ func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChe
 		WithArgs(a)
 }
 
+func renameRenameCheckerNoFlags(file_a, file_b string) *ec.ProcessFileChecker {
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	d1 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_a)).WithLocation(l)
+	d2 := ec.NewFileDetailsChecker().WithStr(sm.Full(file_b)).WithLocation(l)
+	c := ec.NewRenameFileArgChecker().WithSrc(d1).WithDst(d2)
+	a := ec.NewFileArgumentChecker().WithRenameArg(c)
+
+	return ec.NewProcessFileChecker(fmt.Sprintf("renameRename(%s -> %s)", file_a, file_b)).
+		WithAction(tetragon.FileAction_FILE_RENAME).
+		WithArgs(a)
+}
+
 // Rename operations that handled in kernel-space (eBPF)
 
 func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
@@ -1636,6 +1648,68 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
+}
+
+// This test checks 2 things in the case when we monitor a specific file (not a directory):
+// 1. rename the file that we care in and out of the monitored files
+// 2. rename a file that we don't care but is in the same directory
+// In the first case we should continue monitor that in all cases and
+// in the second case we should not report anything.
+func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	testPath := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testPath)
+
+	inFile1 := filepath.Join(testPath, "in1")
+	createFileInDir(t, inFile1)
+
+	inFile2 := filepath.Join(testPath, "in2")
+	createFileInDir(t, inFile2)
+
+	outFile1 := filepath.Join(testPath, "out1")
+	outFile2 := filepath.Join(testPath, "out2")
+
+	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
+		Paths:            []string{inFile1},
+		PathsExclude:     []string{},
+		Config:           make(map[string]string),
+		MonitorHostFiles: true,
+	}); err != nil {
+		t.Fatalf("ReGenerateFimMaps failed with %s", err)
+	}
+
+	if err := os.Rename(inFile1, outFile1); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+	if err := os.Rename(outFile1, inFile1); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+	fileRead(t, inFile1)
+
+	if err := os.Rename(inFile2, outFile2); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+	if err := os.Rename(outFile2, inFile2); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+	fileRead(t, inFile2)
+
+	// we should see these events
+	fileCheckers := make([]ec.EventChecker, 3)
+	fileCheckers[0] = renameRenameChecker(inFile1, outFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameRenameChecker(outFile1, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[2] = renameReadChecker(inFile1)
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err := jsonchecker.JsonTestCheck(gt, checker)
+	assert.NoError(t, err)
+
+	// we should *NOT* see these events
+	fileCheckersFail := make([]ec.EventChecker, 3)
+	fileCheckersFail[0] = renameRenameCheckerNoFlags(inFile2, outFile2)
+	fileCheckersFail[1] = renameRenameCheckerNoFlags(outFile2, inFile2)
+	fileCheckersFail[2] = renameReadChecker(inFile2)
+	checkerFail := ec.NewUnorderedEventChecker(fileCheckersFail...)
+	err = jsonchecker.JsonTestCheck(gt, checkerFail)
+	assert.Error(t, err)
 }
 
 func testFileRmdir(gt *testing.T, t *testing.T) {
@@ -2399,6 +2473,9 @@ func TestFileOps(t *testing.T) {
 	})
 	t.Run("rename12", func(lt *testing.T) {
 		testFileRename12(t, lt)
+	})
+	t.Run("rename13", func(lt *testing.T) {
+		testFileRename13(t, lt)
 	})
 	t.Run("mkdir", func(lt *testing.T) {
 		testFileMkdir(t, lt)
