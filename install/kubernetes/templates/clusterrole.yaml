@@ -25,6 +25,8 @@ rules:
       - get
       - list
       - watch
+  # We need to split out the create permission and enforce it without resourceNames since
+  # the name would not be known at resource creation time
   - apiGroups:
       - apiextensions.k8s.io
     resources:
