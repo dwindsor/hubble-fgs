@@ -95,7 +95,7 @@ spec:
           type: DirectoryOrCreate
       - name: host-proc
         hostPath:
-          path: /proc
+          path: {{ .Values.tetragon.hostProcPath }}
           type: Directory
 {{- if .Values.tetragon.metadata.enabled }}
       - emptyDir: {}
