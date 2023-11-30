@@ -48,6 +48,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.commandOverride | list | `[]` |  |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
 | tetragon.enableK8sAPI | bool | `true` |  |
+| tetragon.enableMsgHandlingLatency | bool | `false` |  |
 | tetragon.enablePolicyFilter | bool | `false` | Enable policy filter. This is required for K8s namespace and pod-label filtering. This feature is in beta, so disabled by default. |
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
 | tetragon.enableProcessCred | bool | `false` |  |

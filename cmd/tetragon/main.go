@@ -1072,6 +1072,8 @@ func execute() error {
 
 	flags.String(keyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
 
+	flags.Bool(keyEnableMsgHandlingLatency, false, "Enable metrics for message handling latency")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

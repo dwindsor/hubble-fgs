@@ -83,6 +83,8 @@ const (
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
 	keyEnablePodInfo = "enable-pod-info"
+
+	keyEnableMsgHandlingLatency = "enable-msg-handling-latency"
 )
 
 func readAndSetFlags() {
@@ -156,4 +158,6 @@ func readAndSetFlags() {
 	if viper.IsSet(keyTracingPolicy) {
 		option.Config.TracingPolicy = viper.GetString(keyTracingPolicy)
 	}
+
+	option.Config.EnableMsgHandlingLatency = viper.GetBool(keyEnableMsgHandlingLatency)
 }

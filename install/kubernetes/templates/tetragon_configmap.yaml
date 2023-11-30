@@ -62,3 +62,6 @@ data:
   enable-policy-filter-debug: "true"
 {{- end }}
   enable-pod-info: {{ .Values.tetragonOperator.podInfo.enabled | quote }}
+{{- if .Values.tetragon.enableMsgHandlingLatency }}
+  enable-msg-handling-latency: "true"
+{{- end }}
