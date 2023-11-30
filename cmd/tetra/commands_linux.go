@@ -12,6 +12,8 @@ package main
 
 import (
 	"github.com/cilium/tetragon/cmd/tetra/bugtool"
+	"github.com/cilium/tetragon/cmd/tetra/policyfilter"
+	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
 	"github.com/spf13/cobra"
@@ -22,4 +24,6 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(bugtool.New())
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(file.New())
+	rootCmd.AddCommand(policyfilter.New())
+	rootCmd.AddCommand(rthooks.New())
 }
