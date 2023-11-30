@@ -54,8 +54,14 @@ const (
 //go:embed ubuntu-shared-proc.yaml
 var ubuntulYaml string
 
+//go:embed ubuntu-simple-pod.yaml
+var ubuntulDefaultYaml string
+
 //go:embed file-tracingpolicy.yaml
 var tracingPolicyYaml string
+
+//go:embed file-tracingpolicy-namespaced.yaml
+var tracingPolicyNamespacedYaml string
 
 //go:embed file-enforcement-tracingpolicy.yaml
 var tracingEnforcePolicyYaml string
@@ -91,8 +97,9 @@ func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 
 func TestMain(m *testing.M) {
 	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragon(install.WithHelmOptions(map[string]string{
-		"tetragon.exportAllowList": "",
-		"tetragon.enableCiliumAPI": "false",
+		"tetragon.exportAllowList":    "",
+		"tetragon.enableCiliumAPI":    "false",
+		"tetragon.enablePolicyFilter": "true",
 	})).Init()
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
@@ -114,7 +121,20 @@ func TestMain(m *testing.M) {
 	})
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		ctx, err := helpers.LoadCRDString("default", ubuntulDefaultYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to deploy ubuntu pod: %w", err)
+		}
+		return ctx, nil
+	})
+
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
+		return ctx, nil
+	})
+
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		ctx, _ = helpers.LoadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
 		return ctx, nil
 	})
 
@@ -161,6 +181,14 @@ func TestMain(m *testing.M) {
 	})
 
 	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		ctx, err := helpers.UnloadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
+		}
+		return ctx, nil
+	})
+
+	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		pr := os.Getenv("HOST_PROC")
 		if pr == "" {
 			pr = "/proc"
@@ -173,11 +201,19 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
+	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+		ctx, err := helpers.UnloadCRDString("default", ubuntulDefaultYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
+		}
+		return ctx, nil
+	})
+
 	runner.Run(m)
 }
 
-func getUbuntuPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) {
-	r := client.Resources(namespace)
+func getUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1.Pod, error) {
+	r := client.Resources(ns)
 
 	podList := &corev1.PodList{}
 	r.List(ctx, podList)
@@ -200,17 +236,17 @@ func TestFile(t *testing.T) {
 
 	fileChecker := checker.NewRPCChecker(FileChecker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkFile := features.New("Check File Events").
-		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, namespace)).
+		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, []string{namespace, "default"}...)).
 		Feature()
 
 	testFile := features.New("Test File").
 		Assess("Wait For Checker", fileChecker.Wait(30*time.Second)).
-		Assess("Run Cat Workload", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		Assess("Run File Workload", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			client, err := cfg.NewClient()
 			if !assert.NoError(t, err, "unable to get kube client") {
 				return ctx
 			}
-			pod, err := getUbuntuPod(ctx, client)
+			pod, err := getUbuntuPod(ctx, client, namespace)
 			if !assert.NoError(t, err, "unable to get ubuntu pod") {
 				return ctx
 			}
@@ -307,6 +343,16 @@ func TestFile(t *testing.T) {
 				}
 			}
 
+			// read a file from a pod in the default namespace
+			// to check namespaced policies
+			_, err = helpers.ExecInPodCombinedOutput(ctx,
+				client, "default", "ubuntu", "ubuntu",
+				strings.Fields("cat /etc/gshadow"))
+			if !assert.NoError(t, err, "failed to run cat") {
+				klog.Errorf("cat failed with error: %s", err)
+				return ctx
+			}
+
 			if supportEnforcement {
 				// try to delete /etc/shadow in order to check enforcement
 				_, err = helpers.ExecInPodCombinedOutput(ctx,
@@ -343,7 +389,7 @@ func createOpChecker(val tetragon.FileOperation) *ec.FileOperationListMatcher {
 func FileChecker(enforcement bool) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("ubuntu")).
-		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/library/ubuntu:20.04")))
+		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/library/ubuntu:22.04")))
 
 	podChecker := ec.NewPodChecker().
 		WithNamespace(sm.Full("file")).
@@ -353,6 +399,16 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 			"pod-template-hash": *sm.Regex("[a-f0-9]+"),
 		}).
 		WithContainer(containerChecker)
+
+	podDefaultChecker := ec.NewPodChecker().
+		WithNamespace(sm.Full("default")).
+		WithName(sm.Full("ubuntu")).
+		WithContainer(containerChecker)
+
+	catDefaultChecker := ec.NewProcessChecker().
+		WithBinary(sm.Contains("cat")).
+		WithArguments(sm.Contains("/etc/gshadow")).
+		WithPod(podDefaultChecker)
 
 	catCheckerTmp := ec.NewProcessChecker().
 		WithBinary(sm.Contains("cat")).
@@ -504,6 +560,13 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 			WithAction(tetragon.FileAction_FILE_RMDIR).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/")))).
 			WithHook(sm.Full("security_inode_rmdir")).
+			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
+		// namespaced test
+		ec.NewProcessFileChecker("cat_namespaced").
+			WithProcess(catDefaultChecker).
+			WithAction(tetragon.FileAction_FILE_READ).
+			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/gshadow")))).
+			WithHook(sm.Full("security_file_permission")).
 			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 	}
 

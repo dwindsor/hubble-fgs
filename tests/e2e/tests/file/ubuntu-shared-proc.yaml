@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: ubuntu
-        image: ubuntu:20.04
+        image: ubuntu:22.04
         imagePullPolicy: Always
         command: ["sleep"]
         args: ["infinity"]
