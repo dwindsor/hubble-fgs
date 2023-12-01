@@ -529,10 +529,12 @@ __eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct 
 		goto nopost;
 	if (!check_match_digests(sel_idx, digest, action))
 		goto nopost;
+#ifdef __LARGE_BPF_PROG
 	if (!check_match_namespaces(sel_idx))
 		goto nopost;
 	if (!check_match_capabilities(sel_idx))
 		goto nopost;
+#endif
 	if (!check_enforcement(sel_idx))
 		goto post;
 

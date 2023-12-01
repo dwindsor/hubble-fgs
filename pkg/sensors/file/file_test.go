@@ -2355,6 +2355,10 @@ func testFileExecInterpreter(gt *testing.T, t *testing.T) {
 }
 
 func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring with capability and namespace selectors requires at least 5.4.0 kernel version")
+	}
+
 	out := filepath.Join(workingDir, "fim_test_outdir")
 	createTestDir(t, out)
 

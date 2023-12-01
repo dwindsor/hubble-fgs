@@ -1399,8 +1399,23 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 }
 
 func fixProgName(p string) string {
-	if p == "bpf_vfs_rename.o" && kernels.IsKernelVersionLessThan("5.3.0") {
-		return "bpf_vfs_rename_v419.o"
+	if !kernels.IsKernelVersionLessThan("5.3.0") {
+		return p
+	}
+
+	needsReplace := map[string]string{
+		"bpf_vfs_rename.o":               "bpf_vfs_rename_v419.o",
+		"bpf_filemap_fault.o":            "bpf_filemap_fault_v419.o",
+		"bpf_filemap_map_pages.o":        "bpf_filemap_map_pages_v419.o",
+		"bpf_filemap_page_mkwrite.o":     "bpf_filemap_page_mkwrite_v419.o",
+		"bpf_security_file_permission.o": "bpf_security_file_permission_v419.o",
+		"bpf_vfs_unlink.o":               "bpf_vfs_unlink_v419.o",
+		"bpf_security_inode_setattr.o":   "bpf_security_inode_setattr_v419.o",
+	}
+
+	r, ok := needsReplace[p]
+	if ok {
+		return r
 	}
 	return p
 }

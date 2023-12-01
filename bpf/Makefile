@@ -67,10 +67,10 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
 	  bpf_loader.o
 
-FILE = bpf_filemap_fault.o  bpf_filemap_map_pages.o  bpf_filemap_page_mkwrite.o  bpf_finish_open.o  \
-	  bpf_security_file_permission.o  bpf_vfs_unlink.o  bpf_vfs_fallocate.o bpf_vfs_open.o \
+FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o  \
+	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_open.o \
 	  bpf_vfs_mkdir.o bpf_security_inode_rmdir.o bpf_security_path_rename.o bpf_vfs_rename.o bpf_vfs_rename_v419.o \
-	  bpf_iterate_dir.o bpf_security_inode_setattr.o \
+	  bpf_iterate_dir.o bpf_security_inode_setattr.o bpf_security_inode_setattr_v419.o \
 	  bpf_security_mmap_file_lsm.o bpf_security_mmap_file_fmod.o \
 	  bpf_security_inode_create_lsm.o bpf_security_inode_create_fmod.o \
 	  bpf_iterate_dir_enforce_lsm.o bpf_iterate_dir_enforce_fmod.o \
@@ -293,6 +293,12 @@ objs/bpf_multi_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_multi_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_vfs_rename_v419.ll: $(FILEDIR)/bpf_vfs_rename.c
+objs/bpf_filemap_fault_v419.ll: $(FILEDIR)/bpf_filemap_fault.c
+objs/bpf_filemap_map_pages_v419.ll: $(FILEDIR)/bpf_filemap_map_pages.c
+objs/bpf_filemap_page_mkwrite_v419.ll: $(FILEDIR)/bpf_filemap_page_mkwrite.c
+objs/bpf_security_file_permission_v419.ll: $(FILEDIR)/bpf_security_file_permission.c
+objs/bpf_vfs_unlink_v419.ll: $(FILEDIR)/bpf_vfs_unlink.c
+objs/bpf_security_inode_setattr_v419.ll: $(FILEDIR)/bpf_security_inode_setattr.c
 
 objs/bpf_multi_kprobe_v53.ll objs/bpf_multi_retkprobe_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
@@ -313,6 +319,12 @@ deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_vfs_rename_v419.d: $(FILEDIR)/bpf_vfs_rename.c
+deps/bpf_filemap_fault_v419.d: $(FILEDIR)/bpf_filemap_fault.c
+objs/bpf_filemap_map_pages_v419.d: $(FILEDIR)/bpf_filemap_map_pages.c
+objs/bpf_filemap_page_mkwrite_v419.d: $(FILEDIR)/bpf_filemap_page_mkwrite.c
+objs/bpf_security_file_permission_v419.d: $(FILEDIR)/bpf_security_file_permission.c
+objs/bpf_vfs_unlink_v419.d: $(FILEDIR)/bpf_vfs_unlink.c
+objs/bpf_security_inode_setattr_v419.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_mmap_file_lsm.d: $(FILEDIR)/bpf_security_mmap_file.c
 deps/bpf_security_mmap_file_fmod.d: $(FILEDIR)/bpf_security_mmap_file.c
 deps/bpf_security_inode_create_lsm.d: $(FILEDIR)/bpf_security_inode_create.c

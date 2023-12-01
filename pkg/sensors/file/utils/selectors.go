@@ -591,6 +591,9 @@ func ParseLinuxMatchCapability(k *KernelSelectorState, cap *v1alpha1.FileCapabil
 }
 
 func ParseLinuxMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.FileCapabilitiesSelector, selIdx int) error {
+	if !kernels.MinKernelVersion("5.4") && len(caps) > 0 {
+		return fmt.Errorf("only support matchLinuxCapabilities for kernels >= 5.4")
+	}
 	if len(caps) > 1 {
 		return fmt.Errorf("only support one capabilities filter inside a single selector")
 	}
@@ -657,6 +660,9 @@ func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespace
 }
 
 func ParseLinuxMatchNamespaces(k *KernelSelectorState, nses []v1alpha1.FileNamespaceSelector, selIdx int) error {
+	if !kernels.MinKernelVersion("5.4") && len(nses) > 0 {
+		return fmt.Errorf("only support matchLinuxNamespaces for kernels >= 5.4")
+	}
 	// we only support one filter per namespace
 	nsFilter := make(map[string]int)
 	for _, ns := range nses {
