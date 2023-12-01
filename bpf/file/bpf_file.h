@@ -170,6 +170,13 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
+	__type(value, struct msg_ns);
+	__uint(max_entries, 1);
+} file_msg_ns_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
 	__type(value, struct msg_capabilities);
 	__uint(max_entries, 1);
 } file_msg_caps_heap SEC(".maps");
@@ -472,6 +479,39 @@ static inline __attribute__((always_inline)) int check_match_capabilities(__u32 
 }
 
 // returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_namespaces(__u32 sel_idx)
+{
+	struct file_sel_namespaces *sel_ns;
+	struct task_struct *task;
+	struct msg_ns *n;
+	__u32 i = 0;
+
+	n = map_lookup_elem(&file_msg_ns_heap, &i);
+	if (!n)
+		return 0;
+
+	sel_ns = map_lookup_elem(&file_namespaces_map, &sel_idx);
+	if (!sel_ns) // no matchOperations for this selector
+		return 1;
+
+	task = (struct task_struct *)get_current_task();
+	if (!task)
+		return 0; // we cannot apply matchNamespaces without the task_struct
+
+	get_namespaces(n, task);
+
+#pragma unroll
+	for (i = 0; i < ns_max_types; ++i) {
+		bool same_inum = sel_ns->ns.inum[i] == n->inum[i];
+		if (sel_ns->filter.filter[i] == NS_FILTER_HOST && !same_inum)
+			return 0;
+		if (sel_ns->filter.filter[i] == NS_FILTER_NOHOST && same_inum)
+			return 0;
+	}
+	return 1;
+}
+
+// returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
 	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
@@ -488,6 +528,8 @@ __eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct 
 	if (!check_match_operations(sel_idx, action))
 		goto nopost;
 	if (!check_match_digests(sel_idx, digest, action))
+		goto nopost;
+	if (!check_match_namespaces(sel_idx))
 		goto nopost;
 	if (!check_match_capabilities(sel_idx))
 		goto nopost;
@@ -534,34 +576,6 @@ eval_selectors(__u32 action, struct digest_key *digest)
 			return val;
 	}
 	return 0; // not selector matches
-}
-
-// returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_namespaces(__u32 sel_idx)
-{
-	struct file_sel_namespaces *sel_ns;
-	struct task_struct *task;
-	struct msg_ns n;
-	__u32 i;
-
-	sel_ns = map_lookup_elem(&file_namespaces_map, &sel_idx);
-	if (!sel_ns) // no matchOperations for this selector
-		return 1;
-
-	task = (struct task_struct *)get_current_task();
-	if (!task)
-		return 0; // we cannot apply matchNamespaces without the task_struct
-
-	get_namespaces(&n, task);
-
-	for (i = 0; i < ns_max_types; ++i) {
-		bool same_inum = sel_ns->ns.inum[i] == n.inum[i];
-		if (sel_ns->filter.filter[i] == NS_FILTER_HOST && !same_inum)
-			return 0;
-		if (sel_ns->filter.filter[i] == NS_FILTER_NOHOST && same_inum)
-			return 0;
-	}
-	return 1;
 }
 
 static inline __attribute__((always_inline)) __u32
