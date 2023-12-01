@@ -286,6 +286,13 @@ func (in *FileSelector) DeepCopyInto(out *FileSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MatchCapabilities != nil {
+		in, out := &in.MatchCapabilities, &out.MatchCapabilities
+		*out = make([]FileCapabilitiesSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.MatchActions != nil {
 		in, out := &in.MatchActions, &out.MatchActions
 		*out = make([]FileActionSelector, len(*in))

@@ -181,6 +181,9 @@ type FileSelector struct {
 	// A list of operation filters.
 	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
 	// +kubebuilder:validation:Optional
+	// A list of capabilities and IDs
+	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
+	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
 }
