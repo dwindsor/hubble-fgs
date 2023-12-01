@@ -45,6 +45,11 @@ spec:
         values:
         - "sha1:cae542290d1bb5c91c637350e0a633f71fd2a6e4" # /bin/sleep
         - "sha1:439667f622b84ecb9f381be93cc9139f83a92f66" # /bin/bash
+      matchLinuxNamespaces:
+      - namespace: Pid
+        filter: Host
+      - namespace: Mnt
+        filter: NoHost
       matchLinuxCapabilities:
       - type: Effective
         operator: In
