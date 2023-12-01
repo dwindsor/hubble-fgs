@@ -690,6 +690,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
 			return nil, fmt.Errorf("parseMatchDigests error: %w", err)
 		}
+		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
+			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
+		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)
 		}

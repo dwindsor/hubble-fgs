@@ -262,6 +262,7 @@ var (
 		"tg_mb_sel_opts",
 		"tg_mb_paths",
 		"file_ops_maps",
+		"file_capabilities_map",
 		"file_digests_maps",
 		"file_actions_map",
 		"file_config_map",
@@ -1325,6 +1326,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Load: func(m *ebpf.Map, index uint32) error {
 					if err := fm.GenerateFileDigestsMap(m, sel, e.pinPathPrefix); err != nil {
 						return fmt.Errorf("file_digests_maps: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "file_capabilities_map",
+				Load: func(m *ebpf.Map, index uint32) error {
+					if err := fm.GenerateFileCapabilitiesMap(m, sel); err != nil {
+						return fmt.Errorf("file_capabilities_map: %w", err)
 					}
 					return nil
 				},
