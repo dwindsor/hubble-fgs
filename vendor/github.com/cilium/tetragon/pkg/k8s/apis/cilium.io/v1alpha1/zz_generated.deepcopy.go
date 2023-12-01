@@ -286,6 +286,11 @@ func (in *FileSelector) DeepCopyInto(out *FileSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MatchNamespaces != nil {
+		in, out := &in.MatchNamespaces, &out.MatchNamespaces
+		*out = make([]FileNamespaceSelector, len(*in))
+		copy(*out, *in)
+	}
 	if in.MatchCapabilities != nil {
 		in, out := &in.MatchCapabilities, &out.MatchCapabilities
 		*out = make([]FileCapabilitiesSelector, len(*in))

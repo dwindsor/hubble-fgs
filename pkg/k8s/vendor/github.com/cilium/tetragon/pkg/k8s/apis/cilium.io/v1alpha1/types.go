@@ -181,6 +181,9 @@ type FileSelector struct {
 	// A list of operation filters.
 	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
 	// +kubebuilder:validation:Optional
+	// A list of namespaces and IDs
+	MatchNamespaces []FileNamespaceSelector `json:"matchLinuxNamespaces,omitempty"`
+	// +kubebuilder:validation:Optional
 	// A list of capabilities and IDs
 	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
 	// +kubebuilder:validation:Optional
