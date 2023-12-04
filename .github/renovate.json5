@@ -44,6 +44,16 @@
       "allowedVersions": "/^1\\.21\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
         "v1.12",
+      ]
+    },
+    {
+      "enabled": true,
+      "matchPackageNames": [
+        "docker.io/library/golang",
+        "go"
+      ],
+      "allowedVersions": "/^1\\.20\\.[0-9]+-?(alpine)?$/",
+      "matchBaseBranches": [
         "v1.11",
       ]
     },
