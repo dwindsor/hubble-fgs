@@ -1,0 +1,77 @@
+#
+# Configures whether Tetragon pods run on the host network.
+#
+# IMPORTANT: Tetragon must be on the host network for the process visibility to
+# function properly. However, S3 export does not work on the host network when used with
+# kiam to assign a role due to a limitation in how kiam configures iptables rules to
+# intercept requests to AWS metadata server.
+#
+# Set this flag to false if and only if you don't use the process visibility functionality
+# and you use kiam to assign a role to upload events to S3.
+#
+# Reference: https://github.com/uswitch/kiam/issues/119
+#
+hostNetwork: true
+tetragon:
+  image:
+    repository: quay.io/isovalent/tetragon
+    tag: v1.13.0-pre.1
+  metadata:
+    enabled: false
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-enterprise-metadata
+      tag: current
+      # Override the global image pull policy.
+      imagePullPolicy: Always
+  exportFilePerm: "644"
+  # -- EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports
+  # ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON.
+  flowExportFilename: ""
+  # Size in megabytes at which to rotate flow JSON export files.
+  flowExportFileMaxSizeMB: 10
+  # Number of rotated flow JSON export files to retain.
+  flowExportFileMaxBackups: 5
+  # Compress rotated flow JSON export files.
+  flowExportFileCompress: false
+  exportAllowList: |-
+    {"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_TLS"]}
+  # -- Access Cilium API to associate Tetragon events with Cilium DNS cache.
+  enableCiliumAPI: false
+  # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
+  fimRuntimeEndpoint: ""
+  # Set --btf option to explicitly specify an absolute path to the metadata file. For advanced users only.
+  btf: ""
+  # -- EXPERIMENTAL: This field may be removed in the future without notice.
+  #
+  # Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.
+  #
+  # Note that the counter for sampling is global, and it is not per socket.
+  tcpStatsSampleSegs: 0
+tetragonOperator:
+  image:
+    repository: quay.io/isovalent/tetragon-operator
+    tag: v1.13.0-pre.1
+  podInfo:
+    # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
+    # custom resources.
+    enabled: true
+export:
+  # Valid values: "stdout". Disabled by default, populate the value to enable.
+  mode: ""
+  extraArgs: {}
+  extraEnv: []
+  extraVolumeMounts: []
+  securityContext: {}
+  # Override the command. For advanced users only.
+  commandOverride: []
+  # Override the arguments. For advanced users only.
+  argsOverride: []
+  # filenames defines list of files for fluentd to tail and export.
+  filenames:
+    - tetragon.log
+  stdout:
+    image:
+      override: ~
+      repository: quay.io/isovalent/hubble-export-stdout
+      tag: v1.0.4

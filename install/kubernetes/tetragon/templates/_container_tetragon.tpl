@@ -26,10 +26,6 @@
     {{- with .Values.tetragon.extraVolumeMounts }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- if .Values.tetragon.metadata.enabled }}
-    - mountPath: /var/lib/tetragon/metadata
-      name: metadata-files
-    {{- end }}
     - mountPath: /etc/tetragon/tetragon.conf.d/
       name: tetragon-config
       readOnly: true
@@ -55,6 +51,7 @@
       mountPath: {{ .mountPath }}
       readOnly: {{ .readOnly }}
 {{- end }}
+    {{- include "tetragon.volumemounts.extra" . | nindent 4 }}
   env:
     - name: NODE_NAME
       valueFrom:
@@ -69,43 +66,15 @@
 {{- end }}
 {{- if .Values.tetragon.grpc.enabled }}
   livenessProbe:
-    timeoutSeconds: 60
-    exec:
-      command:
-      - tetra
-      - status
-      - --server-address
-      - {{ .Values.tetragon.grpc.address }}
-      - --retries
-      - "5"
+     timeoutSeconds: 60
+     exec:
+       command:
+       - tetra
+       - status
+       - --server-address
+       - {{ .Values.tetragon.grpc.address }}
+       - --retries
+       - "5"
 {{- end -}}
 {{- end -}}
 
-{{- define "container.tetragon.init" -}}
-- name: {{ include "container.tetragon.name" . }}-init
-  securityContext:
-    {{- toYaml .Values.enterprise.securityContext | nindent 4 }}
-  image: "{{ if .Values.tetragon.metadata.image.override }}{{ .Values.tetragon.metadata.image.override }}{{ else }}{{ .Values.tetragon.metadata.image.repository }}:{{ .Values.tetragon.metadata.image.tag }}{{ end }}"
-{{- if .Values.tetragon.metadata.image.imagePullPolicy }}
-  imagePullPolicy: {{ .Values.tetragon.metadata.image.imagePullPolicy }}
-{{- else }}
-  imagePullPolicy: {{ .Values.imagePullPolicy }}
-{{- end }}
-  terminationMessagePolicy: FallbackToLogsOnError
-  command:
-  - sh
-  args:
-    - -c
-    - |
-        cp -r /var/run/tetragon-ee-metadata/* /var/lib/tetragon/metadata
-{{- if .Values.tetragon.enableCiliumAPI }}
-        until [ -S /var/run/cilium/cilium.sock -a -S /var/run/cilium/monitor1_2.sock ]; do sleep 3; done
-{{- end }}
-  volumeMounts:
-    - mountPath: /var/lib/tetragon/metadata
-      name: metadata-files
-{{- if .Values.tetragon.enableCiliumAPI }}
-    - mountPath: /var/run/cilium
-      name: cilium-run
-{{- end }}
-{{- end -}}
