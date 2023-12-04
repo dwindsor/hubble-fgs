@@ -21,5 +21,5 @@ import (
 
 func init() {
 	flag.CommandLine.Set("tetragon.helm.url", "")
-	flag.CommandLine.Set("tetragon.helm.chart", testutils.RepoRootPath("install/kubernetes"))
+	flag.CommandLine.Set("tetragon.helm.chart", testutils.RepoRootPath("install/kubernetes/tetragon"))
 }
