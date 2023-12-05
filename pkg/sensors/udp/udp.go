@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
+	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -37,6 +38,7 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
@@ -698,10 +700,24 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		cgroup = false
 	}
 
+	spec, err := ossBTF.NewBTF()
+	useIPv6InitHook := false
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("GetCachedBTF failed")
+	} else {
+		if spec == nil {
+			logger.GetLogger().Warn("GetCachedBTF returned nil")
+		} else {
+			_, err := fgsBTF.GetFuncProto(spec, SkUdpAlloc6.Attach, false)
+			if err == nil {
+				useIPv6InitHook = true
+			}
+		}
+	}
+
 	if !cgroup {
 		progs = []*program.Program{
 			SkUdpAlloc,
-			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSendRecvLazy,
 			Udp4Send,
@@ -726,7 +742,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
 			SkUdpAlloc,
-			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSendLazy,
 			InetRecvLazy,
@@ -756,7 +771,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	} else {
 		progs = []*program.Program{
 			SkUdpAlloc,
-			SkUdpAlloc6,
 			SkUdpDestroy,
 			InetSend,
 			InetRecv,
@@ -783,6 +797,10 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
+	}
+
+	if useIPv6InitHook {
+		progs = append(progs, SkUdpAlloc6)
 	}
 
 	if timestampEnable {
