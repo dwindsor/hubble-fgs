@@ -145,16 +145,87 @@ func TestHttp11Curl(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestHttp11Curl6(t *testing.T) {
+	t.Skip("TODO: http currently does not support ipv6")
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-6 http://www.google.com"))
+
+	httpChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")).
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains("www.google.com"))).
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithReason(sm.Full("OK")))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("curlExec").
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("curlConnect").
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(80),
+		ec.NewProcessHttpChecker("curlHttp").
+			WithProcess(curlChecker).
+			WithHttp(httpChecker),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	metricsconfig.RegisterEEMetrics()
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "-6", "http://www.google.com")
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
 // nolint This is only used in a disabled test for now. Since we will re-enable that test
 // soon, let's leave this and ignore dead code warnings.
-func spawnHttp2Server(ctx context.Context, t *testing.T) string {
+func spawnHttp2Server(ctx context.Context, t *testing.T, ipv6 bool) string {
 	handler := http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hello world"))
 		})
 	s := http.Server{
-		Addr:    "127.0.0.1:0",
 		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+	if ipv6 {
+		s.Addr = "[::1]:0"
+	} else {
+		s.Addr = "127.0.0.1:0"
 	}
 	ln, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -189,7 +260,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	http2Addr := spawnHttp2Server(ctx, t)
+	http2Addr := spawnHttp2Server(ctx, t, false)
 	http2Port, _ := strconv.ParseUint(strings.Split(http2Addr, ":")[1], 10, 32)
 
 	bpf.CheckOrMountCgroup2()
@@ -236,6 +307,77 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestHttp20CurlPriorKnowledge6(t *testing.T) {
+	t.Skip("TODO: http currently does not support ipv6")
+	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
+
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	http2Addr := spawnHttp2Server(ctx, t, true)
+	http2Port, _ := strconv.ParseUint(strings.Split(http2Addr, ":")[1], 10, 32)
+
+	bpf.CheckOrMountCgroup2()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-v6 --http2-prior-knowledge http://" + http2Addr))
+
+	httpChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")).
+			WithVersion(sm.Full("HTTP/2")).
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains(http2Addr))).
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/2")).
+			WithReason(sm.Full("OK")))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("curlExec").
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("curlConnect").
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(uint32(http2Port)),
+		ec.NewProcessHttpChecker("curlHttp").
+			WithProcess(curlChecker).
+			WithHttp(httpChecker),
+	)
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	metricsconfig.RegisterEEMetrics()
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "-v6", "--http2-prior-knowledge", "http://"+http2Addr)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
