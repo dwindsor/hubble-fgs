@@ -5,6 +5,7 @@ package compliance
 //revive:disable:context-as-argument
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -61,7 +62,7 @@ func (ct *Test) BuildAndRun(t *testing.T) error {
 // Invokes `docker create` and `docker run` with the appropriate arguments to create the
 // container and run tests.
 func (ct *Test) Run(t *testing.T, ctx context.Context) error {
-	testCtx, err := ct.startTestContainer(t, ctx)
+	testCtx, err := ct.createTestContainer(t, ctx)
 	if err != nil {
 		return err
 	}
@@ -76,6 +77,11 @@ func (ct *Test) Run(t *testing.T, ctx context.Context) error {
 		return err
 	}
 	defer doneWG.Wait()
+
+	err = ct.startTestContainer(t, testCtx)
+	if err != nil {
+		return err
+	}
 
 	for _, step := range ct.Steps {
 		assert.NoError(t, step.Step(testCtx))
@@ -120,29 +126,74 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 	return &doneWG, nil
 }
 
-func (ct *Test) startTestContainer(t *testing.T, ctx context.Context) (*testcontext.TestContext, error) {
+func (ct *Test) createTestContainer(t *testing.T, ctx context.Context, cmd ...string) (*testcontext.TestContext, error) {
 	client, err := docker.NewClientWithOpts(docker.FromEnv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
 
-	res, err := client.ContainerCreate(ctx, &container.Config{
+	containerCfg := &container.Config{
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
 		Image:        ct.Tag(),
-	}, &container.HostConfig{}, &network.NetworkingConfig{}, &v1.Platform{}, "")
+		Cmd:          cmd,
+	}
+
+	res, err := client.ContainerCreate(ctx, containerCfg, &container.HostConfig{}, &network.NetworkingConfig{}, &v1.Platform{}, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create test container: %w", err)
 	}
 
-	err = client.ContainerStart(ctx, res.ID, types.ContainerStartOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to start test container: %w", err)
+	testCtx := &testcontext.TestContext{
+		T:           t,
+		Name:        ct.Name,
+		ContainerId: res.ID,
+		Ctx:         ctx,
 	}
 
-	t.Logf("test container started with id %s", res.ID)
-	return &testcontext.TestContext{T: t, ContainerId: res.ID, Name: ct.Name, Ctx: ctx}, nil
+	t.Logf("test container created with id %s", res.ID)
+	return testCtx, nil
+}
+
+func (ct *Test) startTestContainer(t *testing.T, ctx *testcontext.TestContext) error {
+	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+
+	err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, types.ContainerStartOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to start test container: %w", err)
+	}
+
+	logReader, err := client.ContainerLogs(ctx.Ctx, ctx.ContainerId, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Since:      "",
+		Until:      "",
+		Timestamps: false,
+		Follow:     true,
+		Tail:       "",
+		Details:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to tail container logs: %w", err)
+	}
+	go func() {
+		defer logReader.Close()
+		scanner := bufio.NewScanner(logReader)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if config.Config().PrintContainerStdout {
+				fmt.Println(line)
+			}
+			ctx.ContainerLogs = append(ctx.ContainerLogs, line)
+		}
+	}()
+
+	t.Logf("test container started with id %s", ctx.ContainerId)
+	return nil
 }
 
 func (ct *Test) stopTestContainer(ctx *testcontext.TestContext) error {
@@ -155,12 +206,16 @@ func (ct *Test) stopTestContainer(ctx *testcontext.TestContext) error {
 		return fmt.Errorf("failed to stop container: %w", err)
 	}
 
-	if err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-		RemoveLinks:   false,
-		Force:         true,
-	}); err != nil {
-		return fmt.Errorf("failed to remove container: %w", err)
+	if config.Config().RemoveContainer {
+		if err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			RemoveLinks:   false,
+			Force:         true,
+		}); err != nil {
+			return fmt.Errorf("failed to remove container: %w", err)
+		}
+	} else {
+		ctx.T.Logf("refusing to clean up container %s due to -remove-container=false", ctx.ContainerId)
 	}
 
 	return nil

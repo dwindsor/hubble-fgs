@@ -1,0 +1,6587 @@
+./access.t .................................
+1..14
+ok 1 - inet allow all
+ok 2 - inet allow unix
+ok 3 - inet deny all
+ok 4 - inet deny unix
+ok 5 - inet6 allow all
+ok 6 - inet6 allow unix
+ok 7 - inet6 deny all
+ok 8 - inet6 deny unix
+ok 9 - unix allow all
+ok 10 - unix allow unix
+ok 11 - unix deny all
+ok 12 - unix deny unix
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./access_log.t .............................
+1..21
+ok 1 - compressed log - flush time
+ok 2 - default log format
+ok 3 - log filtering
+ok 4 - if with complex value
+ok 5 - log filtering with buffering
+ok 6 - multiple logs 1
+ok 7 - multiple logs 2
+ok 8 - long line format
+ok 9 - varlog literal zero name
+ok 10 - varlog good name
+ok 11 - addr
+ok 12 - binary
+ok 13 - escape - default
+ok 14 - escape - none
+ok 15 - escape - json
+ok 16 - cache - closed lru
+ok 17 - cache - min_uses
+ok 18 - cache - cached 1
+ok 19 - cache - cached 2
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./access_log_variables.t ...................
+1..8
+ok 1 - time_iso8601
+ok 2 - time_local
+ok 3 - msec
+ok 4 - request
+ok 5 - bytes sent
+ok 6 - pipe
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./addition.t ...............................
+1..11
+ok 1 - no addition
+ok 2 - add_before
+ok 3 - add_after
+ok 4 - both
+ok 5 - no content type
+ok 6 - addition_types
+ok 7 - empty content type
+ok 8 - self
+ok 9 - not 200
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./addition_buffered.t ......................
+1..3
+ok 1 - request
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./auth_basic.t .............................
+1..26
+ok 1 - rejects unathorized
+ok 2 - normal crypt
+ok 3 - normal wrong
+ok 4 - crypt $1$ (md5)
+ok 5 - crypt $1$ wrong
+ok 6 - crypt $1$ broken
+ok 7 - apr1 md5
+ok 8 - plain password
+ok 9 - ssha
+ok 10 - sha
+ok 11 - apr1 md5 wrong
+ok 12 - plain wrong
+ok 13 - ssha wrong
+ok 14 - sha wrong
+ok 15 - apr1 md5 broken
+ok 16 - ssha broken 1
+ok 17 - ssha broken 2
+ok 18 - sha broken 1
+ok 19 - sha broken 2
+ok 20 - not found
+ok 21 - inner off
+ok 22 - user file variable
+ok 23 - user file variable not found
+ok 24 - user file variable bad value
+ok 25 - no alerts
+ok 26 - no sanitizer errors
+ok
+./auth_delay.t .............................
+1..6
+ok 1 - not authorized
+ok 2 - auth delay
+ok 3 - authorized
+ok 4 - no delay
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./auth_request.t ...........................
+1..22
+ok 1 - auth open
+ok 2 - auth unauthorized
+ok 3 - auth forbidden
+ok 4 - auth error
+ok 5 - auth off
+ok 6 - auth post open
+ok 7 - auth post unauthorized
+ok 8 - auth open static
+ok 9 - auth static no content
+ok 10 - proxy auth unauthorized
+ok 11 - proxy auth has www-authenticate
+ok 12 - proxy auth pass
+ok 13 - proxy auth no content
+ok 14 - proxy auth post
+ok 15 - proxy auth with cache
+ok 16 - proxy auth cached
+ok 17 - proxy auth with body read
+ok 18 - multiple www-authenticate headers
+ok 19 - fastcgi auth open
+ok 20 - fastcgi auth no content
+ok 21 - no alerts
+ok 22 - no sanitizer errors
+ok
+./auth_request_satisfy.t ...................
+1..20
+ok 1 - all allow+open
+ok 2 - all allow+unauthorized
+ok 3 - all allow+forbidden
+ok 4 - all deny+open
+ok 5 - all deny+unauthorized
+ok 6 - all deny+forbidden
+ok 7 - all basic+open
+ok 8 - all basic+unauthorized
+ok 9 - all basic+forbidden
+ok 10 - any allow+open
+ok 11 - any allow+unauthorized
+ok 12 - any allow+forbidden
+ok 13 - any deny+open
+ok 14 - any deny+unauthorized
+ok 15 - any deny+forbidden
+ok 16 - any basic+open
+ok 17 - any basic+unauthorized
+ok 18 - any basic+forbidden
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./auth_request_set.t .......................
+1..8
+ok 1 - set normal
+ok 2 - set after redirect
+ok 3 - set after named location
+ok 4 - set on second auth
+ok 5 - variable with set_handler
+ok 6 - unset variable
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./autoindex.t ..............................
+1..18
+ok 1 - file
+ok 2 - symlink to file
+ok 3 - directory
+ok 4 - symlink to directory
+ok 5 - colon not scheme
+ok 6 - long name
+ok 7 - escaped url
+ok 8 - escaped ? in url
+ok 9 - escaped html
+ok 10 - long escaped html
+ok 11 - utf8
+ok 12 - utf8 long
+ok 13 - utf8 escaped
+ok 14 - utf8 escaped long
+ok 15 - utf8 long escaped
+ok 16 - escaped title
+ok 17 - no alerts
+ok 18 - no sanitizer errors
+ok
+./autoindex_format.t .......................
+1..39
+ok 1 - xml content type
+ok 2 - xml file format
+ok 3 - xml dir format
+ok 4 - xml file mtime
+ok 5 - xml file size
+ok 6 - xml file link mtime
+ok 7 - xml file link size
+ok 8 - xml dir mtime
+ok 9 - xml dir size
+ok 10 - xml dir link mtime
+ok 11 - xml dir link size
+ok 12 - xml quote
+ok 13 - xml double
+ok 14 - xml angle
+ok 15 - json content type
+ok 16 - json format
+ok 17 - json file
+ok 18 - json file mtime
+ok 19 - json file size
+ok 20 - json file link
+ok 21 - json file link mtime
+ok 22 - json file link size
+ok 23 - json dir
+ok 24 - json dir mtime
+ok 25 - json dir size
+ok 26 - json dir link
+ok 27 - json dir link mtime
+ok 28 - json dir link size
+ok 29 - json quote
+ok 30 - json double
+ok 31 - json angle
+ok 32 - jsonp callback
+ok 33 - jsonp callback empty
+ok 34 - xml utf8
+ok 35 - xml utf8 long
+ok 36 - json utf8
+ok 37 - json utf8 long
+ok 38 - no alerts
+ok 39 - no sanitizer errors
+ok
+./autoindex_win32.t ........................
+1..0 # SKIP Win32API::File not installed
+skipped: Win32API::File not installed
+./binary_upgrade.t .........................
+1..0 # SKIP can leave orphaned process group
+skipped: can leave orphaned process group
+./body.t ...................................
+1..17
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in file
+ok 5 - body in file only
+ok 6 - body in single buffer
+ok 7 - body too large
+ok 8 - body pipelined
+ok 9 - body pipelined 2
+ok 10 - body discard
+ok 11 - body discard 2
+ok 12 - small body in file only
+ok 13 - small body in file only, not preread
+ok 14 - body next upstream
+ok 15 - redirect - discard request body
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./body_chunked.t ...........................
+1..20
+ok 1 - body
+ok 2 - body in two buffers
+ok 3 - body in file
+ok 4 - body in file only
+ok 5 - body in single buffer
+ok 6 - body too large
+ok 7 - chunked body pipelined
+ok 8 - chunked body pipelined 2
+ok 9 - chunked body discard
+ok 10 - chunked body discard 2
+ok 11 - runaway chunk
+ok 12 - runaway chunk discard
+ok 13 - body chunked next upstream
+ok 14 - transfer encoding identity
+ok 15 - transfer encoding repeat
+ok 16 - transfer encoding list
+ok 17 - transfer encoding with content-length
+ok 18 - transfer encoding in HTTP/1.0 requests
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./charset.t ................................
+1..9
+ok 1 - charset indicated
+ok 2 - wrong type
+ok 3 - charset_types
+ok 4 - charset_types any
+ok 5 - variables
+ok 6 - recode
+ok 7 - override charset
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./charset_gzip_static.t ....................
+1..15
+ok 1 - plain
+ok 2 - gzip
+ok 3 - recode plain
+ok 4 - recode gzip
+ok 5 - recode content
+ok 6 - nocharset plain
+ok 7 - nocharset gzip
+ok 8 - proxy plain
+ok 9 - proxy gzip
+ok 10 - proxy recode plain
+ok 11 - proxy recode gzip
+ok 12 - proxy nullrecode plain
+ok 13 - proxy nullrecode gzip
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./config_dump.t ............................
+1..15
+ok 1 - nginx.conf found
+ok 2 - inc.conf found
+ok 3 - inc2.conf found
+ok 4 - map.conf found
+ok 5 - inc.conf uniq
+ok 6 - inc2.conf uniq
+ok 7 - map.conf uniq
+ok 8 - content
+ok 9 - content inc
+ok 10 - content inc 2
+ok 11 - missing inc.conf
+ok 12 - missing map.conf
+ok 13 - test failed
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./dav.t ....................................
+1..30
+ok 1 - put file
+ok 2 - put file size
+ok 3 - put file again
+ok 4 - no length in 204
+ok 5 - put file again size
+ok 6 - delete file
+ok 7 - no length in 204
+ok 8 - file deleted
+ok 9 - put file extra data
+ok 10 - put file extra data size
+ok 11 - put file escaped
+ok 12 - mkcol
+ok 13 - mkcol location
+ok 14 - copy dir
+ok 15 - move dir
+ok 16 - copy file escaped
+ok 17 - file copied unescaped
+ok 18 - copy file overwrite
+ok 19 - target file truncated
+ok 20 - put alias
+ok 21 - location alias
+ok 22 - put alias size
+ok 23 - mkcol body
+ok 24 - copy body
+ok 25 - delete body
+ok 26 - mkcol body chunked
+ok 27 - copy body chunked
+ok 28 - delete body chunked
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./dav_chunked.t ............................
+1..8
+ok 1 - put chunked
+ok 2 - put content
+ok 3 - put chunked empty
+ok 4 - put empty content
+ok 5 - put chunked big
+ok 6 - put big content
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./dav_utf8.t ...............................
+1..18
+ok 1 - put file
+ok 2 - put file exist
+ok 3 - copy file
+ok 4 - copy file exist
+ok 5 - move file
+ok 6 - file moved
+ok 7 - delete file
+ok 8 - file deleted
+ok 9 - mkcol
+ok 10 - mkcol exist
+ok 11 - copy dir
+ok 12 - copy dir exist
+ok 13 - move dir
+ok 14 - dir moved
+ok 15 - delete dir
+ok 16 - dir deleted
+ok 17 - no alerts
+ok 18 - no sanitizer errors
+ok
+./debug_connection.t .......................
+1..0 # SKIP no --with-debug available
+skipped: no --with-debug available
+./debug_connection_syslog.t ................
+1..0 # SKIP no --with-debug available
+skipped: no --with-debug available
+./debug_connection_unix.t ..................
+1..0 # SKIP no --with-debug available
+skipped: no --with-debug available
+./empty_gif.t ..............................
+1..6
+ok 1 - empty gif
+ok 2 - get content type
+ok 3 - head content type
+ok 4 - put
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./error_log.t ..............................
+1..27
+ok 1 # skip no --with-debug
+ok 2 # skip no --with-debug
+ok 3 # skip no --with-debug
+ok 4 - file info debug
+ok 5 - file info info
+ok 6 - file info notice
+ok 7 - stderr info
+ok 8 - file notice info
+ok 9 - file notice notice
+ok 10 - file notice warn
+ok 11 - stderr notice
+ok 12 - file warn notice
+ok 13 - file warn warn
+ok 14 - file warn error
+ok 15 - stderr warn
+ok 16 - file error warn
+ok 17 - file error error
+ok 18 - file error alert
+ok 19 - stderr error
+ok 20 - file low
+ok 21 - file dup
+ok 22 - file high
+ok 23 - stderr low
+ok 24 - stderr dup
+ok 25 - stderr high
+ok 26 - no alerts
+ok 27 - no sanitizer errors
+ok
+./fastcgi.t ................................
+1..10
+ok 1 - fastcgi request
+ok 2 - fastcgi redirect
+ok 3 - fastcgi third request
+ok 4 - no data in HEAD
+ok 5 - large stderr handled
+ok 6 - catch stderr
+ok 7 - fastcgi with variables
+ok 8 - fastcgi with variables to upstream
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./fastcgi_body.t ...........................
+1..7
+ok 1 - fastcgi no body
+ok 2 - fastcgi empty body
+ok 3 - fastcgi body
+ok 4 - fastcgi chunked
+ok 5 - fastcgi empty chunked
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./fastcgi_body2.t ..........................
+1..4
+ok 1 - body length - in file
+ok 2 - body length - in memory
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./fastcgi_buffering.t ......................
+1..4
+ok 1 - fastcgi unbuffered
+ok 2 - fastcgi inmemory
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./fastcgi_cache.t ..........................
+1..7
+ok 1 - fastcgi request
+ok 2 - fastcgi request cached
+ok 3 - no data in cached HEAD
+ok 4 # skip broken with header crossing buffer boundary
+ok 5 # skip broken with header crossing buffer boundary
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./fastcgi_extra_data.t .....................
+1..24
+ok 1 - response with extra data
+ok 2 - too short response
+ok 3 - empty too short response
+ok 4 - no data in HEAD
+ok 5 - too short to HEAD
+ok 6 - empty response to HEAD
+ok 7 - unbuffered with extra data
+ok 8 - unbuffered too short response
+ok 9 - unbuffered empty too short response
+ok 10 - unbuffered no data in HEAD
+ok 11 - unbuffered too short response to HEAD
+ok 12 - unbuffered empty response to HEAD
+ok 13 - head no body
+ok 14 - head matching
+ok 15 - head extra
+ok 16 - head too short
+ok 17 - head no body cached
+ok 18 - head matching cached
+ok 19 - head extra cached
+ok 20 - head too short cached
+ok 21 - zero size
+ok 22 - unbuffered zero size
+ok 23 - no alerts
+ok 24 - no sanitizer errors
+ok
+./fastcgi_header_params.t ..................
+1..6
+ok 1 - fastcgi request with many ignored headers
+ok 2 - fastcgi with multiple X-Forwarded-For headers
+ok 3 - fastcgi with multiple Cookie headers
+ok 4 - fastcgi with multiple unknown headers
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./fastcgi_keepalive.t ......................
+1..8
+ok 1 - fastcgi request
+ok 2 - fastcgi redirect
+ok 3 - fastcgi third request
+ok 4 - single connection used
+ok 5 - no data in HEAD
+ok 6 - new connection after HEAD
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./fastcgi_merge_params.t ...................
+1..11
+ok 1 - if-modified-since cleared with cache
+ok 2 - if-unmodified-since cleared with cache
+ok 3 - custom params with cache
+ok 4 - if-modified-since preserved without cache
+ok 5 - if-unmodified-since preserved without cache
+ok 6 - custom params without cache
+ok 7 - if-modified-since cleared with cache custom
+ok 8 - if-unmodified-since cleared with cache custom
+ok 9 - custom params with cache custom
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./fastcgi_merge_params2.t ..................
+1..6
+ok 1 - if-modified-since cleared with cache
+ok 2 - if-unmodified-since cleared with cache
+ok 3 - if-modified-since preserved without cache
+ok 4 - if-unmodified-since preserved without cache
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./fastcgi_request_buffering.t ..............
+1..17
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in single buffer
+ok 5 - body in error page
+ok 6 - body pipelined
+ok 7 - body pipelined 2
+ok 8 - no preread
+ok 9 - no preread - body part
+ok 10 - no preread - body part 2
+ok 11 - no preread - response
+ok 12 - preread
+ok 13 - preread - preread
+ok 14 - preread - body
+ok 15 - preread - response
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./fastcgi_request_buffering_chunked.t ......
+1..21
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in single buffer
+ok 5 - body in error page
+ok 6 - body pipelined
+ok 7 - body pipelined 2
+ok 8 - no preread
+ok 9 - no preread - body part
+ok 10 - no preread - body part 2
+ok 11 - no preread - response
+ok 12 - preread
+ok 13 - preread - preread
+ok 14 - preread - body
+ok 15 - preread - response
+ok 16 - chunks
+ok 17 - chunks - preread
+ok 18 - chunks - body
+ok 19 - chunks - response
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./fastcgi_split.t ..........................
+1..3
+ok 1 - fastcgi next upstream
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./fastcgi_unix.t ...........................
+1..8
+ok 1 - fastcgi request
+ok 2 - fastcgi redirect
+ok 3 - fastcgi third request
+ok 4 - no data in HEAD
+ok 5 - large stderr handled
+ok 6 - fastcgi with variables
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./fastcgi_variables.t ......................
+1..5
+ok 1 - script name
+ok 2 - info script name
+ok 3 - info path
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./geo.t ....................................
+1..24
+ok 1 - geo
+ok 2 - geo include
+ok 3 - geo delete
+ok 4 - geo ranges
+ok 5 - geo ranges include
+ok 6 - geo ranges delete
+ok 7 - geo ranges delete 2
+ok 8 - geo ranges add before
+ok 9 - geo ranges add after
+ok 10 - geo ranges insert
+ok 11 - geo ranges insert before
+ok 12 - geo ranges insert after
+ok 13 - geo from variable
+ok 14 - geo default
+ok 15 - geo ranges default
+ok 16 - geo ranges add
+ok 17 - geo delete range from variable
+ok 18 - geo proxy
+ok 19 - geo proxy default
+ok 20 - geo proxy long
+ok 21 - geo proxy_recursive off
+ok 22 - geo proxy_recursive on
+ok 23 - no alerts
+ok 24 - no sanitizer errors
+ok
+./geo_binary.t .............................
+1..0 # SKIP long configuration parsing
+skipped: long configuration parsing
+./geo_ipv6.t ...............................
+1..6
+ok 1 - geo ipv6
+ok 2 - geo ipv6 delete
+ok 3 - geo ipv6 ipv4-mapped
+ok 4 - geo ipv6 ipv4-mapped from variable
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./geo_unix.t ...............................
+1..8
+ok 1 - geo unix
+ok 2 - geo unix ranges
+ok 3 - geo unix remote addr
+ok 4 - geo unix ranges remote addr
+ok 5 - geo unix variable
+ok 6 - unix socket removed
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./geoip.t ..................................
+1..0 # SKIP no http_geoip available
+skipped: no http_geoip available
+./grpc.t ...................................
+1..148
+ok 1 - request - HEADERS flags
+ok 2 - request - HEADERS sid odd
+ok 3 - request - method
+ok 4 - request - scheme
+ok 5 - request - path
+ok 6 - request - authority
+ok 7 - request - content type
+ok 8 - request - te
+ok 9 - request - SETTINGS ack
+ok 10 - request - SETTINGS sid
+ok 11 - request - SETTINGS length
+ok 12 - request - DATA
+ok 13 - request - DATA length
+ok 14 - request - DATA flags
+ok 15 - request - DATA sid match
+ok 16 - response - HEADERS flags
+ok 17 - response - HEADERS sid
+ok 18 - response - status
+ok 19 - response - content type
+ok 20 - response - server
+ok 21 - response - date
+ok 22 - response - connection
+ok 23 - response - DATA
+ok 24 - response - DATA length
+ok 25 - response - DATA flags
+ok 26 - response - DATA sid
+ok 27 - response - trailers flags
+ok 28 - response - trailers sid
+ok 29 - response - trailers message
+ok 30 - response - trailers status
+ok 31 - request 2 - HEADERS sid again
+ok 32 - response 2 - connection
+ok 33 - request body first - DATA
+ok 34 - request body first - DATA length
+ok 35 - request body first - DATA flags
+ok 36 - special buffer last - DATA
+ok 37 - special buffer last - DATA length
+ok 38 - special buffer last - DATA flags
+ok 39 - special buffer last - response
+ok 40 - keepalive - HEADERS sid
+ok 41 - keepalive - connection
+ok 42 - keepalive - HEADERS sid next
+ok 43 - keepalive - connection reuse
+ok 44 - keepalive 2 - HEADERS sid
+ok 45 - keepalive 2 - connection
+ok 46 - upstream keepalive reused
+ok 47 - keepalive 2 - HEADERS sid next
+ok 48 - keepalive 2 - connection reuse
+ok 49 - keepalive 3 - connection
+ok 50 - grpc filter setting - DATA
+ok 51 - grpc filter setting - DATA length
+ok 52 - grpc filter setting - DATA flags
+ok 53 - setting updated - DATA
+ok 54 - setting updated - DATA length
+ok 55 - setting updated - DATA flags
+ok 56 - keepalive 3 - connection reuse
+ok 57 - keepalive 4 - connection
+ok 58 - keepalive 4 - GOAWAY aborted request
+ok 59 - keepalive 4 - closed
+ok 60 - keepalive 5 - GOAWAY next stream
+ok 61 - keepalive 5 - closed
+ok 62 - keepalive 6 - connection
+ok 63 - keepalive 6 - grpc filter GOAWAY aborted stream
+ok 64 - keepalive 6 - closed
+ok 65 - without indexing
+ok 66 - without indexing 2
+ok 67 - without indexing new
+ok 68 - without indexing new 2
+ok 69 - never indexed
+ok 70 - never indexed 2
+ok 71 - never indexed new
+ok 72 - never indexed new 2
+ok 73 - padding
+ok 74 - priority
+ok 75 - padding priority
+ok 76 # skip long test
+ok 77 - grpc error - HEADERS flags
+ok 78 - grpc error - no DATA frame
+ok 79 - response body less than content-length
+ok 80 - response body more than content-length
+ok 81 - continuation - HEADERS flags
+ok 82 - continuation - status
+ok 83 - continuation - content type
+ok 84 - continuation - DATA
+ok 85 - continuation - DATA length
+ok 86 - continuation - DATA flags
+ok 87 - continuation - trailers flags
+ok 88 - continuation - trailers message
+ok 89 - continuation - trailers status
+ok 90 - continuation - header split
+ok 91 - continuation - frames
+ok 92 - continuation - HEADERS
+ok 93 - continuation - HEADERS length
+ok 94 - continuation - HEADERS flags
+ok 95 - continuation - HEADERS sid
+ok 96 - continuation - CONTINUATION
+ok 97 - continuation - CONTINUATION length
+ok 98 - continuation - CONTINUATION flags
+ok 99 - continuation - CONTINUATION sid
+ok 100 - continuation - CONTINUATION 2
+ok 101 - continuation - CONTINUATION 2 length
+ok 102 - continuation - CONTINUATION 2 flags
+ok 103 - continuation - CONTINUATION n
+ok 104 - continuation - CONTINUATION n length
+ok 105 - continuation - CONTINUATION n flags
+ok 106 - continuation - path
+ok 107 - continuation - header
+ok 108 - long header field 1
+ok 109 - long header field 2
+ok 110 - long header field 3
+ok 111 - invalid header name colon
+ok 112 - invalid header name uppercase
+ok 113 - invalid header name ctl
+ok 114 - invalid header name space
+ok 115 - invalid header value ctl
+ok 116 - invalid index - indexed header
+ok 117 - invalid index - with indexing
+ok 118 - invalid index - without indexing
+ok 119 - flow control - iws length
+ok 120 - flow control - update length
+ok 121 - flow control - update flags
+ok 122 - flow control - rest length
+ok 123 - flow control - rest flags
+ok 124 - preserve - HEADERS
+ok 125 - preserve - DATA
+ok 126 - preserve - trailers
+ok 127 - DATA padding
+ok 128 - DATA padding - length
+ok 129 - DATA padding - flags
+ok 130 - DATA padding cl
+ok 131 - DATA padding cl - length
+ok 132 - DATA padding cl - flags
+ok 133 - authority in if
+ok 134 - set host - authority
+ok 135 - set host - host
+ok 136 - set args
+ok 137 - set args len
+ok 138 - root index
+ok 139 - method get
+ok 140 - method head
+ok 141 - discard WINDOW_UPDATE - trailers
+ok 142 - discard NO_ERROR - trailers
+ok 143 - discard NO_ERROR many - no trailers
+ok 144 - discard CANCEL - no trailers
+ok 145 - keepalive 3 - grpc error, rst
+ok 146 - keepalive 3 - connection reused
+ok 147 - no alerts
+ok 148 - no sanitizer errors
+ok
+./grpc_next_upstream.t .....................
+1..11
+ok 1 - grpc request
+ok 2 - second request
+ok 3 - not down
+ok 4 - request 444
+ok 5 - request 444 second
+ok 6 - request 500
+ok 7 - request 500 second
+ok 8 - down after 500
+ok 9 - all tried once
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./grpc_pass.t ..............................
+1..7
+ok 1 - no scheme
+ok 2 - grpc scheme
+ok 3 - grpcs scheme
+ok 4 - addrs
+ok 5 - no_port
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./grpc_request_buffering.t .................
+1..14
+ok 1 - request - HEADERS flags
+ok 2 - request - method
+ok 3 - request - scheme
+ok 4 - request - path
+ok 5 - request - authority
+ok 6 - request - DATA
+ok 7 - request - DATA length
+ok 8 - request - DATA flags
+ok 9 - request body in memory
+ok 10 - preserve_output - first body bytes
+ok 11 - preserve_output - last body bytes
+ok 12 - no crits
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./grpc_ssl.t ...............................
+1..40
+ok 1 - request - HEADERS flags
+ok 2 - request - HEADERS sid odd
+ok 3 - request - method
+ok 4 - request - scheme
+ok 5 - request - path
+ok 6 - request - authority
+ok 7 - request - content type
+ok 8 - request - te
+ok 9 - request - SETTINGS ack
+ok 10 - request - SETTINGS sid
+ok 11 - request - SETTINGS length
+ok 12 - request - DATA
+ok 13 - request - DATA length
+ok 14 - request - DATA flags
+ok 15 - request - DATA sid match
+ok 16 - response - HEADERS flags
+ok 17 - response - HEADERS sid
+ok 18 - response - status
+ok 19 - response - content type
+ok 20 - response - server
+ok 21 - response - date
+ok 22 - response - connection
+ok 23 - response - DATA
+ok 24 - response - DATA length
+ok 25 - response - DATA flags
+ok 26 - response - DATA sid
+ok 27 - response - trailers flags
+ok 28 - response - trailers sid
+ok 29 - response - trailers message
+ok 30 - response - trailers status
+ok 31 - response 2 - connection
+ok 32 - flow control - iws length
+ok 33 - flow control - update length
+ok 34 - flow control - update flags
+ok 35 - flow control - rest length
+ok 36 - flow control - rest flags
+ok 37 - keepalive - connection
+ok 38 - keepalive - connection reuse
+ok 39 - no alerts
+ok 40 - no sanitizer errors
+ok
+./gunzip.t .................................
+1..15
+ok 1 - runs
+ok 2 - no content encoding
+ok 3 - correct gunzipped response
+ok 4 - gzip still works - encoding
+ok 5 - gzip still works - content
+ok 6 - multiple gzip members
+ok 7 - errors gunzipped
+ok 8 - head - no content encoding
+ok 9 - get vary
+ok 10 - head vary
+ok 11 - no vary on non-gzipped get
+ok 12 - no vary on non-gzipped head
+ok 13 - gunzip empty
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./gunzip_memcached.t .......................
+1..0 # SKIP Cache::Memcached not installed
+skipped: Cache::Memcached not installed
+./gunzip_perl.t ............................
+1..0 # SKIP no perl available
+skipped: no perl available
+./gunzip_ssi.t .............................
+1..6
+ok 1 - no content encoding
+ok 2 - correct gunzipped response
+ok 3 - gzip - no content encoding
+ok 4 - gzip - correct gunzipped response
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./gunzip_static.t ..........................
+1..14
+ok 1 - runs
+ok 2 - correct gunzipped response
+ok 3 - gzip still works
+ok 4 - gunzip with gzip_tested
+ok 5 - gzip still works with gzip_tested
+ok 6 - multiple gzip members
+ok 7 - errors gunzipped
+ok 8 - head - no content encoding
+ok 9 - get vary
+ok 10 - head vary
+ok 11 - no vary on non-gzipped get
+ok 12 - no vary on non-gzipped head
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./gzip.t ...................................
+1..10
+ok 1 - gzip
+ok 2 - gzip content correct
+ok 3 - gzip proxied
+ok 4 - gzip proxied content
+ok 5 - cleared accept-ranges
+ok 6 - cleared headers from proxy
+ok 7 - gzip head
+ok 8 - no gzip head
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./gzip_flush.t .............................
+1..0 # SKIP no perl available
+skipped: no perl available
+./h2.t .....................................
+1..144
+ok 1 - WINDOW_UPDATE frame
+ok 2 - WINDOW_UPDATE zero flags
+ok 3 - WINDOW_UPDATE zero sid
+ok 4 - WINDOW_UPDATE fixed length
+ok 5 - SETTINGS frame
+ok 6 - SETTINGS flags
+ok 7 - SETTINGS stream
+ok 8 - SETTINGS frame ack
+ok 9 - SETTINGS flags ack
+ok 10 - SETTINGS PROTOCOL_ERROR - no ack
+ok 11 - SETTINGS PROTOCOL_ERROR - GOAWAY
+ok 12 - PING frame
+ok 13 - PING payload
+ok 14 - PING flags ack
+ok 15 - PING stream
+ok 16 - GOAWAY invalid length - GOAWAY frame
+ok 17 - GOAWAY invalid length - GOAWAY FRAME_SIZE_ERROR
+ok 18 - GOAWAY invalid stream - GOAWAY frame
+ok 19 - GOAWAY invalid stream - GOAWAY PROTOCOL_ERROR
+ok 20 - client-initiated PUSH_PROMISE - GOAWAY frame
+ok 21 - client-initiated PUSH_PROMISE - GOAWAY PROTOCOL_ERROR
+ok 22 - HEADERS frame
+ok 23 - HEADERS stream
+ok 24 - HEADERS status
+ok 25 - HEADERS header
+ok 26 - DATA frame
+ok 27 - DATA length
+ok 28 - DATA payload
+ok 29 - HEADERS stream 2
+ok 30 - HEADERS status 2
+ok 31 - HEADERS header 2
+ok 32 - DATA frame 2
+ok 33 - HEADERS stream 2
+ok 34 - DATA length 2
+ok 35 - DATA payload 2
+ok 36 - HEAD - HEADERS
+ok 37 - HEAD - HEADERS status
+ok 38 - HEAD - HEADERS header
+ok 39 - HEAD - no body
+ok 40 - CONNECT - not allowed
+ok 41 - TRACE - not allowed
+ok 42 - range - HEADERS status
+ok 43 - range - DATA length
+ok 44 - range - DATA payload
+ok 45 - chunk_size frames
+ok 46 - chunk_size data
+ok 47 - chunk_size flags
+ok 48 - CONTINUATION - fragment 1
+ok 49 - CONTINUATION - fragment 2
+ok 50 - CONTINUATION - fragment 3
+ok 51 - CONTINUATION - in header field
+ok 52 - GOAWAY - CONTINUATION closed stream
+ok 53 - GOAWAY - CONTINUATION closed stream - PROTOCOL_ERROR
+ok 54 - padding - HEADERS status
+ok 55 - padding - next stream
+ok 56 - padding - CONTINUATION
+ok 57 - redirect - HEADERS
+ok 58 - redirect - DATA
+ok 59 - redirect - DATA payload
+ok 60 - return 301 absolute - status
+ok 61 - return 301 absolute - location
+ok 62 - return 301 relative - status
+ok 63 - return 301 relative - location
+ok 64 - return 301 relative - authority - status
+ok 65 - return 301 relative - authority - location
+ok 66 - return 301 relative - host - status
+ok 67 - return 301 relative - host - location
+ok 68 - virtual host - host - status
+ok 69 - virtual host - host - DATA
+ok 70 - virtual host - authority - status
+ok 71 - virtual host - authority - DATA
+ok 72 - virtual host 2 - host - status
+ok 73 - virtual host 2 - host - DATA
+ok 74 - virtual host 2 - authority - status
+ok 75 - virtual host 2 - authority - DATA
+ok 76 - gzip - encoding
+ok 77 - gzip - vary
+ok 78 - gzip - DATA
+ok 79 - charset
+ok 80 - client header timeout
+ok 81 - client header timeout - protocol error
+ok 82 - client header timeout - PING
+ok 83 - client header timeout 2
+ok 84 - client header timeout 2 - protocol error
+ok 85 - client header timeout 2 - PING
+ok 86 - client body timeout
+ok 87 - client body timeout - protocol error
+ok 88 - client body timeout - PING
+ok 89 - proxy with logging request headers
+ok 90 - proxy with logging request headers - next
+ok 91 - iws - stream blocked on initial window size
+ok 92 - iws - PING not blocked
+ok 93 - iws - updated stream window
+ok 94 - iws - updated connection window
+ok 95 - iws - increased
+ok 96 - iws duplicate - default stream window
+ok 97 - iws duplicate - updated stream window
+ok 98 - iws duplicate - updated stream window 2
+ok 99 - negative window - SETTINGS frame ack
+ok 100 - negative window - SETTINGS flags ack
+ok 101 - negative window - no data
+ok 102 - zero window - no data
+ok 103 - positive window
+ok 104 - positive window - data
+ok 105 - positive window - data length
+ok 106 - SETTINGS ack after queued DATA
+ok 107 # skip unsafe socket tests
+ok 108 # skip unsafe socket tests
+ok 109 # skip unsafe socket tests
+ok 110 # skip unsafe socket tests
+ok 111 - max frame size - default
+ok 112 - max frame size - custom
+ok 113 - multiple SETTINGS
+ok 114 - multiple - stream1 data
+ok 115 - multiple - stream2 no data
+ok 116 - multiple - stream1 remain data
+ok 117 - multiple - stream2 full data
+ok 118 - http2_max_concurrent_streams SETTINGS
+ok 119 - http2_max_concurrent_streams
+ok 120 - http2_max_concurrent_streams 2
+ok 121 - http2_max_concurrent_streams RST_STREAM sid
+ok 122 - http2_max_concurrent_streams RST_STREAM length
+ok 123 - http2_max_concurrent_streams RST_STREAM flags
+ok 124 - http2_max_concurrent_streams RST_STREAM code
+ok 125 - http2_max_concurrent_streams 3
+not ok 126 - invalid preface # TODO not yet
+#   Failed (TODO) test 'invalid preface'
+#   at ./h2.t line 1022.
+#                   '���'
+#     doesn't match '(?^:400 Bad Request)'
+not ok 127 - invalid preface 2 # TODO not yet
+#   Failed (TODO) test 'invalid preface 2'
+#   at ./h2.t line 1023.
+#                   '���'
+#     doesn't match '(?^:400 Bad Request)'
+ok 128 - even stream - GOAWAY frame
+ok 129 - even stream - error code
+ok 130 - even stream - last stream
+ok 131 - backward stream - GOAWAY frame
+ok 132 - backward stream - error code
+ok 133 - backward stream - last stream
+ok 134 - dup stream - GOAWAY frame
+ok 135 - dup stream - error code
+ok 136 - dup stream - last stream
+ok 137 - unknown frame type
+ok 138 - GOAWAY with active stream - last sid
+ok 139 - GOAWAY with active stream - no new stream
+ok 140 - GOAWAY with active stream - active stream DATA after GOAWAY
+ok 141 - GOAWAY on connection close - idle stream
+ok 142 - GOAWAY on connection close - active stream
+ok 143 - no alerts
+ok 144 - no sanitizer errors
+ok
+./h2_absolute_redirect.t ...................
+1..25
+ok 1 - directory
+ok 2 - directory alias
+ok 3 - directory escaped
+ok 4 - directory escaped args
+ok 5 - auto
+ok 6 - auto args
+ok 7 - auto escaped
+ok 8 - auto escaped args
+ok 9 - return
+ok 10 - server_name_in_redirect on
+ok 11 - server_name_in_redirect off - using host
+ok 12 - invalid host - using local sockaddr
+ok 13 - port_in_redirect off
+ok 14 - off directory
+ok 15 - off directory alias
+ok 16 - off directory escaped
+ok 17 - off directory escaped args
+ok 18 - off auto
+ok 19 - off auto args
+ok 20 - auto escaped
+ok 21 - auto escaped args
+ok 22 - off return
+ok 23 - auto escaped strict
+ok 24 - no alerts
+ok 25 - no sanitizer errors
+ok
+./h2_auth_request.t ........................
+1..4
+ok 1 - auth request body
+ok 2 - auth request body file
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./h2_error_page.t ..........................
+1..4
+ok 1 - error 400 return 444 - missing header
+ok 2 - error 400 return 444 - invalid header
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./h2_fastcgi_request_buffering.t ...........
+1..50
+ok 1 - request
+ok 2 - part
+ok 3 - part 2
+ok 4 - response
+ok 5 - buffer
+ok 6 - buffer - below
+ok 7 - buffer - equal
+ok 8 - buffer - above
+ok 9 - buffer - response
+ok 10 - many
+ok 11 - many - part
+ok 12 - many - part 2
+ok 13 - many - response
+ok 14 - empty
+ok 15 - empty - part
+ok 16 - empty - part 2
+ok 17 - empty - response
+ok 18 - split
+ok 19 - split - part
+ok 20 - split - response
+ok 21 - cl
+ok 22 - cl - part
+ok 23 - cl - part 2
+ok 24 - cl - response
+ok 25 - cl buffer
+ok 26 - cl buffer - below
+ok 27 - cl buffer - equal
+ok 28 - cl buffer - above
+ok 29 - cl buffer - response
+ok 30 - cl much
+ok 31 - cl much - part
+ok 32 - cl much - part 2
+ok 33 - cl much - response
+ok 34 - cl less
+ok 35 - cl less - part
+ok 36 - cl less - part 2
+ok 37 - cl less - response
+ok 38 - cl many
+ok 39 - cl many - part
+ok 40 - cl many - part 2
+ok 41 - cl many - response
+ok 42 - cl empty
+ok 43 - cl empty - part
+ok 44 - cl empty - part 2
+ok 45 - cl empty - response
+ok 46 - cl split
+ok 47 - cl split
+ok 48 - cl split - response
+ok 49 - no alerts
+ok 50 - no sanitizer errors
+ok
+./h2_headers.t .............................
+1..105
+ok 1 - indexed header field
+ok 2 - literal with indexing
+ok 3 - literal with indexing - huffman
+ok 4 - literal with indexing - new
+ok 5 - literal with indexing - new huffman
+ok 6 - literal without indexing
+ok 7 - literal without indexing - huffman
+ok 8 - literal without indexing - multibyte index
+ok 9 - literal without indexing - multibyte index value
+ok 10 - literal without indexing - new
+ok 11 - literal without indexing - new huffman
+ok 12 - literal never indexed
+ok 13 - literal never indexed - huffman
+ok 14 - literal never indexed - multibyte index
+ok 15 - literal never indexed - multibyte index value
+ok 16 - literal never indexed - new
+ok 17 - literal never indexed - new huffman
+ok 18 - value with indexing - new
+ok 19 - value with indexing - indexed
+ok 20 - name with indexing - new
+ok 21 - name with indexing - indexed
+ok 22 - name with indexing - indexed name
+ok 23 - rare chars
+ok 24 - rare chars - no huffman encoding
+ok 25 - well known chars
+ok 26 - well known chars - huffman encoding
+ok 27 - all chars
+ok 28 - all chars - huffman encoding
+ok 29 - updated table size - remaining index
+ok 30 - invalid index
+ok 31 - invalid index in literal header field
+ok 32 - invalid index - GOAWAY
+ok 33 - invalid index - GOAWAY last stream
+ok 34 - invalid index - GOAWAY COMPRESSION_ERROR
+ok 35 - zero index - GOAWAY
+ok 36 - zero index - GOAWAY COMPRESSION_ERROR
+ok 37 - invalid table size - GOAWAY
+ok 38 - invalid table size - GOAWAY last stream
+ok 39 - invalid table size - GOAWAY COMPRESSION_ERROR
+ok 40 - multiple request header fields - cookie
+ok 41 - multiple request header fields - cookie 2
+ok 42 - multiple request header fields - semi-colon
+ok 43 - multiple request header fields proxied - semi-colon
+ok 44 - multiple request header fields proxied - dublicate cookie
+ok 45 - multiple request header fields proxied - cookie 1
+ok 46 - multiple request header fields proxied - cookie 2
+ok 47 - multiple response header fields - cookie
+ok 48 - multiple response header fields - cookie 2
+ok 49 - multiple response header proxied - cookie
+ok 50 - multiple response header proxied - cookie 2
+ok 51 - multiple response header proxied - upstream cookie
+ok 52 - multiple response header proxied - upstream cookie 2
+ok 53 - response CONTINUATION - headers
+ok 54 - response CONTINUATION - header 1
+ok 55 - response CONTINUATION - header 2
+ok 56 - response CONTINUATION - header 3
+ok 57 - response CONTINUATION - max frame size
+ok 58 - no body CONTINUATION - headers
+ok 59 - no body CONTINUATION - header 1
+ok 60 - no body CONTINUATION - header 2
+ok 61 - no body CONTINUATION - header 3
+ok 62 - no body CONTINUATION - max frame size
+ok 63 - response header frames limited
+ok 64 - response header - parts
+ok 65 - response header - headers
+ok 66 - response header split
+ok 67 - response header split - max size
+ok 68 - response header split - headers
+ok 69 - field name size less
+ok 70 - field name size second
+ok 71 - field name size equal
+ok 72 - field name size greater
+ok 73 - field value size less
+ok 74 - field value size equal
+ok 75 - field value size greater
+ok 76 - header size less
+ok 77 - header size second
+ok 78 - header size equal
+ok 79 - header size greater
+ok 80 - header size new index
+ok 81 - header size indexed
+ok 82 - header size indexed greater
+ok 83 - HPACK table boundary
+ok 84 - HPACK table boundary - header field name
+ok 85 - HPACK table boundary - header field value
+ok 86 - newline in request header
+ok 87 - newline in request header - bad request
+ok 88 - after invalid header name
+ok 89 - colon in header name
+ok 90 - space in header name
+ok 91 - control in header name
+ok 92 - underscore in header name - underscores_in_headers
+ok 93 - underscore in header name - ignore_invalid_headers
+ok 94 - incomplete headers
+ok 95 - empty authority
+ok 96 - invalid path
+ok 97 - invalid path control
+ok 98 - invalid index length
+ok 99 - invalid literal length
+ok 100 - too long index
+ok 101 - too long literal
+ok 102 - header split index
+ok 103 - header split field length
+ok 104 - no alerts
+ok 105 - no sanitizer errors
+ok
+./h2_http2.t ...............................
+1..0 # SKIP no http2
+skipped: no http2
+./h2_keepalive.t ...........................
+1..21
+ok 1 - max requests
+ok 2 - max requests - GOAWAY
+ok 3 - max requests limited
+ok 4 - max requests limited - all data received
+ok 5 - max requests limited - GOAWAY
+ok 6 - max requests limited - GOAWAY last stream
+ok 7 - keepalive_timeout 0
+ok 8 - keepalive_timeout 0 - GOAWAY
+ok 9 - keepalive time request
+ok 10 - keepalive time variables
+ok 11 - keepalive time - no GOAWAY yet
+ok 12 - keepalive time request 2
+ok 13 - keepalive time variables 2
+ok 14 - keepalive time limit - GOAWAY
+ok 15 - keepalive time limit - GOAWAY last stream
+ok 16 - graceful shutdown in idle
+ok 17 - graceful shutdown in idle - all data received
+ok 18 - graceful shutdown in idle - GOAWAY
+ok 19 - graceful shutdown in idle - GOAWAY last stream
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./h2_limit_conn.t ..........................
+1..6
+ok 1 - limit_conn first stream
+ok 2 - limit_conn rejected
+ok 3 - RST_STREAM 1
+ok 4 - RST_STREAM 2
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./h2_limit_req.t ...........................
+1..9
+ok 1 - request body - limit req
+ok 2 - request body - limit req - limited
+ok 3 - request body - limit req - empty
+ok 4 - request body - limit req 2
+ok 5 - discard body - limit req - limited
+ok 6 - discard body - limit req - next
+ok 7 - discard body - limit req - eof
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./h2_priority.t ............................
+1..22
+ok 1 - weight - PRIORITY 1
+ok 2 - weight - PRIORITY 2
+ok 3 - weight - HEADERS PRIORITY 1
+ok 4 - weight - HEADERS PRIORITY 2
+ok 5 - dependency - PRIORITY 1
+ok 6 - dependency - PRIORITY 2
+ok 7 - dependency - PRIORITY self - GOAWAY
+ok 8 - dependency - PRIORITY self - PROTOCOL_ERROR
+ok 9 - dependency - HEADERS PRIORITY 1
+ok 10 - dependency - HEADERS PRIORITY 2
+ok 11 - dependency - HEADERS self - GOAWAY
+ok 12 - dependency - HEADERS self - PROTOCOL_ERROR
+ok 13 - weighted dependency - PRIORITY 1
+ok 14 - weighted dependency - PRIORITY 2
+ok 15 - removed dependency
+ok 16 - removed dependency - first stream
+ok 17 - removed dependency - last stream
+ok 18 - exclusive dependency - parent removed
+ok 19 - exclusive dependency - first stream
+ok 20 - exclusive dependency - last stream
+ok 21 - no alerts
+ok 22 - no sanitizer errors
+ok
+./h2_proxy_cache.t .........................
+1..11
+ok 1 - proxy cache
+ok 2 - proxy cache - DATA
+ok 3 - proxy cache - DATA payload
+ok 4 - proxy cache conditional
+ok 5 - proxy cache - request body
+ok 6 - proxy cache - request body - next
+ok 7 - proxy cache HEAD - no body
+ok 8 - proxy cache HEAD buffering off - no body
+ok 9 - no headers
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./h2_proxy_max_temp_file_size.t ............
+1..6
+ok 1 - no pipe bufs - body
+ok 2 - no pipe bufs - body length
+ok 3 - no temp file - body
+ok 4 - no temp file - body length
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./h2_proxy_protocol.t ......................
+1..5
+ok 1 - PROXY HEADERS frame
+ok 2 - PROXY remote addr
+not ok 3 - PROXY invalid protocol
+#   Failed test 'PROXY invalid protocol'
+#   at ./h2_proxy_protocol.t line 81.
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./h2_proxy_request_buffering.t .............
+1..51
+ok 1 - request
+ok 2 - part
+ok 3 - part 2
+ok 4 - response
+ok 5 - much
+ok 6 - much - part
+ok 7 - much - part 2
+ok 8 - much - response
+ok 9 - less
+ok 10 - less - part
+ok 11 - less - part 2
+ok 12 - less - response
+ok 13 - many
+ok 14 - many - part
+ok 15 - many - part 2
+ok 16 - many - response
+ok 17 - empty
+ok 18 - empty - part
+ok 19 - empty - part 2
+ok 20 - empty - response
+ok 21 - buffer
+ok 22 - buffer - below
+ok 23 - buffer - equal
+ok 24 - buffer - above
+ok 25 - buffer - response
+ok 26 - split
+ok 27 - split
+ok 28 - split - response
+ok 29 - chunked
+ok 30 - chunked - part
+ok 31 - chunked - part 2
+ok 32 - chunked - response
+ok 33 - chunked buffer
+ok 34 - chunked buffer - below
+ok 35 - chunked buffer - equal
+ok 36 - chunked buffer - above
+ok 37 - chunked buffer - response
+ok 38 - chunked many
+ok 39 - chunked many - part
+ok 40 - chunked many - part 2
+ok 41 - chunked many - response
+ok 42 - chunked empty
+ok 43 - chunked empty - part
+ok 44 - chunked empty - part 2
+ok 45 - chunked empty - response
+ok 46 - chunked split
+ok 47 - chunked split
+ok 48 - chunked split - response
+ok 49 - chunked abort
+ok 50 - no alerts
+ok 51 - no sanitizer errors
+ok
+./h2_proxy_request_buffering_redirect.t ....
+1..3
+ok 1 - discard body rest on redirect
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./h2_proxy_request_buffering_ssl.t .........
+1..42
+ok 1 - request
+ok 2 - part
+ok 3 - part 2
+ok 4 - response
+ok 5 - buffer
+ok 6 - buffer - below
+ok 7 - buffer - equal
+ok 8 - buffer - above
+ok 9 - buffer - response
+ok 10 - many
+ok 11 - many - part
+ok 12 - many - part 2
+ok 13 - many - response
+ok 14 - empty
+ok 15 - empty - part
+ok 16 - empty - part 2
+ok 17 - empty - response
+ok 18 - split
+ok 19 - split
+ok 20 - split - response
+ok 21 - chunk
+ok 22 - chunked - part
+ok 23 - chunked - part 2
+ok 24 - chunked - response
+ok 25 - chunked buffer
+ok 26 - chunked buffer - below
+ok 27 - chunked buffer - equal
+ok 28 - chunked buffer - above
+ok 29 - chunked buffer - response
+ok 30 - chunked many
+ok 31 - chunked many - part
+ok 32 - chunked many - part 2
+ok 33 - chunked many - response
+ok 34 - chunked empty
+ok 35 - chunked empty - part
+ok 36 - chunked empty - part 2
+ok 37 - chunked empty - response
+ok 38 - chunked split
+ok 39 - chunked split
+ok 40 - chunked split - response
+ok 41 - no alerts
+ok 42 - no sanitizer errors
+ok
+./h2_proxy_ssl.t ...........................
+1..3
+ok 1 - empty request body
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./h2_request_body.t ........................
+1..51
+ok 1 - request body
+ok 2 - request body - content length
+ok 3 - request body with padding
+ok 4 - request body with padding - content length
+ok 5 - request body with padding - next
+ok 6 - request body in multiple frames
+ok 7 - request body in multiple frames - content length
+ok 8 - request body in multiple frames separately
+ok 9 - request body in multiple frames separately - content length
+ok 10 - big request body - WINDOW_UPDATE sid
+ok 11 - big request body - WINDOW_UPDATE delta
+ok 12 - big request body - content
+ok 13 - big request body - content length
+ok 14 - request body - empty
+ok 15 - request body - empty size
+ok 16 - request body - empty body file
+ok 17 - request body - empty content
+ok 18 - request without body
+ok 19 - request without body - content length
+ok 20 - request body discarded - zero RST_STREAM
+ok 21 - request body less than content-length
+ok 22 - request body more than content-length
+ok 23 - client_max_body_size - status
+ok 24 - client_max_body_size - body
+ok 25 - client_max_body_size - limited
+ok 26 - client_max_body_size many - status
+ok 27 - client_max_body_size many - body
+ok 28 - client_max_body_size many - limited
+ok 29 - client_max_body_size pad - status
+ok 30 - client_max_body_size pad - body
+ok 31 - client_max_body_size pad - limited
+ok 32 - client_max_body_size many pad - status
+ok 33 - client_max_body_size many pad - body
+ok 34 - client_max_body_size many pad - limited
+ok 35 - request body without content-length - status
+ok 36 - request body without content-length - body
+ok 37 - request body without content-length - limited
+ok 38 - request body without content-length many - status
+ok 39 - request body without content-length many - body
+ok 40 - request body without content-length many - limited
+ok 41 - request body without content-length pad - status
+ok 42 - request body without content-length pad - body
+ok 43 - request body without content-length pad - limited
+ok 44 - request body without content-length many pad - status
+ok 45 - request body without content-length many pad - body
+ok 46 - request body without content-length many pad - limited
+ok 47 - no request body in file
+ok 48 - sync buffer
+ok 49 - request body after 400 redirect
+ok 50 - no alerts
+ok 51 - no sanitizer errors
+ok
+./h2_request_body_extra.t ..................
+1..52
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in file
+ok 5 - body in file only
+ok 6 - body in single buffer
+ok 7 - body too large
+ok 8 - body nolen
+ok 9 - body nolen in two buffers
+ok 10 - body nolen in file
+ok 11 - body nolen in file only
+ok 12 - body nolen in single buffer
+ok 13 - body nolen too large
+ok 14 - body multi
+ok 15 - body multi in two buffers
+ok 16 - body multi in file
+ok 17 - body multi in file only
+ok 18 - body multi in single buffer
+ok 19 - body multi too large
+ok 20 - body multi nolen
+ok 21 - body multi nolen in two buffers
+ok 22 - body multi nolen in file
+ok 23 - body multi nolen in file only
+ok 24 - body multi nolen in single buffer
+ok 25 - body multi nolen too large
+ok 26 - no body unbuf
+ok 27 - body unbuf
+ok 28 - body unbuf in two buffers
+ok 29 - body unbuf in file
+ok 30 - body unbuf in file only
+ok 31 - body unbuf in single buffer
+ok 32 - body unbuf too large
+ok 33 - body unbuf nolen
+ok 34 - body unbuf nolen in two buffers
+ok 35 - body unbuf nolen in file
+ok 36 - body unbuf nolen in file only
+ok 37 - body unbuf nolen in single buffer
+ok 38 - body unbuf nolen too large
+ok 39 - body unbuf multi
+ok 40 - body unbuf multi in two buffers
+ok 41 - body unbuf multi in file
+ok 42 - body unbuf multi in file only
+ok 43 - body unbuf multi in single buffer
+ok 44 - body unbuf multi too large
+ok 45 - body unbuf multi nolen
+ok 46 - body unbuf multi nolen in two buffers
+ok 47 - body unbuf multi nolen in file
+ok 48 - body unbuf multi nolen in file only
+ok 49 - body unbuf multi nolen in single buffer
+ok 50 - body unbuf multi nolen too large
+ok 51 - no alerts
+ok 52 - no sanitizer errors
+ok
+./h2_request_body_preread.t ................
+1..11
+ok 1 - within preread
+not ok 2 - beyond preread - FLOW_CONTROL_ERROR # TODO not yet
+#   Failed (TODO) test 'beyond preread - FLOW_CONTROL_ERROR'
+#   at ./h2_request_body_preread.t line 121.
+#          got: undef
+#     expected: '3'
+ok 3 - within preread limited
+ok 4 - within preread limited - more
+ok 5 - beyond preread limited - FLOW_CONTROL_ERROR
+not ok 6 - zero preread - FLOW_CONTROL_ERROR # TODO not yet
+#   Failed (TODO) test 'zero preread - FLOW_CONTROL_ERROR'
+#   at ./h2_request_body_preread.t line 172.
+#          got: undef
+#     expected: '3'
+ok 7 - zero preread limited - FLOW_CONTROL_ERROR
+ok 8 - no SETTINGS ack - REFUSED_STREAM
+ok 9 - no SETTINGS ack - default preread
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./h2_ssl.t .................................
+1..6
+ok 1 - alpn rejected
+ok 2 - alpn to HTTP/1.1 fallback
+ok 3 - alpn to HTTP/2
+ok 4 - no h2c on ssl socket
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./h2_ssl_proxy_cache.t .....................
+1..3
+ok 1 - ssl connection
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./h2_ssl_proxy_protocol.t ..................
+1..5
+ok 1 - PROXY HEADERS frame
+ok 2 - PROXY remote addr
+ok 3 - PROXY invalid protocol
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./h2_ssl_variables.t .......................
+1..10
+ok 1 # skip OpenSSL NPN support required
+ok 2 - http variable - alpn
+ok 3 # skip OpenSSL NPN support required
+ok 4 - server_protocol variable - alpn
+ok 5 # skip OpenSSL NPN support required
+ok 6 - scheme variable - alpn
+ok 7 # skip OpenSSL NPN support required
+ok 8 - https variable - alpn
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./h2_ssl_verify_client.t ...................
+1..5
+ok 1 - success
+ok 2 - failed
+ok 3 - misdirected
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./h2_trailers.t ............................
+1..24
+ok 1 - frames
+ok 2 - header
+ok 3 - header not trailer
+ok 4 - header flags
+ok 5 - data
+ok 6 - data flags
+ok 7 - trailer
+ok 8 - trailer flags
+ok 9 - no data - frames
+ok 10 - no data - header
+ok 11 - no data - header flags
+ok 12 - no data - trailer
+ok 13 - no data - trailer flags
+ok 14 - continuation - frames
+ok 15 - continuation - header
+ok 16 - continuation - header flags
+ok 17 - continuation - data
+ok 18 - continuation - data flags
+ok 19 - continuation - trailer
+ok 20 - continuation - trailer flags
+ok 21 - continuation - trailer continuation
+ok 22 - continuation - trailer continuation flags
+ok 23 - no alerts
+ok 24 - no sanitizer errors
+ok
+./h2_variables.t ...........................
+1..8
+ok 1 - http variable - h2c
+ok 2 - server_protocol variable
+ok 3 - scheme variable
+ok 4 - https variable
+ok 5 - request length
+ok 6 - request length
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./h3_absolute_redirect.t ...................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_headers.t .............................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_keepalive.t ...........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_limit_conn.t ..........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_limit_req.t ...........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_proxy.t ...............................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_proxy_max_temp_file_size.t ............
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_reusable.t ............................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_server_name.t .........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_server_tokens.t .......................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_ssl_early_data.t ......................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_ssl_reject_handshake.t ................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_ssl_session_reuse.t ...................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./h3_trailers.t ............................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./headers.t ................................
+1..30
+ok 1 - good expires
+ok 2 - good add_header
+ok 3 - good add_header always
+ok 4 - good add_header always empty
+ok 5 - bad expires
+ok 6 - bad add_header
+ok 7 - bad add_header always
+ok 8 - bad add_header always empty
+ok 9 - expires epoch
+ok 10 - expires max
+ok 11 - expires off
+ok 12 - expires access
+ok 13 - expires inner
+ok 14 - expires negative
+ok 15 - expires daily
+ok 16 - expires modified
+ok 17 - expires modified proxy
+ok 18 - expires var epoch
+ok 19 - expires var max
+ok 20 - expires var off
+ok 21 - expires var access
+ok 22 - expires var inner
+ok 23 - expires var negative
+ok 24 - expires var daily
+ok 25 - expires var modified
+ok 26 - expires var empty
+ok 27 - expires var bad
+ok 28 - expires var modified epoch
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./http_absolute_redirect.t .................
+1..25
+ok 1 - directory
+ok 2 - directory alias
+ok 3 - directory escaped
+ok 4 - directory escaped args
+ok 5 - auto
+ok 6 - auto args
+ok 7 - auto escaped
+ok 8 - auto escaped args
+ok 9 - return
+ok 10 - server_name_in_redirect on
+ok 11 - server_name_in_redirect off - using host
+ok 12 - invalid host - using local sockaddr
+ok 13 - port_in_redirect off
+ok 14 - off directory
+ok 15 - off directory alias
+ok 16 - off directory escaped
+ok 17 - off directory escaped args
+ok 18 - off auto
+ok 19 - off auto args
+ok 20 - auto escaped
+ok 21 - auto escaped args
+ok 22 - off return
+ok 23 - auto escaped strict
+ok 24 - no alerts
+ok 25 - no sanitizer errors
+ok
+./http_disable_symlinks.t ..................
+1..30
+ok 1 - static (off, same uid)
+ok 2 - static (off, other uid)
+ok 3 - static (on, same uid)
+ok 4 - static (on, other uid)
+ok 5 - static (if_not_owner, same uid)
+ok 6 - static (if_not_owner, other uid)
+ok 7 - try_files (on)
+ok 8 - try_files (if_not_owner)
+ok 9 - if (on, same uid)
+ok 10 - if (on, other uid)
+ok 11 - if (if_not_owner, same uid)
+ok 12 - if (if_not_owner, other uid)
+ok 13 - open_file_cache (pass 1)
+ok 14 - open_file_cache (pass 2)
+ok 15 - open_file_cache (pass 3)
+ok 16 - open_file_cache (pass 4)
+ok 17 - open_file_cache (pass 5)
+ok 18 - complex root 1
+ok 19 - complex root 2
+ok 20 - complex root 3
+ok 21 - file with trailing /, on
+ok 22 - file with trailing /, owner
+ok 23 - file with trailing /, off
+ok 24 - directory without /
+ok 25 - directory with trailing /
+ok 26 - "from=" without /
+ok 27 - "from=" with /
+ok 28 - "from=" exact match
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./http_error_page.t ........................
+1..11
+ok 1 - redirect 200
+ok 2 - redirect 497
+ok 3 - error 302 redirect - old location cleared
+ok 4 - error 302 return 302 text - old location cleared
+ok 5 - error 302 return 302 args - old location cleared
+ok 6 - error 302 return 302 var args - old location cleared
+ok 7 - error 302 rewrite - old location cleared
+ok 8 - error 302 directory redirect - old location cleared
+ok 9 - error 302 auto redirect - old location cleared
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./http_expect_100_continue.t ...............
+1..7
+ok 1 - expect 100 continue
+ok 2 - expect 100 continue case-insensitive
+ok 3 - no 100 continue via http 1.0
+not ok 4 - unknown expectation # TODO not yet
+#   Failed (TODO) test 'unknown expectation'
+#   at ./http_expect_100_continue.t line 86.
+#                   'HTTP/1.1 404 Not Found
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:27:09 GMT
+# Content-Type: text/html
+# Content-Length: 153
+# Connection: close
+#
+# <html>
+# <head><title>404 Not Found</title></head>
+# <body>
+# <center><h1>404 Not Found</h1></center>
+# <hr><center>nginx/1.24.0</center>
+# </body>
+# </html>
+# '
+#     doesn't match '(?^: 417 )'
+not ok 5 - unsupported expectation extension # TODO not yet
+#   Failed (TODO) test 'unsupported expectation extension'
+#   at ./http_expect_100_continue.t line 87.
+#                   'HTTP/1.1 404 Not Found
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:27:09 GMT
+# Content-Type: text/html
+# Content-Length: 153
+# Connection: close
+#
+# <html>
+# <head><title>404 Not Found</title></head>
+# <body>
+# <center><h1>404 Not Found</h1></center>
+# <hr><center>nginx/1.24.0</center>
+# </body>
+# </html>
+# '
+#     doesn't match '(?^: 417 )'
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./http_header_buffers.t ....................
+1..12
+not ok 1 # TODO & SKIP overflow
+not ok 2 # TODO & SKIP overflow
+ok 3 - long header
+ok 4 - long request line
+ok 5 - long header after pipelining
+ok 6 - long request line after pipelining
+ok 7 - long header after keepalive
+ok 8 - long request line after keepalive
+ok 9 - long header after both
+ok 10 - long request line after both
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./http_headers_multi.t .....................
+1..44
+ok 1 - multi $http_x_forwarded_for
+ok 2 - multi $http_cookie
+ok 3 - multi $http_foo
+ok 4 - $cookie_foo
+ok 5 - $cookie_bar
+ok 6 - $cookie_bazz
+ok 7 - multi $sent_http_cache_control
+ok 8 - multi $sent_http_link
+ok 9 - multi $sent_http_foo
+ok 10 - multi $upstream_http_set_cookie
+ok 11 - multi $upstream_http_bar
+ok 12 - $upstream_cookie_foo
+ok 13 - $upstream_cookie_bar
+ok 14 - $upstream_cookie_bazz
+ok 15 - multi $sent_trailer_foo
+ok 16 - $http_host
+ok 17 - duplicate host rejected
+ok 18 - multi $http_user_agent (invalid)
+ok 19 - multi $http_referer (invalid)
+ok 20 - multi $http_via
+ok 21 - multi $http_cookie
+ok 22 - multi $http_x_forwarded_for
+ok 23 - $content_length
+ok 24 - duplicate Content-Length rejected
+ok 25 - $content_type
+ok 26 - multi $content_type (invalid)
+ok 27 - $host from server_name
+ok 28 - $host
+ok 29 - duplicate host rejected
+ok 30 - $remote_user
+ok 31 - duplicate authorization rejected
+ok 32 - duplicate Host rejected
+ok 33 - duplicate If-Modified-Since rejected
+ok 34 - duplicate If-Unmodified-Since rejected
+ok 35 - duplicate If-Match rejected
+ok 36 - duplicate If-None-Match rejected
+ok 37 - duplicate Content-Length rejected
+ok 38 - duplicate Content-Range rejected
+ok 39 - duplicate If-Range rejected
+ok 40 - duplicate Transfer-Encoding rejected
+ok 41 - duplicate Expect rejected
+ok 42 - duplicate Authorization rejected
+ok 43 - no alerts
+ok 44 - no sanitizer errors
+ok
+./http_host.t ..............................
+1..39
+ok 1 - domain w/o port (host header)
+ok 2 - domain w/port (host header)
+ok 3 - domain w/o port (absolute request)
+ok 4 - domain w/port (absolute request)
+ok 5 - domain w/ ending dot w/o port (host header)
+ok 6 - domain w/ ending dot w/port (host header)
+ok 7 - domain w/ ending dot w/o port (absolute request)
+ok 8 - domain w/ ending dot w/port (absolute request)
+ok 9 - mixed case domain w/o port (absolute request)
+ok 10 - mixed case domain w/port (host header)
+ok 11 - ipv4 w/o port (host header)
+ok 12 - ipv4 w/port (host header)
+ok 13 - ipv4 w/o port (absolute request)
+ok 14 - ipv4 w/port (absolute request)
+ok 15 - ipv6 literal w/o port (host header)
+ok 16 - ipv6 literal w/port (host header)
+ok 17 - ipv6 literal w/o port (absolute request)
+ok 18 - ipv6 literal w/port (absolute request)
+ok 19 - ipv4-mapped ipv6 w/o port (host header)
+ok 20 - ipv4-mapped ipv6 w/port (host header)
+ok 21 - ipv4-mapped ipv6 w/o port (absolute request)
+ok 22 - ipv4-mapped ipv6 w/port (absolute request)
+ok 23 - domain w/ path separators (host header)
+ok 24 - domain w/ path separators (absolute request)
+ok 25 - domain w/ double dot (host header)
+ok 26 - domain w/ double dot (absolute request)
+ok 27 - ipv6 literal w/ path separators (host header)
+ok 28 - ipv6 literal w/ path separators (absolute request)
+ok 29 - ipv6 literal w/ double dot (host header)
+ok 30 - ipv6 literal w/ double dot (absolute request)
+ok 31 - ipv6 literal w/ double dot (host header)
+ok 32 - ipv6 literal w/ double dot (absolute request)
+ok 33 - IPvFuture all symbols (host header)
+ok 34 - IPvFuture all symbols (absolute request)
+ok 35 - double port hack
+ok 36 - host repeat
+ok 37 - control
+ok 38 - no alerts
+ok 39 - no sanitizer errors
+ok
+./http_include.t ...........................
+1..7
+ok 1 - include in server if
+ok 2 - include in location if
+ok 3 - include in limit_except
+ok 4 - include in upstream
+ok 5 - no include
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./http_keepalive.t .........................
+1..23
+ok 1 - keepalive request
+ok 2 - keepalive limit
+ok 3 - keepalive merge
+ok 4 - keepalive merge limit
+ok 5 - keepalive disable msie6
+ok 6 - keepalive disable msie6 GET
+ok 7 - keepalive disable msie6 modern
+ok 8 - keepalive disable msie6 safari
+ok 9 - keepalive disable safari
+ok 10 - keepalive disable none
+ok 11 - keepalive timeout request
+ok 12 - keepalive timeout header
+ok 13 - keepalive timeout 0
+ok 14 - keepalive time requests
+ok 15 - keepalive time connection
+ok 16 - keepalive time limit requests
+ok 17 - keepalive time limit connection
+ok 18 - keepalive time limit variables
+ok 19 - EOF in discard body
+not ok 20 - sent_http_connection # TODO not yet
+#   Failed (TODO) test 'sent_http_connection'
+#   at ./http_keepalive.t line 153.
+#          got: 'close
+# close
+# '
+#     expected: 'keep-alive
+# close
+# '
+not ok 21 - sent_http_keep_alive # TODO not yet
+#   Failed (TODO) test 'sent_http_keep_alive'
+#   at ./http_keepalive.t line 154.
+#          got: '-
+# -
+# '
+#     expected: 'timeout=9
+# -
+# '
+ok 22 - no alerts
+ok 23 - no sanitizer errors
+ok
+./http_keepalive_shutdown.t ................
+1..3
+ok 1 - connection close on exit
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./http_listen.t ............................
+1..11
+ok 1 - single
+ok 2 - out of range 1
+ok 3 - range 1
+ok 4 - range 2
+ok 5 - out of range 2
+ok 6 - inet6 out of range 1
+ok 7 - inet6 range 1
+ok 8 - inet6 range 2
+ok 9 - inet6 out of range 2
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./http_listen_wildcard.t ...................
+1..0 # SKIP listen on wildcard address
+skipped: listen on wildcard address
+./http_location.t ..........................
+1..16
+ok 1 - exactlyroot
+ok 2 - root
+ok 3 - images
+ok 4 - regex
+ok 5 - regex with mungled case
+ok 6 - first regex wins
+ok 7 - casefull regex
+ok 8 - /foo exact
+ok 9 - /foo prefix
+ok 10 - /foo/ exact
+ok 11 - /foo/ prefix
+ok 12 - casefull regex do not match wrong case
+ok 13 - lowercase
+ok 14 - uppercase
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./http_location_auto.t .....................
+1..6
+ok 1 - auto redirect
+ok 2 - match a
+ok 3 - match a-a
+ok 4 - match a-b
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./http_location_win32.t ....................
+1..0 # SKIP not win32
+skipped: not win32
+./http_method.t ............................
+1..4
+ok 1 - trace
+ok 2 - connect
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./http_resolver.t ..........................
+1..40
+ok 1 - A
+ok 2 - A case-insensitive
+ok 3 - A uncompressed
+ok 4 - A short dns response
+ok 5 - NXDOMAIN
+ok 6 - CNAME
+ok 7 - CNAME cached
+ok 8 - CNAME + A
+ok 9 - CNAME bad
+ok 10 - long label
+ok 11 - long name
+ok 12 - DNAME
+ok 13 - A many
+ok 14 - A many cached
+ok 15 - two ns bad
+ok 16 - two ns good
+ok 17 - two ns cached
+ok 18 - ttl
+ok 19 - ttl cached 1
+ok 20 - ttl cached 2
+ok 21 - ttl expired
+ok 22 - zero ttl
+not ok 23 - zero ttl not cached # TODO support for zero ttl
+#   Failed (TODO) test 'zero ttl not cached'
+#   at ./http_resolver.t line 214.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:27:26 GMT
+# Content-Type: text/plain
+# Content-Length: 0
+# Connection: close
+#
+# '
+#     doesn't match '(?^:502 Bad)'
+ok 24 - valid
+ok 25 - valid cached 1
+ok 26 - valid cached 2
+ok 27 - valid overrides ttl
+ok 28 - valid expired
+ok 29 - CNAME + A with expired CNAME ttl
+ok 30 - no resolver
+ok 31 - resend after malformed response
+ok 32 - resend after format error
+ok 33 - timeout handler on 2nd request
+ok 34 - format error
+ok 35 - timeout after aborted request
+ok 36 - tc
+ok 37 - tcp
+ok 38 - tcp with resend
+ok 39 - no alerts
+ok 40 - no sanitizer errors
+ok
+./http_resolver_aaaa.t .....................
+1..74
+ok 1 - AAAA
+ok 2 - CNAME
+ok 3 - CNAME cached
+ok 4 - CNAME + AAAA
+ok 5 - AAAA many
+ok 6 - AAAA many cached
+ok 7 - two ns bad
+ok 8 - two ns good
+ok 9 - two ns cached
+ok 10 - zero zero responses
+ok 11 - zero zero
+ok 12 - zero AAAA
+ok 13 - zero CNAME responses
+ok 14 - zero CNAME 1
+ok 15 - zero CNAME 2
+ok 16 - zero CNAME+AAAA responses
+ok 17 - zero CNAME+AAAA 1
+ok 18 - zero CNAME+AAAA 2
+ok 19 - zero error responses
+ok 20 - zero error
+ok 21 - A zero
+ok 22 - A AAAA responses
+ok 23 - A AAAA 1
+ok 24 - A AAAA 2
+ok 25 - A CNAME
+ok 26 - A CNAME+AAAA responses
+ok 27 - A CNAME+AAAA 1
+ok 28 - A CNAME+AAAA 2
+ok 29 - A CNAME+AAAA 3
+ok 30 - A CNAME+AAAA 4
+ok 31 - A error responses
+ok 32 - A error
+ok 33 - CNAME zero responses
+ok 34 - CNAME zero
+ok 35 - CNAME AAAA
+ok 36 - CNAME CNAME responses
+ok 37 - CNAME CNAME 1
+ok 38 - CNAME CNAME 2
+ok 39 - CNAME1 CNAME2
+ok 40 - CNAME CNAME+AAAA responses
+ok 41 - CNAME CNAME+AAAA 1
+ok 42 - CNAME CNAME+AAAA 1
+ok 43 - CNAME error responses
+ok 44 - CNAME error
+ok 45 - CNAME+A zero responses
+ok 46 - CNAME+A zero 1
+ok 47 - CNAME+A zero 2
+ok 48 - CNAME+A AAAA responses
+ok 49 - CNAME+A AAAA 1
+ok 50 - CNAME+A AAAA 2
+ok 51 - CNAME+A AAAA 3
+ok 52 - CNAME+A AAAA 4
+ok 53 - CNAME+A CNAME responses
+ok 54 - CNAME+A CNAME 1
+ok 55 - CNAME+A CNAME 2
+ok 56 - CNAME+A CNAME+AAAA responses
+ok 57 - CNAME+A CNAME+AAAA 1
+ok 58 - CNAME+A CNAME+AAAA 2
+ok 59 - CNAME+A CNAME+AAAA 3
+ok 60 - CNAME+A CNAME+AAAA 4
+ok 61 - CNAME+A error responses
+ok 62 - CNAME+A error
+ok 63 - error zero responses
+ok 64 - error zero
+ok 65 - error AAAA responses
+ok 66 - error AAAA
+ok 67 - error CNAME responses
+ok 68 - error CNAME
+ok 69 - error CNAME+AAAA responses
+ok 70 - error CNAME+AAAA
+ok 71 - error error responses
+ok 72 - error error
+ok 73 - no alerts
+ok 74 - no sanitizer errors
+ok
+./http_resolver_cleanup.t ..................
+1..3
+ok 1 - request
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./http_resolver_cname.t ....................
+1..13
+ok 1 - CNAME timeout
+ok 2 - invalid CNAME - first
+ok 3 - invalid CNAME - last
+ok 4 - cached CNAME - first
+ok 5 - cached CNAME - last
+ok 6 - CNAME in progress - first
+ok 7 - CNAME in progress - last
+ok 8 - CNAME ttl - first
+ok 9 - CNAME ttl - last
+ok 10 - abort on CNAME
+ok 11 - recurse uncached
+ok 12 - no alerts
+ok 13 - no sanitizer errors
+ok
+./http_resolver_ipv4.t .....................
+1..5
+ok 1 - ipv4 ipv6
+ok 2 - ipv4 only
+ok 3 - ipv6 only
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./http_server_name.t .......................
+1..22
+ok 1 - default
+ok 2 - empty
+ok 3 - www.example.com
+ok 4 - www.example.com uppercase
+ok 5 - example.com regex
+ok 6 - example.com regex uppercase
+ok 7 - (P<name>.*).example.com named capture
+ok 8 - (P<name>.*).example.com named capture uppercase
+ok 9 - \p{N} in named capture
+ok 10 - \p{N} in named capture uppercase
+ok 11 - name row - first
+ok 12 - name row - second
+ok 13 - name list - first
+ok 14 - name list - second
+ok 15 - wildcard first
+ok 16 - wildcard first most specific
+ok 17 - wildcard last
+ok 18 - wildcard last most specific
+ok 19 - wildcard dot
+ok 20 - wildcard dot empty
+ok 21 - no alerts
+ok 22 - no sanitizer errors
+ok
+./http_try_files.t .........................
+1..12
+ok 1 - found
+ok 2 - not found uri
+ok 3 - not found nouri
+ok 4 - short uri in try_files
+ok 5 - file matches file
+ok 6 - file does not match dir
+ok 7 - dir matches dir
+ok 8 - dir does not match file
+ok 9 - alias in regex location
+ok 10 - alias with nested location
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./http_uri.t ...............................
+1..21
+ok 1 - percent
+ok 2 - percent digit
+ok 3 - dot args
+ok 4 - dot frag
+ok 5 - dot dot args
+ok 6 - dot dot frag
+ok 7 - trailing dot
+ok 8 - trailing dot dot
+ok 9 - absolute
+ok 10 - absolute slash
+ok 11 - absolute args
+ok 12 - absolute args and frag
+ok 13 - port
+ok 14 - port slash
+ok 15 - port args
+ok 16 - port args and frag
+ok 17 - space
+ok 18 - control
+ok 19 - control escaped
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./http_variables.t .........................
+1..9
+ok 1 - arg
+ok 2 - limit_rate handlers
+ok 3 - limit_rate invalid
+ok 4 - no uri
+ok 5 - no header
+ok 6 - multi headers
+ok 7 - ignoring headers with (hash == 0)
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./ignore_invalid_headers.t .................
+1..14
+ok 1 - off - underscore
+ok 2 - off - underscore first
+ok 3 - off - bad
+ok 4 - off - bad first
+ok 5 - off - several
+ok 6 - on - underscore
+ok 7 - on - underscore first
+ok 8 - underscores_in_headers
+ok 9 - underscores_in_headers - first
+ok 10 - colon first
+ok 11 - space
+ok 12 - control
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./image_filter.t ...........................
+1..0 # SKIP GD not installed
+skipped: GD not installed
+./image_filter_finalize.t ..................
+1..0 # SKIP no image_filter available
+skipped: no image_filter available
+./image_filter_webp.t ......................
+1..0 # SKIP no image_filter available
+skipped: no image_filter available
+./index.t ..................................
+1..16
+ok 1 - default index
+ok 2 - no index
+ok 3 - redirect
+ok 4 - redirect loop
+ok 5 - many
+ok 6 - var
+ok 7 - var 2
+ok 8 - var with redirect
+ok 9 - not found
+ok 10 - not found log off
+ok 11 - directory access denied
+ok 12 - not a directory
+ok 13 - log_not_found
+ok 14 - log_not_found off
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./limit_conn.t .............................
+1..10
+ok 1 - rejected
+ok 2 - rejected different location
+ok 3 - passed different zone
+ok 4 - passed
+ok 5 - limit_conn_status
+ok 6 - limit_conn_log_level
+ok 7 - unlimited passed
+ok 8 - limited rejected
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./limit_conn_complex.t .....................
+1..6
+ok 1 - limit_req same key
+ok 2 - limit_req different key
+ok 3 - limit_conn same key
+ok 4 - limit_conn different key
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./limit_conn_dry_run.t .....................
+1..8
+ok 1 - passed
+ok 2 - rejected
+ok 3 - rejected dry run
+ok 4 - no limit
+ok 5 - log dry run
+ok 6 - log not found
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./limit_rate.t .............................
+1..9
+ok 1 - response body
+ok 2 - limit_rate
+ok 3 - X-Accel-Redirect
+ok 4 - X-Accel-Limit-Rate
+ok 5 - variable
+ok 6 - variable after
+ok 7 - variables unset
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./limit_req.t ..............................
+1..8
+ok 1 - request
+ok 2 - request rejected
+ok 3 - request rejected status
+ok 4 - delayed big request not truncated
+ok 5 - rejects not counted
+ok 6 - negative excess
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./limit_req2.t .............................
+1..16
+ok 1 - fast
+ok 2 - fast - passed
+ok 3 - slow
+ok 4 - slow - rejected
+ok 5 - both
+ok 6 - both - rejected
+ok 7 - no key
+ok 8 - no key - passed
+ok 9 - nodelay fast
+ok 10 - nodelay fast - passed
+ok 11 - nodelay slow
+ok 12 - nodelay slow - rejected
+ok 13 - nodelay both
+ok 14 - nodelay both - rejected
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./limit_req_delay.t ........................
+1..6
+ok 1 - request
+ok 2 - not yet delayed
+ok 3 - rejected
+ok 4 - delayed
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./limit_req_dry_run.t ......................
+1..10
+ok 1 - dry run - passed
+ok 2 - dry run - delayed
+ok 3 - dry run - rejected
+ok 4 - dry run off - rejected
+ok 5 - no limit
+ok 6 - log - delay
+ok 7 - log - reject
+ok 8 - log - not found
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./mail_capability.t ........................
+1..19
+ok 1 - imap capability
+ok 2 - imap capability completed
+ok 3 - imap capability starttls
+ok 4 - imap capability starttls only
+ok 5 - pop3 capa
+ok 6 - pop3 - user
+ok 7 - pop3 - methods
+ok 8 - pop3 - no stls
+ok 9 - pop3 starttls - user
+ok 10 - pop3 starttls - methods
+ok 11 - pop3 startls - stls
+ok 12 - pop3 starttls only - no user
+ok 13 - pop3 starttls only - no methods
+ok 14 - pop3 startls only - stls
+ok 15 - smtp ehlo
+ok 16 - smtp ehlo - starttls
+ok 17 - smtp ehlo - starttls only
+ok 18 - no alerts
+ok 19 - no sanitizer errors
+ok
+./mail_error_log.t .........................
+1..32
+ok 1 - greeting
+ok 2 # skip no --with-debug
+ok 3 - file info in info
+ok 4 - file debug in info
+ok 5 - stderr info in info
+ok 6 - stderr debug in info
+ok 7 - error global
+ok 8 - error global 2
+ok 9 - multiple error global
+ok 10 - syslog
+ok 11 - syslog has PRI
+ok 12 - syslog valid severity
+ok 13 - syslog valid facility
+ok 14 - syslog has month
+ok 15 - syslog valid month
+ok 16 - syslog has day
+ok 17 - syslog valid day
+ok 18 - syslog has hour
+ok 19 - syslog valid hour
+ok 20 - syslog has minutes
+ok 21 - syslog valid minutes
+ok 22 - syslog has seconds
+ok 23 - syslog valid seconds
+ok 24 - syslog has host
+ok 25 - syslog valid host
+ok 26 - syslog has tag
+ok 27 - syslog valid tag
+ok 28 - syslog valid CONTENT
+ok 29 - global syslog messages
+ok 30 - mail syslog messages
+ok 31 - no alerts
+ok 32 - no sanitizer errors
+ok
+./mail_imap.t ..............................
+1..31
+ok 1 - greeting
+ok 2 - login without arguments
+ok 3 - login with bad password
+ok 4 - login
+ok 5 - auth without arguments
+ok 6 - auth plain with bad password
+ok 7 - auth plain
+ok 8 - auth login username challenge
+ok 9 - auth login password challenge
+ok 10 - auth login simple
+ok 11 - auth login with username password challenge
+ok 12 - auth login with username
+ok 13 - auth cram-md5 challenge
+ok 14 - auth cram-md5
+ok 15 - auth external challenge
+ok 16 - auth external
+ok 17 - auth external with username
+ok 18 - quoted strings
+ok 19 - login username literal continue
+ok 20 - login password literal continue
+ok 21 - login literals
+ok 22 - login non-sync literals
+ok 23 - backslash in literal
+ok 24 - pipelined invalid command
+ok 25 - pipelined noop after invalid command
+ok 26 - invalid with non-sync literal
+ok 27 - literal not command
+ok 28 - pipelined login
+ok 29 - pipelined logout
+ok 30 - no alerts
+ok 31 - no sanitizer errors
+ok
+./mail_imap_ssl.t ..........................
+1..15
+ok 1 - plain connection
+ok 2 - no cert
+ok 3 - no optional cert
+ok 4 - bad optional cert
+ok 5 - bad optional_no_ca cert
+ok 6 - good cert
+ok 7 - trusted cert
+ok 8 - log - plain connection
+ok 9 - log - no cert
+ok 10 - log - bad cert
+ok 11 - log - good cert
+ok 12 - log - trusted cert
+ok 13 - log - cipher sslversion
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./mail_max_errors.t ........................
+1..20
+ok 1 - imap first error
+ok 2 - imap second error
+ok 3 - imap max errors
+ok 4 - imap pipelined first error
+ok 5 - imap pipelined second error
+ok 6 - imap pipelined max errors
+ok 7 - pop3 first error
+ok 8 - pop3 second error
+ok 9 - pop3 max errors
+ok 10 - pop3 pipelined first error
+ok 11 - pop3 pipelined second error
+ok 12 - pop3 pipelined max errors
+ok 13 - smtp first error
+ok 14 - smtp second error
+ok 15 - smtp max errors
+ok 16 - smtp pipelined first error
+ok 17 - smtp pipelined second error
+ok 18 - smtp pipelined max errors
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./mail_pop3.t ..............................
+1..30
+ok 1 - greeting
+ok 2 - user
+ok 3 - pass
+ok 4 - apop salt
+ok 5 - apop error
+ok 6 - apop
+ok 7 - auth
+ok 8 - auth capabilities
+ok 9 - auth plain with bad password
+ok 10 - auth plain
+ok 11 - auth login username challenge
+ok 12 - auth login password challenge
+ok 13 - auth login simple
+ok 14 - auth login with username password challenge
+ok 15 - auth login with username
+ok 16 - auth cram-md5 challenge
+ok 17 - auth cram-md5
+ok 18 - auth external challenge
+ok 19 - auth external
+ok 20 - auth external with username
+ok 21 - pipelined invalid command
+ok 22 - pipelined noop after invalid command
+ok 23 - pipelined user
+ok 24 - pipelined pass
+ok 25 - pipelined quit
+ok 26 - pipelined auth username challenge
+ok 27 - pipelined auth password challenge
+ok 28 - pipelined auth
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./mail_proxy_protocol.t ....................
+1..10
+ok 1 - greeting with proxy_protocol
+ok 2 - ehlo with proxy_protocol
+ok 3 - auth with proxy_protocol
+ok 4 - proxy protocol to backend
+ok 5 - greeting with proxy_protocol and realip
+ok 6 - ehlo with proxy_protocol and realip
+ok 7 - auth with proxy_protocol and realip
+ok 8 - proxy_protocol to backend and realip
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./mail_proxy_smtp_auth.t ...................
+1..9
+ok 1 - ehlo, xclient, auth
+ok 2 - ehlo, xclient, helo, auth
+ok 3 - ehlo, xclient, ehlo, auth
+ok 4 - helo, auth
+ok 5 - ehlo, auth
+ok 6 - auth external challenge
+ok 7 - auth external no password
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./mail_resolver.t ..........................
+1..13
+ok 1 - PTR
+ok 2 - PTR waiting
+ok 3 - PTR cached
+ok 4 - PTR SERVFAIL
+ok 5 - PTR empty
+ok 6 - PTR empty waiting
+not ok 7 - CNAME # TODO support for CNAME RR
+#   Failed (TODO) test 'CNAME'
+#   at ./mail_resolver.t line 242.
+#                   '535 5.7.0 [TEMPUNAVAIL]
+# '
+#     doesn't match '(?^:^2\d\d )'
+ok 8 - uncompressed PTR
+ok 9 - PTR type
+ok 10 - CNAME with PTR
+ok 11 - PTR SSL empty
+ok 12 - no alerts
+ok 13 - no sanitizer errors
+ok
+./mail_smtp.t ..............................
+1..43
+ok 1 - greeting
+ok 2 - ehlo
+ok 3 - auth plain with bad password
+ok 4 - auth plain
+ok 5 - mail from after auth
+ok 6 - rset
+ok 7 - idn mail from (example.test in russian)
+ok 8 - quit
+ok 9 - auth login simple username challenge
+ok 10 - auth login simple password challenge
+ok 11 - auth login simple
+ok 12 - auth login with username password challenge
+ok 13 - auth login with username
+ok 14 - auth cram-md5 challenge
+ok 15 - auth cram-md5
+ok 16 - auth external challenge
+ok 17 - auth external
+ok 18 - auth external with username
+ok 19 - pipelined rset after invalid command
+ok 20 - mail from after failed pipelined auth
+ok 21 - mail from after pipelined auth
+ok 22 - auth none - mail from
+ok 23 - auth none - rcpt to
+ok 24 - auth none - rset, should go to backend
+ok 25 - pipelined mail from
+ok 26 - pipelined rcpt to
+ok 27 - pipelined rset
+ok 28 - split pipelined mail from
+ok 29 - split pipelined rcpt to
+ok 30 - split pipelined rset
+ok 31 - long pipelined mail from
+ok 32 - long pipelined rcpt to
+ok 33 - long pipelined rcpt to 2
+ok 34 - long pipelined rcpt to 3
+ok 35 - long pipelined rcpt to 4
+ok 36 - long pipelined rset
+ok 37 - bad rcpt to
+ok 38 - good rcpt to
+ok 39 - split command
+ok 40 - invalid split command
+ok 41 - good after invalid split command
+ok 42 - no alerts
+ok 43 - no sanitizer errors
+ok
+./mail_smtp_greeting_delay.t ...............
+1..4
+ok 1 - command before greeting - session must be rejected
+ok 2 - session have to be closed
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./mail_smtp_xclient.t ......................
+1..8
+ok 1 - xclient
+ok 2 - xclient, helo
+ok 3 - xclient, ehlo
+ok 4 - xclient, from
+ok 5 - xclient, helo, from
+ok 6 - xclient, ehlo, from
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./mail_ssl.t ...............................
+1..21
+ok 1 - greeting
+ok 2 - login
+ok 3 - greeting ssl
+ok 4 - CN
+ok 5 - CN inner
+ok 6 - alpn
+ok 7 - alpn rejected
+ok 8 - imap auth before startls on
+ok 9 - imap starttls on
+ok 10 - imap auth before startls only
+ok 11 - imap starttls only
+ok 12 - pop3 auth before startls on
+ok 13 - pop3 starttls on
+ok 14 - pop3 auth before startls only
+ok 15 - pop3 starttls only
+ok 16 - smtp auth before startls on
+ok 17 - smtp starttls on
+ok 18 - smtp auth before startls only
+ok 19 - smtp starttls only
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./mail_ssl_conf_command.t ..................
+1..5
+ok 1 - Certificate
+ok 2 - SessionTicket
+ok 3 - ServerPreference
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./mail_ssl_session_reuse.t .................
+1..9
+ok 1 - tickets reused
+ok 2 - tickets and cache reused
+ok 3 - cache shared reused
+ok 4 - cache builtin reused
+ok 5 - cache builtin size reused
+ok 6 - cache none not reused
+ok 7 - cache off not reused
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./map.t ....................................
+1..21
+ok 1 - map default
+ok 2 - map foo bar
+ok 3 - map foo bar key
+ok 4 - map example.com foo
+ok 5 - map EXAMPLE.COM foo
+ok 6 - map example.com. foo
+ok 7 - map example.org wildcard
+ok 8 - map foo.example.com wildcard
+ok 9 - map foo.example.com. wildcard
+ok 10 - map dot.example.com special wildcard
+ok 11 - map www.dot.example.com special wildcard
+ok 12 - map REGEX.EXAMPLE.ORG
+ok 13 - map regex.example.org
+ok 14 - map www.regex.example.org insensitive
+ok 15 - map WWW.REGEX.EXAMPLE.ORG insensitive
+ok 16 - map special parameter
+ok 17 - map server_name variable
+ok 18 - map z variable
+ok 19 - include foo bar
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./map_complex.t ............................
+1..5
+ok 1 - map cv
+ok 2 - map cv 2
+ok 3 - map cv key
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./map_volatile.t ...........................
+1..4
+ok 1 - map
+ok 2 - map volatile
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./memcached.t ..............................
+1..0 # SKIP Cache::Memcached not installed
+skipped: Cache::Memcached not installed
+./memcached_fake.t .........................
+1..5
+ok 1 - memcached split trailer
+ok 2 - memcached ssi var
+ok 3 - no errors
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./memcached_fake_extra.t ...................
+1..3
+ok 1 - memcached data after trailer
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./memcached_keepalive.t ....................
+1..0 # SKIP Cache::Memcached not installed
+skipped: Cache::Memcached not installed
+./memcached_keepalive_stale.t ..............
+1..0 # SKIP Cache::Memcached not installed
+skipped: Cache::Memcached not installed
+./merge_slashes.t ..........................
+1..4
+ok 1 - merge slashes
+ok 2 - merge slashes 2
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./mirror.t .................................
+1..10
+ok 1 - request
+ok 2 - internal redirect
+ok 3 - mirror off
+ok 4 - mirror many
+ok 5 - log - request
+ok 6 - log - redirect
+ok 7 - log - mirror off
+ok 8 - log - mirror many
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./mirror_proxy.t ...........................
+1..9
+ok 1 - mirror proxy
+ok 2 - mirror_request_body
+ok 3 - mirror delay
+ok 4 - log - request body
+ok 5 - log - request body in mirror
+ok 6 - log - mirror_request_body off
+ok 7 - log - mirror_request_body off in mirror
+not ok 8 - no alerts # TODO alerts
+#   Failed (TODO) test 'no alerts'
+#   at lib/Test/Nginx.pm line 82.
+#          got: '2023/12/05 17:28:48 [alert] 735#735: *19 open socket #3 left in connection 4
+# 2023/12/05 17:28:48 [alert] 735#735: aborting'
+#     expected: ''
+ok 9 - no sanitizer errors
+ok
+./mp4.t ....................................
+1..0 # SKIP ffprobe not found
+skipped: ffprobe not found
+./mp4_ssi.t ................................
+1..0 # SKIP ffprobe not found
+skipped: ffprobe not found
+./mp4_start_key_frame.t ....................
+1..0 # SKIP ffprobe not found
+skipped: ffprobe not found
+./msie_refresh.t ...........................
+1..7
+ok 1 - msie refresh
+ok 2 - msie refresh escaped url
+ok 3 - msie refresh error page
+ok 4 - msie refresh disabled
+ok 5 - only final chunk
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./not_modified.t ...........................
+1..17
+ok 1 - 0x7F000000
+ok 2 - 0x7FFFFFFF
+ok 3 # skip only for 32-bit time_t
+ok 4 # skip only for 32-bit time_t
+ok 5 - if-none-match
+ok 6 - if-none-match fail
+ok 7 - if-none-match with complex list
+ok 8 - if-none-match all
+ok 9 - if-none-match weak
+ok 10 - if-match
+ok 11 - if-match fail
+ok 12 - if-match with complex list
+ok 13 - if-match all
+ok 14 - if-match weak fail
+ok 15 - if-match ignored with 404
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./not_modified_finalize.t ..................
+1..4
+ok 1 - request 412
+ok 2 - request 412 cached
+not ok 3 - no alerts # TODO alerts
+#   Failed (TODO) test 'no alerts'
+#   at lib/Test/Nginx.pm line 82.
+#          got: '2023/12/05 17:28:49 [alert] 756#756: *1 stalled cache updating, error:0 while closing request, client: 127.0.0.1, server: 127.0.0.1:8080'
+#     expected: ''
+ok 4 - no sanitizer errors
+ok
+./not_modified_proxy.t .....................
+1..14
+ok 1 - if-modified-since
+ok 2 - ims proxy ignored
+ok 3 - ims from cache
+ok 4 - if-unmodified-since
+ok 5 - iums proxy ignored
+ok 6 - iums from cache
+ok 7 - if-none-match
+ok 8 - inm proxy ignored
+ok 9 - inm from cache
+ok 10 - if-none-match etag only
+ok 11 - inm etag proxy ignored
+ok 12 - inm etag from cache
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./perl.t ...................................
+1..0 # SKIP no perl available
+skipped: no perl available
+./perl_gzip.t ..............................
+1..0 # SKIP no perl available
+skipped: no perl available
+./perl_sleep.t .............................
+1..0 # SKIP no perl available
+skipped: no perl available
+./perl_ssi.t ...............................
+1..0 # SKIP no perl available
+skipped: no perl available
+./post_action.t ............................
+1..7
+ok 1 - post action
+ok 2 - no additional body
+ok 3 - post action proxy
+ok 4 - no additional body proxy
+ok 5 - post action in logs
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./proxy.t ..................................
+1..30
+ok 1 - proxy request
+ok 2 - proxy request with multiple packets
+ok 3 - proxy head request
+ok 4 - proxy with variables
+ok 5 - proxy with variables to upstream
+ok 6 - proxy connect timeout
+ok 7 - proxy_host
+ok 8 - proxy_port
+ok 9 - proxy_add_x_forwarded_for
+ok 10 - connect time - slow response header
+ok 11 - header time - slow response header
+ok 12 - connect time - slow response body
+ok 13 - header time - slow response body
+ok 14 - connect time - next
+ok 15 - connect time - next 2
+ok 16 - header time - next
+ok 17 - header time - next 2
+ok 18 - response time - next
+ok 19 - response time - next 2
+ok 20 - connect time log - slow response header
+ok 21 - connect time log - slow response body
+ok 22 - connect time log - client close
+ok 23 - header time log - slow response header
+ok 24 - header time log - slow response body
+ok 25 - header time log - client close
+ok 26 - response time log - slow response header
+ok 27 - response time log - slow response body
+ok 28 - response time log - client close
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./proxy_available.t ........................
+1..4
+ok 1 - zero available - buffered
+ok 2 - zero available - unbuffered
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_bind.t .............................
+1..7
+ok 1 - bind
+ok 2 - bind inherit
+ok 3 - bind off
+ok 4 - bind var
+ok 5 - bind port
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./proxy_bind_transparent.t .................
+1..0 # SKIP must be root
+skipped: must be root
+./proxy_bind_transparent_capability.t ......
+1..0 # SKIP must be root
+skipped: must be root
+./proxy_cache.t ............................
+1..17
+ok 1 - proxy request
+ok 2 - proxy request cached
+ok 3 - head request
+ok 4 - get after head
+ok 5 - head after get
+ok 6 - empty head first
+ok 7 - empty head second
+ok 8 - cached range
+ok 9 - cached multipart range
+ok 10 - empty get first
+ok 11 - empty get second
+ok 12 - non-empty get stale
+ok 13 - empty get stale
+ok 14 - non-cacheable head - keepalive
+ok 15 - non-cacheable head - second
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./proxy_cache_bypass.t .....................
+1..10
+ok 1 - request
+ok 2 - request cached
+ok 3 - cache bypassed
+ok 4 - cached after bypass
+ok 5 - intercepted error
+ok 6 - error cached
+ok 7 - error cache bypassed
+ok 8 - error cached after bypass
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_cache_chunked.t ....................
+1..4
+ok 1 - chunked
+ok 2 - chunked cached
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_cache_control.t ....................
+1..21
+ok 1 - expires
+ok 2 - cache-control
+ok 3 - x-accel-expires
+ok 4 - x-accel-expires at
+ok 5 - x-accel-expires duplicate
+ok 6 - cache headers ignored
+ok 7 - cache-control before expires
+ok 8 - cache-control after expires
+ok 9 - cache-control no-cache before expires
+ok 10 - cache-control no-cache after expires
+ok 11 - x-accel-expires before
+ok 12 - x-accel-expires after
+ok 13 - x-accel-expires 0 before
+ok 14 - x-accel-expires 0 after
+ok 15 - cache-control no-cache
+ok 16 - cache-control no-cache multi line
+ok 17 - cache-control extensions before x-accel-expires
+ok 18 - cache-control extensions after x-accel-expires
+ok 19 - set-cookie not cached
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./proxy_cache_convert_head.t ...............
+1..10
+ok 1 - get
+ok 2 - head
+ok 3 - head cached
+ok 4 - get after head
+ok 5 - on - get
+ok 6 - on - head
+ok 7 - inner - get
+ok 8 - inner - head
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_cache_error.t ......................
+1..3
+ok 1 - head request
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./proxy_cache_lock.t .......................
+1..19
+ok 1 - sequential request 1
+ok 2 - sequential request 2
+ok 3 - sequential request 3
+ok 4 - sequential request 4
+ok 5 - sequential request 5
+ok 6 - parallel request 1
+ok 7 - parallel request 2
+ok 8 - parallel request 3
+ok 9 - parallel request 4
+ok 10 - parallel request 5
+ok 11 - first request cached
+ok 12 - lock timeout - first
+ok 13 - lock timeout - rest
+ok 14 - lock timeout - first only cached
+ok 15 - nolock - first
+ok 16 - nolock - last
+ok 17 - nolock - last cached
+ok 18 - no alerts
+ok 19 - no sanitizer errors
+ok
+./proxy_cache_lock_age.t ...................
+1..6
+ok 1 - request
+ok 2 - request cached
+ok 3 - request aged
+ok 4 - request aged cached
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_cache_lock_ssi.t ...................
+1..4
+ok 1 - cache lock ssi
+ok 2 - parallel execution after lock timeout
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_cache_manager.t ....................
+1..0 # SKIP long test
+skipped: long test
+./proxy_cache_max_range_offset.t ...........
+1..10
+ok 1 - range - below
+ok 2 - range - above
+ok 3 - range - last
+not ok 4 - range - multipart above # TODO not yet
+#   Failed (TODO) test 'range - multipart above'
+#   at ./proxy_cache_max_range_offset.t line 92.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:29:20 GMT
+# Content-Type: text/html
+# Content-Length: 8
+# Connection: close
+# Last-Modified: Tue, 05 Dec 2023 17:29:20 GMT
+# ETag: "656f5df0-8"
+# Accept-Ranges: bytes
+#
+# SEE-THIS'
+#     doesn't match '(?^:X-Range)'
+ok 5 - always non-cacheable
+ok 6 - below min_uses
+ok 7 - no range
+ok 8 - no range - cached
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_cache_min_free.t ...................
+1..4
+ok 1 - proxy request
+ok 2 - proxy request cached
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_cache_path.t .......................
+1..8
+ok 1 - temp path
+ok 2 - temp path off
+ok 3 - temp path levels
+ok 4 - temp path cached
+ok 5 - temp path cached off
+ok 6 - temp path cached levels
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./proxy_cache_range.t ......................
+1..9
+ok 1 - range on first request
+not ok 2 - multipart range on first request # TODO not yet
+#   Failed (TODO) test 'multipart range on first request'
+#   at ./proxy_cache_range.t line 90.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:29:21 GMT
+# Content-Type: text/html
+# Content-Length: 8
+# Connection: close
+# Last-Modified: Tue, 05 Dec 2023 17:29:21 GMT
+# ETag: "656f5df1-8"
+# Accept-Ranges: bytes
+#
+# SEE-THIS'
+#     doesn't match '(?^ms:^SEE.*^THIS)'
+ok 3 - cached range
+ok 4 - cached multipart range
+ok 5 - range below min_uses
+ok 6 - multipart range below min_uses
+ok 7 - range of response received in parts
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./proxy_cache_revalidate.t .................
+1..25
+ok 1 - request
+ok 2 - request cached
+ok 3 - 2nd request
+ok 4 - 2nd request cached
+ok 5 - etag
+ok 6 - etag cached
+ok 7 - etag2
+ok 8 - etag2 cached
+ok 9 - other status
+ok 10 - other status cached
+ok 11 - cache before 404
+ok 12 - revalidated
+ok 13 - cached again
+ok 14 - cache 404 response
+ok 15 - not modified
+ok 16 - revalidate failed
+ok 17 - new response cached
+ok 18 - etag revalidated
+ok 19 - etag cached again
+ok 20 - etag2 revalidate failed
+ok 21 - etag2 new response cached
+ok 22 - other status no revalidation
+ok 23 - no 404 revalidation after stale 200
+ok 24 - no alerts
+ok 25 - no sanitizer errors
+ok
+./proxy_cache_use_stale.t ..................
+1..36
+ok 1 - stale-if-error
+ok 2 - s-i-e - cached
+ok 3 - stale-while-revalidate
+ok 4 - s-w-r - cached
+ok 5 - s-i-e - stale 5xx ignore
+ok 6 - s-i-e - stale 5xx ignore 2
+ok 7 - s-i-e - stale 5xx updating
+ok 8 - s-i-e - revalidated
+ok 9 - s-w-r - revalidate error
+ok 10 - s-w-r - stale while revalidate
+ok 11 - s-w-r - revalidated
+ok 12 - s-w-r - unconditional revalidate
+ok 13 - s-w-r - unconditional revalidated
+ok 14 - s-w-r - foreground revalidate error
+ok 15 - s-w-r - foreground revalidated
+ok 16 - s-w-r - regexp background update
+ok 17 - s-w-r - regexp revalidated
+ok 18 - s-w-r - updating
+ok 19 - s-w-r - updating stale
+ok 20 - s-w-r - updating revalidated
+ok 21 - s-w-r - use_stale updating stale
+ok 22 - s-w-r - use_stale updating revalidated
+ok 23 - s-w-r - proxy_cache_valid revalidate
+ok 24 - s-w-r - proxy_cache_valid revalidated
+ok 25 - s-w-r - stale after revalidate
+ok 26 - s-w-r - ceased
+ok 27 - s-i-e - ceased
+ok 28 - s-w-r - overriden with use_stale updating
+ok 29 - s-w-r - stale response not blocked
+ok 30 - s-w-r - not blocked in subrequest
+ok 31 - background update in if
+ok 32 - background update in if - updated
+ok 33 - escaped after escaped
+ok 34 - unescaped after escaped
+ok 35 - no alerts
+ok 36 - no sanitizer errors
+ok
+./proxy_cache_valid.t ......................
+1..14
+ok 1 - max-age
+ok 2 - s-maxage
+ok 3 - proxy_cache_valid
+ok 4 - max-age cached
+ok 5 - s-maxage cached
+ok 6 - proxy_cache_valid cached
+ok 7 - max-age ceased
+ok 8 - s-maxage overrides max-age
+ok 9 - intercept error
+ok 10 - error cached from max-age
+ok 11 - error no-cache
+ok 12 - error no-cache - not cacheable
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./proxy_cache_variables.t ..................
+1..10
+ok 1 - proxy request
+ok 2 - proxy request cached
+ok 3 - head request
+ok 4 - proxy request 2
+ok 5 - proxy request 2 cached
+ok 6 - proxy_cache unknown
+ok 7 - proxy_cache empty
+ok 8 - proxy_cache empty - not cached
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_cache_vary.t .......................
+1..54
+ok 1 - first request
+ok 2 - vary match cached
+ok 3 - vary mismatch
+ok 4 - vary mismatch cached
+ok 5 - vary mismatch 2
+ok 6 - vary mismatch 2 cached
+ok 7 - multiple representations cached
+ok 8 # skip long tests
+ok 9 # skip long tests
+ok 10 # skip long tests
+ok 11 # skip long tests
+ok 12 # skip long tests
+ok 13 # skip long tests
+ok 14 # skip long tests
+ok 15 # skip long tests
+ok 16 # skip long tests
+ok 17 # skip long tests
+ok 18 # skip long tests
+ok 19 # skip long tests
+ok 20 - replace first
+ok 21 - replace second
+ok 22 - replace novary
+ok 23 - all replaced
+ok 24 - revalidate first
+ok 25 - revalidate second
+ok 26 - revalidated first
+ok 27 - revalidated second
+ok 28 - revalidate first after
+ok 29 - revalidate second after
+ok 30 - another request
+ok 31 - vary ignored
+ok 32 - vary complex first
+ok 33 - vary complex second
+ok 34 - vary complex first cached
+ok 35 - vary complex second cached
+ok 36 - vary asterisk first
+ok 37 - vary asterisk second
+ok 38 - normalize first
+ok 39 - normalize whitespace
+ok 40 - normalize empty
+ok 41 - normalize no whitespace mismatch
+not ok 42 - normalize order # TODO not yet
+#   Failed (TODO) test 'normalize order'
+#   at ./proxy_cache_vary.t line 261.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:29:49 GMT
+# Content-Type: text/html
+# Content-Length: 8
+# Connection: close
+# Last-Modified: Tue, 05 Dec 2023 17:29:43 GMT
+# Vary: Accept-Encoding
+# ETag: "656f5e07-8"
+# Expires: Tue, 05 Dec 2023 17:29:51 GMT
+# Cache-Control: max-age=2
+# X-Cache-Status: MISS
+# Accept-Ranges: bytes
+#
+# SEE-THIS'
+#     doesn't match '(?^ms:HIT)'
+ok 43 - multi first
+ok 44 - multi second
+ok 45 - multi other
+ok 46 - change first
+ok 47 - change first cached
+ok 48 - change second
+ok 49 - change second cached
+ok 50 - cold first
+ok 51 - cold second
+ok 52 - no crit
+ok 53 - no alerts
+ok 54 - no sanitizer errors
+ok
+./proxy_chunked.t ..........................
+1..5
+ok 1 - chunked
+ok 2 - chunked nobuffering
+ok 3 - chunked inmemory
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_chunked_extra.t ....................
+1..3
+ok 1 - chunked with extra data
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./proxy_cookie.t ...........................
+1..11
+ok 1 - domain rewrite
+ok 2 - domain rewrite with vars
+ok 3 - domain regex rewrite
+ok 4 - path rewrite
+ok 5 - path rewrite with vars
+ok 6 - path regex rewrite
+ok 7 - path caseless regex rewrite
+ok 8 - domain and path rewrite
+ok 9 - domain and path rewrite off
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./proxy_cookie_flags.t .....................
+1..16
+ok 1 - flags set all
+ok 2 - flags set lax
+ok 3 - flags set strict
+ok 4 - flags reset all
+ok 5 - flags reset lax
+ok 6 - flags reset strict
+ok 7 - flags remove
+ok 8 - flags no match
+ok 9 - flags variable
+ok 10 - flags regex
+ok 11 - flags off
+ok 12 - flags set
+ok 13 - flags reset
+ok 14 - flags remove
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./proxy_duplicate_headers.t ................
+1..10
+ok 1 - normal
+ok 2 - invalid length
+ok 3 - duplicate length
+ok 4 - unknown transfer encoding
+ok 5 - duplicate transfer encoding
+ok 6 - length and transfer encoding
+ok 7 - transfer encoding and length
+ok 8 - duplicate expires ignored
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_extra_data.t .......................
+1..24
+ok 1 - response with extra data
+ok 2 - too short response
+ok 3 - empty too short response
+ok 4 - no data in HEAD
+ok 5 - too short to HEAD
+ok 6 - empty response to HEAD
+ok 7 - unbuffered with extra data
+ok 8 - unbuffered too short response
+ok 9 - unbuffered empty too short response
+ok 10 - unbuffered no data in HEAD
+ok 11 - unbuffered too short response to HEAD
+ok 12 - unbuffered empty response to HEAD
+ok 13 - head no body
+ok 14 - head matching
+ok 15 - head extra
+ok 16 - head too short
+ok 17 - head no body cached
+ok 18 - head matching cached
+ok 19 - head extra cached
+ok 20 - head too short cached
+ok 21 - zero size
+ok 22 - unbuffered zero size
+ok 23 - no alerts
+ok 24 - no sanitizer errors
+ok
+./proxy_force_ranges.t .....................
+1..9
+ok 1 - range without Accept-Ranges
+ok 2 - uncached range
+ok 3 - cached range
+ok 4 - cached multipart range
+ok 5 - if-range last-modified proxy
+ok 6 - if-range etag proxy
+ok 7 - no dublicate final chunk
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./proxy_if.t ...............................
+1..17
+ok 1 - proxy request
+ok 2 - proxy_pass uri changed
+ok 3 - proxy_pass uri changed in if
+ok 4 - proxy_pass uri changed inner
+ok 5 - proxy_pass uri changed inner in if
+ok 6 - proxy_pass uri and limit_except
+ok 7 - proxy_pass uri and limit_except, inner
+ok 8 - proxy_pass and limit_except with different proxy_pass
+ok 9 - proxy_pass inside if
+ok 10 - proxy_pass variables
+ok 11 - proxy_pass variables if
+ok 12 - proxy_pass variables nested
+ok 13 - proxy_pass ssl
+ok 14 - proxy_pass ssl inside if
+ok 15 - proxy_pass nossl inside ssl
+not ok 16 - no alerts # TODO alerts
+#   Failed (TODO) test 'no alerts'
+#   at lib/Test/Nginx.pm line 82.
+#          got: '2023/12/05 17:29:53 [alert] 956#956: *19 no upstream configuration, client: 127.0.0.1, server: localhost, request: "GET /proxy-inside-if-crash HTTP/1.0", host: "localhost"'
+#     expected: ''
+ok 17 - no sanitizer errors
+ok
+./proxy_implicit.t .........................
+1..5
+ok 1 - implicit upstream
+ok 2 - implicit upstream all tried
+ok 3 - implicit upstream by variable
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_intercept_errors.t .................
+1..6
+ok 1 - not intercepted
+ok 2 - intercepted 500
+ok 3 - intercepted 401
+ok 4 - intercepted 401 multi
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_keepalive.t ........................
+1..51
+ok 1 - buffered
+ok 2 - buffered 2
+ok 3 - buffered chunked
+ok 4 - buffered chunked 2
+ok 5 - buffered complex chunked
+ok 6 - buffered complex chunked 2
+ok 7 - buffered 0 chunk
+ok 8 - buffered 0 chunk 2
+ok 9 - buffered head
+ok 10 - buffered head 2
+ok 11 - buffered empty
+ok 12 - buffered empty 2
+ok 13 - buffered 304
+ok 14 - buffered 304 2
+ok 15 - buffered 304 with length
+ok 16 - buffered 304 with length 2
+ok 17 - unbuffered
+ok 18 - unbuffered 2
+ok 19 - unbuffered chunked
+ok 20 - unbuffered chunked 2
+ok 21 - unbuffered complex chunked
+ok 22 - unbuffered complex chunked 2
+ok 23 - unbuffered 0 chunk
+ok 24 - unbuffered 0 chunk 2
+ok 25 - unbuffered empty
+ok 26 - unbuffered empty 2
+ok 27 - unbuffered head
+ok 28 - unbuffered head 2
+ok 29 - unbuffered 304
+ok 30 - unbuffered 304 2
+ok 31 - unbuffered 304 with length
+ok 32 - unbuffered 304 with length 2
+ok 33 - inmemory
+ok 34 - inmemory 2
+ok 35 - inmemory empty
+ok 36 - inmemory empty 2
+ok 37 - inmemory chunked
+ok 38 - inmemory chunked 2
+ok 39 - inmemory complex chunked
+ok 40 - inmemory complex chunked 2
+ok 41 - inmemory 0 chunk
+ok 42 - inmemory 0 chunk 2
+ok 43 - buffered closed 1
+ok 44 - buffered closed 2
+ok 45 - unbuffered closed 1
+ok 46 - unbuffered closed 2
+ok 47 - inmemory closed 1
+ok 48 - inmemory closed 2
+ok 49 - no errors
+ok 50 - no alerts
+ok 51 - no sanitizer errors
+ok
+./proxy_limit_rate.t .......................
+1..6
+ok 1 - proxy_limit_rate
+ok 2 - response body
+ok 3 - keepalive
+ok 4 - keepalive 2
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_max_temp_file_size.t ...............
+1..6
+ok 1 - no pipe bufs - body
+ok 2 - no pipe bufs - body length
+ok 3 - no temp file - body
+ok 4 - no temp file - body length
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_merge_headers.t ....................
+1..13
+ok 1 - if-modified-since cleared with cache
+ok 2 - if-modified-since preserved without cache
+ok 3 - proxy_set_header inherited with proxy_set_body
+ok 4 - proxy_pass_header default
+ok 5 - proxy_pass_header nested
+ok 6 - proxy_hide_header inherited
+ok 7 - proxy_hide_header nested
+ok 8 - proxy_pass_header date
+ok 9 - proxy_pass_header server
+ok 10 - proxy_pass_header no date
+ok 11 - proxy_pass_header no server
+ok 12 - no alerts
+ok 13 - no sanitizer errors
+ok
+./proxy_method.t ...........................
+1..6
+ok 1 - proxy_method from request
+ok 2 - proxy_method from constant
+ok 3 - proxy_method from variable
+ok 4 - proxy_method from parent
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_next_upstream.t ....................
+1..10
+ok 1 - proxy request
+ok 2 - second request
+ok 3 - not down
+ok 4 - request 500
+ok 5 - request 500 second
+ok 6 - down after 500
+ok 7 - all tried once
+ok 8 - all tried with down
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_next_upstream_tries.t ..............
+1..10
+ok 1 - tries
+ok 2 - tries backup
+ok 3 - tries resolved
+ok 4 - tries zero
+ok 5 # skip long tests
+ok 6 # skip long tests
+ok 7 # skip long tests
+ok 8 # skip long tests
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_noclose.t ..........................
+1..6
+ok 1 - request to bad backend
+ok 2 - bad backend - multiple packets
+ok 3 - content-length actually used
+not ok 4 - bad backend - no content length # TODO not yet
+#   Failed (TODO) test 'bad backend - no content length'
+#   at ./proxy_noclose.t line 84.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:03 GMT
+# Connection: close
+#
+# '
+#     doesn't match '(?^:SEE-THIS)'
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_non_idempotent.t ...................
+1..10
+ok 1 - get
+ok 2 - post
+ok 3 - get 404
+ok 4 - post 404
+ok 5 - get non_idempotent
+ok 6 - post non_idempotent
+ok 7 - keepalive
+ok 8 - keepalive post
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_pass_request.t .....................
+1..5
+ok 1 - no headers
+ok 2 - no body
+ok 3 - both
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_protocol.t .........................
+1..26
+ok 1 - tcp4 request
+ok 2 - tcp4 proxy
+ok 3 - tcp4 proxy server
+ok 4 - tcp4 client
+ok 5 - tcp6 request
+ok 6 - tcp6 proxy
+ok 7 - tcp6 proxy server
+ok 8 - tcp6 client
+ok 9 - unknown request 1
+ok 10 - unknown proxy 1
+ok 11 - unknown proxy server 1
+ok 12 - unknown request 2
+ok 13 - unknown proxy 2
+ok 14 - unknown proxy server 2
+ok 15 - tcp4 request realip
+ok 16 - tcp4 proxy realip
+ok 17 - tcp4 client realip
+ok 18 - tcp6 request realip
+ok 19 - tcp6 proxy realip
+ok 20 - tcp6 client realip
+ok 21 - tcp4 access
+ok 22 - tcp6 access
+ok 23 - tcp4 log
+ok 24 - tcp6 log
+ok 25 - no alerts
+ok 26 - no sanitizer errors
+ok
+./proxy_protocol2.t ........................
+1..30
+ok 1 - tcp4 request
+ok 2 - tcp4 proxy
+ok 3 - tcp4 proxy server
+ok 4 - tcp4 client
+ok 5 - tcp6 request
+ok 6 - tcp6 proxy
+ok 7 - tcp6 proxy server
+ok 8 - tcp6 client
+ok 9 - tlv request
+ok 10 - tlv proxy
+ok 11 - tlv proxy server
+ok 12 - tlv client
+ok 13 - unknown request 1
+ok 14 - unknown proxy 1
+ok 15 - unknown proxy server 1
+ok 16 - unknown request 2
+ok 17 - unknown proxy 2
+ok 18 - unknown proxy server 2
+ok 19 - tcp4 request realip
+ok 20 - tcp4 proxy realip
+ok 21 - tcp4 client realip
+ok 22 - tcp6 request realip
+ok 23 - tcp6 proxy realip
+ok 24 - tcp6 client realip
+ok 25 - tcp4 access
+ok 26 - tcp6 access
+ok 27 - tcp4 log
+ok 28 - tcp6 log
+ok 29 - no alerts
+ok 30 - no sanitizer errors
+ok
+./proxy_protocol2_tlv.t ....................
+1..16
+ok 1 - ALPN
+ok 2 - AUTHORITY
+ok 3 - CRC32C
+ok 4 - UNIQUE_ID
+ok 5 - SSL_BINARY
+ok 6 - SSL_VERIFY
+ok 7 - SSL_VERSION
+ok 8 - SSL_CN
+ok 9 - SSL_CIPHER
+ok 10 - SSL_SIG_ALG
+ok 11 - SSL_KEY_ALG
+ok 12 - NETNS
+ok 13 - custom
+ok 14 - non-existent
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./proxy_protocol_ipv6.t ....................
+1..5
+ok 1 - realip
+ok 2 - proxy protocol
+ok 3 - proxy protocol realip
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_protocol_unix.t ....................
+1..7
+ok 1 - remote_addr
+ok 2 - proxy_protocol_addr
+ok 3 - remote_addr realip
+ok 4 - stream proxy_protocol
+ok 5 - stream proxy_protocol realip
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./proxy_redirect.t .........................
+1..17
+ok 1 - implicit default
+ok 2 - explicit default
+ok 3 - implicit default (refresh)
+ok 4 - explicit default (refresh)
+ok 5 - variable in second arg
+ok 6 - variable in second arg (refresh)
+ok 7 - rewrite off
+ok 8 - rewrite off overwrite
+ok 9 - rewrite inheritance
+ok 10 - variable in first arg
+ok 11 - variable in first arg (refresh)
+ok 12 - caseless regexp
+ok 13 - regexp w/captures
+ok 14 - caseless regexp (refresh)
+ok 15 - regexp w/captures (refresh)
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./proxy_request_buffering.t ................
+1..20
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in single buffer
+ok 5 - body in error page
+ok 6 - body pipelined
+ok 7 - body pipelined 2
+ok 8 - body discard
+ok 9 - body discard 2
+ok 10 - small body in file only
+ok 11 - no preread
+ok 12 - no preread - body part
+ok 13 - no preread - body part 2
+ok 14 - no preread - response
+ok 15 - preread
+ok 16 - preread - preread
+ok 17 - preread - body
+ok 18 - preread - response
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./proxy_request_buffering_chunked.t ........
+1..24
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in single buffer
+ok 5 - body in error page
+ok 6 - body pipelined
+ok 7 - body pipelined 2
+ok 8 - body discard
+ok 9 - body discard 2
+ok 10 - small body in file only
+ok 11 - no preread
+ok 12 - no preread - body part
+ok 13 - no preread - body part 2
+ok 14 - no preread - response
+ok 15 - preread
+ok 16 - preread - preread
+ok 17 - preread - body
+ok 18 - preread - response
+ok 19 - chunks
+ok 20 - chunks - preread
+ok 21 - chunks - body
+ok 22 - chunks - response
+ok 23 - no alerts
+ok 24 - no sanitizer errors
+ok
+./proxy_request_buffering_keepalive.t ......
+1..3
+ok 1 - keepalive after discarded
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./proxy_request_buffering_ssl.t ............
+1..20
+ok 1 - no body
+ok 2 - body
+ok 3 - body in two buffers
+ok 4 - body in single buffer
+ok 5 - body in error page
+ok 6 - body pipelined
+ok 7 - body pipelined 2
+ok 8 - body discard
+ok 9 - body discard 2
+ok 10 - no preread
+ok 11 - no preread - body part
+ok 12 - no preread - body part 2
+ok 13 - no preread - response
+ok 14 - preread
+ok 15 - preread - preread
+ok 16 - preread - body part
+ok 17 - preread - body part 2
+ok 18 - preread - response
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./proxy_set_body.t .........................
+1..4
+ok 1 - proxy_set_body
+ok 2 - proxy_set_body twice
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_ssi_body.t .........................
+1..3
+ok 1 - body in file in proxied subrequest
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./proxy_ssl.t ..............................
+1..10
+ok 1 - ssl
+ok 2 - ssl 2
+ok 3 - ssl session new
+ok 4 - ssl session reused
+ok 5 - ssl session reused 2
+ok 6 # skip long test
+ok 7 - proxy handshake timeout
+ok 8 - big length
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./proxy_ssl_certificate.t ..................
+1..7
+ok 1 - verify certificate
+ok 2 - fail certificate
+ok 3 - with encrypted key
+ok 4 - valid certificate
+ok 5 - invalid certificate
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./proxy_ssl_certificate_empty.t ............
+1..4
+ok 1 - verify certificate
+ok 2 - cancel certificate
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./proxy_ssl_certificate_vars.t .............
+1..6
+ok 1 - variable - verify certificate
+ok 2 - variable - fail certificate
+ok 3 - variable - with encrypted key
+ok 4 - variable - no certificate
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_ssl_conf_command.t .................
+1..5
+ok 1 - proxy_ssl_conf_command
+ok 2 - uwsgi_ssl_conf_command
+ok 3 - grpc_ssl_conf_command
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_ssl_keepalive.t ....................
+1..5
+ok 1 - first
+ok 2 - second
+ok 3 - close
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./proxy_ssl_name.t .........................
+1..11
+ok 1 - name 1
+ok 2 - name 2
+ok 3 - no name
+ok 4 - default
+ok 5 - default2
+ok 6 - default again
+ok 7 - no port in name
+ok 8 - no ip
+ok 9 - no ipv6
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./proxy_ssl_verify.t .......................
+1..8
+ok 1 - verify
+ok 2 - verify wildcard
+ok 3 - verify fail
+ok 4 - verify cn
+ok 5 - verify cn fail
+ok 6 - untrusted
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./proxy_store.t ............................
+1..11
+ok 1 - proxy request
+ok 2 - result stored
+ok 3 - proxy string path request
+ok 4 - string path result stored
+ok 5 - head request
+ok 6 - result not stored
+ok 7 - no temp files
+ok 8 - no temp files after aborted request
+ok 9 - no temp files after aborted ssi
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./proxy_unfinished.t .......................
+1..17
+ok 1 - unfinished not cached
+ok 2 - unfinished chunked
+ok 3 - length no final chunk
+ok 4 - chunked no final chunk
+ok 5 - length final chunk
+ok 6 - chunked final chunk
+ok 7 - unbuffered length no final chunk
+ok 8 - unbuffered chunked no final chunk
+ok 9 - unbuffered length final chunk
+ok 10 - unbuffered chunked final chunk
+ok 11 - big unfinished
+ok 12 - big finished
+ok 13 - big unfinished un
+ok 14 - big finished un
+ok 15 - no proxy temp
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./proxy_unix.t .............................
+1..7
+ok 1 - proxy request
+ok 2 - proxy request with multiple packets
+ok 3 - proxy head request
+ok 4 - proxy with variables
+ok 5 - proxy implicit upstream
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./proxy_upgrade.t ..........................
+1..33
+ok 1 - handshake
+ok 2 - upgrade response
+ok 3 - upgrade big response
+ok 4 - upgrade 1
+ok 5 - upgrade small 1
+ok 6 - upgrade 2
+ok 7 - upgrade small 2
+ok 8 - upgrade 3
+ok 9 - upgrade small 3
+ok 10 - upgrade 4
+ok 11 - upgrade small 4
+ok 12 - upgrade 5
+ok 13 - upgrade small 5
+ok 14 - upgrade 6
+ok 15 - upgrade small 6
+ok 16 - upgrade 7
+ok 17 - upgrade small 7
+ok 18 - upgrade 8
+ok 19 - upgrade small 8
+ok 20 - upgrade 9
+ok 21 - upgrade small 9
+ok 22 - upgrade 10
+ok 23 - upgrade small 10
+ok 24 - handshake pipelined
+ok 25 - response pipelined
+ok 26 - next to pipelined
+ok 27 - handshake noupgrade
+ok 28 - handshake in subrequests
+ok 29 - log - bytes
+ok 30 - log - bytes pipelined
+ok 31 - log - bytes noupgrade
+ok 32 - no alerts
+ok 33 - no sanitizer errors
+ok
+./proxy_upstream_cookie.t ..................
+1..21
+ok 1 - value_none
+ok 2 - semicolon
+ok 3 - space_semicolon
+ok 4 - space_semicolon_more
+ok 5 - onechar
+ok 6 - comma
+ok 7 - tabbed
+ok 8 - dquoted
+ok 9 - normal
+ok 10 - internal_space
+ok 11 - separated
+ok 12 - dots
+ok 13 - deq
+ok 14 - deqsemi
+ok 15 - eqfirst
+ok 16 - two_comma
+ok 17 - two_semicolon
+ok 18 - multiline comma
+ok 19 - multiline semicolon
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./proxy_variables.t ........................
+1..6
+ok 1 - proxy request
+ok 2 - proxy request with multiple packets
+ok 3 - log - response length
+ok 4 - log - response length - multi packets
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./proxy_websocket.t ........................
+1..0 # SKIP Protocol::WebSocket not installed
+skipped: Protocol::WebSocket not installed
+./proxy_xar.t ..............................
+1..18
+ok 1 - X-Accel-Redirect works
+ok 2 - Content-Type preserved
+ok 3 - Set-Cookie preserved
+ok 4 - Content-Disposition preserved
+ok 5 - Cache-Control preserved
+ok 6 - Expires preserved
+ok 7 - Accept-Ranges preserved
+ok 8 - other headers stripped
+ok 9 - X-Accel-Redirect method name
+ok 10 - X-Accel-Redirect value unchanged
+ok 11 - X-Accel-Redirect unsafe dotdot
+ok 12 - X-Accel-Redirect unsafe dotdotsep
+ok 13 - X-Accel-Redirect unsafe sepdotdot
+ok 14 - X-Accel-Redirect unsafe unescaped
+ok 15 - X-Accel-Redirect unescaped
+ok 16 - in named location
+ok 17 - no alerts
+ok 18 - no sanitizer errors
+ok
+./quic_ciphers.t ...........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./quic_key_update.t ........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./quic_migration.t .........................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./quic_retry.t .............................
+1..0 # SKIP no http_v3 available
+skipped: no http_v3 available
+./random_index.t ...........................
+1..3
+ok 1 - file
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./range.t ..................................
+1..43
+ok 1 - range request - 206 partial reply
+ok 2 - range request - correct length
+ok 3 - range request - content range
+ok 4 - range request - correct content
+ok 5 - final bytes - 206 partial reply
+ok 6 - final bytes - content length
+ok 7 - final bytes - content range
+ok 8 - final bytes - correct content
+ok 9 - final bytes explicit - 206 partial reply
+ok 10 - final bytes explicit - content length
+ok 11 - final bytes explicit - content range
+ok 12 - final bytes explicit - correct content
+ok 13 - more than length - 206 partial reply
+ok 14 - more than length - content length
+ok 15 - more than length - content range
+ok 16 - more than length - correct content
+ok 17 - recoded - 206 partial reply
+ok 18 - recoded - content length
+ok 19 - recoded - content range
+ok 20 - recoded - correct content
+ok 21 - multipart - 206 partial reply
+ok 22 - multipart - content type
+ok 23 - multipart - content 0-9
+ok 24 - multipart - content -10 aka 990-999
+ok 25 - multipart - content 10-19
+ok 26 - multipart big - 206 partial reply
+ok 27 - multipart big - content type
+ok 28 - multipart big - content 0-9
+ok 29 - multipart big - content -10 aka 990-999
+ok 30 - multipart big - content 10-19
+ok 31 - not satisfiable - too big first byte pos
+ok 32 - not satisfiable - alpha in first byte pos
+ok 33 - not satisfiable - alpha in last byte pos
+ok 34 - not satisfiable - no hyphen
+ok 35 - not satisfiable - no comma
+ok 36 - satisfiable - last byte pos adjusted
+ok 37 - not satisfiable - malicious byte ranges
+ok 38 - max_ranges not reached
+ok 39 - max_ranges not reached bad range
+ok 40 - max_ranges reached
+ok 41 - max_ranges zero
+ok 42 - no alerts
+ok 43 - no sanitizer errors
+ok
+./range_charset.t ..........................
+1..12
+ok 1 - charset - 206 partial reply
+ok 2 - charset - content type
+ok 3 - charset - charset attribute
+ok 4 - charset - content 0-9
+ok 5 - charset - content 10-19
+ok 6 - x-accel-charset - 206 partial reply
+ok 7 - x-accel-charset - content type
+ok 8 - x-accel-charset - charset attribute
+ok 9 - x-accel-charset - content 0-9
+ok 10 - x-accel-charset - content 10-19
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./range_clearing.t .........................
+1..5
+ok 1 - content range cleared - range request
+ok 2 - content range cleared - multipart
+ok 3 - content range cleared - not satisfable
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./range_flv.t ..............................
+1..14
+ok 1 - first bytes - 206 partial reply
+ok 2 - first bytes - correct length
+ok 3 - first bytes - content range
+ok 4 - first bytes - correct content
+ok 5 - final bytes - 206 partial reply
+ok 6 - final bytes - content length
+ok 7 - final bytes - content range
+ok 8 - final bytes - correct content
+ok 9 - multi buffers - 206 partial reply
+ok 10 - multi buffers - content length
+ok 11 - multi buffers - content range
+ok 12 - multi buffers - correct content
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./range_if_range.t .........................
+1..10
+ok 1 - if-range wrong
+ok 2 - if-range wrong - last modified
+ok 3 - if-range
+ok 4 - if-range notime
+ok 5 - if-range notime - no last modified
+ok 6 - if-range time wrong
+ok 7 - if-range time wrong - last modified
+ok 8 - if-range time
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./range_mp4.t ..............................
+1..0 # SKIP ffmpeg not found
+skipped: ffmpeg not found
+./realip.t .................................
+1..10
+ok 1 - realip
+ok 2 - realip custom
+ok 3 - realip multi
+ok 4 - realip recursive off
+ok 5 - realip recursive on
+ok 6 - realip multi xff recursive off
+ok 7 - realip multi xff recursive on
+ok 8 - realip post read
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./realip_hostname.t ........................
+1..6
+ok 1 - realip unix
+ok 2 - realip unix - no match
+ok 3 - realip hostname
+ok 4 - realip hostname - no match
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./realip_remote_addr.t .....................
+1..6
+ok 1 - request
+ok 2 - request redirect
+ok 3 - realip
+ok 4 - realip redirect
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./realip_remote_port.t .....................
+1..6
+ok 1 - request
+ok 2 - request redirect
+ok 3 - realip
+ok 4 - realip redirect
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./referer.t ................................
+1..56
+ok 1 - simple
+ok 2 - simple uri
+ok 3 - simple port uri
+ok 4 - simple invalid
+ok 5 - https
+ok 6 - no scheme
+ok 7 - no none
+ok 8 - none
+ok 9 - none empty
+ok 10 - blocked
+ok 11 - blocked 2
+ok 12 - blocked short
+ok 13 - blocked short no scheme
+ok 14 - blocked empty
+ok 15 - small
+ok 16 - long uri
+ok 17 - long hostname
+ok 18 - long hostname wildcard
+ok 19 - long hostname 255
+ok 20 - long hostname 256
+ok 21 - long hostname 257
+ok 22 - uri
+ok 23 - uri prefix
+ok 24 - uri case
+ok 25 - uri port
+ok 26 - uri invalid len
+ok 27 - uri invalid cmp
+ok 28 - regex
+ok 29 - regex caseless
+ok 30 - regex uri
+ok 31 - regex mismatch
+ok 32 - regex case mismatch
+ok 33 - regex 2 uri
+ok 34 - regex 2 no uri
+ok 35 - regex 2 uri caseless
+ok 36 - regex https
+ok 37 - server_names
+ok 38 - server_names caseless
+ok 39 - server_names uri
+ok 40 - server_names regex
+ok 41 - server_names regex caseless
+ok 42 - server_names regex caseless uri
+ok 43 - server_names regex anchored
+ok 44 - server_names regex uri
+ok 45 - server_names no scheme
+ok 46 - server_names regex no scheme
+ok 47 - server_names no scheme blocked
+ok 48 - wildcard head
+ok 49 - wildcard tail
+ok 50 - wildcard uri
+ok 51 - wildcard uri prefix
+ok 52 - wildcard uri case
+ok 53 - server context
+ok 54 - server below
+ok 55 - no alerts
+ok 56 - no sanitizer errors
+ok
+./request_id.t .............................
+1..14
+ok 1 - format id 1
+ok 2 - format id 2
+ok 3 - different id
+ok 4 - format id 1 - same
+ok 5 - format id 2 - same
+ok 6 - equal id - same
+ok 7 - format id 1 - sub
+ok 8 - format id 2 - sub
+ok 9 - equal id - sub
+ok 10 - format id 1 - log
+ok 11 - format id 2 - log
+ok 12 - equal id - log
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./rewrite.t ................................
+1..25
+ok 1 - simple
+ok 2 - simple with args
+ok 3 - add args
+ok 4 - add args with args
+ok 5 - no args with args
+ok 6 - return 204
+ok 7 - return 200
+ok 8 - return 306
+ok 9 - return 405
+ok 10 - error 404 return 405
+ok 11 - error 405 return 204
+ok 12 - error 405 return 200
+ok 13 - return 200 text
+ok 14 - return 404 text
+ok 15 - error 405 to return 200 text
+ok 16 - return 302 text
+ok 17 - error 302 return 200 text
+ok 18 - error 405 return 302 text
+ok 19 - error 405 rewrite redirect
+ok 20 - error 405 directory redirect
+ok 21 - escape with added args
+ok 22 - escape with added args
+ok 23 - valid_location reset
+ok 24 - no alerts
+ok 25 - no sanitizer errors
+ok
+./rewrite_if.t .............................
+1..35
+ok 1 - var
+ok 2 - false
+ok 3 - spaces
+ok 4 - equal
+ok 5 - equal false
+ok 6 - not equal
+ok 7 - not equal false
+ok 8 - match
+ok 9 - match case
+ok 10 - match negative
+ok 11 - match negative case
+ok 12 - mismatch
+ok 13 - mismatch case
+ok 14 - mismatch negative
+ok 15 - mismatch negative case
+ok 16 - plain file
+ok 17 - plain dir
+ok 18 - not plain file
+ok 19 - not plain dir
+ok 20 - directory file
+ok 21 - directory dir
+ok 22 - not directory file
+ok 23 - not directory dir
+ok 24 - exist file
+ok 25 - exist dir
+ok 26 - exist non-existent
+ok 27 - not exist file
+ok 28 - not exist dir
+ok 29 - not exist non-existent
+ok 30 - executable file
+ok 31 - executable dir
+ok 32 - not executable file
+ok 33 - not executable dir
+ok 34 - no alerts
+ok 35 - no sanitizer errors
+ok
+./rewrite_set.t ............................
+1..6
+ok 1 - set in this context
+ok 2 - set in other context
+ok 3 - not set
+ok 4 - set get in return
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./rewrite_unescape.t .......................
+1..11
+ok 1 - escaped argument
+ok 2 - escaped argument header splitting
+not ok 3 - escaped argument with complex query # TODO not yet
+#   Failed (TODO) test 'escaped argument with complex query'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/?from%3Dblah'
+#     expected: 'http://example.com/?from=blah'
+not ok 4 - escaped $request_uri # TODO not yet
+#   Failed (TODO) test 'escaped $request_uri'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/t2/blah%20?blah'
+#     expected: 'http://example.com/t2/blah%20%3Fblah'
+not ok 5 - escaped $uri # TODO not yet
+#   Failed (TODO) test 'escaped $uri'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/t3/blah ?blah'
+#     expected: 'http://example.com/t3/blah%20%3Fblah'
+not ok 6 - escaped $1 # TODO not yet
+#   Failed (TODO) test 'escaped $1'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/t4/blah%20?blah'
+#     expected: 'http://example.com/t4/blah%20%3Fblah'
+not ok 7 - escaped static # TODO not yet
+#   Failed (TODO) test 'escaped static'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/blah%20?blah'
+#     expected: 'http://example.com/blah%20%3Fblah'
+not ok 8 - escaped static with argument # TODO not yet
+#   Failed (TODO) test 'escaped static with argument'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/blah%20?blah?arg=blah'
+#     expected: 'http://example.com/blah%20%3Fblah?arg=blah'
+not ok 9 - escaped static slash # TODO not yet
+#   Failed (TODO) test 'escaped static slash'
+#   at ./rewrite_unescape.t line 160.
+#          got: 'http://example.com/blah%20/blah'
+#     expected: 'http://example.com/blah%20%2Fblah'
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./scgi.t ...................................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./scgi_body.t ..............................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./scgi_cache.t .............................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./scgi_extra_data.t ........................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./scgi_gzip.t ..............................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./scgi_merge_params.t ......................
+1..0 # SKIP SCGI not installed
+skipped: SCGI not installed
+./secure_link.t ............................
+1..21
+ok 1 - request md5
+ok 2 - request md5 no padding
+ok 3 - request md5 too long
+ok 4 - request md5 too long encoding
+ok 5 - request md5 decode error
+ok 6 - request md5 mismatch
+ok 7 - request no hash
+ok 8 - request md5 not expired
+ok 9 - secure_link_expires variable
+ok 10 - request md5 expired
+ok 11 - request md5 invalid expiration
+ok 12 - request old style
+ok 13 - request old style fake hash
+ok 14 - request old style short hash
+ok 15 - request old style corrupt hash
+ok 16 - request old style bad uri
+ok 17 - request old style no hash
+ok 18 - inheritance
+ok 19 - secure_link not found
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./server_tokens.t ..........................
+1..14
+ok 1 - tokens default 200
+ok 2 - tokens default 404
+ok 3 - tokens default 404 body
+ok 4 - tokens off 200
+ok 5 - tokens off 404
+ok 6 - tokens off 404 body
+ok 7 - tokens on 200
+ok 8 - tokens on 404
+ok 9 - tokens on 404 body
+ok 10 - tokens build 200
+ok 11 - tokens build 404
+ok 12 - tokens build 404 body
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./slice.t ..................................
+1..81
+ok 1 - not found
+ok 2 - no range
+ok 3 - proxy - 206 partial reply
+ok 4 - proxy - correct content
+ok 5 - proxy - no original accept-ranges
+ok 6 - single - 206 partial reply
+ok 7 - single - correct content
+ok 8 - single - cache status
+ok 9 - single cached - 206 partial reply
+ok 10 - single cached - correct content
+ok 11 - single cached - cache status
+ok 12 - single next - 206 partial reply
+ok 13 - single next - correct content
+ok 14 - single next - cache status
+ok 15 - slice next - 206 partial reply
+ok 16 - slice next - correct content
+ok 17 - slice next - cache status
+ok 18 - slice next cached - 206 partial reply
+ok 19 - slice next cached - correct content
+ok 20 - slice next cached - cache status
+ok 21 - slice median - 206 partial reply
+ok 22 - slice median - correct content
+ok 23 - slice median - cache status
+ok 24 - before median - 206 partial reply
+ok 25 - before median - correct content
+ok 26 - before median - cache status
+ok 27 - slice range - 206 partial reply
+ok 28 - slice range - correct content
+ok 29 - slice range - cache status
+ok 30 - slice 1st - 206 partial reply
+ok 31 - slice 1st - correct content
+ok 32 - slice 1st - cache status
+ok 33 - slice 2nd - 206 partial reply
+ok 34 - slice 2nd - correct content
+ok 35 - slice 2nd - cache status
+ok 36 - range median - 206 partial reply
+ok 37 - range median - correct content
+ok 38 - range median - cache status
+ok 39 - range prev - 206 partial reply
+ok 40 - range prev - correct content
+ok 41 - range prev - cache status
+ok 42 - range next - 206 partial reply
+ok 43 - range next - correct content
+ok 44 - range next - cache status
+ok 45 - first bytes - 206 partial reply
+ok 46 - first bytes - correct content
+ok 47 - first bytes - cache status
+ok 48 - first bytes cached - 206 partial reply
+ok 49 - first bytes cached - correct content
+ok 50 - first bytes cached - cache status
+ok 51 - many - 206 partial reply
+ok 52 - many - correct content
+ok 53 - last bytes - 206 partial reply
+ok 54 - last bytes - correct content
+ok 55 - inm
+ok 56 - inm bad
+ok 57 - im
+ok 58 - im bad
+ok 59 - if-range - 206 partial reply
+ok 60 - if-range - correct content
+ok 61 - if-range last-modified proxy - 206 partial reply
+ok 62 - if-range last-modified proxy - correct content
+ok 63 - if-range bad - 200 ok
+ok 64 - if-range bad - correct content
+ok 65 - if-range skip slice - 206 partial reply
+ok 66 - if-range skip slice - correct content
+ok 67 - if-range skip slice - cached - 206 partial reply
+ok 68 - if-range skip slice - cached - correct content
+ok 69 - if-range skip bytes - cached - cache status
+ok 70 - if-range skip slice - skipped - 206 partial reply
+ok 71 - if-range skip slice - skipped - correct content
+ok 72 - if-range skip bytes - skipped - cache status
+ok 73 - fastcgi
+ok 74 - fastcgi cached
+ok 75 - fastcgi slice
+ok 76 - fastcgi slice cached
+ok 77 - fastcgi slice next
+ok 78 - in named location
+ok 79 - in named location - cache entries
+ok 80 - no alerts
+ok 81 - no sanitizer errors
+ok
+./split_clients.t ..........................
+1..3
+ok 1 - split
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./ssi.t ....................................
+1..32
+ok 1 - echo no argument
+ok 2 - empty argument
+ok 3 - argument
+ok 4 - argument 2
+ok 5 - argument 3
+ok 6 - argument 4
+ok 7 - argument 5
+ok 8 - argument via include
+ok 9 - set
+ok 10 - echo encoding none
+ok 11 - echo encoding url
+ok 12 - echo encoding entity
+ok 13 - args only subrequest
+ok 14 - args was in main request
+ok 15 - cleared headers
+ok 16 - cleared headers from proxy
+ok 17 - empty with ssi
+ok 18 - empty without ssi
+ok 19 - empty with proxy
+ok 20 - empty with proxy cached
+ok 21 - empty with postpone_output 0
+ok 22 - escaped in path
+ok 23 - escaped question in path
+ok 24 - escaped query separator
+ok 25 - no ssi
+ok 26 - no format
+ok 27 - custom header
+ok 28 - default header
+ok 29 - custom ssi
+ok 30 - default ssi
+ok 31 - no alerts
+ok 32 - no sanitizer errors
+ok
+./ssi_delayed.t ............................
+1..3
+ok 1 - delayed
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./ssi_if.t .................................
+1..45
+ok 1 - if variable exists
+ok 2 - if variable not exists
+ok 3 - if var = text
+ok 4 - if var = text (false)
+ok 5 - if text != var
+ok 6 - if text != var (false)
+ok 7 - if var = /regex/
+ok 8 - if var = /regex/ (false)
+ok 9 - if var != /regex/
+ok 10 - if var != /regex/ (false)
+ok 11 - if var = complex
+ok 12 - if regex with captures
+ok 13 - if regex with named capture
+ok 14 - if
+ok 15 - if suppresses elif
+ok 16 - elif
+ok 17 - else
+ok 18 - multiple if (sequentially)
+ok 19 - multiple if (interlaced)
+ok 20 - multiple if (interlaced reversed)
+ok 21 - if (in block)
+ok 22 - if suppresses elif (in block)
+ok 23 - elif (in block)
+ok 24 - else (in block)
+ok 25 - if config-set-echo
+ok 26 - else config-set-echo
+ok 27 - if include
+ok 28 - else include
+ok 29 - if block
+ok 30 - else block
+not ok 31 - if if # TODO support for nested ifs
+#   Failed (TODO) test 'if if'
+#   at ./ssi_if.t line 238.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xIFx[an error occurred while processing the directive]IF[an error occurred while processing the directive]ELIFxIF[an error occurred while processing the directive]ELSExIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xIFxIFx$)'
+not ok 32 - if elif # TODO support for nested ifs
+#   Failed (TODO) test 'if elif'
+#   at ./ssi_if.t line 239.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xIFx[an error occurred while processing the directive]IF[an error occurred while processing the directive]ELIFxELIF[an error occurred while processing the directive]ELSExELIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xIFxELIFx$)'
+not ok 33 - if else # TODO support for nested ifs
+#   Failed (TODO) test 'if else'
+#   at ./ssi_if.t line 240.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xIFx[an error occurred while processing the directive]IF[an error occurred while processing the directive]ELIFxELSE[an error occurred while processing the directive]ELSExELSE[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xIFxELSEx$)'
+not ok 34 - elif if # TODO support for nested ifs
+#   Failed (TODO) test 'elif if'
+#   at ./ssi_if.t line 242.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELSE[an error occurred while processing the directive]ELIFxIF[an error occurred while processing the directive]ELSExIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELIFxIFx$)'
+not ok 35 - elif elif # TODO support for nested ifs
+#   Failed (TODO) test 'elif elif'
+#   at ./ssi_if.t line 243.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELIF[an error occurred while processing the directive]ELIFxELIF[an error occurred while processing the directive]ELSExELIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELIFxELIFx$)'
+not ok 36 - elif else # TODO support for nested ifs
+#   Failed (TODO) test 'elif else'
+#   at ./ssi_if.t line 244.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELSE[an error occurred while processing the directive]ELIFxELSE[an error occurred while processing the directive]ELSExELSE[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELIFxELSEx$)'
+not ok 37 - else if # TODO support for nested ifs
+#   Failed (TODO) test 'else if'
+#   at ./ssi_if.t line 246.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELSE[an error occurred while processing the directive]ELIFxIF[an error occurred while processing the directive]ELSExIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELSExIFx$)'
+not ok 38 - else elif # TODO support for nested ifs
+#   Failed (TODO) test 'else elif'
+#   at ./ssi_if.t line 247.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELIF[an error occurred while processing the directive]ELIFxELIF[an error occurred while processing the directive]ELSExELIF[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELSExELIFx$)'
+not ok 39 - else else # TODO support for nested ifs
+#   Failed (TODO) test 'else else'
+#   at ./ssi_if.t line 248.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xELSE[an error occurred while processing the directive]ELIFxELSE[an error occurred while processing the directive]ELSExELSE[an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xELSExELSEx$)'
+not ok 40 - zigzag # TODO support for nested ifs
+#   Failed (TODO) test 'zigzag'
+#   at ./ssi_if.t line 254.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# x[an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive]GOOD[an error occurred while processing the directive]15[an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xGOODx$)'
+not ok 41 - zagzig # TODO support for nested ifs
+#   Failed (TODO) test 'zagzig'
+#   at ./ssi_if.t line 256.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# x[an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]15[an error occurred while processing the directive]GOOD[an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive]x'
+#     doesn't match '(?^m:^xGOODx$)'
+not ok 42 - zigzag block # TODO support for nested ifs
+#   Failed (TODO) test 'zigzag block'
+#   at ./ssi_if.t line 266.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xx[an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive]GOOD[an error occurred while processing the directive]15[an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive]xx'
+#     doesn't match '(?^m:^xGOODx$)'
+not ok 43 - zagzig block # TODO support for nested ifs
+#   Failed (TODO) test 'zagzig block'
+#   at ./ssi_if.t line 268.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:28 GMT
+# Content-Type: text/html
+# Connection: close
+#
+# xx[an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]15[an error occurred while processing the directive]GOOD[an error occurred while processing the directive]14[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]12[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]10[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]8[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]6[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]4[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]2[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]13[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]11[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]9[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]7[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]5[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]3[an error occurred while processing the directive][an error occurred while processing the directive][an error occurred while processing the directive]1[an error occurred while processing the directive][an error occurred while processing the directive]xx'
+#     doesn't match '(?^m:^xGOODx$)'
+ok 44 - no alerts
+ok 45 - no sanitizer errors
+ok
+./ssi_include_big.t ........................
+1..10
+ok 1 - small included file (less than output_buffers)
+ok 2 - small included file content
+ok 3 - small included file (equal to output_buffers)
+ok 4 - small included file content
+ok 5 - big included file (more than output_buffers)
+ok 6 - big included file content
+ok 7 - big ssi main file
+ok 8 - big ssi main file content
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./ssi_waited.t .............................
+1..3
+ok 1 - waited non-active
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./ssl.t ....................................
+1..23
+ok 1 - session
+ok 2 - session reused
+ok 3 - CN
+ok 4 - CN inner
+ok 5 - session timeout
+ok 6 - session id
+ok 7 - session id reused
+ok 8 - session id no ssl
+ok 9 - cipher
+ok 10 - ciphers
+ok 11 - client verify
+ok 12 - protocol
+ok 13 - issuer
+ok 14 - subject
+ok 15 - time
+ok 16 - request body chunked
+ok 17 - pipelined requests
+ok 18 - ssl unexpected eof
+ok 19 - ssl shutdown on lingering close
+ok 20 - log ssl variable on lingering close
+ok 21 - no crit
+ok 22 - no alerts
+ok 23 - no sanitizer errors
+ok
+./ssl_certificate.t ........................
+1..13
+ok 1 - default certificate
+ok 2 - default context
+ok 3 - virtual server certificate
+ok 4 - virtual server context
+ok 5 - certificate - no context
+ok 6 - virtual server - no context
+ok 7 - ssl_password_file
+ok 8 - session reused
+ok 9 - session id context match
+ok 10 - session id context distinct
+ok 11 - no certificate
+ok 12 - no alerts
+ok 13 - no sanitizer errors
+ok
+./ssl_certificate_chain.t ..................
+1..5
+ok 1 - incomplete chain
+ok 2 - intermediate
+ok 3 - intermediate server
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./ssl_certificate_perl.t ...................
+1..0 # SKIP no perl available
+skipped: no perl available
+./ssl_certificates.t .......................
+1..4
+ok 1 - ssl cert RSA
+ok 2 - ssl cert ECDSA
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./ssl_client_escaped_cert.t ................
+1..5
+ok 1 - ssl_client_raw_cert
+ok 2 - ssl_client_escaped_cert
+ok 3 - ssl_client_escaped_cert unescape match
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./ssl_conf_command.t .......................
+1..5
+ok 1 - Certificate
+ok 2 - SessionTicket
+ok 3 - ServerPreference
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./ssl_crl.t ................................
+1..5
+ok 1 - crl - no revoked certs
+ok 2 - crl - client cert revoked
+ok 3 - crl - intermediate cert revoked
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./ssl_curve.t ..............................
+1..3
+ok 1 - ssl curve
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./ssl_engine_keys.t ........................
+1..0 # SKIP may not work, leaves coredump
+skipped: may not work, leaves coredump
+./ssl_ocsp.t ...............................
+1..17
+ok 1 - ocsp leaf
+ok 2 - ocsp many failed request
+ok 3 - ocsp many failed
+ok 4 - ocsp many
+ok 5 - cache store
+ok 6 - revoked
+ok 7 - ocsp responder
+ok 8 - ocsp context
+ok 9 - cache lookup
+ok 10 - root ca not trusted
+ok 11 - ocsp ecdsa
+ok 12 - session reused
+ok 13 - session reused - revoked
+ok 14 - ocsp one
+ok 15 - no crit
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./ssl_password_file.t ......................
+1..5
+ok 1 - ssl_password_file works
+ok 2 - http
+ok 3 - https
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./ssl_proxy_protocol.t .....................
+1..20
+ok 1 - tcp4 request
+ok 2 - tcp4 proxy
+ok 3 - tcp4 client
+ok 4 - tcp6 request
+ok 5 - tcp6 proxy
+ok 6 - tcp6 client
+ok 7 - unknown request 1
+ok 8 - unknown request 2
+ok 9 - tcp4 request realip
+ok 10 - tcp4 proxy realip
+ok 11 - tcp4 client realip
+ok 12 - tcp6 request realip
+ok 13 - tcp6 proxy realip
+ok 14 - tcp6 client realip
+ok 15 - tcp4 access
+ok 16 - tcp6 access
+ok 17 - tcp4 access log
+ok 18 - tcp6 access log
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./ssl_proxy_upgrade.t ......................
+1..32
+ok 1 - handshake
+ok 2 - upgrade response
+ok 3 - upgrade big response
+ok 4 - upgrade 1
+ok 5 - upgrade small 1
+ok 6 - upgrade 2
+ok 7 - upgrade small 2
+ok 8 - upgrade 3
+ok 9 - upgrade small 3
+ok 10 - upgrade 4
+ok 11 - upgrade small 4
+ok 12 - upgrade 5
+ok 13 - upgrade small 5
+ok 14 - upgrade 6
+ok 15 - upgrade small 6
+ok 16 - upgrade 7
+ok 17 - upgrade small 7
+ok 18 - upgrade 8
+ok 19 - upgrade small 8
+ok 20 - upgrade 9
+ok 21 - upgrade small 9
+ok 22 - upgrade 10
+ok 23 - upgrade small 10
+ok 24 - handshake pipelined
+ok 25 - response pipelined
+ok 26 - next to pipelined
+ok 27 - handshake noupgrade
+ok 28 - log - bytes
+ok 29 - log - bytes pipelined
+ok 30 - log - bytes noupgrade
+ok 31 - no alerts
+ok 32 - no sanitizer errors
+ok
+./ssl_reject_handshake.t ...................
+1..9
+ok 1 - default rejected
+ok 2 - absent sni rejected
+ok 3 - virtual accepted
+ok 4 - default accepted
+ok 5 - absent sni accepted
+ok 6 - virtual 1 accepted
+ok 7 - virtual 2 rejected
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./ssl_session_reuse.t ......................
+1..10
+ok 1 - tickets reused
+ok 2 - tickets and cache reused
+ok 3 - cache shared reused
+ok 4 - cache builtin reused
+ok 5 - cache builtin size reused
+ok 6 - cache none not reused
+ok 7 - cache off not reused
+ok 8 - no crit
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./ssl_session_ticket_key.t .................
+1..4
+ok 1 - ticket key match
+ok 2 - ticket key next
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./ssl_sni.t ................................
+1..10
+ok 1 - default cert
+ok 2 - sni cert
+ok 3 - host exists, sni exists, and host is equal sni
+ok 4 - host exists, sni not found
+not ok 5 - host exists, sni exists, and host is not equal sni # TODO sni restrictions
+#   Failed (TODO) test 'host exists, sni exists, and host is not equal sni'
+#   at ./ssl_sni.t line 108.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:45 GMT
+# Content-Type: text/plain
+# Content-Length: 21
+# Connection: close
+#
+# example.com:localhost'
+#     doesn't match '(?^:400 Bad Request)'
+not ok 6 - host not found, sni exists # TODO sni restrictions
+#   Failed (TODO) test 'host not found, sni exists'
+#   at ./ssl_sni.t line 111.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:30:45 GMT
+# Content-Type: text/plain
+# Content-Length: 21
+# Connection: close
+#
+# localhost:example.com'
+#     doesn't match '(?^:400 Bad Request)'
+ok 7 - ssl server name
+ok 8 - ssl server name - reused
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./ssl_sni_reneg.t ..........................
+1..10
+ok 1 - connection
+ok 2 - renegotiation
+ok 3 - SNI
+ok 4 - response
+ok 5 - connection 2
+ok 6 - renegotiation
+ok 7 - SNI
+ok 8 - virtual servers
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./ssl_sni_sessions.t .......................
+1..8
+ok 1 - default server
+ok 2 - default server reused
+ok 3 - without cache
+ok 4 - without cache reused
+ok 5 - tickets
+ok 6 - tickets reused
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./ssl_stapling.t ...........................
+1..12
+ok 1 - staple revoked
+ok 2 - staple success
+ok 3 - responder revoked
+ok 4 - responder success
+ok 5 - verify - root not trusted
+ok 6 - cert store
+ok 7 - file revoked
+ok 8 - file success
+ok 9 - ocsp error
+ok 10 - no crit
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./ssl_verify_client.t ......................
+1..15
+ok 1 - plain connection
+ok 2 - no cert
+ok 3 - no server cert
+ok 4 - no optional cert
+ok 5 - bad optional cert
+ok 6 - bad optional_no_ca cert
+ok 7 - off cert
+ok 8 - off cert trusted
+ok 9 - good cert
+ok 10 - good cert optional
+ok 11 - good cert trusted
+ok 12 - no trusted sent
+ok 13 - misdirected
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./ssl_verify_depth.t .......................
+1..11
+ok 1 - verify depth 0 - root
+ok 2 - verify depth 0 - no int
+ok 3 - verify depth 0 - no end
+ok 4 - verify depth 1 - root
+ok 5 - verify depth 1 - int
+ok 6 - verify depth 1 - no end
+ok 7 - verify depth 2 - root
+ok 8 - verify depth 2 - int
+ok 9 - verify depth 2 - end
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_access.t ..........................
+1..20
+ok 1 - inet allow all
+ok 2 - inet6 allow all
+ok 3 - unix allow all
+ok 4 - inet deny all
+ok 5 - inet6 deny all
+ok 6 - unix deny all
+ok 7 - inet allow unix
+ok 8 - inet6 allow unix
+ok 9 - unix allow unix
+ok 10 - inet deny inet
+ok 11 - inet6 deny inet
+ok 12 - unix deny inet
+ok 13 - inet deny inet6
+ok 14 - inet6 deny inet6
+ok 15 - unix deny inet6
+ok 16 - inet deny unix
+ok 17 - inet6 deny unix
+ok 18 - unix deny unix
+ok 19 - no alerts
+ok 20 - no sanitizer errors
+ok
+./stream_access_log.t ......................
+1..12
+ok 1 - compressed log - flush time
+ok 2 - log off
+ok 3 - log filtering
+ok 4 - if with complex value
+ok 5 - variable in file
+ok 6 - log vars
+ok 7 - log addr
+ok 8 - log date
+ok 9 - log bytes
+ok 10 - log time
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./stream_access_log_escape.t ...............
+1..4
+ok 1 - json
+ok 2 - default
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_access_log_none.t .................
+1..3
+ok 1 - none
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./stream_error_log.t .......................
+1..36
+ok 1 # skip no --with-debug
+ok 2 - file info in info
+ok 3 - file debug in info
+ok 4 - stderr info in info
+ok 5 - stderr debug in info
+ok 6 - error global
+ok 7 - error global 2
+ok 8 - multiple error global
+ok 9 - syslog
+ok 10 - syslog has PRI
+ok 11 - syslog valid severity
+ok 12 - syslog valid facility
+ok 13 - syslog has month
+ok 14 - syslog valid month
+ok 15 - syslog has day
+ok 16 - syslog valid day
+ok 17 - syslog has hour
+ok 18 - syslog valid hour
+ok 19 - syslog has minutes
+ok 20 - syslog valid minutes
+ok 21 - syslog has seconds
+ok 22 - syslog valid seconds
+ok 23 - syslog has host
+ok 24 - syslog valid host
+ok 25 - syslog has tag
+ok 26 - syslog valid tag
+ok 27 - syslog valid CONTENT
+ok 28 - global syslog messages
+ok 29 - stream syslog messages
+ok 30 # skip relies on error log contents
+ok 31 # skip relies on error log contents
+ok 32 # skip relies on error log contents
+ok 33 # skip relies on error log contents
+ok 34 # skip relies on error log contents
+ok 35 - no alerts
+ok 36 - no sanitizer errors
+ok
+./stream_geo.t .............................
+1..21
+ok 1 - geo
+ok 2 - geo include
+ok 3 - geo delete
+ok 4 - geo ranges
+ok 5 - geo ranges include
+ok 6 - geo ranges delete
+ok 7 - geo ranges delete 2
+ok 8 - geo ranges add before
+ok 9 - geo ranges add after
+ok 10 - geo ranges insert
+ok 11 - geo ranges insert before
+ok 12 - geo ranges insert after
+ok 13 - geo from addr
+ok 14 - geo from var
+ok 15 - geo delete range from variable
+ok 16 - geo default
+ok 17 - geo world
+ok 18 - geo ranges default
+ok 19 - geo ranges add
+ok 20 - no alerts
+ok 21 - no sanitizer errors
+ok
+./stream_geo_binary.t ......................
+1..0 # SKIP long configuration parsing
+skipped: long configuration parsing
+./stream_geo_ipv6.t ........................
+1..8
+ok 1 - geo ipv6
+ok 2 - geo ipv6 delete
+ok 3 - geo ipv6 from variable
+ok 4 - geo ipv6 from variable range
+ok 5 - geo ipv6 ipv4-mapped from variable
+ok 6 - geo ipv6 ipv4-mapped from variable range
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_geo_unix.t ........................
+1..6
+ok 1 - geo unix
+ok 2 - geo unix ranges
+ok 3 - geo unix remote addr
+ok 4 - geo unix ranges remote addr
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./stream_geoip.t ...........................
+1..0 # SKIP no stream_geoip available
+skipped: no stream_geoip available
+./stream_limit_conn.t ......................
+1..10
+ok 1 - passed
+ok 2 - long connection
+ok 3 - rejected same zone
+ok 4 - passed different zone
+ok 5 - passed same zone unlimited
+ok 6 - long connection closed
+ok 7 - passed proxy
+ok 8 - rejected proxy
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_limit_conn_complex.t ..............
+1..6
+ok 1 - passed
+ok 2 - long connection
+ok 3 - rejected same key
+ok 4 - passed different key
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./stream_limit_conn_dry_run.t ..............
+1..11
+ok 1 - passed
+ok 2 - rejected
+ok 3 - rejected dry run
+ok 4 - no limit
+ok 5 - log dry run
+ok 6 - log passed
+ok 7 - log rejected
+ok 8 - log rejected dry
+ok 9 - log not found
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_limit_rate.t ......................
+1..11
+ok 1 - exact limit
+ok 2 - unlimited
+ok 3 # skip unsafe on VM
+ok 4 # skip unsafe on VM
+ok 5 # skip unsafe on VM
+ok 6 - download - time
+ok 7 - download - data
+ok 8 - upload - time
+ok 9 - upload - data
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_limit_rate2.t .....................
+1..11
+ok 1 - exact limit
+ok 2 - unlimited
+ok 3 # skip unsafe on VM
+ok 4 # skip unsafe on VM
+ok 5 # skip unsafe on VM
+ok 6 - download - time
+ok 7 - download - data
+ok 8 - upload - time
+ok 9 - upload - data
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_map.t .............................
+1..7
+ok 1 - literal
+ok 2 - default
+ok 3 - capture
+ok 4 - named capture
+ok 5 - braces
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy.t ...........................
+1..7
+ok 1 - proxy connection
+ok 2 - proxy connection again
+ok 3 - proxy connection close
+ok 4 - proxy connection closed
+ok 5 - proxy connect timeout
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy_bind.t ......................
+1..3
+ok 1 - bind
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./stream_proxy_complex.t ...................
+1..7
+ok 1 - upstream
+ok 2 - upstream again
+ok 3 - upstream 2
+ok 4 - upstream second
+ok 5 - implicit
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy_half_close.t ................
+1..4
+ok 1 - half close upstream
+ok 2 - half close client
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_proxy_next_upstream.t .............
+1..7
+ok 1 - next off
+ok 2 - next on
+ok 3 - next tries
+ok 4 - next down
+ok 5 - next down log
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy_protocol.t ..................
+1..4
+ok 1 - protocol on
+ok 2 - protocol off
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_proxy_protocol2_tlv.t .............
+1..16
+ok 1 - ALPN
+ok 2 - AUTHORITY
+ok 3 - CRC32C
+ok 4 - UNIQUE_ID
+ok 5 - NETNS
+ok 6 - custom
+ok 7 - non-existent
+ok 8 - SSL_VERIFY
+ok 9 - SSL_VERSION
+ok 10 - SSL_CN
+ok 11 - SSL_CIPHER
+ok 12 - SSL_SIG_ALG
+ok 13 - SSL_KEY_ALG
+ok 14 - SSL_BINARY
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./stream_proxy_protocol_ipv6.t .............
+1..4
+ok 1 - protocol on
+ok 2 - protocol off
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_proxy_protocol_ssl.t ..............
+1..4
+ok 1 - protocol on
+ok 2 - protocol off
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_proxy_ssl.t .......................
+1..8
+ok 1 - ssl
+ok 2 - ssl 2
+ok 3 - ssl session new
+ok 4 - ssl session reused
+ok 5 - ssl session reused 2
+ok 6 - proxy connect timeout
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_proxy_ssl_certificate.t ...........
+1..7
+ok 1 - verify certificate
+ok 2 - fail certificate
+ok 3 - with encrypted key
+ok 4 - valid certificate
+ok 5 - invalid certificate
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy_ssl_certificate_vars.t ......
+1..6
+ok 1 - variable - verify certificate
+ok 2 - variable - fail certificate
+ok 3 - variable - with encrypted key
+ok 4 - variable - no certificate
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./stream_proxy_ssl_conf_command.t ..........
+1..3
+ok 1 - proxy_ssl_conf_command
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./stream_proxy_ssl_name.t ..................
+1..7
+ok 1 - no name
+ok 2 - name default
+ok 3 - name override
+ok 4 - no ip
+ok 5 - no port in name
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_proxy_ssl_name_complex.t ..........
+1..4
+ok 1 - name 1
+ok 2 - name 2
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_proxy_ssl_verify.t ................
+1..8
+ok 1 - verify
+ok 2 - verify wildcard
+ok 3 - verify fail
+ok 4 - verify cn
+ok 5 - verify cn fail
+ok 6 - untrusted
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_realip.t ..........................
+1..10
+ok 1 - server
+ok 2 - server off
+ok 3 - server payload
+ok 4 - server ipv6 realip - no match
+ok 5 - server ipv6 realip
+ok 6 - server ipv4 realip
+ok 7 - server ipv4 realip - no match
+ok 8 - server unknown
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_realip_hostname.t .................
+1..6
+ok 1 - realip unix
+ok 2 - realip unix - no match
+ok 3 - realip hostname
+ok 4 - realip hostname - no match
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./stream_resolver.t ........................
+1..10
+ok 1 - resolver
+ok 2 - upstream no port
+ok 3 - name not found
+ok 4 - resolved tries
+ok 5 - resolved tries limited
+ok 6 - resolved tries zero
+ok 7 # skip relies on error log contents
+ok 8 # skip relies on error log contents
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_set.t .............................
+1..4
+ok 1 - set
+ok 2 - uninitialized variable
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_split_clients.t ...................
+1..3
+ok 1 - split
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./stream_ssl.t .............................
+1..7
+ok 1 - ssl
+ok 2 - ssl password many
+ok 3 - ssl password fifo
+ok 4 - CN
+ok 5 - CN inner
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_ssl_alpn.t ........................
+1..8
+ok 1 - alpn match
+ok 2 - alpn many
+ok 3 - alpn second
+ok 4 - no alpn
+ok 5 - alpn mismatch
+ok 6 - alpn mismatch - log
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_ssl_certificate.t .................
+1..9
+ok 1 - default certificate
+ok 2 - default context
+ok 3 - ssl_password_file
+ok 4 - session reused
+ok 5 - session id context match
+ok 6 - session id context distinct
+ok 7 - no certificate
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./stream_ssl_conf_command.t ................
+1..5
+ok 1 - Certificate
+ok 2 - SessionTicket
+ok 3 - ServerPreference
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./stream_ssl_preread.t .....................
+1..15
+ok 1 - sni
+ok 2 - sni again
+ok 3 - sni 2
+ok 4 - sni 2 again
+ok 5 - no sni
+ok 6 - preread off
+ok 7 - preread buffer full
+ok 8 - not a handshake
+ok 9 - pending buffers on next upstream
+ok 10 - short client hello
+ok 11 - older version in ssl record
+ok 12 - handshake fragment split on SNI
+ok 13 - preread buffer full - log
+ok 14 - no alerts
+ok 15 - no sanitizer errors
+ok
+./stream_ssl_preread_alpn.t ................
+1..7
+ok 1 - alpn
+ok 2 - alpn again
+ok 3 - alpn 2
+ok 4 - alpn 2 again
+ok 5 - alpn many
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_ssl_preread_protocol.t ............
+1..9
+ok 1 - client hello SSLv3
+ok 2 - client hello TLSv1
+ok 3 - client hello TLSv1.1
+ok 4 - client hello TLSv1.2
+ok 5 - client hello supported_versions
+ok 6 - client hello version 2
+ok 7 - client hello version 2 - TLSv1
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./stream_ssl_realip.t ......................
+1..8
+ok 1 - server
+ok 2 - server ipv6 realip - no match
+ok 3 - server ipv6 realip
+ok 4 - server ipv4 realip
+ok 5 - server ipv4 realip - no match
+ok 6 - server unknown
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_ssl_session_reuse.t ...............
+1..9
+ok 1 - tickets reused
+ok 2 - tickets and cache reused
+ok 3 - cache shared reused
+ok 4 - cache builtin reused
+ok 5 - cache builtin size reused
+ok 6 - cache none not reused
+ok 7 - cache off not reused
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./stream_ssl_variables.t ...................
+1..8
+ok 1 - no ssl
+ok 2 - ssl variables
+ok 3 - ssl variables - session reused
+ok 4 - ssl server name
+ok 5 - ssl server name - reused
+ok 6 - ssl server name empty
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_ssl_verify_client.t ...............
+1..12
+ok 1 - plain connection
+ok 2 - no cert
+ok 3 - bad optional cert
+ok 4 - no optional cert
+ok 5 - bad optional_no_ca cert
+ok 6 - good cert
+ok 7 - good cert optional
+ok 8 - good cert trusted
+ok 9 - no trusted sent
+ok 10 - log
+ok 11 - no alerts
+ok 12 - no sanitizer errors
+ok
+./stream_status_variable.t .................
+1..8
+ok 1 - stream status 200
+ok 2 - stream status 400
+ok 3 - stream status 403
+ok 4 - stream status 500
+ok 5 - stream status 502
+ok 6 - stream status 503
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_tcp_nodelay.t .....................
+1..4
+ok 1 - tcp_nodelay off
+ok 2 - tcp_nodelay on
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_udp_limit_conn.t ..................
+1..11
+ok 1 - passed
+ok 2 - passed new request
+ok 3 - rejected new session
+ok 4 - passed different zone
+ok 5 - passed same zone unlimited
+ok 6 - new session after proxy_timeout
+ok 7 - passed 2
+ok 8 - passed proxy
+ok 9 - rejected proxy
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_udp_limit_rate.t ..................
+1..10
+ok 1 - unlimited
+ok 2 - unlimited 2
+ok 3 - download
+ok 4 - download 2
+ok 5 - download 2 delayed
+ok 6 - upload
+ok 7 - upload limited
+ok 8 - upload passed
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_udp_proxy.t .......................
+1..10
+ok 1 - proxy responses 0
+ok 2 - proxy responses 1
+ok 3 - proxy responses 2
+ok 4 - proxy responses default
+ok 5 - upstream read zero bytes
+ok 6 - upstream sent zero bytes
+ok 7 - upstream read zero bytes again
+ok 8 - upstream sent zero bytes again
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_udp_proxy_requests.t ..............
+1..28
+ok 1 - requests 0 create
+ok 2 - requests 0 create - response
+ok 3 - requests 0 second - binding saved
+ok 4 - requests 0 second - response
+ok 5 - requests 0 follow - binding saved
+ok 6 - requests 0 follow - response
+ok 7 - requests 1 create
+ok 8 - requests 1 create - response
+ok 9 - requests 1 second - binding lost
+ok 10 - requests 1 second - response
+ok 11 - requests 2 create
+ok 12 - requests 2 create - response
+ok 13 - requests 2 second - binding saved
+ok 14 - requests 2 second - response
+ok 15 - requests 2 follow - binding lost
+ok 16 - requests 2 follow - response
+ok 17 - requests unset create
+ok 18 - requests unset create - response
+ok 19 - requests unset second - binding saved
+ok 20 - requests unset second - response
+ok 21 - requests unset follow - binding saved
+ok 22 - requests unset follow - response
+ok 23 - slow backend
+ok 24 # skip session could early terminate
+ok 25 - uneven session status - slow backend
+ok 26 - uneven session status - responses
+ok 27 - no alerts
+ok 28 - no sanitizer errors
+ok
+./stream_udp_stream.t ......................
+1..10
+ok 1 - udp_stream response 1
+ok 2 - udp_stream response 2
+ok 3 - udp_stream two sessions
+ok 4 - udp_stream session 1
+ok 5 - udp_stream session 2
+ok 6 - udp_stream another session 1
+ok 7 - udp_stream another session 2
+ok 8 - udp_stream new session
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stream_udp_upstream.t ....................
+1..7
+ok 1 - balanced
+ok 2 - no next upstream for dgram
+ok 3 - failures
+ok 4 - weight
+ok 5 - backup
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./stream_udp_upstream_hash.t ...............
+1..4
+ok 1 - hash
+ok 2 - hash consistent
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_udp_upstream_least_conn.t .........
+1..4
+ok 1 - balanced
+ok 2 - least_conn
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_udp_wildcard.t ....................
+1..0 # SKIP listen on wildcard address
+skipped: listen on wildcard address
+./stream_unix.t ............................
+1..4
+ok 1 - proxy
+ok 2 - upstream
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_upstream.t ........................
+1..8
+ok 1 - balanced
+ok 2 - failures
+ok 3 - weight
+ok 4 - backup
+ok 5 - recovery
+ok 6 - per-upstream variables
+ok 7 - no alerts
+ok 8 - no sanitizer errors
+ok
+./stream_upstream_hash.t ...................
+1..6
+ok 1 - hash
+ok 2 - hash consistent
+ok 3 - empty key
+ok 4 - empty key - consistent
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./stream_upstream_least_conn.t .............
+1..4
+ok 1 - balanced
+ok 2 - least_conn
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_upstream_max_conns.t ..............
+1..16
+ok 1 - unlimited
+ok 2 - conn subtraction
+ok 3 - single
+ok 4 - backup
+ok 5 - backup limited
+ok 6 - all peers
+ok 7 - some peers
+ok 8 - weight
+ok 9 - equal peer
+ok 10 - least_conn
+ok 11 - least_conn backup
+ok 12 - least_conn backup limited
+ok 13 - hash
+ok 14 - hash consistent
+ok 15 - no alerts
+ok 16 - no sanitizer errors
+ok
+./stream_upstream_random.t .................
+1..14
+ok 1 - random
+ok 2 - random two
+ok 3 - random wait
+ok 4 # skip long test
+ok 5 # skip long test
+ok 6 # skip long test
+ok 7 - single one
+ok 8 - single two
+ok 9 - zone one
+ok 10 - zone two
+ok 11 - failures
+ok 12 - failures two
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./stream_upstream_zone.t ...................
+1..4
+ok 1 - upstream name
+ok 2 - no live upstreams
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./stream_upstream_zone_ssl.t ...............
+1..11
+ok 1 - ssl
+ok 2 - ssl 2
+ok 3 - ssl session new
+ok 4 - ssl session reused
+ok 5 - ssl session reused 2
+ok 6 - backup ssl
+ok 7 - backup ssl 2
+ok 8 - backup ssl session new
+ok 9 - backup ssl session reused
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./stream_variables.t .......................
+1..10
+ok 1 - vars
+ok 2 - addr
+ok 3 - addr ipv6
+ok 4 - binary addr
+ok 5 - binary addr ipv6
+ok 6 - time
+ok 7 - protocol TCP
+ok 8 - protocol UDP
+ok 9 - no alerts
+ok 10 - no sanitizer errors
+ok
+./stub_status.t ............................
+1..36
+ok 1 - get request
+ok 2 - open connection
+ok 3 - first request
+ok 4 - first request accepted
+ok 5 - first request handled
+ok 6 - first response
+ok 7 - not reading
+ok 8 - requests increased by 2
+ok 9 - accepts increased by 1
+ok 10 - active
+ok 11 - waiting state
+ok 12 - waiting state - not reading
+ok 13 - waiting state - not writing
+ok 14 - reading state - not waiting
+ok 15 - reading state
+ok 16 - reading state - not writing
+ok 17 - writing state - not waiting
+ok 18 - writing state - not reading
+ok 19 - writing state
+ok 20 - head request
+ok 21 - post request
+ok 22 - get - var active
+ok 23 - get - var reading
+ok 24 - get - var writing
+ok 25 - get - var waiting
+ok 26 - head - var active
+ok 27 - head - var reading
+ok 28 - head - var writing
+ok 29 - head - var waiting
+ok 30 - head - empty body
+ok 31 - no stub - var active
+ok 32 - no stub - var reading
+ok 33 - no stub - var writing
+ok 34 - no stub - var waiting
+ok 35 - no alerts
+ok 36 - no sanitizer errors
+ok
+./sub_filter.t .............................
+1..32
+ok 1 - sub_filter
+ok 2 - sub_filter caseless
+ok 3 - once default
+ok 4 - once
+ok 5 - many
+ok 6 - incomplete
+ok 7 - incomplete long
+ok 8 - complex
+ok 9 - complex 1st char
+ok 10 - complex 2nd char
+ok 11 - complex2
+ok 12 - complex2 long
+ok 13 - complex3 aab in aab
+ok 14 - complex3 aab in aaab
+ok 15 - complex3 aab in aaaab
+ok 16 - single only
+ok 17 - single begin
+ok 18 - single middle
+ok 19 - single end
+ok 20 - single many only
+ok 21 - single many begin
+ok 22 - single many middle
+ok 23 - single many end
+ok 24 - complex string
+ok 25 - complex string caseless
+ok 26 - complex string long
+ok 27 - complex replacement
+ok 28 - no last modified
+ok 29 - last modified
+ok 30 - last modified weak
+ok 31 - no alerts
+ok 32 - no sanitizer errors
+ok
+./sub_filter_buffering.t ...................
+1..4
+ok 1 - partial match
+ok 2 - negative match
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./sub_filter_merge.t .......................
+1..3
+ok 1 - sub_filter inheritance
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./sub_filter_multi.t .......................
+1..44
+ok 1 - simple match
+ok 2 - partial match
+ok 3 - exact match
+ok 4 - case insensivity 1
+ok 5 - case insensivity 2
+ok 6 - case insensivity 3
+ok 7 - case insensivity 4
+ok 8 - minimal match
+ok 9 - utf8 match
+ok 10 - once 1
+ok 11 - once 2
+ok 12 - once 3
+ok 13 - table inheritance
+ok 14 - complex multiple replace
+ok 15 - crossbuf match 1 (simple match len 8)
+ok 16 - crossbuf match 2 (simple match len 9)
+ok 17 - crossbuf match 3 (simple match len 10)
+ok 18 - crossbuf match 4 (simple match len 11)
+ok 19 - crossbuf match 5.1
+ok 20 - crossbuf match 5.2
+ok 21 - crossbuf match 5.3
+ok 22 - crossbuf match 5.4
+ok 23 - crossbuf match 6.1 (multiple replace)
+ok 24 - crossbuf match 6.2 (multiple replace)
+ok 25 - crossbuf match 7.1 (multiple replace)
+ok 26 - crossbuf match 7.2 (multiple replace)
+ok 27 - crossbuf match 7.3 (multiple replace)
+ok 28 - crossbuf match 7.4 (multiple replace)
+ok 29 - crossbuf match 7.5 (multiple replace)
+ok 30 - crossbuf superlong match 1
+ok 31 - crossbuf superlong match 2 (multiple replace)
+ok 32 - crossbuf superlong match 3.1 (multiple replace)
+ok 33 - crossbuf superlong match 3.2 (multiple replace)
+ok 34 - crossbuf superlong match 4 (1 byte search pattern)
+ok 35 # skip long tests
+ok 36 # skip long tests
+ok 37 # skip long tests
+ok 38 # skip long tests
+ok 39 # skip long tests
+ok 40 # skip long tests
+ok 41 # skip long tests
+ok 42 # skip long tests
+ok 43 - no alerts
+ok 44 - no sanitizer errors
+ok
+./sub_filter_multi2.t ......................
+1..9
+ok 1 - complex
+ok 2 - complex 2
+ok 3 - case insensivity
+ok 4 - one search string is empty
+ok 5 - all search strings are empty
+ok 6 - multiple variables
+ok 7 - multiple variables 2
+ok 8 - no alerts
+ok 9 - no sanitizer errors
+ok
+./sub_filter_perl.t ........................
+1..0 # SKIP no perl available
+skipped: no perl available
+./sub_filter_slice.t .......................
+1..5
+ok 1 - only final chunk
+not ok 2 - range request - 206 partial reply # TODO not yet
+#   Failed (TODO) test 'range request - 206 partial reply'
+#   at ./sub_filter_slice.t line 85.
+#                   'HTTP/1.1 200 OK
+# Server: nginx/1.24.0
+# Date: Tue, 05 Dec 2023 17:32:02 GMT
+# Content-Type: text/plain
+# Transfer-Encoding: chunked
+# Connection: close
+#
+# 2
+# 23
+# 1
+# 4
+# 0
+#
+# '
+#     doesn't match '(?^: 206 )'
+not ok 3 - range request - correct content # TODO not yet
+#   Failed (TODO) test 'range request - correct content'
+#   at ./sub_filter_slice.t line 86.
+#          got: '234'
+#     expected: '34'
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./sub_filter_ssi.t .........................
+1..0 # SKIP no xslt available
+skipped: no xslt available
+./subrequest_output_buffer_size.t ..........
+1..6
+ok 1 - request
+ok 2 - empty
+ok 3 - long
+ok 4 - long ok
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./syslog.t .................................
+1..64
+ok 1 - error_log has PRI
+ok 2 - error_log valid severity
+ok 3 - error_log valid facility
+ok 4 - error_log has month
+ok 5 - error_log valid month
+ok 6 - error_log has day
+ok 7 - error_log valid day
+ok 8 - error_log has hour
+ok 9 - error_log valid hour
+ok 10 - error_log has minutes
+ok 11 - error_log valid minutes
+ok 12 - error_log has seconds
+ok 13 - error_log valid seconds
+ok 14 - error_log has host
+ok 15 - error_log valid host
+ok 16 - error_log has tag
+ok 17 - error_log valid tag
+ok 18 - error_log valid CONTENT
+ok 19 - access_log has PRI
+ok 20 - access_log valid severity
+ok 21 - access_log valid facility
+ok 22 - access_log has month
+ok 23 - access_log valid month
+ok 24 - access_log has day
+ok 25 - access_log valid day
+ok 26 - access_log has hour
+ok 27 - access_log valid hour
+ok 28 - access_log has minutes
+ok 29 - access_log valid minutes
+ok 30 - access_log has seconds
+ok 31 - access_log valid seconds
+ok 32 - access_log has host
+ok 33 - access_log valid host
+ok 34 - access_log has tag
+ok 35 - access_log valid tag
+ok 36 - access_log valid CONTENT
+ok 37 - error_log facility
+ok 38 - error_log severity
+ok 39 - error_log tag
+ok 40 - access_log facility
+ok 41 - access_log severity
+ok 42 - access_log tag
+ok 43 - error_log format
+ok 44 - access_log log_format
+ok 45 - access_log many
+ok 46 - error_log many
+ok 47 # skip no --with-debug
+ok 48 - info
+ok 49 - notice
+ok 50 - warn
+ok 51 - error
+ok 52 - low
+ok 53 - dup
+ok 54 - high
+ok 55 - master syslog
+ok 56 - http syslog
+ok 57 - syslog if success
+ok 58 - syslog if success 2
+ok 59 - syslog if fail
+ok 60 - nohostname
+ok 61 - send success
+ok 62 - send error - recover
+ok 63 - no alerts
+ok 64 - no sanitizer errors
+ok
+./trailers.t ...............................
+1..19
+ok 1 - trailers
+ok 2 - not in headers
+ok 3 - add_trailer
+ok 4 - add_trailer always
+ok 5 - add_trailer sent_http
+ok 6 - add_trailer sent_trailer
+ok 7 - add_trailer complex
+ok 8 - add_trailer empty
+ok 9 - add_trailer bad
+ok 10 - add_trailer bad always
+ok 11 - header name
+ok 12 - no trailers - http10
+ok 13 - no trailers - not chunked
+ok 14 - no trailers - head
+ok 15 - no trailers expected
+ok 16 - upstream response variable
+ok 17 - inheritance
+ok 18 - no alerts
+ok 19 - no sanitizer errors
+ok
+./upstream.t ...............................
+1..5
+ok 1 - balanced
+ok 2 - failures
+ok 3 # skip long test
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./upstream_hash.t ..........................
+1..17
+ok 1 - inconsistent
+ok 2 - consistent
+ok 3 - consistent weight
+ok 4 - stable hash
+ok 5 - stable hash - consistent
+ok 6 - empty key
+ok 7 - empty key - consistent
+ok 8 - all hashed peers
+ok 9 - no proxy_next_upstream
+ok 10 - no proxy_next_upstream peers
+ok 11 - proxy_next_upstream peers
+ok 12 - all hashed peers - bad
+ok 13 - all hashed peers - bad consistent
+ok 14 - upstream name - busy
+ok 15 - upstream name - busy consistent
+ok 16 - no alerts
+ok 17 - no sanitizer errors
+ok
+./upstream_hash_memcached.t ................
+1..0 # SKIP Cache::Memcached not installed
+skipped: Cache::Memcached not installed
+./upstream_ip_hash.t .......................
+1..5
+ok 1 - ip_hash
+ok 2 - ip_hash 3 peers
+ok 3 - ip_hash single peer
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./upstream_ip_hash_ipv6.t ..................
+1..6
+ok 1 - ip_hash realip via unix
+ok 2 - ip_hash realip via ipv6
+ok 3 - ip_hash ipv6
+ok 4 - ip_hash unix
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./upstream_keepalive.t .....................
+1..13
+ok 1 - request
+ok 2 - keepalive
+ok 3 - keepalive again
+ok 4 - keepalive requests
+ok 5 - request timer
+ok 6 - request time
+ok 7 - keepalive timer
+ok 8 - keepalive time
+ok 9 - keepalive timeout
+ok 10 - keepalive time last
+ok 11 - keepalive time new
+ok 12 - no alerts
+ok 13 - no sanitizer errors
+ok
+./upstream_least_conn.t ....................
+1..4
+ok 1 - balanced
+ok 2 - least conn
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./upstream_max_conns.t .....................
+1..18
+ok 1 - unlimited
+ok 2 - conn subtraction
+ok 3 - single
+ok 4 - backup
+ok 5 - backup limited
+ok 6 - all peers
+ok 7 - some peers
+ok 8 - weight
+ok 9 - equal peer
+ok 10 - proxy_next_upstream
+ok 11 - least_conn
+ok 12 - least_conn backup
+ok 13 - least_conn backup limited
+ok 14 - ip_hash
+ok 15 - hash
+ok 16 - hash consistent
+ok 17 - no alerts
+ok 18 - no sanitizer errors
+ok
+./upstream_random.t ........................
+1..14
+ok 1 - random
+ok 2 - random two
+ok 3 - random wait
+ok 4 # skip long test
+ok 5 # skip long test
+ok 6 # skip long test
+ok 7 - single one
+ok 8 - single two
+ok 9 - zone one
+ok 10 - zone two
+ok 11 - failures
+ok 12 - failures two
+ok 13 - no alerts
+ok 14 - no sanitizer errors
+ok
+./upstream_zone.t ..........................
+1..4
+ok 1 - upstream name
+ok 2 - no live upstreams
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./upstream_zone_ssl.t ......................
+1..11
+ok 1 - ssl
+ok 2 - ssl 2
+ok 3 - ssl session new
+ok 4 - ssl session reused
+ok 5 - ssl session reused 2
+ok 6 - backup
+ok 7 - backup 2
+ok 8 - backup new
+ok 9 - backup reused
+ok 10 - no alerts
+ok 11 - no sanitizer errors
+ok
+./userid.t .................................
+1..37
+ok 1 - cookie on
+ok 2 - cookie v1
+ok 3 - cookie log
+ok 4 - cookie off
+ok 5 - name default
+ok 6 - path default
+ok 7 - domain default
+ok 8 - expires default
+ok 9 - mark default
+ok 10 - p3p default
+ok 11 - uid reset variable default
+ok 12 - name
+ok 13 - path
+ok 14 - domain
+ok 15 - p3p
+ok 16 - mark off
+ok 17 - mark equal
+ok 18 - mark letter
+ok 19 - mark number
+ok 20 - expires time
+ok 21 - expires max
+ok 22 - expires off
+ok 23 - redefine expires
+ok 24 - redefine path
+ok 25 - uid set variable
+ok 26 - uid got variable
+ok 27 - same path request
+ok 28 - other path request
+ok 29 - uid reset variable value
+ok 30 - service default v1
+ok 31 - service default v2
+ok 32 - service custom
+ok 33 - service ipv6
+ok 34 - service unix
+ok 35 - uid reset variable log
+ok 36 - no alerts
+ok 37 - no sanitizer errors
+ok
+./userid_flags.t ...........................
+1..7
+ok 1 - strict
+ok 2 - lax
+ok 3 - many
+ok 4 - off
+ok 5 - unset
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./uwsgi.t ..................................
+1..0 # SKIP uwsgi not found
+skipped: uwsgi not found
+./uwsgi_body.t .............................
+1..0 # SKIP uwsgi not found
+skipped: uwsgi not found
+./uwsgi_ssl.t ..............................
+1..0 # SKIP uwsgi not found
+skipped: uwsgi not found
+./uwsgi_ssl_certificate.t ..................
+1..7
+ok 1 - verify certificate
+ok 2 - fail certificate
+ok 3 - with encrypted key
+ok 4 - valid certificate
+ok 5 - invalid certificate
+ok 6 - no alerts
+ok 7 - no sanitizer errors
+ok
+./uwsgi_ssl_certificate_vars.t .............
+1..6
+ok 1 - variable - verify certificate
+ok 2 - variable - fail certificate
+ok 3 - variable - with encrypted key
+ok 4 - variable - no certificate
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./uwsgi_ssl_verify.t .......................
+1..0 # SKIP uwsgi not found
+skipped: uwsgi not found
+./worker_shutdown_timeout.t ................
+1..3
+ok 1 - worker_shutdown_timeout
+ok 2 - no alerts
+ok 3 - no sanitizer errors
+ok
+./worker_shutdown_timeout_h2.t .............
+1..4
+ok 1 - new stream
+ok 2 - shutdown timeout
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./worker_shutdown_timeout_mail.t ...........
+1..6
+ok 1 - greeting
+ok 2 - ehlo
+ok 3 - auth plain
+ok 4 - mail connection shutdown
+ok 5 - no alerts
+ok 6 - no sanitizer errors
+ok
+./worker_shutdown_timeout_proxy_upgrade.t ..
+1..4
+ok 1 - upgraded connection
+ok 2 - upgraded connection shutdown
+ok 3 - no alerts
+ok 4 - no sanitizer errors
+ok
+./worker_shutdown_timeout_stream.t .........
+1..5
+ok 1 - greeting
+ok 2 - ehlo
+ok 3 - stream connection shutdown
+ok 4 - no alerts
+ok 5 - no sanitizer errors
+ok
+./xslt.t ...................................
+1..0 # SKIP no xslt available
+skipped: no xslt available
+./xslt_params.t ............................
+1..0 # SKIP no xslt available
+skipped: no xslt available
+All tests successful.
+Files=415, Tests=4984, 406 wallclock secs ( 0.69 usr  0.31 sys + 33.18 cusr  4.15 csys = 38.33 CPU)
+Result: PASS

@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
@@ -33,6 +34,21 @@ func ReadMessageStreamUntilError(reader io.Reader) ([]*jsonmessage.JSONMessage, 
 	}
 
 	return msgs, nil
+}
+
+func WaitForContainer(ctx *testcontext.TestContext) (*container.WaitResponse, error) {
+	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+
+	waitResChan, errChan := client.ContainerWait(ctx.Ctx, ctx.ContainerId, container.WaitConditionNotRunning)
+	select {
+	case res := <-waitResChan:
+		return &res, nil
+	case err := <-errChan:
+		return nil, fmt.Errorf("failed to wait for container: %w", err)
+	}
 }
 
 func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []string, cmd ...string) ([]string, error) {
@@ -74,15 +90,6 @@ func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []st
 	}
 	if err := scanner.Err(); err != nil {
 		return out, fmt.Errorf("error reading output: %w", err)
-	}
-
-	inspect, err := client.ContainerExecInspect(ctx.Ctx, execID)
-	if err != nil {
-		return out, fmt.Errorf("failed to inspect exec: %w", err)
-	}
-
-	if inspect.ExitCode != 0 {
-		return out, fmt.Errorf("non-zero exit code: %d", inspect.ExitCode)
 	}
 
 	return out, nil

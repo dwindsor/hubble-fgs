@@ -1,15 +1,17 @@
 package testparser_test
 
 import (
+	_ "embed"
+	"strings"
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/tests/compliance/testparser"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPerlTestHarnessParser_Simple(t *testing.T) {
 	testOutput := []string{
+		"TAP version 13",
 		"./access.t ..",
 		"1..14",
 		"ok 1 - inet allow all",
@@ -57,313 +59,30 @@ func TestPerlTestHarnessParser_Simple(t *testing.T) {
 		"Result: FAIL",
 	}
 
-	expectedResults := &testparser.Results{
-		Passed:  13,
-		Failed:  1,
-		Skipped: 0,
-		Tests: []testparser.Test{
-			{Name: "inet allow all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet allow unix", Outcome: testparser.TestOutcomePass},
-			{Name: "inet deny all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet deny unix", Outcome: testparser.TestOutcomePass},
-			{Name: "inet6 allow all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet6 allow unix", Outcome: testparser.TestOutcomePass},
-			{Name: "inet6 deny all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet6 deny unix", Outcome: testparser.TestOutcomePass},
-			{Name: "unix allow all", Outcome: testparser.TestOutcomePass},
-			{Name: "unix allow unix", Outcome: testparser.TestOutcomePass},
-			{Name: "unix deny all", Outcome: testparser.TestOutcomePass},
-			{Name: "unix deny unix", Outcome: testparser.TestOutcomeFail, Output: []string{
-				"  Failed test 'unix deny unix'",
-				"  at ./access.t line 106.",
-				"                  'HTTP/1.1 403 Forbidden",
-				"Server: nginx/1.22.1",
-				"Date: Tue, 18 Apr 2023 14:11:34 GMT",
-				"Content-Type: text/html",
-				"Content-Length: 153",
-				"Connection: close",
-				"",
-				"<html>",
-				"<head><title>403 Forbidden</title></head>",
-				"<body>",
-				"<center><h1>403 Forbidden</h1></center>",
-				"<hr><center>nginx/1.22.1</center>",
-				"</body>",
-				"</html>",
-				"",
-			}},
-			{Name: "no alerts", Outcome: testparser.TestOutcomePass},
-			{Name: "no sanitizer errors", Outcome: testparser.TestOutcomePass},
-		},
-	}
-	parser := testparser.PerlTestHarnessParser{}
-	results, err := parser.ResultsParse(testOutput)
+	parser := testparser.TapParser{}
+	results := parser.Parse(testOutput)
 
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResults, results)
+	assert.Equal(t, 1, len(results.Files), "number of files")
+	assert.Equal(t, 13, results.Files[0].Pass, "passed tests")
+	assert.Equal(t, 1, results.Files[0].Fail, "failed tests")
+	assert.Equal(t, 0, results.Files[0].Skip, "skipped tests")
+	assert.Equal(t, 14, results.Files[0].Expected, "expected tests")
+	assert.Equal(t, 14, len(results.Files[0].Tests), "number of tests")
+
+	assert.Equal(t, "unix deny unix", results.Files[0].Tests[11].Description, "description")
+	assert.Equal(t, testparser.TestOutcomeFail, results.Files[0].Tests[11].Outcome, "test outcome")
+	assert.Equal(t, 17, len(results.Files[0].Tests[11].Diagnostics), "diagnostic lines")
+	assert.Equal(t, 12, results.Files[0].Tests[11].Number, "test number")
 }
 
-func TestPerlTestHarnessParser_TodoTests(t *testing.T) {
-	// Example output from a Perl Test::Harness TODO test run.
-	testOutput := []string{
-		"./sub_filter_multi2.t ......................",
-		"1..9",
-		"ok 1 - complex",
-		"ok 2 - complex 2",
-		"ok 3 - case insensivity",
-		"ok 4 - one search string is empty",
-		"ok 5 - all search strings are empty",
-		"ok 6 - multiple variables",
-		"ok 7 - multiple variables 2",
-		"ok 8 - no alerts",
-		"ok 9 - no sanitizer errors",
-		"./sub_filter_perl.t ........................",
-		"1..0 # SKIP no perl available",
-		"skipped: no perl available",
-		"./sub_filter_slice.t .......................",
-		"1..2",
-		"ok 1 - only final chunk",
-		"not ok 2 - range request - 206 partial reply # TODO not yet",
-		"#   Failed (TODO) test 'range request - 206 partial reply'",
-		"#   at ./sub_filter_slice.t line 85.",
-		"#                   'HTTP/1.1 200 OK",
-		"# Server: nginx/1.22.1",
-		"# Date: Tue, 18 Apr 2023 14:37:01 GMT",
-		"# Content-Type: text/plain",
-		"# Transfer-Encoding: chunked",
-		"# Connection: close",
-		"#",
-		"# 2",
-		"# 23",
-		"# 1",
-		"# 4",
-		"# 0",
-		"#",
-		"# ",
-		"#     doesn't match '(?^: 206 )'",
-		"",
-		"Test Summary Report",
-		"-------------------",
-		"./sub_filter_multi2.t (Wstat: 0 Tests: 9 Passed: 9)",
-		"  Parse errors: Bad plan.  You planned 9 tests but ran 10.",
-		"./sub_filter_slice.t (Wstat: 0 Tests: 5 Failed: 1)",
-		"  Failed test:  2",
-		"Files=3, Tests=11,  0 wallclock secs ( 0.00 usr  0.00 sys +  0.03 cusr  0.00 csys =  0.03 CPU)",
-		"Result: FAIL",
-	}
+//go:embed testdata.txt
+var TESTDATA string
 
-	expectedResults := &testparser.Results{
-		Passed:  10,
-		Failed:  0,
-		Skipped: 0,
-		Todo:    1,
-		Tests: []testparser.Test{
-			{Name: "complex", Outcome: testparser.TestOutcomePass},
-			{Name: "complex 2", Outcome: testparser.TestOutcomePass},
-			{Name: "case insensivity", Outcome: testparser.TestOutcomePass},
-			{Name: "one search string is empty", Outcome: testparser.TestOutcomePass},
-			{Name: "all search strings are empty", Outcome: testparser.TestOutcomePass},
-			{Name: "multiple variables", Outcome: testparser.TestOutcomePass},
-			{Name: "multiple variables 2", Outcome: testparser.TestOutcomePass},
-			{Name: "no alerts", Outcome: testparser.TestOutcomePass},
-			{Name: "no sanitizer errors", Outcome: testparser.TestOutcomePass},
-			{Name: "only final chunk", Outcome: testparser.TestOutcomePass},
-			{Name: "range request - 206 partial reply", Outcome: testparser.TestOutcomeTodo, Output: []string{
-				"  Failed (TODO) test 'range request - 206 partial reply'",
-				"  at ./sub_filter_slice.t line 85.",
-				"                  'HTTP/1.1 200 OK",
-				"Server: nginx/1.22.1",
-				"Date: Tue, 18 Apr 2023 14:37:01 GMT",
-				"Content-Type: text/plain",
-				"Transfer-Encoding: chunked",
-				"Connection: close",
-				"",
-				"2",
-				"23",
-				"1",
-				"4",
-				"0",
-				"",
-				"",
-				"    doesn't match '(?^: 206 )'",
-			}},
-		},
-	}
-	parser := testparser.PerlTestHarnessParser{}
-	results, err := parser.ResultsParse(testOutput)
+func TestPerlTestHarnessParser_Full(t *testing.T) {
+	testOutput := strings.Split(TESTDATA, "\n")
 
-	require.NoError(t, err)
-	assert.Equal(t, expectedResults, results)
-}
+	parser := testparser.TapParser{}
+	results := parser.Parse(testOutput)
 
-func TestPerlTestHarnessParser_AccessAndJsTests(t *testing.T) {
-	testOutput := []string{
-		"./access.t ..",
-		"1..12",
-		"ok 1 - inet allow all",
-		"ok 2 - inet allow unix",
-		"ok 3 - inet deny all",
-		"ok 4 - inet deny unix",
-		"not ok 5 - inet6 allow all # TODO not yet",
-		"#   Failed (TODO) test 'inet6 allow all'",
-		"#   at ./access.t line 99.",
-		"#                   'HTTP/1.1 404 Not Found",
-		"# Server: nginx/1.22.1",
-		"# Date: Wed, 19 Apr 2023 15:20:52 GMT",
-		"# Content-Type: text/html",
-		"# Content-Length: 153",
-		"# Connection: close",
-		"#",
-		"# <html>",
-		"# <head><title>404 Not Found</title></head>",
-		"# <body>",
-		"# <center><h1>404 Not Found</h1></center>",
-		"# <hr><center>nginx/1.22.1</center>",
-		"# </body>",
-		"# </html>",
-		"# '",
-		"#     doesn't match '(?^:403 Forbidden)'",
-		"not ok 6 - inet6 allow unix # TODO not yet",
-		"#   Failed (TODO) test 'inet6 allow unix'",
-		"#   at ./access.t line 100.",
-		"#                   'HTTP/1.1 404 Not Found",
-		"# Server: nginx/1.22.1",
-		"# Date: Wed, 19 Apr 2023 15:20:52 GMT",
-		"# Content-Type: text/html",
-		"# Content-Length: 153",
-		"# Connection: close",
-		"#",
-		"# <html>",
-		"# <head><title>404 Not Found</title></head>",
-		"# <body>",
-		"# <center><h1>404 Not Found</h1></center>",
-		"# <hr><center>nginx/1.22.1</center>",
-		"# </body>",
-		"# </html>",
-		"# '",
-		"#     doesn't match '(?^:403 Forbidden)'",
-		"ok 7 - unix buggy # skip buggy test",
-		"ok 8 - unix allow unix",
-		"ok 9 - unix deny all",
-		"not ok 10 - unix deny unix",
-		"#   Failed test 'unix deny unix'",
-		"#   at ./access.t line 113.",
-		"#                   'HTTP/1.1 403 Forbidden",
-		"# Server: nginx/1.22.1",
-		"# Date: Wed, 19 Apr 2023 15:20:52 GMT",
-		"# Content-Type: text/html",
-		"# Content-Length: 153",
-		"# Connection: close",
-		"#",
-		"# <html>",
-		"# <head><title>403 Forbidden</title></head>",
-		"# <body>",
-		"# <center><h1>403 Forbidden</h1></center>",
-		"# <hr><center>nginx/1.22.1</center>",
-		"# </body>",
-		"# </html>",
-		"# '",
-		"#     doesn't match '(?^:404 Not Found)'",
-		"ok 11 - no alerts",
-		"ok 12 - no sanitizer errors",
-		"# Looks like you failed 1 test of 12.",
-		"Dubious, test returned 1 (wstat 256, 0x100)",
-		"Failed 1/12 subtests",
-		"        (less 1 skipped subtest: 10 okay)",
-		"./js.t ......",
-		"1..0 # SKIP no njs available",
-		"skipped: no njs available",
-		"",
-		"Test Summary Report",
-		"-------------------",
-		"./access.t (Wstat: 256 (exited 1) Tests: 12 Failed: 1)",
-		"  Failed test:  10",
-		"  Non-zero exit status: 1",
-		"Files=2, Tests=12,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.09 cusr  0.02 csys =  0.13 CPU)",
-		"Result: FAIL",
-	}
-
-	parser := testparser.PerlTestHarnessParser{}
-	results, err := parser.ResultsParse(testOutput)
-
-	expectedResults := testparser.Results{
-		Passed:  8,
-		Failed:  1,
-		Skipped: 1,
-		Todo:    2,
-		Tests: []testparser.Test{
-			{Name: "inet allow all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet allow unix", Outcome: testparser.TestOutcomePass},
-			{Name: "inet deny all", Outcome: testparser.TestOutcomePass},
-			{Name: "inet deny unix", Outcome: testparser.TestOutcomePass},
-			{Name: "inet6 allow all", Outcome: testparser.TestOutcomeTodo, Output: []string{
-				"  Failed (TODO) test 'inet6 allow all'",
-				"  at ./access.t line 99.",
-				"                  'HTTP/1.1 404 Not Found",
-				"Server: nginx/1.22.1",
-				"Date: Wed, 19 Apr 2023 15:20:52 GMT",
-				"Content-Type: text/html",
-				"Content-Length: 153",
-				"Connection: close",
-				"",
-				"<html>",
-				"<head><title>404 Not Found</title></head>",
-				"<body>",
-				"<center><h1>404 Not Found</h1></center>",
-				"<hr><center>nginx/1.22.1</center>",
-				"</body>",
-				"</html>",
-				"'",
-				"    doesn't match '(?^:403 Forbidden)'",
-			}},
-			{Name: "inet6 allow unix", Outcome: testparser.TestOutcomeTodo, Output: []string{
-				"  Failed (TODO) test 'inet6 allow unix'",
-				"  at ./access.t line 100.",
-				"                  'HTTP/1.1 404 Not Found",
-				"Server: nginx/1.22.1",
-				"Date: Wed, 19 Apr 2023 15:20:52 GMT",
-				"Content-Type: text/html",
-				"Content-Length: 153",
-				"Connection: close",
-				"",
-				"<html>",
-				"<head><title>404 Not Found</title></head>",
-				"<body>",
-				"<center><h1>404 Not Found</h1></center>",
-				"<hr><center>nginx/1.22.1</center>",
-				"</body>",
-				"</html>",
-				"'",
-				"    doesn't match '(?^:403 Forbidden)'",
-			}},
-			{Name: "unix buggy", Outcome: testparser.TestOutcomeSkip},
-			{Name: "unix allow unix", Outcome: testparser.TestOutcomePass},
-			{Name: "unix deny all", Outcome: testparser.TestOutcomePass},
-			{Name: "unix deny unix", Outcome: testparser.TestOutcomeFail, Output: []string{
-				"  Failed test 'unix deny unix'",
-				"  at ./access.t line 113.",
-				"                  'HTTP/1.1 403 Forbidden",
-				"Server: nginx/1.22.1",
-				"Date: Wed, 19 Apr 2023 15:20:52 GMT",
-				"Content-Type: text/html",
-				"Content-Length: 153",
-				"Connection: close",
-				"",
-				"<html>",
-				"<head><title>403 Forbidden</title></head>",
-				"<body>",
-				"<center><h1>403 Forbidden</h1></center>",
-				"<hr><center>nginx/1.22.1</center>",
-				"</body>",
-				"</html>",
-				"'",
-				"    doesn't match '(?^:404 Not Found)'",
-			}},
-			{Name: "no alerts", Outcome: testparser.TestOutcomePass},
-			{Name: "no sanitizer errors", Outcome: testparser.TestOutcomePass},
-		},
-	}
-
-	require.NoError(t, err)
-	assert.Equal(t, expectedResults, *results)
+	assert.Equal(t, 415, len(results.Files), "number of parsed files")
 }

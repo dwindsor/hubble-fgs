@@ -31,4 +31,4 @@ ENV TEST_NGINX_MODULES=/usr/lib/nginx/modules
 WORKDIR /nginx-tests
 USER nginx
 
-CMD ["sh", "-c", "prove ."]
+CMD ["sh", "-c", "prove . -v --nocolor"]

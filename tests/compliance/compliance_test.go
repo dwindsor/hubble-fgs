@@ -64,16 +64,14 @@ func testCases() []compliance.Test {
 				},
 			},
 			Steps: []compliance.Stepper{
-				&compliance.ProveStep{
-					TestDir: ".",
-					Checker: nil,
-				},
+				&compliance.ProveStep{},
 			},
 		},
 	}
 }
 
 func TestCompliance(t *testing.T) {
+	fmt.Printf("Running compliance tests with config=%#v", config.Config())
 	for _, ct := range testCases() {
 		t.Run(fmt.Sprintf("compliance-%s", ct.Name), func(t *testing.T) {
 			assert.NoError(t, ct.BuildAndRun(t))
