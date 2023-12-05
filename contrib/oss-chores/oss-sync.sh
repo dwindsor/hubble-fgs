@@ -51,4 +51,8 @@ cp modules/tetragon-oss/pkg/k8s/apis/cilium.io/v1alpha1/types.go pkg/k8s/apis/ci
 make generate && make codegen && make vendor
 git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss api
 
+# Generate Helm chart
+make -C install/kubernetes
+git add install/kubernetes/tetragon
+
 git commit -s -F $outf
