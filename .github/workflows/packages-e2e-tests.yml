@@ -20,10 +20,6 @@ jobs:
             arch: arm64
             cross_compile: yes
             upload_path: upload-cross-compile/
-          - os: buildjet-2vcpu-ubuntu-2204-arm
-            arch: arm64
-            cross_compile: no
-            upload_path: upload/
 
     steps:
       # https://github.com/docker/setup-buildx-action
@@ -81,11 +77,6 @@ jobs:
             match_arch: arm64
             cross_compile: yes
             upload_path: upload-cross-compile/
-          - os: buildjet-2vcpu-ubuntu-2204-arm
-            arch: arm64
-            match_arch: arm64
-            cross_compile: no
-            upload_path: upload/
 
     steps:
       - name: Checkout Source Code
