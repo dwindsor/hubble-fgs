@@ -49,6 +49,8 @@ enum iso_msg_ops {
 	ISO_MSG_OP_ICMP = 134,
 	ISO_MSG_OP_ICMPV6 = 135,
 
+	ISO_MSG_OP_UDPLISTEN = 136,
+
 	ISO_MSG_OP_MAX,
 
 	ISO_MSG_OP_TEST = 254,

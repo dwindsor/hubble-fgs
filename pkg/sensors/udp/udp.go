@@ -26,7 +26,9 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
@@ -36,6 +38,7 @@ import (
 	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
@@ -621,6 +624,44 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	saddr := api.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
 	daddr := api.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
+
+	if socket.State != unix.BPF_TCP_CLOSE && socket.State != unix.BPF_TCP_ESTABLISHED {
+		return
+	}
+
+	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
+	stats, err := proc.GetProcStatStrings(pathName)
+	if err != nil {
+		return
+	}
+	ktime, err := proc.GetStatsKtime(stats)
+	if err != nil {
+		return
+	}
+
+	udp := layer3.MsgIPEventUnix{}
+
+	udp.ProcessKey.Pid = pid
+	udp.ProcessKey.Ktime = ktime
+	udp.Common.Ktime = ktime
+
+	udp.Tuple.IPv6 = socket.IPv6
+	udp.Tuple.SAddr[0] = socket.Saddr[0]
+	udp.Tuple.SAddr[1] = socket.Saddr[1]
+	udp.Tuple.DAddr[0] = socket.Daddr[0]
+	udp.Tuple.DAddr[1] = socket.Daddr[1]
+	udp.Tuple.DPort = networkapi.SwapByte(socket.Dport)
+	udp.Tuple.SPort = socket.Sport
+	udp.Tuple.Proto = 2
+	udp.SockCookie = socket.Sockaddr
+
+	if socket.State == unix.BPF_TCP_CLOSE {
+		udp.Common.Op = ops.MsgOpUDPListen
+	} else {
+		udp.Common.Op = ops.MsgOpUDPConnect
+	}
+
+	observer.AllListeners(&udp)
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {

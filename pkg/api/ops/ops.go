@@ -98,6 +98,8 @@ const (
 
 	MSG_OP_ICMP   = 134
 	MSG_OP_ICMPV6 = 135
+
+	MSG_OP_UDPLISTEN = 136
 )
 
 type OpCode int
@@ -138,6 +140,7 @@ const (
 	MsgOpUdpSeqError             = 133
 	MsgOpIcmp                    = 134
 	MsgOpIcmpV6                  = 135
+	MsgOpUDPListen               = 136
 )
 
 func (op OpCode) String() string {
@@ -177,6 +180,7 @@ func (op OpCode) String() string {
 		MsgOpUdpSeqError:             "UDPSeqError",
 		MsgOpIcmp:                    "Icmp",
 		MsgOpIcmpV6:                  "IcmpV6",
+		MsgOpUDPListen:               "UDPListen",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val

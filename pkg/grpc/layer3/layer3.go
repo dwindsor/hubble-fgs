@@ -551,7 +551,8 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case ops.MSG_OP_LISTEN:
+	case ops.MSG_OP_LISTEN,
+		ops.MSG_OP_UDPLISTEN:
 		l := GetProcessListen(msg)
 		if l != nil {
 			res = &tetragon.GetEventsResponse{
