@@ -22,7 +22,7 @@ int BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
 	probe_read(&flags, sizeof(flags), _(&vma->vm_flags));
 
 	// generate both events as after a write pgfault we can read
-	if (flags & VM_WRITE) {
+	if ((flags & VM_WRITE) && (flags & VM_SHARED)) { // we care only for writes in shared mappings
 		handle_generic_file_access(ctx, file, action_write, hook_filemap_map_pages);
 	}
 	handle_generic_file_access(ctx, file, action_read, hook_filemap_map_pages);

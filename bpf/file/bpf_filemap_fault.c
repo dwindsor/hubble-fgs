@@ -22,7 +22,7 @@ int BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 
 	// if we have a write page-fault we also issue a read event
 	// as it may happen without any page faults or other actions
-	if (flags & VM_WRITE) {
+	if ((flags & VM_WRITE) && (flags & VM_SHARED)) { // we care only for writes in shared mappings
 		handle_generic_file_access(ctx, file, action_write, hook_filemap_fault);
 	}
 	handle_generic_file_access(ctx, file, action_read, hook_filemap_fault);

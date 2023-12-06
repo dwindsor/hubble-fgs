@@ -7,6 +7,7 @@ SEC("kprobe/filemap_page_mkwrite")
 int BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma;
+	unsigned long flags;
 	struct file *file;
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
@@ -17,7 +18,10 @@ int BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 	if (!file)
 		return 0;
 
-	handle_generic_file_access(ctx, file, action_write, hook_filemap_page_mkwrite);
+	probe_read(&flags, sizeof(flags), _(&vma->vm_flags));
+
+	if (flags & VM_SHARED) // we care only for writes in shared mappings
+		handle_generic_file_access(ctx, file, action_write, hook_filemap_page_mkwrite);
 
 	return 0;
 }
