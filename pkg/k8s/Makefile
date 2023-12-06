@@ -29,6 +29,7 @@ help:
 # patch the imports, gen the code, and then revert the patch with some smallish
 # sed lines.
 generate:
+	alias git="git -c submodule.recurse=0"
 	find . -type f -name "*.go" -exec sed -i 's/cilium\/tetragon\/pkg\/k8s/isovalent\/hubble-fgs\/pkg\/k8s/g' {} +
 	./tools/controller-gen crd paths=./apis/... output:dir=apis/cilium.io/client/crds/v1alpha1
 	# Do two invocations of generate-groups.sh, one with --plural-exclude, one without
