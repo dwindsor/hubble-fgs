@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/selectors"
@@ -43,9 +44,15 @@ func selectorsMaploads(ks *selectors.KernelSelectorState, pinPathPrefix string, 
 			},
 		}, {
 			Index: 0,
-			Name:  "sel_names_map",
+			Name:  "tg_mb_sel_opts",
 			Load: func(outerMap *ebpf.Map, index uint32) error {
-				return populateBinariesMaps(ks, pinPathPrefix, outerMap)
+				return populateMatchBinariesMaps(ks, outerMap)
+			},
+		}, {
+			Index: 0,
+			Name:  "tg_mb_paths",
+			Load: func(outerMap *ebpf.Map, index uint32) error {
+				return populateMatchBinariesPathsMaps(ks, pinPathPrefix, outerMap)
 			},
 		}, {
 			Index: 0,
@@ -340,19 +347,39 @@ func populateStringFilterMap(
 	return nil
 }
 
-func populateBinariesMaps(
+func populateMatchBinariesMaps(
 	ks *selectors.KernelSelectorState,
+	bpfMap *ebpf.Map,
+) error {
+	for selID, sel := range ks.MatchBinaries() {
+		if err := bpfMap.Update(uint32(selID), sel, ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("failed to insert %v: %w", sel, err)
+		}
+	}
+	return nil
+}
+
+func populateMatchBinariesPathsMaps(
+	k *selectors.KernelSelectorState,
 	pinPathPrefix string,
 	outerMap *ebpf.Map,
 ) error {
-	for innerID, sel := range ks.GetBinSelNamesMap() {
-		innerName := fmt.Sprintf("sel_names_map_%d", innerID)
+	maxEntriesFromAllSelector := k.MatchBinariesPathsMaxEntries()
+	for selectorID, paths := range k.MatchBinariesPaths() {
+		maxEntries := len(paths)
+		// Versions before 5.9 do not allow inner maps to have different sizes.
+		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+		if !kernels.MinKernelVersion("5.9") {
+			maxEntries = maxEntriesFromAllSelector
+		}
+
+		innerName := fmt.Sprintf("tg_mb_path_%d", selectorID)
 		innerSpec := &ebpf.MapSpec{
 			Name:       innerName,
 			Type:       ebpf.Hash,
-			KeySize:    4, // uint32
-			ValueSize:  4, // uint32
-			MaxEntries: 256,
+			KeySize:    uint32(processapi.BINARY_PATH_MAX_LEN),
+			ValueSize:  uint32(1),
+			MaxEntries: uint32(maxEntries),
 		}
 		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
 			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
@@ -362,20 +389,17 @@ func populateBinariesMaps(
 		}
 		defer innerMap.Close()
 
-		// add a special entry (key == UINT32_MAX) that has as a value the operator (In or NotIn)
-		if err := innerMap.Update(uint32(0xffffffff), ks.GetBinaryOp(innerID), ebpf.UpdateAny); err != nil {
-			return err
-		}
-
-		for idx, val := range sel.GetBinSelNamesMap() {
-			if err := innerMap.Update(idx, val, ebpf.UpdateAny); err != nil {
-				return err
+		for _, path := range paths {
+			err := innerMap.Update(path, uint8(1), 0)
+			if err != nil {
+				return fmt.Errorf("failed to insert value into %s: %w", innerName, err)
 			}
 		}
 
-		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
+		if err := outerMap.Update(uint32(selectorID), uint32(innerMap.FD()), 0); err != nil {
 			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
+
 	}
 	return nil
 }
@@ -412,7 +436,7 @@ func populateStringPrefixFilterMap(
 	innerSpec := &ebpf.MapSpec{
 		Name:       innerName,
 		Type:       ebpf.LPMTrie,
-		KeySize:    4 + selectors.StringPrefixMaxLength, // NB: KernelLpmTrieStringPrefix consists of 32bit prefix and 128 byte data
+		KeySize:    4 + selectors.StringPrefixMaxLength, // NB: KernelLpmTrieStringPrefix consists of 32bit prefix and 256 byte data
 		ValueSize:  uint32(1),
 		MaxEntries: maxEntries,
 		Flags:      bpf.BPF_F_NO_PREALLOC,

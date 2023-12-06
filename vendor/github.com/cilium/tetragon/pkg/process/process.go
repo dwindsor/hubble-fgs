@@ -183,7 +183,7 @@ func (pi *ProcessInternal) UpdateExecOutsideCache(cred bool) (*tetragon.Process,
 
 	// Take a copy of the process, add the necessary fields to the
 	// final ProcessExec event
-	if update == true {
+	if update {
 		process = pi.GetProcessCopy()
 		process.BinaryProperties = prop
 	}
@@ -270,8 +270,18 @@ func initProcessInternalExec(
 	execID := GetExecID(&process)
 	protoPod := GetPodInfo(containerID, process.Filename, args, process.NSPID)
 	apiCaps := caps.GetMsgCapabilities(event.Capabilities)
-	apiNs := namespace.GetMsgNamespaces(event.Namespaces)
 	binary := path.GetBinaryAbsolutePath(process.Filename, cwd)
+	apiNs, err := namespace.GetMsgNamespaces(event.Namespaces)
+	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"event.name":            "Execve",
+			"event.process.pid":     process.PID,
+			"event.process.tid":     process.TID,
+			"event.process.binary":  binary,
+			"event.process.exec_id": execID,
+			"event.parent.exec_id":  parentExecID,
+		}).Warn("ExecveEvent: parsing namespaces failed")
+	}
 
 	creds := &event.Creds
 	apiCreds := &tetragon.ProcessCredentials{

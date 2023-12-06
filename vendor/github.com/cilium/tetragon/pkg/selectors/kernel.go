@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/idtable"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -272,9 +273,9 @@ var selectorOpStringTable = map[uint32]string{
 
 func SelectorOp(op string) (uint32, error) {
 	switch op {
-	case "gt":
+	case "gt", "GT", "GreaterThan":
 		return SelectorOpGT, nil
-	case "lt":
+	case "lt", "LT", "LessThan":
 		return SelectorOpLT, nil
 	case "eq", "Equal":
 		return SelectorOpEQ, nil
@@ -365,25 +366,25 @@ func ParseMatchPid(k *KernelSelectorState, pid *v1alpha1.PIDSelector) error {
 	if err != nil {
 		return fmt.Errorf("matchpid error: %w", err)
 	}
-	WriteSelectorUint32(k, op)
+	WriteSelectorUint32(&k.data, op)
 
 	flags := pidSelectorFlags(pid)
-	WriteSelectorUint32(k, flags)
+	WriteSelectorUint32(&k.data, flags)
 
 	value, size := pidSelectorValue(pid)
-	WriteSelectorUint32(k, size/4)
-	WriteSelectorByteArray(k, value, size)
+	WriteSelectorUint32(&k.data, size/4)
+	WriteSelectorByteArray(&k.data, value, size)
 	return nil
 }
 
 func ParseMatchPids(k *KernelSelectorState, matchPids []v1alpha1.PIDSelector) error {
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	for _, p := range matchPids {
 		if err := ParseMatchPid(k, &p); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -506,7 +507,7 @@ func writeMatchRangesInMap(k *KernelSelectorState, values []string, ty uint32, o
 		}
 	}
 	// write the map id into the selector
-	WriteSelectorUint32(k, mid)
+	WriteSelectorUint32(&k.data, mid)
 	return nil
 }
 
@@ -573,7 +574,7 @@ func writeMatchValuesInMap(k *KernelSelectorState, values []string, ty uint32, o
 		m.Data[val] = struct{}{}
 	}
 	// write the map id into the selector
-	WriteSelectorUint32(k, mid)
+	WriteSelectorUint32(&k.data, mid)
 	return nil
 }
 
@@ -599,15 +600,15 @@ func writeMatchAddrsInMap(k *KernelSelectorState, values []string) error {
 	// write the map ids into the selector
 	if len(m4) != 0 {
 		m4id := k.insertAddr4Map(m4)
-		WriteSelectorUint32(k, m4id)
+		WriteSelectorUint32(&k.data, m4id)
 	} else {
-		WriteSelectorUint32(k, 0xffffffff)
+		WriteSelectorUint32(&k.data, 0xffffffff)
 	}
 	if len(m6) != 0 {
 		m6id := k.insertAddr6Map(m6)
-		WriteSelectorUint32(k, m6id)
+		WriteSelectorUint32(&k.data, m6id)
 	} else {
-		WriteSelectorUint32(k, 0xffffffff)
+		WriteSelectorUint32(&k.data, 0xffffffff)
 	}
 	return nil
 }
@@ -673,25 +674,25 @@ func writeMatchValues(k *KernelSelectorState, values []string, ty, op uint32) er
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
-			WriteSelectorInt32(k, int32(i))
+			WriteSelectorInt32(&k.data, int32(i))
 		case argTypeU32:
 			i, err := strconv.ParseUint(v, base, 32)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
-			WriteSelectorUint32(k, uint32(i))
+			WriteSelectorUint32(&k.data, uint32(i))
 		case argTypeS64:
 			i, err := strconv.ParseInt(v, base, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
-			WriteSelectorInt64(k, int64(i))
+			WriteSelectorInt64(&k.data, int64(i))
 		case argTypeU64:
 			i, err := strconv.ParseUint(v, base, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 			}
-			WriteSelectorUint64(k, uint64(i))
+			WriteSelectorUint64(&k.data, uint64(i))
 		case argTypeSock, argTypeSkb:
 			return fmt.Errorf("MatchArgs type sock and skb do not support operator %s", selectorOpStringTable[op])
 		case argTypeCharIovec:
@@ -720,24 +721,37 @@ func writeMatchStrings(k *KernelSelectorState, values []string, ty uint32) error
 	// write the map ids into the selector
 	mapDetails := k.insertStringMaps(maps)
 	for _, md := range mapDetails {
-		WriteSelectorUint32(k, md)
+		WriteSelectorUint32(&k.data, md)
 	}
 	return nil
 }
 
-func writePrefixStrings(k *KernelSelectorState, values []string) error {
+func writePrefix(k *KernelSelectorState, values []string, selector string) (uint32, error) {
 	mid, m := k.newStringPrefixMap()
 	for _, v := range values {
 		value, size := ArgSelectorValue(v)
 		if size > StringPrefixMaxLength {
-			return fmt.Errorf("MatchArgs value %s invalid: string is longer than %d characters", v, StringPrefixMaxLength)
+			return 0, fmt.Errorf("%s value %s invalid: string is longer than %d characters", selector, v, StringPrefixMaxLength)
 		}
 		val := KernelLPMTrieStringPrefix{prefixLen: size * 8} // prefix is in bits, but size is in bytes
 		copy(val.data[:], value)
 		m[val] = struct{}{}
 	}
+	return mid, nil
 	// write the map id into the selector
-	WriteSelectorUint32(k, mid)
+
+}
+
+func writePrefixBinaries(k *KernelSelectorState, values []string) (uint32, error) {
+	return writePrefix(k, values, "MatchBinaries")
+}
+
+func writePrefixStrings(k *KernelSelectorState, values []string) error {
+	mid, err := writePrefix(k, values, "MatchArgs")
+	if err != nil {
+		return err
+	}
+	WriteSelectorUint32(&k.data, mid)
 	return nil
 }
 
@@ -764,24 +778,24 @@ func writePostfixStrings(k *KernelSelectorState, values []string, ty uint32) err
 		m[val] = struct{}{}
 	}
 	// write the map id into the selector
-	WriteSelectorUint32(k, mid)
+	WriteSelectorUint32(&k.data, mid)
 	return nil
 }
 
 func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
-	WriteSelectorUint32(k, arg.Index)
+	WriteSelectorUint32(&k.data, arg.Index)
 
 	op, err := SelectorOp(arg.Operator)
 	if err != nil {
 		return fmt.Errorf("matcharg error: %w", err)
 	}
-	WriteSelectorUint32(k, op)
-	moff := AdvanceSelectorLength(k)
+	WriteSelectorUint32(&k.data, op)
+	moff := AdvanceSelectorLength(&k.data)
 	ty, err := argSelectorType(arg, sig)
 	if err != nil {
 		return fmt.Errorf("argSelector error: %w", err)
 	}
-	WriteSelectorUint32(k, ty)
+	WriteSelectorUint32(&k.data, ty)
 	switch op {
 	case SelectorInMap, SelectorNotInMap:
 		err := writeMatchValuesInMap(k, arg.Values, ty, op)
@@ -839,7 +853,7 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 		}
 	}
 
-	WriteSelectorLength(k, moff)
+	WriteSelectorLength(&k.data, moff)
 	return nil
 }
 
@@ -851,20 +865,20 @@ func ParseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v
 	if len(args) > max_args {
 		return fmt.Errorf("parseMatchArgs: supports up to %d filters (%d provided)", max_args, len(args))
 	}
-	actionOffset := GetCurrentOffset(k)
-	loff := AdvanceSelectorLength(k)
+	actionOffset := GetCurrentOffset(&k.data)
+	loff := AdvanceSelectorLength(&k.data)
 	argOff := make([]uint32, 5)
 	for i := 0; i < 5; i++ {
-		argOff[i] = AdvanceSelectorLength(k)
-		WriteSelectorOffsetUint32(k, argOff[i], 0)
+		argOff[i] = AdvanceSelectorLength(&k.data)
+		WriteSelectorOffsetUint32(&k.data, argOff[i], 0)
 	}
 	for i, a := range args {
-		WriteSelectorOffsetUint32(k, argOff[i], GetCurrentOffset(k)-actionOffset)
+		WriteSelectorOffsetUint32(&k.data, argOff[i], GetCurrentOffset(&k.data)-actionOffset)
 		if err := ParseMatchArg(k, &a, sig); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -905,7 +919,7 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 	if !ok {
 		return fmt.Errorf("parseMatchAction: ActionType %s unknown", action.Action)
 	}
-	WriteSelectorUint32(k, act)
+	WriteSelectorUint32(&k.data, act)
 
 	rateLimit := uint32(0)
 	if action.RateLimit != "" {
@@ -921,13 +935,13 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 
 	switch act {
 	case ActionTypeFollowFd, ActionTypeCopyFd:
-		WriteSelectorUint32(k, action.ArgFd)
-		WriteSelectorUint32(k, action.ArgName)
+		WriteSelectorUint32(&k.data, action.ArgFd)
+		WriteSelectorUint32(&k.data, action.ArgName)
 	case ActionTypeUnfollowFd:
-		WriteSelectorUint32(k, action.ArgFd)
-		WriteSelectorUint32(k, action.ArgName)
+		WriteSelectorUint32(&k.data, action.ArgFd)
+		WriteSelectorUint32(&k.data, action.ArgName)
 	case ActionTypeOverride:
-		WriteSelectorInt32(k, action.ArgError)
+		WriteSelectorInt32(&k.data, action.ArgError)
 	case ActionTypeGetUrl, ActionTypeDnsLookup:
 		actionArg := ActionArgEntry{
 			tableId: idtable.UninitializedEntryID,
@@ -939,26 +953,26 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 			actionArg.arg = action.ArgFqdn
 		}
 		actionArgTable.AddEntry(&actionArg)
-		WriteSelectorUint32(k, uint32(actionArg.tableId.ID))
+		WriteSelectorUint32(&k.data, uint32(actionArg.tableId.ID))
 	case ActionTypeSignal:
-		WriteSelectorUint32(k, action.ArgSig)
+		WriteSelectorUint32(&k.data, action.ArgSig)
 	case ActionTypeTrackSock, ActionTypeUntrackSock:
-		WriteSelectorUint32(k, action.ArgSock)
+		WriteSelectorUint32(&k.data, action.ArgSock)
 	case ActionTypePost:
-		WriteSelectorUint32(k, rateLimit)
+		WriteSelectorUint32(&k.data, rateLimit)
 		stackTrace := uint32(0)
 		if action.StackTrace {
 			stackTrace = 1
 		}
-		WriteSelectorUint32(k, stackTrace)
+		WriteSelectorUint32(&k.data, stackTrace)
 	case ActionTypeNoPost:
 		// no arguments
 	case ActionTypeSigKill:
 		// no arguments
 		// NB: we should deprecate this action and just use ActionTypeSignal with SIGKILL
 	case ActionTypeNotifyKiller:
-		WriteSelectorInt32(k, action.ArgError)
-		WriteSelectorUint32(k, action.ArgSig)
+		WriteSelectorInt32(&k.data, action.ArgError)
+		WriteSelectorUint32(&k.data, action.ArgSig)
 	default:
 		return fmt.Errorf("ParseMatchAction: act %d (%s) is missing a handler", act, actionTypeStringTable[act])
 	}
@@ -969,7 +983,7 @@ func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 	if len(actions) > 3 {
 		return fmt.Errorf("only %d actions are support for selector (current number of values is %d)", 3, len(actions))
 	}
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	for _, a := range actions {
 		if err := ParseMatchAction(k, &a, actionArgTable); err != nil {
 			return err
@@ -977,7 +991,7 @@ func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 	}
 
 	// No action (size value 4) defaults to post action.
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -993,7 +1007,11 @@ func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector, nstype string) ([]by
 			// the only case that we can accept and is not a uint32 is "<host_ns>"
 			// in this case we should replace that with the approproate value
 			if v == "host_ns" {
-				val = uint64(namespace.GetHostNsInode(nstype))
+				n, err := namespace.GetHostNsInode(nstype)
+				if err != nil {
+					return b, 0, fmt.Errorf("matchNamespace reading host '%s' namespace failed: %v", nstype, err)
+				}
+				val = uint64(n)
 			} else {
 				return b, 0, fmt.Errorf("Values for matchNamespace can only be numeric or \"host_ns\". (%w)", err)
 			}
@@ -1012,7 +1030,7 @@ func ParseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelec
 	if !ok {
 		return fmt.Errorf("parseMatchNamespace: actionType %s unknown", action.Namespace)
 	}
-	WriteSelectorUint32(k, ns)
+	WriteSelectorUint32(&k.data, ns)
 
 	// write operator
 	op, err := SelectorOp(action.Operator)
@@ -1022,15 +1040,15 @@ func ParseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelec
 	if (op != SelectorOpIn) && (op != SelectorOpNotIn) {
 		return fmt.Errorf("matchNamespace supports only In and NotIn operators")
 	}
-	WriteSelectorUint32(k, op)
+	WriteSelectorUint32(&k.data, op)
 
 	// write values
 	value, size, err := namespaceSelectorValue(action, nsstr)
 	if err != nil {
 		return err
 	}
-	WriteSelectorUint32(k, size/4)
-	WriteSelectorByteArray(k, value, size)
+	WriteSelectorUint32(&k.data, size/4)
+	WriteSelectorByteArray(&k.data, value, size)
 	return nil
 }
 
@@ -1042,14 +1060,14 @@ func ParseMatchNamespaces(k *KernelSelectorState, actions []v1alpha1.NamespaceSe
 	if len(actions) > max_nactions {
 		return fmt.Errorf("matchNamespace supports up to %d filters (current number of filters is %d)", max_nactions, len(actions))
 	}
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	// maybe write the number of namespace matches
 	for _, a := range actions {
 		if err := ParseMatchNamespace(k, &a); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -1062,7 +1080,7 @@ func ParseMatchNamespaceChange(k *KernelSelectorState, action *v1alpha1.Namespac
 	if (op != SelectorOpIn) && (op != SelectorOpNotIn) {
 		return fmt.Errorf("matchNamespaceChanges supports only In and NotIn operators")
 	}
-	WriteSelectorUint32(k, op)
+	WriteSelectorUint32(&k.data, op)
 
 	// process and write values
 	nsval := uint32(0)
@@ -1074,7 +1092,7 @@ func ParseMatchNamespaceChange(k *KernelSelectorState, action *v1alpha1.Namespac
 		}
 		nsval |= (1 << ns)
 	}
-	WriteSelectorUint32(k, nsval)
+	WriteSelectorUint32(&k.data, nsval)
 	return nil
 }
 
@@ -1082,17 +1100,17 @@ func ParseMatchNamespaceChanges(k *KernelSelectorState, actions []v1alpha1.Names
 	if len(actions) > 1 {
 		return fmt.Errorf("matchNamespaceChanges supports only a single filter (current number of filters is %d)", len(actions))
 	}
-	if (len(actions) == 1) && (kernels.EnableLargeProgs() == false) {
+	if (len(actions) == 1) && !kernels.EnableLargeProgs() {
 		return fmt.Errorf("matchNamespaceChanges is only supported in kernels >= 5.3")
 	}
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	// maybe write the number of namespace matches
 	for _, a := range actions {
 		if err := ParseMatchNamespaceChange(k, &a); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -1103,7 +1121,7 @@ func ParseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 	if !ok {
 		return fmt.Errorf("parseMatchCapability: actionType %s unknown", action.Type)
 	}
-	WriteSelectorUint32(k, ty)
+	WriteSelectorUint32(&k.data, ty)
 
 	// operator
 	op, err := SelectorOp(action.Operator)
@@ -1113,7 +1131,7 @@ func ParseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 	if (op != SelectorOpIn) && (op != SelectorOpNotIn) {
 		return fmt.Errorf("matchCapabilities supports only In and NotIn operators")
 	}
-	WriteSelectorUint32(k, op)
+	WriteSelectorUint32(&k.data, op)
 
 	// isnamespacecapability
 	isns := uint32(0) // false by default
@@ -1124,9 +1142,12 @@ func ParseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 		//     ignoring the user_namespace value.
 		// To implement this we pass the "/proc/1/ns/user" value as the host
 		// user namespace to compare with that inside the kernel.
-		isns = namespace.GetPidNsInode(1, "user")
+		isns, err = namespace.GetPidNsInode(1, "user")
+		if err != nil {
+			return fmt.Errorf("matchCapabilities reading pid 1 user namespace failed: %v", err)
+		}
 	}
-	WriteSelectorUint32(k, isns)
+	WriteSelectorUint32(&k.data, isns)
 
 	// values
 	caps := uint64(0)
@@ -1138,30 +1159,30 @@ func ParseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 		}
 		caps |= (1 << c)
 	}
-	WriteSelectorUint64(k, caps)
+	WriteSelectorUint64(&k.data, caps)
 
 	return nil
 }
 
 func ParseMatchCapabilities(k *KernelSelectorState, actions []v1alpha1.CapabilitiesSelector) error {
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	for _, a := range actions {
 		if err := ParseMatchCaps(k, &a); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
 func ParseMatchCapabilityChanges(k *KernelSelectorState, actions []v1alpha1.CapabilitiesSelector) error {
-	loff := AdvanceSelectorLength(k)
+	loff := AdvanceSelectorLength(&k.data)
 	for _, a := range actions {
 		if err := ParseMatchCaps(k, &a); err != nil {
 			return err
 		}
 	}
-	WriteSelectorLength(k, loff)
+	WriteSelectorLength(&k.data, loff)
 	return nil
 }
 
@@ -1170,60 +1191,44 @@ func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector, selIdx
 	if err != nil {
 		return fmt.Errorf("matchBinary error: %w", err)
 	}
-	if op != SelectorOpIn && op != SelectorOpNotIn {
-		return fmt.Errorf("matchBinary error: Only In and NotIn operators are supported")
-	}
-	k.SetBinaryOp(selIdx, op)
-	for _, s := range b.Values {
-		if len(s) > 255 {
-			return fmt.Errorf("matchBinary error: Binary names > 255 chars do not supported")
+
+	// prepare the selector options
+	sel := MatchBinariesSelectorOptions{}
+	sel.Op = op
+
+	switch op {
+	case SelectorOpIn, SelectorOpNotIn:
+		for _, s := range b.Values {
+			if len(s) > processapi.BINARY_PATH_MAX_LEN-1 {
+				return fmt.Errorf("matchBinary error: Binary names > %d chars do not supported", processapi.BINARY_PATH_MAX_LEN-1)
+			}
+			k.WriteMatchBinariesPath(selIdx, s)
 		}
-		k.AddBinaryName(selIdx, s)
+	case SelectorOpPrefix, SelectorOpNotPrefix:
+		if !kernels.EnableLargeProgs() {
+			return fmt.Errorf("matchBinary error: \"Prefix\" and \"NotPrefix\" operators need large BPF progs (kernel>5.3)")
+		}
+		sel.MapID, err = writePrefixBinaries(k, b.Values)
+		if err != nil {
+			return fmt.Errorf("failed to write the prefix operator for the matchBinaries selector: %w", err)
+		}
+	default:
+		return fmt.Errorf("matchBinary error: Only \"In\", \"NotIn\", \"Prefix\" and \"NotPrefix\" operators are supported")
 	}
+
+	k.AddMatchBinaries(selIdx, sel)
+
 	return nil
 }
 
 func ParseMatchBinaries(k *KernelSelectorState, binarys []v1alpha1.BinarySelector, selIdx int) error {
 	if len(binarys) > 1 {
-		return fmt.Errorf("Only support single binary selector")
+		return fmt.Errorf("only support a single matchBinaries per selector")
 	}
 	for _, s := range binarys {
 		if err := ParseMatchBinary(k, &s, selIdx); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func parseSelector(
-	k *KernelSelectorState,
-	selectors *v1alpha1.KProbeSelector,
-	selIdx int,
-	args []v1alpha1.KProbeArg,
-	actionArgTable *idtable.Table) error {
-	if err := ParseMatchPids(k, selectors.MatchPIDs); err != nil {
-		return fmt.Errorf("parseMatchPids error: %w", err)
-	}
-	if err := ParseMatchNamespaces(k, selectors.MatchNamespaces); err != nil {
-		return fmt.Errorf("parseMatchNamespaces error: %w", err)
-	}
-	if err := ParseMatchCapabilities(k, selectors.MatchCapabilities); err != nil {
-		return fmt.Errorf("parseMatchCapabilities error: %w", err)
-	}
-	if err := ParseMatchNamespaceChanges(k, selectors.MatchNamespaceChanges); err != nil {
-		return fmt.Errorf("parseMatchNamespaceChanges error: %w", err)
-	}
-	if err := ParseMatchCapabilityChanges(k, selectors.MatchCapabilityChanges); err != nil {
-		return fmt.Errorf("parseMatchCapabilityChanges error: %w", err)
-	}
-	if err := ParseMatchBinaries(k, selectors.MatchBinaries, selIdx); err != nil {
-		return fmt.Errorf("parseMatchBinaries error: %w", err)
-	}
-	if err := ParseMatchArgs(k, selectors.MatchArgs, args); err != nil {
-		return fmt.Errorf("parseMatchArgs  error: %w", err)
-	}
-	if err := ParseMatchActions(k, selectors.MatchActions, actionArgTable); err != nil {
-		return fmt.Errorf("parseMatchActions error: %w", err)
 	}
 	return nil
 }
@@ -1264,37 +1269,71 @@ func parseSelector(
 //
 // For some examples, see kernel_test.go
 func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg, actionArgTable *idtable.Table) ([4096]byte, error) {
-	kernelSelectors, err := InitKernelSelectorState(selectors, args, actionArgTable, nil, nil)
+	state, err := InitKernelSelectorState(selectors, args, actionArgTable, nil, nil)
 	if err != nil {
 		return [4096]byte{}, err
 	}
-	return kernelSelectors.e, nil
+	return state.data.e, nil
+}
+
+func createKernelSelectorState(selectors []v1alpha1.KProbeSelector, listReader ValueReader, maps *KernelSelectorMaps,
+	parseSelector func(k *KernelSelectorState, selectors *v1alpha1.KProbeSelector, selIdx int) error) (*KernelSelectorState, error) {
+	state := NewKernelSelectorState(listReader, maps)
+
+	WriteSelectorUint32(&state.data, uint32(len(selectors)))
+	soff := make([]uint32, len(selectors))
+	for i := range selectors {
+		soff[i] = AdvanceSelectorLength(&state.data)
+	}
+	for i, s := range selectors {
+		WriteSelectorLength(&state.data, soff[i])
+		loff := AdvanceSelectorLength(&state.data)
+		if err := parseSelector(state, &s, i); err != nil {
+			return nil, err
+		}
+		WriteSelectorLength(&state.data, loff)
+	}
+	return state, nil
 }
 
 func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg,
 	actionArgTable *idtable.Table, listReader ValueReader, maps *KernelSelectorMaps) (*KernelSelectorState, error) {
-	kernelSelectors := NewKernelSelectorState(listReader, maps)
 
-	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
-	soff := make([]uint32, len(selectors))
-	for i := range selectors {
-		soff[i] = AdvanceSelectorLength(kernelSelectors)
-	}
-	for i, s := range selectors {
-		WriteSelectorLength(kernelSelectors, soff[i])
-		loff := AdvanceSelectorLength(kernelSelectors)
-		if err := parseSelector(kernelSelectors, &s, i, args, actionArgTable); err != nil {
-			return nil, err
+	parse := func(k *KernelSelectorState, selectors *v1alpha1.KProbeSelector, selIdx int) error {
+		if err := ParseMatchPids(k, selectors.MatchPIDs); err != nil {
+			return fmt.Errorf("parseMatchPids error: %w", err)
 		}
-		WriteSelectorLength(kernelSelectors, loff)
+		if err := ParseMatchNamespaces(k, selectors.MatchNamespaces); err != nil {
+			return fmt.Errorf("parseMatchNamespaces error: %w", err)
+		}
+		if err := ParseMatchCapabilities(k, selectors.MatchCapabilities); err != nil {
+			return fmt.Errorf("parseMatchCapabilities error: %w", err)
+		}
+		if err := ParseMatchNamespaceChanges(k, selectors.MatchNamespaceChanges); err != nil {
+			return fmt.Errorf("parseMatchNamespaceChanges error: %w", err)
+		}
+		if err := ParseMatchCapabilityChanges(k, selectors.MatchCapabilityChanges); err != nil {
+			return fmt.Errorf("parseMatchCapabilityChanges error: %w", err)
+		}
+		if err := ParseMatchBinaries(k, selectors.MatchBinaries, selIdx); err != nil {
+			return fmt.Errorf("parseMatchBinaries error: %w", err)
+		}
+		if err := ParseMatchArgs(k, selectors.MatchArgs, args); err != nil {
+			return fmt.Errorf("parseMatchArgs  error: %w", err)
+		}
+		if err := ParseMatchActions(k, selectors.MatchActions, actionArgTable); err != nil {
+			return fmt.Errorf("parseMatchActions error: %w", err)
+		}
+		return nil
 	}
-	return kernelSelectors, nil
+
+	return createKernelSelectorState(selectors, listReader, maps, parse)
 }
 
 func HasOverride(spec *v1alpha1.KProbeSpec) bool {
 	for _, s := range spec.Selectors {
 		for _, action := range s.MatchActions {
-			act, _ := actionTypeTable[strings.ToLower(action.Action)]
+			act := actionTypeTable[strings.ToLower(action.Action)]
 			if act == ActionTypeOverride {
 				return true
 			}

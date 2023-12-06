@@ -6,26 +6,9 @@ package selectors
 import (
 	"encoding/binary"
 	"fmt"
-	"sync"
+
+	"github.com/cilium/tetragon/pkg/api/processapi"
 )
-
-// as we use a single names_map for all kprobes, so we have to use
-// a global variable to assign values to binary names
-var (
-	binMu  sync.Mutex
-	binIdx uint32 = 1
-	// contains all entries for the names_map
-	binVals = make(map[string]uint32)
-)
-
-type MatchBinariesMappings struct {
-	op          uint32
-	selNamesMap map[uint32]uint32 // these will be used for the sel_names_map
-}
-
-func (k *MatchBinariesMappings) GetBinSelNamesMap() map[uint32]uint32 {
-	return k.selNamesMap
-}
 
 type KernelLPMTrie4 struct {
 	prefixLen uint32
@@ -49,7 +32,7 @@ const (
 	stringMapsKeyIncSize   = 24
 	StringMapsNumSubMaps   = 6
 	MaxStringMapsSize      = 6*stringMapsKeyIncSize + 1
-	StringPrefixMaxLength  = 128
+	StringPrefixMaxLength  = 256
 	StringPostfixMaxLength = 128
 )
 
@@ -84,9 +67,18 @@ type KernelSelectorMaps struct {
 	stringPostfixMaps []map[KernelLPMTrieStringPostfix]struct{}
 }
 
-type KernelSelectorState struct {
+type MatchBinariesSelectorOptions struct {
+	Op    uint32
+	MapID uint32
+}
+
+type KernelSelectorData struct {
 	off uint32     // offset into encoding
 	e   [4096]byte // kernel encoding of selectors
+}
+
+type KernelSelectorState struct {
+	data KernelSelectorData
 
 	// valueMaps are used to populate value maps for InMap and NotInMap operators
 	valueMaps []ValueMap
@@ -97,8 +89,8 @@ type KernelSelectorState struct {
 	// addr6Maps are used to populate IPv6 address LpmTrie maps for sock and skb operators
 	addr6Maps []map[KernelLPMTrie6]struct{}
 
-	matchBinaries map[int]*MatchBinariesMappings // matchBinaries mappings (one per selector)
-	newBinVals    map[uint32]string              // these should be added in the names_map
+	matchBinaries      map[int]MatchBinariesSelectorOptions
+	matchBinariesPaths map[int][][processapi.BINARY_PATH_MAX_LEN]byte
 
 	listReader ValueReader
 
@@ -110,54 +102,44 @@ func NewKernelSelectorState(listReader ValueReader, maps *KernelSelectorMaps) *K
 		maps = &KernelSelectorMaps{}
 	}
 	return &KernelSelectorState{
-		matchBinaries: make(map[int]*MatchBinariesMappings),
-		newBinVals:    make(map[uint32]string),
-		listReader:    listReader,
-		maps:          maps,
+		matchBinaries:      make(map[int]MatchBinariesSelectorOptions),
+		matchBinariesPaths: make(map[int][][processapi.BINARY_PATH_MAX_LEN]byte),
+		listReader:         listReader,
+		maps:               maps,
 	}
 }
 
-func (k *KernelSelectorState) SetBinaryOp(selIdx int, op uint32) {
-	// init a new entry (if needed)
-	if _, ok := k.matchBinaries[selIdx]; !ok {
-		k.matchBinaries[selIdx] = &MatchBinariesMappings{
-			selNamesMap: make(map[uint32]uint32),
-		}
-	}
-	k.matchBinaries[selIdx].op = op
-}
-
-func (k *KernelSelectorState) GetBinaryOp(selIdx int) uint32 {
-	return k.matchBinaries[selIdx].op
-}
-
-func (k *KernelSelectorState) AddBinaryName(selIdx int, binary string) {
-	binMu.Lock()
-	defer binMu.Unlock()
-	idx, ok := binVals[binary]
-	if ok {
-		k.newBinVals[idx] = binary
-		k.matchBinaries[selIdx].selNamesMap[idx] = 1
-		return
-	}
-
-	idx = binIdx
-	binIdx++
-	binVals[binary] = idx                        // global map of all names_map entries
-	k.newBinVals[idx] = binary                   // new names_map entries that we should add
-	k.matchBinaries[selIdx].selNamesMap[idx] = 1 // value in the per-selector names_map (we ignore the value)
-}
-
-func (k *KernelSelectorState) GetNewBinaryMappings() map[uint32]string {
-	return k.newBinVals
-}
-
-func (k *KernelSelectorState) GetBinSelNamesMap() map[int]*MatchBinariesMappings {
+func (k KernelSelectorState) MatchBinaries() map[int]MatchBinariesSelectorOptions {
 	return k.matchBinaries
 }
 
+func (k *KernelSelectorState) AddMatchBinaries(i int, sel MatchBinariesSelectorOptions) {
+	k.matchBinaries[i] = sel
+}
+
+func (k KernelSelectorState) MatchBinariesPaths() map[int][][processapi.BINARY_PATH_MAX_LEN]byte {
+	return k.matchBinariesPaths
+}
+
+func (k *KernelSelectorState) WriteMatchBinariesPath(selectorID int, path string) {
+	var bytePath [processapi.BINARY_PATH_MAX_LEN]byte
+	copy(bytePath[:], path)
+	k.matchBinariesPaths[selectorID] = append(k.matchBinariesPaths[selectorID], bytePath)
+}
+
+// MatchBinariesPathsMaxEntries returns the maximum entries over all maps
+func (k *KernelSelectorState) MatchBinariesPathsMaxEntries() int {
+	maxEntries := 1
+	for _, vm := range k.matchBinariesPaths {
+		if l := len(vm); l > maxEntries {
+			maxEntries = l
+		}
+	}
+	return maxEntries
+}
+
 func (k *KernelSelectorState) Buffer() [4096]byte {
-	return k.e
+	return k.data.e
 }
 
 func (k *KernelSelectorState) ValueMaps() []ValueMap {
@@ -250,47 +232,47 @@ func (k *KernelSelectorState) StringPostfixMapsMaxEntries() int {
 	return maxEntries
 }
 
-func WriteSelectorInt32(k *KernelSelectorState, v int32) {
+func WriteSelectorInt32(k *KernelSelectorData, v int32) {
 	binary.LittleEndian.PutUint32(k.e[k.off:], uint32(v))
 	k.off += 4
 }
 
-func WriteSelectorUint32(k *KernelSelectorState, v uint32) {
+func WriteSelectorUint32(k *KernelSelectorData, v uint32) {
 	binary.LittleEndian.PutUint32(k.e[k.off:], v)
 	k.off += 4
 }
 
-func WriteSelectorInt64(k *KernelSelectorState, v int64) {
+func WriteSelectorInt64(k *KernelSelectorData, v int64) {
 	binary.LittleEndian.PutUint64(k.e[k.off:], uint64(v))
 	k.off += 8
 }
 
-func WriteSelectorUint64(k *KernelSelectorState, v uint64) {
+func WriteSelectorUint64(k *KernelSelectorData, v uint64) {
 	binary.LittleEndian.PutUint64(k.e[k.off:], v)
 	k.off += 8
 }
 
-func WriteSelectorLength(k *KernelSelectorState, loff uint32) {
+func WriteSelectorLength(k *KernelSelectorData, loff uint32) {
 	diff := k.off - loff
 	binary.LittleEndian.PutUint32(k.e[loff:], diff)
 }
 
-func WriteSelectorOffsetUint32(k *KernelSelectorState, loff uint32, val uint32) {
+func WriteSelectorOffsetUint32(k *KernelSelectorData, loff uint32, val uint32) {
 	binary.LittleEndian.PutUint32(k.e[loff:], val)
 }
 
-func GetCurrentOffset(k *KernelSelectorState) uint32 {
+func GetCurrentOffset(k *KernelSelectorData) uint32 {
 	return k.off
 }
 
-func WriteSelectorByteArray(k *KernelSelectorState, b []byte, size uint32) {
+func WriteSelectorByteArray(k *KernelSelectorData, b []byte, size uint32) {
 	for l := uint32(0); l < size; l++ {
 		k.e[k.off+l] = b[l]
 	}
 	k.off += size
 }
 
-func AdvanceSelectorLength(k *KernelSelectorState) uint32 {
+func AdvanceSelectorLength(k *KernelSelectorData) uint32 {
 	off := k.off
 	k.off += 4
 	return off

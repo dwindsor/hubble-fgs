@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
+
 package network
 
 import (
@@ -29,6 +30,7 @@ func GetIP(i [2]uint64, family uint16) net.IP {
 
 		binary.LittleEndian.PutUint64(a, i[0])
 		binary.LittleEndian.PutUint64(b, i[1])
+		// nolint:makezero // slices carefully manipulated like arrays
 		ip := append(a, b...)
 		return ip
 	}

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
+
 package proc
 
 import (
@@ -173,6 +174,21 @@ func GetStatsKtime(s []string) (uint64, error) {
 
 func GetProcPid(pid string) (uint64, error) {
 	return strconv.ParseUint(pid, 10, 32)
+}
+
+// GetSelfPid() Get current pid
+//
+// Returns:
+//
+//	Current pid from procfs and nil on success
+//	Zero and error on failure
+func GetSelfPid(procfs string) (uint64, error) {
+	str, err := filepath.EvalSymlinks(filepath.Join(procfs, "self"))
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(filepath.Base(str), 10, 32)
 }
 
 // Returns all parsed UIDs on success. If we fail for one value we do not
