@@ -223,7 +223,7 @@ func TestFile(t *testing.T) {
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- dd if=/dev/zero of=/tmp/testfile bs=128 count=1"))
 			if !assert.NoError(t, err, "failed to run dd") {
-				klog.Errorf("dd failed with error: %w", err)
+				klog.Errorf("dd failed with error: %s", err)
 				return ctx
 			}
 
@@ -235,7 +235,7 @@ func TestFile(t *testing.T) {
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- cat /tmp/testfile"))
 			if !assert.NoError(t, err, "failed to run cat") {
-				klog.Errorf("cat failed with error: %w", err)
+				klog.Errorf("cat failed with error: %s", err)
 				return ctx
 			}
 
@@ -247,7 +247,7 @@ func TestFile(t *testing.T) {
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- rm -f /tmp/testfile"))
 			if !assert.NoError(t, err, "failed to run rm") {
-				klog.Errorf("rm failed with error: %w", err)
+				klog.Errorf("rm failed with error: %s", err)
 				return ctx
 			}
 
@@ -259,7 +259,7 @@ func TestFile(t *testing.T) {
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- cat /etc/passwd"))
 			if !assert.NoError(t, err, "failed to run cat") {
-				klog.Errorf("cat failed with error: %w", err)
+				klog.Errorf("cat failed with error: %s", err)
 				return ctx
 			}
 
@@ -271,7 +271,7 @@ func TestFile(t *testing.T) {
 				"ubuntu",
 				strings.Fields("cat /etc/shadow"))
 			if !assert.NoError(t, err, "failed to run cat") {
-				klog.Errorf("cat failed with error: %w", err)
+				klog.Errorf("cat failed with error: %s", err)
 				return ctx
 			}
 
@@ -302,7 +302,7 @@ func TestFile(t *testing.T) {
 					"ubuntu",
 					strings.Fields(cmd))
 				if !assert.NoError(t, err, "failed to run [%s]", cmd) {
-					klog.Errorf("[%s] failed with error: %w", cmd, err)
+					klog.Errorf("[%s] failed with error: %s", cmd, err)
 					return ctx
 				}
 			}

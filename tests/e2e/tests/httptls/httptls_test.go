@@ -151,7 +151,7 @@ func TestHttp(t *testing.T) {
 				strings.Fields("curl -4 http://google.com -m 30"))
 			klog.Infof("curl output:\n%s", string(out))
 			if !assert.NoError(t, err, "failed to run curl") {
-				klog.Errorf("curl failed with error: %w", err)
+				klog.Errorf("curl failed with error: %s", err)
 				return ctx
 			}
 
@@ -196,7 +196,7 @@ func TestTls(t *testing.T) {
 				strings.Fields("curl -4 https://google.com -m 30"))
 			klog.Infof("curl output:\n%s", string(out))
 			if !assert.NoError(t, err, "failed to run curl") {
-				klog.Errorf("curl failed with error: %w", err)
+				klog.Errorf("curl failed with error: %s", err)
 				return ctx
 			}
 
