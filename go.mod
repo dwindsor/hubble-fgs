@@ -1,6 +1,6 @@
 module github.com/isovalent/hubble-fgs
 
-go 1.21.4
+go 1.21.5
 
 require (
 	github.com/cilium/cilium v1.15.0-pre.3

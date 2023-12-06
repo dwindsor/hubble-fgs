@@ -14,7 +14,7 @@ github.com/cilium/cilium/pkg/versioncheck
 ## explicit; go 1.21.4
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f => ./
-## explicit; go 1.21.4
+## explicit; go 1.21.5
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned
