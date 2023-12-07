@@ -1,0 +1,45 @@
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-exec-write-create"
+spec:
+  file:
+    file_paths:
+    - "/tmp/"
+    - "/etc/"
+    - "/boot/"
+    - "/proc/"
+    - "/sys/"
+    - "/etc/sudoers"
+    monitorHostFiles: true
+    podSelector: {}
+    selectors:
+    - matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_EXEC"
+        - "FILE_WRITE"
+        - "FILE_CREATE"
+        - "FILE_RENAME"
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-write-create"
+spec:
+  file:
+    file_paths:
+    - "/usr/bin/"
+    - "/usr/local/bin/"
+    - "/bin/"
+    - "/sbin/"
+    monitorHostFiles: true
+    podSelector: {}
+    selectors:
+    - matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_WRITE"
+        - "FILE_CREATE"
+        - "FILE_RENAME"

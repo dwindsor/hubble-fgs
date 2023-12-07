@@ -1,0 +1,13 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "l3l4networking"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+    tcp:
+      enable: true
+    dns:
+      enable: true

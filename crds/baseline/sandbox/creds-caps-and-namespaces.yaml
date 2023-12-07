@@ -1,0 +1,45 @@
+# This 'creds-caps-and-ns' Tracing Policy monitors
+# capability checks performed by the kernel when a process
+# tries a privileged operation.
+#
+# This Tracing Policy works inside a pid namespace, if you
+# want to monitor all processes including host ones, remove
+# the matchNamespaces selector.
+#
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "creds-caps-and-namespaces"
+spec:
+  kprobes:
+  - call: "sys_capset"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+  - call: "sys_setns"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+  - call: "sys_unshare"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+  - call: "sys_chroot"
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+  - call: "sys_pivot_root"
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+    - index: 1
+      type: "string"
