@@ -1112,7 +1112,7 @@ github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.6.0
 ## explicit; go 1.13
 github.com/tklauser/numcpus
-# github.com/vishvananda/netlink v1.2.1-beta.2.0.20231127184239-0ced8385386a => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact2
+# github.com/vishvananda/netlink v1.2.1-beta.2.0.20231206185938-4287122432b2
 ## explicit; go 1.12
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
@@ -2169,7 +2169,6 @@ sigs.k8s.io/yaml/goyaml.v2
 # github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
 # github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 # github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
-# github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact2
 # go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.10
 # gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 # go.universe.tf/metallb => github.com/cilium/metallb v0.1.1-0.20220829170633-5d7dfb1129f7
