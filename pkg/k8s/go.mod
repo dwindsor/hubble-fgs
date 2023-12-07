@@ -75,8 +75,6 @@ replace (
 	// Set EE pkg/k8s to be this module
 	github.com/cilium/tetragon/pkg/k8s => ./
 
-	github.com/vishvananda/netlink => github.com/kevsecurity/netlink v1.2.1-beta.2-clsact
-
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
 	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 )
