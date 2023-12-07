@@ -35,7 +35,7 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 	       struct dentry *old_dentry, const struct path *new_dir,
 	       struct dentry *new_dentry, unsigned int flags)
 {
-	struct retprobe_key k = {
+	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = 0,
 		.flags = KRETPROBE_KEY,
@@ -60,7 +60,7 @@ SEC("kretprobe/security_path_rename")
 int BPF_KRETPROBE(security_path_rename_exit, long ret)
 {
 	if (ret) {
-		struct retprobe_key k = {
+		struct file_retprobe_key k = {
 			.pid_tgid = get_current_pid_tgid(),
 			.reg = 0,
 			.flags = KRETPROBE_KEY,

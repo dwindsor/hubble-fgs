@@ -66,7 +66,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		  struct dentry *new_dentry,
 		  struct inode **delegated_inode /*, unsigned int flags */)
 {
-	struct retprobe_key k = {
+	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = 0,
 		.flags = KRETPROBE_KEY,
@@ -121,7 +121,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 				return 0;
 
 			// Now we can delete the old entry with .reg equals to zero.
-			map_delete_elem(&rename_retprobe_map, &(struct retprobe_key){
+			map_delete_elem(&rename_retprobe_map, &(struct file_retprobe_key){
 								      .pid_tgid = k.pid_tgid,
 								      .reg = 0,
 								      .flags = k.flags,
@@ -390,6 +390,7 @@ struct renamedata {
 	unsigned int flags;
 } __randomize_layout;
 
+#ifdef __LARGE_BPF_PROG
 SEC("kprobe/vfs_rename/512")
 int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 {
@@ -399,6 +400,7 @@ int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 			  d.new_dentry, d.delegated_inode);
 	return 0;
 }
+#endif
 
 SEC("kprobe/vfs_rename/419")
 int BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry,
@@ -511,7 +513,7 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 SEC("kretprobe/vfs_rename")
 int BPF_KRETPROBE(vfs_rename_exit, long ret)
 {
-	struct retprobe_key k = {
+	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
 		.flags = KRETPROBE_KEY,
@@ -527,7 +529,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	// rename failed
 	if (ret) {
 		if ((val = map_lookup_elem(&rename_retprobe_map, &k))) {
-			struct retprobe_key dkey = {
+			struct file_retprobe_key dkey = {
 				.pid_tgid = k.pid_tgid,
 				.reg = (__u64)val->old_dir,
 				.flags = LSM_FMOD_KEY,
@@ -681,7 +683,7 @@ vfs_rename_exit_out:
 #if defined(__FILE_ENFORCE_LSM) || defined(__FILE_ENFORCE_FMOD)
 static inline __attribute__((always_inline)) int security_inode_rename(void *ctx, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
 {
-	struct retprobe_key rkey = {
+	struct file_retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = (__u64)old_dir,
 		.flags = LSM_FMOD_KEY,

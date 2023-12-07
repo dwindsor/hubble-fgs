@@ -60,7 +60,7 @@ enum {
 #define KRETPROBE_KEY 0
 #define LSM_FMOD_KEY  1
 
-struct retprobe_key {
+struct file_retprobe_key {
 	__u64 pid_tgid;
 	__u64 reg;
 	__u64 flags; // KRETPROBE_KEY or LSM_FMOD_KEY

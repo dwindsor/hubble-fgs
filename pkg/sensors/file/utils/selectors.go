@@ -12,7 +12,6 @@ package file
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,14 +19,13 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
 
 const (
@@ -247,59 +245,32 @@ func (k *KernelSelectorState) GetDigestEntries() map[uint32]*SelDigests {
 	return k.digests
 }
 
-func writeBinaryMap(m *ebpf.Map, id uint32, path string) error {
-	p := [256]byte{0}
-	copy(p[:], path)
-	k := &tracing.BinaryMapKey{PathName: p}
-	v := &tracing.BinaryMapValue{Id: uint32(id)}
-	return m.Update(k, v, ebpf.UpdateAny)
-}
-
-func UpdateNamesMap(mapDir string, sel *KernelSelectorState) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, base.NamesMap.Name), nil)
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	for i, path := range sel.GetNewBinaryMappings() {
-		if err := writeBinaryMap(m, i, path); err != nil {
-			return err
+func PopulateMatchBinariesMaps(ks *KernelSelectorState, bpfMap *ebpf.Map) error {
+	for selID, sel := range ks.MatchBinaries() {
+		if err := bpfMap.Update(uint32(selID), sel, ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("failed to insert %v: %w", sel, err)
 		}
 	}
 	return nil
 }
 
-func GetMaxInnerEntriesNamesMap(sel *KernelSelectorState) uint32 {
-	maxEntries := 0
-	for _, entry := range sel.GetBinSelNamesMap() {
-		num := len(entry.GetBinSelNamesMap())
-		if num > maxEntries {
-			maxEntries = num
-		}
-	}
-	return uint32(maxEntries) + 1 // for the special entry UINT32_MAX
-}
-
-func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
-	maxEntries := GetMaxInnerEntriesNamesMap(sel)
-	for innerID, entry := range sel.GetBinSelNamesMap() {
-		entries := entry.GetBinSelNamesMap()
-		// in order kernels we should provide the maximum number of inner map entries
-		maxInnerEntries := uint32(len(entries)) + 1 // for the special entry UINT32_MAX
+func PopulateMatchBinariesPathsMaps(k *KernelSelectorState, pinPathPrefix string, outerMap *ebpf.Map) error {
+	maxEntriesFromAllSelector := k.MatchBinariesPathsMaxEntries()
+	for selectorID, paths := range k.MatchBinariesPaths() {
+		maxEntries := len(paths)
+		// Versions before 5.9 do not allow inner maps to have different sizes.
+		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
 		if !kernels.MinKernelVersion("5.9") {
-			// Versions before 5.9 do not allow inner maps to have different sizes.
-			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-			maxInnerEntries = maxEntries
+			maxEntries = maxEntriesFromAllSelector
 		}
 
-		innerName := fmt.Sprintf("file_names_map_%d", innerID)
+		innerName := fmt.Sprintf("tg_mb_path_%d", selectorID)
 		innerSpec := &ebpf.MapSpec{
 			Name:       innerName,
 			Type:       ebpf.Hash,
-			KeySize:    4, // uint32
-			ValueSize:  4, // uint32
-			MaxEntries: maxInnerEntries,
+			KeySize:    uint32(processapi.BINARY_PATH_MAX_LEN),
+			ValueSize:  uint32(1),
+			MaxEntries: uint32(maxEntries),
 		}
 		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
 			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
@@ -309,23 +280,18 @@ func GenerateFileNamesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathP
 		}
 		defer innerMap.Close()
 
-		// add a special entry (key == UINT32_MAX) that has as a value the number of matchBinaries entry
-		// if this is zero we don't have any matchBinaries selectors
-		if err := innerMap.Update(uint32(0xffffffff), sel.GetBinaryOp(innerID), ebpf.UpdateAny); err != nil {
-			return fmt.Errorf("ops: %w", err)
-		}
-
-		for idx, val := range entries {
-			if err := innerMap.Update(idx, val, ebpf.UpdateAny); err != nil {
-				return fmt.Errorf("entries: %w", err)
+		for _, path := range paths {
+			err := innerMap.Update(path, uint8(1), 0)
+			if err != nil {
+				return fmt.Errorf("failed to insert value into %s: %w", innerName, err)
 			}
 		}
 
-		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
+		if err := outerMap.Update(uint32(selectorID), uint32(innerMap.FD()), 0); err != nil {
 			return fmt.Errorf("failed to insert %s: %w", innerName, err)
 		}
-	}
 
+	}
 	return nil
 }
 
@@ -651,37 +617,41 @@ func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespace
 		return fmt.Errorf("parseMatchLinuxNamespace: filterType %s unknown", ns.Filter)
 	}
 
+	var err error
 	switch nsId {
 	case namespaceTypeUts:
 		val.Filter.UtsFilter = filterId
-		val.Ns.UtsInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.UtsInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeIpc:
 		val.Filter.IpcFilter = filterId
-		val.Ns.IpcInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.IpcInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeMnt:
 		val.Filter.MntFilter = filterId
-		val.Ns.MntInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.MntInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypePid:
 		val.Filter.PidFilter = filterId
-		val.Ns.PidInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.PidInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypePidForChildren:
 		val.Filter.PidChildFilter = filterId
-		val.Ns.PidChildInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.PidChildInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeNet:
 		val.Filter.NetFilter = filterId
-		val.Ns.NetInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.NetInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeTime:
 		val.Filter.TimeFilter = filterId
-		val.Ns.TimeInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.TimeInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeTimeForChildren:
 		val.Filter.TimeChildFilter = filterId
-		val.Ns.TimeChildInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.TimeChildInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeCgroup:
 		val.Filter.CgroupFilter = filterId
-		val.Ns.CgroupInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.CgroupInum, err = namespace.GetPidNsInode(1, nsStr)
 	case namespaceTypeUser:
 		val.Filter.UserFilter = filterId
-		val.Ns.UserInum = namespace.GetPidNsInode(1, nsStr)
+		val.Ns.UserInum, err = namespace.GetPidNsInode(1, nsStr)
+	}
+	if err != nil {
+		return fmt.Errorf("parseMatchLinuxNamespace: Failed to get root namespace for %s: %w", nsStr, err)
 	}
 	return nil
 }

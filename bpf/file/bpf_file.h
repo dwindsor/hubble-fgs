@@ -9,6 +9,9 @@
 #include "iso_msg_types.h"
 #include "bpf_process_event.h"
 #include "types/operations.h"
+#include "retprobe_map.h"
+#include "string_maps.h"
+#include "types/basic.h"
 
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
@@ -124,7 +127,7 @@ struct mnt_idmap {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct retprobe_key);
+	__type(key, struct file_retprobe_key);
 	__type(value, struct vfs_mkdir_info);
 	__uint(max_entries, 1024);
 } mkdir_retprobe_map SEC(".maps");
@@ -138,7 +141,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct retprobe_key);
+	__type(key, struct file_retprobe_key);
 	__type(value, struct vfs_rename_info);
 	__uint(max_entries, 1024);
 } rename_retprobe_map SEC(".maps");
@@ -200,6 +203,13 @@ struct {
 	__uint(max_entries, 1);
 } file_val_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct string_prefix_lpm_trie);
+	__uint(max_entries, 1);
+} file_prefix_lpm_heap SEC(".maps");
+
 struct exec_key {
 	__u64 pid_tgid;
 	__u64 bprm_ptr;
@@ -211,34 +221,6 @@ struct {
 	__type(value, struct msg_file_ops);
 	__uint(max_entries, 128);
 } exec_retprobe_map SEC(".maps");
-
-/*
- * For matchBinaries we use two maps:
- * 1. names_map: global (for all sensors) keeps a mapping from names -> ids
- * 2. file_names_maps: per-fim-sensor: keeps a mapping from selector_id -> id -> selector val
- *
- * For each selector we have a separate inner map. We choose the appropriate
- * inner map based on the selector ID.
- *
- * At exec time, we check names_map and set ->binary in execve_map equal to
- * the id stored in names_map. Assuming the binary name exists in the map,
- * otherwise binary is 0.
- *
- * When we check the selectors, use ->binary to index file_names_maps and decide
- * whether the selector matches or not.
- */
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
-	__uint(max_entries, MAX_FIM_SELECTORS);
-	__uint(key_size, sizeof(__u32)); /* selector id */
-	__array(
-		values, struct {
-			__uint(type, BPF_MAP_TYPE_HASH);
-			__uint(max_entries, 1);
-			__type(key, __u32);
-			__type(value, __u32);
-		});
-} file_names_maps SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
@@ -302,46 +284,69 @@ struct {
 } file_exec_config_map SEC(".maps");
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_binaries(__u32 sel_idx, struct execve_map_value *execve)
+static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
-	__u32 max = 0xffffffff; // UINT32_MAX
-	__u32 *op;
-	void *file_names_map;
+	struct string_prefix_lpm_trie *prefix_key;
+	struct match_binaries_sel_opts *selector_options;
+	bool match = 0;
+	void *path_map;
+	__u8 *found_key;
+	long ret;
+	int zero = 0;
 
-	file_names_map = map_lookup_elem(&file_names_maps, &sel_idx);
-	if (!file_names_map) /* no matchBinaries for this selector */
-		return 1;
+	prefix_key = map_lookup_elem(&file_prefix_lpm_heap, &zero);
+	if (!prefix_key)
+		return 0;
 
-	op = map_lookup_elem(file_names_map, &max);
-	if (op) {
-		__u32 bin_key, *bin_val;
-
-		if (!execve)
-			return 0;
-
-		bin_key = execve->binary;
-		bin_val = map_lookup_elem(file_names_map, &bin_key);
-
-		/*
-		 * The following things may happen:
-		 * binary is not part of names_map, execve_map->binary will be `0` and `bin_val` will always be `0`
-		 * binary is part of `names_map`:
-		 *  if binary is not part of this selector, bin_val will be`0`
-		 *  if binary is part of this selector: `bin_val will be `!0`
-		 */
-		if (*op == op_filter_in) {
-			if (!bin_val)
-				return 0;
-		} else if (*op == op_filter_notin) {
-			if (bin_val)
-				return 0;
-		}
-
-		return 1;
+	if (!current) {
+		// this should not happen, it means that the process was missed when
+		// scanning /proc for process that started before and after tetragon
+		return 0;
 	}
 
-	// If 'max' not found in file_names_map this means that we don't have any
-	// matchBinaries selectors.
+	// retrieve the selector_options for the matchBinaries, if it's NULL it
+	// means there is not matchBinaries in this selector.
+	selector_options = map_lookup_elem(&tg_mb_sel_opts, &selidx);
+	if (selector_options) {
+		if (selector_options->op == op_filter_none)
+			return 1; // matchBinaries selector is empty <=> match
+
+		if (current->bin.path_length < 0) {
+			// something wrong happened when copying the filename to execve_map
+			return 0;
+		}
+
+		switch (selector_options->op) {
+		case op_filter_in:
+		case op_filter_notin:
+			path_map = map_lookup_elem(&tg_mb_paths, &selidx);
+			if (!path_map)
+				return 0;
+			found_key = map_lookup_elem(path_map, current->bin.path);
+			break;
+		case op_filter_str_prefix:
+		case op_filter_str_notprefix:
+			path_map = map_lookup_elem(&string_prefix_maps, &selector_options->map_id);
+			if (!path_map)
+				return 0;
+			// prepare the key on the stack to perform lookup in the LPM_TRIE
+			memset(prefix_key, 0, sizeof(struct string_prefix_lpm_trie));
+			prefix_key->prefixlen = current->bin.path_length * 8; // prefixlen is in bits
+			ret = probe_read(prefix_key->data, current->bin.path_length & (STRING_PREFIX_MAX_LENGTH - 1), current->bin.path);
+			if (ret < 0)
+				return 0;
+			found_key = map_lookup_elem(path_map, prefix_key);
+			break;
+		default:
+			// should not happen
+			return 0;
+		}
+
+		match = !!found_key;
+		return is_not_operator(selector_options->op) ? !match : match;
+	}
+
+	// no matchBinaries selector <=> match
 	return 1;
 }
 

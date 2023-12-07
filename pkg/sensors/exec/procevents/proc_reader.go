@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -57,13 +56,14 @@ func stringToUTF8(s []byte) []byte {
 	return s
 }
 
-type Procs struct {
+type procs struct {
 	psize                uint32
 	ppid                 uint32
 	pnspid               uint32
 	pflags               uint32
 	pktime               uint64
-	pargs                []byte
+	pcmdline             []byte
+	pexe                 []byte
 	size                 uint32
 	uids                 []uint32
 	gids                 []uint32
@@ -73,7 +73,8 @@ type Procs struct {
 	auid                 uint32
 	flags                uint32
 	ktime                uint64
-	args                 []byte
+	cmdline              []byte
+	exe                  []byte
 	effective            uint64
 	inheritable          uint64
 	permitted            uint64
@@ -89,25 +90,34 @@ type Procs struct {
 	user_ns              uint32
 }
 
-func procKernel() Procs {
+func (p procs) args() []byte {
+	// exe and cmdline are already in UTF8
+	return proc.PrependPath(string(p.exe), p.cmdline)
+}
+
+func (p procs) pargs() []byte {
+	return proc.PrependPath(string(p.pexe), p.pcmdline)
+}
+
+func procKernel() procs {
 	kernelArgs := []byte("<kernel>\u0000")
-	return Procs{
+	return procs{
 		psize:       uint32(processapi.MSG_SIZEOF_EXECVE + len(kernelArgs) + processapi.MSG_SIZEOF_CWD),
 		ppid:        kernelPid,
 		pnspid:      0,
 		pflags:      api.EventProcFS,
 		pktime:      1,
-		pargs:       kernelArgs,
+		pexe:        kernelArgs,
 		size:        uint32(processapi.MSG_SIZEOF_EXECVE + len(kernelArgs) + processapi.MSG_SIZEOF_CWD),
-		uids:        []uint32{0, 0, 0, 0},
-		gids:        []uint32{0, 0, 0, 0},
 		pid:         kernelPid,
 		tid:         kernelPid,
 		nspid:       0,
 		auid:        0,
 		flags:       api.EventProcFS,
 		ktime:       1,
-		args:        kernelArgs,
+		exe:         kernelArgs,
+		uids:        []uint32{0, 0, 0, 0},
+		gids:        []uint32{0, 0, 0, 0},
 		effective:   0,
 		inheritable: 0,
 		permitted:   0,
@@ -135,10 +145,50 @@ func getCWD(pid uint32) (string, uint32) {
 	return cwd, flags
 }
 
-func pushExecveEvents(p Procs) {
+func pushExecveEvents(p procs) {
 	var err error
 
-	args, filename := procsFilename(p.args)
+	/* If we can't fit this in the buffer lets trim some parts and
+	 * make it fit.
+	 */
+	raw_args := p.args()
+	raw_pargs := p.pargs()
+
+	if p.size+p.psize > processapi.MSG_SIZEOF_BUFFER {
+		var deduct uint32
+		var need int32
+
+		need = int32((p.size + p.psize) - processapi.MSG_SIZEOF_BUFFER)
+		// First consume CWD space from parent because this speculative extra space
+		// next try to consume CWD space from child and finally start truncating args
+		// if necessary.
+		deduct = processapi.MSG_SIZEOF_CWD
+		p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
+		p.pflags = p.pflags | api.EventNoCWDSupport
+		p.psize -= deduct
+		need -= int32(deduct)
+		if need > 0 {
+			deduct = processapi.MSG_SIZEOF_CWD
+			p.size -= deduct
+			p.flags = p.flags & ^uint32(api.EventNeedsCWD)
+			p.flags = p.flags | api.EventNoCWDSupport
+			need -= int32(deduct)
+		}
+
+		for i := int32(0); i < need; i++ {
+			if len(raw_pargs) > len(raw_args) {
+				p.pflags |= api.EventTruncArgs
+				raw_pargs = raw_pargs[:len(raw_pargs)-1]
+				p.psize--
+			} else {
+				p.flags |= api.EventTruncArgs
+				raw_args = raw_args[:len(raw_args)-1]
+				p.size--
+			}
+		}
+	}
+
+	args, filename := procsFilename(raw_args)
 	cwd, flags := getCWD(p.pid)
 	if (flags & api.EventRootCWD) == 0 {
 		args = args + " " + cwd
@@ -151,9 +201,11 @@ func pushExecveEvents(p Procs) {
 	m.Kube.NetNS = 0
 	m.Kube.Cid = 0
 	m.Kube.Cgrpid = 0
-	m.Kube.Docker, err = procsDockerId(p.pid)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
+	if p.pid > 0 {
+		m.Kube.Docker, err = procsDockerId(p.pid)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
+		}
 	}
 
 	m.Parent.Pid = p.ppid
@@ -211,7 +263,7 @@ func updateExecveMapStats(procs int64) {
 	}
 }
 
-func writeExecveMap(procs []Procs) {
+func writeExecveMap(procs []procs) {
 	mapDir := bpf.MapPrefixPath()
 
 	execveMap := base.GetExecveMap()
@@ -249,8 +301,13 @@ func writeExecveMap(procs []Procs) {
 		v.Namespaces.TimeChildInum = p.time_for_children_ns
 		v.Namespaces.CgroupInum = p.cgroup_ns
 		v.Namespaces.UserInum = p.user_ns
+		pathLength := copy(v.Binary.Path[:], p.exe)
+		v.Binary.PathLength = int64(pathLength)
 
-		m.Put(k, v)
+		err := m.Put(k, v)
+		if err != nil {
+			logger.GetLogger().WithField("value", v).WithError(err).Warn("failed to put value in execve_map")
+		}
 	}
 	// In order for kprobe events from kernel ctx to not abort we need the
 	// execve lookup to map to a valid entry. So to simplify the kernel side
@@ -270,7 +327,7 @@ func writeExecveMap(procs []Procs) {
 	updateExecveMapStats(int64(len(procs)))
 }
 
-func pushEvents(procs []Procs) {
+func pushEvents(procs []procs) {
 	writeExecveMap(procs)
 
 	sort.Slice(procs, func(i, j int) bool {
@@ -282,18 +339,13 @@ func pushEvents(procs []Procs) {
 	}
 }
 
-func GetRunningProcs() []Procs {
-	var procs []Procs
+func listRunningProcs(procPath string) ([]procs, error) {
+	var processes []procs
 
-	procFS, err := os.ReadDir(option.Config.ProcFS)
+	procFS, err := os.ReadDir(procPath)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
-		return nil
+		return nil, err
 	}
-
-	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	// time and time_for_children namespaces introduced in kernel 5.6
-	hasTimeNs := (int64(kernelVer) >= kernels.KernelStringToNumeric("5.6.0"))
 
 	for _, d := range procFS {
 		var pcmdline []byte
@@ -302,11 +354,11 @@ func GetRunningProcs() []Procs {
 		var pexecPath string
 		var pnspid uint32
 
-		if d.IsDir() == false {
+		if !d.IsDir() {
 			continue
 		}
 
-		pathName := filepath.Join(option.Config.ProcFS, d.Name())
+		pathName := filepath.Join(procPath, d.Name())
 
 		cmdline, err := os.ReadFile(filepath.Join(pathName, "cmdline"))
 		if err != nil {
@@ -364,32 +416,65 @@ func GetRunningProcs() []Procs {
 			}
 		}
 
-		nspid, permitted, effective, inheritable := caps.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
+		nspid, permitted, effective, inheritable := caps.GetPIDCaps(filepath.Join(procPath, d.Name(), "status"))
 
-		uts_ns := namespace.GetPidNsInode(uint32(pid), "uts")
-		ipc_ns := namespace.GetPidNsInode(uint32(pid), "ipc")
-		mnt_ns := namespace.GetPidNsInode(uint32(pid), "mnt")
-		pid_ns := namespace.GetPidNsInode(uint32(pid), "pid")
-		pid_for_children_ns := namespace.GetPidNsInode(uint32(pid), "pid_for_children")
-		net_ns := namespace.GetPidNsInode(uint32(pid), "net")
+		uts_ns, err := namespace.GetPidNsInode(uint32(pid), "uts")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading uts namespace failed")
+		}
+		ipc_ns, err := namespace.GetPidNsInode(uint32(pid), "ipc")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading ipc namespace failed")
+		}
+		mnt_ns, err := namespace.GetPidNsInode(uint32(pid), "mnt")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading mnt namespace failed")
+		}
+		pid_ns, err := namespace.GetPidNsInode(uint32(pid), "pid")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading pid namespace failed")
+		}
+		pid_for_children_ns, err := namespace.GetPidNsInode(uint32(pid), "pid_for_children")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading pid_for_children namespace failed")
+		}
+		net_ns, err := namespace.GetPidNsInode(uint32(pid), "net")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading net namespace failed")
+		}
 		time_ns := uint32(0)
 		time_for_children_ns := uint32(0)
-		if hasTimeNs {
-			time_ns = namespace.GetPidNsInode(uint32(pid), "time")
-			time_for_children_ns = namespace.GetPidNsInode(uint32(pid), "time_for_children")
+		if namespace.TimeNsSupport {
+			time_ns, err = namespace.GetPidNsInode(uint32(pid), "time")
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Reading time namespace failed")
+			}
+			time_for_children_ns, err = namespace.GetPidNsInode(uint32(pid), "time_for_children")
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Reading time_for_children namespace failed")
+			}
 		}
-		cgroup_ns := namespace.GetPidNsInode(uint32(pid), "cgroup")
-		user_ns := namespace.GetPidNsInode(uint32(pid), "user")
+		cgroup_ns, err := namespace.GetPidNsInode(uint32(pid), "cgroup")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading cgroup namespace failed")
+		}
+		user_ns, err := namespace.GetPidNsInode(uint32(pid), "user")
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Reading user namespace failed")
+		}
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
 		dockerId, _ := procsDockerId(uint32(pid))
 		if dockerId == "" {
+			// If we do not have a container ID, then set nspid to zero.
+			// This field is used to construct the pod information to
+			// identify pids inside the container.
 			nspid = 0
 		}
 
 		if _ppid != 0 {
 			var err error
-			parentPath := filepath.Join(option.Config.ProcFS, ppid)
+			parentPath := filepath.Join(procPath, ppid)
 
 			pcmdline, err = os.ReadFile(filepath.Join(parentPath, "cmdline"))
 			if err != nil {
@@ -409,7 +494,8 @@ func GetRunningProcs() []Procs {
 			}
 
 			if dockerId != "" {
-				pnspid, _, _, _ = caps.GetPIDCaps(filepath.Join(option.Config.ProcFS, ppid, "status"))
+				// We have a container ID so let's get the nspid inside.
+				pnspid, _, _, _ = caps.GetPIDCaps(filepath.Join(procPath, ppid, "status"))
 			}
 		} else {
 			pcmdline = nil
@@ -418,34 +504,35 @@ func GetRunningProcs() []Procs {
 			pnspid = 0
 		}
 
-		execPath, err := os.Readlink(filepath.Join(option.Config.ProcFS, d.Name(), "exe"))
-		if err == nil {
-			cmdline = proc.PrependPath(execPath, cmdline)
+		execPath, err := os.Readlink(filepath.Join(procPath, d.Name(), "exe"))
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("process", d.Name()).Warnf("reading process exe error")
 		}
 
 		if _ppid != 0 {
-			pexecPath, err = os.Readlink(filepath.Join(option.Config.ProcFS, ppid, "exe"))
-			if err == nil {
-				pcmdline = proc.PrependPath(pexecPath, pcmdline)
+			pexecPath, err = os.Readlink(filepath.Join(procPath, ppid, "exe"))
+			if err != nil {
+				logger.GetLogger().WithError(err).WithField("process", ppid).Warnf("reading process exe error")
 			}
 		} else {
 			pexecPath = ""
 		}
 
-		pcmdsUTF := stringToUTF8(pcmdline)
-		cmdsUTF := stringToUTF8(cmdline)
-
-		p := Procs{
-			ppid: uint32(_ppid), pnspid: pnspid, pargs: pcmdsUTF,
+		p := procs{
+			ppid:                 uint32(_ppid),
+			pnspid:               pnspid,
+			pexe:                 stringToUTF8([]byte(pexecPath)),
+			pcmdline:             stringToUTF8(pcmdline),
 			pflags:               api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			pktime:               pktime,
 			uids:                 uids,
 			gids:                 gids,
 			auid:                 auid,
 			pid:                  uint32(pid),
-			nspid:                nspid,
-			args:                 cmdsUTF,
 			tid:                  uint32(pid), // Read dir does not return threads and we only track tgid
+			nspid:                nspid,
+			exe:                  stringToUTF8([]byte(execPath)),
+			cmdline:              stringToUTF8(cmdline),
 			flags:                api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			ktime:                ktime,
 			permitted:            permitted,
@@ -463,49 +550,24 @@ func GetRunningProcs() []Procs {
 			user_ns:              user_ns,
 		}
 
-		p.size = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.args) + processapi.MSG_SIZEOF_CWD)
-		p.psize = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.pargs) + processapi.MSG_SIZEOF_CWD)
-		/* If we can't fit this in the buffer lets trim some parts and
-		 * make it fit.
-		 */
-		if p.size+p.psize > processapi.MSG_SIZEOF_BUFFER {
-			var deduct uint32
-			var need int32
+		p.size = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.args()) + processapi.MSG_SIZEOF_CWD)
+		p.psize = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.pargs()) + processapi.MSG_SIZEOF_CWD)
 
-			need = int32((p.size + p.psize) - processapi.MSG_SIZEOF_BUFFER)
-			// First consume CWD space from parent because this speculative extra space
-			// next try to consume CWD space from child and finally start truncating args
-			// if necessary.
-			deduct = processapi.MSG_SIZEOF_CWD
-			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
-			p.pflags = p.pflags | api.EventNoCWDSupport
-			p.psize -= deduct
-			need -= int32(deduct)
-			if need > 0 {
-				deduct = processapi.MSG_SIZEOF_CWD
-				p.size -= deduct
-				p.flags = p.flags & ^uint32(api.EventNeedsCWD)
-				p.flags = p.flags | api.EventNoCWDSupport
-				need -= int32(deduct)
-			}
-
-			for i := int32(0); i < need; i++ {
-				if len(p.pargs) > len(p.args) {
-					p.pflags |= api.EventTruncArgs
-					p.pargs = p.pargs[:len(p.pargs)-1]
-					p.psize--
-				} else {
-					p.flags |= api.EventTruncArgs
-					p.args = p.args[:len(p.args)-1]
-					p.size--
-				}
-			}
-		}
-
-		procs = append(procs, p)
+		processes = append(processes, p)
 	}
-	logger.GetLogger().Infof("Enterprise Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
+
+	logger.GetLogger().Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(processes), len(procFS))
+
+	return processes, nil
+}
+
+func GetRunningProcs() error {
+	procs, err := listRunningProcs(option.Config.ProcFS)
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("Failed to list running processes from '%s'", option.Config.ProcFS)
+		return err
+	}
 
 	pushEvents(procs)
-	return procs
+	return nil
 }

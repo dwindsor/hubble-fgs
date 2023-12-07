@@ -109,7 +109,7 @@ func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
 }
 
 func createMntNs(inum uint32) *tetragon.Namespace {
-	hostNs := namespace.GetHostNamespace()
+	hostNs, _ := namespace.InitHostNamespace()
 	return &tetragon.Namespace{
 		Inum:   inum,
 		IsHost: hostNs.Mnt.Inum == inum,

@@ -6,7 +6,7 @@ static inline __attribute__((always_inline)) void
 fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_file_ops *msg, int action, __u32 op)
 {
 	struct vfs_mkdir_info *value;
-	struct retprobe_key rkey = {
+	struct file_retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
 		.flags = KRETPROBE_KEY,
@@ -170,7 +170,7 @@ int BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t
 SEC("kretprobe/vfs_mkdir")
 int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 {
-	struct retprobe_key rkey = {
+	struct file_retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = PT_REGS_FP_CORE(ctx),
 		.flags = KRETPROBE_KEY,
@@ -187,7 +187,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	if (ret) {
 		if ((val = map_lookup_elem(&mkdir_retprobe_map, &rkey))) {
-			struct retprobe_key dkey = {
+			struct file_retprobe_key dkey = {
 				.pid_tgid = rkey.pid_tgid,
 				.reg = (__u64)val->dentry,
 				.flags = LSM_FMOD_KEY,
@@ -275,7 +275,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 #if defined(__FILE_ENFORCE_LSM) || defined(__FILE_ENFORCE_FMOD)
 static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	struct retprobe_key rkey = {
+	struct file_retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
 		.reg = (__u64)dentry,
 		.flags = LSM_FMOD_KEY,
