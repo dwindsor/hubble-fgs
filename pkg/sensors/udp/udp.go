@@ -117,6 +117,40 @@ var (
 		"tg_udp_destroy_sock",
 		"kprobe")
 
+	SkUdpBind = program.Builder(
+		"bpf_udp_bind.o",
+		"__cgroup_bpf_run_filter_sk",
+		"kprobe/__cgroup_bpf_run_filter_sk",
+		"tg_udp_bind_sock",
+		"kprobe",
+	)
+
+	SkUdpBind_5_15 = program.Builder(
+		"bpf_udp_bind_5_15.o",
+		"__cgroup_bpf_run_filter_sk",
+		"kprobe/__cgroup_bpf_run_filter_sk",
+		"tg_udp_bind_sock",
+		"kprobe",
+	)
+
+	// Dummy (NOP) programs need to be attached to the cgroup hooks in order to cause the __cgroup_bpf_run_filter_sk
+	// hook to be called (5.10+).
+	SkUdpBindDummy4 = program.Builder(
+		"bpf_udp_bind_dummy.o",
+		"inet4_bind_dummy",
+		"cgroup/post_bind4",
+		"tg_udp_bind_dummy4",
+		"cgrp_inet4_bind",
+	)
+
+	SkUdpBindDummy6 = program.Builder(
+		"bpf_udp_bind_dummy.o",
+		"inet6_bind_dummy",
+		"cgroup/post_bind6",
+		"tg_udp_bind_dummy6",
+		"cgrp_inet6_bind",
+	)
+
 	InetSend = program.Builder(
 		"bpf_inet_send.o",
 		"inet_send",
@@ -669,17 +703,18 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		ip.LoadSockets(FdCallback, unix.IPPROTO_UDP)
 	}
 
-	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
+	switch args.Load.Type {
+	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
-	} else if args.Load.Type == "kprobe_udp" {
+	case "kprobe_udp":
 		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
-	} else if args.Load.Type == "udp_tc_egress" {
+	case "udp_tc_egress":
 		err := networklatency.AttachTc(args)
 		if err != nil {
 			return err
@@ -760,6 +795,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
+			SkUdpBind,
 			InetSendRecvLazy,
 			Udp4Send,
 			Udp4RetSend,
@@ -784,6 +820,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
+			SkUdpBind,
 			InetSendLazy,
 			InetRecvLazy,
 			Udp4Send,
@@ -809,10 +846,45 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
+	} else if !kernels.MinKernelVersion("5.15.0") {
+		progs = []*program.Program{
+			SkUdpAlloc,
+			SkUdpDestroy,
+			SkUdpBind,
+			SkUdpBindDummy4,
+			SkUdpBindDummy6,
+			InetSend,
+			InetRecv,
+			Udp4Send,
+			Udp4RetSend,
+			Udp6Send,
+			Udp6RetSend,
+			UdpRecv,
+		}
+		maps = []*program.Map{
+			UdpMap,
+			UdpRetprobeMap,
+			UdpRetprobeStats,
+			UdpConfigMap,
+			UdpPayloadMap,
+			SocketCookieMap,
+			SocketCookieStats,
+			SocketTupleMap,
+			SocketTupleStats,
+			SocketTupleHintMap,
+			CfgMap,
+			FdLookupConfigMap,
+			LatencyConfigMap,
+		}
+		dns.LazyDns = false
+		versionStr = "__udp_sensor_probe__"
 	} else {
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
+			SkUdpBind_5_15,
+			SkUdpBindDummy4,
+			SkUdpBindDummy6,
 			InetSend,
 			InetRecv,
 			Udp4Send,
@@ -924,7 +996,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	msgUnix := ip.MsgToIPUnix(&m, false, true)
 
-	if m.Common.Op == ops.MSG_OP_UDPCONNECT {
+	switch m.Common.Op {
+	case ops.MSG_OP_UDPCONNECT:
 		// Store the pseudo-socket against this cookie
 		pseudoSocketsUpdate.Lock()
 		pseudoSockList := pseudoSockets[m.SockCookie]
@@ -933,7 +1006,10 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		pseudoSockets[m.SockCookie][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
 		pseudoSocketsUpdate.Unlock()
-	} else if m.Common.Op == ops.MSG_OP_UDPCLOSE {
+		if disableConnectEvents {
+			return []observer.Event{}, nil
+		}
+	case ops.MSG_OP_UDPCLOSE:
 		// Close event contains the socket cookie that was closed. We use this
 		// as a key into the pseudoSockets map to retrieve the list of pseudo-
 		// sockets. Then we send a stats event and a close event for each one,
@@ -1009,9 +1085,6 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 		return closeEvents, nil
 	}
-	if disableConnectEvents {
-		return []observer.Event{}, nil
-	}
 	return []observer.Event{msgUnix}, nil
 }
 
@@ -1062,6 +1135,7 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPLISTEN, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
@@ -1069,6 +1143,8 @@ func AddUDP() {
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
+	sensors.RegisterProbeType("cgrp_inet4_bind", udp)
+	sensors.RegisterProbeType("cgrp_inet6_bind", udp)
 	sensors.RegisterProbeType("kprobe_udp", udp)
 	sensors.RegisterProbeType("udp_tc_egress", udp)
 }
