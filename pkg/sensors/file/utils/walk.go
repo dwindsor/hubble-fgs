@@ -273,7 +273,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			l.Infof("%s", err.Error())
+			l.Debugf("%s", err.Error())
 			return nil
 		}
 
@@ -286,7 +286,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 		if IsSymlink(mode) {
 			link, err := filepath.EvalSymlinks(path)
 			if err != nil {
-				l.WithError(err).Infof("Cannot resolve symlink %s", link)
+				l.WithError(err).Debugf("Cannot resolve symlink %s", link)
 				return nil
 			}
 			path = link
@@ -423,7 +423,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 
 		flInfo, statErr := os.Lstat(path)
 		if statErr != nil {
-			l.Infof("%s", statErr.Error())
+			l.Debugf("%s", statErr.Error())
 			return 0, 0, statErr
 		}
 
