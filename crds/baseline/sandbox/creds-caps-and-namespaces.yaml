@@ -12,13 +12,19 @@ metadata:
   name: "creds-caps-and-namespaces"
 spec:
   kprobes:
-  - call: "sys_capset"
-    syscall: true
+  - call: "security_capset"
+    syscall: false
     args:
     - index: 0
-      type: "int"
+      type: "nop"
     - index: 1
-      type: "int"
+      type: "cred"
+    - index: 2
+      type: "uint64"
+    - index: 3
+      type: "uint64"
+    - index: 4
+      type: "uint64"
   - call: "sys_setns"
     syscall: true
     args:
