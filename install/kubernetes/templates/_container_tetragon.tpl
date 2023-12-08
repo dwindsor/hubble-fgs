@@ -83,6 +83,8 @@
 
 {{- define "container.tetragon.init" -}}
 - name: {{ include "container.tetragon.name" . }}-init
+  securityContext:
+    {{- toYaml .Values.enterprise.securityContext | nindent 4 }}
   image: "{{ if .Values.tetragon.metadata.image.override }}{{ .Values.tetragon.metadata.image.override }}{{ else }}{{ .Values.tetragon.metadata.image.repository }}:{{ .Values.tetragon.metadata.image.tag }}{{ end }}"
 {{- if .Values.tetragon.metadata.image.imagePullPolicy }}
   imagePullPolicy: {{ .Values.tetragon.metadata.image.imagePullPolicy }}
