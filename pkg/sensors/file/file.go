@@ -467,7 +467,7 @@ func startFsScanner() (*exec.Cmd, error) {
 		if retry > 10 {
 			return nil, fmt.Errorf("failed to start hubble-fgs-fs-scanner")
 		}
-		logger.GetLogger().Warnf("hubble-fgs-fs-scanner fifo does not exist [retry = %d]", retry)
+		logger.GetLogger().Infof("hubble-fgs-fs-scanner fifo does not exist [retry = %d]", retry)
 		time.Sleep(2 * time.Second)
 		retry++
 	}
