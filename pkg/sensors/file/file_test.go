@@ -730,8 +730,8 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 }
 
 func TestLoadFileSensor(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
@@ -2355,8 +2355,8 @@ func testFileExecInterpreter(gt *testing.T, t *testing.T) {
 }
 
 func TestFileOps(t *testing.T) {
-	if !kernels.MinKernelVersion("4.19.0") {
-		t.Skip("File monitoring requires at least 4.19.0 version")
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
