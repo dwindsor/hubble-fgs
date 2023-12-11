@@ -25,6 +25,8 @@ spec:
         interfaces: ["lo"]
         maxPacketSize: 1500
         interfacesCheckInterval: 1
+      disableEvents:
+        disableListen: true
     networkWatermarksExitGen:
       enable: true
       interval: 1000

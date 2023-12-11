@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
 	"golang.org/x/sys/unix"
@@ -139,6 +140,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (ConfigValue, networklatency
 	ParseUdpWatermarksSpec(&config, spec)
 	latencyConfig, _ := networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
 	ParseSeqCheckSpec(&config, spec)
+	ParseDisableSpec(spec)
 
 	return config, latencyConfig
 }
@@ -229,4 +231,14 @@ func ParseSeqCheckSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	} else {
 		config.seqCheckAppId = 0
 	}
+}
+
+func ParseDisableSpec(spec *v1alpha1.TracingPolicySpec) {
+	disableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
+	disableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
+	disableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
+	disableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+	logger.GetLogger().WithField("disableEvents", spec.Parser.Udp.DisableEvents).Warn("UDP")
+	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": disableCloseEvents, "disableListen": disableListenEvents,
+		"disableClose": disableCloseEvents, "disableStats": disableStatsEvents}).Info("UDP event types")
 }

@@ -89,6 +89,7 @@ var (
 	timestampEnabled = false
 
 	disableConnectEvents = false
+	disableListenEvents  = false
 	disableCloseEvents   = false
 	disableStatsEvents   = false
 )
@@ -663,6 +664,20 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 		return
 	}
 
+	udp := layer3.MsgIPEventUnix{}
+
+	if socket.State == unix.BPF_TCP_CLOSE {
+		if disableListenEvents {
+			return
+		}
+		udp.Common.Op = ops.MsgOpUDPListen
+	} else {
+		if disableConnectEvents {
+			return
+		}
+		udp.Common.Op = ops.MsgOpUDPConnect
+	}
+
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
 	stats, err := proc.GetProcStatStrings(pathName)
 	if err != nil {
@@ -672,8 +687,6 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	if err != nil {
 		return
 	}
-
-	udp := layer3.MsgIPEventUnix{}
 
 	udp.ProcessKey.Pid = pid
 	udp.ProcessKey.Ktime = ktime
@@ -688,12 +701,6 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	udp.Tuple.SPort = socket.Sport
 	udp.Tuple.Proto = 2
 	udp.SockCookie = socket.Sockaddr
-
-	if socket.State == unix.BPF_TCP_CLOSE {
-		udp.Common.Op = ops.MsgOpUDPListen
-	} else {
-		udp.Common.Op = ops.MsgOpUDPConnect
-	}
 
 	observer.AllListeners(&udp)
 }
@@ -795,13 +802,15 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			SkUdpBind,
 			InetSendRecvLazy,
 			Udp4Send,
 			Udp4RetSend,
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+		}
+		if !disableListenEvents {
+			progs = append(progs, SkUdpBind)
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
@@ -820,7 +829,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			SkUdpBind,
 			InetSendLazy,
 			InetRecvLazy,
 			Udp4Send,
@@ -828,6 +836,9 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+		}
+		if !disableListenEvents {
+			progs = append(progs, SkUdpBind)
 		}
 		maps = []*program.Map{
 			UdpMapLazy,
@@ -850,9 +861,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			SkUdpBind,
-			SkUdpBindDummy4,
-			SkUdpBindDummy6,
 			InetSend,
 			InetRecv,
 			Udp4Send,
@@ -860,6 +868,9 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+		}
+		if !disableListenEvents {
+			progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
 			UdpMap,
@@ -882,9 +893,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			SkUdpBind_5_15,
-			SkUdpBindDummy4,
-			SkUdpBindDummy6,
 			InetSend,
 			InetRecv,
 			Udp4Send,
@@ -892,6 +900,9 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+		}
+		if !disableListenEvents {
+			progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
 			UdpMap,
@@ -982,9 +993,6 @@ func (udp *udpSensor) PolicyHandler(
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
-	disableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
-	disableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
-	disableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
 }
 

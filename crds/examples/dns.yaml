@@ -8,5 +8,7 @@ spec:
       enable: true
       cgroup: true
       deleteIdleSocketInterval: 60
+      disableEvents:
+        disableListen: true
     dns:
       enable: true

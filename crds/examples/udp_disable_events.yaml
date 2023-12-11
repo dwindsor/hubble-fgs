@@ -27,6 +27,7 @@ spec:
         interfacesCheckInterval: 1
       disableEvents:
         disableConnect: true
+        disableListen: true
         disableClose: true
         disableStats: true
     networkWatermarksExitGen:

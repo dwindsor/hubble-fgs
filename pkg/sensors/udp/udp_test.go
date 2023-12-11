@@ -196,6 +196,28 @@ spec:
       disableEvents:
         disableClose: `
 
+const udpL7ConfigDisableListen = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    dns:
+      enable: true
+      ports: [53]
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 20
+      deleteIdleSocketInterval: 60
+      seqCheck:
+        enable: true
+        appId: 1
+        ports: [31337]
+      disableEvents:
+        disableListen: `
+
 const udpConfigBasic = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -756,11 +778,12 @@ func getUdpObserverWithLatencyDetection(t *testing.T, ctx context.Context) *obse
 	return getUdpObserver(t, ctx, udpConfigWithLatencyDetection)
 }
 
-func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConnect bool, disableClose bool, disableStats bool) *observer.Observer {
+func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) *observer.Observer {
 	eventDisableConfig := `
       disableEvents:
 `
 	eventDisableConfig += "\n        disableConnect: " + strconv.FormatBool(disableConnect)
+	eventDisableConfig += "\n        disableListen: " + strconv.FormatBool(disableListen)
 	eventDisableConfig += "\n        disableClose: " + strconv.FormatBool(disableClose)
 	eventDisableConfig += "\n        disableStats: " + strconv.FormatBool(disableStats)
 
@@ -1023,7 +1046,7 @@ func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableSt
 				WithSourcePort(8081)),
 	)
 
-	obs := getUdpObserverDisableEvents(t, ctx, disableConnect, true, disableStats)
+	obs := getUdpObserverDisableEvents(t, ctx, disableConnect, true, true, disableStats)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1961,6 +1984,63 @@ func TestDisableClose(t *testing.T) {
 
 func TestNoDisableClose(t *testing.T) {
 	testDisableCloseConfig(t, false)
+}
+
+func testDisableListenConfig(t *testing.T, disableListen bool) {
+	bpf.CheckOrMountCgroup2()
+
+	serverProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-server"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessListenChecker("serverListen").
+			WithProcess(serverProcess),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	disableListenConfig := udpL7ConfigDisableListen + strconv.FormatBool(disableListen)
+	if err := observertesthelper.WriteConfigFile(testConfigFile, disableListenConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	base := base.GetInitialSensor()
+	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	metricsconfig.RegisterEEMetrics()
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	serverCmd := exec.Command(os.Args[0], "-server")
+	serverOutput, err := serverCmd.StdoutPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	serverCmd.Stderr = os.Stderr
+
+	err = serverCmd.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverOutput)
+	serverBuf.ReadLine()
+
+	err = jsonchecker.JsonTestCheckExpect(t, checker, disableListen)
+
+	killAndWaitCommand(t, serverCmd)
+
+	assert.NoError(t, err)
+}
+
+func TestDisableListen(t *testing.T) {
+	testDisableListenConfig(t, true)
+}
+
+func TestNoDisableListen(t *testing.T) {
+	testDisableListenConfig(t, false)
 }
 
 func udpGcMetricGet(ty socketmetrics.UDPGCType) float64 {

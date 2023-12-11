@@ -1513,6 +1513,10 @@ spec:
                             default: false
                             description: Disable connect events
                             type: boolean
+                          disableListen:
+                            default: false
+                            description: Disable listen events
+                            type: boolean
                           disableStats:
                             default: false
                             description: Disable stats events, write to metrics directly

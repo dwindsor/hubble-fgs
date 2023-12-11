@@ -640,6 +640,10 @@ type UdpEventDisablePolicySpec struct {
 	DisableConnect bool `json:"disableConnect"`
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional
+	// Disable listen events
+	DisableListen bool `json:"disableListen"`
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
 	// Disable close events
 	DisableClose bool `json:"disableClose"`
 	// +kubebuilder:default=false

@@ -21,6 +21,8 @@ spec:
     udp:
       enable: true
       cgroup: true
+      disableEvents:
+        disableListen: true
     dns:
       enable: true
     tcp:
