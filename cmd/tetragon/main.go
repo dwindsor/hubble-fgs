@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
@@ -46,6 +47,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/pidfile"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/server"
@@ -382,12 +384,35 @@ func hubbleFGSExecute() error {
 	log.WithField("version", version.Version).Info("Starting Tetragon Enterprise")
 	log.WithField("config", viper.AllSettings()).Info("config settings")
 
+	// When an instance terminates or restarts it may cleanup bpf programs,
+	// having a check here to see if another instance is already running, can
+	// help debug errors.
+	pid, err := pidfile.Create()
+	if err != nil {
+		// Log error but do not fail
+		log.WithError(err).WithField("pid", pid).Warn("Tetragon pid file creation failed")
+	} else {
+		log.WithFields(logrus.Fields{
+			"pid":     pid,
+			"pidfile": defaults.DefaultPidFile,
+		}).Info("Tetragon pid file creation succeeded")
+	}
+	defer pidfile.Delete()
+
 	if viper.IsSet(keyNetnsDir) {
 		defaults.NetnsDir = viper.GetString(keyNetnsDir)
 	}
 
 	if err := checkStructAlignments(); err != nil {
 		return fmt.Errorf("struct alignment checks failed: %w", err)
+	}
+
+	// Initialize namespaces here. On errors fail, there is
+	// no point to continue if read/ptrace on /proc/1/ fails.
+	// Providing correct information can't be achieved anyway.
+	_, err = namespace.InitHostNamespace()
+	if err != nil {
+		log.WithField("procfs", option.Config.ProcFS).WithError(err).Fatalf("Failed to initialize host namespaces")
 	}
 
 	// Setup file system mounts
@@ -500,7 +525,7 @@ func hubbleFGSExecute() error {
 	obs.RemovePrograms()
 	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
 
-	err := btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
+	err = btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
