@@ -412,6 +412,7 @@ github.com/cilium/tetragon/pkg/strutils
 github.com/cilium/tetragon/pkg/syscallinfo
 github.com/cilium/tetragon/pkg/syscallinfo/i386
 github.com/cilium/tetragon/pkg/testutils
+github.com/cilium/tetragon/pkg/testutils/perfring
 github.com/cilium/tetragon/pkg/testutils/sensors
 github.com/cilium/tetragon/pkg/tgsyscall
 github.com/cilium/tetragon/pkg/timer
