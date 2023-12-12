@@ -51,6 +51,7 @@ FS_SCANNER_RUNNER=bpf/objs/hubble-fgs-runner
 COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
 TESTER_PROGS_DIR = "contrib/tester-progs"
+OSS_TESTER_PROGS_DIR = "$(OSS_DIR)/contrib/tester-progs"
 
 # Do a parallel build with multiple jobs, based on the number of CPUs online
 # in this system: 'make -j8' on a 8-CPU system, etc.
@@ -444,6 +445,10 @@ cscope:
 
 tester-progs:
 	$(MAKE) -C $(TESTER_PROGS_DIR)
+	$(MAKE) -C $(OSS_TESTER_PROGS_DIR)
+	# NB(kkourt): This is not pretty, but we need it so that OSS testutils can find its contrib
+	# programs. We can probably refactor OSS to deal with it, but that's for another day.
+	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
 .PHONY: tester-progs
 
 version:
