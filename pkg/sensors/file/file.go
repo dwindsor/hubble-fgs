@@ -43,6 +43,7 @@ import (
 	"github.com/cilium/tetragon/pkg/podhooks"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
@@ -673,7 +674,7 @@ func cleanupMap[K any, V any](pinPathPrefix string, mapName string) error {
 	return nil
 }
 
-func cleanupArrayMap(pinPathPrefix string, mapName string) error {
+func cleanupArrayMapMbPaths(pinPathPrefix string, mapName string) error {
 	mapDir := bpf.MapPrefixPath()
 	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
 	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
@@ -684,7 +685,35 @@ func cleanupArrayMap(pinPathPrefix string, mapName string) error {
 
 	info, _ := handle.Info()
 	for i := uint32(0); i < info.MaxEntries; i++ {
-		handle.Delete(i)
+		var val int32
+		if err := handle.Lookup(i, &val); err == nil {
+			if err = handle.Delete(i); err != nil {
+				return fmt.Errorf("cleanupArrayMapMbPaths delete failed: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func cleanupArrayMapSelOpts(pinPathPrefix string, mapName string) error {
+	mapDir := bpf.MapPrefixPath()
+	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
+	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", mapPath)
+	}
+	defer handle.Close()
+
+	info, _ := handle.Info()
+	for i := uint32(0); i < info.MaxEntries; i++ {
+		val := selectors.MatchBinariesSelectorOptions{
+			Op:    0,
+			MapID: 0,
+		}
+		err := handle.Update(i, &val, 0)
+		if err != nil {
+			return fmt.Errorf("cleanupArrayMapSelOpts update failed: %w", err)
+		}
 	}
 	return nil
 }
@@ -708,10 +737,10 @@ func cleanupFIMMaps(id uint32) error {
 	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc"); err != nil {
 		return err
 	}
-	if err := cleanupArrayMap(tc.pinPathPrefix, "tg_mb_sel_opts"); err != nil {
+	if err := cleanupArrayMapSelOpts(tc.pinPathPrefix, "tg_mb_sel_opts"); err != nil {
 		return err
 	}
-	if err := cleanupArrayMap(tc.pinPathPrefix, "tg_mb_paths"); err != nil {
+	if err := cleanupArrayMapMbPaths(tc.pinPathPrefix, "tg_mb_paths"); err != nil {
 		return err
 	}
 	if err := cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_maps"); err != nil {
