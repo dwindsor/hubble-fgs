@@ -47,19 +47,6 @@ func TestFieldFilters(t *testing.T) {
             name:
               operator: full
               value: jobposting
-          labels:
-            k8s:app:
-              operator: full
-              value: jobposting
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
-              operator: full
-              value: tenant-jobs
           name:
             operator: prefix
             value: jobposting

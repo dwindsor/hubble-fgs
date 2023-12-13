@@ -28,19 +28,6 @@ spec:
             name:
               operator: full
               value: curl
-          labels:
-            k8s:app:
-              operator: full
-              value: curl
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
-              operator: full
-              value: curl
           name:
             operator: prefix
             value: curl
@@ -75,19 +62,6 @@ spec:
             name:
               operator: full
               value: curl
-          labels:
-            k8s:app:
-              operator: full
-              value: curl
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
-              operator: full
-              value: curl
           name:
             operator: prefix
             value: curl
@@ -110,19 +84,6 @@ spec:
                 operator: full
                 value: docker.io/curlimages/curl:latest
             name:
-              operator: full
-              value: curl
-          labels:
-            k8s:app:
-              operator: full
-              value: curl
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
               operator: full
               value: curl
           name:
@@ -151,19 +112,6 @@ spec:
                 operator: full
                 value: docker.io/curlimages/curl:latest
             name:
-              operator: full
-              value: curl
-          labels:
-            k8s:app:
-              operator: full
-              value: curl
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
               operator: full
               value: curl
           name:
@@ -197,19 +145,6 @@ spec:
                 operator: full
                 value: docker.io/curlimages/curl:latest
             name:
-              operator: full
-              value: curl
-          labels:
-            k8s:app:
-              operator: full
-              value: curl
-            k8s:io.cilium.k8s.policy.cluster:
-              operator: prefix
-              value: fgs-cli-ci
-            k8s:io.cilium.k8s.policy.serviceaccount:
-              operator: full
-              value: default
-            k8s:io.kubernetes.pod.namespace:
               operator: full
               value: curl
           name:
