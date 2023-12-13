@@ -11,7 +11,7 @@ spec:
     - "/boot/"
     - "/proc/"
     - "/sys/"
-    - "/etc/sudoers"
+    # - "/etc/sudoers" # You can also include specific files in a similar way to this.
     monitorHostFiles: true
     podSelector: {}
     selectors:
