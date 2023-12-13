@@ -868,6 +868,19 @@ func TestLoadFileSensor(t *testing.T) {
 		attrVerSuffix = "v60"
 	}
 
+	var ioUringSuffix string
+	if kernels.MinKernelVersion("5.10.0") {
+		ioUringSuffix = "510"
+	} else if kernels.MinKernelVersion("5.9.0") {
+		ioUringSuffix = "59"
+	} else if kernels.MinKernelVersion("5.7.0") {
+		ioUringSuffix = "57"
+	} else if kernels.MinKernelVersion("5.5.0") {
+		ioUringSuffix = "55"
+	} else {
+		ioUringSuffix = "51"
+	}
+
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
 		1:  tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
@@ -889,6 +902,16 @@ func TestLoadFileSensor(t *testing.T) {
 		17: tus.SensorProg{Name: "security_bprm_check", Type: ebpf.Kprobe},
 	}
 
+	if fm.SupportIoUring() {
+		ioUringProgs := []tus.SensorProg{
+			{Name: fmt.Sprintf("io_read_entry_%s", ioUringSuffix), Type: ebpf.Kprobe},
+			{Name: "io_read_exit", Type: ebpf.Kprobe},
+			{Name: fmt.Sprintf("io_write_entry_%s", ioUringSuffix), Type: ebpf.Kprobe},
+			{Name: "io_write_exit", Type: ebpf.Kprobe},
+		}
+		sensorProgs = append(sensorProgs, ioUringProgs...)
+	}
+
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17}},
@@ -902,6 +925,8 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
 		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "io_uring_map", Progs: []uint{4, 18, 19, 20, 21}},
+		tus.SensorMap{Name: "io_uring_retprobe_map", Progs: []uint{18, 19, 20, 21}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -935,6 +960,14 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_val_map", Progs: []uint{9}},
 		tus.SensorMap{Name: "file_val_map", Progs: []uint{13}},
 		tus.SensorMap{Name: "file_val_map", Progs: []uint{14}},
+	}
+
+	if fm.SupportIoUring() {
+		ioUringMaps := []tus.SensorMap{
+			{Name: "io_uring_map", Progs: []uint{4, 18, 19, 20, 21}},
+			{Name: "io_uring_retprobe_map", Progs: []uint{18, 19, 20, 21}},
+		}
+		sensorMaps = append(sensorMaps, ioUringMaps...)
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

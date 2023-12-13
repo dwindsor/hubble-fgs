@@ -17,6 +17,11 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
 	__u32 operation = 0;
+	struct io_uring_op_key key = {
+		.file_ptr = (__u64)file,
+		.pid_tgid = get_current_pid_tgid(),
+	};
+	struct io_uring_op_val *val;
 
 	if (!file)
 		return -1;
@@ -24,6 +29,15 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	msg = get_msg_init();
 	if (!msg)
 		return -1;
+
+	val = map_lookup_elem(&io_uring_map, &key);
+	if (val) { // we are in the middle of io_uring operation
+		struct execve_map_value *enter = event_find_curr_task(val->user_task);
+		if (enter) {
+			msg->current.pid = enter->key.pid;
+			msg->current.ktime = enter->key.ktime;
+		}
+	}
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&file->f_inode));

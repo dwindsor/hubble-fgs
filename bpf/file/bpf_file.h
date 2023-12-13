@@ -298,6 +298,24 @@ struct {
 	__type(value, struct file_exec_config_map_value);
 } file_exec_config_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct io_uring_op_key);
+	__type(value, struct io_uring_op_val);
+	__uint(max_entries, 1024);
+} io_uring_map SEC(".maps");
+
+struct io_uring_info {
+	struct io_kiocb *req;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct file_retprobe_key);
+	__type(value, struct io_uring_info);
+	__uint(max_entries, 1024);
+} io_uring_retprobe_map SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -649,6 +667,28 @@ static inline __attribute__((always_inline)) int get_tp_id()
 	if (!conf)
 		return 0;
 	return conf->tp_id;
+}
+
+// Similar to event_find_curr() but it uses a specific task (instead of current)
+static inline __attribute__((always_inline)) struct execve_map_value *event_find_curr_task(struct task_struct *task)
+{
+	struct execve_map_value *value = 0;
+	int pid, i;
+
+	probe_read(&pid, sizeof(pid), _(&task->tgid));
+
+#pragma unroll
+	for (i = 0; i < 4; i++) {
+		value = execve_map_get_noinit(pid);
+		if (value && value->key.ktime != 0)
+			break;
+		value = 0;
+		probe_read(&task, sizeof(task), _(&task->real_parent));
+		if (!task)
+			break;
+		probe_read(&pid, sizeof(pid), _(&task->tgid));
+	}
+	return value;
 }
 
 static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()

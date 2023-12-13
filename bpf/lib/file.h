@@ -238,4 +238,13 @@ struct file_exec_stats {
 	__u64 m[FILE_EXEC_METRIC_MAX];
 };
 
+struct io_uring_op_key {
+	__u64 file_ptr;
+	__u64 pid_tgid;
+};
+
+struct io_uring_op_val {
+	struct task_struct *user_task;
+};
+
 #endif

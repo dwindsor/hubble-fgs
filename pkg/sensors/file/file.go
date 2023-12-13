@@ -30,6 +30,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -44,6 +45,7 @@ import (
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/client-go/tools/cache"
 
@@ -251,6 +253,42 @@ var (
 	FileExecHooksLsmDigests = [...]FimHook{
 		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security"}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check"}}},
+	}
+
+	FimIoUringHooks = [...]FimHook{
+		{"kprobe", "io_read", []FimFunc{
+			{"io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read/510"},
+			{"io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read/59"},
+			{"io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read/57"},
+			{"io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read/55"},
+			{"io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read/51"},
+		}},
+		{"kretprobe", "io_read", []FimFunc{
+			{"int io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read"},
+			{"int io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read"},
+			{"int io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read"},
+			{"int io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read"},
+			{"int io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read"},
+		}},
+		{"kprobe", "io_write", []FimFunc{
+			{"io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write/510"},
+			{"io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write/59"},
+			{"io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write/57"},
+			{"io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write/55"},
+			{"io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write/51"},
+		}},
+		{"kretprobe", "io_write", []FimFunc{
+			{"int io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write"},
+			{"int io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write"},
+			{"int io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write"},
+			{"int io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write"},
+			{"int io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write"},
+		}},
+	}
+
+	FimIoUringSingleHooks = [...]FimHook{
+		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
+		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
 	}
 
 	SharedMaps = [...]string{
@@ -1395,6 +1433,24 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			)
 		}
 
+		// only for io_uring hooks
+		if h.name == "io_read" || h.name == "io_write" || h.name == "io_issue_sqe" || h.name == "security_file_permission" {
+			m := "io_uring_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+			)
+		}
+
+		// only for io_uring hooks
+		if h.name == "io_read" || h.name == "io_write" || h.name == "io_issue_sqe" {
+			m := "io_uring_retprobe_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+			)
+		}
+
 		for _, m := range SharedMaps {
 			maps = append(
 				maps,
@@ -1436,7 +1492,35 @@ func fixProgName(p string) string {
 	return p
 }
 
-func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool) ([]FimProg, error) {
+func getIoUringHooks(spec *btf.Spec, ioUringSupport bool, hooks []FimHook) []FimHook {
+	if !ioUringSupport {
+		return hooks
+	}
+
+	hasIoRead := false
+	if _, err := fgsBTF.GetFuncProto(spec, "io_read", false); err == nil {
+		hasIoRead = true
+	}
+
+	hasIoWrite := false
+	if _, err := fgsBTF.GetFuncProto(spec, "io_write", false); err == nil {
+		hasIoWrite = true
+	}
+
+	hasIoReadWrite := hasIoRead && hasIoWrite
+
+	// first we try to load io_read and io_write hooks
+	if hasIoReadWrite {
+		return append(hooks, FimIoUringHooks[:]...)
+	}
+
+	logger.GetLogger().WithFields(logrus.Fields{"io_read": hasIoRead, "io_write": hasIoWrite}).Warn("Cannot find io_read/io_write hooks for io_uring. Falling back to io_issue_sqe.")
+
+	// if they are unavailable we try to load io_issue_sqe hook
+	return append(hooks, FimIoUringSingleHooks[:]...)
+}
+
+func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioUringSupport bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
@@ -1458,6 +1542,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool
 		} else {
 			hooks = append(hooks, FimHooksObserveExec)
 		}
+		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == EnforceFmodRet {
 		hooks = FimHooksFmodRet[:]
 		m = "enforce with fmod_ret"
@@ -1469,6 +1554,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool
 		} else {
 			hooks = append(hooks, FimHooksFmodRetExec)
 		}
+		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == EnforceLSM {
 		hooks = FimHooksLsm[:]
 		m = "enforce with lsm"
@@ -1480,6 +1566,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool
 		} else {
 			hooks = append(hooks, FimHooksLsmExec)
 		}
+		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else {
 		return nil, fmt.Errorf("unknown mode in findHooks [%d]", mode)
 	}
@@ -1487,6 +1574,17 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport bool
 
 	fimProgs := make([]FimProg, 0)
 	for _, h := range hooks {
+		// In GKE 5.15 kernels io_read and io_write functions seems to be inlined.
+		// On the other hand, io_issue_sqe seems to be available. We can find
+		// that in /proc/kallsyms but not in the BTF. For this reason, we skip the
+		// BTF check here and we try to load hooks in io_issue_sqe. If this fails
+		// to attach that hook, fim will fail to load. The prototype of io_issue_sqe
+		// seems to be stable along all kernels that have this function.
+		if h.name == "io_issue_sqe" {
+			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection})
+			continue
+		}
+
 		kretprobe := (h.tp == "kretprobe")
 		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
 		if err != nil {
@@ -1763,6 +1861,9 @@ func (k *observerFileSensor) PolicyHandler(
 		}
 	}
 
+	ioUringSupport := fm.SupportIoUring()
+	logger.GetLogger().Infof("FileMonitoring kernel supports io_uring: %t", ioUringSupport)
+
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 		PolicyId:              uint32(fid),
@@ -1776,7 +1877,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if enableExecDigests && !digestSupport { // the user enables exec digests but the kernel does not support them
 		logger.GetLogger().Warn("FileMonitoring: User enables file digests but the kernel does not support them. Falling back to not using them.")
 	}
-	progs, err := findHooks(&config, fileMode, digestSupport)
+	progs, err := findHooks(&config, fileMode, digestSupport, ioUringSupport)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
