@@ -15,7 +15,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.16.0
 	github.com/google/gops v0.3.28
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mennanov/fieldmask-utils v1.1.0
 	github.com/miekg/dns v1.1.51
