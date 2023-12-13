@@ -43,7 +43,6 @@ func getPodInfoOfIpFromCilium(ip net.IP) *tetragon.Pod {
 	return &tetragon.Pod{
 		Namespace: ipcacheEntry.Namespace,
 		Name:      ipcacheEntry.PodName,
-		Labels:    nil,
 		Container: nil,
 	}
 }

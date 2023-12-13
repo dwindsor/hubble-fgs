@@ -23,10 +23,12 @@ type Feature struct {
 }
 
 var (
-	overrideHelper Feature
-	kprobeMulti    Feature
-	buildid        Feature
-	modifyReturn   Feature
+	overrideHelper   Feature
+	signalHelper     Feature
+	kprobeMulti      Feature
+	buildid          Feature
+	modifyReturn     Feature
+	largeProgramSize Feature
 )
 
 func detectOverrideHelper() bool {
@@ -54,6 +56,33 @@ func HasOverrideHelper() bool {
 		overrideHelper.detected = detectOverrideHelper()
 	})
 	return overrideHelper.detected
+}
+
+func detectSignalHelper() bool {
+	prog, err := ebpf.NewProgram(&ebpf.ProgramSpec{
+		Type: ebpf.Kprobe,
+		Instructions: asm.Instructions{
+			asm.LoadImm(asm.R2, 2, asm.DWord),
+			asm.Instruction{OpCode: asm.OpCode(asm.JumpClass).SetJumpOp(asm.Call), Constant: 109},
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+		License: "GPL",
+	})
+	prog.Close()
+
+	if err != nil {
+		signalHelper.detected = false
+		return false
+	}
+	return true
+}
+
+func HasSignalHelper() bool {
+	signalHelper.init.Do(func() {
+		signalHelper.detected = detectSignalHelper()
+	})
+	return signalHelper.detected
 }
 
 func detectKprobeMulti() bool {
@@ -145,7 +174,35 @@ func HasModifyReturn() bool {
 	return modifyReturn.detected
 }
 
+func detectLargeProgramSize() bool {
+	insns := asm.Instructions{}
+
+	for i := 0; i < 4096; i++ {
+		insns = append(insns, asm.Mov.Imm(asm.R0, 1))
+	}
+	insns = append(insns, asm.Return())
+
+	prog, err := ebpf.NewProgram(&ebpf.ProgramSpec{
+		Type:         ebpf.Kprobe,
+		Instructions: insns,
+		AttachType:   ebpf.AttachModifyReturn,
+		License:      "MIT",
+	})
+	if err != nil {
+		return false
+	}
+	defer prog.Close()
+	return true
+}
+
+func HasProgramLargeSize() bool {
+	largeProgramSize.init.Do(func() {
+		largeProgramSize.detected = detectLargeProgramSize()
+	})
+	return largeProgramSize.detected
+}
+
 func LogFeatures() string {
-	return fmt.Sprintf("override_return: %t, buildid: %t, kprobe_multi: %t, fmodret: %t",
-		HasOverrideHelper(), HasBuildId(), HasKprobeMulti(), HasModifyReturn())
+	return fmt.Sprintf("override_return: %t, buildid: %t, kprobe_multi: %t, fmodret: %t, signal: %t, large: %t",
+		HasOverrideHelper(), HasBuildId(), HasKprobeMulti(), HasModifyReturn(), HasSignalHelper(), HasProgramLargeSize())
 }

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/option"
 
 	"golang.org/x/sys/unix"
@@ -47,6 +48,11 @@ func KernelStringToNumeric(ver string) int64 {
 	patch, err := strconv.ParseInt(patchS, 10, 32)
 	if err != nil {
 		patch = 0
+	}
+	// Similar to https://elixir.bootlin.com/linux/v6.2.16/source/tools/lib/bpf/bpf_helpers.h#L74
+	// we have to check that patch is <= 255. Otherwise make that 255.
+	if patch > 255 {
+		patch = 255
 	}
 
 	return ((major << 16) + (minor << 8) + patch)
@@ -137,8 +143,7 @@ func EnableLargeProgs() bool {
 	if option.Config.ForceLargeProgs {
 		return true
 	}
-	kernelVer, _, _ := GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	return (int64(kernelVer) >= KernelStringToNumeric("5.3.0"))
+	return bpf.HasProgramLargeSize() && bpf.HasSignalHelper()
 }
 
 func IsKernelVersionLessThan(version string) bool {
@@ -146,7 +151,7 @@ func IsKernelVersionLessThan(version string) bool {
 	return (int64(kernelVer) < KernelStringToNumeric(version))
 }
 
-// GenericKprobeObjs returns the generic kprobe and and generic retprobe objects
+// GenericKprobeObjs returns the generic kprobe and generic retprobe objects
 func GenericKprobeObjs() (string, string) {
 	if EnableV61Progs() {
 		return "bpf_generic_kprobe_v61.o", "bpf_generic_retkprobe_v61.o"
