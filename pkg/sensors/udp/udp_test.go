@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -66,6 +67,7 @@ var (
 	watermarksClient bool
 	layer7Client     bool
 	server           bool
+	iouServer        bool
 )
 
 const (
@@ -76,6 +78,7 @@ func init() {
 	flag.BoolVar(&watermarksClient, "watermarksClient", false, "internal")
 	flag.BoolVar(&layer7Client, "layer7Client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
+	flag.BoolVar(&iouServer, "iouServer", false, "internal")
 }
 
 func TestMain(m *testing.M) {
@@ -90,6 +93,11 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	if server {
 		udpServer()
+		os.Exit(0)
+	}
+	if iouServer {
+		logger.GetLogger().Info("iouServer flag")
+		udpIouServer()
 		os.Exit(0)
 	}
 	if watermarksClient {
@@ -2118,4 +2126,261 @@ func TestGCDefaultInterval(t *testing.T) {
 
 func TestGCWithNonzeroInterval(t *testing.T) {
 	testGC(t, false, 5, 4)
+}
+
+// FIXME: net io_uring test seems to time out on ARM.
+func TestIOUringConnectEvent(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skipf("io_uring requires kernel >= 5.4")
+	}
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
+		t.Skipf("Test seems to time out on ARM")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := os.Args[0]
+	client := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-iouServer"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-u 127.0.0.1 8000"))
+
+	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
+		WithProcess(ncCliChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8000))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
+		WithProcess(ncSrvChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8000))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("serverConnect").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8000).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		clientStatsChecker,
+		serverStatsChecker,
+	)
+
+	// We need to check sockstats using a custom stateful checker since stats events can
+	// be split up and so checking the individual events won't work. We need to instead
+	// keep a cumulative count of the stats we have seen and compare them to expected
+	// totals.
+	var clientBytesSent uint64
+	var clientBytesSubmitted uint64
+	var clientBytesReceived uint64
+	var clientBytesConsumed uint64
+	var clientSegsOut uint32
+	var clientSegsSubmitted uint32
+	var clientSegsIn uint32
+	var clientSegsConsumed uint32
+	var serverBytesSent uint64
+	var serverBytesSubmitted uint64
+	var serverBytesReceived uint64
+	var serverBytesConsumed uint64
+	var serverSegsOut uint32
+	var serverSegsSubmitted uint32
+	var serverSegsIn uint32
+	var serverSegsConsumed uint32
+
+	statsChecker := &ec.FnEventChecker{
+		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+			event, ok := event_.(*tetragon.ProcessSockStats)
+			if !ok {
+				return false, fmt.Errorf("event is not a sockstats event")
+			}
+
+			if event.Stats == nil {
+				return false, fmt.Errorf("event has no stats field")
+			}
+
+			if clientStatsChecker.Check(event) == nil {
+				clientBytesSent += event.Stats.BytesSent
+				clientBytesSubmitted += event.Stats.BytesSubmitted
+				clientBytesReceived += event.Stats.BytesReceived
+				clientBytesConsumed += event.Stats.BytesConsumed
+				clientSegsIn += event.Stats.SegsIn
+				clientSegsConsumed += event.Stats.SegsConsumed
+				clientSegsOut += event.Stats.SegsOut
+				clientSegsSubmitted += event.Stats.SegsSubmitted
+				return false, nil
+			}
+
+			if serverStatsChecker.Check(event) == nil {
+				serverBytesSent += event.Stats.BytesSent
+				serverBytesSubmitted += event.Stats.BytesSubmitted
+				serverBytesReceived += event.Stats.BytesReceived
+				serverBytesConsumed += event.Stats.BytesConsumed
+				serverSegsIn += event.Stats.SegsIn
+				serverSegsConsumed += event.Stats.SegsConsumed
+				serverSegsOut += event.Stats.SegsOut
+				serverSegsSubmitted += event.Stats.SegsSubmitted
+				return false, nil
+			}
+
+			return false, fmt.Errorf("sockstats event is neither from client nor server")
+		},
+		FinalCheckFn: func(event *logrus.Logger) error {
+			defer func() {
+				clientBytesSent = 0
+				clientBytesSubmitted = 0
+				clientBytesReceived = 0
+				clientBytesConsumed = 0
+				clientSegsIn = 0
+				clientSegsConsumed = 0
+				clientSegsOut = 0
+				clientSegsSubmitted = 0
+				serverBytesSent = 0
+				serverBytesSubmitted = 0
+				serverBytesReceived = 0
+				serverBytesConsumed = 0
+				serverSegsIn = 0
+				serverSegsConsumed = 0
+				serverSegsOut = 0
+				serverSegsSubmitted = 0
+			}()
+
+			if clientBytesSent != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
+			}
+
+			if clientBytesSubmitted != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
+			}
+
+			if clientBytesReceived != 5 {
+				return fmt.Errorf("Unexecpected clientBytesReceived, wanted 5, got %d", clientBytesReceived)
+			}
+
+			if clientBytesConsumed != 5 {
+				return fmt.Errorf("Unexecpected clientBytesConsumed, wanted 5, got %d", clientBytesConsumed)
+			}
+
+			if clientSegsIn != 1 {
+				return fmt.Errorf("Unexecpected clientSegsIn, wanted 1, got %d", clientSegsIn)
+			}
+
+			if clientSegsConsumed != 1 {
+				return fmt.Errorf("Unexecpected clientSegsConsumed, wanted 1, got %d", clientSegsConsumed)
+			}
+
+			if clientSegsOut != 1 {
+				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
+			}
+
+			if clientSegsSubmitted != 1 {
+				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
+			}
+
+			if serverBytesSent != 5 {
+				return fmt.Errorf("Unexecpected serverBytesSent, wanted 5, got %d", serverBytesSent)
+			}
+
+			if serverBytesSubmitted != 5 {
+				return fmt.Errorf("Unexecpected serverBytesSubmitted, wanted 5, got %d", serverBytesSubmitted)
+			}
+
+			if serverBytesReceived != 5 {
+				return fmt.Errorf("Unexecpected serverBytesReceived, wanted 5, got %d", serverBytesReceived)
+			}
+
+			if serverBytesConsumed != 5 {
+				return fmt.Errorf("Unexecpected serverBytesConsumed, wanted 5, got %d", serverBytesConsumed)
+			}
+
+			if serverSegsIn != 1 {
+				return fmt.Errorf("Unexecpected serverSegsIn, wanted 1, got %d", serverSegsIn)
+			}
+
+			if serverSegsConsumed != 1 {
+				return fmt.Errorf("Unexecpected serverSegsConsumed, wanted 1, got %d", serverSegsConsumed)
+			}
+
+			if serverSegsOut != 1 {
+				return fmt.Errorf("Unexecpected serverSegsOut, wanted 1, got %d", serverSegsOut)
+			}
+
+			if serverSegsSubmitted != 1 {
+				return fmt.Errorf("Unexecpected serverSegsSubmitted, wanted 1, got %d", serverSegsSubmitted)
+			}
+
+			return nil
+		},
+	}
+
+	obs := getBasicUdpObserver(t, ctx)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(os.Args[0], "-iouServer")
+	serverOutput, err := cmdServer.StdoutPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	cmdServer.Stderr = os.Stderr
+
+	err = cmdServer.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverOutput)
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			panic(err)
+		}
+		if len(line) == 0 {
+			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+	}
+
+	serverPid := uint32(cmdServer.Process.Pid)
+	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8000")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 }
