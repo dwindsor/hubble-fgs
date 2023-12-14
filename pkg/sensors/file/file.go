@@ -1199,7 +1199,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Type:       bpf.BPF_MAP_TYPE_HASH,
 		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
-		MaxEntries: maxWatchedFiles,
+		MaxEntries: config.MaxWatchedFiles,
 		Flags:      0,
 	}
 
@@ -1223,7 +1223,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Type:       bpf.BPF_MAP_TYPE_HASH,
 		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
-		MaxEntries: maxWatchedDirs,
+		MaxEntries: config.MaxWatchedDirs,
 		Flags:      0,
 	}
 
@@ -1293,6 +1293,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			"tg_mb_paths":       uint32(sel.MatchBinariesPathsMaxEntries()),
 			"file_ops_maps":     fm.GetMaxInnerEntriesOpsMap(sel),
 			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(sel),
+		}
+		load.MaxEntriesMap = map[string]uint32{
+			"hash_map_file_alloc": config.MaxWatchedFiles,
+			"hash_map_dir_alloc":  config.MaxWatchedDirs,
 		}
 		progs = append(progs, load)
 
@@ -1704,6 +1708,26 @@ func (k *observerFileSensor) PolicyHandler(
 		enableExecDigests = true
 	}
 
+	configMaxWatchedDirs := uint32(maxWatchedDirs)
+	if val, ok := spec.FileMonitoring.Config["maxWatchedDirs"]; ok {
+		if v, err := strconv.ParseUint(val, 10, 32); err == nil {
+			configMaxWatchedDirs = uint32(v)
+			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedDirs = %d", configMaxWatchedDirs)
+		} else {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedDirs should be a number. User input: [%s]", val)
+		}
+	}
+
+	configMaxWatchedFiles := uint32(maxWatchedFiles)
+	if val, ok := spec.FileMonitoring.Config["maxWatchedFiles"]; ok {
+		if v, err := strconv.ParseUint(val, 10, 32); err == nil {
+			configMaxWatchedFiles = uint32(v)
+			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedFiles = %d", configMaxWatchedFiles)
+		} else {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedFiles should be a number. User input: [%s]", val)
+		}
+	}
+
 	if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
 		return nil, fmt.Errorf("FileMonitoring requires at least 4.19.0 version")
 	}
@@ -1730,6 +1754,8 @@ func (k *observerFileSensor) PolicyHandler(
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 		PolicyId:              uint32(fid),
+		MaxWatchedDirs:        configMaxWatchedDirs,
+		MaxWatchedFiles:       configMaxWatchedFiles,
 	}
 	fileMode, digestSupport := probeFileMode(selState)
 	if !enableExecDigests { // we explicitly disable digests if the user has not enabled them

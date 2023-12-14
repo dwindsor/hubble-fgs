@@ -219,6 +219,8 @@ struct file_config_map_value {
 	__u32 tp_id;
 	__u32 num_selectors;
 	__u32 policy_id;
+	__u32 max_watched_dirs;
+	__u32 max_watched_files;
 };
 
 struct file_exec_config_map_value {

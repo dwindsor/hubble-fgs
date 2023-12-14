@@ -150,6 +150,8 @@ type FileConfigMapValue struct {
 	TpId                  uint32 `align:"tp_id"`
 	NumSelectors          uint32 `align:"num_selectors"`
 	PolicyId              uint32 `align:"policy_id"`
+	MaxWatchedDirs        uint32 `align:"max_watched_dirs"`
+	MaxWatchedFiles       uint32 `align:"max_watched_files"`
 }
 
 type FileExecConfigMapValue struct {
