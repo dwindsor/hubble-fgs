@@ -520,6 +520,15 @@ var (
 	sensorExecCounter uint32
 )
 
+// only for testing
+func resetTracingPolicies() {
+	fileMonitoringTable = fimTable{
+		mp: make(map[uint32]*fileMonitoring),
+	}
+	sensorCounter = 0
+	sensorExecCounter = 0
+}
+
 type fileMonitoring struct {
 	Spec          *v1alpha1.FileSpec
 	pinPathPrefix string

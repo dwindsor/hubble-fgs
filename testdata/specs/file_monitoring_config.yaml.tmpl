@@ -1,0 +1,12 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_config:
+      maxWatchedFiles: 4096
+      maxWatchedDirs: 1024
+    file_paths:
+    - {{.MatchedPath}}
+    monitorHostFiles: true

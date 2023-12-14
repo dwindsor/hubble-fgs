@@ -35,6 +35,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
@@ -2849,6 +2850,70 @@ func TestFileExecSelectors(t *testing.T) {
 		)
 
 	fileExecChecker := ec.NewProcessFileExecChecker("").WithFile(f).WithDigest(d).WithOperations(o)
+	checker := ec.NewUnorderedEventChecker(fileExecChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileUserDefinedMapSizes(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	filePasswd := "/etc/passwd"
+	specFile := newSpecFile(t, filePasswd, "file_monitoring_config.yaml.tmpl")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	resetTracingPolicies()
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	metricsconfig.RegisterEEMetrics()
+	t.Cleanup(func() { TerminateFsScanner() })
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := exec.Command("/bin/cat", filePasswd).Run(); err != nil {
+		t.Fatalf("failed to run /bin/cat %s: err %s", filePasswd, err)
+	}
+
+	dirMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_dir_alloc")
+	dirHandle, err := ebpf.LoadPinnedMap(dirMapPath, nil)
+	if err != nil {
+		t.Fatalf("cannot open pinned map %s", dirMapPath)
+	}
+	defer dirHandle.Close()
+	// 1024 is the value of maxWatchedDirs in testdata/specs/file_monitoring_config.yaml.tmpl
+	assert.Equal(t, uint32(1024), dirHandle.MaxEntries())
+
+	fileMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_file_alloc")
+	fileHandle, err := ebpf.LoadPinnedMap(fileMapPath, nil)
+	if err != nil {
+		t.Fatalf("cannot open pinned map %s", fileMapPath)
+	}
+	defer fileHandle.Close()
+	// 4096 is the value of maxWatchedFiles in testdata/specs/file_monitoring_config.yaml.tmpl
+	assert.Equal(t, uint32(4096), fileHandle.MaxEntries())
+
+	ino, dev := getInodeInfo(t, filePasswd)
+	o := ec.NewFileOperationListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			ec.NewFileOperationChecker(tetragon.FileOperation_FILE_OP_POST),
+		)
+
+	fileExecChecker := ec.NewProcessFileChecker("TestFileUserDefinedMapSizes").
+		WithAction(tetragon.FileAction_FILE_READ).
+		WithArgs(genericArgFilenameChecker(filePasswd, ino, dev)).
+		WithOperation(o)
 	checker := ec.NewUnorderedEventChecker(fileExecChecker)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
