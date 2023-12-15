@@ -301,11 +301,12 @@ func TerminateFsScanner() error {
 	return killFsScanner() // to cleanup leftovers in the case of failures
 }
 
-func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error {
+func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pin string) error {
 	f := fm.FsScannerInit{
-		Spec:    s,
-		MapDir:  m,
-		PinPath: pin,
+		PolicyName: tpName,
+		Spec:       s,
+		MapDir:     m,
+		PinPath:    pin,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
@@ -590,8 +591,9 @@ func (t *fimTable) getValuesFIM() []fm.SpecPinPath {
 	defer t.mu.Unlock()
 	for _, elem := range t.mp {
 		vals = append(vals, fm.SpecPinPath{
-			PinPath: elem.pinPathPrefix,
-			Spec:    *elem.Spec,
+			PolicyName: elem.tpName,
+			PinPath:    elem.pinPathPrefix,
+			Spec:       *elem.Spec,
 		})
 	}
 	return vals
@@ -719,7 +721,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	}
 
 	if spec.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner(*spec, mapDir, tc.pinPathPrefix); err != nil {
+		if err := TracingPolicyInitFsScanner("test-policy", *spec, mapDir, tc.pinPathPrefix); err != nil {
 			return err
 		}
 	}
@@ -1252,7 +1254,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	if kprobes.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
+		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		}
@@ -1274,8 +1276,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
 		s := fm.SpecPinPath{
-			PinPath: e.pinPathPrefix,
-			Spec:    kprobes,
+			PolicyName: policy.TpName(),
+			PinPath:    e.pinPathPrefix,
+			Spec:       kprobes,
 		}
 		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_container_scanner")

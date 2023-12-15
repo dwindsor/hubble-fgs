@@ -35,9 +35,10 @@ const (
 )
 
 type FsScannerInit struct {
-	Spec    v1alpha1.FileSpec
-	MapDir  string
-	PinPath string
+	PolicyName string
+	Spec       v1alpha1.FileSpec
+	MapDir     string
+	PinPath    string
 }
 
 type FsScannerRename struct {
@@ -51,8 +52,9 @@ type FsScannerRename struct {
 }
 
 type SpecPinPath struct {
-	PinPath string
-	Spec    v1alpha1.FileSpec
+	PolicyName string
+	PinPath    string
+	Spec       v1alpha1.FileSpec
 }
 
 type FsScannerContainerInit struct {
