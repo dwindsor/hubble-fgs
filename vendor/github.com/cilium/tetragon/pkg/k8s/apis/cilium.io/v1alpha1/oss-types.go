@@ -51,7 +51,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=auto;int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;load_info;module;
+	// +kubebuilder:validation:Enum=auto;int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;load_info;module;syscall64;
 	// +kubebuilder:default=auto
 	// Argument type.
 	Type string `json:"type"`
@@ -103,6 +103,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of argument filters. MatchArgs are ANDed.
 	MatchReturnArgs []ArgSelector `json:"matchReturnArgs,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of actions to execute when MatchReturnArgs selector matches
+	MatchReturnActions []ActionSelector `json:"matchReturnActions,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
 	MatchBinaries []BinarySelector `json:"matchBinaries,omitempty"`

@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/cilium/ebpf"
@@ -77,8 +76,13 @@ func kprobeCharBufErrorToString(e int32) string {
 	return "CharBufErrorUnknown"
 }
 
+type kprobeSelectors struct {
+	entry *selectors.KernelSelectorState
+	retrn *selectors.KernelSelectorState
+}
+
 type kprobeLoadArgs struct {
-	selectors *selectors.KernelSelectorState
+	selectors kprobeSelectors
 	retprobe  bool
 	syscall   bool
 	config    *api.EventConfig
@@ -102,11 +106,6 @@ type genericKprobe struct {
 	argSigPrinters    []argPrinters
 	argReturnPrinters []argPrinters
 	funcName          string
-
-	// userReturnFilters are filter specs implemented in userspace after
-	// receiving events on the return value. We currently use this for return
-	// arg filtering.
-	userReturnFilters []v1alpha1.ArgSelector
 
 	// for kprobes that have a retprobe, we maintain the enter events in
 	// the map, so that we can merge them when the return event is
@@ -205,32 +204,49 @@ func multiKprobePinPath(sensorPath string) string {
 	return sensors.PathJoin(sensorPath, "multi_kprobe")
 }
 
+func getProgramSelector(load *program.Program, kprobeEntry *genericKprobe) *selectors.KernelSelectorState {
+	if kprobeEntry != nil {
+		if load.RetProbe {
+			return kprobeEntry.loadArgs.selectors.retrn
+		}
+		return kprobeEntry.loadArgs.selectors.entry
+	}
+	return nil
+}
+
 func filterMaps(load *program.Program, pinPath string, kprobeEntry *genericKprobe) []*program.Map {
 	var maps []*program.Map
 
+	/*
+	 * If we got passed genericKprobe != nil we can make selector map fixes
+	 * related to the kernel version. We pass nil for multi kprobes but as
+	 * they are added in later kernels than 5.9, there's no fixing needed.
+	 */
+	state := getProgramSelector(load, kprobeEntry)
+
 	argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), load)
-	if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+	if state != nil && !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := kprobeEntry.loadArgs.selectors.ValueMapsMaxEntries()
+		maxEntries := state.ValueMapsMaxEntries()
 		argFilterMaps.SetInnerMaxEntries(maxEntries)
 	}
 	maps = append(maps, argFilterMaps)
 
 	addr4FilterMaps := program.MapBuilderPin("addr4lpm_maps", sensors.PathJoin(pinPath, "addr4lpm_maps"), load)
-	if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+	if state != nil && !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := kprobeEntry.loadArgs.selectors.Addr4MapsMaxEntries()
+		maxEntries := state.Addr4MapsMaxEntries()
 		addr4FilterMaps.SetInnerMaxEntries(maxEntries)
 	}
 	maps = append(maps, addr4FilterMaps)
 
 	addr6FilterMaps := program.MapBuilderPin("addr6lpm_maps", sensors.PathJoin(pinPath, "addr6lpm_maps"), load)
-	if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+	if state != nil && !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := kprobeEntry.loadArgs.selectors.Addr6MapsMaxEntries()
+		maxEntries := state.Addr6MapsMaxEntries()
 		addr6FilterMaps.SetInnerMaxEntries(maxEntries)
 	}
 	maps = append(maps, addr6FilterMaps)
@@ -239,29 +255,29 @@ func filterMaps(load *program.Program, pinPath string, kprobeEntry *genericKprob
 	for string_map_index := 0; string_map_index < selectors.StringMapsNumSubMaps; string_map_index++ {
 		stringFilterMap[string_map_index] = program.MapBuilderPin(fmt.Sprintf("string_maps_%d", string_map_index),
 			sensors.PathJoin(pinPath, fmt.Sprintf("string_maps_%d", string_map_index)), load)
-		if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+		if state != nil && !kernels.MinKernelVersion("5.9") {
 			// Versions before 5.9 do not allow inner maps to have different sizes.
 			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-			maxEntries := kprobeEntry.loadArgs.selectors.StringMapsMaxEntries(string_map_index)
+			maxEntries := state.StringMapsMaxEntries(string_map_index)
 			stringFilterMap[string_map_index].SetInnerMaxEntries(maxEntries)
 		}
 		maps = append(maps, stringFilterMap[string_map_index])
 	}
 
 	stringPrefixFilterMaps := program.MapBuilderPin("string_prefix_maps", sensors.PathJoin(pinPath, "string_prefix_maps"), load)
-	if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+	if state != nil && !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := kprobeEntry.loadArgs.selectors.StringPrefixMapsMaxEntries()
+		maxEntries := state.StringPrefixMapsMaxEntries()
 		stringPrefixFilterMaps.SetInnerMaxEntries(maxEntries)
 	}
 	maps = append(maps, stringPrefixFilterMaps)
 
 	stringPostfixFilterMaps := program.MapBuilderPin("string_postfix_maps", sensors.PathJoin(pinPath, "string_postfix_maps"), load)
-	if kprobeEntry != nil && !kernels.MinKernelVersion("5.9") {
+	if state != nil && !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := kprobeEntry.loadArgs.selectors.StringPostfixMapsMaxEntries()
+		maxEntries := state.StringPostfixMapsMaxEntries()
 		stringPostfixFilterMaps.SetInnerMaxEntries(maxEntries)
 	}
 	maps = append(maps, stringPostfixFilterMaps)
@@ -356,6 +372,11 @@ func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*
 		retConfigMap := program.MapBuilderPin("config_map", sensors.PathJoin(pinPath, "retprobe_config_map"), loadret)
 		maps = append(maps, retConfigMap)
 
+		retFilterMap := program.MapBuilderPin("filter_map", sensors.PathJoin(pinPath, "retprobe_filter_map"), loadret)
+		maps = append(maps, retFilterMap)
+
+		maps = append(maps, filterMaps(loadret, pinPath, nil)...)
+
 		callHeap := program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), loadret)
 		maps = append(maps, callHeap)
 
@@ -369,6 +390,7 @@ func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*
 		maps = append(maps, tailCalls)
 
 		retConfigMap.SetMaxEntries(len(multiRetIDs))
+		retFilterMap.SetMaxEntries(len(multiRetIDs))
 	}
 
 	return progs, maps, nil
@@ -500,14 +522,6 @@ func flagsString(flags uint32) string {
 		s = "early_filter"
 	}
 	return s
-}
-
-func isGTOperator(op string) bool {
-	return op == "GT" || op == "GreaterThan"
-}
-
-func isLTOperator(op string) bool {
-	return op == "LT" || op == "LessThan"
 }
 
 type addKprobeIn struct {
@@ -764,27 +778,6 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 		}
 	}
 
-	// Copy over userspace return filters
-	var userReturnFilters []v1alpha1.ArgSelector
-	for _, s := range f.Selectors {
-		for _, returnArg := range s.MatchReturnArgs {
-			// we allow integer values so far
-			for _, v := range returnArg.Values {
-				if _, err := strconv.Atoi(v); err != nil {
-					return errFn(fmt.Errorf("ReturnArg value supports only integer values, got %s", v))
-				}
-			}
-			// only single value for GT,LT operators
-			if isGTOperator(returnArg.Operator) || isLTOperator(returnArg.Operator) {
-				if len(returnArg.Values) > 1 {
-					return errFn(fmt.Errorf("ReturnArg operater '%s' supports only single value, got %d",
-						returnArg.Operator, len(returnArg.Values)))
-				}
-			}
-			userReturnFilters = append(userReturnFilters, returnArg)
-		}
-	}
-
 	// Write attributes into BTF ptr for use with load
 	if !setRetprobe {
 		setRetprobe = f.Return
@@ -810,7 +803,6 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 		},
 		argSigPrinters:    argSigPrinters,
 		argReturnPrinters: argReturnPrinters,
-		userReturnFilters: userReturnFilters,
 		funcName:          funcName,
 		pendingEvents:     nil,
 		tableId:           idtable.UninitializedEntryID,
@@ -820,9 +812,17 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 	}
 
 	// Parse Filters into kernel filter logic
-	kprobeEntry.loadArgs.selectors, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs, nil, in.selMaps)
+	kprobeEntry.loadArgs.selectors.entry, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs, nil, in.selMaps)
 	if err != nil {
 		return errFn(err)
+	}
+
+	if f.Return {
+		kprobeEntry.loadArgs.selectors.retrn, err = selectors.InitKernelReturnSelectorState(f.Selectors, f.ReturnArg,
+			&kprobeEntry.actionArgs, nil, in.selMaps)
+		if err != nil {
+			return errFn(err)
+		}
 	}
 
 	kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent](4096)
@@ -897,7 +897,7 @@ func createKprobeSensorFromEntry(kprobeEntry *genericKprobe, sensorPath string,
 	if !kernels.MinKernelVersion("5.9") {
 		// Versions before 5.9 do not allow inner maps to have different sizes.
 		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		matchBinariesPaths.SetInnerMaxEntries(kprobeEntry.loadArgs.selectors.MatchBinariesPathsMaxEntries())
+		matchBinariesPaths.SetInnerMaxEntries(kprobeEntry.loadArgs.selectors.entry.MatchBinariesPathsMaxEntries())
 	}
 	maps = append(maps, matchBinariesPaths)
 
@@ -930,6 +930,11 @@ func createKprobeSensorFromEntry(kprobeEntry *genericKprobe, sensorPath string,
 		tailCalls := program.MapBuilderPin("retkprobe_calls", sensors.PathJoin(pinPath, "retprobe-kp_calls"), loadret)
 		maps = append(maps, tailCalls)
 
+		filterMap := program.MapBuilderPin("filter_map", sensors.PathJoin(pinPath, "retkprobe_filter_map"), loadret)
+		maps = append(maps, filterMap)
+
+		maps = append(maps, filterMaps(loadret, pinPath, kprobeEntry)...)
+
 		// add maps with non-default paths (pins) to the retprobe
 		program.MapBuilderPin("process_call_heap", sensors.PathJoin(pinPath, "process_call_heap"), loadret)
 		program.MapBuilderPin("fdinstall_map", sensors.PathJoin(sensorPath, "fdinstall_map"), loadret)
@@ -959,15 +964,21 @@ func createSingleKprobeSensor(sensorPath string, ids []idtable.EntryID) ([]*prog
 	return progs, maps, nil
 }
 
+func getMapLoad(load *program.Program, kprobeEntry *genericKprobe, index uint32) []*program.MapLoad {
+	state := getProgramSelector(load, kprobeEntry)
+	if state == nil {
+		return []*program.MapLoad{}
+	}
+	return selectorsMaploads(state, kprobeEntry.pinPathPrefix, index)
+}
+
 func loadSingleKprobeSensor(id idtable.EntryID, bpfDir, mapDir string, load *program.Program, verbose int) error {
 	gk, err := genericKprobeTableGet(id)
 	if err != nil {
 		return err
 	}
 
-	if !load.RetProbe {
-		load.MapLoad = append(load.MapLoad, selectorsMaploads(gk.loadArgs.selectors, gk.pinPathPrefix, 0)...)
-	}
+	load.MapLoad = append(load.MapLoad, getMapLoad(load, gk, 0)...)
 
 	var configData bytes.Buffer
 	binary.Write(&configData, binary.LittleEndian, gk.loadArgs.config)
@@ -1000,9 +1011,7 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir, mapDir string, load *p
 			return err
 		}
 
-		if !load.RetProbe {
-			load.MapLoad = append(load.MapLoad, selectorsMaploads(gk.loadArgs.selectors, gk.pinPathPrefix, uint32(index))...)
-		}
+		load.MapLoad = append(load.MapLoad, getMapLoad(load, gk, uint32(index))...)
 
 		binary.Write(&bin_buf[index], binary.LittleEndian, gk.loadArgs.config)
 		config := &program.MapLoad{
@@ -1566,7 +1575,6 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 
 	// Cache return value on merge and run return filters below before
 	// passing up to notify hooks.
-	var retArg *api.MsgGenericKprobeArg
 
 	// there are two events for this probe (entry and return)
 	if gk.loadArgs.retprobe {
@@ -1577,7 +1585,7 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 
 		if prev, exists := gk.pendingEvents.Get(key); exists {
 			gk.pendingEvents.Remove(key)
-			unix, retArg = retprobeMerge(prev, curr)
+			unix = retprobeMerge(prev, curr)
 		} else {
 			gk.pendingEvents.Add(key, curr)
 			kprobemetrics.MergePushedInc()
@@ -1593,90 +1601,8 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 	// a filter we wouldn't be able to cleanup initial event from entry.
 	// Alternatively, some actions have no kernel analog, such as pause
 	// pod.
-	if filterReturnArg(gk.userReturnFilters, retArg) {
-		return []observer.Event{}, err
-	}
 
 	return []observer.Event{unix}, err
-}
-
-func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGenericKprobeArg) bool {
-	// Short circuit, returnFilter indicates we should eat this event.
-	if retArg == nil {
-		return false
-	}
-
-	// If no filters are specified default to allow.
-	if len(userReturnFilters) == 0 {
-		return false
-	}
-
-	// Multiple selectors will be logical OR together.
-	for _, uFilter := range userReturnFilters {
-		// MatchPIDs only supported in kernel space because we have
-		// full support back to 4.14 kernels.
-
-		// MatchArgs handlers, uFilters only necessary for return
-		// arg filters at the moment. Also we simply assume its an
-		// int which is naive, but good enough someone should devote
-		// more time to make this amazing tech(tm).
-		switch uFilter.Operator {
-		case "Equal":
-			// If retarg Equals any value in the set {Values} accept event
-			for _, v := range uFilter.Values {
-				if vint, err := strconv.Atoi(v); err == nil {
-					switch compare := (*retArg).(type) {
-					case api.MsgGenericKprobeArgInt:
-						if vint == int(compare.Value) {
-							return false
-						}
-					}
-				}
-			}
-		case "NotEqual":
-			inSet := false
-			for _, v := range uFilter.Values {
-				if vint, err := strconv.Atoi(v); err == nil {
-					switch compare := (*retArg).(type) {
-					case api.MsgGenericKprobeArgInt:
-						if vint == int(compare.Value) {
-							inSet = true
-						}
-					}
-				}
-			}
-			// If retarg was not in set {Values} accept event
-			if !inSet {
-				return false
-			}
-		}
-		if isGTOperator(uFilter.Operator) {
-			for _, v := range uFilter.Values {
-				if vint, err := strconv.Atoi(v); err == nil {
-					switch compare := (*retArg).(type) {
-					case api.MsgGenericKprobeArgInt:
-						if vint < int(compare.Value) {
-							return false
-						}
-					}
-				}
-			}
-		}
-		if isLTOperator(uFilter.Operator) {
-			for _, v := range uFilter.Values {
-				if vint, err := strconv.Atoi(v); err == nil {
-					switch compare := (*retArg).(type) {
-					case api.MsgGenericKprobeArgInt:
-						if vint > int(compare.Value) {
-							return false
-						}
-					}
-				}
-			}
-		}
-	}
-	// We walked all selectors and no selectors matched, eat the event.
-	return true
 }
 
 func reportMergeError(curr pendingEvent, prev pendingEvent) {
@@ -1708,9 +1634,8 @@ func reportMergeError(curr pendingEvent, prev pendingEvent) {
 }
 
 // retprobeMerge merges the two events: the one from the entry probe with the one from the return probe
-func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKprobeUnix, *api.MsgGenericKprobeArg) {
+func retprobeMerge(prev pendingEvent, curr pendingEvent) *tracing.MsgGenericKprobeUnix {
 	var retEv, enterEv *tracing.MsgGenericKprobeUnix
-	var ret *api.MsgGenericKprobeArg
 
 	if prev.returnEvent && !curr.returnEvent {
 		retEv = prev.ev
@@ -1720,7 +1645,7 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKpr
 		enterEv = prev.ev
 	} else {
 		reportMergeError(curr, prev)
-		return nil, nil
+		return nil
 	}
 
 	kprobemetrics.MergeOkTotalInc()
@@ -1731,10 +1656,10 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKpr
 			enterEv.Args[index] = retArg
 		} else {
 			enterEv.Args = append(enterEv.Args, retArg)
-			ret = &retArg
 		}
 	}
-	return enterEv, ret
+	enterEv.ReturnAction = retEv.Action
+	return enterEv
 }
 
 func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {

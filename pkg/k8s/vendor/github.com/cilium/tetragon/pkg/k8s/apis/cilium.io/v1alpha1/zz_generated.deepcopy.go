@@ -542,6 +542,11 @@ func (in *KProbeSelector) DeepCopyInto(out *KProbeSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MatchReturnActions != nil {
+		in, out := &in.MatchReturnActions, &out.MatchReturnActions
+		*out = make([]ActionSelector, len(*in))
+		copy(*out, *in)
+	}
 	if in.MatchBinaries != nil {
 		in, out := &in.MatchBinaries, &out.MatchBinaries
 		*out = make([]BinarySelector, len(*in))
