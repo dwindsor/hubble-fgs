@@ -23,7 +23,7 @@ Helm chart for Tetragon Enterprise
 | export.securityContext | object | `{}` |  |
 | export.stdout.image.override | string | `nil` |  |
 | export.stdout.image.repository | string | `"quay.io/isovalent/hubble-export-stdout"` |  |
-| export.stdout.image.tag | string | `"v1.0.3"` |  |
+| export.stdout.image.tag | string | `"v1.0.4"` |  |
 | exportDirectory | string | `"/var/run/cilium/tetragon"` |  |
 | exportFileCreationInterval | string | `"120s"` |  |
 | extraConfigmapMounts | list | `[]` |  |
