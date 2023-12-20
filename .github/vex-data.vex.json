@@ -32,6 +32,16 @@
         ],
        "status": "not_affected",
        "justification": "vulnerable_code_not_in_execute_path"
+     },
+     {
+       "vulnerability": "CVE-2019-0190",
+       "products": [
+           "tetragon-ci:v1.10",
+           "tetragon-ci:v1.11",
+           "tetragon-ci:v1.12"
+        ],
+       "status": "not_affected",
+       "justification": "vulnerable_code_not_in_execute_path"
      }
   ]
 }
