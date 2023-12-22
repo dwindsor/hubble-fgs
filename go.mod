@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/client_model v0.5.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20231206185938-4287122432b2
 	github.com/vishvananda/netns v0.0.4
