@@ -14,7 +14,7 @@ require (
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/grpc v1.60.1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
