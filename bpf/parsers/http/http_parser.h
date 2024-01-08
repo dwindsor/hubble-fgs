@@ -701,6 +701,9 @@ http_parse(ctx_md *msg, struct msg_http_event *event)
 #endif
 			break;
 
+		case http_method_unknown:
+			break;
+
 		default:
 #ifdef SK_MSG
 			tail_call(msg, &http1_calls, 1);
