@@ -44,12 +44,34 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
  * we are the last one of the thread group.
  */
 __attribute__((section("kprobe/acct_process"), used)) int
-event_exit(struct pt_regs *ctx)
+event_exit_acct_process(struct pt_regs *ctx)
 {
 	__u64 pid_tgid = get_current_pid_tgid();
 
 	process_watermarks_map_delete(ctx, pid_tgid >> 32);
 	event_exit_send((void *)ctx, pid_tgid >> 32);
 
+	return 0;
+}
+
+/*
+ * Hooking on acct_process kernel function, which is called on the task's
+ * exit path once the task is the last one in the group. It's stable since
+ * v4.19, so it's safe to hook for us.
+ *
+ * It's called with on_exit argument != 0 when called from do_exit
+ * function with same conditions like for acct_process described above.
+ */
+__attribute__((section("kprobe/disassociate_ctty"), used)) int
+event_exit_disassociate_ctty(struct pt_regs *ctx)
+{
+	int on_exit = (int)PT_REGS_PARM1_CORE(ctx);
+
+	if (on_exit) {
+		__u64 pid_tgid = get_current_pid_tgid();
+
+		process_watermarks_map_delete(ctx, pid_tgid >> 32);
+		event_exit_send(ctx, pid_tgid >> 32);
+	}
 	return 0;
 }

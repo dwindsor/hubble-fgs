@@ -4,7 +4,7 @@ go 1.21.5
 
 require (
 	github.com/cilium/cilium v1.15.0-rc.0
-	github.com/cilium/ebpf v0.12.3
+	github.com/cilium/ebpf v0.12.4-0.20231215112452-00c0cb05d35c
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
@@ -155,13 +155,13 @@ require (
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
-	github.com/go-openapi/errors v0.20.4 // indirect
+	github.com/go-openapi/errors v0.21.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-openapi/runtime v0.26.2 // indirect
 	github.com/go-openapi/spec v0.20.11 // indirect
-	github.com/go-openapi/strfmt v0.21.9 // indirect
+	github.com/go-openapi/strfmt v0.22.0 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.3 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect

@@ -252,7 +252,7 @@ github.com/cilium/cilium/pkg/wireguard/types
 # github.com/cilium/dns v1.1.51-0.20230303133941-d3bcb3008ed2
 ## explicit; go 1.14
 github.com/cilium/dns
-# github.com/cilium/ebpf v0.12.3
+# github.com/cilium/ebpf v0.12.4-0.20231215112452-00c0cb05d35c
 ## explicit; go 1.20
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
@@ -683,8 +683,8 @@ github.com/go-openapi/analysis/internal/flatten/operations
 github.com/go-openapi/analysis/internal/flatten/replace
 github.com/go-openapi/analysis/internal/flatten/schutils
 github.com/go-openapi/analysis/internal/flatten/sortref
-# github.com/go-openapi/errors v0.20.4
-## explicit; go 1.14
+# github.com/go-openapi/errors v0.21.0
+## explicit; go 1.19
 github.com/go-openapi/errors
 # github.com/go-openapi/jsonpointer v0.20.0
 ## explicit; go 1.18
@@ -710,7 +710,7 @@ github.com/go-openapi/runtime/yamlpc
 # github.com/go-openapi/spec v0.20.11
 ## explicit; go 1.13
 github.com/go-openapi/spec
-# github.com/go-openapi/strfmt v0.21.9
+# github.com/go-openapi/strfmt v0.22.0
 ## explicit; go 1.19
 github.com/go-openapi/strfmt
 # github.com/go-openapi/swag v0.22.4

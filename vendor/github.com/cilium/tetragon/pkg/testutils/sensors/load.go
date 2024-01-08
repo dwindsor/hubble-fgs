@@ -4,6 +4,7 @@
 package sensors
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cilium/ebpf"
@@ -11,10 +12,18 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
+type ProgMatch = int
+
+const (
+	ProgMatchFull    ProgMatch = iota // ==
+	ProgMatchPartial                  // strings.Contains()
+)
+
 type SensorProg struct {
 	Name  string
 	Type  ebpf.ProgramType
 	NotIn bool
+	Match ProgMatch
 }
 
 type SensorMap struct {
@@ -43,13 +52,20 @@ type prog struct {
 	mark bool
 }
 
-func findProgram(cache []*prog, name string, typ ebpf.ProgramType) *prog {
+func findProgram(cache []*prog, name string, typ ebpf.ProgramType, match ProgMatch) *prog {
 	for _, c := range cache {
 		if c.prog.Type != typ {
 			continue
 		}
-		if c.name == name {
-			return c
+		switch match {
+		case ProgMatchPartial:
+			if strings.Contains(c.name, name) {
+				return c
+			}
+		case ProgMatchFull:
+			if c.name == name {
+				return c
+			}
 		}
 	}
 	return nil
@@ -115,7 +131,7 @@ func mergeSensorMaps(t *testing.T, maps1, maps2 []SensorMap, progs1, progs2 []Se
 func mergeInBaseSensorMaps(t *testing.T, sensorMaps []SensorMap, sensorProgs []SensorProg) ([]SensorMap, []SensorProg) {
 	var baseProgs = []SensorProg{
 		0: SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-		1: SensorProg{Name: "event_exit", Type: ebpf.Kprobe},
+		1: SensorProg{Name: "event_exit", Type: ebpf.Kprobe, Match: ProgMatchPartial},
 		2: SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		3: SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
 		4: SensorProg{Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
@@ -162,7 +178,7 @@ func CheckSensorLoad(sensors []*sensors.Sensor, sensorMaps []SensorMap, sensorPr
 
 	// check that we loaded expected programs
 	for _, tp := range sensorProgs {
-		c := findProgram(cache, tp.Name, tp.Type)
+		c := findProgram(cache, tp.Name, tp.Type, tp.Match)
 		if c == nil {
 			t.Fatalf("could not find program %v in sensor", tp.Name)
 		}
@@ -198,7 +214,7 @@ func CheckSensorLoad(sensors []*sensors.Sensor, sensorMaps []SensorMap, sensorPr
 		for _, idx := range tm.Progs {
 			tp := sensorProgs[idx]
 
-			c := findProgram(cache, tp.Name, tp.Type)
+			c := findProgram(cache, tp.Name, tp.Type, tp.Match)
 			if c == nil {
 				t.Fatalf("could not find program %v in sensor\n", tp.Name)
 			}
