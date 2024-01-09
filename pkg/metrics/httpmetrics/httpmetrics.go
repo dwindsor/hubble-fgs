@@ -17,6 +17,16 @@ import (
 )
 
 var (
+	httpCollectorErrors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name:      "http_collector_errors_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Total number of errors during the collector runs for the http parser",
+	})
+	httpParserStatesTotal = metrics.NewBPFCounter(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "http_parser_states_total"),
+		"Number of HTTP parser states",
+		[]string{"state"}, nil,
+	))
 	HttpResponseTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "http_response_total",
 		Namespace: consts.MetricsNamespace,
@@ -33,6 +43,9 @@ var (
 )
 
 func InitMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(httpCollectorErrors)
 	registry.MustRegister(HttpResponseTotal)
 	registry.MustRegister(HttpRequestDurationSeconds)
+
+	registry.MustRegister(NewBPFCollector())
 }

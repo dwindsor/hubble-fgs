@@ -15,6 +15,7 @@ struct msg_ip_event _msg_ip_event;
 // Layer 7
 struct __msg_http_event _msg_http_event;
 struct msg_tls_event _msg_tls_event;
+struct __http_state_stats _http_state_stats;
 
 // FIM
 struct hash_map_file_key _hash_map_file_key;

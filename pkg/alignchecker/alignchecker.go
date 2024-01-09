@@ -26,10 +26,11 @@ func CheckStructAlignments(pathToObj string) error {
 		"msg_ip_event": {networkapi.MsgIPEvent{}},
 
 		// Layer 7
-		"__msg_http_event": {httpapi.MsgHttpEvent{}},
-		"__msg_http":       {httpapi.MsgHttp{}},
-		"msg_tls_event":    {tlsapi.MsgTLSEvent{}},
-		"msg_tls":          {tlsapi.MsgTLS{}},
+		"__msg_http_event":   {httpapi.MsgHttpEvent{}},
+		"__msg_http":         {httpapi.MsgHttp{}},
+		"msg_tls_event":      {tlsapi.MsgTLSEvent{}},
+		"msg_tls":            {tlsapi.MsgTLS{}},
+		"__http_state_stats": {httpapi.HttpStateStats{}},
 
 		// FIM
 		"hash_map_file_key":   {fileapi.HashMapFileKey{}},

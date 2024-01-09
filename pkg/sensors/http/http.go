@@ -104,6 +104,7 @@ var (
 	HTTPContext  = tcp.HTTPContext
 	TailCalls    = program.MapBuilder("http1_calls", Skmsg)
 	SkbTailCalls = program.MapBuilder("http1_calls_skb", SkSkbVerdict)
+	HttpErrorMap = program.MapBuilder("tg_http_err_stats", Skmsg)
 	// Sockops filters
 	HTTPFilterMap = sockops.HttpFilterMap
 	// Socket links
@@ -245,6 +246,7 @@ func EnableHTTPParser() *sensors.Sensor {
 		SkbTailCalls,
 		HTTPContext,
 		HTTPFilterMap,
+		HttpErrorMap,
 		sockops.HttpSockMap,
 		sockops.TlsSockMap,
 		sockops.NopSockMap,

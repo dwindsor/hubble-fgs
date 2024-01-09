@@ -9,6 +9,22 @@
 // permission is obtained from Isovalent Inc.
 
 #include "../../lib/tlsmsg.h"
+#include "bpf_helpers.h"
+
+// State enum for HTTP state stats.
+// NOTE: Remember to update HttpStateNames in httpapi.go when you add a new state type here
+enum http_state {
+	// Unknown HTTP method
+	http_state_unkown_method,
+	// Missing HTTP context
+	http_state_missing_http_context,
+	// Missing process info
+	http_state_missing_process_info,
+	// Unknown HTTP header
+	http_state_unknown_header,
+	// Must be last
+	__http_state_max,
+};
 
 enum http_method {
 	// data read error
@@ -161,6 +177,10 @@ struct __msg_http_event {
 	struct __msg_http request;
 } __attribute__((packed));
 
+struct __http_state_stats {
+	__u64 cnt[__http_state_max];
+};
+
 #ifndef ALIGNCHECKER
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -175,4 +195,21 @@ struct {
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1);
 } tg_http_map_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct __http_state_stats);
+	__uint(max_entries, 1);
+} tg_http_err_stats SEC(".maps");
+
+static inline __attribute__((always_inline)) void http_state_inc(enum http_state state)
+{
+	int zero = 0;
+	struct __http_state_stats *stats;
+
+	stats = map_lookup_elem(&tg_http_err_stats, &zero);
+	if (stats)
+		stats->cnt[state]++;
+}
 #endif // ALIGNCHECKER

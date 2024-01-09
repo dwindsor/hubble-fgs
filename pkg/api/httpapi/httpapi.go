@@ -48,3 +48,20 @@ type MsgHttpEvent struct {
 	ProcessKey processapi.MsgExecveKey `align:"execve"`
 	Request    MsgHttp                 `align:"request"`
 }
+
+// In-order string representation of enum http_state from http.h
+// This must be updated when adding new members to enum http_state
+var HttpStateNames = []string{
+	"skipped_method",
+	"missing_context",
+	"missing_process",
+	"skipped_header",
+}
+
+// Total number of members in enum http_state from http.h
+// This must be updated when adding new members to enum http_state
+const HTTP_STATE_MAX = 4
+
+type HttpStateStats struct {
+	Count [HTTP_STATE_MAX]uint64 `align:"cnt"`
+}

@@ -77,6 +77,9 @@ get_http_context(ctx_md *msg)
 		http = map_lookup_elem(&tg_http_map, &cookie);
 	}
 out:
+	if (!http) {
+		http_state_inc(http_state_missing_http_context);
+	}
 	return http;
 }
 
@@ -457,6 +460,8 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 	} else if (*sz <= 1) {
 		return http_request_done;
 	}
+
+	http_state_inc(http_state_unknown_header);
 	return http_request_unknown;
 }
 
@@ -715,6 +720,7 @@ http_parse(ctx_md *msg, struct msg_http_event *event)
 			break;
 
 		case http_method_unknown:
+			http_state_inc(http_state_unkown_method);
 			break;
 
 		default:
@@ -808,8 +814,10 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 
 	cookie = (u64)msg->sk;
 	process = lookup_socketmap(&cookie);
-	if (!process)
+	if (!process) {
+		http_state_inc(http_state_missing_process_info);
 		return;
+	}
 
 	http->execve.pid = process->key.pid;
 	http->execve.pad[0] = 0;
@@ -858,8 +866,10 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 
 	cookie = (u64)msg->sk;
 	process = lookup_socketmap(&cookie);
-	if (!process)
+	if (!process) {
+		http_state_inc(http_state_missing_process_info);
 		return 0;
+	}
 
 	http->request.state = http_done;
 	http->execve.pid = process->key.pid;
