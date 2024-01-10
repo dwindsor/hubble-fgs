@@ -46,6 +46,7 @@ jobs:
 
       - name: Generate Cross Compiled Tetragon EE Tarball
         run: |
+          sudo apt-get update -y
           sudo apt-get install -y qemu qemu-user-static binfmt-support
           sudo update-binfmts --display
           make TARGET_ARCH=${{ matrix.arch }} tarball

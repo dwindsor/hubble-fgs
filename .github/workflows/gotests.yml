@@ -29,6 +29,7 @@ jobs:
         GOPATH: ${{ env.GITHUB_WORKSPACE }}/go
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
+        sudo apt update -y
         sudo apt install libelf-dev netcat-openbsd netcat-traditional libcap-dev libaio-dev liburing-dev
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
