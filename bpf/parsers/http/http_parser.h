@@ -131,8 +131,10 @@ eat_next_char(ctx_md *msg, struct msg_http *http)
 	return c;
 }
 
+/* Do not call this directly. Instead, use the strncmp_truncated macro.
+ */
 static inline __attribute__((always_inline)) int
-strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
+__strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
 {
 	int diff;
 	int i;
@@ -146,6 +148,13 @@ strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
 	return 0;
 }
 
+/* Do a string compare between two strings. The second string s2 should be
+ * fixed-size. This function will truncate the string compare to avoid verifier
+ * complexity issues.
+ */
+#define strncmp_truncated(s1, sz, s2) \
+	__strncmp_truncated(s1, sz, s2, sizeof(s2) - 1)
+
 static inline __attribute__((always_inline)) __u32
 __get_method(ctx_md *msg, struct msg_http *http)
 {
@@ -158,58 +167,71 @@ __get_method(ctx_md *msg, struct msg_http *http)
 		return http_method_split;
 	}
 
+	const u32 skip = 4;
 	http->scratch[0] = (u32)0;
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "connect", 7)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "connect")) {
+		DEBUG("method connect");
 		return http_method_connect;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "delete", 6)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "delete")) {
+		DEBUG("method delete");
 		return http_method_delete;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "get", 3)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "get")) {
+		DEBUG("method get");
 		return http_method_get;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "head", 4)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "head")) {
+		DEBUG("method head");
 		return http_method_head;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "options", 7)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "options")) {
+		DEBUG("method options");
 		return http_method_options;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "post", 4)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "post")) {
+		DEBUG("method post");
 		return http_method_post;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "put", 3)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "put")) {
+		DEBUG("method put");
 		return http_method_put;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "patch", 5)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "patch")) {
+		DEBUG("method patch");
 		return http_method_patch;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "trace", 5)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "trace")) {
+		DEBUG("method trace");
 		return http_method_trace;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "pri", 3)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "pri")) {
+		DEBUG("method pro");
 		// We need to walk the parser back here since http2 parser wants to do string
 		// matching on PRI for the http2 preface.
 		http->offset = old_offset;
 		return http_method_pri;
 	}
 
-	if (!strncmp_truncated(http->scratch + 4, sz, "http", 4)) {
+	if (!strncmp_truncated(http->scratch + skip, sz, "http")) {
+		DEBUG("method http");
 		// We need to walk the parser back here since we also want to parse this out as
 		// the response protocol.
 		http->offset = old_offset;
 		return http_method_response;
 	}
 
+	DEBUG("unknown method: \"%s\" (sz=%d)", http->scratch + skip, sz);
 	return http_method_unknown;
 }
 
@@ -268,7 +290,12 @@ __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 		http->offset = 0;
 		http->state = http_more_headers_needed;
 	}
-	DEBUG("read(%d): %s", *dstsz, http->scratch + 4);
+	/* Null-terminate segment in the scratch buffer
+	 */
+	if (i + off + 4 < 512) {
+		http->scratch[i + off + 4] = '\0';
+	}
+	DEBUG("read(%d): \"%s\"", *dstsz, http->scratch + 4);
 	return *dstsz;
 }
 
@@ -410,57 +437,35 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 	__u32 *sz;
 
 	/* Extra char [5] because we included \n in the 'eat' char */
+	const u32 skip = 5;
 	sz = (__u32 *)&http->scratch[0];
-	if (*sz == 5) {
-		char host[4] = HOST;
 
-		if (*(__u32 *)&http->scratch[5] == *(__u32 *)&host[0])
-			return http_request_host;
-	} else if (*sz == 11) {
-		char user[] = USERAGENT;
-		__u64 h1 = *(__u64 *)&user[0];
-		__u16 h2 = *(__u16 *)&user[8];
+	if (!strncmp_truncated(http->scratch + skip, *sz, "host")) {
+		DEBUG("header: host");
+		return http_request_host;
+	}
 
-		__u64 r1 = *(__u64 *)&http->scratch[5];
-		__u16 r2 = *(__u16 *)&http->scratch[13];
+	if (!strncmp_truncated(http->scratch + skip, *sz, "user-agent")) {
+		DEBUG("header: user-agent");
+		return http_request_user_agent;
+	}
 
-		if (r1 == h1 && r2 == h2)
-			return http_request_user_agent;
-	} else if (*sz == 15) {
-		char content_length[] = CONTENT;
+	if (!strncmp_truncated(http->scratch + skip, *sz, "content-length")) {
+		DEBUG("header: content-length");
+		return http_request_content_length;
+	}
 
-		__u64 h1 = *(__u64 *)&content_length[0];
-		__u32 h2 = *(__u32 *)&content_length[8];
-		__u16 h3 = *(__u16 *)&content_length[12];
+	if (!strncmp_truncated(http->scratch + skip, *sz, "transfer-encoding")) {
+		DEBUG("header: transfer-encoding");
+		return http_request_transfer_encoding;
+	}
 
-		__u64 r1 = *(__u64 *)&http->scratch[5];
-		__u32 r2 = *(__u32 *)&http->scratch[13];
-		__u16 r3 = *(__u16 *)&http->scratch[17];
-
-		if (r1 == h1 && r2 == h2 && r3 == h3)
-			return http_request_content_length;
-	} else if (*sz == 18) {
-		char transfer[] = TRANSFER;
-
-		__u64 h1 = *(__u64 *)&transfer[0];
-		__u64 h2 = *(__u64 *)&transfer[8];
-		__u8 h3 = *(__u8 *)&transfer[16];
-
-		__u64 r1 = *(__u64 *)&http->scratch[5];
-		__u64 r2 = *(__u64 *)&http->scratch[13];
-		__u8 r3 = *(__u8 *)&http->scratch[21];
-
-		if (r1 == h1 && r2 == h2 && r3 == h3)
-			return http_request_transfer_encoding;
-
-		/* A header field of 1 indicates we read a \r directly and so this
-	 * is a CRLF on a line of its own. If size is zero the parser is lost
-	 * but lets try to continue in this case.
-	 */
-	} else if (*sz <= 1) {
+	if (*sz <= 1) {
+		DEBUG("request done");
 		return http_request_done;
 	}
 
+	DEBUG("unknown header: \"%s\" (sz=%d)", http->scratch + skip, *sz);
 	http_state_inc(http_state_unknown_header);
 	return http_request_unknown;
 }
@@ -668,6 +673,7 @@ __attribute__((noinline)) int http_parse_response(ctx_md *msg)
 	http = &event->request;
 
 	http->url_offset = 0;
+
 	response_get_protocol(msg);
 	response_get_code(msg);
 	response_get_reason(msg);

@@ -91,24 +91,6 @@ enum http_request_header {
 #define http_method_patch_off	sizeof("patch")
 #define http_method_trace_off	sizeof("trace")
 
-// Supported header fields, header fields are converted to lower case
-// for parsing.
-#define HOST { 'h', 'o', 's', 't' };
-#define USERAGENT                                                \
-	{                                                        \
-		'u', 's', 'e', 'r', '-', 'a', 'g', 'e', 'n', 't' \
-	}
-#define CONTENT                                                             \
-	{                                                                   \
-		'c', 'o', 'n', 't', 'e', 'n', 't', '-', 'l', 'e', 'n', 'g', \
-			't', 'h'                                            \
-	}
-#define TRANSFER                                                            \
-	{                                                                   \
-		't', 'r', 'a', 'n', 's', 'f', 'e', 'r', '-', 'e', 'n', 'c', \
-			'o', 'd', 'i', 'n', 'g'                             \
-	}
-
 enum http_request_state {
 	http_start,
 	http_req_method_start,
