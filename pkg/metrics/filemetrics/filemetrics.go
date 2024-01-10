@@ -13,7 +13,6 @@ package filemetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -77,6 +76,30 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "Total number of errors during the collector runs for process_file_exec events.",
 	})
+
+	fileMapInodeFile = metrics.NewBPFGauge(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "inode_file_map_entries"),
+		"Total number of entries in the inode map for files.",
+		[]string{"policy"}, nil,
+	))
+
+	fileMapInodeFileMax = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      "inode_file_map_max",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Maximum number of entries in the inode map for files.",
+	}, []string{"policy"})
+
+	fileMapInodeDir = metrics.NewBPFGauge(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "inode_dir_map_entries"),
+		"Total number of entries in the inode map for directories.",
+		[]string{"policy"}, nil,
+	))
+
+	fileMapInodeDirMax = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      "inode_dir_map_max",
+		Namespace: consts.MetricsNamespace,
+		Help:      "Maximum number of entries in the inode map for directories.",
+	}, []string{"policy"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -89,10 +112,11 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
 	registry.MustRegister(fileExecCollectorErrors)
+	registry.MustRegister(fileMapInodeFileMax)
+	registry.MustRegister(fileMapInodeDirMax)
 
-	registry.MustRegister(mapmetrics.NewBPFCollector(
-		NewBPFCollector(),
-	))
+	registry.MustRegister(NewBPFCollector())
+	registry.MustRegister(NewBPFInodeMapCollector())
 }
 
 func FileTotalEventsInc() {
@@ -133,4 +157,12 @@ func FileTotalErrorsInc(reason string) {
 
 func FileFailedDigestInc(event string) {
 	fileFailedDigest.WithLabelValues(event).Inc()
+}
+
+func FileSetFileInodeMapMax(policy string, val float64) {
+	fileMapInodeFileMax.WithLabelValues(policy).Set(val)
+}
+
+func FileSetDirectoryInodeMapMax(policy string, val float64) {
+	fileMapInodeDirMax.WithLabelValues(policy).Set(val)
 }

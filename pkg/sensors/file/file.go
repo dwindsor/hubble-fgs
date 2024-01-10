@@ -1184,6 +1184,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		return nil, fmt.Errorf("failed fileHandle.Pin: %w", err)
 	}
 
+	// set metric to maximum size of inode map for files
+	filemetrics.FileSetFileInodeMapMax(e.TpName, float64(config.MaxWatchedFiles))
+
 	ds := &ebpf.MapSpec{
 		Name:       "hash_map_dir_alloc",
 		Type:       bpf.BPF_MAP_TYPE_HASH,
@@ -1207,6 +1210,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	if err := dirHandle.Pin(dirPinPath); err != nil {
 		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
+
+	// set metric to maximum size of inode map for directories
+	filemetrics.FileSetDirectoryInodeMapMax(e.TpName, float64(config.MaxWatchedDirs))
 
 	if kprobes.MonitorHostFiles {
 		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.MapDir, e.PinPathPrefix); err != nil {
