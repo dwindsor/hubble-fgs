@@ -41,6 +41,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
+	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"
 	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
 )
@@ -130,11 +131,13 @@ func TestMain(m *testing.M) {
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
+		grpc.WaitForTracingPolicy(ctx, "file-monitoring")
 		return ctx, nil
 	})
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.LoadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
+		grpc.WaitForTracingPolicy(ctx, "file-monitoring-namespaced")
 		return ctx, nil
 	})
 
@@ -154,6 +157,9 @@ func TestMain(m *testing.M) {
 		if supportEnforcement {
 			klog.Info("Kernel supports file enforcement")
 			ctx, _ = helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
+			if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-enforcement"); err != nil {
+				return ctx, err
+			}
 		} else {
 			klog.Info("Kernel does not support file enforcement")
 		}
