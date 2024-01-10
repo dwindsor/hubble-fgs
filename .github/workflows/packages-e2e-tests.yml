@@ -130,13 +130,20 @@ jobs:
         run: sudo journalctl -b -u tetragon-enterprise --no-pager
 
       - name: Test Tetragon EE
-        run: |
-          sudo tetra status
-          sudo grep "tetra" /var/log/tetragon/tetragon.log
-          sudo tetra tracingpolicy list | grep dns -
-          sudo tetra tracingpolicy add crds/examples/udp.yaml
-          sudo tetra tracingpolicy list | grep udp -
-          sudo tetra bugtool
+        uses: nick-fields/retry@14672906e672a08bd6eeb15720e9ed3ce869cdd4 # v2
+        with:
+          timeout_seconds: 30
+          max_attempts: 5
+          retry_wait_seconds: 5
+          retry_on: error
+          command: |
+            sudo sync
+            sudo tetra status
+            sudo tetra tracingpolicy list | grep dns -
+            sudo tetra tracingpolicy add crds/examples/udp.yaml
+            sudo tetra tracingpolicy list | grep udp -
+            sudo tetra bugtool
+            sudo grep "tetra" /var/log/tetragon/tetragon.log
 
       - name: Setup Tetragon EE with a different tracing-policy-dir
         run: |
@@ -154,11 +161,12 @@ jobs:
           retry_wait_seconds: 5
           retry_on: error
           command: |
+            sudo sync
             sudo systemctl is-active tetragon-enterprise
             sudo tetra status
-            sudo grep "tetra" /var/log/tetragon/tetragon.log
             sudo tetra tracingpolicy list | grep dns -
             sudo tetra bugtool
+            sudo grep "tetra" /var/log/tetragon/tetragon.log
 
       - name: Uninstall Tetragon EE Tarball
         run: |
