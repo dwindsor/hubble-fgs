@@ -61,6 +61,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
+	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 
 	"github.com/google/uuid"
@@ -381,7 +382,7 @@ func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid str
 
 func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string) error {
 	if len(specPath) == 0 {
-		specPath = fileMonitoringTable.getValuesFIM()
+		specPath = pol.FileMonitoringTable.GetValuesFIM()
 	}
 	f := fm.FsScannerContainerInit{
 		Tp:          specPath,
@@ -403,7 +404,7 @@ func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID,
 }
 
 func TracingPolicyDestroyContainerFsScanner(containerID string) error {
-	specPath := fileMonitoringTable.getValuesFIM()
+	specPath := pol.FileMonitoringTable.GetValuesFIM()
 	f := fm.FsScannerContainerDestroy{
 		Tp:          specPath,
 		MapDir:      option.Config.MapDir,
@@ -551,99 +552,6 @@ type observerFileExecSensor struct {
 	name string
 }
 
-var (
-	fileMonitoringTable = fimTable{
-		mp: make(map[uint32]*fileMonitoring),
-	}
-
-	sensorCounter     uint32
-	sensorExecCounter uint32
-)
-
-// only for testing
-func resetTracingPolicies() {
-	fileMonitoringTable = fimTable{
-		mp: make(map[uint32]*fileMonitoring),
-	}
-	sensorCounter = 0
-	sensorExecCounter = 0
-}
-
-type fileMonitoring struct {
-	Spec          *v1alpha1.FileSpec
-	pinPathPrefix string
-	tpName        string
-	tpRules       map[int]string
-	config        *fileapi.FileConfigMapValue
-}
-
-type fimTable struct {
-	mu sync.Mutex
-	mp map[uint32]*fileMonitoring
-}
-
-func (t *fimTable) addFIM(id uint32, tp *fileMonitoring) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.mp[id] = tp
-}
-
-func (t *fimTable) getFIM(id uint32) (*fileMonitoring, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if val, ok := t.mp[id]; ok {
-		return val, nil
-	}
-	return nil, fmt.Errorf("fim table: invalid id:%d", id)
-}
-
-func (t *fimTable) getTpName(id uint32) string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if val, ok := t.mp[id]; ok {
-		return val.tpName
-	}
-	return "<unresolved_policy>"
-}
-
-func (t *fimTable) getTpRule(tpID, ruleID uint32) string {
-	val, err := t.getFIM(tpID)
-	if err != nil {
-		return "<unresolved_policy>"
-	}
-	rl, ok := val.tpRules[int(ruleID)]
-	if !ok {
-		return "<unresolved_rule>"
-	}
-	return rl
-}
-
-func (t *fimTable) rmFIM(id uint32) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	delete(t.mp, id)
-}
-
-func (t *fimTable) getValuesFIM() []fm.SpecPinPath {
-	var vals []fm.SpecPinPath
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	for _, elem := range t.mp {
-		vals = append(vals, fm.SpecPinPath{
-			PolicyName: elem.tpName,
-			PinPath:    elem.pinPathPrefix,
-			Spec:       *elem.Spec,
-		})
-	}
-	return vals
-}
-
-func ClearFIMTracingPolicies() {
-	fileMonitoringTable = fimTable{
-		mp: make(map[uint32]*fileMonitoring),
-	}
-}
-
 // only for testing
 // remove all entries of a map
 func cleanupMap[K any, V any](pinPathPrefix string, mapName string) error {
@@ -720,36 +628,29 @@ func cleanupArrayMapSelOpts(pinPathPrefix string, mapName string) error {
 
 // only for testing
 // remove all entries of all FIM maps
-func cleanupFIMMaps(id uint32) error {
-	var tc *fileMonitoring
-	if x, found := fileMonitoringTable.mp[id]; found {
-		tc = x
-	} else {
-		return fmt.Errorf("tracing policy with ID=%d does not exist", id)
-	}
-
-	if err := cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.pinPathPrefix, "lpm_trie_map_alloc"); err != nil {
+func cleanupFIMMaps(tc *pol.FileMonitoring) error {
+	if err := cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.PinPathPrefix, "lpm_trie_map_alloc"); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_file_alloc"); err != nil {
+	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.PinPathPrefix, "hash_map_file_alloc"); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.pinPathPrefix, "hash_map_dir_alloc"); err != nil {
+	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.PinPathPrefix, "hash_map_dir_alloc"); err != nil {
 		return err
 	}
-	if err := cleanupArrayMapSelOpts(tc.pinPathPrefix, "tg_mb_sel_opts"); err != nil {
+	if err := cleanupArrayMapSelOpts(tc.PinPathPrefix, "tg_mb_sel_opts"); err != nil {
 		return err
 	}
-	if err := cleanupArrayMapMbPaths(tc.pinPathPrefix, "tg_mb_paths"); err != nil {
+	if err := cleanupArrayMapMbPaths(tc.PinPathPrefix, "tg_mb_paths"); err != nil {
 		return err
 	}
-	if err := cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_ops_maps"); err != nil {
+	if err := cleanupMap[uint32, uint32](tc.PinPathPrefix, "file_ops_maps"); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.DigestKey, uint32](tc.pinPathPrefix, "file_digests_maps"); err != nil {
+	if err := cleanupMap[fileapi.DigestKey, uint32](tc.PinPathPrefix, "file_digests_maps"); err != nil {
 		return err
 	}
-	if err := cleanupMap[uint32, uint32](tc.pinPathPrefix, "file_actions_map"); err != nil {
+	if err := cleanupMap[uint32, uint32](tc.PinPathPrefix, "file_actions_map"); err != nil {
 		return err
 	}
 
@@ -758,17 +659,10 @@ func cleanupFIMMaps(id uint32) error {
 
 // only for testing
 // generate the contents of FIM maps (the maps already exist and are empty)
-func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
-	var tc *fileMonitoring
-	if x, found := fileMonitoringTable.mp[id]; found {
-		tc = x
-	} else {
-		return fmt.Errorf("tracing policy with ID=%d does not exist", id)
-	}
-
+func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 	tc.Spec = spec
 	mapDir := bpf.MapPrefixPath()
-	mapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "lpm_trie_map_alloc"))
+	mapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "lpm_trie_map_alloc"))
 	lpmMap, err := ebpf.LoadPinnedMap(mapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
@@ -788,7 +682,7 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 	}
 
 	if spec.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner("test-policy", *spec, mapDir, tc.pinPathPrefix); err != nil {
+		if err := TracingPolicyInitFsScanner("test-policy", *spec, mapDir, tc.PinPathPrefix); err != nil {
 			return err
 		}
 	}
@@ -798,19 +692,19 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to initialize kernel selector state: %w", err)
 	}
 
-	configMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_config_map"))
+	configMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_config_map"))
 	configMap, err := ebpf.LoadPinnedMap(configMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", configMapPath)
 	}
 	defer configMap.Close()
 
-	tc.config.NumSelectors = sel.GetNumSelectors()
-	if err := configMap.Update(uint32(0), *tc.config, ebpf.UpdateAny); err != nil {
+	tc.Config.NumSelectors = sel.GetNumSelectors()
+	if err := configMap.Update(uint32(0), *tc.Config, ebpf.UpdateAny); err != nil {
 		return fmt.Errorf("failed to insert %v: %w", sel, err)
 	}
 
-	mbSelOptsPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "tg_mb_sel_opts"))
+	mbSelOptsPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "tg_mb_sel_opts"))
 	mbSelOpts, err := ebpf.LoadPinnedMap(mbSelOptsPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mbSelOptsPath)
@@ -821,40 +715,40 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to populate tg_mb_sel_opts: %w", err)
 	}
 
-	mbPathsPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "tg_mb_paths"))
+	mbPathsPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "tg_mb_paths"))
 	mbPaths, err := ebpf.LoadPinnedMap(mbPathsPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mbPathsPath)
 	}
 	defer mbPaths.Close()
 
-	if err := fm.PopulateMatchBinariesPathsMaps(sel, tc.pinPathPrefix, mbPaths); err != nil {
+	if err := fm.PopulateMatchBinariesPathsMaps(sel, tc.PinPathPrefix, mbPaths); err != nil {
 		return fmt.Errorf("failed to populate tg_mb_paths: %w", err)
 	}
 
-	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_ops_maps"))
+	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_ops_maps"))
 	selOpsHandle, err := ebpf.LoadPinnedMap(selOpsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
 	}
 	defer selOpsHandle.Close()
 
-	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.pinPathPrefix); err != nil {
+	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.PinPathPrefix); err != nil {
 		return fmt.Errorf("failed to populate file_ops_maps: %w", err)
 	}
 
-	selDigestsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_digests_maps"))
+	selDigestsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_digests_maps"))
 	selDigestsHandle, err := ebpf.LoadPinnedMap(selDigestsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
 	}
 	defer selDigestsHandle.Close()
 
-	if err := fm.GenerateFileDigestsMap(selDigestsHandle, sel, tc.pinPathPrefix); err != nil {
+	if err := fm.GenerateFileDigestsMap(selDigestsHandle, sel, tc.PinPathPrefix); err != nil {
 		return fmt.Errorf("failed to populate file_digests_maps: %w", err)
 	}
 
-	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.pinPathPrefix, "file_actions_map"))
+	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_actions_map"))
 	selActionsHandle, err := ebpf.LoadPinnedMap(selActionsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selActionsMapPath)
@@ -872,23 +766,17 @@ func generateFIMMaps(id uint32, spec *v1alpha1.FileSpec) error {
 // cleanup and re-generate the contents of FIM maps
 // the maps (and programs) are loaded during the whole time of this procedure
 func reGenerateFimMaps(spec *v1alpha1.FileSpec) error {
-	fileMonitoringTable.mu.Lock()
-	defer fileMonitoringTable.mu.Unlock()
-
-	if len(fileMonitoringTable.mp) != 1 {
-		return fmt.Errorf("file sensor has more than one tracing policies")
+	tc, put, err := pol.FileMonitoringTable.GetOneLockedOrFail()
+	if err != nil {
+		return err
 	}
+	defer put()
 
-	tcID := uint32(0)
-	for key := range fileMonitoringTable.mp {
-		tcID = key
-	}
-
-	if err := cleanupFIMMaps(tcID); err != nil {
+	if err := cleanupFIMMaps(tc); err != nil {
 		return err
 	}
 
-	return generateFIMMaps(tcID, spec)
+	return generateFIMMaps(tc, spec)
 }
 
 func init() {
@@ -1018,8 +906,8 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		ContainerID: cid,
 		MntNs:       m.MntNs,
 		Operation:   m.Operation,
-		TpName:      fileMonitoringTable.getTpName(m.TpId),
-		TpRule:      fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
+		TpName:      pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:      pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		Tid:         m.Tid,
 		Digest:      digest,
 	}
@@ -1087,7 +975,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			action = fm.FilterIgnore
 		}
 
-		s, err := fileMonitoringTable.getFIM(m.TpId)
+		s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_mv_tcid")
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
@@ -1102,7 +990,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			renameCid = dstCid // both not empty -- use destination containerID
 		}
 
-		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix, renameCid, m.RuleID); err != nil {
+		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.PinPathPrefix, renameCid, m.RuleID); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_mv_scanner")
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
@@ -1157,8 +1045,8 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		MntNs:     m.MntNs,
 		Flags:     m.Flags,
 		Operation: m.Operation,
-		TpName:    fileMonitoringTable.getTpName(m.TpId),
-		TpRule:    fileMonitoringTable.getTpRule(m.TpId, m.RuleID),
+		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		Tid:       m.Tid,
 	}
 
@@ -1216,21 +1104,21 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	var maps []*program.Map
 	var err error
 
-	config.TpId = atomic.AddUint32(&sensorCounter, 1)
+	config.TpId = atomic.AddUint32(&pol.SensorCounter, 1)
 	name := fmt.Sprintf("fim_sensor_%d", config.TpId)
-	e := &fileMonitoring{
+	e := &pol.FileMonitoring{
 		Spec:          &kprobes,
-		pinPathPrefix: name,
-		tpName:        policy.TpName(),
-		tpRules:       make(map[int]string),
-		config:        &config,
+		PinPathPrefix: name,
+		TpName:        policy.TpName(),
+		TpRules:       make(map[int]string),
+		Config:        &config,
 	}
 	// Add rules from file_paths with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
 	for i, p := range kprobes.Paths {
-		e.tpRules[i] = p
+		e.TpRules[i] = p
 	}
-	fileMonitoringTable.addFIM(config.TpId, e)
+	pol.FileMonitoringTable.AddFIM(config.TpId, e)
 
 	l := logger.GetLogger()
 	mapDir := bpf.MapPrefixPath()
@@ -1251,7 +1139,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	defer lpmMap.Close()
 
-	lpmPinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "lpm_trie_map_alloc"))
+	lpmPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "lpm_trie_map_alloc"))
 	// remove the map if already exists, otheriwse Pin() will fail
 	if _, err := os.Stat(lpmPinPath); err == nil {
 		os.Remove(lpmPinPath)
@@ -1287,7 +1175,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	defer fileHandle.Close()
 
-	filePinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_file_alloc"))
+	filePinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_file_alloc"))
 	// remove the map if already exists, otheriwse Pin() will fail
 	if _, err := os.Stat(filePinPath); err == nil {
 		os.Remove(filePinPath)
@@ -1311,7 +1199,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	defer dirHandle.Close()
 
-	dirPinPath := path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_dir_alloc"))
+	dirPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_dir_alloc"))
 	// remove the map if already exists, otheriwse Pin() will fail
 	if _, err := os.Stat(dirPinPath); err == nil {
 		os.Remove(dirPinPath)
@@ -1321,7 +1209,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	if kprobes.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
+		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.MapDir, e.PinPathPrefix); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		}
@@ -1344,7 +1232,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	for _, i := range allContainers {
 		s := fm.SpecPinPath{
 			PolicyName: policy.TpName(),
-			PinPath:    e.pinPathPrefix,
+			PinPath:    e.PinPathPrefix,
 			Spec:       kprobes,
 		}
 		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root); err != nil {
@@ -1359,7 +1247,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
+			sensors.PathJoin(e.PinPathPrefix, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
 			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
@@ -1391,14 +1279,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Index: 0,
 				Name:  "tg_mb_paths",
 				Load: func(outerMap *ebpf.Map, index uint32) error {
-					return fm.PopulateMatchBinariesPathsMaps(sel, e.pinPathPrefix, outerMap)
+					return fm.PopulateMatchBinariesPathsMaps(sel, e.PinPathPrefix, outerMap)
 				},
 			},
 			{
 				Index: 0,
 				Name:  "file_ops_maps",
 				Load: func(m *ebpf.Map, index uint32) error {
-					if err := fm.GenerateFileOpsMap(m, sel, e.pinPathPrefix); err != nil {
+					if err := fm.GenerateFileOpsMap(m, sel, e.PinPathPrefix); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
 					}
 					return nil
@@ -1408,7 +1296,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Index: 0,
 				Name:  "file_digests_maps",
 				Load: func(m *ebpf.Map, index uint32) error {
-					if err := fm.GenerateFileDigestsMap(m, sel, e.pinPathPrefix); err != nil {
+					if err := fm.GenerateFileDigestsMap(m, sel, e.PinPathPrefix); err != nil {
 						return fmt.Errorf("file_digests_maps: %w", err)
 					}
 					return nil
@@ -1458,7 +1346,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "exec_retprobe_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 			)
 		}
 
@@ -1467,7 +1355,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "io_uring_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 			)
 		}
 
@@ -1476,14 +1364,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "io_uring_retprobe_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 			)
 		}
 
 		for _, m := range SharedMaps {
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 			)
 		}
 	}
@@ -1493,7 +1381,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Progs: progs,
 		Maps:  maps,
 		PreUnloadHook: func() error {
-			fileMonitoringTable.rmFIM(config.TpId)
+			pol.FileMonitoringTable.RmFIM(config.TpId)
 			return nil
 		},
 	}, nil
@@ -1946,7 +1834,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 
 	var progs []*program.Program
 	var maps []*program.Map
-	tpid := atomic.AddUint32(&sensorExecCounter, 1)
+	tpid := atomic.AddUint32(&pol.SensorExecCounter, 1)
 	name := fmt.Sprintf("fim_exec_sensor_%d", tpid)
 	spec := policy.TpSpec()
 

@@ -50,6 +50,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -846,7 +847,7 @@ func TestLoadFileSensor(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		TerminateFsScanner()
-		ClearFIMTracingPolicies()
+		pol.ResetFIMTracingPolicies()
 	})
 
 	verSuffix := "v419"
@@ -1018,7 +1019,7 @@ func TestFileEnforceCreate(t *testing.T) {
 	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
-		ClearFIMTracingPolicies()
+		pol.ResetFIMTracingPolicies()
 	})
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -1076,7 +1077,7 @@ func TestFileEnforceWrite(t *testing.T) {
 	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
-		ClearFIMTracingPolicies()
+		pol.ResetFIMTracingPolicies()
 	})
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -1139,7 +1140,7 @@ func TestFileEnforceExec(t *testing.T) {
 	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
-		ClearFIMTracingPolicies()
+		pol.ResetFIMTracingPolicies()
 	})
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -2691,7 +2692,7 @@ func TestFileOps(t *testing.T) {
 	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
-		ClearFIMTracingPolicies()
+		pol.ResetFIMTracingPolicies()
 	})
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -3124,7 +3125,7 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	resetTracingPolicies()
+	pol.ResetFIMTracingPolicies()
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
