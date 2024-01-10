@@ -464,7 +464,18 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	require.NoError(t, err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
-	serverBuf.ReadLine()
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, serverCmd)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, serverCmd)
+			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+	}
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
@@ -690,7 +701,18 @@ func TestUdpSeqCheck(t *testing.T) {
 	require.NoError(t, err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
-	serverBuf.ReadLine()
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, serverCmd)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, serverCmd)
+			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+	}
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
@@ -1959,7 +1981,18 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	require.NoError(t, err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
-	serverBuf.ReadLine()
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, serverCmd)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, serverCmd)
+			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+	}
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
@@ -2358,9 +2391,11 @@ func TestIOUringConnectEvent(t *testing.T) {
 	for string(line[:]) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
+			killAndWaitCommand(t, cmdServer)
 			panic(err)
 		}
 		if len(line) == 0 {
+			killAndWaitCommand(t, cmdServer)
 			panic(fmt.Errorf("received empty line from UDP server"))
 		}
 	}

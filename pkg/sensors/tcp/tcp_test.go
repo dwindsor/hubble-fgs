@@ -1094,7 +1094,18 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	}
 
 	serverBuf := bufio.NewReader(serverOutput)
-	serverBuf.ReadLine()
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, serverCmd)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, serverCmd)
+			panic(fmt.Errorf("received empty line from TCP server"))
+		}
+	}
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
