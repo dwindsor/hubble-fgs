@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/logger"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -29,6 +31,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
@@ -42,8 +45,10 @@ import (
 )
 
 var (
-	client bool
-	server bool
+	client    bool
+	server    bool
+	iouServer bool
+	iouClient bool
 )
 
 const (
@@ -136,6 +141,8 @@ spec:
 func init() {
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
+	flag.BoolVar(&iouServer, "iouServer", false, "internal")
+	flag.BoolVar(&iouClient, "iouClient", false, "internal")
 }
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
@@ -194,8 +201,16 @@ func TestMain(m *testing.M) {
 		tcpServer()
 		os.Exit(0)
 	}
+	if iouServer {
+		tcpIouServer()
+		os.Exit(0)
+	}
 	if client {
 		tcpClient()
+		os.Exit(0)
+	}
+	if iouClient {
+		tcpIouClient()
 		os.Exit(0)
 	}
 	ec := runner.TestSensorsRun(m, "SensorTcp")
@@ -1794,4 +1809,213 @@ func TestDockerListenConnect6(t *testing.T) {
 
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+// FIXME: net io_uring test seems to time out on ARM.
+func TestIOUringAcceptEvent(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skipf("io_uring requires kernel >= 5.4")
+	}
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
+		t.Skipf("Test seems to time out on ARM")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := os.Args[0]
+	client := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-iouServer"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("127.0.0.1 8000"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessAcceptChecker("serverAccept").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8000).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8000).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("accept")).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesSent(5).
+				WithBytesReceived(5)),
+	)
+
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(os.Args[0], "-iouServer")
+	serverOutput, err := cmdServer.StdoutPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	cmdServer.Stderr = os.Stderr
+
+	err = cmdServer.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverOutput)
+	var line []byte
+	for string(line[:]) != "Ready" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, cmdServer)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, cmdServer)
+			panic(fmt.Errorf("received empty line from TCP server"))
+		}
+	}
+
+	serverPid := uint32(cmdServer.Process.Pid)
+	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+
+	cmdClient := exec.Command(client, "127.0.0.1", "8000")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+// FIXME: net io_uring test seems to time out on ARM.
+func TestIOUringConnectEvent(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skipf("io_uring requires kernel >= 5.4")
+	}
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
+		t.Skipf("Test seems to time out on ARM")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	client := os.Args[0]
+	server := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8001"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-iouClient"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("clientConnect").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8001).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8001).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("connect")).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesSent(5)),
+	)
+
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-nvlp", "8001")
+	serverError, err := cmdServer.StderrPipe()
+	require.NoError(t, err, "could not connect to server output pipe")
+	cmdServer.Stdout = nil
+
+	err = cmdServer.Start()
+	require.NoError(t, err, "cannot start server")
+
+	serverBuf := bufio.NewReader(serverError)
+	var line []byte
+	for string(line[:]) != "Listening on 0.0.0.0 8001" {
+		line, _, err = serverBuf.ReadLine()
+		if err != nil {
+			killAndWaitCommand(t, cmdServer)
+			panic(err)
+		}
+		if len(line) == 0 {
+			killAndWaitCommand(t, cmdServer)
+			panic(fmt.Errorf("received empty line from TCP server"))
+		}
+	}
+
+	serverPid := uint32(cmdServer.Process.Pid)
+	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+
+	cmdClient := exec.Command(os.Args[0], "-iouClient")
+	cmdClient.Stderr = os.Stderr
+	cmdClient.Stdout = os.Stdout
+
+	err = cmdClient.Start()
+	require.NoError(t, err, "cannot start client")
+
+	err = cmdClient.Wait()
+	if err != nil {
+		killAndWaitCommand(t, cmdServer)
+		panic(err)
+	}
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 }
