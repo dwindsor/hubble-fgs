@@ -17,11 +17,11 @@ spec:
       # This option allows users to define a specific size for the map
       # that holds the watched file. The default value (i.e. if
       # the user does not specify that option) is 128K entries.
-      maxWatchedFiles: 131072
+      maxWatchedFiles: "131072"
       # This option allows users to define a specific size for the map
       # that holds the watched directories. The default value (i.e. if
       # the user does not specify that option) is 128K entries.
-      maxWatchedDirs: 131072
+      maxWatchedDirs: "131072"
     file_paths:
     - "/etc/"
     - "/var/testfile"
