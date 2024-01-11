@@ -351,13 +351,14 @@ func (v *ConfigValue) String() string {
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
 func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPEventUnix {
 	unix := layer3.MsgIPEventUnix{}
+	unix.Msg = &networkapi.MsgIPEvent{}
 
-	unix.Common = processapi.MsgCommon{
+	unix.Msg.Common = processapi.MsgCommon{
 		Op:    0,
 		Size:  1,
 		Ktime: v.Ktime,
 	}
-	unix.Tuple = api.MsgIPTuple{
+	unix.Msg.Tuple = api.MsgIPTuple{
 		IPv6:  v.IPv6,
 		SAddr: v.SAddr,
 		DAddr: v.DAddr,
@@ -365,13 +366,13 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 		DPort: v.DPort,
 		Proto: 0,
 	}
-	unix.SockCookie = k.Cookie
-	unix.Return = 0
-	unix.ProcessKey = processapi.MsgExecveKey{
+	unix.Msg.SockCookie = k.Cookie
+	unix.Msg.Return = 0
+	unix.Msg.ProcessKey = processapi.MsgExecveKey{
 		Pid:   v.Pid,
 		Ktime: v.PidKtime,
 	}
-	unix.SocketStats = api.MsgSocketStats{
+	unix.Msg.SocketStats = api.MsgSocketStats{
 		BytesSubmitted:   v.SubmittedBytes,
 		BytesConsumed:    v.ConsumedBytes,
 		BytesSent:        v.TXBytes,
@@ -410,7 +411,7 @@ func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer
 	//		duration = time.Duration(0)
 	//	}
 	unix := createUdpEvent(k, v, duration)
-	unix.Common.Op = ops.MSG_OP_UDPCLOSE
+	unix.Msg.Common.Op = ops.MSG_OP_UDPCLOSE
 
 	return unix
 }
@@ -423,7 +424,7 @@ func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
 
 func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
 	unix := createUdpEvent(k, v, 0)
-	unix.Common.Op = ops.MSG_OP_UDPSTATS
+	unix.Msg.Common.Op = ops.MSG_OP_UDPSTATS
 
 	return unix
 }
@@ -665,17 +666,18 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	}
 
 	udp := layer3.MsgIPEventUnix{}
+	udp.Msg = &networkapi.MsgIPEvent{}
 
 	if socket.State == unix.BPF_TCP_CLOSE {
 		if disableListenEvents {
 			return
 		}
-		udp.Common.Op = ops.MsgOpUDPListen
+		udp.Msg.Common.Op = ops.MsgOpUDPListen
 	} else {
 		if disableConnectEvents {
 			return
 		}
-		udp.Common.Op = ops.MsgOpUDPConnect
+		udp.Msg.Common.Op = ops.MsgOpUDPConnect
 	}
 
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
@@ -688,19 +690,19 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 		return
 	}
 
-	udp.ProcessKey.Pid = pid
-	udp.ProcessKey.Ktime = ktime
-	udp.Common.Ktime = ktime
+	udp.Msg.ProcessKey.Pid = pid
+	udp.Msg.ProcessKey.Ktime = ktime
+	udp.Msg.Common.Ktime = ktime
 
-	udp.Tuple.IPv6 = socket.IPv6
-	udp.Tuple.SAddr[0] = socket.Saddr[0]
-	udp.Tuple.SAddr[1] = socket.Saddr[1]
-	udp.Tuple.DAddr[0] = socket.Daddr[0]
-	udp.Tuple.DAddr[1] = socket.Daddr[1]
-	udp.Tuple.DPort = networkapi.SwapByte(socket.Dport)
-	udp.Tuple.SPort = socket.Sport
-	udp.Tuple.Proto = 2
-	udp.SockCookie = socket.Sockaddr
+	udp.Msg.Tuple.IPv6 = socket.IPv6
+	udp.Msg.Tuple.SAddr[0] = socket.Saddr[0]
+	udp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
+	udp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
+	udp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
+	udp.Msg.Tuple.DPort = networkapi.SwapByte(socket.Dport)
+	udp.Msg.Tuple.SPort = socket.Sport
+	udp.Msg.Tuple.Proto = 2
+	udp.Msg.SockCookie = socket.Sockaddr
 
 	observer.AllListeners(&udp)
 }
@@ -1002,7 +1004,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := ip.MsgToIPUnix(&m, false, true)
+	msgUnix := ip.MsgToIPUnix(&m)
 
 	switch m.Common.Op {
 	case ops.MSG_OP_UDPCONNECT:

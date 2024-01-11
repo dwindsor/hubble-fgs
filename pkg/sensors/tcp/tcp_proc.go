@@ -58,25 +58,26 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	}
 
 	tcp := layer3.MsgIPEventUnix{}
+	tcp.Msg = &networkapi.MsgIPEvent{}
 
-	tcp.ProcessKey.Pid = pid
-	tcp.ProcessKey.Ktime = ktime
-	tcp.Common.Ktime = ktime
+	tcp.Msg.ProcessKey.Pid = pid
+	tcp.Msg.ProcessKey.Ktime = ktime
+	tcp.Msg.Common.Ktime = ktime
 
-	tcp.Tuple.IPv6 = socket.IPv6
-	tcp.Tuple.SAddr[0] = socket.Saddr[0]
-	tcp.Tuple.SAddr[1] = socket.Saddr[1]
-	tcp.Tuple.DAddr[0] = socket.Daddr[0]
-	tcp.Tuple.DAddr[1] = socket.Daddr[1]
-	tcp.Tuple.DPort = networkapi.SwapByte(socket.Dport)
-	tcp.Tuple.SPort = socket.Sport
-	tcp.Tuple.Proto = 2
-	tcp.SockCookie = socket.Sockaddr
+	tcp.Msg.Tuple.IPv6 = socket.IPv6
+	tcp.Msg.Tuple.SAddr[0] = socket.Saddr[0]
+	tcp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
+	tcp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
+	tcp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
+	tcp.Msg.Tuple.DPort = networkapi.SwapByte(socket.Dport)
+	tcp.Msg.Tuple.SPort = socket.Sport
+	tcp.Msg.Tuple.Proto = 2
+	tcp.Msg.SockCookie = socket.Sockaddr
 
 	if socket.State == TCP_PROC_STATE_LISTEN {
-		tcp.Common.Op = ops.MsgOpListen
+		tcp.Msg.Common.Op = ops.MsgOpListen
 	} else {
-		tcp.Common.Op = ops.MsgOpTCPConnectReturn
+		tcp.Msg.Common.Op = ops.MsgOpTCPConnectReturn
 	}
 
 	if _pushEvents {

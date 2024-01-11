@@ -57,21 +57,22 @@ var (
 
 func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
 	unix := layer3.MsgIPEventUnix{}
+	unix.Msg = &networkapi.MsgIPEvent{}
 
-	unix.Common = processapi.MsgCommon{
+	unix.Msg.Common = processapi.MsgCommon{
 		Op:    ops.MsgOpTCPStats,
 		Size:  1,
 		Ktime: stats.Ktime,
 	}
-	unix.Tuple = *tuple
-	unix.SockCookie = k.SockCookie
-	unix.Return = 0
-	unix.ProcessKey = processapi.MsgExecveKey{
+	unix.Msg.Tuple = *tuple
+	unix.Msg.SockCookie = k.SockCookie
+	unix.Msg.Return = 0
+	unix.Msg.ProcessKey = processapi.MsgExecveKey{
 		Pid:   v.Key.Pid,
 		Ktime: v.Key.Ktime,
 	}
-	unix.Common.Flags = 0
-	unix.SocketStats = *stats
+	unix.Msg.Common.Flags = 0
+	unix.Msg.SocketStats = *stats
 	unix.Duration = 0
 
 	observer.AllListeners(&unix)

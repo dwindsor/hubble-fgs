@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/watcher"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/stretchr/testify/assert"
@@ -31,44 +32,48 @@ import (
 
 func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUnix, *MsgIPEventUnix) {
 	connectMsg := MsgIPEventUnix{
-		Common: processapi.MsgCommon{
-			Op:     ops.MSG_OP_TCPCONNECTRET,
-			Flags:  0,
-			Pad_v2: [2]uint8{0, 0},
-			Size:   40,
-			Ktime:  0,
+		Msg: &networkapi.MsgIPEvent{
+			Common: processapi.MsgCommon{
+				Op:     ops.MSG_OP_TCPCONNECTRET,
+				Flags:  0,
+				Pad_v2: [2]uint8{0, 0},
+				Size:   40,
+				Ktime:  0,
+			},
+			ProcessKey: processapi.MsgExecveKey{
+				Pid:   Pid,
+				Pad:   0,
+				Ktime: Ktime,
+			},
 		},
 		Kube: processapi.MsgK8sUnix{
 			NetNS:  4026531992,
 			Cid:    0,
 			Cgrpid: 0,
 			Docker: Docker,
-		},
-		ProcessKey: processapi.MsgExecveKey{
-			Pid:   Pid,
-			Pad:   0,
-			Ktime: Ktime,
 		},
 	}
 
 	closeMsg := MsgIPEventUnix{
-		Common: processapi.MsgCommon{
-			Op:     ops.MSG_OP_TCPCLOSE,
-			Flags:  0,
-			Pad_v2: [2]uint8{0, 0},
-			Size:   40,
-			Ktime:  0,
+		Msg: &networkapi.MsgIPEvent{
+			Common: processapi.MsgCommon{
+				Op:     ops.MSG_OP_TCPCLOSE,
+				Flags:  0,
+				Pad_v2: [2]uint8{0, 0},
+				Size:   40,
+				Ktime:  0,
+			},
+			ProcessKey: processapi.MsgExecveKey{
+				Pid:   Pid,
+				Pad:   0,
+				Ktime: Ktime,
+			},
 		},
 		Kube: processapi.MsgK8sUnix{
 			NetNS:  4026531992,
 			Cid:    0,
 			Cgrpid: 0,
 			Docker: Docker,
-		},
-		ProcessKey: processapi.MsgExecveKey{
-			Pid:   Pid,
-			Pad:   0,
-			Ktime: Ktime,
 		},
 	}
 

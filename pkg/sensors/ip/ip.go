@@ -33,21 +33,13 @@ func DisableDns() {
 	enableDns = false
 }
 
-func MsgToIPUnix(m *api.MsgIPEvent, rtt bool, udpLatency bool) *layer3.MsgIPEventUnix {
+func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
 	unix := &layer3.MsgIPEventUnix{}
 
-	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-	unix.Return = m.Return
-	unix.ProcessKey = m.ProcessKey
-	unix.SockCookie = m.SockCookie
-	unix.SocketStats = m.SocketStats
-	unix.SocketFlags = m.SocketFlags
+	unix.Msg = m
 	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
-	unix.Data = m.Duration // For IP_ERROR messages
-	// no need to copy the pad here
 	if enableDns {
-		unix.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
+		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
 	}
 
 	return unix
@@ -244,6 +236,6 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, fmt.Errorf("IP Error handled as metric only")
 	}
 
-	msgUnix := MsgToIPUnix(&m, false, false)
+	msgUnix := MsgToIPUnix(&m)
 	return []observer.Event{msgUnix}, nil
 }
