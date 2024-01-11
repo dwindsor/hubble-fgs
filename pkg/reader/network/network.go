@@ -6,7 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
-func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
+func GetSocketStats(stats *api.MsgSocketStats) *tetragon.SocketStats {
 	rttHist := &tetragon.Histogram{
 		Sum: stats.Rtt.Sum,
 	}
@@ -142,9 +142,9 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
 		BytesConsumed:    stats.BytesConsumed,
 		BytesSent:        stats.BytesSent,
 		BytesReceived:    stats.BytesReceived,
-		SegsConsumed:     stats.ConsumedSegs,
+		SegsConsumed:     stats.SegsConsumed,
 		SegsIn:           stats.SegsIn,
-		SegsSubmitted:    stats.SubmittedSegs,
+		SegsSubmitted:    stats.SegsSubmitted,
 		SegsOut:          stats.SegsOut,
 		Srtt:             stats.SRtt,
 		RetransmitsBytes: stats.RetransmitBytes,

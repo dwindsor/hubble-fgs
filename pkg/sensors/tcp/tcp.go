@@ -40,7 +40,7 @@ var (
 	tcpWatermarksDipTriggerMult   uint64
 	watermarksEnabled             = false
 
-	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStatsUnix]
+	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStats]
 	stataCacheSize = 32000
 
 	configured       = false
@@ -192,8 +192,8 @@ type tcpValue struct {
 	MsgIPTuple      networkapi.MsgIPTuple
 }
 
-func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
-	s := &networkapi.MsgSocketStatsUnix{}
+func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStats {
+	s := &networkapi.MsgSocketStats{}
 	s.Ktime = t.LastTime
 	s.CreateKtime = t.CreateTime
 	s.BytesSent = t.Sent
@@ -202,8 +202,8 @@ func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStatsUnix {
 	s.SegsOut = t.SegsOut
 	s.BytesSubmitted = t.Sent
 	s.BytesConsumed = t.Recv
-	s.ConsumedSegs = 0
-	s.SubmittedSegs = 0
+	s.SegsConsumed = 0
+	s.SegsSubmitted = 0
 	s.SRtt = t.Srtt
 	s.RetransmitSegs = t.RetransmitSegs
 	s.RetransmitBytes = t.RetransmitBytes
@@ -419,7 +419,7 @@ func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string)
 	}, nil
 }
 
-func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStatsUnix, error) {
+func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStats, error) {
 	source, dest := networkapi.TupleAddrString(tuple, ops.MSG_OP_TCPSTATS)
 	if curr.BytesReceived < last.BytesReceived {
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -445,14 +445,14 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStatsUnix, tuple *networkapi.
 	if err != nil {
 		return *last, err
 	}
-	return networkapi.MsgSocketStatsUnix{
+	return networkapi.MsgSocketStats{
 		BytesSubmitted:   0,
 		BytesSent:        curr.BytesSent - last.BytesSent,
 		BytesConsumed:    0,
 		BytesReceived:    curr.BytesReceived - last.BytesReceived,
-		ConsumedSegs:     0,
+		SegsConsumed:     0,
 		SegsIn:           curr.SegsIn - last.SegsIn,
-		SubmittedSegs:    0,
+		SegsSubmitted:    0,
 		SegsOut:          curr.SegsOut - last.SegsOut,
 		SRtt:             curr.SRtt,
 		RetransmitSegs:   curr.RetransmitSegs - last.RetransmitSegs,
@@ -578,7 +578,7 @@ func init() {
 func AddTCP() {
 	var err error
 
-	stats, err = lru.New[tcpKey, networkapi.MsgSocketStatsUnix](stataCacheSize)
+	stats, err = lru.New[tcpKey, networkapi.MsgSocketStats](stataCacheSize)
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("TCP cache failed. Disabling TCP")
 		return

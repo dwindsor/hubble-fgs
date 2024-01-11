@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 344        # size
+  h4 352        # size
   ? 8           # ktime
 
   ## tuple
@@ -32,6 +32,7 @@ EVENT TCPACCEPT
 
   ## socket stats, zeroes for ACCEPT
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+  $ 00 00 00 00 00 00 00 00 # create ktime
   $ 00 00 00 00 00 00 00 00 # bytes sent
   $ 00 00 00 00 00 00 00 00 # bytes recv
   $ 00 00 00 00             # segs in
@@ -55,6 +56,7 @@ EVENT TCPACCEPT
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -63,7 +65,6 @@ EVENT TCPACCEPT
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
@@ -82,7 +83,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 344        # size
+  h4 352        # size
   ? 8           # ktime
 
   ## tuple
@@ -99,6 +100,7 @@ EVENT TCPCONNECTRET
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+  h8 0 # create ktime
   h8 0 # bytes sent
   h8 0 # bytes received
   h4 0 # segs in
@@ -122,6 +124,7 @@ EVENT TCPCONNECTRET
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -130,7 +133,6 @@ EVENT TCPCONNECTRET
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
@@ -151,7 +153,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 352        # size
   ? 8           # ktime
 
   ## tuple
@@ -168,6 +170,7 @@ EVENT TCPCLOSE
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+  h8 0 # create ktime
   h8 3 # bytes sent
   h8 5 # bytes received
   NZ 4 # segs in
@@ -191,6 +194,7 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -199,7 +203,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
@@ -220,7 +223,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 352        # size
   ? 8           # ktime
 
   ## tuple
@@ -237,6 +240,7 @@ EVENT TCPCLOSE
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+  h8 0 # create ktime
   h8 5 # bytes sent
   NZ 8 # bytes received (fluctuates between 3 and 4 (if FIN was counted))
   NZ 4 # segs in
@@ -260,6 +264,7 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -268,7 +273,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
@@ -288,7 +292,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 352        # size
   ? 8           # ktime
 
   ## tuple
@@ -305,6 +309,7 @@ EVENT TCPCLOSE
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+  h8 0 # create ktime
   h8 0 # bytes sent
   h8 0 # bytes received
   h4 0 # segs in
@@ -328,6 +333,7 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -336,7 +342,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
   $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags

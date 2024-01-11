@@ -8,7 +8,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 344        # size
+      h4 352        # size
       ? 8           # ktime
 
       ## tuple
@@ -27,6 +27,7 @@ EVENTS
 
       ## socket stats
       $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+      h8 0 # create ktime
       h8 5 # bytes sent
       h8 0 # bytes received
       h4 0 # segs in
@@ -50,6 +51,7 @@ EVENTS
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # rtt sum
       $ 00 00 00 00 00 00 00 00 # latency buckets X 8
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
@@ -58,7 +60,6 @@ EVENTS
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # rtt sum
       $ 00 00 00 00 00 00 00 00 # latency sum
 
       $ 00 00 00 00
@@ -70,7 +71,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 344        # size
+      h4 352        # size
       ? 8           # ktime
 
       ## tuple
@@ -89,6 +90,7 @@ EVENTS
 
       ## socket stats
       $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
+      h8 0 # create ktime
       h8 0 # bytes sent
       h8 5 # bytes received
       h4 1 # segs in
@@ -112,6 +114,7 @@ EVENTS
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
+      $ 00 00 00 00 00 00 00 00 # rtt sum
       $ 00 00 00 00 00 00 00 00 # latency buckets X 8
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
@@ -120,7 +123,6 @@ EVENTS
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
       $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # rtt sum
       $ 00 00 00 00 00 00 00 00 # latency sum
 
       $ 00 00 00 00

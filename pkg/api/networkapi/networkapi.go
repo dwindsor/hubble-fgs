@@ -145,35 +145,15 @@ type MsgICMPEvent struct {
 	IcmpData   MsgICMPData
 }
 
-type MsgSocketStatsUnix struct {
-	Ktime            uint64
-	CreateKtime      uint64
-	BytesSubmitted   uint64
-	BytesSent        uint64
-	BytesConsumed    uint64
-	BytesReceived    uint64
-	ConsumedSegs     uint32
-	SegsIn           uint32
-	SubmittedSegs    uint32
-	SegsOut          uint32
-	SRtt             uint32
-	RetransmitSegs   uint32
-	RetransmitBytes  uint64
-	ToZeroWindow     uint32
-	SkDrop           uint32
-	SkbConsumeMisses uint32
-	Latency          Histogram
-	Rtt              Histogram
-}
+func (m *MsgSocketStats) String() string {
+	type _MsgSocketStats MsgSocketStats
 
-func (m *MsgSocketStatsUnix) String() string {
-	type _MsgSocketStatsUnix MsgSocketStatsUnix
-
-	return fmt.Sprintf("%+v", _MsgSocketStatsUnix(*m))
+	return fmt.Sprintf("%+v", _MsgSocketStats(*m))
 }
 
 type MsgSocketStats struct {
 	Ktime            uint64
+	CreateKtime      uint64
 	BytesSent        uint64
 	BytesReceived    uint64
 	SegsIn           uint32
@@ -189,21 +169,19 @@ type MsgSocketStats struct {
 	SkDrop           uint32
 	SkbConsumeMisses uint32
 	Pad              uint32
-	RttBuckets       [8]uint64
-	LatencyBuckets   [8]uint64
-	RttSum           uint64
-	LatencySum       uint64
+	Rtt              Histogram
+	Latency          Histogram
 }
 
 type Histogram struct {
-	B99 uint64
-	B90 uint64
-	B75 uint64
-	B50 uint64
-	B25 uint64
-	B10 uint64
-	B01 uint64
 	B00 uint64
+	B01 uint64
+	B10 uint64
+	B25 uint64
+	B50 uint64
+	B75 uint64
+	B90 uint64
+	B99 uint64
 	Sum uint64
 }
 

@@ -29,6 +29,7 @@ struct msg_ip_tuple {
 
 struct msg_socket_stats {
 	__u64 ktime;
+	__u64 create_ktime;
 	__u64 bytes_sent;
 	__u64 bytes_received;
 	__u32 segs_in;
@@ -45,8 +46,8 @@ struct msg_socket_stats {
 	__u32 skb_consume_misses;
 	__u32 pad;
 	__u64 rtt_buckets[8];
-	__u64 latency_buckets[8];
 	__u64 rtt_sum;
+	__u64 latency_buckets[8];
 	__u64 latency_sum;
 }; // All fields aligned so no 'packed' attribute.
 

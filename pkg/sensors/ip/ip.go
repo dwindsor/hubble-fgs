@@ -19,7 +19,6 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
 )
 
 var (
@@ -42,7 +41,7 @@ func MsgToIPUnix(m *api.MsgIPEvent, rtt bool, udpLatency bool) *layer3.MsgIPEven
 	unix.Return = m.Return
 	unix.ProcessKey = m.ProcessKey
 	unix.SockCookie = m.SockCookie
-	unix.SocketStats = stats.MsgToSocketStatsUnix(&m.SocketStats, rtt, udpLatency)
+	unix.SocketStats = m.SocketStats
 	unix.SocketFlags = m.SocketFlags
 	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
 	unix.Data = m.Duration // For IP_ERROR messages

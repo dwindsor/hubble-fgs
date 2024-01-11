@@ -371,14 +371,14 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 		Pid:   v.Pid,
 		Ktime: v.PidKtime,
 	}
-	unix.SocketStats = api.MsgSocketStatsUnix{
+	unix.SocketStats = api.MsgSocketStats{
 		BytesSubmitted:   v.SubmittedBytes,
 		BytesConsumed:    v.ConsumedBytes,
 		BytesSent:        v.TXBytes,
 		BytesReceived:    v.RXBytes,
-		ConsumedSegs:     uint32(v.ConsumedSegs),
+		SegsConsumed:     uint32(v.ConsumedSegs),
 		SegsIn:           uint32(v.SegsIn),
-		SubmittedSegs:    uint32(v.SubmittedSegs),
+		SegsSubmitted:    uint32(v.SubmittedSegs),
 		SegsOut:          uint32(v.SegsOut),
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,

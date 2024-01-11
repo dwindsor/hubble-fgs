@@ -103,7 +103,7 @@ type MsgIPEventUnix struct {
 	Return      int64
 	ProcessKey  processapi.MsgExecveKey
 	SockCookie  uint64
-	SocketStats networkapi.MsgSocketStatsUnix
+	SocketStats networkapi.MsgSocketStats
 	SocketFlags uint32
 	RefCntDone  [2]bool
 	Duration    time.Duration

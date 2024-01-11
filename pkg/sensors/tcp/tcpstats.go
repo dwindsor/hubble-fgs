@@ -55,7 +55,7 @@ var (
 	TcpMapName = "tg_socket_map"
 )
 
-func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStatsUnix) {
+func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
 	unix := layer3.MsgIPEventUnix{}
 
 	unix.Common = processapi.MsgCommon{
