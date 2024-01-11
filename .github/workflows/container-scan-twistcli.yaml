@@ -31,18 +31,18 @@ jobs:
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Scan image
         id: scan-image
-        uses: PaloAltoNetworks/prisma-cloud-scan@1f38c94d789ff9b01a4e80070b442294ebd3e362 # v1
+        uses: PaloAltoNetworks/prisma-cloud-scan@cd5348ac760a03c23e1e4fce5fe971dceb211f65 # v1.6.2
         with:
           pcc_console_url: https://us-east1.cloud.twistlock.com/us-1-111576212
           pcc_user: 0541c4a6-1f9a-4dfd-8e86-86829fda7205
           pcc_pass: ${{ secrets.TWISTCLI_PASSWORD }}
           image_name: quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       - name: Install vexctl
         run: go install github.com/openvex/vexctl@latest
       - name: Checkout latest VEX data
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           sparse-checkout: |
             .github/vex-data.vex.json
@@ -51,7 +51,7 @@ jobs:
       - name: Filter false positives
         run: vexctl filter ${{ steps.scan-image.outputs.sarif_file }} isovalent-tetragon-vex/.github/vex-data.vex.json > filtered-results.json
       - name: Upload SARIF scan results
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           name: ${{ matrix.image }}-${{ matrix.branch }}.sarif.json
           path: filtered-results.json
