@@ -4,7 +4,7 @@ go 1.21.5
 
 require (
 	github.com/cilium/cilium v1.15.0-rc.0
-	github.com/cilium/ebpf v0.12.4-0.20231215112452-00c0cb05d35c
+	github.com/cilium/ebpf v0.12.4-0.20240110182413-87531ae5ba83
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
