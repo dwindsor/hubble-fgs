@@ -36,7 +36,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
@@ -234,11 +233,6 @@ func getUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1
 func TestFile(t *testing.T) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
-
-	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
-	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.4.0") {
-		t.Skipf("File monitoring tests need kernel >= 5.4, got %s", kversion)
-	}
 
 	fileChecker := checker.NewRPCChecker(FileChecker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkFile := features.New("Check File Events").
