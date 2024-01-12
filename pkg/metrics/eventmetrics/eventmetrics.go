@@ -35,6 +35,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
@@ -107,7 +108,9 @@ func postDnsMetric(res *tetragon.ProcessDns) {
 }
 
 func HandleDnsEvent(res *tetragon.ProcessDns) {
-	postDnsMetric(res)
+	if dnsconfig.MetricsEnabled {
+		postDnsMetric(res)
+	}
 }
 
 func HandleProcessedEvent(processedEvent interface{}) {

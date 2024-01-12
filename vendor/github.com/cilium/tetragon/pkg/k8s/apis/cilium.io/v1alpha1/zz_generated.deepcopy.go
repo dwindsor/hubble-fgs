@@ -121,6 +121,11 @@ func (in *DnsPolicySpec) DeepCopyInto(out *DnsPolicySpec) {
 		*out = make([]uint16, len(*in))
 		copy(*out, *in)
 	}
+	if in.Metrics != nil {
+		in, out := &in.Metrics, &out.Metrics
+		*out = new(PromMetrics)
+		**out = **in
+	}
 	return
 }
 

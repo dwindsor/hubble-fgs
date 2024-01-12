@@ -342,6 +342,9 @@ type DnsPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of DNS ports
 	Ports []uint16 `json:"ports,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
 type NopSelector struct {

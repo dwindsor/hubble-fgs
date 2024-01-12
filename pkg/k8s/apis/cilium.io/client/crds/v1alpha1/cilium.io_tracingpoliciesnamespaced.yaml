@@ -1113,6 +1113,13 @@ spec:
                       enable:
                         description: DNS enable parser
                         type: boolean
+                      metrics:
+                        description: Metrics Configuration
+                        properties:
+                          enable:
+                            default: true
+                            type: boolean
+                        type: object
                       ports:
                         description: A list of DNS ports
                         items:

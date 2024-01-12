@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 )
 
 const (
@@ -159,6 +160,12 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 			copy(config.dnsPorts[:], spec.Parser.Dns.Ports)
 		} else {
 			copy(config.dnsPorts[:], spec.Parser.Dns.Ports[0:maxDnsPorts])
+		}
+
+		if spec.Parser.Dns.Metrics != nil {
+			dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
+		} else {
+			dnsconfig.MetricsEnabled = true
 		}
 
 		// Enable DNS cache in core, abstraction breaking but
