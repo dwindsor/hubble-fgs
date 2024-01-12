@@ -6,6 +6,7 @@ package tracing
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"path"
 	"sync/atomic"
@@ -44,6 +45,8 @@ type genericUprobe struct {
 	selectors     *selectors.KernelSelectorState
 	// policyName is the name of the policy that this uprobe belongs to
 	policyName string
+	// message field of the Tracing Policy
+	message string
 }
 
 func (g *genericUprobe) SetID(id idtable.EntryID) {
@@ -92,6 +95,7 @@ func handleGenericUprobe(r *bytes.Reader) ([]observer.Event, error) {
 	unix.Path = uprobeEntry.path
 	unix.Symbol = uprobeEntry.symbol
 	unix.PolicyName = uprobeEntry.policyName
+	unix.Message = uprobeEntry.message
 
 	return []observer.Event{unix}, err
 }
@@ -136,8 +140,7 @@ func (k *observerUprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	logger.GetLogger().WithField("flags", flagsString(uprobeEntry.config.Flags)).
-		Infof("Loaded generic uprobe program: %s -> %s [%s]", args.Load.Name, uprobeEntry.path, uprobeEntry.symbol)
+	logger.GetLogger().Infof("Loaded generic uprobe program: %s -> %s [%s]", args.Load.Name, uprobeEntry.path, uprobeEntry.symbol)
 	return nil
 }
 
@@ -173,10 +176,7 @@ func createGenericUprobeSensor(
 		loadProgName = "bpf_generic_uprobe_v53.o"
 	}
 
-	for i := range uprobes {
-		spec := &uprobes[i]
-		config := &api.EventConfig{}
-
+	for _, spec := range uprobes {
 		var args []v1alpha1.KProbeArg
 
 		if err := isValidUprobeSelectors(spec.Selectors); err != nil {
@@ -189,49 +189,57 @@ func createGenericUprobeSensor(
 			return nil, err
 		}
 
-		uprobeEntry := &genericUprobe{
-			tableId:    idtable.UninitializedEntryID,
-			config:     config,
-			path:       spec.Path,
-			symbol:     spec.Symbol,
-			selectors:  uprobeSelectorState,
-			policyName: policyName,
+		msgField, err := getPolicyMessage(spec.Message)
+		if errors.Is(err, ErrMsgSyntaxShort) || errors.Is(err, ErrMsgSyntaxEscape) {
+			return nil, err
+		} else if errors.Is(err, ErrMsgSyntaxLong) {
+			logger.GetLogger().WithField("policy-name", policyName).Warnf("TracingPolicy 'message' field too long, truncated to %d characters", TpMaxMessageLen)
 		}
 
-		uprobeTable.AddEntry(uprobeEntry)
-		id := uprobeEntry.tableId.ID
+		for _, sym := range spec.Symbols {
+			config := &api.EventConfig{}
 
-		uprobeEntry.pinPathPrefix = sensors.PathJoin(sensorPath, fmt.Sprintf("%d", id))
-		config.FuncId = uint32(id)
+			uprobeEntry := &genericUprobe{
+				tableId:    idtable.UninitializedEntryID,
+				config:     config,
+				path:       spec.Path,
+				symbol:     sym,
+				selectors:  uprobeSelectorState,
+				policyName: policyName,
+				message:    msgField,
+			}
 
-		if selectors.HasEarlyBinaryFilter(spec.Selectors) {
-			config.Flags |= flagsEarlyFilter
+			uprobeTable.AddEntry(uprobeEntry)
+			id := uprobeEntry.tableId.ID
+
+			uprobeEntry.pinPathPrefix = sensors.PathJoin(sensorPath, fmt.Sprintf("%d", id))
+			config.FuncId = uint32(id)
+
+			pinPath := uprobeEntry.pinPathPrefix
+			pinProg := sensors.PathJoin(pinPath, "prog")
+
+			attachData := &program.UprobeAttachData{
+				Path:   spec.Path,
+				Symbol: sym,
+			}
+
+			load := program.Builder(
+				path.Join(option.Config.HubbleLib, loadProgName),
+				"",
+				"uprobe/generic_uprobe",
+				pinProg,
+				"generic_uprobe").
+				SetAttachData(attachData).
+				SetLoaderData(uprobeEntry)
+
+			progs = append(progs, load)
+
+			configMap := program.MapBuilderPin("config_map", sensors.PathJoin(pinPath, "config_map"), load)
+			tailCalls := program.MapBuilderPin("uprobe_calls", sensors.PathJoin(pinPath, "up_calls"), load)
+			filterMap := program.MapBuilderPin("filter_map", sensors.PathJoin(pinPath, "filter_map"), load)
+			selMatchBinariesMap := program.MapBuilderPin("tg_mb_sel_opts", sensors.PathJoin(pinPath, "tg_mb_sel_opts"), load)
+			maps = append(maps, configMap, tailCalls, filterMap, selMatchBinariesMap)
 		}
-
-		pinPath := uprobeEntry.pinPathPrefix
-		pinProg := sensors.PathJoin(pinPath, "prog")
-
-		attachData := &program.UprobeAttachData{
-			Path:   spec.Path,
-			Symbol: spec.Symbol,
-		}
-
-		load := program.Builder(
-			path.Join(option.Config.HubbleLib, loadProgName),
-			"",
-			"uprobe/generic_uprobe",
-			pinProg,
-			"generic_uprobe").
-			SetAttachData(attachData).
-			SetLoaderData(uprobeEntry)
-
-		progs = append(progs, load)
-
-		configMap := program.MapBuilderPin("config_map", sensors.PathJoin(pinPath, "config_map"), load)
-		tailCalls := program.MapBuilderPin("uprobe_calls", sensors.PathJoin(pinPath, "up_calls"), load)
-		filterMap := program.MapBuilderPin("filter_map", sensors.PathJoin(pinPath, "filter_map"), load)
-		selMatchBinariesMap := program.MapBuilderPin("tg_mb_sel_opts", sensors.PathJoin(pinPath, "tg_mb_sel_opts"), load)
-		maps = append(maps, configMap, tailCalls, filterMap, selMatchBinariesMap)
 	}
 
 	return &sensors.Sensor{
