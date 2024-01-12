@@ -833,10 +833,6 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 }
 
 func TestLoadFileSensor(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
-	}
-
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	specFname := createSpecFile(t, test_path)
 
@@ -926,8 +922,6 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
 		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
-		tus.SensorMap{Name: "io_uring_map", Progs: []uint{4, 18, 19, 20, 21}},
-		tus.SensorMap{Name: "io_uring_retprobe_map", Progs: []uint{18, 19, 20, 21}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -967,6 +961,11 @@ func TestLoadFileSensor(t *testing.T) {
 		ioUringMaps := []tus.SensorMap{
 			{Name: "io_uring_map", Progs: []uint{4, 18, 19, 20, 21}},
 			{Name: "io_uring_retprobe_map", Progs: []uint{18, 19, 20, 21}},
+		}
+		sensorMaps = append(sensorMaps, ioUringMaps...)
+	} else {
+		ioUringMaps := []tus.SensorMap{
+			{Name: "io_uring_map", Progs: []uint{4}},
 		}
 		sensorMaps = append(sensorMaps, ioUringMaps...)
 	}
@@ -2671,10 +2670,6 @@ func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
 }
 
 func TestFileOps(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
-	}
-
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -3112,10 +3107,6 @@ func TestFileExecSelectors(t *testing.T) {
 }
 
 func TestFileUserDefinedMapSizes(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
-	}
-
 	filePasswd := "/etc/passwd"
 	specFile := newSpecFile(t, filePasswd, "file_monitoring_config.yaml.tmpl")
 

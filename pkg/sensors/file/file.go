@@ -1406,6 +1406,14 @@ func fixProgName(p string) string {
 		"bpf_security_file_permission.o": "bpf_security_file_permission_v419.o",
 		"bpf_vfs_unlink.o":               "bpf_vfs_unlink_v419.o",
 		"bpf_security_inode_setattr.o":   "bpf_security_inode_setattr_v419.o",
+		"bpf_vfs_fallocate.o":            "bpf_vfs_fallocate_v419.o",
+		"bpf_finish_open.o":              "bpf_finish_open_v419.o",
+		"bpf_vfs_open.o":                 "bpf_vfs_open_v419.o",
+		"bpf_security_inode_rmdir.o":     "bpf_security_inode_rmdir_v419.o",
+		"bpf_vfs_mkdir.o":                "bpf_vfs_mkdir_v419.o",
+		"bpf_iterate_dir.o":              "bpf_iterate_dir_v419.o",
+		"bpf_security_bprm_check.o":      "bpf_security_bprm_check_v419.o",
+		"bpf_security_path_rename.o":     "bpf_security_path_rename_v419.o",
 	}
 
 	r, ok := needsReplace[p]

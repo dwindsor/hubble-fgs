@@ -44,7 +44,11 @@
 
 #define PAGE_SIZE 4096
 
+#ifdef __LARGE_BPF_PROG
 #define MAX_FIM_SELECTORS 6
+#else
+#define MAX_FIM_SELECTORS 4
+#endif
 
 #define MINORBITS 20
 #define MINORMASK ((1U << MINORBITS) - 1)
@@ -319,17 +323,21 @@ struct {
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
-	struct string_prefix_lpm_trie *prefix_key;
 	struct match_binaries_sel_opts *selector_options;
 	bool match = 0;
 	void *path_map;
 	__u8 *found_key;
+#ifdef __LARGE_BPF_PROG
+	struct string_prefix_lpm_trie *prefix_key;
 	long ret;
 	int zero = 0;
+#endif
 
+#ifdef __LARGE_BPF_PROG
 	prefix_key = map_lookup_elem(&file_prefix_lpm_heap, &zero);
 	if (!prefix_key)
 		return 0;
+#endif
 
 	if (!current) {
 		// this should not happen, it means that the process was missed when
@@ -357,6 +365,7 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 				return 0;
 			found_key = map_lookup_elem(path_map, current->bin.path);
 			break;
+#ifdef __LARGE_BPF_PROG
 		case op_filter_str_prefix:
 		case op_filter_str_notprefix:
 			path_map = map_lookup_elem(&string_prefix_maps, &selector_options->map_id);
@@ -370,6 +379,7 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 				return 0;
 			found_key = map_lookup_elem(path_map, prefix_key);
 			break;
+#endif
 		default:
 			// should not happen
 			return 0;
@@ -546,9 +556,9 @@ __eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct 
 		goto nopost;
 	if (!check_match_operations(sel_idx, action))
 		goto nopost;
+#ifdef __LARGE_BPF_PROG
 	if (!check_match_digests(sel_idx, digest, action))
 		goto nopost;
-#ifdef __LARGE_BPF_PROG
 	if (!check_match_namespaces(sel_idx))
 		goto nopost;
 	if (!check_match_capabilities(sel_idx))
