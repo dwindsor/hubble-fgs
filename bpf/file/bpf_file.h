@@ -152,6 +152,20 @@ struct {
 } rename_retprobe_map SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct file_retprobe_key);
+	__type(value, __u64);
+	__uint(max_entries, 1024);
+} spr_retprobe_map SEC(".maps"); // security_path_rename retprobe map
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct file_retprobe_key);
+	__type(value, __u64);
+	__uint(max_entries, 1024);
+} vr_retprobe_map SEC(".maps"); // vfs_rename retprobe map
+
+struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct vfs_rename_info);

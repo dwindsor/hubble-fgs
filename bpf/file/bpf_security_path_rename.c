@@ -37,10 +37,16 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 {
 	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
-		.reg = 0,
+		.reg = (__u64)old_dentry,
 		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
+	struct file_retprobe_key lk = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
+	};
+	__u64 lv = (__u64)old_dentry;
 	int zero = 0;
 
 	v = map_lookup_elem(&vfs_rename_info_heap, &zero);
@@ -53,19 +59,35 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 	v->need_new = 0;
 
 	map_update_elem(&rename_retprobe_map, &k, v, 0);
+
+	// Create an entry for the kretprobe/security_path_rename in order to get the arguments.
+	map_update_elem(&spr_retprobe_map, &lk, &lv, 0);
+
 	return 0;
 }
 
 SEC("kretprobe/security_path_rename")
 int BPF_KRETPROBE(security_path_rename_exit, long ret)
 {
+	struct file_retprobe_key lk = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
+	};
+	__u64 *lv;
+
+	lv = map_lookup_elem(&spr_retprobe_map, &lk);
+	if (!lv)
+		return 0;
+
 	if (ret) {
 		struct file_retprobe_key k = {
 			.pid_tgid = get_current_pid_tgid(),
-			.reg = 0,
+			.reg = *lv,
 			.flags = KRETPROBE_KEY,
 		};
 		map_delete_elem(&rename_retprobe_map, &k);
 	}
+	map_delete_elem(&spr_retprobe_map, &lk);
 	return 0;
 }

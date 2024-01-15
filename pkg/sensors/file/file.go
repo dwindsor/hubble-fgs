@@ -296,6 +296,8 @@ var (
 	SharedMaps = [...]string{
 		"mkdir_retprobe_map",
 		"rename_retprobe_map",
+		"spr_retprobe_map",
+		"vr_retprobe_map",
 		"lpm_trie_map_alloc",
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",

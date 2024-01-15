@@ -68,10 +68,16 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 {
 	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
-		.reg = 0,
+		.reg = (__u64)old_dentry,
 		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *v;
+	struct file_retprobe_key lk = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
+	};
+	__u64 lv = (__u64)old_dentry;
 	struct inode *d_inode;
 	bool walker = 0;
 	struct execve_map_value *enter;
@@ -84,20 +90,14 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		return 0;
 
 	// Now we check for an entry that was generated from security_path_rename.
-	// This will always have .reg equals to zero. After that we need to change
-	// .reg to PT_REGS_FP_CORE because calls to vfs_rename can be nested (due
-	// to overlayfs). This is not an issue as security_path_rename calls cannot
-	// be nested. Then we need to also update the entry in the rename_retprobe_map.
 	v = map_lookup_elem(&rename_retprobe_map, &k);
-	k.reg = PT_REGS_FP_CORE(ctx); // once we do the lookup, change to what we need for the key
-
-	// If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
-	// There is a case where we didn't manage to load security_path_rename due to missing CONFIG_SECURITY_PATH. In that case we can continue.
 	if (!v) {
 		if (conf->has_security_path_rename) {
+			// If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
 			return 0;
 		} else {
-			// we are here due to missing security_path_rename hook, so generate our entry in rename_retprobe_map
+			// There is a case where we didn't manage to load security_path_rename due to missing CONFIG_SECURITY_PATH. In that case we can continue.
+			// In ordert to do so, we need to so generate our entry in rename_retprobe_map.
 			v = map_lookup_elem(&vfs_rename_info_heap, &zero);
 			if (!v)
 				return 0;
@@ -109,25 +109,10 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			if (!v) // this should never happen
 				return 0;
 		}
-	} else {
-		// Here we change the key of the entry in rename_retprobe_map and
-		// inlcude PT_REGS_FP_CORE. There may be cases where PT_REGS_FP_CORE
-		// is 0 (have seen them only in 4.19). In that case, there is no need
-		// to do anything.
-		if (k.reg != 0) {
-			map_update_elem(&rename_retprobe_map, &k, v, 0);
-			v = map_lookup_elem(&rename_retprobe_map, &k);
-			if (!v) // this should never happen
-				return 0;
-
-			// Now we can delete the old entry with .reg equals to zero.
-			map_delete_elem(&rename_retprobe_map, &(struct file_retprobe_key){
-								      .pid_tgid = k.pid_tgid,
-								      .reg = 0,
-								      .flags = k.flags,
-							      });
-		}
 	}
+
+	// Create an entry for the kretprobe/vfs_rename in order to get the arguments.
+	map_update_elem(&vr_retprobe_map, &lk, &lv, 0);
 
 	v->msg.common.op = ISO_MSG_OP_FILE_RENAME;
 	v->msg.common.flags = 0;
@@ -515,16 +500,27 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 {
 	struct file_retprobe_key k = {
 		.pid_tgid = get_current_pid_tgid(),
-		.reg = PT_REGS_FP_CORE(ctx),
 		.flags = KRETPROBE_KEY,
 	};
 	struct vfs_rename_info *val;
+	struct file_retprobe_key lk = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+		.flags = KRETPROBE_KEY,
+	};
 	struct msg_file_rename_ops *msg;
 	struct hash_map_file_val *file_val = 0;
 	struct bpf_lpm_trie_key *key = 0;
 	int zero = 0, action = 0;
-	__u64 old_dir = 0;
+	__u64 *old_dentry, old_dir = 0;
 	__u32 rule_id = 0;
+
+	old_dentry = map_lookup_elem(&vr_retprobe_map, &lk);
+	if (!old_dentry)
+		return 0;
+
+	k.reg = *old_dentry;
+	map_delete_elem(&vr_retprobe_map, &lk);
 
 	// rename failed
 	if (ret) {
