@@ -527,6 +527,11 @@ spec:
                     call:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
+                    message:
+                      description: A short message of 256 characters max that will
+                        be included in the event output to inform users what is going
+                        on.
+                      type: string
                     return:
                       default: false
                       description: Indicates whether to collect return value of the
@@ -675,6 +680,17 @@ spec:
                                     in seconds (default or with 's' suffix), minutes
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
+                                  type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
                                   type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
@@ -972,6 +988,17 @@ spec:
                                     in seconds (default or with 's' suffix), minutes
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
+                                  type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
                                   type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
@@ -1780,6 +1807,11 @@ spec:
                     event:
                       description: Tracepoint event
                       type: string
+                    message:
+                      description: A short message of 256 characters max that will
+                        be included in the event output to inform users what is going
+                        on.
+                      type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
@@ -1846,6 +1878,17 @@ spec:
                                     in seconds (default or with 's' suffix), minutes
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
+                                  type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
                                   type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
@@ -2143,6 +2186,17 @@ spec:
                                     in seconds (default or with 's' suffix), minutes
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
+                                  type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
                                   type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
@@ -2219,6 +2273,11 @@ spec:
                 description: A list of uprobe specs.
                 items:
                   properties:
+                    message:
+                      description: A short message of 256 characters max that will
+                        be included in the event output to inform users what is going
+                        on.
+                      type: string
                     path:
                       description: Name of the traced binary
                       type: string
@@ -2288,6 +2347,17 @@ spec:
                                     in seconds (default or with 's' suffix), minutes
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
+                                  type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
                                   type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
@@ -2586,6 +2656,17 @@ spec:
                                     ('m' suffix) or hours ('h' suffix). Only valid
                                     with the post action.
                                   type: string
+                                rateLimitScope:
+                                  description: The scope of the provided rate limit
+                                    argument. Can be "thread" (default), "process"
+                                    (all threads for the same process), or "global".
+                                    If "thread" is selected then rate limiting applies
+                                    per thread; if "process" is selected then rate
+                                    limiting applies per process; if "global" is selected
+                                    then rate limiting applies regardless of which
+                                    process or thread caused the action. Only valid
+                                    with the post action and with a rateLimit specified.
+                                  type: string
                                 stackTrace:
                                   description: Enable stack trace export. Only valid
                                     with the post action.
@@ -2649,12 +2730,14 @@ spec:
                             type: array
                         type: object
                       type: array
-                    symbol:
-                      description: Name of the traced symbol
-                      type: string
+                    symbols:
+                      description: List of the traced symbols
+                      items:
+                        type: string
+                      type: array
                   required:
                   - path
-                  - symbol
+                  - symbols
                   type: object
                 type: array
             type: object
