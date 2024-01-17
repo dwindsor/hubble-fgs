@@ -127,6 +127,13 @@ jobs:
 
             cd /host/hubble-fgs
 
+            # wait for network to be available
+            while true;
+            do
+              wget --spider -q -T 10  http://google.com && break
+              sleep 10
+            done
+
             mv /host/cilium /bin/cilium
             for i in {1..5}; do
               curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && break || sleep 60

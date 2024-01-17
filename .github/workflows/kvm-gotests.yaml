@@ -63,6 +63,13 @@ jobs:
             mkdir -p bpf/objs
             ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
 
+            # wait for network to be available
+            while true;
+            do
+              wget --spider -q -T 10  http://google.com && break
+              sleep 10
+            done
+
             # install test deps
             apt update -y
             DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
