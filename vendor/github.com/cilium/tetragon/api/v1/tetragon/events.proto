@@ -79,6 +79,8 @@ message Filter {
     // Note that this filter never matches events without the pod field (i.e.
     // host process events).
     repeated string labels = 9;
+    // Filter events by tracing policy names
+    repeated string policy_names = 10;
     // Filter by source_ip field using an address range specified using CIDR notation.
     //
     // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
