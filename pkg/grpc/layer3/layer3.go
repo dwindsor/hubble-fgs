@@ -20,7 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -473,7 +473,7 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 			msg.RefCntDone[exec.ParentRefCnt] = true
 		}
 	} else {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.ParentInfo).Inc()
 		err = eventcache.ErrFailedToGetParentInfo
 	}
 
@@ -487,7 +487,7 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 			msg.RefCntDone[exec.ProcessRefCnt] = true
 		}
 	} else {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.ProcessInfo).Inc()
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
@@ -500,7 +500,7 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
 		return eventcache.ErrFailedToGetPodInfo
 	}
 

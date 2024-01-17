@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	readerexec "github.com/cilium/tetragon/pkg/reader/exec"
@@ -162,7 +163,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	if option.Config.EnableK8s && containerId != "" {
 		podInfo = process.GetPodInfo(containerId, filename, args, nspid)
 		if podInfo == nil {
-			errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+			eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
 			return eventcache.ErrFailedToGetPodInfo
 		}
 		netinum := msg.Namespaces.NetInum
@@ -414,7 +415,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 			msg.RefCntDone[ParentRefCnt] = true
 		}
 	} else {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.ParentInfo).Inc()
 		err = eventcache.ErrFailedToGetParentInfo
 	}
 
@@ -425,7 +426,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 			msg.RefCntDone[ProcessRefCnt] = true
 		}
 	} else {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.ProcessInfo).Inc()
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
