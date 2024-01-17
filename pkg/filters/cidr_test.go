@@ -112,6 +112,63 @@ func TestFilterByCIDR(t *testing.T) {
 	assert.False(t, ff(ev), "filter should fail")
 }
 
+func TestFilterByCIDR_IPv6(t *testing.T) {
+	ev := &v1.Event{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessListen{
+				ProcessListen: &tetragon.ProcessListen{
+					Ip: "::1",
+				},
+			},
+		},
+	}
+
+	// Full mask should match here
+	ff, err := filterByCIDR([]string{"::1"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	// Full mask should match here
+	ff, err = filterByCIDR([]string{"::1/128"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	ev = &v1.Event{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessListen{
+				ProcessListen: &tetragon.ProcessListen{
+					Ip: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+				},
+			},
+		},
+	}
+
+	// Full mask should match here
+	ff, err = filterByCIDR([]string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	// Full mask should match here
+	ff, err = filterByCIDR([]string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334/128"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	// Mask first 32 bits
+	ff, err = filterByCIDR([]string{"2001:0db8::/32"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	// Mask everything
+	ff, err = filterByCIDR([]string{"::/0"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	// Empty CIDR
+	ff, err = filterByCIDR([]string{"::"}, &IPCIDRFilter{})
+	require.NoError(t, err)
+	assert.False(t, ff(ev), "filter should not pass")
+}
+
 func TestFilterWithNoField(t *testing.T) {
 	ev := &v1.Event{
 		Event: &tetragon.GetEventsResponse{
