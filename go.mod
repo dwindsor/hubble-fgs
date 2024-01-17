@@ -3,7 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.21.6
 
 require (
-	github.com/cilium/cilium v1.15.0-rc.0
+	github.com/cilium/cilium v1.15.0-rc.1
 	github.com/cilium/ebpf v0.12.4-0.20240110182413-87531ae5ba83
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -57,7 +57,7 @@ require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bombsimon/logrusr/v4 v4.1.0 // indirect
-	github.com/cilium/dns v1.1.51-0.20230303133941-d3bcb3008ed2 // indirect
+	github.com/cilium/dns v1.1.51-0.20231120140355-729345173dc3 // indirect
 	github.com/cilium/proxy v0.0.0-20231031145409-f19708f3d018 // indirect
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/cncf/xds/go v0.0.0-20230607035331-e9ce68804cb4 // indirect
