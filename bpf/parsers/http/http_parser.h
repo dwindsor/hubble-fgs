@@ -315,16 +315,16 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	char *c;
 	__u64 i;
 
-	if (offset + max > 0x3ff) {
+	offset += http->url_continue;
+	asm volatile("%[offset] &= 0x3ff;\n"
+		     : [offset] "+r"(offset)::);
+
+	if (offset + max >= 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
 		http->state = http_more_headers_needed;
 		post_http_event_cont(msg, event);
 		return;
 	}
-
-	offset += http->url_continue;
-	asm volatile("%[offset] &= 0x3ff;\n"
-		     : [offset] "+r"(offset)::);
 
 	for (i = 0; i < max - 8; i++) {
 		c = eat_next_char(msg, http);
