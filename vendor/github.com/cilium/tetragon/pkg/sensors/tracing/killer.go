@@ -20,20 +20,32 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 )
 
-type killerSensor struct{}
+const (
+	killerDataMapName = "killer_data"
+)
 
-func init() {
-	killer := &killerSensor{}
-	sensors.RegisterProbeType("killer", killer)
-	sensors.RegisterPolicyHandlerAtInit("killer", killerSensor{})
+type killerHandler struct {
+	configured   bool
+	syscallsSyms []string
+}
+
+func newKillerHandler() *killerHandler {
+	return &killerHandler{
+		configured: false,
+	}
 }
 
 var (
-	configured   = false
-	syscallsSyms []string
+	// global killer handler
+	gKillerHandler = newKillerHandler()
 )
 
-func (k killerSensor) PolicyHandler(
+func init() {
+	sensors.RegisterProbeType("killer", gKillerHandler)
+	sensors.RegisterPolicyHandlerAtInit("killer", gKillerHandler)
+}
+
+func (kh *killerHandler) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	_ policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
@@ -48,26 +60,27 @@ func (k killerSensor) PolicyHandler(
 	}
 	if len(spec.Killers) > 0 {
 		name := fmt.Sprintf("killer-sensor-%d", atomic.AddUint64(&sensorCounter, 1))
-		return createKillerSensor(spec.Killers, spec.Lists, name)
+		return kh.createKillerSensor(spec.Killers, spec.Lists, spec.Options, name)
 	}
 
 	return nil, nil
 }
 
-func loadSingleKillerSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
-	if err := program.LoadKprobeProgramAttachMany(bpfDir, mapDir, load, syscallsSyms, verbose); err == nil {
+func (kh *killerHandler) loadSingleKillerSensor(
+	bpfDir, mapDir string, load *program.Program, verbose int,
+) error {
+	if err := program.LoadKprobeProgramAttachMany(bpfDir, mapDir, load, kh.syscallsSyms, verbose); err == nil {
 		logger.GetLogger().Infof("Loaded killer sensor: %s", load.Attach)
 	} else {
 		return err
 	}
-
 	return nil
 }
 
-func loadMultiKillerSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
+func (kh *killerHandler) loadMultiKillerSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
 	data := &program.MultiKprobeAttachData{}
 
-	data.Symbols = append(data.Symbols, syscallsSyms...)
+	data.Symbols = append(data.Symbols, kh.syscallsSyms...)
 
 	load.SetAttachData(data)
 
@@ -79,23 +92,58 @@ func loadMultiKillerSensor(bpfDir, mapDir string, load *program.Program, verbose
 	return nil
 }
 
-func (k *killerSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	if args.Load.Label == "kprobe/killer" {
-		return loadSingleKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+func (kh *killerHandler) LoadProbe(args sensors.LoadProbeArgs) error {
+	if args.Load.Label == "kprobe.multi/killer" {
+		return kh.loadMultiKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
-	return loadMultiKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	if args.Load.Label == "kprobe/killer" {
+		return kh.loadSingleKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	}
+
+	if strings.HasPrefix(args.Load.Label, "fmod_ret/") {
+		return program.LoadFmodRetProgram(args.BPFDir, args.MapDir, args.Load, "fmodret_killer", args.Verbose)
+	}
+
+	return fmt.Errorf("killer loader: unknown label: %s", args.Load.Label)
 }
 
-func unloadKiller() error {
-	configured = false
-	syscallsSyms = []string{}
+// select proper override method based on configuration and spec options
+func selectOverrideMethod(specOpts *specOptions) (OverrideMethod, error) {
+	overrideMethod := specOpts.OverrideMethod
+	switch overrideMethod {
+	case OverrideMethodDefault:
+		// by default, first try OverrideReturn and if this does not work try fmod_ret
+		if bpf.HasOverrideHelper() {
+			overrideMethod = OverrideMethodReturn
+		} else if bpf.HasModifyReturnSyscall() {
+			overrideMethod = OverrideMethodFmodRet
+		} else {
+			return OverrideMethodInvalid, fmt.Errorf("no override helper or mod_ret support: cannot load killer")
+		}
+	case OverrideMethodReturn:
+		if !bpf.HasOverrideHelper() {
+			return OverrideMethodInvalid, fmt.Errorf("option override return set, but it is not supported")
+		}
+	case OverrideMethodFmodRet:
+		if !bpf.HasModifyReturnSyscall() {
+			return OverrideMethodInvalid, fmt.Errorf("option fmod_ret set, but it is not supported")
+		}
+	}
+
+	return overrideMethod, nil
+}
+
+func (kh *killerHandler) unload() error {
+	kh.configured = false
+	kh.syscallsSyms = []string{}
 	logger.GetLogger().Infof("Cleaning up killer")
 	return nil
 }
 
-func createKillerSensor(
+func (kh *killerHandler) createKillerSensor(
 	killers []v1alpha1.KillerSpec,
 	lists []v1alpha1.ListSpec,
+	opts []v1alpha1.OptionSpec,
 	name string,
 ) (*sensors.Sensor, error) {
 
@@ -103,11 +151,10 @@ func createKillerSensor(
 		return nil, fmt.Errorf("failed: we support only single killer sensor")
 	}
 
-	if configured {
+	if kh.configured {
 		return nil, fmt.Errorf("failed: killer sensor is already configured")
 	}
-
-	configured = true
+	kh.configured = true
 
 	killer := killers[0]
 
@@ -125,7 +172,7 @@ func createKillerSensor(
 			if !isSyscallListType(list.Type) {
 				return nil, fmt.Errorf("Error list '%s' is not syscall type", listName)
 			}
-			syscallsSyms = append(syscallsSyms, list.Values...)
+			kh.syscallsSyms = append(kh.syscallsSyms, list.Values...)
 			continue
 		}
 
@@ -133,45 +180,70 @@ func createKillerSensor(
 		if err != nil {
 			return nil, err
 		}
-		syscallsSyms = append(syscallsSyms, pfxSym)
+		kh.syscallsSyms = append(kh.syscallsSyms, pfxSym)
 	}
 
 	// register killer sensor
 	var load *program.Program
 	var progs []*program.Program
 	var maps []*program.Map
-
-	useMulti := !option.Config.DisableKprobeMulti && bpf.HasKprobeMulti()
-
-	attach := fmt.Sprintf("%d syscalls: %s", len(syscallsSyms), syscallsSyms)
-	prog := sensors.PathJoin(name, "killer_kprobe")
-
-	if useMulti {
-		load = program.Builder(
-			path.Join(option.Config.HubbleLib, "bpf_multi_killer.o"),
-			attach,
-			"kprobe.multi/killer",
-			prog,
-			"killer")
-
-	} else {
-		load = program.Builder(
-			path.Join(option.Config.HubbleLib, "bpf_killer.o"),
-			attach,
-			"kprobe/killer",
-			prog,
-			"killer")
+	specOpts, err := getSpecOptions(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get spec options: %s", err)
 	}
 
-	killerDataMap := program.MapBuilderPin("killer_data", "killer_data", load)
+	if !bpf.HasSignalHelper() {
+		return nil, fmt.Errorf("killer sensor requires signal helper which is not available")
+	}
 
-	progs = append(progs, load)
+	// select proper override method based on configuration and spec options
+	overrideMethod, err := selectOverrideMethod(specOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	pinPath := sensors.PathJoin(name, "killer_kprobe")
+	switch overrideMethod {
+	case OverrideMethodReturn:
+		useMulti := !specOpts.DisableKprobeMulti && !option.Config.DisableKprobeMulti && bpf.HasKprobeMulti()
+		logger.GetLogger().Infof("killer: using override return (multi-kprobe: %t)", useMulti)
+		label := "kprobe/killer"
+		prog := "bpf_killer.o"
+		if useMulti {
+			label = "kprobe.multi/killer"
+			prog = "bpf_multi_killer.o"
+		}
+		attach := fmt.Sprintf("%d syscalls: %s", len(kh.syscallsSyms), kh.syscallsSyms)
+		load = program.Builder(
+			path.Join(option.Config.HubbleLib, prog),
+			attach,
+			label,
+			pinPath,
+			"killer")
+		progs = append(progs, load)
+	case OverrideMethodFmodRet:
+		// for fmod_ret, we need one program per syscall
+		logger.GetLogger().Infof("killer: using fmod_ret")
+		for _, syscallSym := range kh.syscallsSyms {
+			load = program.Builder(
+				path.Join(option.Config.HubbleLib, "bpf_fmodret_killer.o"),
+				syscallSym,
+				"fmod_ret/security_task_prctl",
+				pinPath,
+				"killer")
+			progs = append(progs, load)
+		}
+	default:
+		return nil, fmt.Errorf("unexpected override method: %d", overrideMethod)
+	}
+
+	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
 	maps = append(maps, killerDataMap)
 
 	return &sensors.Sensor{
 		Name:           "__killer__",
 		Progs:          progs,
 		Maps:           maps,
-		PostUnloadHook: unloadKiller,
+		PostUnloadHook: gKillerHandler.unload,
 	}, nil
 }
