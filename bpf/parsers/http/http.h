@@ -75,22 +75,6 @@ enum http_request_header {
 #define chr_n	  '\n'
 #define chr_colon ':'
 
-#define http_hdr_host	"Host"
-#define http_hdr_user	"User-Agent"
-#define http_hdr_type	"Content-Type"
-#define http_hdr_length "Content-Length"
-
-// list of supported http methods offsets
-#define http_method_connect_off sizeof("connect")
-#define http_method_delete_off	sizeof("delete")
-#define http_method_get_off	sizeof("get")
-#define http_method_head_off	sizeof("head")
-#define http_method_options_off sizeof("options")
-#define http_method_post_off	sizeof("post")
-#define http_method_put_off	sizeof("put")
-#define http_method_patch_off	sizeof("patch")
-#define http_method_trace_off	sizeof("trace")
-
 enum http_request_state {
 	http_start,
 	http_req_method_start,
