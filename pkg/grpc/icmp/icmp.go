@@ -477,13 +477,6 @@ func GetProcessIcmp(
 		return nil
 	}
 
-	if process != nil {
-		process.RefInc()
-	}
-	if parent != nil {
-		parent.RefInc()
-	}
-
 	eventmetrics.HandleIcmpEvent(fgsEvent)
 
 	return fgsEvent
