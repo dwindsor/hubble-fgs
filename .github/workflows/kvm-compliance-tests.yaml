@@ -1,0 +1,88 @@
+name: KVM Compliance Tests (HTTP)
+
+on:
+  pull_request:
+    paths:
+    - ".github/workflows/kvm-compliance-tests.yaml"
+    - "tests/compliance/**"
+    - "pkg/sensors/http/**"
+    - "bpf/lib/tlsmsg.h"
+    - "bpf/parsers/parser.h"
+    - "bpf/parsers/http/**"
+  push:
+    branches:
+    - master
+    paths:
+    - ".github/workflows/kvm-compliance-tests.yaml"
+    - "tests/compliance/**"
+    - "pkg/sensors/http/**"
+    - "bpf/lib/tlsmsg.h"
+    - "bpf/parsers/parser.h"
+    - "bpf/parsers/http/**"
+
+concurrency:
+  group: ${{ github.ref }}-kvm-compliance-tests
+  cancel-in-progress: true
+
+jobs:
+  run-tests:
+    runs-on:
+    - majestic-ketchup-light
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel:
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - 'bpf-next-20231124.012737'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - '6.1-20231026.065108'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - '5.15-20231026.065108'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - '5.10-20231026.065108'
+          # NB: it doesn't make sense to test the http parser on kernels <5.10
+    steps:
+      - name: Checkout Git Repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          path: hubble-fgs
+          submodules: true
+
+      - name: Provision LVH VM
+        uses: cilium/little-vm-helper@8410a93e544b7e180a2365e5fdab0724a39bc02a # v0.0.13
+        with:
+          test-name: tetragon-compliance-tests
+          host-mount: ./
+          install-dependencies: true
+          image: kind
+          image-version: '${{ matrix.kernel }}'
+          ssh-port: 2222
+          mem: 4G
+          cpu: 2
+          cpu-kind: host
+          cmd: |
+            set -eux
+            cd /host/hubble-fgs
+
+            systemd-detect-virt
+            (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
+
+            # copy btf file
+            mkdir -p bpf/objs
+            ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
+
+      - name: Run Tests
+        uses: cilium/little-vm-helper@8410a93e544b7e180a2365e5fdab0724a39bc02a # v0.0.13
+        with:
+          test-name: tetragon-compliance-tests
+          host-mount: ./
+          provision: 'false'
+          cmd: |
+            set -eux
+            cd /host/hubble-fgs
+
+            export KVM_CI=true
+            export SUDO=
+            make hubble-bpf
+            go test ./tests/compliance -print-stdout
