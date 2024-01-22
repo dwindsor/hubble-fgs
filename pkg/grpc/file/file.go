@@ -64,6 +64,9 @@ var (
 		21: "hook_security_inode_rename",
 		22: "hook_security_bprm_check",
 		23: "hook_security_path_rename",
+		24: "hook_io_read",
+		25: "hook_io_write",
+		26: "hook_io_issue_sqe",
 	}
 
 	renameFlagsString = map[uint32]string{

@@ -62,7 +62,7 @@ static inline __attribute__((always_inline)) int handle_entry(struct io_kiocb *r
 
 	task = io_uring_get_task(req);
 	if (!task)
-		return 0;
+		return -FILE_ERR_IOURING_TASK;
 
 	probe_read(&file, sizeof(file), _(&req->file));
 
@@ -70,7 +70,9 @@ static inline __attribute__((always_inline)) int handle_entry(struct io_kiocb *r
 	key.pid_tgid = get_current_pid_tgid();
 	val.user_task = task;
 
-	map_update_elem(&io_uring_map, &key, &val, 0);
+	if (map_update_elem(&io_uring_map, &key, &val, 0) < 0)
+		return -FILE_ERR_UPDATE_IOURING_MAP;
+
 	return 0;
 }
 
@@ -81,19 +83,20 @@ static inline __attribute__((always_inline)) int handle_exit(struct io_kiocb *re
 	struct file *file;
 
 	if (!req)
-		return 0;
+		return 0; // the reason for that is already reported in handle_kretprobe()
 
 	probe_read(&file, sizeof(file), _(&req->file));
 	key.file_ptr = (__u64)file;
 	key.pid_tgid = get_current_pid_tgid();
 
-	map_delete_elem(&io_uring_map, &key);
+	if (map_delete_elem(&io_uring_map, &key) < 0)
+		return -FILE_ERR_DELETE_IOURING_MAP;
 	return 0;
 }
 
 // io_uring_retprobe_map is used to pass function arguments to the kretprobe.
 // This function adds an entry to that map.
-static inline __attribute__((always_inline)) void handle_kprobe(struct pt_regs *ctx, struct io_kiocb *req)
+static inline __attribute__((always_inline)) int handle_kprobe(struct pt_regs *ctx, struct io_kiocb *req)
 {
 	struct file_retprobe_key key = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -104,12 +107,14 @@ static inline __attribute__((always_inline)) void handle_kprobe(struct pt_regs *
 		.req = req,
 	};
 
-	map_update_elem(&io_uring_retprobe_map, &key, &val, 0);
+	if (map_update_elem(&io_uring_retprobe_map, &key, &val, 0) < 0)
+		return -FILE_ERR_UPDATE_IOURING_RETPROBE_MAP;
+	return 0;
 }
 
 // This function gets the function arguments from io_uring_retprobe_map and cleanup
 // that entry.
-static inline __attribute__((always_inline)) struct io_kiocb *handle_kretprobe(struct pt_regs *ctx)
+static inline __attribute__((always_inline)) struct io_kiocb *handle_kretprobe(struct pt_regs *ctx, int *err)
 {
 	struct file_retprobe_key key = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -120,9 +125,15 @@ static inline __attribute__((always_inline)) struct io_kiocb *handle_kretprobe(s
 	struct io_kiocb *req = 0;
 
 	val = map_lookup_elem(&io_uring_retprobe_map, &key);
-	if (val)
-		req = val->req;
-	map_delete_elem(&io_uring_retprobe_map, &key);
+	if (!val) {
+		*err = -FILE_ERR_LOOKUP_IOURING_RETPROBE_MAP;
+		return 0;
+	}
+	req = val->req;
+	if (map_delete_elem(&io_uring_retprobe_map, &key) < 0) {
+		*err = -FILE_ERR_DELETE_IOURING_RETPROBE_MAP;
+		return 0;
+	}
 	return req;
 }
 
@@ -140,6 +151,24 @@ struct io_comp_state {
 	struct io_ring_ctx *ctx;
 };
 
+static inline __attribute__((always_inline)) void handle_io_readwrite(struct pt_regs *ctx, struct io_kiocb *req, __u32 hook)
+{
+	int err;
+
+	err = handle_kprobe(ctx, req);
+	if (err < 0)
+		goto handle_io_readwrite_error;
+
+	err = handle_entry(req);
+	if (err < 0)
+		goto handle_io_readwrite_error;
+
+	return;
+
+handle_io_readwrite_error:
+	inc_error(hook, -err);
+}
+
 // io_uring handles all read operations inside io_read function. The call of security_file_permission
 // (the hook that we use to monitor read operations) happens inside io_read function. In order to get
 // the proper process context we hook at the entry and exit of io_read. As the function prototype of
@@ -153,8 +182,8 @@ struct io_comp_state {
 SEC("kprobe/io_read/51")
 int BPF_KPROBE(io_read_entry_51, struct io_kiocb *req, const struct sqe_submit *s, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_read);
+	return 0;
 }
 
 // int io_read(struct io_kiocb *req, struct io_kiocb **nxt, bool force_nonblock)
@@ -162,8 +191,8 @@ int BPF_KPROBE(io_read_entry_51, struct io_kiocb *req, const struct sqe_submit *
 SEC("kprobe/io_read/55")
 int BPF_KPROBE(io_read_entry_55, struct io_kiocb *req, struct io_kiocb **nxt, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_read);
+	return 0;
 }
 
 // int io_read(struct io_kiocb *req, bool force_nonblock)
@@ -171,8 +200,8 @@ int BPF_KPROBE(io_read_entry_55, struct io_kiocb *req, struct io_kiocb **nxt, bo
 SEC("kprobe/io_read/57")
 int BPF_KPROBE(io_read_entry_57, struct io_kiocb *req, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_read);
+	return 0;
 }
 
 // int io_read(struct io_kiocb *req, bool force_nonblock, struct io_comp_state *cs)
@@ -180,8 +209,8 @@ int BPF_KPROBE(io_read_entry_57, struct io_kiocb *req, bool force_nonblock)
 SEC("kprobe/io_read/59")
 int BPF_KPROBE(io_read_entry_59, struct io_kiocb *req, bool force_nonblock, struct io_comp_state *cs)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_read);
+	return 0;
 }
 
 // int io_read(struct io_kiocb *req, unsigned int issue_flags)
@@ -189,8 +218,8 @@ int BPF_KPROBE(io_read_entry_59, struct io_kiocb *req, bool force_nonblock, stru
 SEC("kprobe/io_read/510")
 int BPF_KPROBE(io_read_entry_510, struct io_kiocb *req, unsigned int issue_flags)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_read);
+	return 0;
 }
 
 // We use a single io_read kretprobe for all kernel versions. This is mainly used for cleanup puproses.
@@ -198,9 +227,21 @@ SEC("kretprobe/io_read")
 int BPF_KRETPROBE(io_read_exit, long ret)
 {
 	struct io_kiocb *req;
+	int err = 0;
 
-	req = handle_kretprobe(ctx);
-	return handle_exit(req);
+	req = handle_kretprobe(ctx, &err);
+	if (err < 0)
+		goto io_read_exit_error;
+
+	err = handle_exit(req);
+	if (err < 0)
+		goto io_read_exit_error;
+
+	return 0;
+
+io_read_exit_error:
+	inc_error(hook_io_read, -err);
+	return 0;
 }
 
 // io_uring handles all write operations inside io_write function in a similar way to io_read.
@@ -210,8 +251,8 @@ int BPF_KRETPROBE(io_read_exit, long ret)
 SEC("kprobe/io_write/51")
 int BPF_KPROBE(io_write_entry_51, struct io_kiocb *req, const struct sqe_submit *s, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_write);
+	return 0;
 }
 
 // int io_write(struct io_kiocb *req, struct io_kiocb **nxt, bool force_nonblock)
@@ -219,8 +260,8 @@ int BPF_KPROBE(io_write_entry_51, struct io_kiocb *req, const struct sqe_submit 
 SEC("kprobe/io_write/55")
 int BPF_KPROBE(io_write_entry_55, struct io_kiocb *req, struct io_kiocb **nxt, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_write);
+	return 0;
 }
 
 // int io_write(struct io_kiocb *req, bool force_nonblock, struct io_comp_state *cs)
@@ -228,8 +269,8 @@ int BPF_KPROBE(io_write_entry_55, struct io_kiocb *req, struct io_kiocb **nxt, b
 SEC("kprobe/io_write/57")
 int BPF_KPROBE(io_write_entry_57, struct io_kiocb *req, bool force_nonblock)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_write);
+	return 0;
 }
 
 // int io_write(struct io_kiocb *req, bool force_nonblock, struct io_comp_state *cs)
@@ -237,8 +278,8 @@ int BPF_KPROBE(io_write_entry_57, struct io_kiocb *req, bool force_nonblock)
 SEC("kprobe/io_write/59")
 int BPF_KPROBE(io_write_entry_59, struct io_kiocb *req, bool force_nonblock, struct io_comp_state *cs)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_write);
+	return 0;
 }
 
 // int io_write(struct io_kiocb *req, unsigned int issue_flags)
@@ -246,8 +287,8 @@ int BPF_KPROBE(io_write_entry_59, struct io_kiocb *req, bool force_nonblock, str
 SEC("kprobe/io_write/510")
 int BPF_KPROBE(io_write_entry_510, struct io_kiocb *req, unsigned int issue_flags)
 {
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_write);
+	return 0;
 }
 
 // We use a single io_write kretprobe for all kernel versions. This is mainly used for cleanup puproses.
@@ -255,9 +296,21 @@ SEC("kretprobe/io_write")
 int BPF_KRETPROBE(io_write_exit, long ret)
 {
 	struct io_kiocb *req;
+	int err = 0;
 
-	req = handle_kretprobe(ctx);
-	return handle_exit(req);
+	req = handle_kretprobe(ctx, &err);
+	if (err < 0)
+		goto io_write_exit_error;
+
+	err = handle_exit(req);
+	if (err < 0)
+		goto io_write_exit_error;
+
+	return 0;
+
+io_write_exit_error:
+	inc_error(hook_io_read, -err);
+	return 0;
 }
 
 // There are cases where the io_read and/or io_write functions are inlined. For this reason we cannot
@@ -285,8 +338,8 @@ int BPF_KPROBE(io_issue_sqe_entry, struct io_kiocb *req, unsigned int issue_flag
 	if (!is_rw)
 		return 0;
 
-	handle_kprobe(ctx, req);
-	return handle_entry(req);
+	handle_io_readwrite(ctx, req, hook_io_issue_sqe);
+	return 0;
 }
 
 // io_issue_sqe kretprobe which is mainly used for cleanup puproses.
@@ -295,11 +348,12 @@ int BPF_KRETPROBE(io_issue_sqe_exit, long ret)
 {
 	struct io_kiocb *req;
 	bool is_rw;
+	int err = 0;
 	u8 opcode;
 
-	req = handle_kretprobe(ctx);
+	req = handle_kretprobe(ctx, &err);
 	if (!req)
-		return 0;
+		goto io_issue_sqe_exit_error;
 
 	if (!bpf_core_field_exists(req->opcode)) // kernel < 5.5
 		return 0;
@@ -310,5 +364,13 @@ int BPF_KRETPROBE(io_issue_sqe_exit, long ret)
 	if (!is_rw)
 		return 0;
 
-	return handle_exit(req);
+	err = handle_exit(req);
+	if (err < 0)
+		goto io_issue_sqe_exit_error;
+
+	return 0;
+
+io_issue_sqe_exit_error:
+	inc_error(hook_io_issue_sqe, -err);
+	return 0;
 }
