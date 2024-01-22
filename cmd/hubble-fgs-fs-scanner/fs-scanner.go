@@ -227,7 +227,7 @@ func renameDir(args *fm.FsScannerRename) error {
 	if fNum, dNum, err := fm.WalkPathRaw(args.Path, args.RuleID, maps, args.Op, args.Action, true, locFn); err != nil {
 		logger.GetLogger().WithField("path", args.Path).WithError(err).Warnf("Renaming files/directories failed")
 	} else {
-		logger.GetLogger().WithField("path", args.Path).Infof("Renamed %d file(s) and %d directorie(s)", fNum, dNum)
+		logger.GetLogger().WithField("path", args.Path).Debugf("Renamed %d file(s) and %d directorie(s)", fNum, dNum)
 	}
 	return nil
 }

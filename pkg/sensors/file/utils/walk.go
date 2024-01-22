@@ -101,15 +101,15 @@ func IsCharDevice(m fs.FileMode) bool {
 func CheckFileMode(mode fs.FileMode, path string) {
 	l := logger.GetLogger()
 	if IsBlockDevice(mode) {
-		l.Infof("Ignoring block device %s", path)
+		l.Debugf("Ignoring block device %s", path)
 	} else if IsNamedPipe(mode) {
-		l.Infof("Ignoring named pipe %s", path)
+		l.Debugf("Ignoring named pipe %s", path)
 	} else if IsSocket(mode) {
-		l.Infof("Ignoring socket %s", path)
+		l.Debugf("Ignoring socket %s", path)
 	} else if IsCharDevice(mode) {
-		l.Infof("Ignoring character device %s", path)
+		l.Debugf("Ignoring character device %s", path)
 	} else if IsSymlink(mode) {
-		l.Infof("Ignoring symbolic link %s", path)
+		l.Debugf("Ignoring symbolic link %s", path)
 	} else {
 		l.Warnf("Unknown file type %s -> %d", path, mode)
 	}
