@@ -87,7 +87,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
-		return 0;
+		return -FILE_ERR_LOOKUP_CONFIG_MAP;
 
 	// Now we check for an entry that was generated from security_path_rename.
 	v = map_lookup_elem(&rename_retprobe_map, &k);
@@ -100,19 +100,21 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			// In ordert to do so, we need to so generate our entry in rename_retprobe_map.
 			v = map_lookup_elem(&vfs_rename_info_heap, &zero);
 			if (!v)
-				return 0;
+				return -FILE_ERR_RENAME_INFO_HEAP;
 
 			v->old_dir = v->new_dir = 0;
 			v->need_old = v->need_new = 0;
-			map_update_elem(&rename_retprobe_map, &k, v, 0);
+			if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0)
+				return -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
 			v = map_lookup_elem(&rename_retprobe_map, &k);
 			if (!v) // this should never happen
-				return 0;
+				return -FILE_ERR_LOOKUP_RENAME_RETPROBE_MAP;
 		}
 	}
 
 	// Create an entry for the kretprobe/vfs_rename in order to get the arguments.
-	map_update_elem(&vr_retprobe_map, &lk, &lv, 0);
+	if (map_update_elem(&vr_retprobe_map, &lk, &lv, 0) < 0)
+		return -FILE_ERR_UPDATE_VR_RETPROBE_MAP;
 
 	v->msg.common.op = ISO_MSG_OP_FILE_RENAME;
 	v->msg.common.flags = 0;
@@ -224,8 +226,9 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		}
 
 		if (!src_watched && !dst_watched) {
-			map_delete_elem(&rename_retprobe_map, &k);
-			return 0;
+			if (map_delete_elem(&rename_retprobe_map, &k) < 0)
+				return -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+			return 0; // we don't care about the source and/or the destination
 		}
 	}
 
@@ -323,8 +326,9 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 	if (v->need_old) {
 		if (v->need_new) {
-			map_delete_elem(&rename_retprobe_map, &k);
-			return 0;
+			if (map_delete_elem(&rename_retprobe_map, &k) < 0)
+				return -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+			return 0; // both source and destination needs to be resolved (i.e. are outside of watched paths)
 		}
 		v->msg.flags |= MOVE_INSIDE;
 	} else {
@@ -359,7 +363,8 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	 */
 	k.reg = (__u64)old_dir;
 	k.flags = LSM_FMOD_KEY;
-	map_update_elem(&rename_retprobe_map, &k, v, 0);
+	if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0)
+		return -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
 
 	return 0;
 }
@@ -380,9 +385,15 @@ SEC("kprobe/vfs_rename/512")
 int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 {
 	struct renamedata d;
+	int err;
+
 	probe_read(&d, sizeof(struct renamedata), rd);
-	kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
-			  d.new_dentry, d.delegated_inode);
+
+	err = kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
+				d.new_dentry, d.delegated_inode);
+	if (err < 0)
+		inc_error(hook_vfs_rename, -err);
+
 	return 0;
 }
 #endif
@@ -392,12 +403,17 @@ int BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry
 	       struct inode *new_dir, struct dentry *new_dentry,
 	       struct inode **delegated_inode /*, unsigned int flags */)
 {
-	kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
-			  delegated_inode);
+	int err;
+
+	err = kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
+				delegated_inode);
+	if (err < 0)
+		inc_error(hook_vfs_rename, -err);
+
 	return 0;
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 remove_inode_rename(struct msg_rename_elem *v)
 {
 	struct hash_map_file_key file_key;
@@ -406,10 +422,10 @@ remove_inode_rename(struct msg_rename_elem *v)
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	map_delete_elem(&hash_map_file_alloc, &file_key);
+	return map_delete_elem(&hash_map_file_alloc, &file_key);
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 update_inode_rename(struct msg_rename_elem *v,
 		    struct hash_map_file_val *file_val)
 {
@@ -419,7 +435,7 @@ update_inode_rename(struct msg_rename_elem *v,
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
+	return map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
 }
 
 static inline __attribute__((always_inline)) struct hash_map_file_val *
@@ -511,16 +527,21 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	struct msg_file_rename_ops *msg;
 	struct hash_map_file_val *file_val = 0;
 	struct bpf_lpm_trie_key *key = 0;
-	int zero = 0, action = 0;
+	int err, zero = 0, action = 0;
 	__u64 *old_dentry, old_dir = 0;
 	__u32 rule_id = 0;
 
 	old_dentry = map_lookup_elem(&vr_retprobe_map, &lk);
-	if (!old_dentry)
-		return 0;
+	if (!old_dentry) {
+		err = -FILE_ERR_LOOKUP_VR_RETPROBE_MAP;
+		goto vfs_rename_exit_error;
+	}
 
 	k.reg = *old_dentry;
-	map_delete_elem(&vr_retprobe_map, &lk);
+	if (map_delete_elem(&vr_retprobe_map, &lk) < 0) {
+		err = -FILE_ERR_DELETE_VR_RETPROBE_MAP;
+		goto vfs_rename_exit_error;
+	}
 
 	// rename failed
 	if (ret) {
@@ -530,16 +551,19 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				.reg = (__u64)val->old_dir,
 				.flags = LSM_FMOD_KEY,
 			};
-			map_delete_elem(&rename_retprobe_map, &dkey);
+			map_delete_elem(&rename_retprobe_map, &dkey); // this can be deleted from the security_inode_rename program
 		}
-		map_delete_elem(&rename_retprobe_map, &k);
+		if (map_delete_elem(&rename_retprobe_map, &k) < 0) {
+			err = -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+			goto vfs_rename_exit_error;
+		}
 		return 0;
 	}
 
 	// check for the metadata from the kprobe
 	val = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!val)
-		return 0;
+		return 0; // we don't care about that
 	old_dir = (__u64)val->old_dir;
 
 	if (val->msg.flags & SRC_REG_FILE) {
@@ -548,7 +572,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 
 			// remove dst.inode from hash_map_file_alloc
 			if (val->msg.flags & DST_REG_FILE) {
-				remove_inode_rename(&(val->msg.dst));
+				if (remove_inode_rename(&(val->msg.dst)) < 0) {
+					err = -FILE_ERR_DELETE_FILE_MAP;
+					goto vfs_rename_exit_error;
+				}
 			}
 
 			// now we need to generate the destination name
@@ -588,11 +615,17 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 			file_val->location_flags = val->msg.src.path.flags;
 			file_val->rule_id = rule_id;
 
-			update_inode_rename(&(val->msg.src), file_val);
+			if (update_inode_rename(&(val->msg.src), file_val) < 0) {
+				err = -FILE_ERR_UPDATE_FILE_MAP;
+				goto vfs_rename_exit_error;
+			}
 		} else if (val->msg.flags & MOVE_INTERNALLY) {
 			// remove dst.inode from hash_map_file_alloc
 			if (val->msg.flags & DST_REG_FILE) {
-				remove_inode_rename(&(val->msg.dst));
+				if (remove_inode_rename(&(val->msg.dst)) < 0) {
+					err = -FILE_ERR_DELETE_FILE_MAP;
+					goto vfs_rename_exit_error;
+				}
 			}
 
 			// add add src.inode to hash_map_file_alloc
@@ -622,13 +655,19 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				file_val->location_flags = val->msg.src.path.flags;
 				file_val->rule_id = rule_id;
 
-				update_inode_rename(&(val->msg.src), file_val);
+				if (update_inode_rename(&(val->msg.src), file_val) < 0) {
+					err = -FILE_ERR_UPDATE_FILE_MAP;
+					goto vfs_rename_exit_error;
+				}
 			}
 		} else if (val->msg.flags & MOVE_OUTSIDE) {
 			// remove src.inode from hash_map_file_alloc
 			if ((val->msg.flags & DST_NOT_EXISTS) ||
 			    (val->msg.flags & DST_REG_FILE)) {
-				remove_inode_rename(&(val->msg.src));
+				if (remove_inode_rename(&(val->msg.src)) < 0) {
+					err = -FILE_ERR_DELETE_FILE_MAP;
+					goto vfs_rename_exit_error;
+				}
 			}
 		}
 	}
@@ -636,8 +675,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 vfs_rename_exit_out:
 	// now we are all done, so create the meesage to send
 	msg = map_lookup_elem(&file_rename_heap_map, &zero);
-	if (!msg)
-		return 0;
+	if (!msg) {
+		err = -FILE_ERR_LOOKUP_RENAME_HEAP_MAP;
+		goto vfs_rename_exit_error;
+	}
 
 	// a single memcpy does not work
 	// "in function event_vfs_rename_ret i32 (%struct.pt_regs*): A call to built-in function 'memcpy' is not supported."
@@ -658,10 +699,13 @@ vfs_rename_exit_out:
 	msg->tid = val->msg.tid;
 
 	// we are done with 'val' so we can delete than entry
-	map_delete_elem(&rename_retprobe_map, &k);
+	if (map_delete_elem(&rename_retprobe_map, &k) < 0) {
+		err = -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+		goto vfs_rename_exit_error;
+	}
 	k.reg = old_dir;
 	k.flags = LSM_FMOD_KEY;
-	map_delete_elem(&rename_retprobe_map, &k);
+	map_delete_elem(&rename_retprobe_map, &k); // this can be deleted from the security_inode_rename program
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
@@ -673,6 +717,10 @@ vfs_rename_exit_out:
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE_RENAME, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 				 sizeof(struct msg_file_rename_ops));
 
+	return 0;
+
+vfs_rename_exit_error:
+	inc_error(hook_vfs_rename, -err);
 	return 0;
 }
 
@@ -688,13 +736,13 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 
 	val = map_lookup_elem(&rename_retprobe_map, &rkey);
 	if (!val)
-		return 0;
+		return 0; // we don't care about that
 
 	if (val->operation & FILE_OP_BLOCK) {
 		int zero = 0;
 		struct msg_file_rename_ops *msg = map_lookup_elem(&file_rename_heap_map, &zero);
 		if (!msg)
-			return 0;
+			return -FILE_ERR_LOOKUP_RENAME_HEAP_MAP;
 
 		// a single memcpy does not work
 		// "in function event_vfs_rename_ret i32 (%struct.pt_regs*): A call to built-in function 'memcpy' is not supported."
@@ -714,12 +762,13 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 		msg->rule_id = val->msg.rule_id;
 		msg->tid = val->msg.tid;
 
-		map_delete_elem(&rename_retprobe_map, &rkey);
+		if (map_delete_elem(&rename_retprobe_map, &rkey) < 0)
+			return -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
 
 		perf_event_output_metric(ctx, ISO_MSG_OP_FILE_RENAME, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 					 sizeof(struct msg_file_rename_ops));
 
-		return -EPERM;
+		return FILE_OP_BLOCK;
 	}
 	return 0;
 }
@@ -729,7 +778,15 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 SEC("lsm/inode_rename")
 int BPF_PROG(security_inode_rename_lsm, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
 {
-	return security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
+	int err;
+
+	err = security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
+	if (err < 0) {
+		inc_error(hook_security_inode_rename, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -737,8 +794,17 @@ int BPF_PROG(security_inode_rename_lsm, struct inode *old_dir, struct dentry *ol
 SEC("fmod_ret/security_inode_rename")
 int BPF_PROG(security_inode_rename_fmod, struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	return security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
+
+	err = security_inode_rename(ctx, old_dir, old_dentry, new_dir, new_dentry, flags);
+	if (err < 0) {
+		inc_error(hook_security_inode_rename, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

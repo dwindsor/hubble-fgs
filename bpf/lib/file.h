@@ -55,7 +55,8 @@ enum {
 	hook_security_inode_mkdir = 20,
 	hook_security_inode_rename = 21,
 	hook_security_bprm_check = 22,
-	hook_max = 23,
+	hook_security_path_rename = 23,
+	hook_max = 24,
 };
 
 #define KRETPROBE_KEY 0
@@ -248,30 +249,42 @@ struct io_uring_op_val {
 	struct task_struct *user_task;
 };
 
-#define FILE_ERR_NO_ERROR		   0 // success
-#define FILE_ERR_UNKNOWN		   1 // unknown error
-#define FILE_ERR_GET_MSG_HEAP		   2 // map_lookup_elem(&file_heap_map, &zero) == 0
-#define FILE_ERR_DENTRY_FROM_FILE	   3 // file->f_path.dentry == 0
-#define FILE_ERR_INODE_FROM_DENTRY	   4 // dentry->d_inode == 0
-#define FILE_ERR_PARENT_FROM_DENTRY	   5 // dentry->d_parent == 0
-#define FILE_ERR_FILE_ARG		   6 // file == 0
-#define FILE_ERR_INODE_FROM_FILE	   7 // file->f_inode == 0
-#define FILE_ERR_VMA_FROM_VMF		   8 // vmf->vma == 0
-#define FILE_ERR_FILE_FROM_VMA		   9 // vma->vm_file == 0
-#define FILE_ERR_GET_BUFFER_HEAP	   10 // map_lookup_elem(&buffer_heap_map, &zero) == 0
-#define FILE_ERR_GET_TRIE_HEAP		   11 // map_lookup_elem(&lpm_trie_heap_key, &zero) == 0
-#define FILE_ERR_GET_FILE_VAL_HEAP	   12 // map_lookup_elem(&file_val_map, &zero) == 0
-#define FILE_ERR_UPDATE_FILE_MAP	   13 // map_update_elem(&hash_map_file_alloc, ...) < 0
-#define FILE_ERR_DENTRY_FROM_PATH	   14 // path->dentry == 0
-#define FILE_ERR_DELETE_FILE_MAP	   15 // map_delete_elem(&hash_map_file_alloc, ...) < 0
-#define FILE_ERR_MKDIR_INFO_HEAP_HEAP	   16 // map_lookup_elem(&vfs_mkdir_info_heap, &zero) == 0
-#define FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP 17 // map_update_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP 18 // map_delete_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP 19 // map_lookup_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_UPDATE_DIR_MAP		   20 // map_update_elem(&hash_map_dir_alloc, ...) < 0
-#define FILE_ERR_DELETE_DIR_MAP		   21 // map_delete_elem(&hash_map_dir_alloc, ...) < 0
-#define FILE_ERR_UNEXPECTED		   22
-#define FILE_ERR_MAX			   23
+#define FILE_ERR_NO_ERROR		    0 // success
+#define FILE_ERR_UNKNOWN		    1 // unknown error
+#define FILE_ERR_GET_MSG_HEAP		    2 // map_lookup_elem(&file_heap_map, &zero) == 0
+#define FILE_ERR_DENTRY_FROM_FILE	    3 // file->f_path.dentry == 0
+#define FILE_ERR_INODE_FROM_DENTRY	    4 // dentry->d_inode == 0
+#define FILE_ERR_PARENT_FROM_DENTRY	    5 // dentry->d_parent == 0
+#define FILE_ERR_FILE_ARG		    6 // file == 0
+#define FILE_ERR_INODE_FROM_FILE	    7 // file->f_inode == 0
+#define FILE_ERR_VMA_FROM_VMF		    8 // vmf->vma == 0
+#define FILE_ERR_FILE_FROM_VMA		    9 // vma->vm_file == 0
+#define FILE_ERR_GET_BUFFER_HEAP	    10 // map_lookup_elem(&buffer_heap_map, &zero) == 0
+#define FILE_ERR_GET_TRIE_HEAP		    11 // map_lookup_elem(&lpm_trie_heap_key, &zero) == 0
+#define FILE_ERR_GET_FILE_VAL_HEAP	    12 // map_lookup_elem(&file_val_map, &zero) == 0
+#define FILE_ERR_UPDATE_FILE_MAP	    13 // map_update_elem(&hash_map_file_alloc, ...) < 0
+#define FILE_ERR_DENTRY_FROM_PATH	    14 // path->dentry == 0
+#define FILE_ERR_DELETE_FILE_MAP	    15 // map_delete_elem(&hash_map_file_alloc, ...) < 0
+#define FILE_ERR_MKDIR_INFO_HEAP_HEAP	    16 // map_lookup_elem(&vfs_mkdir_info_heap, &zero) == 0
+#define FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP  17 // map_update_elem(&mkdir_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP  18 // map_delete_elem(&mkdir_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP  19 // map_lookup_elem(&mkdir_retprobe_map, ...) < 0
+#define FILE_ERR_UPDATE_DIR_MAP		    20 // map_update_elem(&hash_map_dir_alloc, ...) < 0
+#define FILE_ERR_DELETE_DIR_MAP		    21 // map_delete_elem(&hash_map_dir_alloc, ...) < 0
+#define FILE_ERR_RENAME_INFO_HEAP	    22 // map_lookup_elem(&vfs_rename_info_heap, &zero) == 0
+#define FILE_ERR_UPDATE_RENAME_RETPROBE_MAP 23 // map_update_elem(&rename_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_RENAME_RETPROBE_MAP 24 // map_delete_elem(&rename_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_RENAME_RETPROBE_MAP 25 // map_lookup_elem(&rename_retprobe_map, ...) == 0
+#define FILE_ERR_UPDATE_SPR_RETPROBE_MAP    26 // map_update_elem(&spr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_SPR_RETPROBE_MAP    27 // map_lookup_elem(&spr_retprobe_map, ...) == 0
+#define FILE_ERR_DELETE_SPR_RETPROBE_MAP    28 // map_delete_elem(&spr_retprobe_map, ...) < 0
+#define FILE_ERR_UPDATE_VR_RETPROBE_MAP	    29 // map_update_elem(&vr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_VR_RETPROBE_MAP	    30 // map_lookup_elem(&vr_retprobe_map, ...) == 0
+#define FILE_ERR_DELETE_VR_RETPROBE_MAP	    31 // map_delete_elem(&vr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_CONFIG_MAP	    32 // map_lookup_elem(&file_config_map, &zero) == 0
+#define FILE_ERR_LOOKUP_RENAME_HEAP_MAP	    33 // map_lookup_elem(&file_rename_heap_map, &zero) == 0
+#define FILE_ERR_UNEXPECTED		    34
+#define FILE_ERR_MAX			    35
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

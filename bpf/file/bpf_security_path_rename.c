@@ -47,22 +47,34 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 		.flags = KRETPROBE_KEY,
 	};
 	__u64 lv = (__u64)old_dentry;
-	int zero = 0;
+	int err, zero = 0;
 
 	v = map_lookup_elem(&vfs_rename_info_heap, &zero);
-	if (!v)
-		return 0;
+	if (!v) {
+		err = -FILE_ERR_RENAME_INFO_HEAP;
+		goto security_path_rename_error;
+	}
 
 	v->old_dir = old_dir;
 	v->new_dir = new_dir;
 	v->need_old = 0;
 	v->need_new = 0;
 
-	map_update_elem(&rename_retprobe_map, &k, v, 0);
+	if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0) {
+		err = -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
+		goto security_path_rename_error;
+	}
 
 	// Create an entry for the kretprobe/security_path_rename in order to get the arguments.
-	map_update_elem(&spr_retprobe_map, &lk, &lv, 0);
+	if (map_update_elem(&spr_retprobe_map, &lk, &lv, 0) < 0) {
+		err = -FILE_ERR_UPDATE_SPR_RETPROBE_MAP;
+		goto security_path_rename_error;
+	}
 
+	return 0;
+
+security_path_rename_error:
+	inc_error(hook_security_path_rename, -err);
 	return 0;
 }
 
@@ -75,10 +87,13 @@ int BPF_KRETPROBE(security_path_rename_exit, long ret)
 		.flags = KRETPROBE_KEY,
 	};
 	__u64 *lv;
+	int err;
 
 	lv = map_lookup_elem(&spr_retprobe_map, &lk);
-	if (!lv)
-		return 0;
+	if (!lv) {
+		err = -FILE_ERR_LOOKUP_SPR_RETPROBE_MAP;
+		goto security_path_rename_exit_error;
+	}
 
 	if (ret) {
 		struct file_retprobe_key k = {
@@ -86,8 +101,18 @@ int BPF_KRETPROBE(security_path_rename_exit, long ret)
 			.reg = *lv,
 			.flags = KRETPROBE_KEY,
 		};
-		map_delete_elem(&rename_retprobe_map, &k);
+		if (map_delete_elem(&rename_retprobe_map, &k) < 0) {
+			err = -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+			goto security_path_rename_exit_error;
+		}
 	}
-	map_delete_elem(&spr_retprobe_map, &lk);
+	if (map_delete_elem(&spr_retprobe_map, &lk) < 0) {
+		err = -FILE_ERR_DELETE_SPR_RETPROBE_MAP;
+		goto security_path_rename_exit_error;
+	}
+	return 0;
+
+security_path_rename_exit_error:
+	inc_error(hook_security_path_rename, -err);
 	return 0;
 }
