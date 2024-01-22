@@ -39,16 +39,12 @@ var (
 )
 
 type MsgICMPEventUnix struct {
-	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPTuple
-	Kube       processapi.MsgK8sUnix
-	ProcessKey processapi.MsgExecveKey
-	SockCookie uint64
-	IcmpData   networkapi.MsgICMPData
+	Kube processapi.MsgK8sUnix
+	Msg  *networkapi.MsgICMPEvent
 }
 
 func msgToProtocol(event *MsgICMPEventUnix) tetragon.SocketProtocol {
-	return reader.MsgOpToProtocol(event.Common.Op)
+	return reader.MsgOpToProtocol(event.Msg.Common.Op)
 }
 
 func (msg *MsgICMPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -80,7 +76,7 @@ func (msg *MsgICMPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		res = &tetragon.GetEventsResponse{
 			Event:    &tetragon.GetEventsResponse_ProcessIcmp{ProcessIcmp: b},
 			NodeName: nodeName,
-			Time:     ktime.ToProto(msg.Common.Ktime),
+			Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 		}
 	}
 	return res
@@ -398,49 +394,49 @@ func GetProcessIcmp(
 	var icmpType, icmpCode string
 	var icmpId, icmpSeqNum uint32
 
-	if event.Tuple.IPv6 == 0 {
-		icmpType, icmpCode = icmpTypeAndCodeToStrings(event.IcmpData.IcmpType, event.IcmpData.IcmpCode)
-		icmpId, icmpSeqNum = icmpDecodeIdAndSeq(event.IcmpData.IcmpType, event.IcmpData.IcmpData)
+	if event.Msg.Tuple.IPv6 == 0 {
+		icmpType, icmpCode = icmpTypeAndCodeToStrings(event.Msg.IcmpData.IcmpType, event.Msg.IcmpData.IcmpCode)
+		icmpId, icmpSeqNum = icmpDecodeIdAndSeq(event.Msg.IcmpData.IcmpType, event.Msg.IcmpData.IcmpData)
 	} else {
-		icmpType, icmpCode = icmpV6TypeAndCodeToStrings(event.IcmpData.IcmpType, event.IcmpData.IcmpCode)
-		icmpId, icmpSeqNum = icmpV6DecodeIdAndSeq(event.IcmpData.IcmpType, event.IcmpData.IcmpData)
+		icmpType, icmpCode = icmpV6TypeAndCodeToStrings(event.Msg.IcmpData.IcmpType, event.Msg.IcmpData.IcmpCode)
+		icmpId, icmpSeqNum = icmpV6DecodeIdAndSeq(event.Msg.IcmpData.IcmpType, event.Msg.IcmpData.IcmpData)
 	}
-	destinationIp := networkapi.GetIP(event.Tuple.DAddr, 0, event.Tuple.IPv6 != 0)
+	destinationIp := networkapi.GetIP(event.Msg.Tuple.DAddr, 0, event.Msg.Tuple.IPv6 != 0)
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if process != nil {
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
 		fgsProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	}
 	if parent != nil {
 		fgsParent = parent.UnsafeGetProcess()
 	}
 	direction := "ingress"
-	if event.Tuple.Send == 1 {
+	if event.Msg.Tuple.Send == 1 {
 		direction = "egress"
 	}
 	fgsEvent := &tetragon.ProcessIcmp{
 		Process:        fgsProcess,
 		Parent:         fgsParent,
-		SourceIp:       networkapi.GetIP(event.Tuple.SAddr, 0, event.Tuple.IPv6 != 0).String(),
+		SourceIp:       networkapi.GetIP(event.Msg.Tuple.SAddr, 0, event.Msg.Tuple.IPv6 != 0).String(),
 		DestinationIp:  destinationIp.String(),
 		IcmpType:       icmpType,
 		IcmpCode:       icmpCode,
-		IcmpTypeValue:  uint32(event.IcmpData.IcmpType),
-		IcmpCodeValue:  uint32(event.IcmpData.IcmpCode),
+		IcmpTypeValue:  uint32(event.Msg.IcmpData.IcmpType),
+		IcmpCodeValue:  uint32(event.Msg.IcmpData.IcmpCode),
 		Identifier:     icmpId,
 		SequenceNumber: icmpSeqNum,
-		IcmpDataLen:    uint32(event.IcmpData.IcmpLen),
+		IcmpDataLen:    uint32(event.Msg.IcmpData.IcmpLen),
 		Direction:      direction,
 		Protocol:       msgToProtocol(event),
 	}
 
-	if event.SockCookie != 0 {
-		fgsEvent.SockCookie = event.SockCookie
+	if event.Msg.SockCookie != 0 {
+		fgsEvent.SockCookie = event.Msg.SockCookie
 	}
 
 	dnsCache := dns.Get()
@@ -448,32 +444,32 @@ func GetProcessIcmp(
 	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsEvent.DestinationIp, dnsCache, state)
 	fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIp)
 
-	switch event.IcmpData.IcmpIpProto {
+	switch event.Msg.IcmpData.IcmpIpProto {
 	case unix.IPPROTO_TCP:
 		fgsEvent.IcmpIpProtocol = tetragon.SocketProtocol_TCP
 	case unix.IPPROTO_UDP:
 		fgsEvent.IcmpIpProtocol = tetragon.SocketProtocol_UDP
 	}
 
-	if event.IcmpData.IcmpIpPort != 0 {
-		fgsEvent.IcmpIpPort = uint32(event.IcmpData.IcmpIpPort)
+	if event.Msg.IcmpData.IcmpIpPort != 0 {
+		fgsEvent.IcmpIpPort = uint32(event.Msg.IcmpData.IcmpIpPort)
 	}
 
-	if event.IcmpData.IcmpIpTtl != 0 {
-		fgsEvent.IcmpIpTtl = uint32(event.IcmpData.IcmpIpTtl)
+	if event.Msg.IcmpData.IcmpIpTtl != 0 {
+		fgsEvent.IcmpIpTtl = uint32(event.Msg.IcmpData.IcmpIpTtl)
 	}
 
-	if event.IcmpData.IcmpIpPointer != 0 {
-		fgsEvent.IcmpIpPointer = uint32(event.IcmpData.IcmpIpPointer)
+	if event.Msg.IcmpData.IcmpIpPointer != 0 {
+		fgsEvent.IcmpIpPointer = uint32(event.Msg.IcmpData.IcmpIpPointer)
 	}
 
-	if event.IcmpData.IcmpGateway[0] != 0 || event.IcmpData.IcmpGateway[1] != 0 {
-		fgsEvent.IcmpIpGateway = networkapi.GetIP(event.IcmpData.IcmpGateway, 0, event.Tuple.IPv6 != 0).String()
+	if event.Msg.IcmpData.IcmpGateway[0] != 0 || event.Msg.IcmpData.IcmpGateway[1] != 0 {
+		fgsEvent.IcmpIpGateway = networkapi.GetIP(event.Msg.IcmpData.IcmpGateway, 0, event.Msg.Tuple.IPv6 != 0).String()
 	}
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 

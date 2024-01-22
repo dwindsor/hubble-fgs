@@ -306,13 +306,7 @@ func (icmp *icmpSensor) PolicyHandler(
 
 func MsgToICMPUnix(m *api.MsgICMPEvent) *icmp.MsgICMPEventUnix {
 	unix := &icmp.MsgICMPEventUnix{}
-
-	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-	unix.ProcessKey = m.ProcessKey
-	unix.SockCookie = m.SockCookie
-	unix.IcmpData = m.IcmpData
-
+	unix.Msg = m
 	return unix
 }
 
