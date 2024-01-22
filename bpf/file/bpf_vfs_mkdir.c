@@ -2,7 +2,7 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_file_ops *msg, int action, __u32 op)
 {
 	struct vfs_mkdir_info *value;
@@ -15,14 +15,16 @@ fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_f
 
 	value = map_lookup_elem(&vfs_mkdir_info_heap, &zero);
 	if (!value)
-		return;
+		return -FILE_ERR_MKDIR_INFO_HEAP_HEAP;
 
 	value->dentry = dentry;
 	memcpy(&value->msg, msg, sizeof(struct msg_file_ops));
 	value->action = action;
 	value->operation = op;
 
-	map_update_elem(&mkdir_retprobe_map, &rkey, value, 0);
+	if (map_update_elem(&mkdir_retprobe_map, &rkey, value, 0) < 0)
+		return -FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP;
+
 	/*
 	 * We will use 2 keys:
 	 * 1. To be used by kretprobe and indexed by pid_tgid, PT_REGS_FP_CORE, and flags == KRETPROBE_KEY
@@ -38,7 +40,10 @@ fill_mkdir_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_f
 	 */
 	rkey.reg = (__u64)dentry;
 	rkey.flags = LSM_FMOD_KEY;
-	map_update_elem(&mkdir_retprobe_map, &rkey, value, 0);
+	if (map_update_elem(&mkdir_retprobe_map, &rkey, value, 0) < 0)
+		return -FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP;
+
+	return 0;
 }
 
 static inline __attribute__((always_inline)) int
@@ -59,7 +64,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 
 	msg = get_msg_init();
 	if (!msg)
-		return 0;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get parent inode and fs info
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
@@ -77,7 +82,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	// here we care about this directory and we have to create it's path
 	buffer = map_lookup_elem(&buffer_heap_map, &zero);
 	if (!buffer)
-		return 0;
+		return -FILE_ERR_GET_BUFFER_HEAP;
 
 	// first write the dentry name
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
@@ -112,7 +117,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	// if not just not add it in the inode map
 	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
 	if (!key)
-		return 0;
+		return -FILE_ERR_GET_TRIE_HEAP;
 
 	key->prefixlen = msg->path.size * 8;
 	memcpy(key->data, msg->path.str, 256); // need the rest to be zero-ed
@@ -139,16 +144,19 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	operation = eval_selectors(action_mkdir, 0);
 
 	// create the mkdir_retprobe_map value and set it for the kretprobe
-	fill_mkdir_retprobe_map(ctx, dentry, msg, action, operation);
-
-	return 0;
+	return fill_mkdir_retprobe_map(ctx, dentry, msg, action, operation);
 }
 
 SEC("kprobe/vfs_mkdir/63")
 int BPF_KPROBE(vfs_mkdir_v63, struct mnt_idmap *idmap, struct inode *dir,
 	       struct dentry *dentry, umode_t mode)
 {
-	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	int err;
+
+	err = kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	if (err < 0)
+		inc_error(hook_vfs_mkdir, -err);
+
 	return 0;
 }
 
@@ -156,14 +164,24 @@ SEC("kprobe/vfs_mkdir/512")
 int BPF_KPROBE(vfs_mkdir_v512, struct user_namespace *mnt_userns, struct inode *dir,
 	       struct dentry *dentry, umode_t mode)
 {
-	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	int err;
+
+	err = kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	if (err < 0)
+		inc_error(hook_vfs_mkdir, -err);
+
 	return 0;
 }
 
 SEC("kprobe/vfs_mkdir/419")
 int BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	int err;
+
+	err = kprobe_vfs_mkdir(ctx, dir, dentry, mode);
+	if (err < 0)
+		inc_error(hook_vfs_mkdir, -err);
+
 	return 0;
 }
 
@@ -181,7 +199,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	struct hash_map_file_key file_key;
 	struct hash_map_file_val *file_val = 0;
 	struct msg_file_ops *msg;
-	int zero = 0, action = 0;
+	int err, zero = 0, action = 0;
 	__u32 path_size = 0;
 	__u32 operation = 0;
 
@@ -192,18 +210,26 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 				.reg = (__u64)val->dentry,
 				.flags = LSM_FMOD_KEY,
 			};
-			map_delete_elem(&mkdir_retprobe_map, &dkey);
+			if (map_delete_elem(&mkdir_retprobe_map, &dkey) < 0) {
+				err = -FILE_ERR_DELETE_MKDIR_RETPROBE_MAP;
+				goto vfs_mkdir_exit_error;
+			}
 		}
-		map_delete_elem(&mkdir_retprobe_map, &rkey);
+		if (map_delete_elem(&mkdir_retprobe_map, &rkey) < 0) {
+			err = -FILE_ERR_DELETE_MKDIR_RETPROBE_MAP;
+			goto vfs_mkdir_exit_error;
+		}
 		return 0;
 	}
 
 	msg = map_lookup_elem(&file_heap_map, &zero);
-	if (!msg)
-		return 0;
+	if (!msg) {
+		err = -FILE_ERR_GET_MSG_HEAP;
+		goto vfs_mkdir_exit_error;
+	}
 
 	val = map_lookup_elem(&mkdir_retprobe_map, &rkey);
-	if (!val)
+	if (!val) // kprobe hook decided that we don't care about that directory
 		return 0;
 
 	dentry = val->dentry;
@@ -220,8 +246,10 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// get current inode and fs info
 	// we know that at the kretprobe hook
 	probe_read(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
-	if (!d_inode)
-		return 0;
+	if (!d_inode) {
+		err = -FILE_ERR_INODE_FROM_DENTRY;
+		goto vfs_mkdir_exit_error;
+	}
 
 	get_ino_fs(msg, d_inode, dentry);
 
@@ -231,8 +259,10 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	file_key.dev_minor = MINOR(msg->fs.dev);
 
 	file_val = map_lookup_elem(&file_val_map, &zero);
-	if (!file_val)
-		return 0;
+	if (!file_val) {
+		err = -FILE_ERR_GET_FILE_VAL_HEAP;
+		goto vfs_mkdir_exit_error;
+	}
 
 	file_val->action = action;
 	file_val->size = msg->path.size;
@@ -248,7 +278,10 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 		file_val->location_flags = HOST_FILE;
 	}
 
-	map_update_elem(&hash_map_dir_alloc, &file_key, file_val, 0);
+	if (map_update_elem(&hash_map_dir_alloc, &file_key, file_val, 0) < 0) {
+		err = -FILE_ERR_UPDATE_DIR_MAP;
+		goto vfs_mkdir_exit_error;
+	}
 
 	if (action == FILTER_IGNORE) // due to path_file_exclude
 		return 0;
@@ -270,6 +303,10 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 				 sizeof(struct msg_file_ops));
 
 	return 0;
+
+vfs_mkdir_exit_error:
+	inc_error(hook_vfs_mkdir, -err);
+	return 0;
 }
 
 #if defined(__FILE_ENFORCE_LSM) || defined(__FILE_ENFORCE_FMOD)
@@ -282,7 +319,7 @@ static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx,
 	};
 	struct vfs_mkdir_info *val;
 
-	val = map_lookup_elem(&mkdir_retprobe_map, &rkey);
+	val = map_lookup_elem(&mkdir_retprobe_map, &rkey); // kprobe hook decided that we don't care about that directory
 	if (!val)
 		return 0;
 
@@ -290,17 +327,18 @@ static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx,
 		int zero = 0;
 		struct msg_file_ops *msg = map_lookup_elem(&file_heap_map, &zero);
 		if (!msg)
-			return 0;
+			return -FILE_ERR_GET_MSG_HEAP;
 
 		memcpy(msg, &val->msg, sizeof(struct msg_file_ops));
-		map_delete_elem(&mkdir_retprobe_map, &rkey);
+		if (map_delete_elem(&mkdir_retprobe_map, &rkey) < 0)
+			return -FILE_ERR_DELETE_MKDIR_RETPROBE_MAP;
 
 		msg->hook = hook_security_inode_mkdir;
 		msg->operation = FILE_OP_BLOCK;
 
 		perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
-		return -EPERM;
+		return FILE_OP_BLOCK;
 	}
 	return 0;
 }
@@ -310,7 +348,15 @@ static inline __attribute__((always_inline)) int security_inode_mkdir(void *ctx,
 SEC("lsm/inode_mkdir")
 int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	return security_inode_mkdir(ctx, dir, dentry, mode);
+	int err;
+
+	err = security_inode_mkdir(ctx, dir, dentry, mode);
+	if (err < 0) {
+		inc_error(hook_security_inode_mkdir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -318,8 +364,17 @@ int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry,
 SEC("fmod_ret/security_inode_mkdir")
 int BPF_PROG(security_inode_mkdir_fmod, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	return security_inode_mkdir(ctx, dir, dentry, mode);
+
+	err = security_inode_mkdir(ctx, dir, dentry, mode);
+	if (err < 0) {
+		inc_error(hook_security_inode_mkdir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
