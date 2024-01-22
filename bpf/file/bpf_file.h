@@ -334,6 +334,13 @@ struct {
 	__uint(max_entries, 1024);
 } io_uring_retprobe_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct file_errors);
+	__uint(max_entries, 1);
+} file_errors_map SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -1059,4 +1066,17 @@ find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
 	file_key.dev_minor = MINOR(dev);
 
 	return map_lookup_elem(inode_map, &file_key);
+}
+
+static inline __attribute__((always_inline)) void inc_error(__u32 hook, __u32 metric)
+{
+	__u32 zero = 0;
+	struct file_errors *valp;
+
+	if (metric >= FILE_ERR_MAX)
+		metric = FILE_ERR_UNEXPECTED;
+
+	valp = map_lookup_elem(&file_errors_map, &zero);
+	if (valp)
+		__sync_fetch_and_add(&valp->m[hook][metric], 1);
 }

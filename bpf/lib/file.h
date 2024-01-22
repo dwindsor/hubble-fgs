@@ -55,6 +55,7 @@ enum {
 	hook_security_inode_mkdir = 20,
 	hook_security_inode_rename = 21,
 	hook_security_bprm_check = 22,
+	hook_max = 23,
 };
 
 #define KRETPROBE_KEY 0
@@ -245,6 +246,20 @@ struct io_uring_op_key {
 
 struct io_uring_op_val {
 	struct task_struct *user_task;
+};
+
+#define FILE_ERR_NO_ERROR	    0 // success
+#define FILE_ERR_UNKNOWN	    1 // unknown error
+#define FILE_ERR_GET_MSG_HEAP	    2 // map_lookup_elem(&file_heap_map, &zero) == 0
+#define FILE_ERR_DENTRY_FROM_FILE   3 // file->f_path.dentry == 0
+#define FILE_ERR_INODE_FROM_DENTRY  4 // dentry->d_inode == 0
+#define FILE_ERR_PARENT_FROM_DENTRY 5 // dentry->d_parent == 0
+#define FILE_ERR_FILE_ARG	    6 // file == 0
+#define FILE_ERR_UNEXPECTED	    7
+#define FILE_ERR_MAX		    8
+
+struct file_errors {
+	__u64 m[hook_max][FILE_ERR_MAX];
 };
 
 #endif

@@ -5,9 +5,9 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 /*
  * This function handles all listdir operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, struct file *file)
 {
@@ -17,23 +17,26 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	struct hash_map_file_val *file_val = 0;
 	__u32 operation = 0;
 
+	if (!file)
+		return -FILE_ERR_FILE_ARG;
+
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	dentry = BPF_CORE_READ(file, f_path.dentry);
 	if (!dentry)
-		return -1;
+		return -FILE_ERR_DENTRY_FROM_FILE;
 
 	inode = BPF_CORE_READ(dentry, d_inode);
 	if (!inode)
-		return -1;
+		return -FILE_ERR_INODE_FROM_DENTRY;
 
 	get_ino_fs(msg, inode, dentry);
 
 	parent_dentry = BPF_CORE_READ(dentry, d_parent);
 	if (!parent_dentry)
-		return -1;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -79,13 +82,18 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
-	return (operation & FILE_OP_BLOCK) != 0;
+	return operation;
 }
 
 SEC("kprobe/iterate_dir")
 int BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 {
-	handle_iterate_dir(ctx, file);
+	int err;
+
+	err = handle_iterate_dir(ctx, file);
+	if (err < 0)
+		inc_error(hook_iterate_dir, -err);
+
 	return 0;
 }
 
@@ -93,12 +101,18 @@ int BPF_KPROBE(iterate_dir, struct file *file, struct dir_context *d_ctx)
 SEC("lsm/file_permission")
 int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
 {
+	int err;
+
 	if (mask != MAY_READ)
 		return 0;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_iterate_dir(ctx, file) == 1)
-		return -EPERM;
-	return 0;
+
+	err = handle_iterate_dir(ctx, file);
+	if (err < 0) {
+		inc_error(hook_iterate_dir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -106,13 +120,20 @@ int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
 SEC("fmod_ret/security_file_permission")
 int BPF_PROG(security_file_permission_fmod, struct file *file, int mask, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
+
 	if (mask != MAY_READ)
 		return 0;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_iterate_dir(ctx, file) == 1)
-		return -EPERM;
-	return 0;
+
+	err = handle_iterate_dir(ctx, file);
+	if (err < 0) {
+		inc_error(hook_iterate_dir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
