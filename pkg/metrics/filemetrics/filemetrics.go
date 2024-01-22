@@ -100,6 +100,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "Maximum number of entries in the inode map for directories.",
 	}, []string{"policy"})
+
+	fileKernelErrors = metrics.NewBPFCounter(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "file_kernel_errors_total"),
+		"Total number of eBPF errors for process_file events per hook and reason.",
+		[]string{"policy", "hook", "reason"}, nil,
+	))
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -117,6 +123,7 @@ func InitMetrics(registry *prometheus.Registry) {
 
 	registry.MustRegister(NewBPFCollector())
 	registry.MustRegister(NewBPFInodeMapCollector())
+	registry.MustRegister(NewBPFErrorCollector())
 }
 
 func FileTotalEventsInc() {

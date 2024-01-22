@@ -176,3 +176,86 @@ var FileExecMetricTable = map[int]string{
 type FileExecStats struct {
 	M [FileExecMetricMax]uint64 `align:"m"`
 }
+
+const (
+	FileErrNoError                  = 0
+	FileErrUnknown                  = 1
+	FileErrGetMsgHeap               = 2
+	FileErrDentryFromFile           = 3
+	FileErrInodeFromDentry          = 4
+	FileErrParentFromDentry         = 5
+	FileErrFileArg                  = 6
+	FileErrInodeFromFile            = 7
+	FileErrVmaFromVmf               = 8
+	FileErrFileFromVma              = 9
+	FileErrGetBufferHeap            = 10
+	FileErrGetTrieHeap              = 11
+	FileErrGetFileValHeap           = 12
+	FileErrUpdateFileMap            = 13
+	FileErrDentryFromPath           = 14
+	FileErrDeleteFileMap            = 15
+	FileErrMkdirInfoHeap            = 16
+	FileErrUpdateMkdirRetprobeMap   = 17
+	FileErrDeleteMkdirRetprobeMap   = 18
+	FileErrLookupMkdirRetprobeMap   = 19
+	FileErrUpdateDirMap             = 20
+	FileErrDeleteDirMap             = 21
+	FileErrRenameInfoHeap           = 22
+	FileErrUpdateRenameRetprobeMap  = 23
+	FileErrDeleteRenameRetprobeMap  = 24
+	FileErrLookupRenameRetprobeMap  = 25
+	FileErrUpdateSprRetprobeMap     = 26
+	FileErrLookupSprRetprobeMap     = 27
+	FileErrDeleteSprRetprobeMap     = 28
+	FileErrUpdateVrRetprobeMap      = 29
+	FileErrLookupVrRetprobeMap      = 30
+	FileErrDeleteVrRetprobeMap      = 31
+	FileErrLookupConfigMap          = 32
+	FileErrLookupRenameHeapMap      = 33
+	FileErrFileFromBprm             = 34
+	FileErrUpdateExecRetProbeMap    = 35
+	FileErrDeleteExecRetprobeMap    = 36
+	FileErrUpdateIoUringRetprobeMap = 37
+	FileErrDeleteIoUringRetprobeMap = 38
+	FileErrLookupIoUringRetprobeMap = 39
+	FileErrUpdateIoUringMap         = 40
+	FileErrDeleteIoUringMap         = 41
+	FileErrIoUringTask              = 42
+	FileErrUnexpected               = 43
+	FileErrMax                      = 44
+)
+
+const (
+	FileHookUndef                  = 0
+	FileHookVfsFallocate           = 1
+	FileHookSecurityFilePermission = 2
+	FileHookFilemapFault           = 3
+	FileHookFilemapMapPages        = 4
+	FileHookFilemapPageMkwrite     = 5
+	FileHookVfsUnlink              = 6
+	FileHookSecurityInodeRmdir     = 7
+	FileHookVfsMkdir               = 8
+	FileHookVfsRename              = 9
+	FileHookFinishOpen             = 10
+	FileHookVfsOpen                = 11
+	FileHookIterateDir             = 12
+	FileHookDoTruncate             = 13
+	FileHookChmodCommon            = 14
+	FileHookChownCommon            = 15
+	FileHookSecurityMmapFile       = 16
+	FileHookSecurityInodeUnlink    = 17
+	FileHookSecurityInodeSetattr   = 18
+	FileHookSecurityInodeCreate    = 19
+	FileHookSecurityInodeMkdir     = 20
+	FileHookSecurityInodeRename    = 21
+	FileHookSecurityBprmCheck      = 22
+	FileHookSecurityPathRename     = 23
+	FileHookIoRead                 = 24
+	FileHookIoWrite                = 25
+	FileHookIoIssueSqe             = 26
+	FileHookMax                    = 27
+)
+
+type FileErrors struct {
+	M [FileHookMax][FileErrMax]uint64 `align:"m"`
+}

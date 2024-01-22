@@ -309,6 +309,7 @@ var (
 		"file_digests_maps",
 		"file_actions_map",
 		"file_config_map",
+		"file_errors_map",
 	}
 )
 
