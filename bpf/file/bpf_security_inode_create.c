@@ -3,11 +3,11 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 /*
- * This function handles all create operations.
+ * This function handles all block create operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int
 block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
@@ -26,12 +26,12 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
-		return -1;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -48,7 +48,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	// get a buffer to generate its path
 	buffer = map_lookup_elem(&buffer_heap_map, &zero);
 	if (!buffer)
-		return -1;
+		return -FILE_ERR_GET_BUFFER_HEAP;
 
 	// first write the dentry name
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
@@ -85,7 +85,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	// list now we check the trie with the initial paths
 	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
 	if (!key)
-		return -1;
+		return -FILE_ERR_GET_TRIE_HEAP;
 
 	key->prefixlen = msg->path.size * 8;
 	memcpy(key->data, msg->path.str, 256);
@@ -113,21 +113,24 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 
-	if (operation & FILE_OP_BLOCK) { // otherwise we will get the event after the actual create to have the inode info
+	if (operation & FILE_OP_BLOCK) // otherwise we will get the event after the actual create to have the inode info
 		perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
-		return 1;
-	}
-	return 0;
+	return operation;
 }
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_create")
 int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (block_file_create(ctx, dir, dentry) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = block_file_create(ctx, dir, dentry);
+	if (err < 0) {
+		inc_error(hook_security_inode_create, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -135,11 +138,17 @@ int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry
 SEC("fmod_ret/security_inode_create")
 int BPF_PROG(security_inode_create_fmod, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (block_file_create(ctx, dir, dentry) == 1)
-		return -EPERM;
-	return 0;
+
+	err = block_file_create(ctx, dir, dentry);
+	if (err < 0) {
+		inc_error(hook_security_inode_create, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

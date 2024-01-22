@@ -1,6 +1,12 @@
 #ifndef __CHECK_FILE_CREATE__
 #define __CHECK_FILE_CREATE__
 
+/*
+ * This function handles all create operations.
+ * Returns:
+ * <  0 on error
+ * == 0 no need to take any further actions
+ */
 static inline __attribute__((always_inline)) int check_file_create(void *ctx, struct file *f, struct dentry *dentry, __u32 hook)
 {
 	struct dentry *parent_dentry;
@@ -23,7 +29,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 
 	msg = get_msg_init();
 	if (!msg)
-		return 0;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(struct inode *), _(&dentry->d_inode));
@@ -32,7 +38,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
-		return 0;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -49,7 +55,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	// get a buffer to generate its path
 	buffer = map_lookup_elem(&buffer_heap_map, &zero);
 	if (!buffer)
-		return 0;
+		return -FILE_ERR_GET_BUFFER_HEAP;
 
 	// first write the dentry name
 	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
@@ -87,7 +93,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	// list now we check the trie with the initial paths
 	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
 	if (!key)
-		return 0;
+		return -FILE_ERR_GET_TRIE_HEAP;
 
 	key->prefixlen = msg->path.size * 8;
 	memcpy(key->data, msg->path.str, 256);
@@ -103,7 +109,7 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 
 	file_val = map_lookup_elem(&file_val_map, &zero);
 	if (!file_val)
-		return 0;
+		return -FILE_ERR_GET_FILE_VAL_HEAP;
 
 	file_val->action = action;
 	file_val->size = msg->path.size;
@@ -119,7 +125,8 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	}
 
 	// add this new file to the map of files
-	map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
+	if (map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0) < 0)
+		return -FILE_ERR_UPDATE_FILE_MAP;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
