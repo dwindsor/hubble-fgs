@@ -5,9 +5,9 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 /*
  * This function handles all unlink operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, struct inode *dir, struct dentry *dentry, __u32 hook)
 {
@@ -22,12 +22,12 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
 	if (!inode)
-		return -1;
+		return -FILE_ERR_INODE_FROM_DENTRY;
 
 	get_ino_fs(msg, inode, dentry);
 
@@ -36,7 +36,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
-		return -1;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_fs_info(&(msg->parent_fs), dir, parent_dentry);
 
@@ -89,7 +89,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 				 sizeof(struct msg_file_ops));
 
 	if (operation & FILE_OP_BLOCK)
-		return 1;
+		return operation;
 
 ignore_unlink:
 	if (remove_entry) {
@@ -97,30 +97,46 @@ ignore_unlink:
 		file_key.dev_major = MAJOR(msg->fs.dev);
 		file_key.dev_minor = MINOR(msg->fs.dev);
 
-		map_delete_elem(&hash_map_file_alloc, &file_key);
+		if (map_delete_elem(&hash_map_file_alloc, &file_key) < 0)
+			return -FILE_ERR_DELETE_FILE_MAP;
 	}
 
-	return 0;
+	return operation;
 }
 
 SEC("kprobe/vfs_unlink/63")
 int BPF_KPROBE(vfs_unlink_v63, struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {
-	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	int err;
+
+	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	if (err < 0)
+		inc_error(hook_vfs_unlink, -err);
+
 	return 0;
 }
 
 SEC("kprobe/vfs_unlink/512")
 int BPF_KPROBE(vfs_unlink_v512, struct user_namespace *mnt_userns, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {
-	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	int err;
+
+	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	if (err < 0)
+		inc_error(hook_vfs_unlink, -err);
+
 	return 0;
 }
 
 SEC("kprobe/vfs_unlink/419")
 int BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 {
-	kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	int err;
+
+	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_vfs_unlink);
+	if (err < 0)
+		inc_error(hook_vfs_unlink, -err);
+
 	return 0;
 }
 
@@ -128,10 +144,15 @@ int BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct
 SEC("lsm/inode_unlink")
 int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry)
 {
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink);
+	if (err < 0) {
+		inc_error(hook_security_inode_unlink, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -139,11 +160,17 @@ int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry
 SEC("fmod_ret/security_inode_unlink")
 int BPF_PROG(security_inode_unlink_fmod, struct inode *dir, struct dentry *dentry, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink) == 1)
-		return -EPERM;
-	return 0;
+
+	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink);
+	if (err < 0) {
+		inc_error(hook_security_inode_unlink, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

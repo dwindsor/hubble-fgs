@@ -263,8 +263,9 @@ struct io_uring_op_val {
 #define FILE_ERR_GET_FILE_VAL_HEAP  12 // map_lookup_elem(&file_val_map, &zero) == 0
 #define FILE_ERR_UPDATE_FILE_MAP    13 // map_update_elem(&hash_map_file_alloc, ...) < 0
 #define FILE_ERR_DENTRY_FROM_PATH   14 // path->dentry == 0
-#define FILE_ERR_UNEXPECTED	    15
-#define FILE_ERR_MAX		    16
+#define FILE_ERR_DELETE_FILE_MAP    15 // map_delete_elem(&hash_map_file_alloc, ...) < 0
+#define FILE_ERR_UNEXPECTED	    16
+#define FILE_ERR_MAX		    17
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];
