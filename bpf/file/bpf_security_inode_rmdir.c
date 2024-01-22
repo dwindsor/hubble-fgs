@@ -5,9 +5,9 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 /*
  * This function handles all rmdir operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(void *ctx, struct inode *dir, struct dentry *dentry)
 {
@@ -19,12 +19,12 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
 	probe_read(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
 	if (!d_inode)
-		return -1;
+		return -FILE_ERR_INODE_FROM_DENTRY;
 
 	get_ino_fs(msg, d_inode, dentry);
 
@@ -70,7 +70,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 				 sizeof(struct msg_file_ops));
 
 	if (operation & FILE_OP_BLOCK)
-		return 1;
+		return operation;
 
 ignore_rmdir:
 	// delete this directory from the map with directories
@@ -79,15 +79,21 @@ ignore_rmdir:
 	file_key.dev_major = MAJOR(msg->fs.dev);
 	file_key.dev_minor = MINOR(msg->fs.dev);
 
-	map_delete_elem(&hash_map_dir_alloc, &file_key);
+	if (map_delete_elem(&hash_map_dir_alloc, &file_key) < 0)
+		return -FILE_ERR_DELETE_DIR_MAP;
 
-	return 0;
+	return operation;
 }
 
 SEC("kprobe/security_inode_rmdir")
 int BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 {
-	kprobe_security_inode_rmdir(ctx, dir, dentry);
+	int err;
+
+	err = kprobe_security_inode_rmdir(ctx, dir, dentry);
+	if (err < 0)
+		inc_error(hook_security_inode_rmdir, -err);
+
 	return 0;
 }
 
@@ -95,10 +101,15 @@ int BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 SEC("lsm/inode_rmdir")
 int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
 {
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (kprobe_security_inode_rmdir(ctx, dir, dentry) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = kprobe_security_inode_rmdir(ctx, dir, dentry);
+	if (err < 0) {
+		inc_error(hook_security_inode_rmdir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -106,11 +117,17 @@ int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
 SEC("fmod_ret/security_inode_rmdir")
 int BPF_PROG(security_inode_rmdir_fmod, struct inode *dir, struct dentry *dentry, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (kprobe_security_inode_rmdir(ctx, dir, dentry) == 1)
-		return -EPERM;
-	return 0;
+
+	err = kprobe_security_inode_rmdir(ctx, dir, dentry);
+	if (err < 0) {
+		inc_error(hook_security_inode_rmdir, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

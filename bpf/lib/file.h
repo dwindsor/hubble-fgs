@@ -269,8 +269,9 @@ struct io_uring_op_val {
 #define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP 18 // map_delete_elem(&mkdir_retprobe_map, ...) < 0
 #define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP 19 // map_lookup_elem(&mkdir_retprobe_map, ...) < 0
 #define FILE_ERR_UPDATE_DIR_MAP		   20 // map_update_elem(&hash_map_dir_alloc, ...) < 0
-#define FILE_ERR_UNEXPECTED		   21
-#define FILE_ERR_MAX			   22
+#define FILE_ERR_DELETE_DIR_MAP		   21 // map_delete_elem(&hash_map_dir_alloc, ...) < 0
+#define FILE_ERR_UNEXPECTED		   22
+#define FILE_ERR_MAX			   23
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];
