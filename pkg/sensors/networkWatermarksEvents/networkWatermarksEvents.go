@@ -77,7 +77,7 @@ func PidToWatermarksKey(pid uint32, protocol uint64, send uint64) uint64 {
 }
 
 func msgToProcessNetworkWatermarksUnix(m *api.MsgProcessNetworkWatermarkEvent) *networkWatermarks.MsgProcessNetworkWatermarksEventUnix {
-	return &networkWatermarks.MsgProcessNetworkWatermarksEventUnix{MsgProcessNetworkWatermarkEvent: *m}
+	return &networkWatermarks.MsgProcessNetworkWatermarksEventUnix{Msg: m}
 }
 
 func HandleProcessNetworkWatermarks(r *bytes.Reader) ([]observer.Event, error) {
@@ -87,8 +87,8 @@ func HandleProcessNetworkWatermarks(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	msgUnix := msgToProcessNetworkWatermarksUnix(&m)
-	if legacyBurst[msgUnix.Protocol] {
-		msgUnix.Common.Op = ops.MSG_OP_PROCESS_NETWORK_BURST
+	if legacyBurst[msgUnix.Msg.Protocol] {
+		msgUnix.Msg.Common.Op = ops.MSG_OP_PROCESS_NETWORK_BURST
 	}
 	return []observer.Event{msgUnix}, nil
 }

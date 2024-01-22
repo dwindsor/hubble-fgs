@@ -32,7 +32,7 @@ var (
 )
 
 type MsgProcessNetworkWatermarksEventUnix struct {
-	networkapi.MsgProcessNetworkWatermarkEvent
+	Msg *networkapi.MsgProcessNetworkWatermarkEvent
 }
 
 func (msg *MsgProcessNetworkWatermarksEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -51,7 +51,7 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) Retry(internal *process.Process
 
 	// For burst events we need to account for metrics skipped
 	// by original handling of event
-	switch msg.Common.Op {
+	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_PROCESS_NETWORK_WATERMARK:
 		createProcessNetworkWatermarks(msg, false)
 	case ops.MSG_OP_PROCESS_NETWORK_BURST:
@@ -67,14 +67,14 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) Notify() bool {
 
 func (msg *MsgProcessNetworkWatermarksEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
-	switch msg.Common.Op {
+	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_PROCESS_NETWORK_WATERMARK:
 		b := getProcessNetworkWatermarks(msg)
 		if b != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessNetworkWatermark{ProcessNetworkWatermark: b},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_PROCESS_NETWORK_BURST:
@@ -83,7 +83,7 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) HandleMessage() *tetragon.GetEv
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 
@@ -103,11 +103,11 @@ func createProcessNetworkWatermarks(
 ) *tetragon.ProcessNetworkWatermark {
 	var fgsProcess, fgsParent *tetragon.Process
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
@@ -120,7 +120,7 @@ func createProcessNetworkWatermarks(
 		Parent:  fgsParent,
 	}
 
-	switch event.Protocol {
+	switch event.Msg.Protocol {
 	case syscall.IPPROTO_UDP:
 		fgsEvent.Protocol = "UDP"
 	case syscall.IPPROTO_TCP:
@@ -128,30 +128,30 @@ func createProcessNetworkWatermarks(
 	default:
 		fgsEvent.Protocol = "unknown"
 	}
-	if event.Direction == WATERMARKS_INGRESS {
+	if event.Msg.Direction == WATERMARKS_INGRESS {
 		fgsEvent.Direction = "ingress"
 	} else {
 		fgsEvent.Direction = "egress"
 	}
-	if event.State == WATERMARKS_START {
+	if event.Msg.State == WATERMARKS_START {
 		fgsEvent.WatermarksState = "start"
 	} else {
 		fgsEvent.WatermarksState = "end"
 	}
-	if event.Type == WATERMARKS_BURST {
+	if event.Msg.Type == WATERMARKS_BURST {
 		fgsEvent.WatermarksType = "burst"
 	} else {
 		fgsEvent.WatermarksType = "dip"
 	}
-	fgsEvent.WindowSize = event.WindowSize
-	fgsEvent.HistAvg = event.HistAvg
-	fgsEvent.HistBurstTrigger = event.HistBurstTrigger
-	fgsEvent.HistDipTrigger = event.HistDipTrigger
-	fgsEvent.WindowAvg = event.WindowAvg
+	fgsEvent.WindowSize = event.Msg.WindowSize
+	fgsEvent.HistAvg = event.Msg.HistAvg
+	fgsEvent.HistBurstTrigger = event.Msg.HistBurstTrigger
+	fgsEvent.HistDipTrigger = event.Msg.HistDipTrigger
+	fgsEvent.WindowAvg = event.Msg.WindowAvg
 
 	ec := eventcache.Get()
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -171,11 +171,11 @@ func createProcessNetworkBurst(
 ) *tetragon.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *tetragon.Process
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
@@ -188,7 +188,7 @@ func createProcessNetworkBurst(
 		Parent:  fgsParent,
 	}
 
-	switch event.Protocol {
+	switch event.Msg.Protocol {
 	case syscall.IPPROTO_UDP:
 		fgsEvent.Protocol = "UDP"
 	case syscall.IPPROTO_TCP:
@@ -196,24 +196,24 @@ func createProcessNetworkBurst(
 	default:
 		fgsEvent.Protocol = "unknown"
 	}
-	if event.Direction == WATERMARKS_INGRESS {
+	if event.Msg.Direction == WATERMARKS_INGRESS {
 		fgsEvent.Direction = "ingress"
 	} else {
 		fgsEvent.Direction = "egress"
 	}
-	if event.State == WATERMARKS_START {
+	if event.Msg.State == WATERMARKS_START {
 		fgsEvent.BurstState = "start"
 	} else {
 		fgsEvent.BurstState = "end"
 	}
-	fgsEvent.WindowSize = event.WindowSize
-	fgsEvent.HistAvg = event.HistAvg
-	fgsEvent.HistTrigger = event.HistBurstTrigger
-	fgsEvent.WindowAvg = event.WindowAvg
+	fgsEvent.WindowSize = event.Msg.WindowSize
+	fgsEvent.HistAvg = event.Msg.HistAvg
+	fgsEvent.HistTrigger = event.Msg.HistBurstTrigger
+	fgsEvent.WindowAvg = event.Msg.WindowAvg
 
 	ec := eventcache.Get()
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
