@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -33,12 +32,8 @@ var (
 )
 
 type MsgDnsUnix struct {
-	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPTuple
-	Return     int64
-	ProcessKey processapi.MsgExecveKey
-	SockCookie uint64
-	Dns        dnsapi.MsgDns
+	Msg *networkapi.MsgIPEvent
+	Dns dnsapi.MsgDns
 }
 
 // Returns whether an integer t corresponds to an expected value
@@ -58,11 +53,11 @@ func addDnsType(t uint32, types []tetragon.DnsType, msg *MsgDnsUnix, answer bool
 		if option.Config.EnableDnsDebug {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"type":   t,
-				"pid":    msg.ProcessKey.Pid,
-				"src":    logutils.FormatTupleSrc(&msg.Common, &msg.Tuple),
-				"dst":    logutils.FormatTupleDst(&msg.Common, &msg.Tuple),
+				"pid":    msg.Msg.ProcessKey.Pid,
+				"src":    logutils.FormatTupleSrc(&msg.Msg.Common, &msg.Msg.Tuple),
+				"dst":    logutils.FormatTupleDst(&msg.Msg.Common, &msg.Msg.Tuple),
 				"answer": answer,
-				"proto":  msg.Tuple.Proto,
+				"proto":  msg.Msg.Tuple.Proto,
 			}).Warn("Invalid DNS type")
 		}
 		types = append(types, tetragon.DnsType_DNS_TYPE_UNDEF)
@@ -75,13 +70,13 @@ func addDnsType(t uint32, types []tetragon.DnsType, msg *MsgDnsUnix, answer bool
 func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	var proc, parent *tetragon.Process
 
-	processInt, parentInt := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	processInt, parentInt := process.GetParentProcessInternal(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime)
 	if processInt == nil {
 		proc = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
-			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: msg.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(msg.Msg.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in DNS event", process.GetProcessID(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in DNS event", process.GetProcessID(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime)).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
@@ -90,7 +85,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 		parent = parentInt.UnsafeGetProcess()
 	}
 
-	fgsTuple := sockinfo.GetTuple(&msg.Tuple, 0, msg.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&msg.Msg.Tuple, 0, msg.Msg.Common.Op)
 
 	var qTypesEnum []tetragon.DnsType
 	var aTypesEnum []tetragon.DnsType
@@ -141,13 +136,13 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	// TODO: this field is deprecated in favor of the Socket field, so we can probably
 	// remove this at some point in the future.
 	if proc != nil {
-		destinationIP := networkapi.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(msg.Msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Msg.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
-		ec.Add(nil, fgsEvent, msg.Common.Ktime, msg.ProcessKey.Ktime, msg)
+		ec.Add(nil, fgsEvent, msg.Msg.Common.Ktime, msg.Msg.ProcessKey.Ktime, msg)
 		return nil
 	}
 	eventmetrics.HandleDnsEvent(fgsEvent)
@@ -169,14 +164,14 @@ func (msg *MsgDnsUnix) Notify() bool {
 
 func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
-	switch msg.Common.Op {
+	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_DNS:
 		t := get(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessDns{ProcessDns: t},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

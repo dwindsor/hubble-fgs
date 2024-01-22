@@ -123,12 +123,8 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 	}
 
 	msgUnix := &dnsproto.MsgDnsUnix{
-		Common:     m.Common,
-		Tuple:      m.Tuple,
-		Return:     m.Return,
-		ProcessKey: m.ProcessKey,
-		SockCookie: m.SockCookie,
-		Dns:        msgDns,
+		Msg: m,
+		Dns: msgDns,
 	}
 	return []observer.Event{msgUnix}, nil
 }
