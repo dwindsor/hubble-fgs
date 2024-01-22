@@ -5,9 +5,9 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 /*
  * This function handles all exec operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, struct linux_binprm *bprm)
 {
@@ -27,25 +27,25 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 
 	file = BPF_CORE_READ(bprm, file);
 	if (!file)
-		return -1;
+		return -FILE_ERR_FILE_FROM_BPRM;
 
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	inode = BPF_CORE_READ(file, f_inode);
 	if (!inode)
-		return -1;
+		return -FILE_ERR_INODE_FROM_FILE;
 
 	dentry = BPF_CORE_READ(file, f_path.dentry);
 	if (!dentry)
-		return -1;
+		return -FILE_ERR_DENTRY_FROM_FILE;
 
 	get_ino_fs(msg, inode, dentry);
 
 	parent_dentry = BPF_CORE_READ(dentry, d_parent);
 	if (!parent_dentry)
-		return -1;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -101,17 +101,23 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->digest.ok = 0;
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 #else
-	map_update_elem(&exec_retprobe_map, &key, msg, 0);
+	if (map_update_elem(&exec_retprobe_map, &key, msg, 0) < 0)
+		return -FILE_ERR_UPDATE_EXEC_RETPROBE_MAP;
 #endif
 
-	return (operation & FILE_OP_BLOCK) != 0;
+	return operation;
 }
 
 #ifndef __FILE_DIGEST_LSM
 SEC("kprobe/security_bprm_check")
 int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 {
-	handle_file_exec(ctx, bprm);
+	int err;
+
+	err = handle_file_exec(ctx, bprm);
+	if (err < 0)
+		inc_error(hook_security_bprm_check, -err);
+
 	return 0;
 }
 #endif
@@ -128,12 +134,13 @@ int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
 
 	msg = map_lookup_elem(&exec_retprobe_map, &key);
 	if (!msg)
-		return 0;
+		return 0; // we don't care about that
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
 	// after sending the message we can delete the map entry
-	map_delete_elem(&exec_retprobe_map, &key);
+	if (map_delete_elem(&exec_retprobe_map, &key) < 0)
+		inc_error(hook_security_bprm_check, FILE_ERR_DELETE_EXEC_RETPROBE_MAP);
 
 	return 0;
 }
@@ -147,10 +154,15 @@ SEC("lsm/bprm_check_security")
 #endif
 int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 {
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_file_exec(ctx, bprm) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = handle_file_exec(ctx, bprm);
+	if (err < 0) {
+		inc_error(hook_security_bprm_check, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -158,11 +170,17 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 SEC("fmod_ret/security_bprm_check")
 int BPF_PROG(security_bprm_check_fmod, struct linux_binprm *bprm, int ret)
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_file_exec(ctx, bprm) == 1)
-		return -EPERM;
-	return 0;
+
+	err = handle_file_exec(ctx, bprm);
+	if (err < 0) {
+		inc_error(hook_security_bprm_check, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

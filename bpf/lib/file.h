@@ -283,8 +283,11 @@ struct io_uring_op_val {
 #define FILE_ERR_DELETE_VR_RETPROBE_MAP	    31 // map_delete_elem(&vr_retprobe_map, ...) < 0
 #define FILE_ERR_LOOKUP_CONFIG_MAP	    32 // map_lookup_elem(&file_config_map, &zero) == 0
 #define FILE_ERR_LOOKUP_RENAME_HEAP_MAP	    33 // map_lookup_elem(&file_rename_heap_map, &zero) == 0
-#define FILE_ERR_UNEXPECTED		    34
-#define FILE_ERR_MAX			    35
+#define FILE_ERR_FILE_FROM_BPRM		    34 // linux_bprm->file == 0
+#define FILE_ERR_UPDATE_EXEC_RETPROBE_MAP   35 // map_update_elem(&exec_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_EXEC_RETPROBE_MAP   36 // map_delete_elem(&exec_retprobe_map, ...) < 0
+#define FILE_ERR_UNEXPECTED		    37
+#define FILE_ERR_MAX			    38
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];
