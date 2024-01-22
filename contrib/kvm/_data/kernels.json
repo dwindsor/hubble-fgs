@@ -27,6 +27,32 @@
             ]
         },
         {
+            "name": "6.1",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-6.1.y"
+        },
+        {
+            "name": "6.1-debug",
+            "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-6.1.y",
+            "opts": [
+                [
+                    "--enable",
+                    "CONFIG_KASAN"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_PROVE_LOCKING"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_KMEMLEAK"
+                ],
+                [
+                    "--enable",
+                    "CONFIG_DEBUG_ATOMIC_SLEEP"
+                ]
+            ]
+        },
+        {
             "name": "5.15",
             "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git?depth=1#linux-5.15.y"
         },
