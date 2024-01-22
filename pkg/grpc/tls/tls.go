@@ -2,7 +2,6 @@ package tls
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -48,56 +47,52 @@ func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
 }
 
 type MsgTLSEventUnix struct {
-	Common      processapi.MsgCommon
-	Tuple       networkapi.MsgIPTuple
-	ClientHello tlsapi.MsgTLS
-	ServerHello tlsapi.MsgTLS
-	ServerCert  tlsapi.MsgTLSCertificates
-	ProcessKey  processapi.MsgExecveKey
+	Msg        *tlsapi.MsgTLSEvent
+	ServerCert tlsapi.MsgTLSCertificates
 }
 
 func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
-	op := msg.Common.Op
-	typeSNI, nameSNI := readertls.GetTLSSNI(msg.ClientHello.SNI.Value)
+	op := msg.Msg.Common.Op
+	typeSNI, nameSNI := readertls.GetTLSSNI(msg.Msg.ClientHello.SNI.Value)
 
 	log.WithFields(logrus.Fields{
 		"op":                           ops.OpCode(op).String(),
-		"saddr":                        networkapi.GetIP(msg.Tuple.SAddr, op, msg.Tuple.IPv6 != 0).String(),
-		"sport":                        networkapi.GetSport(msg.Tuple.SPort),
-		"dport":                        msg.Tuple.DPort,
-		"daddr":                        networkapi.GetIP(msg.Tuple.DAddr, op, msg.Tuple.IPv6 != 0).String(),
-		"Client-TLS-Version":           readertls.GetTLSVersion(msg.ClientHello.Version),
-		"Server-TLS-Version":           readertls.GetTLSVersion(msg.ServerHello.Version),
+		"saddr":                        networkapi.GetIP(msg.Msg.Tuple.SAddr, op, msg.Msg.Tuple.IPv6 != 0).String(),
+		"sport":                        networkapi.GetSport(msg.Msg.Tuple.SPort),
+		"dport":                        msg.Msg.Tuple.DPort,
+		"daddr":                        networkapi.GetIP(msg.Msg.Tuple.DAddr, op, msg.Msg.Tuple.IPv6 != 0).String(),
+		"Client-TLS-Version":           readertls.GetTLSVersion(msg.Msg.ClientHello.Version),
+		"Server-TLS-Version":           readertls.GetTLSVersion(msg.Msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,
 		"SNI-Name":                     nameSNI,
-		"Client-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.ClientHello.SupportedVersions, true),
-		"Server-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.ServerHello.SupportedVersions, false),
-		"cipher":                       ciphers.GetTLSCiphers(&msg.ServerHello.Cipher),
+		"Client-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.Msg.ClientHello.SupportedVersions, true),
+		"Server-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.Msg.ServerHello.SupportedVersions, false),
+		"cipher":                       ciphers.GetTLSCiphers(&msg.Msg.ServerHello.Cipher),
 	}).Warn()
 }
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
 func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
-	if event.Tuple.SPort != 0 {
+	if event.Msg.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(event.Tuple.SPort),
+			Value: uint32(event.Msg.Tuple.SPort),
 		}
 	}
-	if event.Tuple.DPort != 0 {
+	if event.Msg.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(event.Tuple.DPort),
+			Value: uint32(event.Msg.Tuple.DPort),
 		}
 	}
 
 	var proc, parent *tetragon.Process
-	processInt, parentInt := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, parentInt := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if processInt == nil {
 		proc = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in TLS event", process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in TLS event", process.GetProcessID(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 	}
@@ -105,11 +100,11 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		parent = parentInt.UnsafeGetProcess()
 	}
 
-	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
+	typeSNI, nameSNI := readertls.GetTLSSNI(event.Msg.ClientHello.SNI.Value)
 
-	clientVersion := readertls.GetTLSVersion(event.ClientHello.Version)
-	serverVersion := readertls.GetTLSVersion(event.ServerHello.Version)
-	negotiatedVersion := readertls.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false)
+	clientVersion := readertls.GetTLSVersion(event.Msg.ClientHello.Version)
+	serverVersion := readertls.GetTLSVersion(event.Msg.ServerHello.Version)
+	negotiatedVersion := readertls.GetTLSSupportedVersions(&event.Msg.ServerHello.SupportedVersions, false)
 	// For TLS <1.3, this will not be set. So do version discovery here instead.
 	if negotiatedVersion == "" {
 		negotiatedVersion = readertls.GetTLSNegotitatedVersion12(clientVersion, serverVersion)
@@ -118,30 +113,30 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	fgsEvent := &tetragon.Tls{
 		Process:             proc,
 		Parent:              parent,
-		SourceIp:            networkapi.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:            networkapi.GetIP(event.Msg.Tuple.SAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0).String(),
 		SourcePort:          sourcePort,
-		DestinationIp:       networkapi.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		DestinationIp:       networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0).String(),
 		DestinationPort:     destinationPort,
 		NegotiatedVersion:   negotiatedVersion,
-		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
+		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.Msg.ClientHello.SupportedVersions, true),
 		SniName:             nameSNI,
 		SniType:             typeSNI,
-		Cipher:              ciphers.GetTLSCiphers(&event.ServerHello.Cipher),
-		ClientFlags:         readertls.GetTLSFlags(event.ClientHello.Flags),
-		ServerFlags:         readertls.GetTLSFlags(event.ServerHello.Flags),
+		Cipher:              ciphers.GetTLSCiphers(&event.Msg.ServerHello.Cipher),
+		ClientFlags:         readertls.GetTLSFlags(event.Msg.ClientHello.Flags),
+		ServerFlags:         readertls.GetTLSFlags(event.Msg.ServerHello.Flags),
 		ClientVersion:       clientVersion,
 		ServerVersion:       serverVersion,
-		ClientAlert:         readertls.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
-		ServerAlert:         readertls.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
-		ClientSession:       readertls.GetTLSSession(&event.ClientHello.Session),
-		ServerSession:       readertls.GetTLSSession(&event.ServerHello.Session),
+		ClientAlert:         readertls.GetTLSAlert(event.Msg.ClientHello.AlertLevel, event.Msg.ClientHello.AlertDescription),
+		ServerAlert:         readertls.GetTLSAlert(event.Msg.ServerHello.AlertLevel, event.Msg.ServerHello.AlertDescription),
+		ClientSession:       readertls.GetTLSSession(&event.Msg.ClientHello.Session),
+		ServerSession:       readertls.GetTLSSession(&event.Msg.ServerHello.Session),
 		Certificates:        event.ServerCert.Certificates,
 		CertificateError:    getTLSCertificateErrorCode(event.ServerCert.Error),
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 	eventmetrics.HandleTlsEvent(fgsEvent)
@@ -163,14 +158,14 @@ func (msg *MsgTLSEventUnix) Notify() bool {
 
 func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
-	switch msg.Common.Op {
+	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_TLS:
 		t := getTLS(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_Tls{Tls: t},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

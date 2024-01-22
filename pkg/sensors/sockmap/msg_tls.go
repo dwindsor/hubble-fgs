@@ -67,11 +67,7 @@ func getCache() (*tlsCache, error) {
 func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *tls.MsgTLSEventUnix {
 	unix := &tls.MsgTLSEventUnix{}
 
-	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-	unix.ClientHello = m.ClientHello
-	unix.ServerHello = m.ServerHello
-	unix.ProcessKey = m.ProcessKey
+	unix.Msg = m
 
 	if errCode > 0 {
 		unix.ServerCert.Error = errCode
