@@ -26,7 +26,7 @@ var (
 )
 
 type MsgUdpSeqCheckErrorEventUnix struct {
-	networkapi.MsgUdpSeqCheckErrorEvent
+	Msg *networkapi.MsgUdpSeqCheckErrorEvent
 }
 
 func (msg *MsgUdpSeqCheckErrorEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -58,7 +58,7 @@ func (msg *MsgUdpSeqCheckErrorEventUnix) HandleMessage() *tetragon.GetEventsResp
 		res = &tetragon.GetEventsResponse{
 			Event:    &tetragon.GetEventsResponse_ProcessUdpSeqCheckError{ProcessUdpSeqCheckError: b},
 			NodeName: nodeName,
-			Time:     ktime.ToProto(msg.Common.Ktime),
+			Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 		}
 	}
 	return res
@@ -74,22 +74,22 @@ func createProcessUdpSeqCheckError(
 	var fgsProcess, fgsParent *tetragon.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
-	if event.Tuple.SPort != 0 {
+	if event.Msg.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.GetSport(event.Tuple.SPort)),
+			Value: uint32(networkapi.GetSport(event.Msg.Tuple.SPort)),
 		}
 	}
-	if event.Tuple.DPort != 0 {
+	if event.Msg.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.GetDport(event.Tuple.DPort, event.Common.Op)),
+			Value: uint32(networkapi.GetDport(event.Msg.Tuple.DPort, event.Msg.Common.Op)),
 		}
 	}
 
-	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
@@ -98,14 +98,14 @@ func createProcessUdpSeqCheckError(
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
-	destinationIP := networkapi.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0)
 
 	socket := &tetragon.SockInfo{
-		SourceIp:        networkapi.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
+		SourceIp:        networkapi.GetIP(event.Msg.Tuple.SAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
-		SockCookie:      event.SockCookie,
+		SockCookie:      event.Msg.SockCookie,
 	}
 
 	ec := eventcache.Get()
@@ -115,7 +115,7 @@ func createProcessUdpSeqCheckError(
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if fgsProcess != nil {
-		destinationIP := networkapi.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
@@ -123,14 +123,14 @@ func createProcessUdpSeqCheckError(
 		Process:        fgsProcess,
 		Parent:         fgsParent,
 		Socket:         socket,
-		ApplicationId:  event.ApplicationId,
-		AppSpecificId:  event.AppSpecificId,
-		SeqNumExpected: event.SeqNumExpected,
-		SeqNumReceived: event.SeqNumReceived,
+		ApplicationId:  event.Msg.ApplicationId,
+		AppSpecificId:  event.Msg.AppSpecificId,
+		SeqNumExpected: event.Msg.SeqNumExpected,
+		SeqNumReceived: event.Msg.SeqNumReceived,
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 

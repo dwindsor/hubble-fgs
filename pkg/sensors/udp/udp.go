@@ -1118,16 +1118,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 
 func MsgToUdpSeqErrorUnix(m *api.MsgUdpSeqCheckErrorEvent) *udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix {
 	unix := &udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix{}
-
-	unix.Common = m.Common
-	unix.ProcessKey = m.ProcessKey
-	unix.Tuple = m.Tuple
-	unix.SockCookie = m.SockCookie
-	unix.ApplicationId = m.ApplicationId
-	unix.AppSpecificId = m.AppSpecificId
-	unix.SeqNumExpected = m.SeqNumExpected
-	unix.SeqNumReceived = m.SeqNumReceived
-
+	unix.Msg = m
 	return unix
 }
 
