@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -36,19 +35,19 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	fgsHttpResponse := &tetragon.HttpResponse{}
 	fgsHttpRequest := &tetragon.HttpRequest{}
 
-	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processID := process.GetProcessID(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
 		proc = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 		logger.GetLogger().WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&event.Msg.Tuple, 0, event.Msg.Common.Op)
 
 	if len(event.Request.Code) != 0 {
 		code, err = GetHttpCode(event.Request.Code)
@@ -62,7 +61,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		}
 
 		fgsHttpResponse = &tetragon.HttpResponse{
-			Timestamp:        ktime.ToProto(event.Common.Ktime),
+			Timestamp:        ktime.ToProto(event.Msg.Common.Ktime),
 			Version:          event.Request.RespVersion,
 			Code:             code,
 			Reason:           event.Request.Reason,
@@ -98,7 +97,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 
 	if len(event.Request.Code) != 0 &&
 		len(event.Request.Method) != 0 {
-		l := ktime.DiffKtime(event.Request.Ktime, event.Common.Ktime)
+		l := ktime.DiffKtime(event.Request.Ktime, event.Msg.Common.Ktime)
 		nano := l.Nanoseconds()
 		sec := nano / int64(time.Second)
 		remainder := nano % int64(time.Second)
@@ -124,13 +123,13 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if proc != nil {
-		destinationIP := networkapi.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 	eventmetrics.HandleHttpEvent(fgsEvent)
@@ -138,10 +137,8 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 }
 
 type MsgHttpEventUnix struct {
-	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPTuple
-	ProcessKey processapi.MsgExecveKey
-	Request    httpapi.MsgHttpUnix
+	Msg     *httpapi.MsgHttpEvent
+	Request httpapi.MsgHttpUnix
 }
 
 func (msg *MsgHttpEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -159,14 +156,14 @@ func (msg *MsgHttpEventUnix) Notify() bool {
 
 func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
-	switch msg.Common.Op {
+	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_HTTP:
 		t := GetHttp(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessHttp{ProcessHttp: t},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

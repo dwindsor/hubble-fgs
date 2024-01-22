@@ -315,9 +315,7 @@ func handleHTTP(r *bytes.Reader) ([]observer.Event, error) {
 
 func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event, error) {
 	unix := &httpproto.MsgHttpEventUnix{
-		Common:     m.Common,
-		Tuple:      m.Tuple,
-		ProcessKey: m.ProcessKey,
+		Msg: m,
 	}
 
 	if m.Request.Length > HTTP_CLAMP_URL_LENGTH {
@@ -353,10 +351,10 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
 	// header decoders.
-	unix.Tuple.Proto = 0
+	unix.Msg.Tuple.Proto = 0
 
 	key := api.HttpKey{
-		Tuple: unix.Tuple,
+		Tuple: unix.Msg.Tuple,
 		Id:    unix.Request.RequestId,
 	}
 	usedMoreBytes := uint32(0)
@@ -420,7 +418,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 	// Workaround kernel bug for HTTPS while waiting for upstream kernel fix
 	// to land. Instead of spending time to work out per port disabling just
 	// hard code and we will revert when fix lands.
-	if !aggregateEnable || unix.Tuple.DPort == 47873 {
+	if !aggregateEnable || unix.Msg.Tuple.DPort == 47873 {
 		return []observer.Event{unix}, nil
 	}
 
@@ -453,9 +451,9 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 			unix.Request.UserAgent = entry.Request.UserAgent
 			unix.Request.ContentLength = entry.Request.ContentLength
 			unix.Request.TransferEncoding = entry.Request.TransferEncoding
-			unix.Request.Ktime = entry.Common.Ktime
+			unix.Request.Ktime = entry.Msg.Common.Ktime
 			unix.Request.FlagsResponse = entry.Request.Flags | usedMoreBytes
-			unix.ProcessKey = entry.ProcessKey
+			unix.Msg.ProcessKey = entry.Msg.ProcessKey
 			aggregate.Remove(key)
 		} else {
 			/* Response seen before request, stash the response and wait for request. */
@@ -510,9 +508,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, url []byte) ([]observer.Event, er
 			}
 
 			unix := &httpproto.MsgHttpEventUnix{
-				Common:     m.Common,
-				Tuple:      m.Tuple,
-				ProcessKey: m.ProcessKey,
+				Msg: m,
 			}
 			unix.Request.Flags = m.Request.Flags
 
@@ -529,7 +525,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 
 	frame, err := s.framer.ReadFrame()
 	if err != nil {
-		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Tuple)
+		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Msg.Tuple)
 		return false
 	}
 
@@ -563,7 +559,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	})
 
 	if _, err = s.decoder.Write(headers.HeaderBlockFragment()); err != nil {
-		logger.GetLogger().Warnf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Tuple)
+		logger.GetLogger().Warnf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Msg.Tuple)
 		// Keep going as the decoding error may have been due to a lost event desyncing
 		// the header compression and we may have partially succeeded in decoding some of the headers.
 		// Better to emit the events with partial data than drop them completely. It's also likely
@@ -577,13 +573,13 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	streamId := headers.Header().StreamID
 	isRequest := unix.Request.Code == ""
 
-	unix.Tuple.Proto = 0
+	unix.Msg.Tuple.Proto = 0
 
 	unix.Request.Protocol = "HTTP/2"
 	unix.Request.RespVersion = "HTTP/2"
 
 	key := api.HttpKey{
-		Tuple: unix.Tuple,
+		Tuple: unix.Msg.Tuple,
 		Id:    uint64(streamId),
 	}
 
@@ -604,9 +600,9 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 			unix.Request.Uri = entry.Request.Uri
 			unix.Request.Host = entry.Request.Host
 			unix.Request.UserAgent = entry.Request.UserAgent
-			unix.Request.Ktime = entry.Common.Ktime
+			unix.Request.Ktime = entry.Msg.Common.Ktime
 			unix.Request.ContentLength = entry.Request.ContentLength
-			unix.ProcessKey = entry.ProcessKey
+			unix.Msg.ProcessKey = entry.Msg.ProcessKey
 			aggregate.Remove(key)
 		} else {
 			/* Response seen before request, stash the response and wait for request. */
