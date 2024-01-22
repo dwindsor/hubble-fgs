@@ -255,8 +255,11 @@ struct io_uring_op_val {
 #define FILE_ERR_INODE_FROM_DENTRY  4 // dentry->d_inode == 0
 #define FILE_ERR_PARENT_FROM_DENTRY 5 // dentry->d_parent == 0
 #define FILE_ERR_FILE_ARG	    6 // file == 0
-#define FILE_ERR_UNEXPECTED	    7
-#define FILE_ERR_MAX		    8
+#define FILE_ERR_INODE_FROM_FILE    7 // file->f_inode == 0
+#define FILE_ERR_VMA_FROM_VMF	    8 // vmf->vma == 0
+#define FILE_ERR_FILE_FROM_VMA	    9 // vma->vm_file == 0
+#define FILE_ERR_UNEXPECTED	    10
+#define FILE_ERR_MAX		    11
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

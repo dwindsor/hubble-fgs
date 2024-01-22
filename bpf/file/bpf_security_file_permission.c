@@ -7,7 +7,12 @@ SEC("kprobe/security_file_permission")
 int BPF_KPROBE(security_file_permission, struct file *file, int mask)
 {
 	int action = (mask == MAY_READ) ? (action_read) : (action_write);
-	handle_generic_file_access(ctx, file, action, hook_security_file_permission);
+	int err;
+
+	err = handle_generic_file_access(ctx, file, action, hook_security_file_permission);
+	if (err < 0)
+		inc_error(hook_security_file_permission, -err);
+
 	return 0;
 }
 
@@ -16,10 +21,15 @@ SEC("lsm/file_permission")
 int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
 {
 	int action = (mask == MAY_READ) ? (action_read) : (action_write);
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_generic_file_access(ctx, file, action, hook_security_file_permission) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = handle_generic_file_access(ctx, file, action, hook_security_file_permission);
+	if (err < 0) {
+		inc_error(hook_security_file_permission, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -28,11 +38,17 @@ SEC("fmod_ret/security_file_permission")
 int BPF_PROG(security_file_permission_fmod, struct file *file, int mask, int ret)
 {
 	int action = (mask == MAY_READ) ? (action_read) : (action_write);
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_generic_file_access(ctx, file, action, hook_security_file_permission) == 1)
-		return -EPERM;
-	return 0;
+
+	err = handle_generic_file_access(ctx, file, action, hook_security_file_permission);
+	if (err < 0) {
+		inc_error(hook_security_file_permission, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

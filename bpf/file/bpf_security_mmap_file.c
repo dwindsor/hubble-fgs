@@ -8,6 +8,7 @@ SEC("lsm/mmap_file")
 int BPF_PROG(security_mmap_file_lsm, struct file *file, unsigned long prot, unsigned long flags)
 {
 	int action = 0, file_backed = 0;
+	int err;
 
 	file_backed = (flags & MAP_SHARED) || (flags & MAP_PRIVATE) || (flags & MAP_SHARED_VALIDATE);
 	if (!file_backed)
@@ -21,10 +22,13 @@ int BPF_PROG(security_mmap_file_lsm, struct file *file, unsigned long prot, unsi
 	if (!action)
 		return 0;
 
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_generic_file_access(ctx, file, action, hook_security_mmap_file) == 1)
-		return -EPERM;
-	return 0;
+	err = handle_generic_file_access(ctx, file, action, hook_security_mmap_file);
+	if (err < 0) {
+		inc_error(hook_security_mmap_file, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -33,6 +37,7 @@ SEC("fmod_ret/security_mmap_file")
 int BPF_PROG(security_mmap_file_fmod, struct file *file, unsigned long prot, unsigned long flags, int ret)
 {
 	int action = 0, file_backed = 0;
+	int err;
 
 	if (ret != 0)
 		return ret;
@@ -49,9 +54,12 @@ int BPF_PROG(security_mmap_file_fmod, struct file *file, unsigned long prot, uns
 	if (!action)
 		return 0;
 
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (handle_generic_file_access(ctx, file, action, hook_security_mmap_file) == 1)
-		return -EPERM;
-	return 0;
+	err = handle_generic_file_access(ctx, file, action, hook_security_mmap_file);
+	if (err < 0) {
+		inc_error(hook_security_mmap_file, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif

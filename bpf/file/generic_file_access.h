@@ -4,9 +4,9 @@
 /*
  * This function handles all read/write operations.
  * Returns: 
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
@@ -24,11 +24,11 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	struct io_uring_op_val *val;
 
 	if (!file)
-		return -1;
+		return -FILE_ERR_FILE_ARG;
 
 	msg = get_msg_init();
 	if (!msg)
-		return -1;
+		return -FILE_ERR_GET_MSG_HEAP;
 
 	val = map_lookup_elem(&io_uring_map, &key);
 	if (val) { // we are in the middle of io_uring operation
@@ -42,19 +42,19 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&file->f_inode));
 	if (!inode)
-		return -1;
+		return -FILE_ERR_INODE_FROM_FILE;
 
 	// get parent inode and fs info
 	probe_read(&path, sizeof(path), _(&file->f_path));
 	if (!path.dentry)
-		return -1;
+		return -FILE_ERR_DENTRY_FROM_FILE;
 
 	dentry = path.dentry;
 	get_ino_fs(msg, inode, dentry);
 
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
-		return -1;
+		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -100,7 +100,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 				 sizeof(struct msg_file_ops));
 
-	return (operation & FILE_OP_BLOCK) != 0;
+	return operation;
 }
 
 #endif /* __GENERIC_FILE_ACCESS__ */
