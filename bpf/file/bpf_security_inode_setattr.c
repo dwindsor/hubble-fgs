@@ -14,7 +14,7 @@ static inline gid_t __kgid_val(kgid_t gid)
 	return gid.val;
 }
 
-static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr(struct dentry *dentry)
+static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr(struct dentry *dentry, int *err)
 {
 	struct inode *inode;
 	struct dentry *parent_dentry;
@@ -22,18 +22,24 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	struct hash_map_file_val *file_val = 0;
 
 	msg = get_msg_init();
-	if (!msg)
+	if (!msg) {
+		*err = -FILE_ERR_GET_MSG_HEAP;
 		return 0;
+	}
 
 	inode = BPF_CORE_READ(dentry, d_inode);
-	if (!inode)
+	if (!inode) {
+		*err = -FILE_ERR_INODE_FROM_DENTRY;
 		return 0;
+	}
 
 	get_ino_fs(msg, inode, dentry);
 
 	parent_dentry = BPF_CORE_READ(dentry, d_parent);
-	if (!parent_dentry)
+	if (!parent_dentry) {
+		*err = -FILE_ERR_PARENT_FROM_DENTRY;
 		return 0;
+	}
 
 	get_parent_ino_fs(msg, parent_dentry);
 
@@ -71,16 +77,20 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 /*
  * This function handles all setattr operations.
  * Returns:
- * -1 on error
- *  0 if there is no need to take any further actions
- *  1 if we need to block the operation
+ * <  0 on error
+ * == 0 no need to take any further actions
+ * >  0 the operation to take
  */
 static inline __attribute__((always_inline)) int do_security_inode_setattr(void *ctx, struct dentry *dentry, struct iattr *attr)
 {
 	unsigned int ia_valid = BPF_CORE_READ(attr, ia_valid);
-	struct msg_file_ops *msg = generic_chattr(dentry);
+	struct msg_file_ops *msg;
+	__u32 operation = 0;
+	int err = 0;
+
+	msg = generic_chattr(dentry, &err);
 	if (!msg)
-		return -1;
+		return err;
 
 	if (ia_valid & ATTR_MODE) { // chmod
 		msg->imode[OLDVAL] = BPF_CORE_READ(dentry, d_inode, i_mode); // current value
@@ -97,41 +107,57 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 	} else if (ia_valid & ATTR_SIZE) { // truncate
 		msg->action = action_write;
 	} else // we do not handle other setattr cases for now (i.e. timestamps)
-		return -1;
+		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	msg->operation = eval_selectors(msg->action, 0);
-	if (!(msg->operation & FILE_OP_POST))
-		return 0;
+	operation = eval_selectors(msg->action, 0);
+	if (!(operation & FILE_OP_POST))
+		return operation;
 
+	msg->operation = operation;
 	msg->hook = hook_security_inode_setattr;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 
-	return (msg->operation & FILE_OP_BLOCK) != 0;
+	return operation;
 }
 
 SEC("kprobe/security_inode_setattr/419")
 int BPF_KPROBE(security_inode_setattr_v419, struct dentry *dentry, struct iattr *attr)
 {
-	do_security_inode_setattr(ctx, dentry, attr);
+	int err;
+
+	err = do_security_inode_setattr(ctx, dentry, attr);
+	if (err < 0)
+		inc_error(hook_security_inode_setattr, -err);
+
 	return 0;
 }
 
 SEC("kprobe/security_inode_setattr/60")
 int BPF_KPROBE(security_inode_setattr_v60, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr)
 {
-	do_security_inode_setattr(ctx, dentry, attr);
+	int err;
+
+	err = do_security_inode_setattr(ctx, dentry, attr);
+	if (err < 0)
+		inc_error(hook_security_inode_setattr, -err);
+
 	return 0;
 }
 
 SEC("kprobe/security_inode_setattr/63")
 int BPF_KPROBE(security_inode_setattr_v63, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr)
 {
-	do_security_inode_setattr(ctx, dentry, attr);
+	int err;
+
+	err = do_security_inode_setattr(ctx, dentry, attr);
+	if (err < 0)
+		inc_error(hook_security_inode_setattr, -err);
+
 	return 0;
 }
 
@@ -139,10 +165,15 @@ int BPF_KPROBE(security_inode_setattr_v63, struct mnt_idmap *idmap, struct dentr
 SEC("lsm/inode_setattr")
 int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *attr)
 {
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (do_security_inode_setattr(ctx, dentry, attr) == 1)
-		return -EPERM;
-	return 0;
+	int err;
+
+	err = do_security_inode_setattr(ctx, dentry, attr);
+	if (err < 0) {
+		inc_error(hook_security_inode_setattr, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
 
@@ -156,11 +187,17 @@ int BPF_PROG(security_inode_setattr_fmod, struct mnt_idmap *idmap, struct dentry
 int BPF_PROG(security_inode_setattr_fmod, struct dentry *dentry, struct iattr *attr, int ret)
 #endif
 {
+	int err;
+
 	if (ret != 0)
 		return ret;
-	// we don't distinguish the cases of returning -1 (error) or 0 (post/ignore) for now
-	if (do_security_inode_setattr(ctx, dentry, attr) == 1)
-		return -EPERM;
-	return 0;
+
+	err = do_security_inode_setattr(ctx, dentry, attr);
+	if (err < 0) {
+		inc_error(hook_security_inode_setattr, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 #endif
