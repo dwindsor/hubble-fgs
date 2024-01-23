@@ -361,7 +361,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	 * delete key1 and get old_dir to delete key2. kretprobe will be called even in 
 	 * the case where we block the operation.
 	 */
-	k.reg = (__u64)old_dir;
+	k.reg = (__u64)old_dir; // this is (struct inode *)
 	k.flags = LSM_FMOD_KEY;
 	if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0)
 		return -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
@@ -486,6 +486,13 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 	return file_val;
 }
 
+static inline __attribute__((always_inline)) struct inode *path_to_inode(const struct path *path)
+{
+	struct path *old_dir_path = (struct path *)path;
+
+	return BPF_CORE_READ(old_dir_path, dentry, d_inode);
+}
+
 // we have to consider what we need to do (i.e. what we can handle here and what we need helf from the user-space)
 //
 // [NOOP]
@@ -548,7 +555,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 		if ((val = map_lookup_elem(&rename_retprobe_map, &k))) {
 			struct file_retprobe_key dkey = {
 				.pid_tgid = k.pid_tgid,
-				.reg = (__u64)val->old_dir,
+				.reg = (__u64)path_to_inode(val->old_dir),
 				.flags = LSM_FMOD_KEY,
 			};
 			map_delete_elem(&rename_retprobe_map, &dkey); // this can be deleted from the security_inode_rename program
@@ -564,7 +571,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	val = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!val)
 		return 0; // we don't care about that
-	old_dir = (__u64)val->old_dir;
+	old_dir = (__u64)path_to_inode(val->old_dir);
 
 	if (val->msg.flags & SRC_REG_FILE) {
 		if (val->msg.flags & MOVE_INSIDE) {
