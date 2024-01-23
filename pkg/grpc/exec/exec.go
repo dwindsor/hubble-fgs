@@ -33,12 +33,12 @@ const (
 )
 
 func (msg *MsgExecveEventUnix) getCleanupEvent() *MsgProcessCleanupEventUnix {
-	if msg.CleanupProcess.Ktime == 0 {
+	if msg.Unix.Msg.CleanupProcess.Ktime == 0 {
 		return nil
 	}
 	return &MsgProcessCleanupEventUnix{
-		PID:   msg.CleanupProcess.Pid,
-		Ktime: msg.CleanupProcess.Ktime,
+		PID:   msg.Unix.Msg.CleanupProcess.Pid,
+		Ktime: msg.Unix.Msg.CleanupProcess.Ktime,
 	}
 }
 
@@ -67,7 +67,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	var fgsParent *tetragon.Process
 	var fgsAncestors []*tetragon.Process
 
-	proc := process.AddExecEvent(&event.MsgExecveEventUnix)
+	proc := process.AddExecEvent(event.Unix)
 	fgsProcess := proc.UnsafeGetProcess()
 
 	parentId := fgsProcess.ParentExecId
@@ -109,11 +109,11 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 
 	if ec := eventcache.Get(); ec != nil &&
 		(ec.Needed(fgsEvent.Process) || (fgsProcess.Pid.Value > 1 && fgsEvent.Parent == nil)) {
-		ec.Add(proc, fgsEvent, event.Common.Ktime, event.Process.Ktime, event)
+		ec.Add(proc, fgsEvent, event.Unix.Msg.Common.Ktime, event.Unix.Process.Ktime, event)
 		return nil
 	}
 
-	netinum := event.Namespaces.NetInum
+	netinum := event.Unix.Msg.Namespaces.NetInum
 	if netinum != 0 && fgsEvent.Process.Pod != nil {
 		nscache.AddNetNs(uint64(netinum), fgsEvent.Process.Pod)
 	}
@@ -142,7 +142,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 }
 
 type MsgExecveEventUnix struct {
-	processapi.MsgExecveEventUnix
+	Unix *processapi.MsgExecveEventUnix
 }
 
 func (msg *MsgExecveEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
@@ -158,7 +158,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	containerId := proc.Docker
 	filename := proc.Binary
 	args := proc.Arguments
-	nspid := msg.Process.NSPID
+	nspid := msg.Unix.Process.NSPID
 
 	if option.Config.EnableK8s && containerId != "" {
 		podInfo = process.GetPodInfo(containerId, filename, args, nspid)
@@ -166,7 +166,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 			eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
 			return eventcache.ErrFailedToGetPodInfo
 		}
-		netinum := msg.Namespaces.NetInum
+		netinum := msg.Unix.Msg.Namespaces.NetInum
 		if netinum != 0 && podInfo != nil {
 			nscache.AddNetNs(uint64(netinum), podInfo)
 		}
@@ -266,13 +266,13 @@ func (msg *MsgExecveEventUnix) Notify() bool {
 
 func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
-	switch msg.Common.Op {
+	switch msg.Unix.Msg.Common.Op {
 	case ops.MSG_OP_EXECVE:
 		if e := GetProcessExec(msg); e != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: e},
 				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Unix.Msg.Common.Ktime),
 			}
 		}
 	default:
@@ -283,7 +283,7 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 
 func (msg *MsgExecveEventUnix) Cast(o interface{}) notify.Message {
 	t := o.(processapi.MsgExecveEventUnix)
-	return &MsgExecveEventUnix{MsgExecveEventUnix: t}
+	return &MsgExecveEventUnix{Unix: &t}
 }
 
 type MsgCloneEventUnix struct {

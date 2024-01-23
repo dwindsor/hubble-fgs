@@ -47,9 +47,6 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 			},
 		},
 		Kube: processapi.MsgK8sUnix{
-			NetNS:  4026531992,
-			Cid:    0,
-			Cgrpid: 0,
 			Docker: Docker,
 		},
 	}
@@ -70,9 +67,6 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 			},
 		},
 		Kube: processapi.MsgK8sUnix{
-			NetNS:  4026531992,
-			Cid:    0,
-			Cgrpid: 0,
 			Docker: Docker,
 		},
 	}
@@ -184,25 +178,29 @@ func TestGrpcL3InOrder(t *testing.T) {
 
 func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uint64, Filename string) *exec.MsgExecveEventUnix {
 	tmpEv := tetragonAPI.MsgExecveEventUnix{
-		Common: tetragonAPI.MsgCommon{
-			Op:     ops.MSG_OP_EXECVE,
-			Flags:  0,
-			Pad_v2: [2]uint8{0, 0},
-			Size:   326,
-			Ktime:  0,
+		Msg: &tetragonAPI.MsgExecveEvent{
+			Common: tetragonAPI.MsgCommon{
+				Op:     ops.MSG_OP_EXECVE,
+				Flags:  0,
+				Pad_v2: [2]uint8{0, 0},
+				Size:   326,
+				Ktime:  0,
+			},
+			Kube: tetragonAPI.MsgK8s{
+				NetNS:  4026531992,
+				Cid:    0,
+				Cgrpid: 0,
+			},
+			Parent: tetragonAPI.MsgExecveKey{
+				Pid:   ParentPid,
+				Pad:   0,
+				Ktime: ParentKtime,
+			},
+			ParentFlags: 0,
 		},
 		Kube: tetragonAPI.MsgK8sUnix{
-			NetNS:  4026531992,
-			Cid:    0,
-			Cgrpid: 0,
 			Docker: "",
 		},
-		Parent: tetragonAPI.MsgExecveKey{
-			Pid:   ParentPid,
-			Pad:   0,
-			Ktime: ParentKtime,
-		},
-		ParentFlags: 0,
 		Process: tetragonAPI.MsgProcess{
 			Size:     78,
 			PID:      Pid,
@@ -215,7 +213,7 @@ func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uin
 			Args:     "--some-random-args\x00/root/cwd",
 		},
 	}
-	return &exec.MsgExecveEventUnix{MsgExecveEventUnix: tmpEv}
+	return &exec.MsgExecveEventUnix{Unix: &tmpEv}
 }
 
 func createExitEvent(Pid uint32, Ktime uint64) *exec.MsgExitEventUnix {
