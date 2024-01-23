@@ -836,7 +836,6 @@ func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
 	}
 
 	return file.MsgFsInfoUnix{
-		SDev:  fs.SDev,
 		SName: sname,
 		SId:   sid,
 		SUuid: uuid_str,
@@ -867,9 +866,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 
 	digest := file.MsgDigest{}
 	if m.Digest.Ok == 1 {
-		digest.Ok = true
 		if digest.Error = m.Digest.Algo; digest.Error >= 0 { // we don't have an error here
-			digest.Algo = m.Digest.Algo
 			digestLen := fm.IMA_MAX_DIGEST_SIZE
 			if dlen, ok := fm.HashAlgoLen[tetragon.DigestAlgo(m.Digest.Algo)]; ok {
 				digestLen = dlen
@@ -889,28 +886,13 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	unix := &file.MsgFileEventUnix{
-		Common:      m.Common,
-		ProcessKey:  m.ProcessKey,
+		Msg:         &m,
 		Path:        str,
-		Action:      m.Action,
-		Hook:        m.Hook,
-		Timestamp:   m.Timestamp,
-		Imode:       uint32(m.Imode[0]),
-		NewImode:    uint32(m.Imode[1]),
-		Uid:         m.Uid[0],
-		NewUid:      m.Uid[1],
-		Gid:         m.Gid[0],
-		NewGid:      m.Gid[1],
-		Ino:         m.Ino,
 		Fs:          createFsInfoUnix(m.Fs),
-		ParentIno:   m.ParentIno,
 		ParentFs:    createFsInfoUnix(m.ParentFs),
 		ContainerID: cid,
-		MntNs:       m.MntNs,
-		Operation:   m.Operation,
 		TpName:      pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:      pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
-		Tid:         m.Tid,
 		Digest:      digest,
 	}
 
@@ -1023,33 +1005,21 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	unix := &file.MsgFileRenameEventUnix{
-		Common:     m.Common,
-		ProcessKey: m.ProcessKey,
-		Action:     m.Action,
-		Hook:       m.Hook,
-		Timestamp:  m.Timestamp,
+		Msg: &m,
 		Src: file.MsgRenameElemUnix{
 			Path:        filepath.Join(srcDir, srcName),
-			Ino:         m.Src.Ino,
 			Fs:          createFsInfoUnix(m.Src.Fs),
-			ParentIno:   m.Src.ParentIno,
 			ParentFs:    createFsInfoUnix(m.Src.ParentFs),
 			ContainerID: srcCid,
 		},
 		Dst: file.MsgRenameElemUnix{
 			Path:        filepath.Join(dstDir, dstName),
-			Ino:         m.Dst.Ino,
 			Fs:          createFsInfoUnix(m.Dst.Fs),
-			ParentIno:   m.Dst.ParentIno,
 			ParentFs:    createFsInfoUnix(m.Dst.ParentFs),
 			ContainerID: dstCid,
 		},
-		MntNs:     m.MntNs,
-		Flags:     m.Flags,
-		Operation: m.Operation,
-		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
-		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
-		Tid:       m.Tid,
+		TpName: pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule: pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 	}
 
 	return []observer.Event{unix}, nil

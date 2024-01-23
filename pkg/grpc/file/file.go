@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/option"
@@ -26,8 +25,14 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	origId = 0
+	newId  = 1
 )
 
 var (
@@ -94,14 +99,14 @@ func getDevMinor(dev uint32) uint32 {
 	return dev & mask
 }
 
-func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
+func createFileSystem(fs MsgFsInfoUnix, sDev uint32) *tetragon.FileSystem {
 	// In the case where we block a create/mkdir operation we don't have
 	// file system information. So there is no need to print zero field.
-	if fs.SDev == 0 {
+	if sDev == 0 {
 		return nil
 	}
 	return &tetragon.FileSystem{
-		Dev:  fmt.Sprintf("%d:%d", getDevMajor(fs.SDev), getDevMinor(fs.SDev)),
+		Dev:  fmt.Sprintf("%d:%d", getDevMajor(sDev), getDevMinor(sDev)),
 		Name: fs.SName,
 		Id:   fs.SId,
 		Uuid: fs.SUuid,
@@ -121,23 +126,23 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	fileDetails := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Ino,
-			Fs:     createFileSystem(event.Fs),
+			Number: event.Msg.Ino,
+			Fs:     createFileSystem(event.Fs, event.Msg.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.ParentIno,
-			Fs:     createFileSystem(event.ParentFs),
+			Number: event.Msg.ParentIno,
+			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
 	}
 	args := &tetragon.GenericFileArg{
 		File:  fileDetails,
-		MntNs: createMntNs(event.MntNs),
+		MntNs: createMntNs(event.Msg.MntNs),
 	}
-	if event.Digest.Ok {
+	if event.Msg.Digest.Ok != 0 {
 		args.Digest = &tetragon.FileDigest{
 			Hash:  event.Digest.Hash,
-			Algo:  tetragon.DigestAlgo(event.Digest.Algo),
+			Algo:  tetragon.DigestAlgo(event.Msg.Digest.Algo),
 			Error: int64(event.Digest.Error),
 		}
 	}
@@ -148,18 +153,18 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	fileDetails := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Ino,
-			Fs:     createFileSystem(event.Fs),
+			Number: event.Msg.Ino,
+			Fs:     createFileSystem(event.Fs, event.Msg.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.ParentIno,
-			Fs:     createFileSystem(event.ParentFs),
+			Number: event.Msg.ParentIno,
+			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
 	}
 	args := &tetragon.ReadDirArg{
 		File:  fileDetails,
-		MntNs: createMntNs(event.MntNs),
+		MntNs: createMntNs(event.Msg.MntNs),
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_ReaddirArg{ReaddirArg: args}}
 
@@ -169,20 +174,20 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	fileDetails := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Ino,
-			Fs:     createFileSystem(event.Fs),
+			Number: event.Msg.Ino,
+			Fs:     createFileSystem(event.Fs, event.Msg.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.ParentIno,
-			Fs:     createFileSystem(event.ParentFs),
+			Number: event.Msg.ParentIno,
+			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
 	}
 
 	var perm *tetragon.AttrChange
-	if event.Imode != 0xFFFF { // UINT16_MAX
-		n := fs.FileMode(event.NewImode) & fs.ModePerm
-		o := fs.FileMode(event.Imode) & fs.ModePerm
+	if event.Msg.Imode[origId] != 0xFFFF { // UINT16_MAX
+		n := fs.FileMode(event.Msg.Imode[newId]) & fs.ModePerm
+		o := fs.FileMode(event.Msg.Imode[origId]) & fs.ModePerm
 		perm = &tetragon.AttrChange{
 			New: fmt.Sprintf("%v (%#o)", n, n),
 			Old: fmt.Sprintf("%v (%#o)", o, o),
@@ -190,18 +195,18 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 
 	var uid *tetragon.AttrChange
-	if event.Uid != 0xFFFFFFFF { // UINT32_MAX
+	if event.Msg.Uid[origId] != 0xFFFFFFFF { // UINT32_MAX
 		uid = &tetragon.AttrChange{
-			New: fmt.Sprintf("%d", event.NewUid),
-			Old: fmt.Sprintf("%d", event.Uid),
+			New: fmt.Sprintf("%d", event.Msg.Uid[newId]),
+			Old: fmt.Sprintf("%d", event.Msg.Uid[origId]),
 		}
 	}
 
 	var gid *tetragon.AttrChange
-	if event.Gid != 0xFFFFFFFF { // UINT32_MAX
+	if event.Msg.Gid[origId] != 0xFFFFFFFF { // UINT32_MAX
 		gid = &tetragon.AttrChange{
-			New: fmt.Sprintf("%d", event.NewGid),
-			Old: fmt.Sprintf("%d", event.Gid),
+			New: fmt.Sprintf("%d", event.Msg.Gid[newId]),
+			Old: fmt.Sprintf("%d", event.Msg.Gid[origId]),
 		}
 	}
 
@@ -214,7 +219,7 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	args := &tetragon.AttrArg{
 		File:  fileDetails,
 		Attr:  attrs,
-		MntNs: createMntNs(event.MntNs),
+		MntNs: createMntNs(event.Msg.MntNs),
 	}
 
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_AttrArg{AttrArg: args}}
@@ -331,11 +336,11 @@ func handleFileExecTotalActionEvents(tetragonEvent *tetragon.ProcessFileExec, ex
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
-	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if internal == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = internal.UnsafeGetProcess()
@@ -344,7 +349,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		tetragonParent = parent.UnsafeGetProcess()
 	}
 
-	action := tetragon.FileAction(event.Action)
+	action := tetragon.FileAction(event.Msg.Action)
 	var args *tetragon.FileArgument
 	if action == tetragon.FileAction_FILE_READDIR {
 		args = createReadDirArgs(event)
@@ -365,28 +370,28 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		Parent:    tetragonParent,
 		Action:    action,
 		Args:      args,
-		Time:      ktime.ToProto(event.Timestamp),
-		Hook:      fileHookMap[event.Hook],
-		Operation: []tetragon.FileOperation{normalizeOp(event.Operation)},
+		Time:      ktime.ToProto(event.Msg.Timestamp),
+		Hook:      fileHookMap[event.Msg.Hook],
+		Operation: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
 		userStr := "<unknown>"
-		uname, err1 := user.LookupId(strconv.FormatUint(uint64(event.Uid), 10))
+		uname, err1 := user.LookupId(strconv.FormatUint(uint64(event.Msg.Uid[origId]), 10))
 		if err1 == nil {
 			userStr = uname.Username
 		}
 
 		groupStr := "<unknown>"
-		gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(event.Gid), 10))
+		gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(event.Msg.Gid[origId]), 10))
 		if err2 == nil {
 			groupStr = gname.Name
 		}
 
-		perms := fs.FileMode(event.Imode) & fs.ModePerm
+		perms := fs.FileMode(event.Msg.Imode[origId]) & fs.ModePerm
 		tetragonEvent.Permissions = fmt.Sprintf("%v (%#o)", perms, perms)
-		tetragonEvent.Uid = fmt.Sprintf("%d (%s)", event.Uid, userStr)
-		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Gid, groupStr)
+		tetragonEvent.Uid = fmt.Sprintf("%d (%s)", event.Msg.Uid[origId], userStr)
+		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Msg.Gid[origId], groupStr)
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -395,13 +400,13 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
 		filemetrics.FileTotalCacheInEventsInc()
-		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
 	}
 	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
 	return tetragonEvent
@@ -410,11 +415,11 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
-	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if internal == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = internal.UnsafeGetProcess()
@@ -426,25 +431,25 @@ func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 	tetragonEvent := &tetragon.ProcessFileExec{
 		Process:    tetragonProcess,
 		Parent:     tetragonParent,
-		Operations: []tetragon.FileOperation{normalizeOp(event.Operation)},
+		Operations: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
 	}
 
 	tetragonEvent.File = &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Ino,
-			Fs:     createFileSystem(event.Fs),
+			Number: event.Msg.Ino,
+			Fs:     createFileSystem(event.Fs, event.Msg.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.ParentIno,
-			Fs:     createFileSystem(event.ParentFs),
+			Number: event.Msg.ParentIno,
+			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
 	}
 
-	if event.Digest.Ok {
+	if event.Msg.Digest.Ok != 0 {
 		tetragonEvent.Digest = &tetragon.FileDigest{
 			Hash:  event.Digest.Hash,
-			Algo:  tetragon.DigestAlgo(event.Digest.Algo),
+			Algo:  tetragon.DigestAlgo(event.Msg.Digest.Algo),
 			Error: int64(event.Digest.Error),
 		}
 	}
@@ -454,59 +459,41 @@ func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
 		filemetrics.FileExecTotalCacheInEventsInc()
-		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
 	}
 	handleFileExecTotalActionEvents(
 		tetragonEvent,
 		tetragonEvent.File.GetStr(),
-		fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[event.Digest.Algo], tetragonEvent.Digest.Hash),
+		fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[event.Msg.Digest.Algo], tetragonEvent.Digest.Hash),
 	)
 	return tetragonEvent
 }
 
 type MsgFsInfoUnix struct {
-	SDev  uint32
 	SName string
 	SId   string
 	SUuid string
 }
 
 type MsgDigest struct {
-	Ok    bool
 	Hash  string
-	Algo  int32
 	Error int32
 }
 
 type MsgFileEventUnix struct {
-	Common      processapi.MsgCommon
-	ProcessKey  processapi.MsgExecveKey
+	Msg         *fileapi.MsgFileEvent
 	Path        string
-	Action      uint32
-	Hook        uint32
-	Timestamp   uint64
-	Imode       uint32
-	NewImode    uint32
-	Uid         uint32
-	NewUid      uint32
-	Gid         uint32
-	NewGid      uint32
-	Ino         uint64
 	Fs          MsgFsInfoUnix
-	ParentIno   uint64
 	ParentFs    MsgFsInfoUnix
 	ContainerID string
-	MntNs       uint32
-	Operation   uint32
 	TpName      string
 	TpRule      string
-	Tid         uint32
 	Digest      MsgDigest
 }
 
@@ -516,7 +503,7 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
 	case *tetragon.GetEventsResponse_ProcessFile:
 		handleFileTotalActionEvents(e.ProcessFile, msg.TpName, msg.TpRule)
 	case *tetragon.GetEventsResponse_ProcessFileExec:
-		handleFileExecTotalActionEvents(e.ProcessFileExec, msg.Path, fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[msg.Digest.Algo], msg.Digest.Hash))
+		handleFileExecTotalActionEvents(e.ProcessFileExec, msg.Path, fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[msg.Msg.Digest.Algo], msg.Digest.Hash))
 	default:
 		filemetrics.FileTotalErrorsInc("grpc_eventcache_retry")
 	}
@@ -524,7 +511,7 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Tid, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Msg.Tid, timestamp)
 }
 
 func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -545,7 +532,7 @@ func (msg *MsgFileEventUnix) Notify() bool {
 }
 
 func (msg *MsgFileEventUnix) isFileExecEvent() bool {
-	return msg.Action == 0xFFFFFFFF && msg.Hook == 0xFFFFFFFF
+	return msg.Msg.Action == 0xFFFFFFFF && msg.Msg.Hook == 0xFFFFFFFF
 }
 
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
@@ -557,7 +544,7 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		return &tetragon.GetEventsResponse{
 			Event:    &tetragon.GetEventsResponse_ProcessFileExec{ProcessFileExec: f},
 			NodeName: nodeName,
-			Time:     ktime.ToProto(msg.Common.Ktime),
+			Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 		}
 	}
 	f := GetProcessFile(msg)
@@ -567,7 +554,7 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
 		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 
@@ -589,24 +576,24 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 	src := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Src.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Src.Ino,
-			Fs:     createFileSystem(event.Src.Fs),
+			Number: event.Msg.Src.Ino,
+			Fs:     createFileSystem(event.Src.Fs, event.Msg.Src.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.Src.ParentIno,
-			Fs:     createFileSystem(event.Src.ParentFs),
+			Number: event.Msg.Src.ParentIno,
+			Fs:     createFileSystem(event.Src.ParentFs, event.Msg.Src.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
 	}
 	dst := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Dst.Path},
 		Inode: &tetragon.Inode{
-			Number: event.Dst.Ino,
-			Fs:     createFileSystem(event.Dst.Fs),
+			Number: event.Msg.Dst.Ino,
+			Fs:     createFileSystem(event.Dst.Fs, event.Msg.Dst.Fs.SDev),
 		},
 		ParentInode: &tetragon.Inode{
-			Number: event.Dst.ParentIno,
-			Fs:     createFileSystem(event.Dst.ParentFs),
+			Number: event.Msg.Dst.ParentIno,
+			Fs:     createFileSystem(event.Dst.ParentFs, event.Msg.Dst.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
 	}
@@ -616,46 +603,36 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 	args := &tetragon.RenameFileArg{
 		Src:   src,
 		Dst:   dst,
-		MntNs: createMntNs(event.MntNs),
-		Flags: GetRenameFlags(event.Flags),
+		MntNs: createMntNs(event.Msg.MntNs),
+		Flags: GetRenameFlags(event.Msg.Flags),
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_RenameArg{RenameArg: args}}
 }
 
 type MsgRenameElemUnix struct {
 	Path        string
-	Ino         uint64
 	Fs          MsgFsInfoUnix
-	ParentIno   uint64
 	ParentFs    MsgFsInfoUnix
 	ContainerID string
 }
 
 type MsgFileRenameEventUnix struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Action     uint32
-	Hook       uint32
-	Timestamp  uint64
-	Src        MsgRenameElemUnix
-	Dst        MsgRenameElemUnix
-	MntNs      uint32
-	Flags      uint32
-	Operation  uint32
-	TpName     string
-	TpRule     string
-	Tid        uint32
+	Msg    *fileapi.MsgFileRenameEvent
+	Src    MsgRenameElemUnix
+	Dst    MsgRenameElemUnix
+	TpName string
+	TpRule string
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 	var args *tetragon.FileArgument
 
-	internal, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if internal == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = internal.UnsafeGetProcess()
@@ -664,7 +641,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		tetragonParent = parent.UnsafeGetProcess()
 	}
 
-	action := tetragon.FileAction(event.Action)
+	action := tetragon.FileAction(event.Msg.Action)
 	args = createRenameArgs(event)
 
 	// setup src file location
@@ -714,9 +691,9 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		Parent:    tetragonParent,
 		Action:    action,
 		Args:      args,
-		Time:      ktime.ToProto(event.Timestamp),
-		Hook:      fileHookMap[event.Hook],
-		Operation: []tetragon.FileOperation{normalizeOp(event.Operation)},
+		Time:      ktime.ToProto(event.Msg.Timestamp),
+		Hook:      fileHookMap[event.Msg.Hook],
+		Operation: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -726,13 +703,13 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
 		filemetrics.FileTotalCacheInEventsInc()
-		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
 	if internal != nil {
 		tetragonEvent.Process = internal.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
 	}
 	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
 	return tetragonEvent
@@ -741,7 +718,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 
 func (msg *MsgFileRenameEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
-	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Tid, timestamp)
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Msg.Tid, timestamp)
 }
 
 func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -765,7 +742,7 @@ func (msg *MsgFileRenameEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
 		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 
