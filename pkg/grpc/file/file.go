@@ -13,7 +13,6 @@ package file
 import (
 	"fmt"
 	"io/fs"
-	"os/user"
 	"strconv"
 	"strings"
 
@@ -380,22 +379,10 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
-		userStr := "<unknown>"
-		uname, err1 := user.LookupId(strconv.FormatUint(uint64(event.Msg.Uid[origId]), 10))
-		if err1 == nil {
-			userStr = uname.Username
-		}
-
-		groupStr := "<unknown>"
-		gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(event.Msg.Gid[origId]), 10))
-		if err2 == nil {
-			groupStr = gname.Name
-		}
-
 		perms := fs.FileMode(event.Msg.Imode[origId]) & fs.ModePerm
 		tetragonEvent.Permissions = fmt.Sprintf("%v (%#o)", perms, perms)
-		tetragonEvent.Uid = fmt.Sprintf("%d (%s)", event.Msg.Uid[origId], userStr)
-		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Msg.Gid[origId], groupStr)
+		tetragonEvent.Uid = strconv.FormatUint(uint64(event.Msg.Uid[origId]), 10)
+		tetragonEvent.Gid = strconv.FormatUint(uint64(event.Msg.Gid[origId]), 10)
 	}
 
 	filemetrics.FileTotalEventsInc()

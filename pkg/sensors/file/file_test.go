@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -745,22 +744,10 @@ func getFilePermsUidGui(t *testing.T, fileName string) (string, string, string) 
 
 	perms := fileStats.Mode().Perm()
 	permStr := fmt.Sprintf("%v (%#o)", perms, perms)
-
-	userStr := "<unknown>"
 	uID := fileStats.Sys().(*syscall.Stat_t).Uid
-	uname, err1 := user.LookupId(strconv.FormatUint(uint64(uID), 10))
-	if err1 == nil {
-		userStr = fmt.Sprintf("%d (%s)", uID, uname.Username)
-	}
-
-	groupStr := "<unknown>"
 	gID := fileStats.Sys().(*syscall.Stat_t).Gid
-	gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(gID), 10))
-	if err2 == nil {
-		groupStr = fmt.Sprintf("%d (%s)", gID, gname.Name)
-	}
 
-	return permStr, userStr, groupStr
+	return permStr, strconv.FormatUint(uint64(uID), 10), strconv.FormatUint(uint64(gID), 10)
 }
 
 func testFileCreate(gt *testing.T, t *testing.T) {
