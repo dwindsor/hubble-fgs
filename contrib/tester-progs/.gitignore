@@ -6,3 +6,4 @@ sigkill-tester
 capabilities-tester
 nop
 dlopen
+/syscall-tester

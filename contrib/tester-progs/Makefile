@@ -2,7 +2,8 @@
 GCC ?= gcc
 
 PROGS = sigkill-tester capabilities-tester namespace-tester \
-	dup-tester fork-tester nop dlopen
+	dup-tester fork-tester nop dlopen \
+	syscall-tester
 
 all: $(PROGS)
 	make -C aio/
@@ -33,6 +34,9 @@ nop: nop.c
 dlopen: dlopen.c
 	$(GCC) -Wall $< -o $@
 
+syscall-tester: FORCE
+	go build -o syscall-tester ./go/syscall-tester
+
 .PHONY: clean
 clean:
 	make -C aio/ clean
@@ -42,3 +46,5 @@ clean:
 	make -C splice/ clean
 	make -C mmap/ clean
 	rm -f $(PROGS)
+
+FORCE:
