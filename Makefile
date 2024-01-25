@@ -283,6 +283,12 @@ tester-progs:
 	# programs. We can probably refactor OSS to deal with it, but that's for another day.
 	ln -s -f $(OSS_DIR)/contrib vendor/github.com/cilium/tetragon/
 
+## bpf-test: ## run BPF tests.
+## bpf-test BPFGOTESTFLAGS="-v": ## run BPF tests with verbose.
+.PHONY: bpf-test
+bpf-test:
+	$(MAKE) -C ./bpf test
+
 .PHONY: tetragon-bpf-verify hubble-bpf-verify
 hubble-bpf-verify: | tetragon-bpf-verify
 tetragon-bpf-verify: tetragon-bpf ## Verify BPF programs.

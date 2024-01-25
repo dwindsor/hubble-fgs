@@ -1,25 +1,7 @@
-include ../Makefile.defs
+include Makefile.defs
 
 .PHONY: all clean
 .SUFFIXES:
-
-SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
-
-CLANG  ?= clang
-LLC    ?= llc
-
-# Build the BPF programs for the detected architecture, default to x86, and
-# allow easy overriding by using ?= for cross-compilation
-UNAME_M := $(shell uname -m)
-ifeq ($(UNAME_M),x86_64)
-	BPF_TARGET_ARCH ?= x86
-endif
-ifeq ($(UNAME_M),aarch64)
-	BPF_TARGET_ARCH ?= arm64
-endif
-BPF_TARGET_ARCH ?= x86
-
-OSSBPFDIR := $(shell realpath --relative-to $(CURDIR) $(OSS_DIR)/bpf)
 
 TLSDIR := parsers/tls/
 HTTPDIR := parsers/http/
@@ -27,16 +9,11 @@ NOPDIR := parsers/nop/
 PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 ALIGNCHECKEROSSDIR = $(OSSBPFDIR)/alignchecker/
-NETWORKINGDIR := networking/
-SOCKTRACKDIR := networking/socktrack/
-L2DIR  := networking/l2/
-L3DIR  := networking/l3/
-TCPDIR := networking/l3/tcp/
-ICMPDIR := networking/l3/icmp/
-PINGDIR := networking/l3/ping/
-UDPDIR  := networking/l3/udp/
-RAWSOCKDIR := networking/rawsock/
-TIMESTAMPDIR := networking/timestamp/
+SOCKTRACKDIR := $(NETWORKINGDIR)socktrack/
+ICMPDIR := $(L3DIR)icmp/
+PINGDIR := $(L3DIR)ping/
+RAWSOCKDIR := $(NETWORKINGDIR)rawsock/
+TIMESTAMPDIR := $(NETWORKINGDIR)timestamp/
 ISOPROCESS := process/
 FILEDIR := file/
 PROCESSDIR := $(OSSBPFDIR)/process/
@@ -116,28 +93,6 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 CGROUP = bpf_cgtracker.o
 
 BPFTEST = bpf_lseek.o
-
-LDIR = ./lib
-EEDIR = ./enterprise
-OSSIDIR = $(OSSBPFDIR)/include/
-OSSLDIR = $(OSSBPFDIR)/lib
-OSSLIBBPFDIR = $(OSSBPFDIR)/libbpf
-OSSPDIR = $(OSSBPFDIR)/process
-
-FLAGS := -I. \
-	 -Wall -Werror \
-	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
-	 -O2
-
-DEBUG ?= 0
-ifeq ($(DEBUG),1)
-	__DEBUG_FLAGS = -DTETRAGON_BPF_DEBUG
-endif
-
-NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR) -I $(TIMESTAMP)
-CLANG_FLAGS += $(FLAGS) -I $(EEDIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
-LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
-LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
 
 OBJSDIR       := objs/
 DEPSDIR       := deps/
@@ -564,10 +519,15 @@ objs/bpf_http_parser.o: objs/bpf_http_parser.ll
 objs/%.o: objs/%.ll
 	$(LLC) $(LLC_FLAGS) -filetype=obj $< -o $@
 
-# include dependencies
-ifneq ($(MAKECMDGOALS),clean)
+# include dependencies, see https://lists.gnu.org/archive/html/make-w32/2004-03/msg00062.html
+ifeq (,$(filter $(MAKECMDGOALS),clean test))
 -include $(DEPS)
 endif
+
+test:
+	$(MAKE) -C tests test
+
+SUBDIRS=tests
 
 clean:
 	@$(ECHO_CLEAN)

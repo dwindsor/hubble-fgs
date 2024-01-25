@@ -1,0 +1,50 @@
+SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
+
+CLANG  ?= clang
+LLC    ?= llc
+
+# Build the BPF programs for the detected architecture, default to x86, and
+# allow easy overriding by using ?= for cross-compilation
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	BPF_TARGET_ARCH ?= x86
+endif
+ifeq ($(UNAME_M),aarch64)
+	BPF_TARGET_ARCH ?= arm64
+endif
+BPF_TARGET_ARCH ?= x86
+
+BPF_ROOT_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+OSSDIR := $(BPF_ROOT_DIR)../modules/tetragon-oss
+
+OSSBPFDIR := $(shell realpath --relative-to $(CURDIR) $(OSSDIR)/bpf)
+
+LDIR := $(BPF_ROOT_DIR)lib
+EEDIR = $(BPF_ROOT_DIR)enterprise
+OSSIDIR := $(OSSBPFDIR)/include/
+OSSLDIR := $(OSSBPFDIR)/lib
+OSSLIBBPFDIR := $(OSSBPFDIR)/libbpf
+OSSPDIR := $(OSSBPFDIR)/process
+
+NETWORKINGDIR := $(BPF_ROOT_DIR)networking/
+
+L2DIR  := $(NETWORKINGDIR)/l2/
+L3DIR  := $(NETWORKINGDIR)/l3/
+UDPDIR := $(L3DIR)udp/
+TCPDIR := $(L3DIR)tcp/
+
+FLAGS := -I. \
+	 -Wall -Werror \
+	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
+	 -O2
+
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+	__DEBUG_FLAGS = -DTETRAGON_BPF_DEBUG
+endif
+
+NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR)
+CLANG_FLAGS += $(FLAGS) -I $(EEDIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
+LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
+LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
+
