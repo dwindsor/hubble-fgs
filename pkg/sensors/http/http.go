@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/sirupsen/logrus"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -68,6 +69,11 @@ var (
 
 	// Enable HTTP2 handling
 	enableHttp2 = true
+)
+
+const (
+	// 100MiB
+	HTTP_CLAMP_URL_LENGTH = 100 * 1024 * 1024
 )
 
 var (
@@ -314,7 +320,17 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 		ProcessKey: m.ProcessKey,
 	}
 
-	url := make([]byte, int(m.Request.Length))
+	if m.Request.Length > HTTP_CLAMP_URL_LENGTH {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"length": m.Request.Length,
+			"saddr":  networkapi.GetIP(m.Tuple.SAddr, m.Common.Op, m.Tuple.IPv6 != 0).String(),
+			"daddr":  networkapi.GetIP(m.Tuple.DAddr, m.Common.Op, m.Tuple.IPv6 != 0).String(),
+			"sport":  m.Tuple.SPort,
+			"dport":  m.Tuple.DPort,
+		}).Warnf("url length %d would exceed %d", m.Request.Length, HTTP_CLAMP_URL_LENGTH)
+	}
+
+	url := make([]byte, min(int(m.Request.Length), HTTP_CLAMP_URL_LENGTH))
 	if _, err := r.Read(url); err != nil {
 		logger.GetLogger().WithError(err).Warnf("HTTP URL read error")
 		return nil, err
