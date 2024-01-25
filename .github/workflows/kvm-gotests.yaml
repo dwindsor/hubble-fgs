@@ -22,17 +22,17 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20231124.012737'
+          - 'bpf-next-20240125.013036'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '6.1-20231026.065108'
+          - '6.1-20240123.175813'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.15-20231026.065108'
+          - '5.15-20240123.175813'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.10-20231026.065108'
+          - '5.10-20240123.175813'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.4-20231026.065108'
+          - '5.4-20240123.175813'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '4.19-20231026.065108'
+          - '4.19-20240123.175813'
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
