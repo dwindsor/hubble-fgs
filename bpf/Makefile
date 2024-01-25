@@ -71,11 +71,13 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_execve_event_v61.o bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
 	  bpf_generic_tracepoint_v61.o \
 	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
+	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
 	  bpf_execve_event_v511.o \
 	  bpf_generic_kprobe_v511.o bpf_generic_retkprobe_v511.o \
 	  bpf_generic_tracepoint_v511.o \
 	  bpf_multi_kprobe_v511.o bpf_multi_retkprobe_v511.o \
-	  bpf_loader.o
+	  bpf_loader.o \
+	  bpf_killer.o bpf_multi_killer.o bpf_fmodret_killer.o \
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
 	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
@@ -257,6 +259,29 @@ objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
 
 deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)  $< > $@
+
+
+
+## bpf_killer: __BPF_OVERRIDE_RETURN, but no __MULTI_KPROBE
+objs/bpf_killer.ll: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -c $< -o $@
+
+$(DEPSDIR)bpf_killer.d: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@) $< > $@
+
+## bpf_multi_killer: __BPF_OVERRIDE_RETURN and __MULTI_KPROBE
+objs/bpf_multi_killer.ll: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -D__MULTI_KPROBE -c $< -o $@
+
+$(DEPSDIR)/bpf_multi_killer.d: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -D__MULTI_KPROBE -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@) $< > $@
+
+## bpf_fmodret_killer no bpf_override_return: we need fmod_ret
+objs/bpf_fmodret_killer.ll: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)/bpf_fmodret_killer.d: $(PROCESSDIR)/bpf_killer.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@) $< > $@
 
 # FILEDIR
 objs/%.ll: $(FILEDIR)%.c
