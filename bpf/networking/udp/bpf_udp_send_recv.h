@@ -76,10 +76,11 @@ udp4_get_info(struct udp_sock_info *sock_info)
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
-	/* Values are expected to be in network byte order with source port
+	/* Addresses are expected to be in network byte order with ports
 	 * in host byte order.
 	 */
 	info->sport = bpf_ntohs(info->sport);
+	info->dport = bpf_ntohs(info->dport);
 
 	return info;
 }
@@ -119,10 +120,11 @@ udp6_get_info(struct udp_sock_info *sock_info)
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
-	/* Values are expected to be in network byte order with source port
+	/* Addresses are expected to be in network byte order with ports
 	 * in host byte order.
 	 */
 	info->sport = bpf_ntohs(info->sport);
+	info->dport = bpf_ntohs(info->dport);
 
 	return info;
 }
@@ -162,6 +164,7 @@ udp_key_daddr_dport(struct udp_info_key *key, struct udp_sock_info *sock_info)
 			probe_read(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
 		}
 	}
+	key->dport = bpf_ntohs(key->dport);
 	key->padding1 = 0;
 	key->padding2 = 0;
 }
@@ -450,11 +453,7 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 		return 0;
 	}
 
-	/* skb values are in network byte order and to be consistent across
-	 * sock generated keys and packet generated values we byte swap the
-	 * source port to be in host byte order, aligning with socket
-	 * struct.
-	 */
+	/* addresses are in network byte order and ports are in host byte order. */
 	if (!info->ipv6) {
 		info->saddr.ipv4 = packet->ip.ip4.daddr;
 		info->daddr.ipv4 = packet->ip.ip4.saddr;
@@ -463,7 +462,7 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 					&packet->ip.ip6.saddr);
 	}
 	info->sport = bpf_ntohs(packet->udp.dest);
-	info->dport = packet->udp.source;
+	info->dport = bpf_ntohs(packet->udp.source);
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
@@ -519,11 +518,7 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 		return false;
 	}
 
-	/* skb values are in network byte order and to be consistent across
-	 * sock generated keys and packet generated values we byte swap the
-	 * source port to be in host byte order, aligning with socket
-	 * struct.
-	 */
+	/* addresses are in network byte order and ports are in host byte order. */
 	if (!key->ipv6) {
 		key->daddr[0] = packet->ip.ip4.saddr;
 		key->daddr[1] = 0;
@@ -532,7 +527,7 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 		key->daddr[0] = addr[0];
 		key->daddr[1] = addr[1];
 	}
-	key->dport = packet->udp.source;
+	key->dport = bpf_ntohs(packet->udp.source);
 	return true;
 }
 

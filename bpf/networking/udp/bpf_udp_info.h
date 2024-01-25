@@ -94,7 +94,8 @@ udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *ud
 			key->daddr[1] = addr[1];
 			key->ipv6 = true;
 		}
-		key->dport = udp->dest;
+		// In the key, the port is always host order.
+		key->dport = bpf_ntohs(udp->dest);
 	} else {
 		if (!ipv6) {
 			key->daddr[0] = ip->saddr;
@@ -106,7 +107,8 @@ udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *ud
 			key->daddr[1] = addr[1];
 			key->ipv6 = true;
 		}
-		key->dport = udp->source;
+		// In the key, the port is always host order.
+		key->dport = bpf_ntohs(udp->source);
 	}
 	key->padding1 = 0;
 	key->padding2 = 0;
@@ -137,10 +139,10 @@ udp_port_info(struct udphdr *udp, u64 send)
 
 	if (send) {
 		info->sport = bpf_ntohs(udp->source);
-		info->dport = udp->dest;
+		info->dport = bpf_ntohs(udp->dest);
 	} else {
 		info->sport = bpf_ntohs(udp->dest);
-		info->dport = udp->source;
+		info->dport = bpf_ntohs(udp->source);
 	}
 	info->padding[0] = 0;
 	info->padding[1] = 0;
@@ -170,7 +172,7 @@ udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 			info->ipv6 = true;
 		}
 		info->sport = bpf_ntohs(udp->source);
-		info->dport = udp->dest;
+		info->dport = bpf_ntohs(udp->dest);
 	} else {
 		if (!ipv6) {
 			info->saddr.ipv4 = ip->daddr;
@@ -183,7 +185,7 @@ udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 			info->ipv6 = true;
 		}
 		info->sport = bpf_ntohs(udp->dest);
-		info->dport = udp->source;
+		info->dport = bpf_ntohs(udp->source);
 	}
 	info->padding[0] = 0;
 	info->padding[1] = 0;

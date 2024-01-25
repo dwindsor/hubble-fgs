@@ -69,6 +69,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		   _(&(skp->__sk_common.skc_num)));
 	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
 		   _(&(skp->__sk_common.skc_dport)));
+	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
 	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 

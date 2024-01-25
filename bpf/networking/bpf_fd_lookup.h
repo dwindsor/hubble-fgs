@@ -154,6 +154,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		   _(&(sk->__sk_common.skc_num)));
 	probe_read(&config->dport, sizeof(config->dport),
 		   _(&(sk->__sk_common.skc_dport)));
+	config->dport = bpf_ntohs(config->dport);
 	probe_read(&config->state, sizeof(config->state),
 		   (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;

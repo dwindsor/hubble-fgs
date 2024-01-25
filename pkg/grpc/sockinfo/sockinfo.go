@@ -28,7 +28,7 @@ func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockIn
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(tuple.DPort)),
+			Value: uint32(networkapi.GetDport(tuple.DPort, op)),
 		}
 	}
 
@@ -55,7 +55,7 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(tuple.DPort)),
+			Value: uint32(networkapi.GetDport(tuple.DPort, op)),
 		}
 	}
 

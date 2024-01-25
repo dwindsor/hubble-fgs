@@ -313,7 +313,7 @@ func (v *udpInfoValue) String() string {
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
 			"SkbConsumeMisses: %d\n",
-		ipSrc, v.SPort, ipDst, api.SwapByte(v.DPort),
+		ipSrc, v.SPort, ipDst, v.DPort,
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
@@ -699,7 +699,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	udp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
 	udp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
 	udp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
-	udp.Msg.Tuple.DPort = networkapi.SwapByte(socket.Dport)
+	udp.Msg.Tuple.DPort = socket.Dport
 	udp.Msg.Tuple.SPort = socket.Sport
 	udp.Msg.Tuple.Proto = 2
 	udp.Msg.SockCookie = socket.Sockaddr

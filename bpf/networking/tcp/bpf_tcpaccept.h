@@ -93,6 +93,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		   _(&(skp->__sk_common.skc_num)));
 	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
 		   _(&(skp->__sk_common.skc_dport)));
+	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 
 	if (family != AF_INET6) {

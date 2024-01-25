@@ -140,8 +140,8 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 		if (data + sizeof(*eth) + (iph->ihl * 4) + sizeof(*udph) > data_end)
 			return true;
 		udph = (struct udphdr *)(data + sizeof(*eth) + (iph->ihl * 4));
-		source = udph->source;
-		dest = udph->dest;
+		source = bpf_ntohs(udph->source);
+		dest = bpf_ntohs(udph->dest);
 		break;
 	case IPPROTO_TCP:
 		if (data + sizeof(*eth) + (iph->ihl * 4) + sizeof(*tcph) > data_end)
@@ -152,15 +152,15 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 		if (tcph->syn)
 			return true;
 
-		source = tcph->source;
-		dest = tcph->dest;
+		source = bpf_ntohs(tcph->source);
+		dest = bpf_ntohs(tcph->dest);
 		break;
 	}
 
 	/* Check if port is permitted. Can be source or destination so latency can be measured
 	 * in both directions.
 	 */
-	if (!port_permitted(config, bpf_ntohs(dest), bpf_ntohs(source))) {
+	if (!port_permitted(config, dest, source)) {
 		return true;
 	}
 

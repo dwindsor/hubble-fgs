@@ -25,7 +25,6 @@ udp_dns(struct __sk_buff *skb,
 	int payload_sz)
 {
 	struct udp_sensor_config *config = get_udp_config();
-	u16 dport = bpf_ntohs(value->dport);
 	bool store = true;
 	int isdns;
 
@@ -35,7 +34,7 @@ udp_dns(struct __sk_buff *skb,
 	if (config->dnsPorts[0] == 0)
 		return 0;
 
-	isdns = dns_port_match(config->dnsPorts, value->sport, dport);
+	isdns = dns_port_match(config->dnsPorts, value->sport, value->dport);
 	if (!isdns)
 		return 0;
 

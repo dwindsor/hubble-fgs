@@ -214,7 +214,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 	if (!config || !config->seq_check_app_id)
 		return;
 
-	if (!match_seq_check_ports(config->seq_check_ports, v->sport, bpf_ntohs(v->dport)))
+	if (!match_seq_check_ports(config->seq_check_ports, v->sport, v->dport))
 		return;
 
 	switch (config->seq_check_app_id) {

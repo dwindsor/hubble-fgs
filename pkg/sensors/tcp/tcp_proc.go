@@ -69,7 +69,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
 	tcp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
 	tcp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
-	tcp.Msg.Tuple.DPort = networkapi.SwapByte(socket.Dport)
+	tcp.Msg.Tuple.DPort = socket.Dport
 	tcp.Msg.Tuple.SPort = socket.Sport
 	tcp.Msg.Tuple.Proto = 2
 	tcp.Msg.SockCookie = socket.Sockaddr

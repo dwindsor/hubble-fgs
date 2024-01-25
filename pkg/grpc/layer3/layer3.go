@@ -131,7 +131,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 	if event.Msg.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(event.Msg.Tuple.DPort)),
+			Value: uint32(networkapi.GetDport(event.Msg.Tuple.DPort, event.Msg.Common.Op)),
 		}
 	}
 
@@ -210,7 +210,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	}
 	if event.Msg.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(event.Msg.Tuple.DPort)),
+			Value: uint32(networkapi.GetDport(event.Msg.Tuple.DPort, event.Msg.Common.Op)),
 		}
 	}
 
@@ -336,7 +336,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 	if event.Msg.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(event.Msg.Tuple.DPort)),
+			Value: uint32(networkapi.GetDport(event.Msg.Tuple.DPort, event.Msg.Common.Op)),
 		}
 	}
 

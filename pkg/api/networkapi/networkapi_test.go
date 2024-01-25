@@ -11,7 +11,7 @@ func Test_TupleAddrString(t *testing.T) {
 	tuple := MsgIPTuple{
 		SAddr: [2]uint64{16777343},
 		DAddr: [2]uint64{16777343},
-		DPort: 20480,
+		DPort: 80,
 		SPort: 5334,
 		IPv6:  0,
 	}
@@ -23,7 +23,7 @@ func Test_TupleAddrString(t *testing.T) {
 	tuple = MsgIPTuple{
 		SAddr: [2]uint64{0, 72057594037927936},
 		DAddr: [2]uint64{0, 72057594037927936},
-		DPort: 20480,
+		DPort: 80,
 		SPort: 5334,
 		IPv6:  1,
 	}

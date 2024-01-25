@@ -182,12 +182,6 @@ func (cam ConnAddrMatcher) Serialize() []byte {
 	panic("Cannot serialize a connection address matcher")
 }
 
-func convertPortU16ToHostOrder(port uint16) uint16 {
-	bytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(bytes, port)
-	return native_endian.NativeEndian().Uint16(bytes)
-}
-
 type TupleMatcherIP struct {
 	IsCli bool
 	IsSrv bool
@@ -282,7 +276,6 @@ func (tm TupleMatcher) Match(ctx *TestContext, r io.Reader) (int, error) {
 	}
 
 	// Match dport
-	tuple.DPort = convertPortU16ToHostOrder(tuple.DPort)
 	if tuple.DPort != dport {
 		return n, fmt.Errorf("dst port mismatch, expected %d, got %d", dport, tuple.DPort)
 	}

@@ -176,7 +176,7 @@ get_ip_header(void *network_header, u32 network_header_size,
 	return true;
 }
 
-/* get_transport_header returns the payload_off is the pointer is not NULL. */
+/* get_transport_header returns the payload_off if the pointer is not NULL. */
 static inline __attribute__((always_inline)) bool
 get_transport_header(void *transport_header, u32 transport_header_size,
 		     int *payload_off, void *skb_head, struct sk_buff *skb,

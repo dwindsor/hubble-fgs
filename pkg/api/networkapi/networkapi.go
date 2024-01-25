@@ -71,11 +71,12 @@ func GetIP(i [2]uint64, op uint8, ipv6 bool) net.IP {
 	return ip
 }
 
+// Ports are stored in host order.
 func GetDport(dport uint16, op uint8) uint16 {
 	if op == ops.MSG_OP_BIND || op == ops.MSG_OP_LISTEN {
 		return 0
 	}
-	return SwapByte(dport)
+	return dport
 }
 
 func GetSport(sport uint16) uint16 {

@@ -86,7 +86,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(networkapi.SwapByte(event.Tuple.DPort)),
+			Value: uint32(event.Tuple.DPort),
 		}
 	}
 
