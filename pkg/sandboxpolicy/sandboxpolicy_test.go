@@ -13,11 +13,16 @@ package sandboxpolicy
 import (
 	"context"
 	"fmt"
+	"syscall"
 	"testing"
 
 	// NB: we need to load these two so that the policy handlers are loaded
+	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/logger"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
+	"github.com/cilium/tetragon/pkg/testutils"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -30,9 +35,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/perfring"
 	testprogs "github.com/isovalent/hubble-fgs/pkg/testutils/progs"
-	testtp "github.com/isovalent/hubble-fgs/pkg/testutils/tracingpolicy"
 
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
+)
+
+var (
+	verboseMessages = false
 )
 
 type testCase struct {
@@ -40,10 +49,17 @@ type testCase struct {
 	syscallSpec         v1alpha1.SandboxSyscallsSpec
 	runSyscalls         func(*testing.T, *testprogs.SyscallTester)
 	expectedEventsCheck func(t *testing.T, m map[string]int)
+	shouldSkip          func() string
 }
 
 func (tc *testCase) Run(t *testing.T, ctx context.Context) {
+	testutils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
 	st := testprogs.StartSyscallTester(t, ctx)
+	if tc.shouldSkip != nil {
+		if reason := tc.shouldSkip(); reason != "" {
+			t.Skip(reason)
+		}
+	}
 
 	sandboxSpec := v1alpha1.SandboxSpec{
 		PodSelector: nil,
@@ -53,20 +69,30 @@ func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 	// create the tracing policy from the sandbox spec, and add a PID filter for the program
 	tp, err := toTracingPolicy(tc.name, &sandboxSpec)
 	require.NoError(t, err)
-	testtp.AddPidFilter(t, &tp.GenericTracingPolicy.Spec, st.Process().Pid)
+	// testtp.AddPidFilter(t, &tp.GenericTracingPolicy.Spec, st.Process().Pid)
+
+	if verboseMessages { // for debugging
+		out, err := yaml.Marshal(tp)
+		if err != nil {
+			t.Fatalf("failed to convert tp: %v", err)
+		}
+		t.Logf("Generated policy:\n%s\n", out)
+	}
 
 	// create the sensor from the tracing policy and load it together with the base sensor and
 	// the test sensor.
 	ret, err := sensors.SensorsFromPolicy(tp, policyfilter.NoFilterID)
 	if err != nil {
 		t.Fatalf("GetSensorsFromParserPolicy failed: %v", err)
-	} else if len(ret) != 1 {
+	} else if len(ret) > 2 {
+		// enforcement policies will have two sensors: the tracepoint one and the killer
 		t.Fatalf("GetSensorsFromParserPolicy returned unexpected number of sensors (%d)", len(ret))
 	}
-	tpSensor := ret[0]
 	tus.LoadSensor(t, base.GetInitialSensor())
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	tus.LoadSensor(t, tpSensor)
+	for i := range ret {
+		tus.LoadSensor(t, ret[i])
+	}
 
 	// run the test
 	events := perfring.RunTestFreqCount(
@@ -108,7 +134,7 @@ func TestSandboxPolicies(t *testing.T) {
 			name: "getcpu-in",
 			syscallSpec: v1alpha1.SandboxSyscallsSpec{
 				List: []v1alpha1.SandboxSyscallItem{
-					{Name: "getcpu"},
+					{Name: "sys_getcpu"},
 				},
 				Op: "In",
 				Actions: []v1alpha1.SandboxAction{
@@ -116,8 +142,10 @@ func TestSandboxPolicies(t *testing.T) {
 				},
 			},
 			runSyscalls: func(t *testing.T, st *testprogs.SyscallTester) {
-				_, err := st.GetCPU()
+				ret, err := st.GetCPU()
 				require.NoError(t, err)
+				require.Equal(t, ret, 0)
+
 			},
 			expectedEventsCheck: func(t *testing.T, m map[string]int) {
 				require.Equal(t, m, map[string]int{"getcpu": 1})
@@ -126,7 +154,7 @@ func TestSandboxPolicies(t *testing.T) {
 			name: "getcpu-notin",
 			syscallSpec: v1alpha1.SandboxSyscallsSpec{
 				List: []v1alpha1.SandboxSyscallItem{
-					{Name: "getcpu"},
+					{Name: "sys_getcpu"},
 				},
 				Op: "NotIn",
 				Actions: []v1alpha1.SandboxAction{
@@ -134,11 +162,39 @@ func TestSandboxPolicies(t *testing.T) {
 				},
 			},
 			runSyscalls: func(t *testing.T, st *testprogs.SyscallTester) {
-				_, err := st.GetCPU()
+				ret, err := st.GetCPU()
+				require.Equal(t, ret, 0)
 				require.NoError(t, err)
 			},
 			expectedEventsCheck: func(t *testing.T, m map[string]int) {
 				require.NotContains(t, m, "getcpu")
+			},
+		}, {
+			name: "getcpu-block",
+			syscallSpec: v1alpha1.SandboxSyscallsSpec{
+				List: []v1alpha1.SandboxSyscallItem{
+					{Name: "sys_getcpu"},
+				},
+				Op: "In",
+				Actions: []v1alpha1.SandboxAction{
+					{Type: "Post"},
+					{Type: "Block"},
+				},
+			},
+			runSyscalls: func(t *testing.T, st *testprogs.SyscallTester) {
+				ret, err := st.GetCPU()
+				require.NoError(t, err)
+				require.Equal(t, ret, int(syscall.EPERM))
+
+			},
+			expectedEventsCheck: func(t *testing.T, m map[string]int) {
+				require.Equal(t, m, map[string]int{"getcpu": 1})
+			},
+			shouldSkip: func() string {
+				if !bpf.HasOverrideHelper() && !bpf.HasModifyReturnSyscall() {
+					return "no override support"
+				}
+				return ""
 			},
 		},
 	}

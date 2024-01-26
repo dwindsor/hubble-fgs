@@ -15,9 +15,11 @@ import (
 	"testing"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 func TestMain(m *testing.M) {
+	tus.ConfigDefaults.TetragonLib = testutils.RepoRootPath("bpf/objs")
 	ec := tus.TestSensorsRun(m, "SandboxPolicyTest")
 	os.Exit(ec)
 }
