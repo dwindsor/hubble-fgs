@@ -12,6 +12,7 @@ package sandboxpolicy
 
 import (
 	"fmt"
+	"syscall"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
@@ -27,6 +28,8 @@ import (
 type tpBuilder struct {
 	name   string
 	tpSpec v1alpha1.TracingPolicySpec
+
+	killerLists map[string]struct{}
 }
 
 // newTpBuilder creates a new tracing policy builder
@@ -39,6 +42,7 @@ func newTpBuilder(
 		tpSpec: v1alpha1.TracingPolicySpec{
 			PodSelector: podSelector,
 		},
+		killerLists: map[string]struct{}{},
 	}
 }
 
@@ -55,7 +59,6 @@ func syscallList(name string, l []v1alpha1.SandboxSyscallItem) v1alpha1.ListSpec
 		Validated: false,
 	}
 }
-
 func ActionsHavePost(actions []v1alpha1.SandboxAction) bool {
 	for i := range actions {
 		if actions[i].Type == "Post" {
@@ -64,6 +67,30 @@ func ActionsHavePost(actions []v1alpha1.SandboxAction) bool {
 	}
 
 	return false
+}
+
+func actionsHaveBlock(actions []v1alpha1.SandboxAction) bool {
+	for i := range actions {
+		if actions[i].Type == "Block" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// NB: there can only be a single killer spec in a policy
+func (b *tpBuilder) killers() []v1alpha1.KillerSpec {
+
+	if len(b.killerLists) == 0 {
+		return nil
+	}
+
+	ret := v1alpha1.KillerSpec{}
+	for l := range b.killerLists {
+		ret.Calls = append(ret.Calls, l)
+	}
+	return []v1alpha1.KillerSpec{ret}
 }
 
 // addSyscallSpec adds a syscall spec to the tracing policy
@@ -82,11 +109,21 @@ func (b *tpBuilder) addSyscallSpec(
 		return fmt.Errorf("unknown op: '%s'", spec.Op)
 	}
 
+	listName := fmt.Sprintf("list:%s", name)
+
 	var matchActions []v1alpha1.ActionSelector
 	if !ActionsHavePost(spec.Actions) {
 		matchActions = append(matchActions, v1alpha1.ActionSelector{
 			Action: "NoPost",
 		})
+	}
+	if actionsHaveBlock(spec.Actions) {
+		matchActions = append(matchActions, v1alpha1.ActionSelector{
+			Action:   "NotifyKiller",
+			ArgError: -int32(syscall.EPERM),
+		})
+		b.killerLists[listName] = struct{}{}
+
 	}
 
 	b.tpSpec.Lists = append(b.tpSpec.Lists, syscallList(name, spec.List))
@@ -102,14 +139,13 @@ func (b *tpBuilder) addSyscallSpec(
 				MatchArgs: []v1alpha1.ArgSelector{{
 					Index:    0,
 					Operator: op,
-					Values: []string{
-						fmt.Sprintf("list:%s", name),
-					},
+					Values:   []string{listName},
 				}},
 				MatchActions: matchActions,
 			}},
 		},
 	)
+	b.tpSpec.Killers = b.killers()
 
 	return nil
 }
@@ -144,6 +180,13 @@ func rawSyscallTracepointTranslate(
 }
 
 func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
+	// NB(kkourt): The multi-kprobe killer fails to load. Will have to investigate in OSS side.
+	// One thing to note is that if multi-kprobes and bpf_override_return() is supported, we do
+	// not really need to use the killer. We can translate into tracing policies that hook
+	// directly into kprobes rather than the generic syscall tracepoint.
+	b.tpSpec.Options = []v1alpha1.OptionSpec{
+		{Name: "disable-kprobe-multi", Value: "1"},
+	}
 	return &SandboxTracingPolicy{
 		tracingpolicy.GenericTracingPolicy{
 			TypeMeta: k8sv1.TypeMeta{
