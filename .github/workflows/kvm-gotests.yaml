@@ -55,6 +55,7 @@ jobs:
           cmd: |
             set -eux
             cd /host/hubble-fgs
+            git config --global --add safe.directory /host/hubble-fgs
 
             systemd-detect-virt
             (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
