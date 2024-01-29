@@ -50,8 +50,10 @@ type testCase struct {
 	runSyscalls         func(*testing.T, *testprogs.SyscallTester)
 	expectedEventsCheck func(t *testing.T, m map[string]int)
 	shouldSkip          func() string
+	cmdErrorCheck       func(t *testing.T, err error)
 }
 
+//revive:disable:context-as-argument
 func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 	testutils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
 	st := testprogs.StartSyscallTester(t, ctx)
@@ -122,10 +124,14 @@ func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 	tc.expectedEventsCheck(t, events)
 
 	// stop syscall-tester
-	err = st.Stop()
-	require.NoError(t, err)
+	_ = st.Stop()
 	err = st.Cmd.Wait()
-	require.NoError(t, err)
+
+	if tc.cmdErrorCheck != nil {
+		tc.cmdErrorCheck(t, err)
+	} else {
+		require.NoError(t, err)
+	}
 }
 
 func TestSandboxPolicies(t *testing.T) {
@@ -194,7 +200,44 @@ func TestSandboxPolicies(t *testing.T) {
 				if !bpf.HasOverrideHelper() && !bpf.HasModifyReturnSyscall() {
 					return "no override support"
 				}
+				if !bpf.HasSignalHelper() {
+					return "no signal helper"
+				}
 				return ""
+			},
+		}, {
+			name: "getcpu-signal",
+			syscallSpec: v1alpha1.SandboxSyscallsSpec{
+				List: []v1alpha1.SandboxSyscallItem{
+					{Name: "sys_getcpu"},
+				},
+				Op: "In",
+				Actions: []v1alpha1.SandboxAction{
+					{Type: "Post"},
+					{Type: "Block"},
+					{Type: "Signal"},
+				},
+			},
+			runSyscalls: func(t *testing.T, st *testprogs.SyscallTester) {
+				st.GetCPU()
+				// NB: the program will be killed
+
+			},
+			expectedEventsCheck: func(t *testing.T, m map[string]int) {
+				require.Equal(t, m, map[string]int{"getcpu": 1})
+			},
+			shouldSkip: func() string {
+				if !bpf.HasOverrideHelper() && !bpf.HasModifyReturnSyscall() {
+					return "no override support"
+				}
+				if !bpf.HasSignalHelper() {
+					return "no signal helper"
+				}
+				return ""
+			},
+			cmdErrorCheck: func(t *testing.T, err error) {
+				require.NotNil(t, err)
+				require.Equal(t, err.Error(), "signal: killed")
 			},
 		},
 	}
