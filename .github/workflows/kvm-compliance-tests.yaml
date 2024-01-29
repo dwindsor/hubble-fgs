@@ -34,13 +34,16 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20231124.012737'
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '6.1-20231026.065108'
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.15-20231026.065108'
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.10-20231026.065108'
+          - 'bpf-next-20240110.080621'
+          # FIXME: following kernels temporarily disabled pending bugfixes
+          # # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          # - '6.6-20240123.120815'
+          # # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          # - '6.1-20240123.175813'
+          # # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          # - '5.15-20240110.080621'
+          # # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          # - '5.10-20240110.080621'
           # NB: it doesn't make sense to test the http parser on kernels <5.10
     steps:
       - name: Checkout Git Repo
