@@ -59,9 +59,10 @@ func syscallList(name string, l []v1alpha1.SandboxSyscallItem) v1alpha1.ListSpec
 		Validated: false,
 	}
 }
-func ActionsHavePost(actions []v1alpha1.SandboxAction) bool {
+
+func actionsHaveAct(actions []v1alpha1.SandboxAction, act string) bool {
 	for i := range actions {
-		if actions[i].Type == "Post" {
+		if actions[i].Type == act {
 			return true
 		}
 	}
@@ -69,14 +70,16 @@ func ActionsHavePost(actions []v1alpha1.SandboxAction) bool {
 	return false
 }
 
-func actionsHaveBlock(actions []v1alpha1.SandboxAction) bool {
-	for i := range actions {
-		if actions[i].Type == "Block" {
-			return true
-		}
-	}
+func actionsHavePost(actions []v1alpha1.SandboxAction) bool {
+	return actionsHaveAct(actions, "Post")
+}
 
-	return false
+func actionsHaveBlock(actions []v1alpha1.SandboxAction) bool {
+	return actionsHaveAct(actions, "Block")
+}
+
+func actionsHaveSignal(actions []v1alpha1.SandboxAction) bool {
+	return actionsHaveAct(actions, "Signal")
 }
 
 // NB: there can only be a single killer spec in a policy
@@ -112,18 +115,27 @@ func (b *tpBuilder) addSyscallSpec(
 	listName := fmt.Sprintf("list:%s", name)
 
 	var matchActions []v1alpha1.ActionSelector
-	if !ActionsHavePost(spec.Actions) {
+	if !actionsHavePost(spec.Actions) {
 		matchActions = append(matchActions, v1alpha1.ActionSelector{
 			Action: "NoPost",
 		})
 	}
-	if actionsHaveBlock(spec.Actions) {
-		matchActions = append(matchActions, v1alpha1.ActionSelector{
-			Action:   "NotifyKiller",
-			ArgError: -int32(syscall.EPERM),
-		})
-		b.killerLists[listName] = struct{}{}
 
+	haveBlock := actionsHaveBlock(spec.Actions)
+	haveSignal := actionsHaveSignal(spec.Actions)
+	if haveBlock || haveSignal {
+		notifyKiller := v1alpha1.ActionSelector{
+			Action: "NotifyKiller",
+		}
+		if haveBlock {
+			notifyKiller.ArgError = -int32(syscall.EPERM)
+		}
+		if haveSignal {
+			notifyKiller.ArgSig = uint32(syscall.SIGKILL)
+		}
+
+		matchActions = append(matchActions, notifyKiller)
+		b.killerLists[listName] = struct{}{}
 	}
 
 	b.tpSpec.Lists = append(b.tpSpec.Lists, syscallList(name, spec.List))
