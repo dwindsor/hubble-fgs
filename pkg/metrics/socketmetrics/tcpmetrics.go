@@ -16,84 +16,91 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	LabelStringTCPSrc = []string{"namespace", "workload", "pod", "binary"}
+	LabelStringTCPDst = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns"}
+	LabelStringTCP    = append(LabelStringTCPSrc, LabelStringTCPDst[:]...)
+	LabelStringTCPLe  = append(LabelStringTCP, "le")
+)
+
 // TCP socket metrics
 var (
 	SocketStatsTxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsTxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bursts statistics",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 	SocketStatsTxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX dips statistics",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 	SocketStatsRxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX segment statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsRxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bursts statistics",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 	SocketStatsRxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX dips statistics",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 	SocketStatsRetranBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit bytes statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsRetranSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit seg statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsZeroWindow = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_zerowindow_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket zero window events",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsSrtt = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
 		Name:      "socket_stats_srtt",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket smoothed RTT latency distribution in microseconds.",
 		Buckets:   []float64{50, 100, 250, 500, 750, 1_000, 2_500, 5_000, 7_500, 10_000, 25_000, 50_000, 75_000, 100_000},
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsDrops = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "socket_stats_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket socket drops statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	SocketStatsTxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "socket_stats_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX watermarks state",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 	SocketStatsRxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "socket_stats_rx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX watermarks state",
-	}, []string{"namespace", "workload", "pod", "binary"})
+	}, LabelStringTCPSrc)
 )
 
 // TCP Latency Histograms
@@ -107,32 +114,32 @@ var (
 		Name:      "tcp_rtt_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket rtt in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "le"})
+	}, LabelStringTCPLe)
 	TcpRttCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket rtt",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	TcpRttSum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket rtt in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 )
 var (
 	TcpLatencyBucket = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "le"})
+	}, LabelStringTCPLe)
 	TcpLatencyCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket latency",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 	TcpLatencySum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket latency in microseconds",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, LabelStringTCP)
 )
