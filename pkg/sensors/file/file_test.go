@@ -41,7 +41,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 
@@ -2115,7 +2115,7 @@ func dockerIdToRootFs(cid string) (string, error) {
 	}
 	defer cli.Close()
 
-	cnts, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	cnts, err := cli.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return "", err
 	}

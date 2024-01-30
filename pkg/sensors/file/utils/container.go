@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	crTypes "github.com/cri-o/cri-o/pkg/types"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
@@ -144,7 +144,7 @@ func DockerIdToRootFs(cid string) (string, error) {
 	}
 	defer cli.Close()
 
-	cnts, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	cnts, err := cli.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return "", err
 	}

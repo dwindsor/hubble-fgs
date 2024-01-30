@@ -162,12 +162,12 @@ func (ct *Test) startTestContainer(t *testing.T, ctx *testcontext.TestContext) e
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
 
-	err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, types.ContainerStartOptions{})
+	err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, container.StartOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to start test container: %w", err)
 	}
 
-	logReader, err := client.ContainerLogs(ctx.Ctx, ctx.ContainerId, types.ContainerLogsOptions{
+	logReader, err := client.ContainerLogs(ctx.Ctx, ctx.ContainerId, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Since:      "",
@@ -207,7 +207,7 @@ func (ct *Test) stopTestContainer(ctx *testcontext.TestContext) error {
 	}
 
 	if config.Config().RemoveContainer {
-		if err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, types.ContainerRemoveOptions{
+		if err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, container.RemoveOptions{
 			RemoveVolumes: true,
 			RemoveLinks:   false,
 			Force:         true,

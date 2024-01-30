@@ -32,7 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/vishvananda/netlink"
 
@@ -440,7 +440,7 @@ func populateSandboxToContainer() error {
 		return err
 	}
 
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	containers, err := cli.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return err
 	}
