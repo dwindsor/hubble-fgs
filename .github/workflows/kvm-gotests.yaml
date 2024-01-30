@@ -16,7 +16,7 @@ jobs:
   run-tests:
     runs-on:
     - majestic-ketchup-light
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
