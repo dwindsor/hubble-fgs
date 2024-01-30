@@ -1087,6 +1087,10 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
 				}
 			}
+			err = udpMap.Delete(udpKey)
+			if err != nil {
+				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map delete")
+			}
 		}
 
 		pseudoSocketsUpdate.Lock()
