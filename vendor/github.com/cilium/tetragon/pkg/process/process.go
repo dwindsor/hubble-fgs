@@ -159,6 +159,7 @@ func (pi *ProcessInternal) UnsafeGetProcess() *tetragon.Process {
 //     a. if it is a setuid execution
 //     b. if it is a setgid execution
 //     c. if it is a filesystem capability execution
+//     d. Execution of an unlinked binary (shm, memfd, or deleted binaries)
 //
 //     a b and c are subject to the --enable-process-creds flag
 func (pi *ProcessInternal) UpdateExecOutsideCache(cred bool) (*tetragon.Process, bool) {
@@ -181,6 +182,11 @@ func (pi *ProcessInternal) UpdateExecOutsideCache(cred bool) (*tetragon.Process,
 		}
 		if pi.apiBinaryProp.PrivilegesChanged != nil {
 			prop.PrivilegesChanged = pi.apiBinaryProp.PrivilegesChanged
+			update = true
+		}
+		// Annotate execution of unlinked binaries
+		if pi.apiBinaryProp.File != nil && pi.apiBinaryProp.File.Inode != nil {
+			prop.File = pi.apiBinaryProp.File
 			update = true
 		}
 	}
@@ -273,9 +279,9 @@ func initProcessInternalExec(
 	}
 	execID := GetExecID(&process)
 	protoPod := GetPodInfo(containerID, process.Filename, args, process.NSPID)
-	apiCaps := caps.GetMsgCapabilities(event.Capabilities)
+	apiCaps := caps.GetMsgCapabilities(event.Msg.Capabilities)
 	binary := path.GetBinaryAbsolutePath(process.Filename, cwd)
-	apiNs, err := namespace.GetMsgNamespaces(event.Namespaces)
+	apiNs, err := namespace.GetMsgNamespaces(event.Msg.Namespaces)
 	if err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"event.name":            "Execve",
@@ -287,7 +293,7 @@ func initProcessInternalExec(
 		}).Warn("ExecveEvent: parsing namespaces failed")
 	}
 
-	creds := &event.Creds
+	creds := &event.Msg.Creds
 	apiCreds := &tetragon.ProcessCredentials{
 		Uid:        &wrapperspb.UInt32Value{Value: creds.Uid},
 		Gid:        &wrapperspb.UInt32Value{Value: creds.Gid},
@@ -304,6 +310,7 @@ func initProcessInternalExec(
 		// Initialize with InvalidUid
 		Setuid: &wrapperspb.UInt32Value{Value: proc.InvalidUid},
 		Setgid: &wrapperspb.UInt32Value{Value: proc.InvalidUid},
+		File:   nil,
 	}
 
 	if (process.SecureExec & tetragonAPI.ExecveSetuid) != 0 {
@@ -314,6 +321,15 @@ func initProcessInternalExec(
 	}
 
 	apiBinaryProp.PrivilegesChanged = caps.GetPrivilegesChangedReasons(process.SecureExec)
+	if process.Ino != 0 && process.Nlink == 0 {
+		inode := &tetragon.InodeProperties{
+			Number: process.Ino,
+			Links:  &wrapperspb.UInt32Value{Value: process.Nlink},
+		}
+		apiBinaryProp.File = &tetragon.FileProperties{
+			Inode: inode,
+		}
+	}
 
 	// Per thread tracking rules PID == TID
 	//
@@ -437,12 +453,12 @@ func GetParentProcessInternal(pid uint32, ktime uint64) (*ProcessInternal, *Proc
 // AddExecEvent constructs a new ProcessInternal structure from an Execve event, adds it to the cache, and also returns it
 func AddExecEvent(event *tetragonAPI.MsgExecveEventUnix) *ProcessInternal {
 	var proc *ProcessInternal
-	if event.CleanupProcess.Ktime == 0 || event.Process.Flags&api.EventClone != 0 {
+	if event.Msg.CleanupProcess.Ktime == 0 || event.Process.Flags&api.EventClone != 0 {
 		// there is a case where we cannot find this entry in execve_map
 		// in that case we use as parent what Linux knows
-		proc = initProcessInternalExec(event, event.Parent)
+		proc = initProcessInternalExec(event, event.Msg.Parent)
 	} else {
-		proc = initProcessInternalExec(event, event.CleanupProcess)
+		proc = initProcessInternalExec(event, event.Msg.CleanupProcess)
 	}
 
 	procCache.add(proc)

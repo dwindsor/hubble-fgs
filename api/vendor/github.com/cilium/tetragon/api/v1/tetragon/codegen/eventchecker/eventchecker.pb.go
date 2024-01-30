@@ -1306,6 +1306,7 @@ type ProcessUprobeChecker struct {
 	Symbol      *stringmatcher.StringMatcher `json:"symbol,omitempty"`
 	PolicyName  *stringmatcher.StringMatcher `json:"policyName,omitempty"`
 	Message     *stringmatcher.StringMatcher `json:"message,omitempty"`
+	Args        *KprobeArgumentListMatcher   `json:"args,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1377,6 +1378,11 @@ func (checker *ProcessUprobeChecker) Check(event *tetragon.ProcessUprobe) error 
 				return fmt.Errorf("Message check failed: %w", err)
 			}
 		}
+		if checker.Args != nil {
+			if err := checker.Args.Check(event.Args); err != nil {
+				return fmt.Errorf("Args check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -1421,6 +1427,12 @@ func (checker *ProcessUprobeChecker) WithMessage(check *stringmatcher.StringMatc
 	return checker
 }
 
+// WithArgs adds a Args check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) WithArgs(check *KprobeArgumentListMatcher) *ProcessUprobeChecker {
+	checker.Args = check
+	return checker
+}
+
 //FromProcessUprobe populates the ProcessUprobeChecker using data from a ProcessUprobe event
 func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUprobe) *ProcessUprobeChecker {
 	if event == nil {
@@ -1436,6 +1448,19 @@ func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUp
 	checker.Symbol = stringmatcher.Full(event.Symbol)
 	checker.PolicyName = stringmatcher.Full(event.PolicyName)
 	checker.Message = stringmatcher.Full(event.Message)
+	{
+		var checks []*KprobeArgumentChecker
+		for _, check := range event.Args {
+			var convertedCheck *KprobeArgumentChecker
+			if check != nil {
+				convertedCheck = NewKprobeArgumentChecker().FromKprobeArgument(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewKprobeArgumentListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Args = lm
+	}
 	return checker
 }
 
@@ -2980,11 +3005,149 @@ nextCheck:
 	return nil
 }
 
+// InodePropertiesChecker implements a checker struct to check a InodeProperties field
+type InodePropertiesChecker struct {
+	Number *uint64 `json:"number,omitempty"`
+	Links  *uint32 `json:"links,omitempty"`
+}
+
+// NewInodePropertiesChecker creates a new InodePropertiesChecker
+func NewInodePropertiesChecker() *InodePropertiesChecker {
+	return &InodePropertiesChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *InodePropertiesChecker) GetCheckerType() string {
+	return "InodePropertiesChecker"
+}
+
+// Check checks a InodeProperties field
+func (checker *InodePropertiesChecker) Check(event *tetragon.InodeProperties) error {
+	if event == nil {
+		return fmt.Errorf("%s: InodeProperties field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Number != nil {
+			if *checker.Number != event.Number {
+				return fmt.Errorf("Number has value %d which does not match expected value %d", event.Number, *checker.Number)
+			}
+		}
+		if checker.Links != nil {
+			if event.Links == nil {
+				return fmt.Errorf("Links is nil and does not match expected value %v", *checker.Links)
+			}
+			if *checker.Links != event.Links.Value {
+				return fmt.Errorf("Links has value %v which does not match expected value %v", event.Links.Value, *checker.Links)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithNumber adds a Number check to the InodePropertiesChecker
+func (checker *InodePropertiesChecker) WithNumber(check uint64) *InodePropertiesChecker {
+	checker.Number = &check
+	return checker
+}
+
+// WithLinks adds a Links check to the InodePropertiesChecker
+func (checker *InodePropertiesChecker) WithLinks(check uint32) *InodePropertiesChecker {
+	checker.Links = &check
+	return checker
+}
+
+//FromInodeProperties populates the InodePropertiesChecker using data from a InodeProperties field
+func (checker *InodePropertiesChecker) FromInodeProperties(event *tetragon.InodeProperties) *InodePropertiesChecker {
+	if event == nil {
+		return checker
+	}
+	{
+		val := event.Number
+		checker.Number = &val
+	}
+	if event.Links != nil {
+		val := event.Links.Value
+		checker.Links = &val
+	}
+	return checker
+}
+
+// FilePropertiesChecker implements a checker struct to check a FileProperties field
+type FilePropertiesChecker struct {
+	Inode *InodePropertiesChecker      `json:"inode,omitempty"`
+	Path  *stringmatcher.StringMatcher `json:"path,omitempty"`
+}
+
+// NewFilePropertiesChecker creates a new FilePropertiesChecker
+func NewFilePropertiesChecker() *FilePropertiesChecker {
+	return &FilePropertiesChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *FilePropertiesChecker) GetCheckerType() string {
+	return "FilePropertiesChecker"
+}
+
+// Check checks a FileProperties field
+func (checker *FilePropertiesChecker) Check(event *tetragon.FileProperties) error {
+	if event == nil {
+		return fmt.Errorf("%s: FileProperties field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Inode != nil {
+			if err := checker.Inode.Check(event.Inode); err != nil {
+				return fmt.Errorf("Inode check failed: %w", err)
+			}
+		}
+		if checker.Path != nil {
+			if err := checker.Path.Match(event.Path); err != nil {
+				return fmt.Errorf("Path check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithInode adds a Inode check to the FilePropertiesChecker
+func (checker *FilePropertiesChecker) WithInode(check *InodePropertiesChecker) *FilePropertiesChecker {
+	checker.Inode = check
+	return checker
+}
+
+// WithPath adds a Path check to the FilePropertiesChecker
+func (checker *FilePropertiesChecker) WithPath(check *stringmatcher.StringMatcher) *FilePropertiesChecker {
+	checker.Path = check
+	return checker
+}
+
+//FromFileProperties populates the FilePropertiesChecker using data from a FileProperties field
+func (checker *FilePropertiesChecker) FromFileProperties(event *tetragon.FileProperties) *FilePropertiesChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Inode != nil {
+		checker.Inode = NewInodePropertiesChecker().FromInodeProperties(event.Inode)
+	}
+	checker.Path = stringmatcher.Full(event.Path)
+	return checker
+}
+
 // BinaryPropertiesChecker implements a checker struct to check a BinaryProperties field
 type BinaryPropertiesChecker struct {
 	Setuid            *uint32                              `json:"setuid,omitempty"`
 	Setgid            *uint32                              `json:"setgid,omitempty"`
 	PrivilegesChanged *ProcessPrivilegesChangedListMatcher `json:"privilegesChanged,omitempty"`
+	File              *FilePropertiesChecker               `json:"file,omitempty"`
 }
 
 // NewBinaryPropertiesChecker creates a new BinaryPropertiesChecker
@@ -3025,6 +3188,11 @@ func (checker *BinaryPropertiesChecker) Check(event *tetragon.BinaryProperties) 
 				return fmt.Errorf("PrivilegesChanged check failed: %w", err)
 			}
 		}
+		if checker.File != nil {
+			if err := checker.File.Check(event.File); err != nil {
+				return fmt.Errorf("File check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3051,6 +3219,12 @@ func (checker *BinaryPropertiesChecker) WithPrivilegesChanged(check *ProcessPriv
 	return checker
 }
 
+// WithFile adds a File check to the BinaryPropertiesChecker
+func (checker *BinaryPropertiesChecker) WithFile(check *FilePropertiesChecker) *BinaryPropertiesChecker {
+	checker.File = check
+	return checker
+}
+
 //FromBinaryProperties populates the BinaryPropertiesChecker using data from a BinaryProperties field
 func (checker *BinaryPropertiesChecker) FromBinaryProperties(event *tetragon.BinaryProperties) *BinaryPropertiesChecker {
 	if event == nil {
@@ -3074,6 +3248,9 @@ func (checker *BinaryPropertiesChecker) FromBinaryProperties(event *tetragon.Bin
 		lm := NewProcessPrivilegesChangedListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.PrivilegesChanged = lm
+	}
+	if event.File != nil {
+		checker.File = NewFilePropertiesChecker().FromFileProperties(event.File)
 	}
 	return checker
 }

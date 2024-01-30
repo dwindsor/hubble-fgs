@@ -11,7 +11,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
@@ -67,16 +66,193 @@ func kprobeAction(act uint64) tetragon.KprobeAction {
 	}
 }
 
+func getKprobeArgument(arg tracingapi.MsgGenericKprobeArg) *tetragon.KprobeArgument {
+	a := &tetragon.KprobeArgument{}
+	switch e := arg.(type) {
+	case api.MsgGenericKprobeArgInt:
+		a.Arg = &tetragon.KprobeArgument_IntArg{IntArg: e.Value}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgUInt:
+		a.Arg = &tetragon.KprobeArgument_UintArg{UintArg: e.Value}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgSize:
+		a.Arg = &tetragon.KprobeArgument_SizeArg{SizeArg: e.Value}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgLong:
+		a.Arg = &tetragon.KprobeArgument_LongArg{LongArg: e.Value}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgString:
+		a.Arg = &tetragon.KprobeArgument_StringArg{StringArg: e.Value}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgSock:
+		sockArg := &tetragon.KprobeSock{
+			Cookie:   e.Sockaddr,
+			Family:   network.InetFamily(e.Family),
+			State:    network.TcpState(e.State),
+			Type:     network.InetType(e.Type),
+			Protocol: network.InetProtocol(e.Protocol),
+			Mark:     e.Mark,
+			Priority: e.Priority,
+			Saddr:    e.Saddr,
+			Daddr:    e.Daddr,
+			Sport:    e.Sport,
+			Dport:    e.Dport,
+		}
+		a.Arg = &tetragon.KprobeArgument_SockArg{SockArg: sockArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgSkb:
+		skbArg := &tetragon.KprobeSkb{
+			Hash:        e.Hash,
+			Len:         e.Len,
+			Priority:    e.Priority,
+			Mark:        e.Mark,
+			Saddr:       e.Saddr,
+			Daddr:       e.Daddr,
+			Sport:       e.Sport,
+			Dport:       e.Dport,
+			Proto:       e.Proto,
+			Protocol:    network.InetProtocol(uint16(e.Proto)),
+			SecPathLen:  e.SecPathLen,
+			SecPathOlen: e.SecPathOLen,
+			Family:      network.InetFamily(e.Family),
+		}
+		a.Arg = &tetragon.KprobeArgument_SkbArg{SkbArg: skbArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgCred:
+		credArg := &tetragon.ProcessCredentials{
+			Uid:        &wrapperspb.UInt32Value{Value: e.Uid},
+			Gid:        &wrapperspb.UInt32Value{Value: e.Gid},
+			Euid:       &wrapperspb.UInt32Value{Value: e.Euid},
+			Egid:       &wrapperspb.UInt32Value{Value: e.Egid},
+			Suid:       &wrapperspb.UInt32Value{Value: e.Suid},
+			Sgid:       &wrapperspb.UInt32Value{Value: e.Sgid},
+			Fsuid:      &wrapperspb.UInt32Value{Value: e.FSuid},
+			Fsgid:      &wrapperspb.UInt32Value{Value: e.FSgid},
+			Securebits: caps.GetSecureBitsTypes(e.SecureBits),
+		}
+		credArg.Caps = &tetragon.Capabilities{
+			Permitted:   caps.GetCapabilitiesTypes(e.Cap.Permitted),
+			Effective:   caps.GetCapabilitiesTypes(e.Cap.Effective),
+			Inheritable: caps.GetCapabilitiesTypes(e.Cap.Inheritable),
+		}
+		credArg.UserNs = &tetragon.UserNamespace{
+			Level: &wrapperspb.Int32Value{Value: e.UserNs.Level},
+			Uid:   &wrapperspb.UInt32Value{Value: e.UserNs.Uid},
+			Gid:   &wrapperspb.UInt32Value{Value: e.UserNs.Gid},
+			Ns: &tetragon.Namespace{
+				Inum: e.UserNs.NsInum,
+			},
+		}
+		if e.UserNs.Level == 0 {
+			credArg.UserNs.Ns.IsHost = true
+		}
+		a.Arg = &tetragon.KprobeArgument_ProcessCredentialsArg{ProcessCredentialsArg: credArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgBytes:
+		if e.OrigSize > uint64(len(e.Value)) {
+			a.Arg = &tetragon.KprobeArgument_TruncatedBytesArg{
+				TruncatedBytesArg: &tetragon.KprobeTruncatedBytes{
+					OrigSize: e.OrigSize,
+					BytesArg: e.Value,
+				},
+			}
+		} else {
+			a.Arg = &tetragon.KprobeArgument_BytesArg{BytesArg: e.Value}
+		}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgFile:
+		fileArg := &tetragon.KprobeFile{
+			Path:  e.Value,
+			Flags: path.FilePathFlagsToStr(e.Flags),
+		}
+		a.Arg = &tetragon.KprobeArgument_FileArg{FileArg: fileArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgPath:
+		pathArg := &tetragon.KprobePath{
+			Path:  e.Value,
+			Flags: path.FilePathFlagsToStr(e.Flags),
+		}
+		a.Arg = &tetragon.KprobeArgument_PathArg{PathArg: pathArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgBpfAttr:
+		bpfAttrArg := &tetragon.KprobeBpfAttr{
+			ProgType: bpf.GetProgType(e.ProgType),
+			InsnCnt:  e.InsnCnt,
+			ProgName: e.ProgName,
+		}
+		a.Arg = &tetragon.KprobeArgument_BpfAttrArg{BpfAttrArg: bpfAttrArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgPerfEvent:
+		perfEventArg := &tetragon.KprobePerfEvent{
+			KprobeFunc:  e.KprobeFunc,
+			Type:        bpf.GetPerfEventType(e.Type),
+			Config:      e.Config,
+			ProbeOffset: e.ProbeOffset,
+		}
+		a.Arg = &tetragon.KprobeArgument_PerfEventArg{PerfEventArg: perfEventArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgBpfMap:
+		bpfMapArg := &tetragon.KprobeBpfMap{
+			MapType:    bpf.GetBpfMapType(e.MapType),
+			KeySize:    e.KeySize,
+			ValueSize:  e.ValueSize,
+			MaxEntries: e.MaxEntries,
+			MapName:    e.MapName,
+		}
+		a.Arg = &tetragon.KprobeArgument_BpfMapArg{BpfMapArg: bpfMapArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgUserNamespace:
+		nsArg := &tetragon.UserNamespace{
+			Level: &wrapperspb.Int32Value{Value: e.Level},
+			Uid:   &wrapperspb.UInt32Value{Value: e.Uid},
+			Gid:   &wrapperspb.UInt32Value{Value: e.Gid},
+			Ns: &tetragon.Namespace{
+				Inum: e.NsInum,
+			},
+		}
+		if e.Level == 0 {
+			nsArg.Ns.IsHost = true
+		}
+		a.Arg = &tetragon.KprobeArgument_UserNsArg{UserNsArg: nsArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgCapability:
+		cArg := &tetragon.KprobeCapability{
+			Value: &wrapperspb.Int32Value{Value: e.Value},
+		}
+		cArg.Name, _ = caps.GetCapability(e.Value)
+		a.Arg = &tetragon.KprobeArgument_CapabilityArg{CapabilityArg: cArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgLoadModule:
+		mArg := &tetragon.KernelModule{
+			Name:        e.Name,
+			SignatureOk: &wrapperspb.BoolValue{Value: e.SigOk != 0},
+			Tainted:     kernel.GetTaintedBitsTypes(e.Taints),
+		}
+		a.Arg = &tetragon.KprobeArgument_ModuleArg{ModuleArg: mArg}
+		a.Label = e.Label
+	case api.MsgGenericKprobeArgKernelModule:
+		mArg := &tetragon.KernelModule{
+			Name:    e.Name,
+			Tainted: kernel.GetTaintedBitsTypes(e.Taints),
+		}
+		a.Arg = &tetragon.KprobeArgument_ModuleArg{ModuleArg: mArg}
+		a.Label = e.Label
+	default:
+		logger.GetLogger().WithField("arg", e).Warnf("unexpected type: %T", e)
+	}
+	return a
+}
+
 func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 	var tetragonParent, tetragonProcess *tetragon.Process
 	var tetragonArgs []*tetragon.KprobeArgument
 	var tetragonReturnArg *tetragon.KprobeArgument
 
-	proc, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	proc, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if proc == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = proc.UnsafeGetProcess()
@@ -89,176 +265,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 	}
 
 	for _, arg := range event.Args {
-		a := &tetragon.KprobeArgument{}
-		switch e := arg.(type) {
-		case api.MsgGenericKprobeArgInt:
-			a.Arg = &tetragon.KprobeArgument_IntArg{IntArg: e.Value}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgUInt:
-			a.Arg = &tetragon.KprobeArgument_UintArg{UintArg: e.Value}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgSize:
-			a.Arg = &tetragon.KprobeArgument_SizeArg{SizeArg: e.Value}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgString:
-			a.Arg = &tetragon.KprobeArgument_StringArg{StringArg: e.Value}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgSock:
-			sockArg := &tetragon.KprobeSock{
-				Cookie:   e.Sockaddr,
-				Family:   network.InetFamily(e.Family),
-				State:    network.TcpState(e.State),
-				Type:     network.InetType(e.Type),
-				Protocol: network.InetProtocol(e.Protocol),
-				Mark:     e.Mark,
-				Priority: e.Priority,
-				Saddr:    e.Saddr,
-				Daddr:    e.Daddr,
-				Sport:    e.Sport,
-				Dport:    e.Dport,
-			}
-			a.Arg = &tetragon.KprobeArgument_SockArg{SockArg: sockArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgSkb:
-			skbArg := &tetragon.KprobeSkb{
-				Hash:        e.Hash,
-				Len:         e.Len,
-				Priority:    e.Priority,
-				Mark:        e.Mark,
-				Saddr:       e.Saddr,
-				Daddr:       e.Daddr,
-				Sport:       e.Sport,
-				Dport:       e.Dport,
-				Proto:       e.Proto,
-				Protocol:    network.InetProtocol(uint16(e.Proto)),
-				SecPathLen:  e.SecPathLen,
-				SecPathOlen: e.SecPathOLen,
-				Family:      network.InetFamily(e.Family),
-			}
-			a.Arg = &tetragon.KprobeArgument_SkbArg{SkbArg: skbArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgCred:
-			credArg := &tetragon.ProcessCredentials{
-				Uid:        &wrapperspb.UInt32Value{Value: e.Uid},
-				Gid:        &wrapperspb.UInt32Value{Value: e.Gid},
-				Euid:       &wrapperspb.UInt32Value{Value: e.Euid},
-				Egid:       &wrapperspb.UInt32Value{Value: e.Egid},
-				Suid:       &wrapperspb.UInt32Value{Value: e.Suid},
-				Sgid:       &wrapperspb.UInt32Value{Value: e.Sgid},
-				Fsuid:      &wrapperspb.UInt32Value{Value: e.FSuid},
-				Fsgid:      &wrapperspb.UInt32Value{Value: e.FSgid},
-				Securebits: caps.GetSecureBitsTypes(e.SecureBits),
-			}
-			credArg.Caps = &tetragon.Capabilities{
-				Permitted:   caps.GetCapabilitiesTypes(e.Cap.Permitted),
-				Effective:   caps.GetCapabilitiesTypes(e.Cap.Effective),
-				Inheritable: caps.GetCapabilitiesTypes(e.Cap.Inheritable),
-			}
-			credArg.UserNs = &tetragon.UserNamespace{
-				Level: &wrapperspb.Int32Value{Value: e.UserNs.Level},
-				Uid:   &wrapperspb.UInt32Value{Value: e.UserNs.Uid},
-				Gid:   &wrapperspb.UInt32Value{Value: e.UserNs.Gid},
-				Ns: &tetragon.Namespace{
-					Inum: e.UserNs.NsInum,
-				},
-			}
-			if e.UserNs.Level == 0 {
-				credArg.UserNs.Ns.IsHost = true
-			}
-			a.Arg = &tetragon.KprobeArgument_ProcessCredentialsArg{ProcessCredentialsArg: credArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgBytes:
-			if e.OrigSize > uint64(len(e.Value)) {
-				a.Arg = &tetragon.KprobeArgument_TruncatedBytesArg{
-					TruncatedBytesArg: &tetragon.KprobeTruncatedBytes{
-						OrigSize: e.OrigSize,
-						BytesArg: e.Value,
-					},
-				}
-			} else {
-				a.Arg = &tetragon.KprobeArgument_BytesArg{BytesArg: e.Value}
-			}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgFile:
-			fileArg := &tetragon.KprobeFile{
-				Path:  e.Value,
-				Flags: path.FilePathFlagsToStr(e.Flags),
-			}
-			a.Arg = &tetragon.KprobeArgument_FileArg{FileArg: fileArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgPath:
-			pathArg := &tetragon.KprobePath{
-				Path:  e.Value,
-				Flags: path.FilePathFlagsToStr(e.Flags),
-			}
-			a.Arg = &tetragon.KprobeArgument_PathArg{PathArg: pathArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgBpfAttr:
-			bpfAttrArg := &tetragon.KprobeBpfAttr{
-				ProgType: bpf.GetProgType(e.ProgType),
-				InsnCnt:  e.InsnCnt,
-				ProgName: e.ProgName,
-			}
-			a.Arg = &tetragon.KprobeArgument_BpfAttrArg{BpfAttrArg: bpfAttrArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgPerfEvent:
-			perfEventArg := &tetragon.KprobePerfEvent{
-				KprobeFunc:  e.KprobeFunc,
-				Type:        bpf.GetPerfEventType(e.Type),
-				Config:      e.Config,
-				ProbeOffset: e.ProbeOffset,
-			}
-			a.Arg = &tetragon.KprobeArgument_PerfEventArg{PerfEventArg: perfEventArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgBpfMap:
-			bpfMapArg := &tetragon.KprobeBpfMap{
-				MapType:    bpf.GetBpfMapType(e.MapType),
-				KeySize:    e.KeySize,
-				ValueSize:  e.ValueSize,
-				MaxEntries: e.MaxEntries,
-				MapName:    e.MapName,
-			}
-			a.Arg = &tetragon.KprobeArgument_BpfMapArg{BpfMapArg: bpfMapArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgUserNamespace:
-			nsArg := &tetragon.UserNamespace{
-				Level: &wrapperspb.Int32Value{Value: e.Level},
-				Uid:   &wrapperspb.UInt32Value{Value: e.Uid},
-				Gid:   &wrapperspb.UInt32Value{Value: e.Gid},
-				Ns: &tetragon.Namespace{
-					Inum: e.NsInum,
-				},
-			}
-			if e.Level == 0 {
-				nsArg.Ns.IsHost = true
-			}
-			a.Arg = &tetragon.KprobeArgument_UserNsArg{UserNsArg: nsArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgCapability:
-			cArg := &tetragon.KprobeCapability{
-				Value: &wrapperspb.Int32Value{Value: e.Value},
-			}
-			cArg.Name, _ = caps.GetCapability(e.Value)
-			a.Arg = &tetragon.KprobeArgument_CapabilityArg{CapabilityArg: cArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgLoadModule:
-			mArg := &tetragon.KernelModule{
-				Name:        e.Name,
-				SignatureOk: &wrapperspb.BoolValue{Value: e.SigOk != 0},
-				Tainted:     kernel.GetTaintedBitsTypes(e.Taints),
-			}
-			a.Arg = &tetragon.KprobeArgument_ModuleArg{ModuleArg: mArg}
-			a.Label = e.Label
-		case api.MsgGenericKprobeArgKernelModule:
-			mArg := &tetragon.KernelModule{
-				Name:    e.Name,
-				Tainted: kernel.GetTaintedBitsTypes(e.Taints),
-			}
-			a.Arg = &tetragon.KprobeArgument_ModuleArg{ModuleArg: mArg}
-			a.Label = e.Label
-		default:
-			logger.GetLogger().WithField("arg", e).Warnf("unexpected type: %T", e)
-		}
+		a := getKprobeArgument(arg)
 		if arg.IsReturnArg() {
 			tetragonReturnArg = a
 		} else {
@@ -302,7 +309,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 		FunctionName: event.FuncName,
 		Args:         tetragonArgs,
 		Return:       tetragonReturnArg,
-		Action:       kprobeAction(event.Action),
+		Action:       kprobeAction(event.Msg.ActionId),
 		ReturnAction: kprobeAction(event.ReturnAction),
 		StackTrace:   stackTrace,
 		PolicyName:   event.PolicyName,
@@ -317,7 +324,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 	if ec := eventcache.Get(); ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -330,7 +337,7 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 		// deep copy of all the fields of the thread leader from the cache in
 		// order to safely modify them, to not corrupt gRPC streams.
 		tetragonEvent.Process = proc.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
 	}
 	if parent != nil {
 		tetragonEvent.Parent = tetragonParent
@@ -340,16 +347,12 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 }
 
 type MsgGenericTracepointUnix struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Id         int64
-	Tid        uint32
+	Msg        *tracingapi.MsgGenericTracepoint
 	Subsys     string
 	Event      string
 	Args       []tracingapi.MsgGenericTracepointArg
 	PolicyName string
 	Message    string
-	Action     uint64
 }
 
 func (msg *MsgGenericTracepointUnix) Notify() bool {
@@ -357,21 +360,21 @@ func (msg *MsgGenericTracepointUnix) Notify() bool {
 }
 
 func (msg *MsgGenericTracepointUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, msg.ProcessKey.Pid, &msg.Tid, timestamp)
+	return eventcache.HandleGenericInternal(ev, msg.Msg.ProcessKey.Pid, &msg.Msg.Tid, timestamp)
 }
 
 func (msg *MsgGenericTracepointUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev, &msg.Tid)
+	return eventcache.HandleGenericEvent(internal, ev, &msg.Msg.Tid)
 }
 
 func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
-	proc, parent := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	proc, parent := process.GetParentProcessInternal(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime)
 	if proc == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
-			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: msg.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(msg.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = proc.UnsafeGetProcess()
@@ -422,7 +425,7 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 		Args:       tetragonArgs,
 		PolicyName: msg.PolicyName,
 		Message:    msg.Message,
-		Action:     kprobeAction(msg.Action),
+		Action:     kprobeAction(msg.Msg.ActionId),
 	}
 
 	if tetragonProcess.Pid == nil {
@@ -433,7 +436,7 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 	if ec := eventcache.Get(); ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(nil, tetragonEvent, msg.Common.Ktime, msg.ProcessKey.Ktime, msg)
+		ec.Add(nil, tetragonEvent, msg.Msg.Common.Ktime, msg.Msg.ProcessKey.Ktime, msg)
 		return nil
 	}
 
@@ -446,13 +449,13 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 		// deep copy of all the fields of the thread leader from the cache in
 		// order to safely modify them, to not corrupt gRPC streams.
 		tetragonEvent.Process = proc.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &msg.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &msg.Msg.Tid)
 	}
 
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: tetragonEvent},
 		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 
@@ -469,14 +472,8 @@ func (msg *MsgGenericTracepointUnix) PolicyInfo() tracingpolicy.PolicyInfo {
 }
 
 type MsgGenericKprobeUnix struct {
-	Common       processapi.MsgCommon
-	ProcessKey   processapi.MsgExecveKey
-	Namespaces   processapi.MsgNamespaces
-	Capabilities processapi.MsgCapabilities
-	Id           uint64
-	Action       uint64
+	Msg          *tracingapi.MsgGenericKprobe
 	ReturnAction uint64
-	Tid          uint32
 	FuncName     string
 	Args         []tracingapi.MsgGenericKprobeArg
 	PolicyName   string
@@ -489,11 +486,11 @@ func (msg *MsgGenericKprobeUnix) Notify() bool {
 }
 
 func (msg *MsgGenericKprobeUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, msg.ProcessKey.Pid, &msg.Tid, timestamp)
+	return eventcache.HandleGenericInternal(ev, msg.Msg.ProcessKey.Pid, &msg.Msg.Tid, timestamp)
 }
 
 func (msg *MsgGenericKprobeUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev, &msg.Tid)
+	return eventcache.HandleGenericEvent(internal, ev, &msg.Msg.Tid)
 }
 
 func (msg *MsgGenericKprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
@@ -504,7 +501,7 @@ func (msg *MsgGenericKprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
 		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 
@@ -521,10 +518,9 @@ func (msg *MsgGenericKprobeUnix) PolicyInfo() tracingpolicy.PolicyInfo {
 }
 
 type MsgProcessLoaderUnix struct {
-	ProcessKey processapi.MsgExecveKey
-	Path       string
-	Ktime      uint64
-	Buildid    []byte
+	Msg     *tracingapi.MsgLoader
+	Path    string
+	Buildid []byte
 }
 
 type ProcessLoaderNotify struct {
@@ -541,11 +537,11 @@ func (event *ProcessLoaderNotify) SetParent(*tetragon.Process) {
 func GetProcessLoader(msg *MsgProcessLoaderUnix) *tetragon.ProcessLoader {
 	var tetragonProcess *tetragon.Process
 
-	process, _ := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	process, _ := process.GetParentProcessInternal(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime)
 	if process == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
-			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: msg.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(msg.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = process.UnsafeGetProcess()
@@ -562,7 +558,7 @@ func GetProcessLoader(msg *MsgProcessLoaderUnix) *tetragon.ProcessLoader {
 		tetragonEvent.Process = tetragonProcess
 		tetragonEvent.Path = msg.Path
 		tetragonEvent.Buildid = msg.Buildid
-		ec.Add(nil, tetragonEvent, msg.Ktime, msg.ProcessKey.Ktime, msg)
+		ec.Add(nil, tetragonEvent, msg.Msg.Common.Ktime, msg.Msg.ProcessKey.Ktime, msg)
 		return nil
 	}
 
@@ -580,7 +576,7 @@ func (msg *MsgProcessLoaderUnix) Notify() bool {
 }
 
 func (msg *MsgProcessLoaderUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, msg.ProcessKey.Pid, nil, timestamp)
+	return eventcache.HandleGenericInternal(ev, msg.Msg.ProcessKey.Pid, nil, timestamp)
 }
 
 func (msg *MsgProcessLoaderUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -607,13 +603,12 @@ func (msg *MsgProcessLoaderUnix) Cast(o interface{}) notify.Message {
 }
 
 type MsgGenericUprobeUnix struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Tid        uint32
+	Msg        *tracingapi.MsgGenericKprobe
 	Path       string
 	Symbol     string
 	PolicyName string
 	Message    string
+	Args       []tracingapi.MsgGenericKprobeArg
 }
 
 func (msg *MsgGenericUprobeUnix) Notify() bool {
@@ -628,21 +623,22 @@ func (msg *MsgGenericUprobeUnix) PolicyInfo() tracingpolicy.PolicyInfo {
 }
 
 func (msg *MsgGenericUprobeUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, msg.ProcessKey.Pid, &msg.Tid, timestamp)
+	return eventcache.HandleGenericInternal(ev, msg.Msg.ProcessKey.Pid, &msg.Msg.Tid, timestamp)
 }
 
 func (msg *MsgGenericUprobeUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev, &msg.Tid)
+	return eventcache.HandleGenericEvent(internal, ev, &msg.Msg.Tid)
 }
 
 func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 	var tetragonParent, tetragonProcess *tetragon.Process
+	var tetragonArgs []*tetragon.KprobeArgument
 
-	proc, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	proc, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
 	if proc == nil {
 		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
 	} else {
 		tetragonProcess = proc.UnsafeGetProcess()
@@ -656,6 +652,10 @@ func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 		tetragonParent = parent.UnsafeGetProcess()
 	}
 
+	for _, arg := range event.Args {
+		tetragonArgs = append(tetragonArgs, getKprobeArgument(arg))
+	}
+
 	tetragonEvent := &tetragon.ProcessUprobe{
 		Process:    tetragonProcess,
 		Parent:     tetragonParent,
@@ -663,6 +663,7 @@ func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 		Symbol:     event.Symbol,
 		PolicyName: event.PolicyName,
 		Message:    event.Message,
+		Args:       tetragonArgs,
 	}
 
 	if tetragonProcess.Pid == nil {
@@ -673,7 +674,7 @@ func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 	if ec := eventcache.Get(); ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(nil, tetragonEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -686,7 +687,7 @@ func GetProcessUprobe(event *MsgGenericUprobeUnix) *tetragon.ProcessUprobe {
 		// deep copy of all the fields of the thread leader from the cache in
 		// order to safely modify them, to not corrupt gRPC streams.
 		tetragonEvent.Process = proc.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Tid)
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
 	}
 	return tetragonEvent
 }
@@ -699,7 +700,7 @@ func (msg *MsgGenericUprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessUprobe{ProcessUprobe: k},
 		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 

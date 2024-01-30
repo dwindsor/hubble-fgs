@@ -149,18 +149,6 @@ func (t *tracepointTable) getTracepoint(idx int) (*genericTracepoint, error) {
 	return nil, fmt.Errorf("tracepoint table: invalid id:%d (len=%d)", idx, len(t.arr))
 }
 
-// getTracepointMetaArg is a temporary helper to find meta values while tracepoint
-// converts into new CRD and config formats.
-func getTracepointMetaValue(arg *v1alpha1.KProbeArg) int {
-	if arg.SizeArgIndex > 0 {
-		return int(arg.SizeArgIndex)
-	}
-	if arg.ReturnCopy {
-		return -1
-	}
-	return 0
-}
-
 func (out *genericTracepointArg) String() string {
 	return fmt.Sprintf("genericTracepointArg{CtxOffset: %d format: %+v}", out.CtxOffset, out.format)
 }
@@ -621,13 +609,9 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	unix := &tracing.MsgGenericTracepointUnix{
-		Common:     m.Common,
-		ProcessKey: m.ProcessKey,
-		Id:         m.FuncId,
-		Tid:        m.Tid,
-		Subsys:     "UNKNOWN",
-		Event:      "UNKNOWN",
-		Action:     m.ActionId,
+		Msg:    &m,
+		Subsys: "UNKNOWN",
+		Event:  "UNKNOWN",
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(int(m.FuncId))

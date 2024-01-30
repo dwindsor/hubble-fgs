@@ -55,7 +55,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=auto;int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;load_info;module;syscall64;
+	// +kubebuilder:validation:Enum=auto;int;int8;uint8;int16;uint16;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;load_info;module;syscall64;
 	// +kubebuilder:default=auto
 	// Argument type.
 	Type string `json:"type"`
@@ -262,6 +262,9 @@ type UProbeSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of function arguments to include in the trace output.
+	Args []KProbeArg `json:"args,omitempty"`
 }
 
 type ListSpec struct {
@@ -352,6 +355,6 @@ type PodInfoList struct {
 }
 
 type KillerSpec struct {
-	// syscalls where killer is executed in
-	Syscalls []string `json:"syscalls"`
+	// Calls where killer is executed in
+	Calls []string `json:"calls"`
 }

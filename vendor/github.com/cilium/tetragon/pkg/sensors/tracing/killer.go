@@ -108,7 +108,7 @@ func (kh *killerHandler) LoadProbe(args sensors.LoadProbeArgs) error {
 }
 
 // select proper override method based on configuration and spec options
-func selectOverrideMethod(specOpts *specOptions) (OverrideMethod, error) {
+func selectOverrideMethod(specOpts *specOptions, hasSyscall bool) (OverrideMethod, error) {
 	overrideMethod := specOpts.OverrideMethod
 	switch overrideMethod {
 	case OverrideMethodDefault:
@@ -125,7 +125,7 @@ func selectOverrideMethod(specOpts *specOptions) (OverrideMethod, error) {
 			return OverrideMethodInvalid, fmt.Errorf("option override return set, but it is not supported")
 		}
 	case OverrideMethodFmodRet:
-		if !bpf.HasModifyReturnSyscall() {
+		if !bpf.HasModifyReturn() || (hasSyscall && !bpf.HasModifyReturnSyscall()) {
 			return OverrideMethodInvalid, fmt.Errorf("option fmod_ret set, but it is not supported")
 		}
 	}
@@ -158,9 +158,11 @@ func (kh *killerHandler) createKillerSensor(
 
 	killer := killers[0]
 
+	var hasSyscall bool
+
 	// get all the syscalls
-	for idx := range killer.Syscalls {
-		sym := killer.Syscalls[idx]
+	for idx := range killer.Calls {
+		sym := killer.Calls[idx]
 		if strings.HasPrefix(sym, "list:") {
 			listName := sym[len("list:"):]
 
@@ -169,18 +171,34 @@ func (kh *killerHandler) createKillerSensor(
 				return nil, fmt.Errorf("Error list '%s' not found", listName)
 			}
 
-			if !isSyscallListType(list.Type) {
-				return nil, fmt.Errorf("Error list '%s' is not syscall type", listName)
-			}
 			kh.syscallsSyms = append(kh.syscallsSyms, list.Values...)
 			continue
 		}
 
-		pfxSym, err := arch.AddSyscallPrefix(sym)
-		if err != nil {
-			return nil, err
+		kh.syscallsSyms = append(kh.syscallsSyms, sym)
+	}
+
+	var err error
+
+	// fix syscalls
+	for idx, sym := range kh.syscallsSyms {
+		isPrefix := arch.HasSyscallPrefix(sym)
+		isSyscall := strings.HasPrefix(sym, "sys_")
+		isSecurity := strings.HasPrefix(sym, "security_")
+
+		if !isSyscall && !isSecurity && !isPrefix {
+			return nil, fmt.Errorf("killer sensor requires either syscall or security_ functions")
 		}
-		kh.syscallsSyms = append(kh.syscallsSyms, pfxSym)
+
+		if isSyscall {
+			sym, err = arch.AddSyscallPrefix(sym)
+			if err != nil {
+				return nil, err
+			}
+			kh.syscallsSyms[idx] = sym
+		}
+
+		hasSyscall = hasSyscall || isSyscall || isPrefix
 	}
 
 	// register killer sensor
@@ -197,7 +215,7 @@ func (kh *killerHandler) createKillerSensor(
 	}
 
 	// select proper override method based on configuration and spec options
-	overrideMethod, err := selectOverrideMethod(specOpts)
+	overrideMethod, err := selectOverrideMethod(specOpts, hasSyscall)
 	if err != nil {
 		return nil, err
 	}

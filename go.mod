@@ -11,7 +11,7 @@ require (
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
 	github.com/containernetworking/plugins v1.4.0
 	github.com/cri-o/cri-o v1.29.1
-	github.com/docker/docker v24.0.8+incompatible
+	github.com/docker/docker v25.0.1+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.16.0
 	github.com/google/gops v0.3.28
@@ -149,8 +149,7 @@ require (
 	github.com/containers/storage v1.51.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/go-connections v0.4.1-0.20231031175723-0b8c1f4e07a0 // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

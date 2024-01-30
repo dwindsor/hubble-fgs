@@ -9,14 +9,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"path"
 	"strings"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/api/dataapi"
 	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
@@ -34,11 +32,9 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/reader/network"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/cilium/tetragon/pkg/strutils"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 
@@ -88,13 +84,6 @@ type kprobeLoadArgs struct {
 	config    *api.EventConfig
 }
 
-type argPrinters struct {
-	ty      int
-	index   int
-	maxData bool
-	label   string
-}
-
 type pendingEventKey struct {
 	eventId    uint64
 	ktimeEnter uint64
@@ -103,8 +92,8 @@ type pendingEventKey struct {
 // internal genericKprobe info
 type genericKprobe struct {
 	loadArgs          kprobeLoadArgs
-	argSigPrinters    []argPrinters
-	argReturnPrinters []argPrinters
+	argSigPrinters    []argPrinter
+	argReturnPrinters []argPrinter
 	funcName          string
 
 	// for kprobes that have a retprobe, we maintain the enter events in
@@ -169,39 +158,6 @@ func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
 var (
 	MaxFilterIntArgs = 8
 )
-
-const (
-	argReturnCopyBit = 1 << 4
-	argMaxDataBit    = 1 << 5
-)
-
-func argReturnCopy(meta int) bool {
-	return meta&argReturnCopyBit != 0
-}
-
-// meta value format:
-// bits
-//
-//	0-3 : SizeArgIndex
-//	  4 : ReturnCopy
-//	  5 : MaxData
-func getMetaValue(arg *v1alpha1.KProbeArg) (int, error) {
-	var meta int
-
-	if arg.SizeArgIndex > 0 {
-		if arg.SizeArgIndex > 15 {
-			return 0, fmt.Errorf("invalid SizeArgIndex value (>15): %v", arg.SizeArgIndex)
-		}
-		meta = int(arg.SizeArgIndex)
-	}
-	if arg.ReturnCopy {
-		meta = meta | argReturnCopyBit
-	}
-	if arg.MaxData {
-		meta = meta | argMaxDataBit
-	}
-	return meta, nil
-}
 
 func multiKprobePinPath(sensorPath string) string {
 	return sensors.PathJoin(sensorPath, "multi_kprobe")
@@ -354,6 +310,9 @@ func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*
 		socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), load)
 		maps = append(maps, socktrack)
 	}
+
+	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
+	maps = append(maps, killerDataMap)
 
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
@@ -645,8 +604,8 @@ func createGenericKprobeSensor(
 // it to the genericKprobeTable. The caller should make sure that this entry is
 // properly removed on kprobe removal.
 func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idtable.EntryID, err error) {
-	var argSigPrinters []argPrinters
-	var argReturnPrinters []argPrinters
+	var argSigPrinters []argPrinter
+	var argReturnPrinters []argPrinter
 	var setRetprobe bool
 	var argRetprobe *v1alpha1.KProbeArg
 	var argsBTFSet [api.MaxArgsSupported]bool
@@ -718,7 +677,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 		config.ArgM[a.Index] = uint32(argMValue)
 
 		argsBTFSet[a.Index] = true
-		argP := argPrinters{index: j, ty: argType, maxData: a.MaxData, label: a.Label}
+		argP := argPrinter{index: j, ty: argType, maxData: a.MaxData, label: a.Label}
 		argSigPrinters = append(argSigPrinters, argP)
 	}
 
@@ -744,7 +703,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 		}
 		config.ArgReturn = int32(argType)
 		argsBTFSet[api.ReturnArgIndex] = true
-		argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
+		argP := argPrinter{index: api.ReturnArgIndex, ty: argType}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
 		config.ArgReturn = int32(0)
@@ -757,7 +716,7 @@ func addKprobe(funcName string, f *v1alpha1.KProbeSpec, in *addKprobeIn) (id idt
 		argType := gt.GenericTypeFromString(argRetprobe.Type)
 		config.ArgReturnCopy = int32(argType)
 
-		argP := argPrinters{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
+		argP := argPrinter{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
 		config.ArgReturnCopy = int32(0)
@@ -901,6 +860,9 @@ func createKprobeSensorFromEntry(kprobeEntry *genericKprobe, sensorPath string,
 		socktrack := program.MapBuilderPin("socktrack_map", sensors.PathJoin(sensorPath, "socktrack_map"), load)
 		maps = append(maps, socktrack)
 	}
+
+	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
+	maps = append(maps, killerDataMap)
 
 	if kprobeEntry.loadArgs.retprobe {
 		pinRetProg := sensors.PathJoin(pinPath, fmt.Sprintf("%s_ret_prog", kprobeEntry.funcName))
@@ -1052,99 +1014,6 @@ var errParseStringSize = errors.New("error parsing string size from binary")
 // this is from bpf/process/types/basic.h 'MAX_STRING'
 const maxStringSize = 1024
 
-// parseString parses strings encoded from BPF copy_strings in the form:
-// *---------*---------*
-// | 4 bytes | N bytes |
-// |  size   | string  |
-// *---------*---------*
-func parseString(r io.Reader) (string, error) {
-	var size int32
-	err := binary.Read(r, binary.LittleEndian, &size)
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", errParseStringSize, err)
-	}
-
-	if size < 0 {
-		return "", errors.New("string size is negative")
-	}
-
-	// limit the size of the string to avoid huge memory allocation and OOM kill in case of issue
-	if size > maxStringSize {
-		return "", fmt.Errorf("string size too large: %d, max size is %d", size, maxStringSize)
-	}
-	stringBuffer := make([]byte, size)
-	err = binary.Read(r, binary.LittleEndian, &stringBuffer)
-	if err != nil {
-		return "", fmt.Errorf("error parsing string from binary with size %d: %s", size, err)
-	}
-
-	// remove the trailing '\0' from the C string
-	if len(stringBuffer) > 0 && stringBuffer[len(stringBuffer)-1] == '\x00' {
-		stringBuffer = stringBuffer[:len(stringBuffer)-1]
-	}
-
-	return strutils.UTF8FromBPFBytes(stringBuffer), nil
-}
-
-func ReadArgBytes(r *bytes.Reader, index int, hasMaxData bool) (*api.MsgGenericKprobeArgBytes, error) {
-	var bytes, bytes_rd, hasDataEvents int32
-	var arg api.MsgGenericKprobeArgBytes
-
-	if hasMaxData {
-		/* First int32 indicates if data events are used (1) or not (0). */
-		if err := binary.Read(r, binary.LittleEndian, &hasDataEvents); err != nil {
-			return nil, fmt.Errorf("failed to read original size for buffer argument: %w", err)
-		}
-		if hasDataEvents != 0 {
-			var desc dataapi.DataEventDesc
-
-			if err := binary.Read(r, binary.LittleEndian, &desc); err != nil {
-				return nil, err
-			}
-			data, err := observer.DataGet(desc)
-			if err != nil {
-				return nil, err
-			}
-			arg.Index = uint64(index)
-			arg.OrigSize = uint64(len(data) + int(desc.Leftover))
-			arg.Value = data
-			return &arg, nil
-		}
-	}
-
-	if err := binary.Read(r, binary.LittleEndian, &bytes); err != nil {
-		return nil, fmt.Errorf("failed to read original size for buffer argument: %w", err)
-	}
-
-	arg.Index = uint64(index)
-	if bytes == CharBufSavedForRetprobe {
-		return &arg, nil
-	}
-	// bpf-side returned an error
-	if bytes < 0 {
-		// NB: once we extended arguments to also pass errors, we can change
-		// this.
-		arg.Value = []byte(kprobeCharBufErrorToString(bytes))
-		return &arg, nil
-	}
-	arg.OrigSize = uint64(bytes)
-	if err := binary.Read(r, binary.LittleEndian, &bytes_rd); err != nil {
-		return nil, fmt.Errorf("failed to read size for buffer argument: %w", err)
-	}
-
-	if bytes_rd > 0 {
-		arg.Value = make([]byte, bytes_rd)
-		if err := binary.Read(r, binary.LittleEndian, &arg.Value); err != nil {
-			return nil, fmt.Errorf("failed to read buffer (size: %d): %w", bytes_rd, err)
-		}
-	}
-
-	// NB: there are cases (e.g., read()) where it is valid to have an
-	// empty (zero-length) buffer.
-	return &arg, nil
-
-}
-
 func getUrl(url string) {
 	// We fire and forget URLs, and we don't care if they hit or not.
 	http.Get(url)
@@ -1205,21 +1074,15 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 	}
 
 	unix := &tracing.MsgGenericKprobeUnix{}
-	unix.Common = m.Common
-	unix.ProcessKey = m.ProcessKey
-	unix.Id = m.FuncId
-	unix.Action = m.ActionId
-	unix.Tid = m.Tid
+	unix.Msg = m
 	unix.FuncName = gk.funcName
-	unix.Namespaces = m.Namespaces
-	unix.Capabilities = m.Capabilities
 	unix.PolicyName = gk.policyName
 	unix.Message = gk.message
 
 	returnEvent := m.Common.Flags&processapi.MSG_COMMON_FLAG_RETURN != 0
 
 	var ktimeEnter uint64
-	var printers []argPrinters
+	var printers []argPrinter
 	if returnEvent {
 		// if this a return event, also read the ktime of the enter event
 		err := binary.Read(r, binary.LittleEndian, &ktimeEnter)
@@ -1262,308 +1125,14 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 		}
 	}
 
+	// Get argument objects for specific printers/types
 	for _, a := range printers {
-		switch a.ty {
-		case gt.GenericIntType, gt.GenericS32Type:
-			var output int32
-			var arg api.MsgGenericKprobeArgInt
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Int type error")
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Value = output
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericFileType, gt.GenericFdType, gt.GenericKiocb:
-			var arg api.MsgGenericKprobeArgFile
-			var flags uint32
-			var b int32
-
-			/* Eat file descriptor its not used in userland */
-			if a.ty == gt.GenericFdType {
-				binary.Read(r, binary.LittleEndian, &b)
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Value, err = parseString(r)
-			if err != nil {
-				if errors.Is(err, errParseStringSize) {
-					// If no size then path walk was not possible and file was
-					// either a mount point or not a "file" at all which can
-					// happen if running without any filters and kernel opens an
-					// anonymous inode. For this lets just report its on "/" all
-					// though pid filtering will mostly catch this.
-					arg.Value = "/"
-				} else {
-					logger.GetLogger().WithError(err).Warn("error parsing arg type file")
-				}
-			}
-
-			// read the first byte that keeps the flags
-			err := binary.Read(r, binary.LittleEndian, &flags)
-			if err != nil {
-				flags = 0
-			}
-
-			arg.Flags = flags
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericPathType:
-			var arg api.MsgGenericKprobeArgPath
-			var flags uint32
-
-			arg.Index = uint64(a.index)
-			arg.Value, err = parseString(r)
-			if err != nil {
-				if errors.Is(err, errParseStringSize) {
-					arg.Value = "/"
-				} else {
-					logger.GetLogger().WithError(err).Warn("error parsing arg type path")
-				}
-			}
-
-			// read the first byte that keeps the flags
-			err := binary.Read(r, binary.LittleEndian, &flags)
-			if err != nil {
-				flags = 0
-			}
-
-			arg.Flags = flags
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericFilenameType, gt.GenericStringType:
-			var arg api.MsgGenericKprobeArgString
-
-			arg.Index = uint64(a.index)
-			arg.Value, err = parseString(r)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warn("error parsing arg type string")
-			}
-
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericCredType:
-			var cred api.MsgGenericCred
-			var arg api.MsgGenericKprobeArgCred
-
-			err := binary.Read(r, binary.LittleEndian, &cred)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("cred type err")
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Uid = cred.Uid
-			arg.Gid = cred.Gid
-			arg.Suid = cred.Suid
-			arg.Sgid = cred.Sgid
-			arg.Euid = cred.Euid
-			arg.Egid = cred.Egid
-			arg.FSuid = cred.FSuid
-			arg.FSgid = cred.FSgid
-			arg.SecureBits = cred.SecureBits
-			arg.Cap.Permitted = cred.Cap.Permitted
-			arg.Cap.Effective = cred.Cap.Effective
-			arg.Cap.Inheritable = cred.Cap.Inheritable
-			arg.UserNs.Level = cred.UserNs.Level
-			arg.UserNs.Uid = cred.UserNs.Uid
-			arg.UserNs.Gid = cred.UserNs.Gid
-			arg.UserNs.NsInum = cred.UserNs.NsInum
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericCharBuffer, gt.GenericCharIovec, gt.GenericIovIter:
-			if arg, err := ReadArgBytes(r, a.index, a.maxData); err == nil {
-				arg.Label = a.label
-				unix.Args = append(unix.Args, *arg)
-			} else {
-				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
-			}
-		case gt.GenericSkbType:
-			var skb api.MsgGenericKprobeSkb
-			var arg api.MsgGenericKprobeArgSkb
-
-			err := binary.Read(r, binary.LittleEndian, &skb)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("skb type err")
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Hash = skb.Hash
-			arg.Len = skb.Len
-			arg.Priority = skb.Priority
-			arg.Mark = skb.Mark
-			arg.Family = skb.Tuple.Family
-			arg.Saddr = network.GetIP(skb.Tuple.Saddr, skb.Tuple.Family).String()
-			arg.Daddr = network.GetIP(skb.Tuple.Daddr, skb.Tuple.Family).String()
-			arg.Sport = uint32(skb.Tuple.Sport)
-			arg.Dport = uint32(skb.Tuple.Dport)
-			arg.Proto = uint32(skb.Tuple.Protocol)
-			arg.SecPathLen = skb.SecPathLen
-			arg.SecPathOLen = skb.SecPathOLen
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericSockType:
-			var sock api.MsgGenericKprobeSock
-			var arg api.MsgGenericKprobeArgSock
-
-			err := binary.Read(r, binary.LittleEndian, &sock)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("sock type err")
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Family = sock.Tuple.Family
-			arg.State = sock.State
-			arg.Type = sock.Type
-			arg.Protocol = sock.Tuple.Protocol
-			arg.Mark = sock.Mark
-			arg.Priority = sock.Priority
-			arg.Saddr = network.GetIP(sock.Tuple.Saddr, sock.Tuple.Family).String()
-			arg.Daddr = network.GetIP(sock.Tuple.Daddr, sock.Tuple.Family).String()
-			arg.Sport = uint32(sock.Tuple.Sport)
-			arg.Dport = uint32(sock.Tuple.Dport)
-			arg.Sockaddr = sock.Sockaddr
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericSizeType, gt.GenericU64Type:
-			var output uint64
-			var arg api.MsgGenericKprobeArgSize
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Value = output
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericNopType:
-			// do nothing
-		case gt.GenericBpfAttr:
-			var output api.MsgGenericKprobeBpfAttr
-			var arg api.MsgGenericKprobeArgBpfAttr
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("bpf_attr type error")
-			}
-			arg.ProgType = output.ProgType
-			arg.InsnCnt = output.InsnCnt
-			length := bytes.IndexByte(output.ProgName[:], 0) // trim tailing null bytes
-			arg.ProgName = string(output.ProgName[:length])
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericPerfEvent:
-			var output api.MsgGenericKprobePerfEvent
-			var arg api.MsgGenericKprobeArgPerfEvent
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("perf_event type error")
-			}
-			length := bytes.IndexByte(output.KprobeFunc[:], 0) // trim tailing null bytes
-			arg.KprobeFunc = string(output.KprobeFunc[:length])
-			arg.Type = output.Type
-			arg.Config = output.Config
-			arg.ProbeOffset = output.ProbeOffset
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericBpfMap:
-			var output api.MsgGenericKprobeBpfMap
-			var arg api.MsgGenericKprobeArgBpfMap
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("bpf_map type error")
-			}
-
-			arg.MapType = output.MapType
-			arg.KeySize = output.KeySize
-			arg.ValueSize = output.ValueSize
-			arg.MaxEntries = output.MaxEntries
-			length := bytes.IndexByte(output.MapName[:], 0) // trim tailing null bytes
-			arg.MapName = string(output.MapName[:length])
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericU32Type:
-			var output uint32
-			var arg api.MsgGenericKprobeArgUInt
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("UInt type error")
-			}
-
-			arg.Index = uint64(a.index)
-			arg.Value = output
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericUserNamespace:
-			var output api.MsgGenericUserNamespace
-			var arg api.MsgGenericKprobeArgUserNamespace
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("user_namespace type error")
-			}
-			arg.Level = output.Level
-			arg.Uid = output.Uid
-			arg.Gid = output.Gid
-			arg.NsInum = output.NsInum
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericCapability:
-			var output api.MsgGenericKprobeCapability
-			var arg api.MsgGenericKprobeArgCapability
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("capability type error")
-			}
-			arg.Value = output.Value
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericLoadModule:
-			var output api.MsgGenericLoadModule
-			var arg api.MsgGenericKprobeArgLoadModule
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("load_module type error")
-			} else if output.Name[0] != 0x00 {
-				i := bytes.IndexByte(output.Name[:api.MODULE_NAME_LEN], 0)
-				if i == -1 {
-					i = api.MODULE_NAME_LEN
-				}
-				arg.Name = string(output.Name[:i])
-				arg.SigOk = output.SigOk
-				arg.Taints = output.Taints
-			}
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		case gt.GenericKernelModule:
-			var output api.MsgGenericLoadModule
-			var arg api.MsgGenericKprobeArgKernelModule
-
-			err := binary.Read(r, binary.LittleEndian, &output)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("kernel module type error")
-			} else if output.Name[0] != 0x00 {
-				i := bytes.IndexByte(output.Name[:api.MODULE_NAME_LEN], 0)
-				if i == -1 {
-					i = api.MODULE_NAME_LEN
-				}
-				arg.Name = string(output.Name[:i])
-				arg.Taints = output.Taints
-			}
-			arg.Label = a.label
-			unix.Args = append(unix.Args, arg)
-		default:
-			logger.GetLogger().WithError(err).WithField("event-type", a.ty).Warnf("Unknown event type")
+		arg := getArg(r, a)
+		// nop or unknown type (already logged)
+		if arg == nil {
+			continue
 		}
+		unix.Args = append(unix.Args, arg)
 	}
 
 	// Cache return value on merge and run return filters below before
@@ -1651,7 +1220,7 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *tracing.MsgGenericKpro
 			enterEv.Args = append(enterEv.Args, retArg)
 		}
 	}
-	enterEv.ReturnAction = retEv.Action
+	enterEv.ReturnAction = retEv.Msg.ActionId
 	return enterEv
 }
 
