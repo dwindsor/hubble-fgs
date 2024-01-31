@@ -47,9 +47,6 @@ OSS_DIR=./modules/tetragon-oss
 FS_SCANNER_BIN=bpf/objs/hubble-fgs-fs-scanner
 FS_SCANNER_RUNNER=bpf/objs/hubble-fgs-runner 
 
-GOLANGCILINT_WANT_VERSION = $(shell grep docker.io/golangci/golangci-lint Dockerfile.golangci-lint | cut -f 2 -d ":" | cut -c2-)
-GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
-
 # Directories to enforce copyright headers on
 COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
@@ -401,13 +398,16 @@ codegen: image-codegen
 	$(MAKE) -C api
 	$(MAKE) vendor
 
+# renovate: datasource=docker
+GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.55.2@sha256:e699df940be1810b08ba6ec050bfc34cc1931027283b5a7f607fb6a67b503876
+GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
+GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
 check:
 	golangci-lint run
 else
 check:
-	docker build -t golangci-lint:fgs . -f Dockerfile.golangci-lint
-	docker run --rm -v `pwd`:/app -w /app golangci-lint:fgs golangci-lint run
+	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
 endif
 
 .PHONY: clang-format
