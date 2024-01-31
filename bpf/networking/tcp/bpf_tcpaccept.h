@@ -85,7 +85,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		.common.op = ISO_MSG_OP_TCPACCEPT,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
-		.pad = 0,
+		.version = 0,
 		.duration = 0,
 	};
 

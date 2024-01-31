@@ -3,12 +3,13 @@
 #include "api.h"
 #include "iso_msg_types.h"
 #include "bpf_task.h"
-#include "cookie.h"
+#include "../cookie.h"
 #include "netns.h"
 #include "tlsmsg.h"
-#include "bpf_fd_to_sk.h"
+#include "../bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
 #include "bpf_network_event_config.h"
+#include "../../lib/address_family.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -62,7 +63,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		.key.ktime = process->key.ktime,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
-		.pad = 0,
+		.version = 0,
 		.duration = 0,
 	};
 

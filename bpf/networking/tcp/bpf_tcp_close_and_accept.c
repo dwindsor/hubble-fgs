@@ -69,7 +69,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 
 		.socket_cookie = cookie,
 		.socket_flags = 0,
-		.pad = 0,
+		.version = 0,
 	};
 
 	process = lookup_socketmap(&cookie);

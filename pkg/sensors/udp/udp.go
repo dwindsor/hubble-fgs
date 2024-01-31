@@ -57,6 +57,7 @@ import (
 const (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
 	UdpMapName           = "tg_udp_map"
+	UdpVerMapName        = "tg_udp_ver_map"
 	UdpRetprobeMapName   = "tg_udp_retprobe_map"
 	UdpRetprobeStatsName = "tg_udp_retprobe_map_stats"
 	UdpConfigMapName     = "tg_udp_config_map"
@@ -72,6 +73,11 @@ type udpPseudoSocket struct {
 	IPv6  uint8
 }
 
+type cookieVer struct {
+	Cookie  uint64
+	Version uint32
+}
+
 var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
 	udpStatsEnable    = false
@@ -83,7 +89,7 @@ var (
 	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	watermarkEnabled = false
 
-	pseudoSockets       = make(map[uint64](map[udpPseudoSocket]bool))
+	pseudoSockets       = make(map[cookieVer](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex
 
 	timestampEnabled = false
@@ -248,6 +254,9 @@ var (
 	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)
 	UdpMapLazy                 = program.MapBuilder(UdpMapName, InetSendLazy)
 	UdpMapLazyKprobe           = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpVerMap                  = program.MapBuilder(UdpVerMapName, InetSend)
+	UdpVerMapLazy              = program.MapBuilder(UdpVerMapName, InetSendLazy)
+	UdpVerMapLazyKprobe        = program.MapBuilder(UdpVerMapName, InetSendRecvLazy)
 	UdpRetprobeMap             = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
 	UdpRetprobeStats           = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
 	UdpConfigMap               = program.MapBuilder(UdpConfigMapName, InetSend)
@@ -267,7 +276,8 @@ type udpInfoKey struct {
 	DAddr   [2]uint64
 	DPort   uint16
 	IPv6    uint8
-	Padding [5]uint8
+	Padding uint8
+	Version uint32
 }
 
 type udpInfoValue struct {
@@ -297,8 +307,8 @@ type udpInfoValue struct {
 
 func (k *udpInfoKey) String() string {
 	ipDst := api.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
-	return fmt.Sprintf("Cookie=%d\n"+
-		"DAddr=%s:%d\n", k.Cookie, ipDst, k.DPort)
+	return fmt.Sprintf("Cookie=%d:%d\n"+
+		"DAddr=%s:%d\n", k.Version, k.Cookie, ipDst, k.DPort)
 }
 
 func (v *udpInfoValue) String() string {
@@ -400,16 +410,12 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 }
 
 func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer3.MsgIPEventUnix {
-	//	duration, err := ktime.NanoTimeSince(int64(v.CreateTime))
 	var duration time.Duration
 	if closeTimeNs > v.CreateTime {
 		duration = time.Duration(closeTimeNs - v.CreateTime)
 	} else {
 		duration = 0
 	}
-	//	if err != nil {
-	//		duration = time.Duration(0)
-	//	}
 	unix := createUdpEvent(k, v, duration)
 	unix.Msg.Common.Op = ops.MSG_OP_UDPCLOSE
 
@@ -528,7 +534,8 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 	if udpResetEvent(curr, last) {
 		ipDst := api.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
 		ipSrc := api.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
-		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key}).Warnf("UDP stats underflow")
+		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key,
+			"pid": curr.Pid, "pidktime": curr.PidKtime}).Warnf("UDP stats underflow")
 		return udpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
 
@@ -616,8 +623,9 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 		}
 		stats.Remove(*udpKey)
 		pseudoSocketsUpdate.Lock()
-		if pseudoSockets[udpKey.Cookie] != nil {
-			delete(pseudoSockets[udpKey.Cookie], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
+		pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
+		if pseudoSockets[pseudoKey] != nil {
+			delete(pseudoSockets[pseudoKey], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
 		deleteLastKey = &udpInfoKey{}
@@ -816,6 +824,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
+			UdpVerMapLazyKprobe,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigLazyMapKprobe,
@@ -844,6 +853,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		maps = []*program.Map{
 			UdpMapLazy,
+			UdpVerMapLazy,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigLazyMap,
@@ -876,6 +886,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		maps = []*program.Map{
 			UdpMap,
+			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigMap,
@@ -908,6 +919,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		}
 		maps = []*program.Map{
 			UdpMap,
+			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigMap,
@@ -1005,30 +1017,31 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	msgUnix := ip.MsgToIPUnix(&m)
+	pseudoKey := cookieVer{Cookie: m.SockCookie, Version: m.Version}
 
 	switch m.Common.Op {
 	case ops.MSG_OP_UDPCONNECT:
 		// Store the pseudo-socket against this cookie
 		pseudoSocketsUpdate.Lock()
-		pseudoSockList := pseudoSockets[m.SockCookie]
+		pseudoSockList := pseudoSockets[pseudoKey]
 		if pseudoSockList == nil {
-			pseudoSockets[m.SockCookie] = make(map[udpPseudoSocket]bool)
+			pseudoSockets[pseudoKey] = make(map[udpPseudoSocket]bool)
 		}
-		pseudoSockets[m.SockCookie][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
+		pseudoSockets[pseudoKey][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
 		pseudoSocketsUpdate.Unlock()
 		if disableConnectEvents {
 			return []observer.Event{}, nil
 		}
 	case ops.MSG_OP_UDPCLOSE:
 		// Close event contains the socket cookie that was closed. We use this
-		// as a key into the pseudoSockets map to retrieve the list of pseudo-
-		// sockets. Then we send a stats event and a close event for each one,
-		// before deleting them from the maps.
+		// along with the cookie version as a key into the pseudoSockets map
+		// to retrieve the list of pseudo-sockets. Then we send a stats event
+		// and a close event for each one, before deleting them from the maps.
 
 		// Access to stats is protected by atomic operations we don't want to
 		// serialize handlers on this lock. For mostly error cases.
 		pseudoSocketsUpdate.Lock()
-		pseudoSocketList := pseudoSockets[m.SockCookie]
+		pseudoSocketList := pseudoSockets[pseudoKey]
 		pseudoSocketsUpdate.Unlock()
 		if len(pseudoSocketList) == 0 {
 			return nil, nil
@@ -1046,10 +1059,11 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 
 		for psock := range pseudoSocketList {
 			// Send stats event
-			udpKey := udpInfoKey{Cookie: m.SockCookie, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6}
+			udpKey := udpInfoKey{Cookie: m.SockCookie, Version: m.Version, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6}
 			var udpValue udpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)
 			if err != nil {
+				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event")
 				continue
 			}
 
@@ -1094,7 +1108,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		}
 
 		pseudoSocketsUpdate.Lock()
-		delete(pseudoSockets, m.SockCookie)
+		delete(pseudoSockets, pseudoKey)
 		pseudoSocketsUpdate.Unlock()
 		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
 		return closeEvents, nil

@@ -61,7 +61,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		.key.ktime = process->key.ktime,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
-		.pad = 0,
+		.version = 0,
 		.duration = 0,
 	};
 

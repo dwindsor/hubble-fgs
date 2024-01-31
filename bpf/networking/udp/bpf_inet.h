@@ -63,10 +63,13 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	struct udp_info_value *value;
 	struct udp_info_key key;
 	struct udp_info *info;
+	u32 cookie_ver = 0;
 	int zero = 0;
 
-	key.cookie = *cookie;
-	udp_key(&key, ip, ipv6, udp, send);
+	if (process)
+		cookie_ver = process->version;
+
+	udp_key(&key, cookie, cookie_ver, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 
@@ -132,7 +135,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (process) {
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
-		emit_udp_connect_event(skb, cookie, value);
+		emit_udp_connect_event(skb, cookie, cookie_ver, value);
 #ifndef IS_KPROBE
 #ifdef TRACK_ICMP_FROM_SKB
 		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
@@ -159,12 +162,13 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	 struct timestamp_option *ts_opt, struct udphdr *udp, u64 *cookie,
 	 int payload_off, int payload_sz, u64 send)
 {
-	struct udp_info_value *value;
-	struct socketmap_value *process;
-	struct latency_config *latency_config = 0;
 	struct latency_protocol_config *udp_latency = 0;
-	int zero = 0;
+	struct latency_config *latency_config = 0;
+	struct socketmap_value *process;
+	struct udp_info_value *value;
+	u32 cookie_ver = 0;
 	s64 latency = 0;
+	int zero = 0;
 
 	if (!send) {
 		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
@@ -189,7 +193,9 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, value);
 
-	udp_dns(skb, skb_head, value, ip, ipv6, cookie, payload_off, payload_sz);
+	if (process)
+		cookie_ver = process->version;
+	udp_dns(skb, skb_head, value, ip, ipv6, cookie, cookie_ver, payload_off, payload_sz);
 	return 1;
 }
 

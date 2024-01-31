@@ -4,8 +4,8 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_udp_event.h"
-#include "cookie.h"
-#include "bpf_network_helpers.h"
+#include "../cookie.h"
+#include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -45,14 +45,15 @@ struct {
 static inline __attribute__((always_inline)) struct udp_info *
 udp4_get_info(struct udp_sock_info *sock_info)
 {
-	struct sock *sk = sock_info->sk;
-	struct inet_sock *inet = (struct inet_sock *)sk;
 	struct msghdr *msg = sock_info->msg;
+	struct sock *sk = sock_info->sk;
 	struct sockaddr_in *in;
-	int namelen;
-
+	struct inet_sock *inet;
 	struct udp_info *info;
 	int zero = 0;
+	int namelen;
+
+	inet = (struct inet_sock *)sk;
 
 	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
@@ -88,14 +89,16 @@ udp4_get_info(struct udp_sock_info *sock_info)
 static inline __attribute__((always_inline)) struct udp_info *
 udp6_get_info(struct udp_sock_info *sock_info)
 {
-	struct sock *sk = sock_info->sk;
-	struct inet_sock *inet = (struct inet_sock *)sk;
-	struct ipv6_pinfo *pinet6;
 	struct msghdr *msg = sock_info->msg;
+	struct sock *sk = sock_info->sk;
+	struct ipv6_pinfo *pinet6;
 	struct sockaddr_in6 *in;
-	int namelen;
+	struct inet_sock *inet;
 	struct udp_info *info;
 	int zero = 0;
+	int namelen;
+
+	inet = (struct inet_sock *)sk;
 
 	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
 	if (!info)
@@ -130,12 +133,12 @@ udp6_get_info(struct udp_sock_info *sock_info)
 }
 
 static inline __attribute__((always_inline)) void
-udp_key_daddr_dport(struct udp_info_key *key, struct udp_sock_info *sock_info)
+udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, struct udp_sock_info *sock_info)
 {
-	struct sock *sk = sock_info->sk;
 	struct msghdr *msg = sock_info->msg;
-	struct sockaddr_in *in;
+	struct sock *sk = sock_info->sk;
 	struct sockaddr_in6 *in6;
+	struct sockaddr_in *in;
 	int namelen;
 
 	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
@@ -165,8 +168,9 @@ udp_key_daddr_dport(struct udp_info_key *key, struct udp_sock_info *sock_info)
 		}
 	}
 	key->dport = bpf_ntohs(key->dport);
-	key->padding1 = 0;
-	key->padding2 = 0;
+	key->cookie = *cookie;
+	key->padding = 0;
+	key->version = cookie_ver;
 }
 
 static inline __attribute__((always_inline)) int
@@ -297,13 +301,15 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *sock_info;
-	struct udp_info *info = 0;
+	struct socketmap_value *process;
 	struct udp_info_value *value;
-	struct udp_info_key key;
-	int hasctx;
+	struct udp_info *info = 0;
 	int ret = PT_REGS_RC(ctx);
+	struct udp_info_key key;
+	u32 cookie_ver = 0;
 	u64 cookie = 0;
 	int zero = 0;
+	int hasctx;
 
 	if (ret < 0) {
 		del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
@@ -336,9 +342,12 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 		return 0;
 	}
 
-	key.cookie = cookie;
+	process = lookup_socketmap(&cookie);
+	if (process)
+		cookie_ver = process->version;
+
 	key.ipv6 = ipv6;
-	udp_key_daddr_dport(&key, sock_info);
+	udp_key_daddr_dport(&key, &cookie, cookie_ver, sock_info);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 	if (!value) {
@@ -376,7 +385,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 		hasctx = add_process_ctx(value);
 		update_submitted_value(value, ret);
 		if (hasctx) {
-			emit_udp_connect_event(ctx, &cookie, value);
+			emit_udp_connect_event(ctx, &cookie, cookie_ver, value);
 		} else {
 			emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 		}
@@ -387,7 +396,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 		if (!value->pid) {
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
-				emit_udp_connect_event(ctx, &cookie, value);
+				emit_udp_connect_event(ctx, &cookie, cookie_ver, value);
 			} else {
 				emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_UDP_SEND_MISSING_PROCESS);
 			}
@@ -406,12 +415,11 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 static inline __attribute__((always_inline)) struct udp_info *
 udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 {
-	struct udp_info *info;
-	int zero = 0;
-	u16 network_header_off;
-
 	struct udp_packet_details *packet;
+	u16 network_header_off;
+	struct udp_info *info;
 	void *skb_head;
+	int zero = 0;
 	u8 ipver;
 
 	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
@@ -471,16 +479,13 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 }
 
 static inline __attribute__((always_inline)) bool
-udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
+udp_set_key(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, void *ctx, struct sk_buff *skb)
 {
-	u16 network_header_off;
 	struct udp_packet_details *packet;
+	u16 network_header_off;
 	void *skb_head;
-	u8 ipver;
 	int zero = 0;
-
-	key->padding1 = 0;
-	key->padding2 = 0;
+	u8 ipver;
 
 	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
 	if (!packet)
@@ -528,6 +533,10 @@ udp_set_key(struct udp_info_key *key, void *ctx, struct sk_buff *skb)
 		key->daddr[1] = addr[1];
 	}
 	key->dport = bpf_ntohs(packet->udp.source);
+	key->cookie = *cookie;
+	key->padding = 0;
+	key->version = cookie_ver;
+
 	return true;
 }
 
@@ -601,15 +610,17 @@ udp_set_info(void *ctx, u64 *cookie, struct udp_info_value *value,
  */
 static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 {
-	struct udp_info_value *value;
-	int zero = 0;
-	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
 	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2(ctx);
+	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
 	int len = (int)PT_REGS_PARM3(ctx);
-	u64 cookie;
-	struct udp_info_key key;
-	int hasctx = 1;
+	struct socketmap_value *process;
+	struct udp_info_value *value;
+	struct udp_info_key *key;
 	int valid_addr = 0;
+	u32 cookie_ver = 0;
+	int hasctx = 1;
+	int zero = 0;
+	u64 cookie;
 
 	/* Disregard peeks */
 	if (len <= 0)
@@ -623,15 +634,24 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 		return 0;
 	}
 
-	key.cookie = cookie;
-	if (!udp_set_key(&key, ctx, skb)) {
-		key.daddr[0] = 0;
-		key.daddr[1] = 0;
-		key.ipv6 = 0;
-		key.dport = 0;
+	key = (struct udp_info_key *)map_lookup_elem(&tg_udp_key_heap, &zero);
+	if (!key)
+		return 0;
+
+	process = lookup_socketmap(&cookie);
+	if (process)
+		cookie_ver = process->version;
+
+	if (!udp_set_key(key, &cookie, cookie_ver, ctx, skb)) {
+		key->daddr[0] = 0;
+		key->daddr[1] = 0;
+		key->ipv6 = 0;
+		key->dport = 0;
+		key->cookie = cookie;
+		key->version = 0;
 	}
 
-	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
+	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
@@ -646,14 +666,14 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 
 		hasctx = add_process_ctx(value);
 		if (!hasctx) {
-			emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+			emit_ip_error_event(ctx, 0, &cookie, key->ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
 		}
 		valid_addr = udp_set_info(ctx, &cookie, value, skb);
 
 		if (hasctx && valid_addr) {
-			emit_udp_connect_event(ctx, &cookie, value);
+			emit_udp_connect_event(ctx, &cookie, cookie_ver, value);
 		}
-		map_update_elem(&tg_udp_map, &key, value, 0);
+		map_update_elem(&tg_udp_map, key, value, 0);
 	} else {
 		update_consumed_value(value, len);
 		if ((value->saddr[0] == 0 && value->saddr[1] == 0) ||
@@ -661,20 +681,20 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 			if (value->pid == 0) {
 				hasctx = add_process_ctx(value);
 				if (!hasctx) {
-					emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
+					emit_ip_error_event(ctx, 0, &cookie, key->ipv6, 0, 1, 0, IP_ERROR_UDP_RECV_MISSING_PROCESS);
 				}
 			}
 			valid_addr = udp_set_info(ctx, &cookie, value, skb);
 
 			if (hasctx && valid_addr) {
-				emit_udp_connect_event(ctx, &cookie, value);
+				emit_udp_connect_event(ctx, &cookie, cookie_ver, value);
 			}
 		}
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
 	if (!update_socketmap(&cookie, value->pid)) {
-		emit_ip_error_event(ctx, 0, &cookie, key.ipv6, 0, 1, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
+		emit_ip_error_event(ctx, 0, &cookie, key->ipv6, 0, 1, 0, IP_ERROR_UPDATE_SOCKETMAP_NO_PROCESS);
 	}
 
 	return 0;

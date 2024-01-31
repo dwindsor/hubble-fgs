@@ -17,14 +17,35 @@ struct {
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
 } tg_udp_map SEC(".maps");
 
+/* Version holds the current version number for this
+ * cookie/daddr/dport/ipv6. This number is used
+ * to make identical sockets (cookie, daddr, dport, ipv6)
+ * unique per socket instantiation. i.e. if a socket was
+ * created and used, then closed, then created with the
+ * same cookie with datagrams sent to same endpoint, then
+ * the version number would distinquish them. This
+ * version number is stored in the socketmap_value. The
+ * latest version number is stored in tg_udp_ver_map.
+ */
+
 struct udp_info_key {
 	u64 cookie;
 	u64 daddr[2];
 	u16 dport;
 	u8 ipv6;
-	u8 padding1;
-	u32 padding2;
+	u8 padding;
+	u32 version;
 }; // All fields aligned so no 'packed' attribute.
+
+/* Store the latest cookie version number. Each socket receives a
+ * new global version number, unique to each socket.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, u32);
+	__type(value, u32);
+	__uint(max_entries, 1);
+} tg_udp_ver_map SEC(".maps");
 
 struct udp_info_value {
 	u64 submitted_bytes;
@@ -69,6 +90,13 @@ struct udp_info {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
+	__type(value, struct udp_info_key);
+	__uint(max_entries, 1);
+} tg_udp_key_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, 1);
 } tg_udp_value_heap SEC(".maps");
@@ -80,8 +108,21 @@ struct {
 	__uint(max_entries, 1);
 } tg_udp_info_heap SEC(".maps");
 
+static inline __attribute__((always_inline)) u32
+udp_cookie_inc_version()
+{
+	u32 *version;
+	u32 zero = 0;
+
+	version = (u32 *)map_lookup_elem(&tg_udp_ver_map, &zero);
+	if (!version)
+		return 0;
+	__sync_fetch_and_add(version, 1);
+	return *version;
+}
+
 static inline __attribute__((always_inline)) void
-udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
+udp_key(struct udp_info_key *key, u64 *cookie, u32 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 {
 	if (send) {
 		if (!ipv6) {
@@ -110,8 +151,9 @@ udp_key(struct udp_info_key *key, struct iphdr *ip, bool ipv6, struct udphdr *ud
 		// In the key, the port is always host order.
 		key->dport = bpf_ntohs(udp->source);
 	}
-	key->padding1 = 0;
-	key->padding2 = 0;
+	key->cookie = *cookie;
+	key->padding = 0;
+	key->version = version;
 }
 
 static inline __attribute__((always_inline)) void

@@ -4,7 +4,7 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "../cookie.h"
-#include "bpf_fd_lookup.h"
+#include "../bpf_fd_lookup.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -46,8 +46,10 @@ tg_udp_destroy_sock(struct pt_regs *ctx)
 
 		.socket_cookie = cookie,
 		.socket_flags = process->socket_flags,
-		.pad = 0,
+		.version = 0,
 	};
+
+	event->version = process->version;
 
 	/* Fill in the current time as a place-holder for the duration. We will
 	 * calculate the actual duration when we walk all the pseudo-sockets

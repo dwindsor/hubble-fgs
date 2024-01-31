@@ -4,6 +4,7 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "../cookie.h"
+#include "bpf_udp_info.h"
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 
@@ -48,6 +49,10 @@ __tg_udp_init_sock(struct pt_regs *ctx)
 	}
 	process.create_time = ktime_get_ns();
 	process.last_time = process.create_time;
+
+	// Update socket version number.
+	process.version = udp_cookie_inc_version();
+
 	// Don't update the tuple map here because the socket hasn't yet
 	// been populated.
 	add_socketmap(&cookie, &process, false);

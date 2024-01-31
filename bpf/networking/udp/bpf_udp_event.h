@@ -71,7 +71,7 @@ struct {
 } tg_udp_header_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-build_udp_payload_event(struct udp_info_value *v, u64 cookie, int size)
+build_udp_payload_event(struct udp_info_value *v, u64 cookie, u32 cookie_ver, int size)
 {
 	struct msg_udp_event *val;
 	int z = 0;
@@ -99,22 +99,22 @@ build_udp_payload_event(struct udp_info_value *v, u64 cookie, int size)
 	val->event.stats.bytes_received = v->rx_bytes;
 	val->event.stats.sk_drops = v->sk_drops;
 	val->event.stats.skb_consume_misses = v->skb_consume_misses;
-	val->event.pad = 0;
 	val->event.duration = 0;
 	// WRITE_ONCE to tell compiler to use single store instead
 	// of optimizing into a byte by byte store that would be
 	// rejected by verifier.
 	WRITE_ONCE(val->event.socket_cookie, cookie);
+	val->event.version = cookie_ver;
 	return val;
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
+emit_udp_event(void *ctx, int op, u64 *cookie, u32 cookie_ver, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
 	struct msg_ip_event *val;
 
-	val = (struct msg_ip_event *)build_udp_payload_event(v, *cookie, size);
+	val = (struct msg_ip_event *)build_udp_payload_event(v, *cookie, cookie_ver, size);
 	if (!val)
 		return;
 	val->common.op = op;
@@ -123,15 +123,15 @@ emit_udp_event(void *ctx, int op, u64 *cookie, struct udp_info_value *v)
 }
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
-			 void *skb_head, struct udp_info_value *v, int off,
-			 int payload_size, size_t *size)
+create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
+			 bool ipv6, void *skb_head, struct udp_info_value *v,
+			 int off, int payload_size, size_t *size)
 {
 	struct msg_udp_event *val;
 	int err;
 
 	*size = payload_size + sizeof(struct msg_ip_event) + 1;
-	val = build_udp_payload_event(v, *cookie, *size);
+	val = build_udp_payload_event(v, *cookie, cookie_ver, *size);
 	if (!val)
 		return 0;
 
@@ -146,7 +146,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
 		:);
 #ifndef IS_KPROBE
-	err = skb_load_bytes(ctx, off, &val->payload, payload_size);
+	err = skb_load_bytes((struct __sk_buff *)ctx, off, &val->payload, payload_size);
 #else
 	err = probe_read(&val->payload, payload_size, skb_head + off);
 #endif
@@ -159,13 +159,13 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver, bool ipv6,
 		       struct udp_info_value *v, int off, int payload_size)
 {
 	struct msg_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, ip, cookie, ipv6, 0, v, off, payload_size, &size);
+	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, 0, v, off, payload_size, &size);
 	if (!val)
 		return;
 
@@ -176,15 +176,15 @@ emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
-			void *skb_head, struct udp_info_value *v, int off,
-			int payload_size)
+store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
+			bool ipv6, void *skb_head, struct udp_info_value *v,
+			int off, int payload_size)
 {
 	struct msg_udp_event *val;
 	int zero = 0;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, ip, cookie, ipv6, skb_head, v, off,
+	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, skb_head, v, off,
 				       payload_size, &size);
 	if (!val)
 		return;
@@ -203,8 +203,8 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_connect_event(void *ctx, u64 *cookie, struct udp_info_value *v)
+emit_udp_connect_event(void *ctx, u64 *cookie, u32 cookie_ver, struct udp_info_value *v)
 {
-	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, v);
+	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, cookie_ver, v);
 }
 #endif // __BPF_UDP_EVENT_H__

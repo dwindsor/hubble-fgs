@@ -5,6 +5,7 @@
 #include "../lib/networkmsg.h"
 #include "../lib/tlsmsg.h"
 #include "l3/icmp_cookie.h"
+#include "udp/bpf_udp_info.h"
 
 struct socketmap_value {
 	struct msg_execve_key key;
@@ -20,11 +21,11 @@ struct socketmap_value {
 	__u32 retranssegs;
 	__u32 sk_drops;
 	__u32 srtt;
-	__u32 pad1;
+	__u32 version;
 	__u64 rtt_buckets[8];
 	__u64 latency_buckets[8];
 	__u8 ack_finack;
-	__u8 pad2[7];
+	__u8 pad[7];
 	__u64 rtt_sum;
 	__u64 latency_sum;
 	struct msg_ip_tuple tuple;
@@ -131,7 +132,7 @@ add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 	__s64 *cntr;
 
 	if (existing) {
-		if (existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime)
+		if (existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime && existing->version == v->version)
 			return;
 		map_delete_elem(&tg_socket_map, cookie);
 	}
@@ -205,6 +206,7 @@ update_socketmap(u64 *cookie, u32 pid)
 			}
 			process->rtt_sum = 0;
 			process->latency_sum = 0;
+			process->version = udp_cookie_inc_version();
 			add_socketmap(cookie, process, true);
 		} else {
 			process->key.pid = value->key.pid;
@@ -223,6 +225,7 @@ update_socketmap(u64 *cookie, u32 pid)
 			}
 			process->rtt_sum = 0;
 			process->latency_sum = 0;
+			process->version = udp_cookie_inc_version();
 		}
 	}
 	return true;

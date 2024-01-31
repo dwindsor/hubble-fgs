@@ -67,6 +67,8 @@ __udp_bind_sock(struct pt_regs *ctx, bool ipv6)
 		   _(&(sk->__sk_common.skc_num)));
 	event->tuple.proto = IPPROTO_UDP;
 
+	event->version = process->version;
+
 	size = sizeof(struct msg_ip_event);
 	perf_event_output_metric(ctx, ISO_MSG_OP_UDPLISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 1;
