@@ -151,6 +151,7 @@ jobs:
           sudo mkdir -p /opt/tetragon.tp.d/
           sudo cp crds/examples/dns.yaml /opt/tetragon.tp.d/dns.yaml
           echo "/opt/tetragon.tp.d/" | sudo tee /etc/tetragon/tetragon.conf.d/tracing-policy-dir
+          echo "localhost:8118" | sudo tee /etc/tetragon/tetragon.conf.d/gops-address
           sudo systemctl start tetragon-enterprise
 
       - name: Test Tetragon EE with a different tracing-policy-dir
@@ -167,6 +168,7 @@ jobs:
             sudo tetra tracingpolicy list | grep dns -
             sudo tetra bugtool
             sudo grep "tetra" /var/log/tetragon/tetragon.log
+            sudo tetra bugtool 2>&1 | grep "Successfully dumped gops pprof-heap" -
 
       - name: Uninstall Tetragon EE Tarball
         run: |
