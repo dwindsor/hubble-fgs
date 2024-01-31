@@ -20,3 +20,31 @@ var (
 	RttHistogramMax uint32
 	RttHistogramMin uint32
 )
+
+type enableSocketLabels struct {
+	Ns          bool
+	Workload    bool
+	Pod         bool
+	Binary      bool
+	Dstns       bool
+	DstWorkload bool
+	DstPod      bool
+	DstLabels   bool
+	DstIP       bool
+	SourceIP    bool
+}
+
+var defaultLabels = enableSocketLabels{
+	Ns:          true,
+	Workload:    true,
+	Pod:         true,
+	Binary:      true,
+	Dstns:       true,
+	DstWorkload: true,
+	DstPod:      true,
+	DstLabels:   true,
+	DstIP:       true,
+	SourceIP:    true,
+}
+
+var CurrentLabels = defaultLabels
