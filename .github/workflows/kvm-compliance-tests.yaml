@@ -35,9 +35,9 @@ jobs:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - 'bpf-next-20240130.111018'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - '6.6-20240130.111018'
           # FIXME: following kernels temporarily disabled pending bugfixes
-          # # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          # - '6.6-20240130.111018'
           # # renovate: datasource=docker depName=quay.io/lvh-images/kind
           # - '6.1-20240130.111018'
           # # renovate: datasource=docker depName=quay.io/lvh-images/kind
