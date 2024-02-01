@@ -43,28 +43,28 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
 	labels := strings.Join(res.Socket.DestinationNames, ",")
 
-	if !tcpconfig.CurrentLabels.Ns {
+	if !tcpconfig.CurrentLabels["ns"] {
 		ns = ""
 	}
-	if !tcpconfig.CurrentLabels.Workload {
+	if !tcpconfig.CurrentLabels["workload"] {
 		w = ""
 	}
-	if !tcpconfig.CurrentLabels.Pod {
+	if !tcpconfig.CurrentLabels["pod"] {
 		p = ""
 	}
-	if !tcpconfig.CurrentLabels.Binary {
+	if !tcpconfig.CurrentLabels["binary"] {
 		b = ""
 	}
-	if !tcpconfig.CurrentLabels.Dstns {
+	if !tcpconfig.CurrentLabels["dstns"] {
 		dstns = ""
 	}
-	if !tcpconfig.CurrentLabels.DstWorkload {
+	if !tcpconfig.CurrentLabels["dstworkload"] {
 		dstWorkload = ""
 	}
-	if !tcpconfig.CurrentLabels.DstPod {
+	if !tcpconfig.CurrentLabels["dstpod"] {
 		dstPodString = ""
 	}
-	if !tcpconfig.CurrentLabels.DstLabels {
+	if !tcpconfig.CurrentLabels["dstlabels"] {
 		labels = ""
 	}
 
@@ -427,16 +427,16 @@ type srcSocketLabels struct {
 func createTCPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	if !tcpconfig.CurrentLabels.Ns {
+	if !tcpconfig.CurrentLabels["ns"] {
 		ns = ""
 	}
-	if !tcpconfig.CurrentLabels.Workload {
+	if !tcpconfig.CurrentLabels["workload"] {
 		w = ""
 	}
-	if !tcpconfig.CurrentLabels.Pod {
+	if !tcpconfig.CurrentLabels["pod"] {
 		p = ""
 	}
-	if !tcpconfig.CurrentLabels.Binary {
+	if !tcpconfig.CurrentLabels["binary"] {
 		b = ""
 	}
 

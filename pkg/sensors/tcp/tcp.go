@@ -357,6 +357,7 @@ func (tcp *tcpSensor) PolicyHandler(
 
 	if spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
+		tcpconfig.ConfigureLabels(spec.Parser.Tcp.Metrics.LabelFilters)
 	} else {
 		tcpconfig.MetricsEnabled = true
 	}

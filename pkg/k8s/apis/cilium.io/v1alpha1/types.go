@@ -365,6 +365,9 @@ type PromMetrics struct {
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Label Filters mask out labels in the metrics
+	LabelFilters []string `json:"labelFilters"`
 }
 
 type ParserPolicySpec struct {

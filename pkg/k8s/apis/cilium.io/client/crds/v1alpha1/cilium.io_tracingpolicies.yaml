@@ -1164,6 +1164,11 @@ spec:
                           enable:
                             default: true
                             type: boolean
+                          labelFilters:
+                            description: Label Filters mask out labels in the metrics
+                            items:
+                              type: string
+                            type: array
                         type: object
                       ports:
                         description: A list of DNS ports
@@ -1437,6 +1442,11 @@ spec:
                           enable:
                             default: true
                             type: boolean
+                          labelFilters:
+                            description: Label Filters mask out labels in the metrics
+                            items:
+                              type: string
+                            type: array
                         type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
@@ -1631,6 +1641,11 @@ spec:
                           enable:
                             default: true
                             type: boolean
+                          labelFilters:
+                            description: Label Filters mask out labels in the metrics
+                            items:
+                              type: string
+                            type: array
                         type: object
                       seqCheck:
                         description: UDP sequence check observability policy specification
