@@ -18,7 +18,7 @@ import (
 
 var (
 	LabelStringTCPSrc = []string{"namespace", "workload", "pod", "binary"}
-	LabelStringTCPDst = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns"}
+	LabelStringTCPDst = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns", "dstip"}
 	LabelStringTCP    = append(LabelStringTCPSrc, LabelStringTCPDst[:]...)
 	LabelStringTCPLe  = append(LabelStringTCP, "le")
 )

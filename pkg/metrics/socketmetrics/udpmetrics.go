@@ -20,7 +20,7 @@ import (
 
 var (
 	LabelStringUDPSrc      = []string{"namespace", "workload", "pod", "binary"}
-	LabelStringUDPDst      = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns"}
+	LabelStringUDPDst      = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns", "dstip"}
 	LabelStringUDP         = append(LabelStringUDPSrc, LabelStringUDPDst[:]...)
 	LabelStringUDPLe       = append(LabelStringUDP, "le")
 	LabelStringMulticast   = append(LabelStringUDPSrc, "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast")

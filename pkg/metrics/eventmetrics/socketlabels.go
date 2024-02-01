@@ -29,10 +29,11 @@ type SocketLabels struct {
 	DstWorkload string
 	DstPod      string
 	DstDNS      string
+	DstIp       string
 }
 
 func (s SocketLabels) LabelString() []string {
-	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.DstNs, s.DstWorkload, s.DstPod, s.DstDNS}
+	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.DstNs, s.DstWorkload, s.DstPod, s.DstDNS, s.DstIp}
 }
 
 func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
@@ -40,6 +41,7 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
 	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
+	dstIp := res.Socket.DestinationIp
 
 	if !tcpconfig.CurrentLabels["ns"] {
 		ns = ""
@@ -65,6 +67,9 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	if !tcpconfig.CurrentLabels["dstdns"] {
 		dstDNS = ""
 	}
+	if !tcpconfig.CurrentLabels["dstip"] {
+		dstIp = ""
+	}
 
 	return &SocketLabels{
 		Ns:          ns,
@@ -75,6 +80,7 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 		DstWorkload: dstWorkload,
 		DstPod:      dstPodString,
 		DstDNS:      dstDNS,
+		DstIp:       dstIp,
 	}
 }
 
@@ -83,6 +89,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
 	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
+	dstIp := res.Socket.DestinationIp
 
 	if !udpconfig.CurrentLabels["ns"] {
 		ns = ""
@@ -108,6 +115,9 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	if !udpconfig.CurrentLabels["dstdns"] {
 		dstDNS = ""
 	}
+	if !udpconfig.CurrentLabels["dstip"] {
+		dstIp = ""
+	}
 
 	return &SocketLabels{
 		Ns:          ns,
@@ -118,6 +128,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 		DstWorkload: dstWorkload,
 		DstPod:      dstPodString,
 		DstDNS:      dstDNS,
+		DstIp:       dstIp,
 	}
 }
 

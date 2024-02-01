@@ -33,6 +33,7 @@ var defaultLabels = map[string]bool{
 	"dstdns":      true,
 	"srcmcast":    true,
 	"dstmcast":    true,
+	"dstip":       false,
 }
 
 var CurrentLabels = defaultLabels
