@@ -1,6 +1,9 @@
 name: KVM Compliance Tests (HTTP)
 
 on:
+  schedule:
+    # Run at 4PM UTC every day
+    - cron: "0 16 * * *"
   pull_request:
     paths:
     - ".github/workflows/kvm-compliance-tests.yaml"
@@ -19,6 +22,9 @@ on:
     - "bpf/lib/tlsmsg.h"
     - "bpf/parsers/parser.h"
     - "bpf/parsers/http/**"
+
+env:
+  ISSUE_LABELS: bug,area/http,kind/kernel,release-blocker,compliance-test
 
 concurrency:
   group: ${{ github.ref }}-kvm-compliance-tests
@@ -84,6 +90,7 @@ jobs:
 
       - name: Run Tests
         uses: cilium/little-vm-helper@8410a93e544b7e180a2365e5fdab0724a39bc02a # v0.0.13
+        id: runTests
         with:
           test-name: tetragon-compliance-tests
           host-mount: ./
@@ -96,3 +103,52 @@ jobs:
             export SUDO=
             make hubble-bpf
             go test ./tests/compliance -print-stdout
+
+      - name: Create an issue
+        if: ${{ failure() && steps.runTests.outcome == 'failure' && github.event_name == 'schedule' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "http: compliance test failure on ${{ matrix.kernel }}"
+          ASSIGNESS: willfindlay,jrfastab
+          LABELS: ${{ env.ISSUE_LABELS }}
+          BODY: |
+            A compliance test run failed for kernel ${{ matrix.kernel }} (Tetragon ref: ${{ github.ref }}).
+
+            See job output for more information: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cd hubble-fgs
+          previous_issue_number=$(gh issue list \
+            --label "$LABELS" \
+            -s closed \
+            -S "${{ matrix.kernel }}" \
+            --json number \
+            --jq '.[0].number')
+          if [[ -n $previous_issue_number ]]; then
+            gh issue reopen "$previous_issue_number"
+            gh issue edit \
+              --title "$TITLE" \
+              --body "$BODY" \
+              "$previous_issue_number"
+          else 
+            gh issue create \
+              --title "$TITLE" \
+              --assignee "$ASSIGNEES" \
+              --label "$LABELS" \
+              --body "$BODY"
+          fi
+
+      - name: Close existing issue
+        if: ${{ steps.runTests.outcome == 'success' && github.event_name == 'schedule' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LABELS: ${{ env.ISSUE_LABELS }}
+        run: |
+          cd hubble-fgs
+          previous_issue_number=$(gh issue list \
+            --label "$LABELS" \
+            -S "${{ matrix.kernel }}" \
+            --json number \
+            --jq '.[0].number')
+          if [[ -n $previous_issue_number ]]; then
+            gh issue close "$previous_issue_number"
+          fi
