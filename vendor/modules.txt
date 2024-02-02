@@ -1162,7 +1162,7 @@ go.etcd.io/etcd/api/v3/mvccpb
 go.etcd.io/etcd/api/v3/v3rpc/rpctypes
 go.etcd.io/etcd/api/v3/version
 go.etcd.io/etcd/api/v3/versionpb
-# go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 => go.etcd.io/etcd/client/pkg/v3 v3.5.11
+# go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 => go.etcd.io/etcd/client/pkg/v3 v3.5.12
 ## explicit; go 1.20
 go.etcd.io/etcd/client/pkg/v3/logutil
 go.etcd.io/etcd/client/pkg/v3/systemd
@@ -2197,7 +2197,7 @@ sigs.k8s.io/yaml/goyaml.v2
 # github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
 # github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 # github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
-# go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.11
+# go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.12
 # gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 # go.universe.tf/metallb => github.com/cilium/metallb v0.1.1-0.20220829170633-5d7dfb1129f7
 # sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.8.0-1
