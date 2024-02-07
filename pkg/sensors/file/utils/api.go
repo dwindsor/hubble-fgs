@@ -42,7 +42,9 @@ type FsScannerInit struct {
 }
 
 type FsScannerRename struct {
-	Path        string
+	PolicyName  string
+	Spec        v1alpha1.FileSpec
+	WalkPath    string
 	MapDir      string
 	Op          uint32
 	Action      uint32

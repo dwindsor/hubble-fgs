@@ -380,15 +380,17 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 	return client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{})
 }
 
-func RenameFsScanner(p string, m string, o uint32, a uint32, pin string, cid string, r uint32) error {
+func RenameFsScanner(w string, m string, o uint32, a uint32, pin string, cid string, spec v1alpha1.FileSpec, polName string, ruleId uint32) error {
 	f := fm.FsScannerRename{
-		Path:        p,
+		WalkPath:    w,
 		MapDir:      m,
 		Op:          o,
 		Action:      a,
 		PinPath:     pin,
 		ContainerID: cid,
-		RuleID:      r,
+		Spec:        spec,
+		PolicyName:  polName,
+		RuleID:      ruleId,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
@@ -690,9 +692,13 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 	}
 	defer lpmMap.Close()
 
-	for _, str := range spec.Paths {
-		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterMatch}); err != nil {
-			return fmt.Errorf("failed to add WatchPath: %w", err)
+	for _, p := range spec.PathsPatterns {
+		if p.Type == "PathPrefix" {
+			if err := addFilters(lpmMap, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch}); err != nil {
+				return fmt.Errorf("failed to add WatchPath: %w", err)
+			}
+		} else {
+			return fmt.Errorf("generateFIMMaps: unknown type: %s", p.Type)
 		}
 	}
 
@@ -787,6 +793,18 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 // cleanup and re-generate the contents of FIM maps
 // the maps (and programs) are loaded during the whole time of this procedure
 func reGenerateFimMaps(spec *v1alpha1.FileSpec) error {
+	// .Paths are deprecated. We translate everything to .PathsPatterns
+	// for the tests.
+	for _, p := range spec.Paths {
+		spec.PathsPatterns = append(spec.PathsPatterns, v1alpha1.FilePathPattern{
+			Type: "PathPrefix",
+			PathPrefix: &v1alpha1.PathPrefixPattern{
+				Prefix: p,
+			},
+		})
+	}
+	spec.Paths = nil
+
 	tc, put, err := pol.FileMonitoringTable.GetOneLockedOrFail()
 	if err != nil {
 		return err
@@ -993,7 +1011,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			renameCid = dstCid // both not empty -- use destination containerID
 		}
 
-		if err := RenameFsScanner(path, option.Config.BpfDir, op, action, s.PinPathPrefix, renameCid, m.RuleID); err != nil {
+		if err := RenameFsScanner(path, option.Config.BpfDir, op, action, s.PinPathPrefix, renameCid, *s.Spec, s.TpName, m.RuleID); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_mv_scanner")
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
@@ -1106,8 +1124,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	// Add rules from file_paths with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
-	for i, p := range kprobes.Paths {
-		e.TpRules[i] = p
+	for i, p := range kprobes.PathsPatterns {
+		e.TpRules[i] = fm.PathPatternToString(p)
 	}
 	pol.FileMonitoringTable.AddFIM(config.TpId, e)
 
@@ -1139,15 +1157,66 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		return nil, fmt.Errorf("failed lpmMap.Pin: %w", err)
 	}
 
-	for _, str := range kprobes.Paths {
-		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterMatch}); err != nil {
-			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
-		}
-	}
-
 	for _, str := range kprobes.PathsExclude {
 		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
+		}
+	}
+
+	mm := &ebpf.MapSpec{
+		Name:       "patterns_map_alloc",
+		Type:       bpf.BPF_MAP_TYPE_ARRAY,
+		KeySize:    uint32(4), // int
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.PatternValue{})),
+		MaxEntries: fileapi.PatternMapSize,
+	}
+
+	patternMap, err := ebpf.NewMapWithOptions(mm, ebpf.MapOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+	defer patternMap.Close()
+
+	patternPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "patterns_map_alloc"))
+	// remove the map if already exists, otheriwse Pin() will fail
+	if _, err := os.Stat(patternPinPath); err == nil {
+		os.Remove(patternPinPath)
+	}
+	if err := patternMap.Pin(patternPinPath); err != nil {
+		return nil, fmt.Errorf("failed patternMap.Pin: %w", err)
+	}
+
+	config.NumPatterns = uint32(len(kprobes.PathsPatterns))
+	for i, p := range kprobes.PathsPatterns {
+		if p.Type == "FilePrefixSuffix" {
+			key := uint32(i)
+			val := fileapi.PatternValue{
+				PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
+				SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
+				Action:    fm.FilterMatch,
+				Rule:      uint32(i),
+			}
+
+			if val.PrefixLen > 256 || val.SuffixLen > 128 {
+				return nil, fmt.Errorf("max prefix size is 256 characters and max suffix size is 128 characters: prefix:[%s], suffix:[%s]", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
+			}
+
+			copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
+			copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
+
+			if err := patternMap.Update(&key, &val, ebpf.UpdateAny); err != nil {
+				return nil, fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
+			}
+
+			if err := addFilters(lpmMap, p.FilePrefixSuffix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+				return nil, fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
+			}
+		} else if p.Type == "PathPrefix" {
+			if err := addFilters(lpmMap, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
+				return nil, fmt.Errorf("failed to add WatchPath: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("unknown pattern type: [%s]", p.Type)
 		}
 	}
 
@@ -1368,6 +1437,15 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		// only for fsnotify (kernels < 4.18, i.e. rhel8)
 		if h.name == "fsnotify" || h.name == "finish_open" || h.name == "vfs_open" {
 			m := "fsnotify_created_files_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+			)
+		}
+
+		// only for hooks that add files into maps
+		if h.name == "finish_open" || h.name == "vfs_open" || h.name == "security_inode_create" || h.name == "vfs_rename" {
+			m := "patterns_map_alloc"
 			maps = append(
 				maps,
 				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
@@ -1773,11 +1851,28 @@ func (k *observerFileSensor) PolicyHandler(
 	fid policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
-	if len(spec.FileMonitoring.Paths) == 0 {
-		if len(spec.FileMonitoring.PathsExclude) > 0 {
-			return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
-		}
+
+	newFileSpec := spec.FileMonitoring.DeepCopy()
+	for _, p := range spec.FileMonitoring.Paths {
+		newFileSpec.PathsPatterns = append(newFileSpec.PathsPatterns, v1alpha1.FilePathPattern{
+			Type: "PathPrefix",
+			PathPrefix: &v1alpha1.PathPrefixPattern{
+				Prefix: p,
+			},
+		})
+	}
+	newFileSpec.Paths = nil
+
+	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsPatterns) == 0 {
 		return nil, nil
+	}
+
+	if len(spec.FileMonitoring.Paths) > 0 && len(spec.FileMonitoring.PathsPatterns) > 0 {
+		return nil, fmt.Errorf("FileMonitoring requires only one of file_paths or file_paths_patterns to be defined")
+	}
+
+	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsExclude) > 0 {
+		return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
 	}
 
 	forceLoad := false
@@ -1852,7 +1947,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, spec.FileMonitoring, progs, config, selState)
+	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState)
 }
 
 func loadProbe(args sensors.LoadProbeArgs) error {

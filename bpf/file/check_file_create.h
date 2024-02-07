@@ -7,13 +7,12 @@
  * <  0 on error
  * == 0 no need to take any further actions
  */
-static inline __attribute__((always_inline)) int check_file_create(void *ctx, struct file *f, struct dentry *dentry, __u32 hook)
+static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, struct file *f, struct dentry *dentry, __u32 hook)
 {
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct hash_map_file_key file_key;
 	struct hash_map_file_val *file_val = 0;
-	struct bpf_lpm_trie_key *key = 0;
 	__u32 dlen_size = 0, dlen_offset = 0;
 	__u32 dir_size = 0, dir_offset = 0;
 	__u32 path_size = 0;
@@ -22,6 +21,11 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	struct qstr d_name;
 	char *buffer;
 	__u32 operation = 0, rule_id = 0;
+	struct file_config_map_value *conf = 0;
+
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return -FILE_ERR_LOOKUP_CONFIG_MAP;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -84,19 +88,11 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	}
 	msg->path.flags |= file_val->location_flags;
 
-	// although we care about files inside this directory
-	// we may have this specific file path in the exclude
-	// list now we check the trie with the initial paths
-	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
-	if (!key)
-		return -FILE_ERR_GET_TRIE_HEAP;
-
-	key->prefixlen = msg->path.size * 8;
-	memcpy(key->data, msg->path.str, 256);
-
-	action = filter_match(key, &rule_id);
-	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
-		return 0; // we don't care
+	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
+	if (action < 0) // error
+		return action;
+	if (!action) // we didn't match
+		return 0;
 
 	// and insert that inode to the hash_map_file_alloc
 	file_key.ino = msg->ino;

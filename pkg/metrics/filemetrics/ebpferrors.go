@@ -99,6 +99,7 @@ var (
 		fileapi.FileErrIoUringTask:              "get_io_uring_task",
 		fileapi.FileErrUpdateFsNotifyMap:        "update_fsnotify_map",
 		fileapi.FileErrDeleteFsNotifyMap:        "delete_fsnotify_map",
+		fileapi.FileErrLookupPatternsMap:        "lookup_patterns_map",
 		fileapi.FileErrUnexpected:               "unexpected",
 	}
 )

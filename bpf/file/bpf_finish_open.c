@@ -7,7 +7,7 @@ SEC("kprobe/finish_open")
 int BPF_KPROBE(finish_open, struct file *file, struct dentry *dentry,
 	       int (*open)(struct inode *, struct file *))
 {
-	int err, zero = 0;
+	__u32 err, zero = 0;
 	__u32 f_mode;
 	struct file_config_map_value *conf;
 

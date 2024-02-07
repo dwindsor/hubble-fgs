@@ -36,5 +36,6 @@ struct file_exec_stats _file_exec_stats;
 struct file_sel_caps _file_sel_caps;
 struct file_sel_namespaces _file_sel_namespaces;
 struct file_errors _file_errors;
+struct pattern_val _pattern_val;
 
 struct fd_lookup_config _fd_lookup_config;

@@ -7,7 +7,7 @@ SEC("kprobe/vfs_open")
 int BPF_KPROBE(vfs_open, const struct path *path, struct file *file)
 {
 	struct dentry *dentry;
-	int err, zero = 0;
+	__u32 err, zero = 0;
 	__u32 f_mode;
 	struct file_config_map_value *conf;
 

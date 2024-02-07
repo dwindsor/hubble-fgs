@@ -110,6 +110,7 @@ func TestStructAlignments(t *testing.T) {
 		"file_sel_caps":              {fileapi.SelCaps{}},
 		"file_sel_namespaces":        {fileapi.SelNs{}},
 		"file_errors":                {fileapi.FileErrors{}},
+		"pattern_val":                {fileapi.PatternValue{}},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

@@ -19,6 +19,7 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -266,7 +267,75 @@ func GetPrefixMatch(path string) ([]string, error) {
 	return result, nil
 }
 
-func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
+type PathMatcher interface {
+	GetWalkPath() string
+	OverrideAction(uint32, fs.FileMode) uint32
+	MatchPath(string, fs.FileMode) bool
+	String() string
+}
+
+type PrefixPathMatcher struct {
+	WalkPath string
+	Prefix   string
+}
+
+func (p PrefixPathMatcher) GetWalkPath() string {
+	if p.WalkPath != "" {
+		return p.WalkPath
+	}
+	return p.Prefix
+}
+
+func (p PrefixPathMatcher) OverrideAction(action uint32, _ fs.FileMode) uint32 {
+	return action
+}
+
+func (p PrefixPathMatcher) MatchPath(_ string, _ fs.FileMode) bool {
+	return true
+}
+func (p PrefixPathMatcher) String() string {
+	return fmt.Sprintf("prefix:[%s]", p.Prefix)
+}
+
+type PrefixSuffixFileMatcher struct {
+	WalkPath string
+	Prefix   string
+	Suffix   string
+}
+
+func (p PrefixSuffixFileMatcher) GetWalkPath() string {
+	if p.WalkPath != "" {
+		return p.WalkPath
+	}
+	return p.Prefix
+}
+
+func (p PrefixSuffixFileMatcher) OverrideAction(action uint32, mode fs.FileMode) uint32 {
+	if mode.IsDir() {
+		return FilterMonitor
+	}
+	return action
+}
+
+func (p PrefixSuffixFileMatcher) MatchPath(path string, mode fs.FileMode) bool {
+	if mode.IsDir() {
+		return true
+	}
+	if !mode.IsRegular() {
+		return false
+	}
+	// do not match on overlapping prefix and suffix
+	if len(path) < len(p.Prefix)+len(p.Suffix) {
+		return false
+	}
+	return strings.HasPrefix(path, p.Prefix) && strings.HasSuffix(path, p.Suffix)
+}
+
+func (p PrefixSuffixFileMatcher) String() string {
+	return fmt.Sprintf("prefix:[%s], file_suffix:[%s]", p.Prefix, p.Suffix)
+}
+
+func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -297,6 +366,12 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 		if err != nil {
 			return err
 		}
+
+		if !matcher.MatchPath(path, fileinfo.Mode()) {
+			return nil
+		}
+
+		action := matcher.OverrideAction(action, fileinfo.Mode())
 
 		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
 		if !ok {
@@ -392,6 +467,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 		return nil
 	}
 
+	path := matcher.GetWalkPath()
 	paths, err := GetPrefixMatch(path)
 	if err != nil {
 		return 0, 0, err
@@ -518,4 +594,13 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 	}
 
 	return totalFiles, totalDirectories, nil
+}
+
+func PathPatternToString(p v1alpha1.FilePathPattern) string {
+	if p.Type == "FilePrefixSuffix" {
+		return fmt.Sprintf("FilePrefixSuffix{Prefix:[%s],Suffix:[%s]}", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
+	} else if p.Type == "PathPrefix" {
+		return fmt.Sprintf("PathPrefix{Prefix:[%s]}", p.PathPrefix.Prefix)
+	}
+	return fmt.Sprintf("<unknown type: %s>", p.Type)
 }

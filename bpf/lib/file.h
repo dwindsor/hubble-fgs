@@ -16,8 +16,9 @@
 #include "process.h"
 #include "common.h"
 
-#define MAX_FILEPATH_SIZE 256
-#define MAX_NAME_SIZE	  128
+#define MAX_FILEPATH_SIZE  256
+#define MAX_COMPONENT_SIZE (MAX_FILEPATH_SIZE / 2)
+#define MAX_NAME_SIZE	   128
 
 #define HOST_FILE      (1 << 0)
 #define CONTAINER_FILE (1 << 1)
@@ -85,6 +86,15 @@ struct file_retprobe_key {
 	__u64 pid_tgid;
 	__u64 reg;
 	__u64 flags; // KRETPROBE_KEY or LSM_FMOD_KEY
+};
+
+struct pattern_val {
+	char prefix[MAX_FILEPATH_SIZE];
+	__u32 prefix_len;
+	char suffix[MAX_FILEPATH_SIZE];
+	__u32 suffix_len;
+	__u32 action;
+	__u32 rule;
 };
 
 struct lpm_key {
@@ -243,6 +253,7 @@ struct file_config_map_value {
 	__u32 max_watched_dirs;
 	__u32 max_watched_files;
 	__u32 is_less_than_419;
+	__u32 num_patterns;
 };
 
 struct file_exec_config_map_value {
@@ -321,8 +332,9 @@ struct inode_pair {
 #define FILE_ERR_IOURING_TASK		     42 // ((struct io_kiocb *)req)->ctx->mm->owner == NULL
 #define FILE_ERR_UPDATE_FSNOTIFY_MAP	     43 // map_update_elem(&fsnotify_created_files_map, ...) < 0
 #define FILE_ERR_DELETE_FSNOTIFY_MAP	     44 // map_delete_elem(&fsnotify_created_files_map, ...) < 0
-#define FILE_ERR_UNEXPECTED		     45
-#define FILE_ERR_MAX			     46
+#define FILE_ERR_GET_PATTERN_MAP	     45 // map_lookup_elem(&patterns_map_alloc, ...) == 0
+#define FILE_ERR_UNEXPECTED		     46
+#define FILE_ERR_MAX			     47
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

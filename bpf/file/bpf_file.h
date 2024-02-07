@@ -51,6 +51,9 @@
 #define MAX_FIM_SELECTORS 4
 #endif
 
+// should match PatternMapSize in client_file.go
+#define MAX_FILE_PATTERNS 32
+
 #define MINORBITS 20
 #define MINORMASK ((1U << MINORBITS) - 1)
 
@@ -211,6 +214,13 @@ struct {
 	__type(value, struct msg_capabilities);
 	__uint(max_entries, 1);
 } file_msg_caps_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct pattern_val);
+	__uint(max_entries, MAX_FILE_PATTERNS);
+} patterns_map_alloc SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
@@ -873,4 +883,115 @@ static inline __attribute__((always_inline)) void inc_error(__u32 hook, __u32 me
 	valp = map_lookup_elem(&file_errors_map, &zero);
 	if (valp)
 		__sync_fetch_and_add(&valp->m[hook][metric], 1);
+}
+
+// <  0 for error
+// == 0 ignore
+// >  0 match
+static inline __attribute__((always_inline)) int path_prefix_matcher(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
+{
+	struct bpf_lpm_trie_key *key = 0;
+	int zero = 0, action = 0;
+
+	// although we care about files inside this directory
+	// we may have this specific file path in the exclude
+	// list now we check the trie with the initial paths
+	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
+	if (!key)
+		return -FILE_ERR_GET_TRIE_HEAP;
+
+	key->prefixlen = size * 8;
+	memcpy(key->data, path, 256);
+
+	action = filter_match(key, rule_id);
+	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
+		return FILTER_IGNORE;
+	return FILTER_MATCH;
+}
+
+// <  0 for error
+// == 0 ignore
+// >  0 match
+static inline __attribute__((always_inline)) int path_pattern_matcher(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
+{
+	for (int i = 0; i < MAX_FILE_PATTERNS; i++) {
+		struct pattern_val *val;
+		int idx = i;
+
+		if (idx >= conf->num_patterns)
+			break;
+
+		val = map_lookup_elem(&patterns_map_alloc, &idx);
+		if (!val)
+			return -FILE_ERR_GET_PATTERN_MAP;
+
+		// Prefix and suffix overlap. Do not match.
+		if (val->prefix_len + val->suffix_len > size)
+			continue;
+
+		// First try to match the prefix.
+		//
+		// In most cases we use an LPM to match a prefix. Here we do a simple
+		// for-loop for that check.
+		//
+		// Consider the following rules:
+		// 1. prefix: "/home/aaa/" suffix: ".sh"
+		// 2. prefix: "/home/" suffix: ".txt"
+		//
+		// If we have a path "/home/aaa/bbb.txt" it will always match the
+		// first rule due to the Longest part of LPM. So we would never
+		// compare with the suffix of the second rule. We could try to do
+		// something more "clever", but as long as a simple for-loop works
+		// there is no need to spend more time on this for now.
+		for (int j = 0; j < MAX_COMPONENT_SIZE; j++) {
+			if (j >= val->prefix_len - 1)
+				break;
+			if (path[j] != val->prefix[j])
+				goto try_next_pattern;
+		}
+
+		// Once the prefix is matched, try to match the suffix.
+		for (int j = 0; j < MAX_COMPONENT_SIZE; j++) {
+			int offset = size - val->suffix_len;
+			if (offset < 0 || offset > MAX_COMPONENT_SIZE)
+				goto try_next_pattern;
+			if (j >= val->suffix_len - 1)
+				break;
+			if (path[j + offset] != val->suffix[j])
+				goto try_next_pattern;
+		}
+
+		// Here we have matched both.
+		return FILTER_MATCH;
+
+	try_next_pattern: // Need an empty statement after that. Otherwise we got an error to have a label before the '}'.
+			  ;
+	}
+
+	return FILTER_IGNORE;
+}
+
+typedef int (*matcher_type)(char *, __u32, __u32 *, struct file_config_map_value *);
+
+#ifdef __LARGE_BPF_PROG
+#define MATCHERS_LEN 2
+#else
+#define MATCHERS_LEN 1
+#endif
+
+// <  0 for error
+// == 0 ignore
+// >  0 match
+static inline __attribute__((always_inline)) int eval_patterns(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
+{
+	matcher_type matchers[2] = { path_prefix_matcher, path_pattern_matcher };
+	int ret, i;
+
+	for (i = 0; i < MATCHERS_LEN; ++i) {
+		ret = (matchers[i])(path, size, rule_id, conf);
+		if (ret) // if there was a match or an error, return
+			return ret;
+	}
+
+	return FILTER_IGNORE;
 }

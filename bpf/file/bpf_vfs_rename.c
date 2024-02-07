@@ -533,10 +533,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 	};
 	struct msg_file_rename_ops *msg;
 	struct hash_map_file_val *file_val = 0;
-	struct bpf_lpm_trie_key *key = 0;
 	int err, zero = 0, action = 0;
 	__u64 *old_dentry, old_dir = 0;
 	__u32 rule_id = 0;
+	struct file_config_map_value *conf;
 
 	old_dentry = map_lookup_elem(&vr_retprobe_map, &lk);
 	if (!old_dentry) {
@@ -566,6 +566,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 		}
 		return 0;
 	}
+
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return -FILE_ERR_LOOKUP_CONFIG_MAP;
 
 	// check for the metadata from the kprobe
 	val = map_lookup_elem(&rename_retprobe_map, &k);
@@ -598,17 +602,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 			if (!file_val)
 				return 0;
 
-			// check if we care about the new file
-			// if not just not add it in the inode map
-			key = map_lookup_elem(&lpm_trie_heap_key,
-					      &zero);
-			if (!key)
-				return 0;
+			action = eval_patterns(file_val->path, file_val->size, &rule_id, conf);
+			if (action < 0) // error
+				return action;
 
-			key->prefixlen = file_val->size * 8;
-			memcpy(key->data, file_val->path, 256);
-
-			action = filter_match(key, &rule_id);
 			// we care only for FILTER_MATCH actions here
 			if (action != FILTER_MATCH) {
 				val->operation = 0; // do not send an event to the user
@@ -643,17 +640,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				if (!file_val)
 					return 0;
 
-				// check if we care about the new file
-				// if not just not add it in the inode map
-				key = map_lookup_elem(&lpm_trie_heap_key,
-						      &zero);
-				if (!key)
-					return 0;
+				action = eval_patterns(file_val->path, file_val->size, &rule_id, conf);
+				if (action < 0) // error
+					return action;
 
-				key->prefixlen = file_val->size * 8;
-				memcpy(key->data, file_val->path, 256);
-
-				action = filter_match(key, &rule_id);
 				file_val->action = action;
 
 				if (val->msg.src.path.flags & CONTAINER_FILE) {

@@ -9,13 +9,12 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
  * == 0 no need to take any further actions
  * >  0 the operation to take
  */
-static inline __attribute__((always_inline)) int
+static inline __attribute__((always_inline)) __u32
 block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
-	struct bpf_lpm_trie_key *key = 0;
 	__u32 dlen_size = 0, dlen_offset = 0;
 	__u32 dir_size = 0, dir_offset = 0;
 	__u32 path_size = 0;
@@ -23,10 +22,19 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	struct qstr d_name;
 	char *buffer;
 	__u32 operation = 0, rule_id = 0;
+#ifdef __LARGE_BPF_PROG
+	struct file_config_map_value *conf;
+#endif
 
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;
+
+#ifdef __LARGE_BPF_PROG
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return -FILE_ERR_LOOKUP_CONFIG_MAP;
+#endif
 
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
@@ -80,19 +88,11 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
 	msg->path.flags |= file_val->location_flags;
 
-	// although we care about files inside this directory
-	// we may have this specific file path in the exclude
-	// list now we check the trie with the initial paths
-	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
-	if (!key)
-		return -FILE_ERR_GET_TRIE_HEAP;
-
-	key->prefixlen = msg->path.size * 8;
-	memcpy(key->data, msg->path.str, 256);
-
-	action = filter_match(key, &rule_id);
-	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
-		return 0; // we don't care
+	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
+	if (action < 0) // error
+		return action;
+	if (!action) // we didn't match
+		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
@@ -122,7 +122,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 SEC("lsm/inode_create")
 int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	int err;
+	__u32 err;
 
 	err = block_file_create(ctx, dir, dentry);
 	if (err < 0) {
@@ -138,7 +138,7 @@ int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry
 SEC("fmod_ret/security_inode_create")
 int BPF_PROG(security_inode_create_fmod, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {
-	int err;
+	__u32 err;
 
 	if (ret != 0)
 		return ret;

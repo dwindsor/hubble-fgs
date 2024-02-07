@@ -12,6 +12,18 @@ package fileapi
 
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
+// should match MAX_FILE_PATTERNS in bpf_file.h
+const PatternMapSize = 32
+
+type PatternValue struct {
+	Prefix    [256]byte `align:"prefix"`
+	PrefixLen uint32    `align:"prefix_len"`
+	Suffix    [256]byte `align:"suffix"`
+	SuffixLen uint32    `align:"suffix_len"`
+	Action    uint32    `align:"action"`
+	Rule      uint32    `align:"rule"`
+}
+
 type LPMMapKey struct {
 	Prefixlen uint32    `align:"key"`
 	Data      [256]byte `align:"data"`
@@ -153,6 +165,7 @@ type FileConfigMapValue struct {
 	MaxWatchedDirs        uint32 `align:"max_watched_dirs"`
 	MaxWatchedFiles       uint32 `align:"max_watched_files"`
 	IsLessThan419         uint32 `align:"is_less_than_419"`
+	NumPatterns           uint32 `align:"num_patterns"`
 }
 
 type FileExecConfigMapValue struct {
@@ -224,8 +237,9 @@ const (
 	FileErrIoUringTask              = 42
 	FileErrUpdateFsNotifyMap        = 43
 	FileErrDeleteFsNotifyMap        = 44
-	FileErrUnexpected               = 45
-	FileErrMax                      = 46
+	FileErrLookupPatternsMap        = 45
+	FileErrUnexpected               = 46
+	FileErrMax                      = 47
 )
 
 const (
