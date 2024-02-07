@@ -215,6 +215,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				if !strings.Contains(n, "inet_send") &&
 					!strings.Contains(n, "inet_recv") &&
 					!strings.Contains(n, "inet_lazy_recv") &&
+					!strings.Contains(n, "inet_lazy_send") &&
 					!strings.HasPrefix(n, "tg_") &&
 					!strings.HasPrefix(n, "CGroupSKB(tg_") {
 					break
@@ -247,7 +248,10 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 		case ebpf.SkMsg:
 			if bestEffort {
 				if !strings.Contains(n, "http_skmsg") &&
+					!strings.Contains(n, "http_sk_msg") &&
+					!strings.Contains(n, "fgs") &&
 					!strings.Contains(n, "tls_skmsg") &&
+					!strings.Contains(n, "tls_sk_msg") &&
 					!strings.Contains(n, "nop_skmsg") &&
 					!strings.HasPrefix(n, "tg_") &&
 					!strings.HasPrefix(n, "SkMsg(tg_") {
@@ -279,6 +283,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			if bestEffort {
 				if !strings.Contains(n, "bpf_http_parser") &&
 					!strings.Contains(n, "bpf_http_verdict") &&
+					!strings.Contains(n, "bpf_skskb_http_verdict") &&
 					!strings.Contains(n, "bpf_tls_skskb") &&
 					!strings.Contains(n, "bpf_nop_") &&
 					!strings.HasPrefix(n, "tg_") &&
@@ -314,13 +319,13 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBStreamParser error")
 			}
 			opts.Attach = ebpf.AttachSkSKBVerdict
-			link.RawDetachProgram(opts)
 			if err := link.RawDetachProgram(opts); err != nil {
 				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBVerdict error")
 			}
 		case ebpf.SockOps:
 			if bestEffort {
 				if !strings.Contains(n, "fgs") &&
+					!strings.Contains(n, "bpf_sockmap") &&
 					!strings.HasPrefix(n, "tg_") &&
 					!strings.HasPrefix(n, "SockOps(tg_") {
 					break
@@ -342,7 +347,14 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				logger.GetLogger().WithError(err).Warn("RawDetachProgram SockOps error")
 			}
 		case ebpf.CGroupSockopt:
-			if tgTypes {
+			if bestEffort {
+				if !strings.Contains(n, "fgs") &&
+					!strings.Contains(n, "setsockopt") &&
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSockopt(tg_") {
+					break
+				}
+			} else if tgTypes {
 				if !strings.HasPrefix(n, "tg_") &&
 					!strings.HasPrefix(n, "CGroupSockopt(tg_") {
 					break
