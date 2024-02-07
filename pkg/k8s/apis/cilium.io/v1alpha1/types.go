@@ -191,13 +191,56 @@ type FileSelector struct {
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
 }
 
+// +kubebuilder:validation:MinLength=1
+// +kubebuilder:validation:MaxLength=128
+// +kubebuilder:validation:Pattern=\/.*
+// Required and should start with "/". Maximum length is 128 characters.
+type PathPrefix = string
+
+type FilePrefixSuffixPattern struct {
+	// +kubebuilder:validation:Required
+	// The prefix of the path to match.
+	Prefix PathPrefix `json:"prefix,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MaxLength=128
+	// The suffix of the file to match. Can be empty. In that case, we only use the prefix. Maximum length is 128 characters.
+	Suffix string `json:"suffix,omitempty"`
+}
+
+type PathPrefixPattern struct {
+	// +kubebuilder:validation:Required
+	// The prefix of the path to match. Similar to file_paths.
+	Prefix PathPrefix `json:"prefix,omitempty"`
+}
+
+// +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix) && !has(self.path_prefix)) || (self.type == 'PathPrefix' && !has(self.file_prefix_suffix) && has(self.path_prefix))",message="Type should match the argument type."
+type FilePathPattern struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix
+	// FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
+	// PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
+	Type string `json:"type"`
+	// +kubebuilder:validation:Optional
+	// Should be defined in the case of type=FilePrefixSuffix.
+	FilePrefixSuffix *FilePrefixSuffixPattern `json:"file_prefix_suffix,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Should be defined in the case of type=PathPrefix.
+	PathPrefix *PathPrefixPattern `json:"path_prefix,omitempty"`
+}
+
+// +kubebuilder:validation:XValidation:rule="(has(self.file_paths_patterns) && (size(self.file_paths_patterns.filter(c, c.type == 'FilePrefixSuffix')) <= 32)) || (!has(self.file_paths_patterns))",message="We support up to 32 entries with type FilePrefixSuffix under file_paths_patterns."
+// +kubebuilder:validation:XValidation:rule="((has(self.file_paths) && (size(self.file_paths) > 0)) || (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))) && (!((has(self.file_paths) && (size(self.file_paths) > 0)) && (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))))",message="You should define exactly one of file_paths or file_paths_patterns."
 type FileSpec struct {
 	// +kubebuilder:validation:Optional
-	// What paths to monitor
+	// +kubebuilder:deprecatedversion:warning="file_paths is deprecated. Use file_paths_patterns instead"
+	// What paths to monitor. Only prefixes. Deprecated, please use file_paths_patterns instead.
 	Paths []string `json:"file_paths,omitempty"`
 	// +kubebuilder:validation:Optional
-	// What paths to exclude from monitored paths
+	// What paths to exclude from monitored paths. Applies both to file_paths and file_paths_patterns.
 	PathsExclude []string `json:"file_paths_exclude,omitempty"`
+	// +kubebuilder:validation:Optional
+	// What paths to monitor using patterns.
+	PathsPatterns []FilePathPattern `json:"file_paths_patterns,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Config flags to enable/disable specific functionality
 	Config map[string]string `json:"file_config,omitempty"`
