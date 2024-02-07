@@ -1,0 +1,40 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_config:
+      # Currently we have a check to load FIM only for kernels >= 4.19.
+      # By using this flag we provide the ability to load (and test) FIM
+      # on older kernels (i.e. openshift 4.18).
+      forceLoad: "false"
+      # This option allows users to enable file digests in exec events.
+      # This is currently supported in newer kernels (>= 5.18).
+      # If the user enables them but the kernel does not support them,
+      # we fallback to not using them.
+      enableExecDigests: "false"
+      # This option allows users to define a specific size for the map
+      # that holds the watched file. The default value (i.e. if
+      # the user does not specify that option) is 128K entries.
+      maxWatchedFiles: "131072"
+      # This option allows users to define a specific size for the map
+      # that holds the watched directories. The default value (i.e. if
+      # the user does not specify that option) is 128K entries.
+      maxWatchedDirs: "131072"
+    file_paths_patterns:
+    - type: FilePrefixSuffix # will match *ONLY* files that have prefix "/home/"" and suffix ".ssh/authorized_keys"
+      file_prefix_suffix:
+        prefix: "/home/"
+        suffix: ".ssh/authorized_keys"
+    - type: FilePrefixSuffix # will match *ONLY* files that have prefix "/root/"
+      file_prefix_suffix:
+        prefix: "/root/"
+    - type: PathPrefix # will match all file and directory operations that have prefix "/etc/" (same semantics as file_paths)
+      path_prefix:
+        prefix: "/etc/"
+    file_paths_exclude: # this will exclude paths from all the patterns defined in file_paths_patterns
+    - "/etc/something/"
+    - "/home/foo/"
+    - "/home/bar/"
+    monitorHostFiles: true
