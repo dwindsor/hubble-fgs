@@ -305,8 +305,13 @@ test-compile:
 	for pkg in $$($(GO) list "$(TEST_COMPILE)"); do \
 		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
 		localtestfile=$$(echo $$localpkg | sed -e 's:/:.:g'); \
+		numtests=$$(ls -l ./$$localpkg/*_test.go 2> /dev/null | wc -l); \
+		if [ $$numtests -le 0 ]; then \
+			continue; \
+		fi; \
 		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
-	done | xargs -P $$(nproc) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
+	done | GOMAXPROCS=1 xargs -P $(JOBS) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
+
 
 .PHONY: check-copyright update-copyright
 check-copyright:
