@@ -470,7 +470,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
+func correctedStatsEvent(tcp *layer3.MsgIPWithStatsEventUnix) (*layer3.MsgIPWithStatsEventUnix, error) {
 	statsKey := tcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
 	if ok {
@@ -501,7 +501,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := ip.MsgToIPUnix(&m)
+	tcp := ip.MsgToIPWithStatsUnix(&m)
 	if tcpStatsEnabled {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)

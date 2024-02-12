@@ -45,6 +45,18 @@ func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
 	return unix
 }
 
+func MsgToIPWithStatsUnix(m *api.MsgIPEvent) *layer3.MsgIPWithStatsEventUnix {
+	unix := &layer3.MsgIPWithStatsEventUnix{}
+
+	unix.Msg = m
+	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
+	if enableDns {
+		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
+	}
+
+	return unix
+}
+
 func getNetNs(nsPath string) (uint64, error) {
 	inodeStr, err := os.Readlink(nsPath)
 	if err != nil {

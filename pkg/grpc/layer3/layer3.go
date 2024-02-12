@@ -103,6 +103,13 @@ type MsgIPEventUnix struct {
 	Duration   time.Duration
 }
 
+type MsgIPWithStatsEventUnix struct {
+	Msg        *networkapi.MsgIPEvent
+	Kube       processapi.MsgK8sUnix
+	RefCntDone [2]bool
+	Duration   time.Duration
+}
+
 type MsgUdpSeqCheckErrorEventUnix struct {
 	Common         processapi.MsgCommon
 	ProcessKey     processapi.MsgExecveKey
@@ -115,8 +122,8 @@ type MsgUdpSeqCheckErrorEventUnix struct {
 	SeqNumReceived uint64
 }
 
-func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
-	return reader.MsgOpToProtocol(event.Msg.Common.Op)
+func opToProtocol(op uint8) tetragon.SocketProtocol {
+	return reader.MsgOpToProtocol(op)
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
@@ -157,7 +164,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      event.Msg.SockCookie,
-		Protocol:        msgToProtocol(event),
+		Protocol:        opToProtocol(event.Msg.Common.Op),
 	}
 
 	if event.Msg.SockCookie != 0 {
@@ -199,7 +206,7 @@ func SocketFlagsToType(t uint32) string {
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
+func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *tetragon.Process
 
@@ -238,7 +245,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		Stats:           socketStats,
-		Protocol:        msgToProtocol(event),
+		Protocol:        opToProtocol(event.Msg.Common.Op),
 		SocketType:      SocketFlagsToType(event.Msg.SocketFlags),
 		Duration:        durationpb.New(event.Duration),
 	}
@@ -301,7 +308,7 @@ func GetProcessListen(
 		Parent:   fgsParent,
 		Ip:       networkapi.GetIP(event.Msg.Tuple.SAddr, 0, event.Msg.Tuple.IPv6 != 0).String(),
 		Port:     port,
-		Protocol: msgToProtocol(event),
+		Protocol: opToProtocol(event.Msg.Common.Op),
 	}
 
 	if event.Msg.SockCookie != 0 {
@@ -362,7 +369,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 
-		Protocol: msgToProtocol(event),
+		Protocol: opToProtocol(event.Msg.Common.Op),
 	}
 
 	if event.Msg.SockCookie != 0 {
@@ -397,7 +404,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 }
 
 // Allow lower layers to call up the stack to push stats into metrics.
-func CreateProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.ProcessSockStats {
+func CreateProcessSockStats(event *MsgIPWithStatsEventUnix, cache bool) *tetragon.ProcessSockStats {
 	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
@@ -441,17 +448,17 @@ func CreateProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.Process
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
+func GetProcessSockStats(event *MsgIPWithStatsEventUnix) *tetragon.ProcessSockStats {
 	return CreateProcessSockStats(event, true)
 }
 
-func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+func ipEventetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
 	var err error
 
 	refAction := refNothing
-	switch msg.Msg.Common.Op {
+	switch op {
 	case ops.MSG_OP_TCPCONNECTRET,
 		ops.MSG_OP_UDPCONNECT,
 		ops.MSG_OP_LISTEN,
@@ -464,13 +471,13 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 
 	if parent != nil {
 		ev.SetParent(parent.UnsafeGetProcess())
-		if !msg.RefCntDone[exec.ParentRefCnt] {
+		if !refCntDone[exec.ParentRefCnt] {
 			if refAction == refInc {
 				parent.RefInc()
 			} else if refAction == refDec {
 				parent.RefDec()
 			}
-			msg.RefCntDone[exec.ParentRefCnt] = true
+			refCntDone[exec.ParentRefCnt] = true
 		}
 	} else {
 		eventcachemetrics.EventCacheRetries(eventcachemetrics.ParentInfo).Inc()
@@ -478,13 +485,13 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	}
 
 	if process != nil {
-		if !msg.RefCntDone[exec.ProcessRefCnt] {
+		if !refCntDone[exec.ProcessRefCnt] {
 			if refAction == refInc {
 				process.RefInc()
 			} else if refAction == refDec {
 				process.RefDec()
 			}
-			msg.RefCntDone[exec.ProcessRefCnt] = true
+			refCntDone[exec.ProcessRefCnt] = true
 		}
 	} else {
 		eventcachemetrics.EventCacheRetries(eventcachemetrics.ProcessInfo).Inc()
@@ -497,7 +504,27 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	return nil, err
 }
 
+func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return ipEventetryInternal(msg.Msg.Common.Op, &msg.RefCntDone, ev, timestamp)
+}
+
+func (msg *MsgIPWithStatsEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return ipEventetryInternal(msg.Msg.Common.Op, &msg.RefCntDone, ev, timestamp)
+}
+
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	p := internal.UnsafeGetProcess()
+	if option.Config.EnableK8s && p.Pod == nil {
+		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
+		return eventcache.ErrFailedToGetPodInfo
+	}
+
+	ev.SetProcess(internal.UnsafeGetProcess())
+
+	return nil
+}
+
+func (msg *MsgIPWithStatsEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
 		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
@@ -520,6 +547,10 @@ func (msg *MsgIPEventUnix) Notify() bool {
 	return true
 }
 
+func (msg *MsgIPWithStatsEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	msg.RefCntDone = [2]bool{false, false}
@@ -530,16 +561,6 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		if cnct != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
-			}
-		}
-	case ops.MSG_OP_TCPCLOSE,
-		ops.MSG_OP_UDPCLOSE:
-		c := GetProcessClose(msg)
-		if c != nil {
-			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessClose{ProcessClose: c},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
@@ -563,17 +584,6 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
-
-	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
-		s := GetProcessSockStats(msg)
-		if s != nil {
-			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
-			}
-		}
-
 	case ops.MSG_OP_IP_ERROR:
 		s := GetProcessIPError(msg)
 		if s != nil {
@@ -590,8 +600,41 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
+func (msg *MsgIPWithStatsEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
+	msg.RefCntDone = [2]bool{false, false}
+	switch msg.Msg.Common.Op {
+	case ops.MSG_OP_TCPCLOSE,
+		ops.MSG_OP_UDPCLOSE:
+		c := GetProcessClose(msg)
+		if c != nil {
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_ProcessClose{ProcessClose: c},
+				NodeName: nodeName,
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+			}
+		}
+	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
+		s := GetProcessSockStats(msg)
+		if s != nil {
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
+				NodeName: nodeName,
+				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+			}
+		}
+	default:
+		logger.GetLogger().WithField("message", msg).Warn("HandleIpMessage: Unhandled event")
+	}
+	return res
+}
+
 func (msg *MsgIPEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgIPEventUnix{}
+}
+
+func (msg *MsgIPWithStatsEventUnix) Cast(_ interface{}) notify.Message {
+	return &MsgIPWithStatsEventUnix{}
 }
 
 func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {

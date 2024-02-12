@@ -358,8 +358,8 @@ func (v *ConfigValue) String() string {
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPEventUnix {
-	unix := layer3.MsgIPEventUnix{}
+func createUdpStatsEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPWithStatsEventUnix {
+	unix := layer3.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
@@ -408,14 +408,14 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 	return &unix
 }
 
-func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer3.MsgIPEventUnix {
+func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer3.MsgIPWithStatsEventUnix {
 	var duration time.Duration
 	if closeTimeNs > v.CreateTime {
 		duration = time.Duration(closeTimeNs - v.CreateTime)
 	} else {
 		duration = 0
 	}
-	unix := createUdpEvent(k, v, duration)
+	unix := createUdpStatsEvent(k, v, duration)
 	unix.Msg.Common.Op = ops.MSG_OP_UDPCLOSE
 
 	return unix
@@ -427,8 +427,8 @@ func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
 	observer.AllListeners(unix)
 }
 
-func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
-	unix := createUdpEvent(k, v, 0)
+func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPWithStatsEventUnix {
+	unix := createUdpStatsEvent(k, v, 0)
 	unix.Msg.Common.Op = ops.MSG_OP_UDPSTATS
 
 	return unix
