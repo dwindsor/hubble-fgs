@@ -360,7 +360,7 @@ func (v *ConfigValue) String() string {
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
 func createUdpStatsEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPWithStatsEventUnix {
 	unix := layer3.MsgIPWithStatsEventUnix{}
-	unix.Msg = &networkapi.MsgIPEvent{}
+	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
 		Op:    0,
@@ -1147,7 +1147,6 @@ func AddUDP() {
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterPolicyHandlerAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPLISTEN, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)

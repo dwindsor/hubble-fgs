@@ -439,12 +439,6 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	}
 	val->tuple.sport = 0;
 	val->tuple.dport = 0;
-	val->stats.segs_in = 0;
-	val->stats.segs_out = 0;
-	val->stats.bytes_sent = 0;
-	val->stats.bytes_received = 0;
-	val->stats.sk_drops = 0;
-	val->stats.skb_consume_misses = 0;
 	if (cookie) {
 		val->socket_cookie = *cookie;
 	} else {

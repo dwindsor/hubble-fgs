@@ -34,7 +34,7 @@ int _version __attribute__((section(("version")), used)) =
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
-	__type(value, struct msg_ip_event);
+	__type(value, struct msg_ip_with_stats_event);
 	__uint(max_entries, 1);
 } tcp_close_event_map SEC(".maps");
 
@@ -43,7 +43,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct socketmap_value *process;
-	struct msg_ip_event *val;
+	struct msg_ip_with_stats_event *val;
 	unsigned char old_state;
 	struct sock *skp;
 	u32 zero = 0;
@@ -67,14 +67,14 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (state != TCP_CLOSE)
 		return 0;
 
-	val = (struct msg_ip_event *)map_lookup_elem(&tcp_close_event_map,
-						     &zero);
+	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tcp_close_event_map,
+								&zero);
 	if (!val) {
 		return 0;
 	}
 
-	*val = (struct msg_ip_event){
-		.common.size = sizeof(struct msg_ip_event),
+	*val = (struct msg_ip_with_stats_event){
+		.common.size = sizeof(struct msg_ip_with_stats_event),
 		.common.ktime = ktime_get_ns(),
 
 		.socket_cookie = cookie,
@@ -118,7 +118,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (!event_cfg)
 		return 0;
 
-	size = sizeof(struct msg_ip_event);
+	size = sizeof(struct msg_ip_with_stats_event);
 	if (!event_cfg->disableClose) {
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCLOSE, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 					 size);

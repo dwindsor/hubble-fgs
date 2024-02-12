@@ -74,18 +74,6 @@ tg_udp_destroy_sock(struct pt_regs *ctx)
 	event->tuple.sport = 0;
 	event->tuple.dport = 0;
 
-	event->stats.ktime = 0;
-	event->stats.bytes_sent = 0;
-	event->stats.bytes_received = 0;
-	event->stats.segs_out = 0;
-	event->stats.segs_in = 0;
-	event->stats.bytes_submitted = 0;
-	event->stats.bytes_consumed = 0;
-	event->stats.segs_submitted = 0;
-	event->stats.segs_consumed = 0;
-	event->stats.sk_drops = 0;
-	event->stats.skb_consume_misses = 0;
-
 	size = sizeof(struct msg_ip_event);
 	perf_event_output_metric(ctx, ISO_MSG_OP_UDPCLOSE, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	del_socketmap(&cookie);

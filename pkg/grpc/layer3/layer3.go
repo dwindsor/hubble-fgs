@@ -104,7 +104,7 @@ type MsgIPEventUnix struct {
 }
 
 type MsgIPWithStatsEventUnix struct {
-	Msg        *networkapi.MsgIPEvent
+	Msg        *networkapi.MsgIPWithStatsEvent
 	Kube       processapi.MsgK8sUnix
 	RefCntDone [2]bool
 	Duration   time.Duration

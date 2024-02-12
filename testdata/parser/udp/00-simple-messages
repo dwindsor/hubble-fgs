@@ -8,7 +8,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 352        # size
+      h4 112        # size
       ? 8           # ktime
 
       ## tuple
@@ -25,43 +25,6 @@ EVENTS
       ## socket cookie
       ? 8                   # socket cookie
 
-      ## socket stats
-      $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
-      h8 0 # create ktime
-      h8 5 # bytes sent
-      h8 0 # bytes received
-      h4 0 # segs in
-      h4 1 # segs out
-      ? 8  # bytes submitted
-      ? 8  # bytes consumed
-      ? 4  # segs consumed
-      ? 4  # segs submitted
-      ? 4  # srtt
-      h4 0 # retransmitted segs
-      h8 0 # retransmitted bytes
-      h4 0 # to zero window
-      h4 0 # skdrop
-      h4 0 # skbconsumemisses
-      h4 0 # pad
-      $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # rtt sum
-      $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # latency sum
-
       $ 00 00 00 00
       ? 4 # cookie version
       $ 00 00 00 00  
@@ -71,7 +34,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 352        # size
+      h4 112        # size
       ? 8           # ktime
 
       ## tuple
@@ -87,43 +50,6 @@ EVENTS
 
       ## socket cookie
       ? 8                   # socket cookie
-
-      ## socket stats
-      $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
-      h8 0 # create ktime
-      h8 0 # bytes sent
-      h8 5 # bytes received
-      h4 1 # segs in
-      h4 0 # segs out
-      ? 8  # bytes submitted
-      ? 8  # bytes consumed
-      ? 4  # segs consumed
-      ? 4  # segs submitted
-      ? 4  # srtt
-      h4 0 # retransmitted segs
-      h8 0 # retransmitted bytes
-      h4 0 # to zero window
-      h4 0 # skdrop
-      h4 0 # skbconsumemisses
-      h4 0 # pad
-      $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # rtt sum
-      $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00
-      $ 00 00 00 00 00 00 00 00 # latency sum
 
       $ 00 00 00 00
       ? 4 # cookie version

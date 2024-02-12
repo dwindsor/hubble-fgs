@@ -11,6 +11,7 @@
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;
+struct msg_ip_with_stats_event _msg_ip_with_stats_event;
 
 // Layer 7
 struct __msg_http_event _msg_http_event;

@@ -61,8 +61,18 @@ struct msg_socket_stats {
 	__u64 latency_sum;
 }; // All fields aligned so no 'packed' attribute.
 
-// harmonise data structs for ipv4 and ipv6
 struct msg_ip_event {
+	struct msg_common common;
+	struct msg_ip_tuple tuple;
+	unsigned long int ret;
+	struct msg_execve_key key;
+	__u64 socket_cookie;
+	__u32 socket_flags;
+	__u32 version;
+	__u64 duration; // only used on close events.
+}; // All fields aligned so no 'packed' attribute.
+
+struct msg_ip_with_stats_event {
 	struct msg_common common;
 	struct msg_ip_tuple tuple;
 	unsigned long int ret;

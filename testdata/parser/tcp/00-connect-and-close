@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 352        # size
+  h4 112        # size
   ? 8           # ktime
 
   ## tuple
@@ -29,43 +29,6 @@ EVENT TCPACCEPT
   
   ## socket cookie
   ? 8                   # socket cookie
-
-  ## socket stats, zeroes for ACCEPT
-  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
-  $ 00 00 00 00 00 00 00 00 # create ktime
-  $ 00 00 00 00 00 00 00 00 # bytes sent
-  $ 00 00 00 00 00 00 00 00 # bytes recv
-  $ 00 00 00 00             # segs in
-  $ 00 00 00 00             # segs out
-  ? 8  # bytes submitted
-  ? 8  # bytes consumed
-  ? 4  # segs consumed
-  ? 4  # segs submitted
-  $ 00 00 00 00             # srtt
-  $ 00 00 00 00             # retrans segs
-  $ 00 00 00 00 00 00 00 00 # retrans bytes
-  $ 00 00 00 00             # to zero win
-  $ 00 00 00 00             # sk drops
-  $ 00 00 00 00             # skb consume misses
-  $ 00 00 00 00             # pad
-  $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
-  $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
   h4 0x00
@@ -83,7 +46,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 352        # size
+  h4 112        # size
   ? 8           # ktime
 
   ## tuple
@@ -97,43 +60,6 @@ EVENT TCPCONNECTRET
   $ 00 00 00 00 # pad
   h8 0x01020304deadbeef # ktime
   ? 8 # socket cookie
-
-  ## socket stats
-  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
-  h8 0 # create ktime
-  h8 0 # bytes sent
-  h8 0 # bytes received
-  h4 0 # segs in
-  h4 0 # segs out
-  ? 8  # bytes submitted
-  ? 8  # bytes consumed
-  ? 4  # segs consumed
-  ? 4  # segs submitted
-  h4 0 # srtt
-  h4 0 # retransmitted segs
-  h8 0 # retransmitted bytes
-  h4 0 # to zero window
-  h4 0 # skdrop
-  h4 0 # skb consume misses
-  h4 0 # pad
-  $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # rtt sum
-  $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # latency sum
 
   ## socket flags
   h4 0x00

@@ -496,7 +496,7 @@ func correctedStatsEvent(tcp *layer3.MsgIPWithStatsEventUnix) (*layer3.MsgIPWith
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
-	m := networkapi.MsgIPEvent{}
+	m := networkapi.MsgIPWithStatsEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err

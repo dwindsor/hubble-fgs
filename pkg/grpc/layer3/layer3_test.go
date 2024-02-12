@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	tetragonAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
@@ -30,43 +29,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUnix, *MsgIPEventUnix) {
+func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUnix, *MsgIPWithStatsEventUnix) {
 	connectMsg := MsgIPEventUnix{
 		Msg: &networkapi.MsgIPEvent{
-			Common: processapi.MsgCommon{
+			Common: tetragonAPI.MsgCommon{
 				Op:     ops.MSG_OP_TCPCONNECTRET,
 				Flags:  0,
 				Pad_v2: [2]uint8{0, 0},
 				Size:   40,
 				Ktime:  0,
 			},
-			ProcessKey: processapi.MsgExecveKey{
+			ProcessKey: tetragonAPI.MsgExecveKey{
 				Pid:   Pid,
 				Pad:   0,
 				Ktime: Ktime,
 			},
 		},
-		Kube: processapi.MsgK8sUnix{
+		Kube: tetragonAPI.MsgK8sUnix{
 			Docker: Docker,
 		},
 	}
 
-	closeMsg := MsgIPEventUnix{
-		Msg: &networkapi.MsgIPEvent{
-			Common: processapi.MsgCommon{
+	closeMsg := MsgIPWithStatsEventUnix{
+		Msg: &networkapi.MsgIPWithStatsEvent{
+			Common: tetragonAPI.MsgCommon{
 				Op:     ops.MSG_OP_TCPCLOSE,
 				Flags:  0,
 				Pad_v2: [2]uint8{0, 0},
 				Size:   40,
 				Ktime:  0,
 			},
-			ProcessKey: processapi.MsgExecveKey{
+			ProcessKey: tetragonAPI.MsgExecveKey{
 				Pid:   Pid,
 				Pad:   0,
 				Ktime: Ktime,
 			},
 		},
-		Kube: processapi.MsgK8sUnix{
+		Kube: tetragonAPI.MsgK8sUnix{
 			Docker: Docker,
 		},
 	}
@@ -251,6 +250,7 @@ func (n DummyNotifier) NotifyListener(original interface{}, processed *tetragon.
 	case *exec.MsgExecveEventUnix:
 	case *exec.MsgExitEventUnix:
 	case *MsgIPEventUnix:
+	case *MsgIPWithStatsEventUnix:
 		if processed != nil {
 			execOSS.AllEvents = append(execOSS.AllEvents, processed)
 		} else {

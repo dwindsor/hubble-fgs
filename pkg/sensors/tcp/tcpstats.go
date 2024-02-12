@@ -56,8 +56,8 @@ var (
 )
 
 func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
-	unix := layer3.MsgIPEventUnix{}
-	unix.Msg = &networkapi.MsgIPEvent{}
+	unix := layer3.MsgIPWithStatsEventUnix{}
+	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
 		Op:    ops.MsgOpTCPStats,

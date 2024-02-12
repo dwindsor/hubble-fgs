@@ -45,7 +45,7 @@ func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
 	return unix
 }
 
-func MsgToIPWithStatsUnix(m *api.MsgIPEvent) *layer3.MsgIPWithStatsEventUnix {
+func MsgToIPWithStatsUnix(m *api.MsgIPWithStatsEvent) *layer3.MsgIPWithStatsEventUnix {
 	unix := &layer3.MsgIPWithStatsEventUnix{}
 
 	unix.Msg = m
