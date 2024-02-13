@@ -58,8 +58,8 @@ import (
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
@@ -447,11 +447,10 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -684,11 +683,10 @@ func TestUdpSeqCheck(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -792,11 +790,10 @@ func getUdpObserver(t *testing.T, ctx context.Context, config string) *observer.
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	return obs
 }
 
@@ -1831,11 +1828,10 @@ func TestDnsEvents(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
@@ -1964,11 +1960,10 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2050,11 +2045,10 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2109,11 +2103,10 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	base := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 

@@ -34,7 +34,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -159,14 +159,13 @@ func getTcpObserver(t *testing.T, ctx context.Context, config string, docker boo
 	base := base.GetInitialSensor()
 
 	if docker {
-		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 	} else {
-		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -1067,11 +1066,10 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	}
 
 	dfltBase := base.GetInitialSensor()
-	obs, err := observertesthelper.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1203,11 +1201,10 @@ func TestNamespaces(t *testing.T) {
 			WithParent(ec.NewProcessChecker()),
 	)
 
-	obs, err := observertesthelper.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserver(t, ctx, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()

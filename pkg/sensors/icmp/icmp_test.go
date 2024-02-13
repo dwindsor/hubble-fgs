@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -161,9 +162,9 @@ func getIcmpObserver(t *testing.T, ctx context.Context, config string, filtered 
 	var obs *observer.Observer
 	var err error
 	if filtered {
-		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	} else {
-		obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 	}
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)

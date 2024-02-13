@@ -32,7 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -133,11 +133,10 @@ func TestHttp11Curl(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
@@ -200,11 +199,10 @@ func TestHttp11Curl6(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-6", "http://www.google.com")
 
@@ -300,11 +298,10 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
@@ -371,11 +368,10 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-v6", "--http2-prior-knowledge", "http://"+http2Addr)
 

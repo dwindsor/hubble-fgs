@@ -47,7 +47,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
@@ -999,11 +999,10 @@ func TestFileEnforceCreate(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_CREATE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -1057,11 +1056,10 @@ func TestFileEnforceWrite(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_WRITE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -1120,11 +1118,10 @@ func TestFileEnforceExec(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, testBin, "FILE_EXEC")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -2668,11 +2665,10 @@ func TestFileOps(t *testing.T) {
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	// Can't use observer.WithMyPid() here because we are also checking events from
 	// a spawned container here.
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib)
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -2896,11 +2892,10 @@ func TestFileExecBasic(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -3001,11 +2996,10 @@ func TestFileExecEnforcement(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -3052,11 +3046,10 @@ func TestFileExecSelectors(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -3106,11 +3099,10 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 
 	pol.ResetFIMTracingPolicies()
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	obs, err := observertesthelper.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	metricsconfig.RegisterEEMetrics()
 	t.Cleanup(func() { TerminateFsScanner() })
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
