@@ -163,6 +163,12 @@ var (
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
 )
 
+type tcpBpfKey struct {
+	SockCookie uint64
+}
+
+func (k *tcpBpfKey) String() string { return fmt.Sprintf("Cookie: %d", k.SockCookie) }
+
 type tcpKey struct {
 	SockCookie uint64
 	CreateTime uint64
@@ -190,6 +196,16 @@ type tcpValue struct {
 	RttSum          uint64
 	LatencySum      uint64
 	MsgIPTuple      networkapi.MsgIPTuple
+}
+
+func (t *tcpValue) String() string {
+	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
+		t.Key.Pid,
+		t.CreateTime, t.LastTime,
+		t.Sent, t.SegsOut, t.Recv, t.SegsIn,
+		t.ZeroWindow,
+		t.RetransmitBytes, t.RetransmitSegs,
+		t.SkDrops, t.Srtt)
 }
 
 func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStats {

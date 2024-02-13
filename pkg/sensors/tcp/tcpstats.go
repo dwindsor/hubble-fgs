@@ -78,10 +78,10 @@ func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *
 	observer.AllListeners(&unix)
 }
 
-func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
+func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
 	tuple := value.ToMsgIpTuple()
 	tcpStats := value.ToMsgSocketStatsUnix()
-	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: key.CreateTime}
+	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
 
 	// This case handles kernels <5.10 where map will have udp stats
 	// that are not yet associated to a process between IP stack and
@@ -96,13 +96,13 @@ func tcpGcCb(_ *ebpf.Map, key *tcpKey, value *tcpValue) {
 				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
 				if err == nil {
 					stats.Add(statsKey, *tcpStats)
-					emitStatEvent(key, value, tuple, &diffValue)
+					emitStatEvent(&statsKey, value, tuple, &diffValue)
 				} else {
 					fmt.Printf("diffvalue err %s\n", err)
 				}
 			}
 		} else {
-			emitStatEvent(key, value, tuple, tcpStats)
+			emitStatEvent(&statsKey, value, tuple, tcpStats)
 			stats.Add(statsKey, *tcpStats)
 		}
 	}
@@ -119,7 +119,7 @@ func runTcpGC() {
 	defer m.Close()
 
 	var (
-		key tcpKey
+		key tcpBpfKey
 		val tcpValue
 	)
 
