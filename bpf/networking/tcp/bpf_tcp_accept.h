@@ -1,14 +1,27 @@
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+#ifndef __BPF_TCP_ACCEPT_H_
+#define __BPF_TCP_ACCEPT_H_
+
 #include "vmlinux.h"
 
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_tracing.h"
-#include "../cookie.h"
+#include "../bpf_cookie.h"
 #include "address_family.h"
 #include "../bpf_network_helpers.h"
-#include "netns.h"
-#include "bpf_network_event_config.h"
+#include "../../lib/netns.h"
+#include "bpf_tcp_network_event_config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -151,3 +164,5 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	add_socketmap(&cookie, process, true);
 	return 1;
 }
+
+#endif

@@ -1,14 +1,20 @@
-#ifndef __ICMP_COOKIE_H_
-#define __ICMP_COOKIE_H_
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+#ifndef __BPF_ICMP_COOKIE_H_
+#define __BPF_ICMP_COOKIE_H_
 
 #include "vmlinux.h"
 #include "../lib/iso_msg_types.h"
-#include "../lib/networkmsg.h"
-#include "../lib/tlsmsg.h"
 #include "../lib/config.h"
 #include "../lib/address_family.h"
-#include "../cookie.h"
-#include "bpf_tracing.h"
 
 /* We store the mapping from socket tuples to socket cookies so that ICMP datagrams (other than
  * ping), and any other datagrams as required, can be mapped to the socket they reference. ICMP

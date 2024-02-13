@@ -102,7 +102,7 @@ var (
 
 var (
 	SkUdpAlloc = program.Builder(
-		"bpf_sock_create.o",
+		"bpf_udp_sock_create.o",
 		"udp_init_sock",
 		"kprobe/udp_init_sock",
 		"tg_udp_init_sock",
@@ -110,7 +110,7 @@ var (
 	)
 
 	SkUdpAlloc6 = program.Builder(
-		"bpf_sock_create.o",
+		"bpf_udp_sock_create.o",
 		"udpv6_init_sock",
 		"kprobe/udpv6_init_sock",
 		"tg_udpv6_init_sock",
@@ -118,7 +118,7 @@ var (
 	)
 
 	SkUdpDestroy = program.Builder(
-		"bpf_sock_release.o",
+		"bpf_udp_sock_release.o",
 		"udp_destroy_sock",
 		"kprobe/udp_destroy_sock",
 		"tg_udp_destroy_sock",
@@ -159,7 +159,7 @@ var (
 	)
 
 	InetSend = program.Builder(
-		"bpf_inet_send.o",
+		"bpf_udp_inet.o",
 		"inet_send",
 		"cgroup_skb/egress",
 		"tg_skb_egress",
@@ -167,7 +167,7 @@ var (
 	)
 
 	InetRecv = program.Builder(
-		"bpf_inet_send.o",
+		"bpf_udp_inet.o",
 		"inet_recv",
 		"cgroup_skb/ingress",
 		"tg_skb_ingress",
@@ -175,7 +175,7 @@ var (
 	)
 
 	InetSendLazy = program.Builder(
-		"bpf_inet_send_lazy.o",
+		"bpf_udp_inet_lazy.o",
 		"inet_lazy_send",
 		"cgroup_skb/egress",
 		"tg_skb_egress",
@@ -183,7 +183,7 @@ var (
 	)
 
 	InetRecvLazy = program.Builder(
-		"bpf_inet_send_lazy.o",
+		"bpf_udp_inet_lazy.o",
 		"inet_lazy_recv",
 		"cgroup_skb/ingress",
 		"tg_skb_ingress",
@@ -191,7 +191,7 @@ var (
 	)
 
 	InetSendRecvLazy = program.Builder(
-		"bpf_inet_send_lazy_kp.o",
+		"bpf_udp_inet_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
 		"kprobe/__cgroup_bpf_run_filter_skb",
 		"tg_run_filter_skb",
@@ -265,7 +265,6 @@ var (
 	UdpPayloadMap              = program.MapBuilder(UdpPayloadMapName, InetSend)
 	UdpPayloadLazyMap          = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
 	UdpPayloadLazyMapKprobe    = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	FdLookupConfigMap          = program.MapBuilder(ip.FdLookupConfigMapName, SkUdpDestroy)
 	LatencyConfigMap           = program.MapBuilder(networklatency.ConfigMapName, InetRecv)
 	LatencyConfigMapLazy       = program.MapBuilder(networklatency.ConfigMapName, InetRecvLazy)
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
@@ -831,7 +830,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			UdpPayloadLazyMapKprobe,
 			SocketCookieMap,
 			SocketCookieStats,
-			FdLookupConfigMap,
 			LatencyConfigMapLazyKprobe,
 		}
 		dns.LazyDns = true
@@ -864,7 +862,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			SocketTupleStatsLazy,
 			SocketTupleHintMapLazy,
 			CfgMapLazy,
-			FdLookupConfigMap,
 			LatencyConfigMapLazy,
 		}
 		dns.LazyDns = false
@@ -897,7 +894,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
-			FdLookupConfigMap,
 			LatencyConfigMap,
 		}
 		dns.LazyDns = false
@@ -930,7 +926,6 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
-			FdLookupConfigMap,
 			LatencyConfigMap,
 		}
 		dns.LazyDns = false

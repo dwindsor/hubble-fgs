@@ -1,12 +1,25 @@
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+#ifndef __BPF_TCP_SEND_CHECK_H_
+#define __BPF_TCP_SEND_CHECK_H_
+
 #include "vmlinux.h"
 
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "cookie.h"
-#include "bpf_network_helpers.h"
-#include "bpf_process_network_watermarks.h"
-#include "tlsmsg.h"
+#include "../bpf_cookie.h"
+#include "../bpf_network_helpers.h"
+#include "../bpf_process_network_watermarks.h"
+#include "../../lib/tlsmsg.h"
 
 struct tcp_send_check_sample_cfg {
 	__u64 ktime;
@@ -133,3 +146,5 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	tcp_socketmap_stats(skp, process);
 	return 1;
 }
+
+#endif

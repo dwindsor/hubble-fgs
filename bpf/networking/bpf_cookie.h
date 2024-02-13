@@ -1,10 +1,22 @@
-#ifndef __COOKIE_H_
-#define __COOKIE_H_
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
 
+#ifndef __BPF_COOKIE_H_
+#define __BPF_COOKIE_H_
+
+#include "vmlinux.h"
+#include "api.h"
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "../lib/tlsmsg.h"
-#include "l3/icmp_cookie.h"
+#include "l3/bpf_icmp_cookie.h"
 #include "udp/bpf_udp_info.h"
 
 struct socketmap_value {
@@ -126,7 +138,7 @@ static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
 static inline __attribute__((always_inline)) void
 add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 {
-	struct socketmap_value *existing = map_lookup_elem(&tg_socket_map, cookie);
+	struct socketmap_value *existing = (struct socketmap_value *)map_lookup_elem(&tg_socket_map, cookie);
 	int err;
 	int zero = 0;
 	__s64 *cntr;

@@ -8,23 +8,25 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#ifndef _CONFIG__
-#define _CONFIG__
+#ifndef __BPF_TCP_NETWORK_EVENT_CONFIG_H__
+#define __BPF_TCP_NETWORK_EVENT_CONFIG_H__
 
 #include "vmlinux.h"
-#include "bpf_helpers.h"
+#include "api.h"
+#include "../lib/bpf_helpers.h"
 
-struct cfg_value {
-	__u8 icmp_tracking_enabled;
-	__u8 icmp_net_match;
-	__u8 pad[6];
+struct tcp_event_disable_config {
+	__u8 disableConnect;
+	__u8 disableClose;
+	__u8 disableAccept;
+	__u8 disableListen;
 };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct cfg_value);
+	__type(key, __u32);
+	__type(value, struct tcp_event_disable_config);
 	__uint(max_entries, 1);
-} tg_cfg_map SEC(".maps");
+} tg_event_disable_config SEC(".maps");
 
 #endif

@@ -8,6 +8,9 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+#ifndef __HTTP_H_
+#define __HTTP_H_
+
 #include "../../lib/tlsmsg.h"
 #include "bpf_helpers.h"
 
@@ -179,3 +182,5 @@ static inline __attribute__((always_inline)) void http_state_inc(enum http_state
 		stats->cnt[state]++;
 }
 #endif // ALIGNCHECKER
+
+#endif

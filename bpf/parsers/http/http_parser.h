@@ -19,7 +19,7 @@
 #include "../parser.h"
 #include "http.h"
 #include "bpf_helpers.h"
-#include "../../networking/cookie.h"
+#include "../../networking/bpf_cookie.h"
 
 #ifdef SK_MSG
 struct {

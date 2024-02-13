@@ -8,23 +8,25 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#ifndef _CONFIG__
-#define _CONFIG__
-
 #include "vmlinux.h"
-#include "bpf_helpers.h"
 
-struct cfg_value {
-	__u8 icmp_tracking_enabled;
-	__u8 icmp_net_match;
-	__u8 pad[6];
-};
+#include "api.h"
+#include "bpf_udp_sock_create.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct cfg_value);
-	__uint(max_entries, 1);
-} tg_cfg_map SEC(".maps");
-
+char _license[] __attribute__((section("license"), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
+
+__attribute__((section("kprobe/udp_init_sock"), used)) int
+tg_udp_init_sock(struct pt_regs *ctx)
+{
+	return __tg_udp_init_sock(ctx);
+}
+
+__attribute__((section("kprobe/udpv6_init_sock"), used)) int
+tg_udpv6_init_sock(struct pt_regs *ctx)
+{
+	return __tg_udp_init_sock(ctx);
+}

@@ -1,7 +1,19 @@
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
 #ifndef netns_h_INCLUDED
 #define netns_h_INCLUDED
 
+#include "vmlinux.h"
 #include "api.h"
+#include "bpf_helpers.h"
 
 static inline __attribute__((always_inline)) u32 sock_netns(struct sock *skp)
 {
@@ -16,7 +28,7 @@ static inline __attribute__((always_inline)) u32 sock_netns(struct sock *skp)
 	if (!netns)
 		return 0;
 
-	common = _(&netns->ns);
+	common = (struct ns_common *)_(&netns->ns);
 	probe_read_kernel(&ns, sizeof(ns), _(&common->inum));
 
 	return ns;

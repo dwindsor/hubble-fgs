@@ -1,14 +1,24 @@
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
 #include "vmlinux.h"
 
 #include "api.h"
 #include "iso_msg_types.h"
 #include "bpf_task.h"
-#include "../cookie.h"
-#include "netns.h"
-#include "tlsmsg.h"
+#include "../bpf_cookie.h"
+#include "../../lib/netns.h"
+#include "../../lib/tlsmsg.h"
 #include "../bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
-#include "bpf_network_event_config.h"
+#include "bpf_tcp_network_event_config.h"
 #include "../../lib/address_family.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

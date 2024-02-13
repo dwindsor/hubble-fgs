@@ -8,23 +8,25 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#ifndef _CONFIG__
-#define _CONFIG__
-
 #include "vmlinux.h"
-#include "bpf_helpers.h"
 
-struct cfg_value {
-	__u8 icmp_tracking_enabled;
-	__u8 icmp_net_match;
-	__u8 pad[6];
-};
+#include "api.h"
+#include "bpf_tcp_accept.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct cfg_value);
-	__uint(max_entries, 1);
-} tg_cfg_map SEC(".maps");
-
+char _license[] __attribute__((section("license"), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
+
+__attribute__((section("kprobe/tcp_create_openreq_child"), used)) int
+tg_event_tcp_accept(struct pt_regs *ctx)
+{
+	return __event_tcp_accept(ctx);
+}
+
+__attribute__((section("kretprobe/tcp_create_openreq_child"), used)) int
+tg_event_tcp_accept_ret(struct pt_regs *ctx)
+{
+	return __event_tcp_accept_ret(ctx);
+}

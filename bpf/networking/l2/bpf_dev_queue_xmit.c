@@ -1,3 +1,13 @@
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
 #include "vmlinux.h"
 
 #include "api.h"
@@ -169,7 +179,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 	return 0;
 }
 
-__attribute__((section(("kprobe/dev_queue_xmit")), used)) int
+__attribute__((section("kprobe/dev_queue_xmit"), used)) int
 dev_queue_xmit(struct pt_regs *ctx)
 {
 	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
@@ -262,4 +272,4 @@ net_ns_net_exit(struct pt_regs *ctx)
 	return 0;
 }
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";

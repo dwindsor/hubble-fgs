@@ -54,7 +54,7 @@ var (
 
 var (
 	Connect = program.Builder(
-		"bpf_tcpmon.o",
+		"bpf_tcp_connect.o",
 		"tcp_connect",
 		"kprobe/tcp_connect",
 		"tg_tcp_connect",
@@ -70,7 +70,7 @@ var (
 	)
 
 	Listen = program.Builder(
-		"bpf_listen.o",
+		"bpf_tcp_listen.o",
 		"__inet_hash",
 		"kprobe/__inet_hash",
 		"tg___inet_hash",
@@ -78,7 +78,7 @@ var (
 	)
 
 	Accept = program.Builder(
-		"bpf_tcpaccept.o",
+		"bpf_tcp_accept.o",
 		"tcp_create_openreq_child",
 		"kprobe/tcp_create_openreq_child",
 		"tg_event_tcp_accept",
@@ -86,7 +86,7 @@ var (
 	)
 
 	AcceptRet = program.Builder(
-		"bpf_tcpaccept.o",
+		"bpf_tcp_accept.o",
 		"tcp_create_openreq_child",
 		"kretprobe/tcp_create_openreq_child",
 		"tg_event_tcp_accept_ret",
