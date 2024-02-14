@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	if (!file_val)
 		return 0;
 
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
 		goto ignore_rmdir;
 
 	// At this point we know that we care about this access.
