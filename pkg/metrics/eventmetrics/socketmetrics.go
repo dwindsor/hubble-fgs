@@ -373,3 +373,158 @@ func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
 func HandleSocketEvent(res *tetragon.ProcessSockStats) {
 	postStatsEventSocketStats(res)
 }
+
+func postUDPBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkBurst) {
+	if s.Direction == "egress" {
+		if s.BurstState == "start" {
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.BurstState == "start" {
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postTCPBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkBurst) {
+	if s.Direction == "egress" {
+		if s.BurstState == "start" {
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.BurstState == "start" {
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postProcessNetworkBurstEventStats(res *tetragon.ProcessNetworkBurst) {
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
+	switch res.Protocol {
+	case tetragon.SocketProtocol_UDP.String():
+		if udpconfig.MetricsEnabled {
+			postUDPBurstStats(ns, workload, pod, binary, res)
+		}
+	case tetragon.SocketProtocol_TCP.String():
+		if tcpconfig.MetricsEnabled {
+			postTCPBurstStats(ns, workload, pod, binary, res)
+		}
+	}
+}
+
+func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
+	postProcessNetworkBurstEventStats(res)
+}
+
+func postUDPWatermarksBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postUDPWatermarksDipStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
+		} else {
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsUDPRxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
+		} else {
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postTCPWatermarksBurstStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(1)
+		} else {
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postTCPWatermarksDipStats(ns, workload, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsTxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
+		} else {
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	} else {
+		if s.WatermarksState == "start" {
+			socketmetrics.SocketStatsRxDips.WithLabelValues(ns, workload, pod, binary).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(-1)
+		} else {
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(ns, workload, pod, binary).Set(0)
+		}
+	}
+}
+
+func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermark) {
+	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
+	switch res.Protocol {
+	case tetragon.SocketProtocol_UDP.String():
+		if !udpconfig.MetricsEnabled {
+			break
+		}
+		if res.WatermarksType == "burst" {
+			postUDPWatermarksBurstStats(ns, workload, pod, binary, res)
+		} else {
+			postUDPWatermarksDipStats(ns, workload, pod, binary, res)
+		}
+
+	case tetragon.SocketProtocol_TCP.String():
+		if !tcpconfig.MetricsEnabled {
+			break
+		}
+		if res.WatermarksType == "burst" {
+			postTCPWatermarksBurstStats(ns, workload, pod, binary, res)
+		} else {
+			postTCPWatermarksDipStats(ns, workload, pod, binary, res)
+		}
+	}
+}
+
+func HandleProcessWatermarksEvent(res *tetragon.ProcessNetworkWatermark) {
+	postProcessNetworkWatermarksEventStats(res)
+}
