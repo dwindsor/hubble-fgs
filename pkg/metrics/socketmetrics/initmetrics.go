@@ -81,4 +81,8 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(UdpMulticastLatencyBucket)
 	registry.MustRegister(UdpMulticastLatencyCount)
 	registry.MustRegister(UdpMulticastLatencySum)
+
+	// Raw socket metrics
+	registry.MustRegister(RawsockCreateVol)
+	registry.MustRegister(RawsockCloseVol)
 }

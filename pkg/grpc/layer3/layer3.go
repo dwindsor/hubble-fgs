@@ -441,6 +441,8 @@ func GetProcessRawsockCreate(event *MsgIPEventUnix) *tetragon.ProcessRawsockCrea
 		parent.RefInc()
 	}
 
+	eventmetrics.HandleRawsockCreateEvent(fgsEvent)
+
 	return fgsEvent
 }
 
@@ -482,6 +484,8 @@ func GetProcessRawsockClose(event *MsgIPEventUnix) *tetragon.ProcessRawsockClose
 	if parent != nil {
 		parent.RefDec()
 	}
+
+	eventmetrics.HandleRawsockCloseEvent(fgsEvent)
 
 	return fgsEvent
 }

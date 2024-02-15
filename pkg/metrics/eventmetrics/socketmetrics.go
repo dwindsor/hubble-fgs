@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
@@ -461,6 +462,24 @@ func createSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 
 func (s srcSocketLabels) labelString() []string {
 	return []string{s.ns, s.workload, s.pod, s.binary}
+}
+
+func HandleRawsockCreateEvent(res *tetragon.ProcessRawsockCreate) {
+	if !rawsockconfig.MetricsEnabled {
+		return
+	}
+	l := createSrcSocketLabels(res.Process)
+	labelStrings := l.labelString()
+	socketmetrics.RawsockCreateVol.WithLabelValues(labelStrings...).Inc()
+}
+
+func HandleRawsockCloseEvent(res *tetragon.ProcessRawsockClose) {
+	if !rawsockconfig.MetricsEnabled {
+		return
+	}
+	l := createSrcSocketLabels(res.Process)
+	labelStrings := l.labelString()
+	socketmetrics.RawsockCloseVol.WithLabelValues(labelStrings...).Inc()
 }
 
 func postUDPBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkBurst) {

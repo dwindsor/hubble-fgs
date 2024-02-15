@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
 )
 
 const (
@@ -204,6 +205,12 @@ func (rawsock *rawsockSensor) PolicyHandler(
 
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("raw socket sensor does not implement policy filtering")
+	}
+
+	if spec.Parser.Rawsock.Metrics != nil {
+		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
+	} else {
+		rawsockconfig.MetricsEnabled = true
 	}
 
 	return EnableRawsockParser(spec.Parser.Rawsock.ReportClose), nil

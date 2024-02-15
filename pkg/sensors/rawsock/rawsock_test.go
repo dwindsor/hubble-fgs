@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -116,9 +117,7 @@ func getRawsockObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	}
 
 	base := base.GetInitialSensor()
-	var obs *observer.Observer
-	var err error
-	obs, err = observertesthelper.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}

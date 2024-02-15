@@ -1320,6 +1320,18 @@ spec:
                         default: false
                         description: Enable raw socket observability
                         type: boolean
+                      metrics:
+                        description: Metrics Configuration
+                        properties:
+                          enable:
+                            default: true
+                            type: boolean
+                          labelFilters:
+                            description: Label Filters mask out labels in the metrics
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       reportClose:
                         default: false
                         description: Enable raw socket close events

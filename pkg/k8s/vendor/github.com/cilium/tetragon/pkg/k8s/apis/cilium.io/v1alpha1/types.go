@@ -495,6 +495,9 @@ type RawsockPolicySpec struct {
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional
 	ReportClose bool `json:"reportClose"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
 type UdpPolicySpec struct {
