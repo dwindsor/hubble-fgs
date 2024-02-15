@@ -100,6 +100,9 @@ const (
 	MSG_OP_ICMPV6 = 135
 
 	MSG_OP_UDPLISTEN = 136
+
+	MSG_OP_RAWSOCK_CREATE = 137
+	MSG_OP_RAWSOCK_CLOSE  = 138
 )
 
 type OpCode int
@@ -141,6 +144,8 @@ const (
 	MsgOpIcmp                    = 134
 	MsgOpIcmpV6                  = 135
 	MsgOpUDPListen               = 136
+	MsgOpRawsockCreate           = 137
+	MsgOpRawSockClose            = 138
 )
 
 func (op OpCode) String() string {
@@ -181,6 +186,8 @@ func (op OpCode) String() string {
 		MsgOpIcmp:                    "Icmp",
 		MsgOpIcmpV6:                  "IcmpV6",
 		MsgOpUDPListen:               "UDPListen",
+		MsgOpRawsockCreate:           "RawsockCreate",
+		MsgOpRawSockClose:            "RawsockClose",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val

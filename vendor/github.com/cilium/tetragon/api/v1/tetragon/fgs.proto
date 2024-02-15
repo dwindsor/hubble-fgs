@@ -137,6 +137,19 @@ message ProcessAccept {
     SocketProtocol protocol = 10;
 }
 
+message ProcessRawsockCreate {
+    tetragon.Process process = 1;
+    tetragon.Process parent = 2;
+    uint64 sock_cookie = 3;
+}
+
+message ProcessRawsockClose {
+    tetragon.Process process = 1;
+    tetragon.Process parent = 2;
+    uint64 sock_cookie = 3;
+    google.protobuf.Duration duration = 4;
+}
+
 message ProcessIcmp {
     tetragon.Process process = 1;
     tetragon.Process parent = 2;

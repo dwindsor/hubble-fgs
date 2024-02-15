@@ -384,6 +384,9 @@ type ParserPolicySpec struct {
 	// ICMP policy specification
 	Icmp IcmpPolicySpec `json:"icmp"`
 	// +kubebuilder:validation:Optional
+	// Raw socket policy specification
+	Rawsock RawsockPolicySpec `json:"rawsock"`
+	// +kubebuilder:validation:Optional
 	// UDP policy specification
 	Udp UdpPolicySpec `json:"udp"`
 	// +kubebuilder:validation:Optional
@@ -481,6 +484,17 @@ type IcmpPolicySpec struct {
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional
 	V6Info bool `json:"v6info"`
+}
+
+type RawsockPolicySpec struct {
+	// Enable raw socket observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// Enable raw socket close events
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	ReportClose bool `json:"reportClose"`
 }
 
 type UdpPolicySpec struct {

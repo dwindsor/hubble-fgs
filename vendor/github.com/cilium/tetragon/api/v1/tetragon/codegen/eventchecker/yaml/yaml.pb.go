@@ -152,6 +152,8 @@ type eventCheckerHelper struct {
 	ProcessClose            *eventchecker.ProcessCloseChecker            `json:"close,omitempty"`
 	ProcessListen           *eventchecker.ProcessListenChecker           `json:"listen,omitempty"`
 	ProcessAccept           *eventchecker.ProcessAcceptChecker           `json:"accept,omitempty"`
+	ProcessRawsockCreate    *eventchecker.ProcessRawsockCreateChecker    `json:"rawsockCreate,omitempty"`
+	ProcessRawsockClose     *eventchecker.ProcessRawsockCloseChecker     `json:"rawsockClose,omitempty"`
 	ProcessIcmp             *eventchecker.ProcessIcmpChecker             `json:"icmp,omitempty"`
 	ProcessIpError          *eventchecker.ProcessIpErrorChecker          `json:"ipError,omitempty"`
 	ProcessFile             *eventchecker.ProcessFileChecker             `json:"file,omitempty"`
@@ -249,6 +251,18 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessAccept, eventChecker)
 		}
 		eventChecker = helper.ProcessAccept
+	}
+	if helper.ProcessRawsockCreate != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessRawsockCreate, eventChecker)
+		}
+		eventChecker = helper.ProcessRawsockCreate
+	}
+	if helper.ProcessRawsockClose != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessRawsockClose, eventChecker)
+		}
+		eventChecker = helper.ProcessRawsockClose
 	}
 	if helper.ProcessIcmp != nil {
 		if eventChecker != nil {
@@ -354,6 +368,10 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessListen = c
 	case *eventchecker.ProcessAcceptChecker:
 		helper.ProcessAccept = c
+	case *eventchecker.ProcessRawsockCreateChecker:
+		helper.ProcessRawsockCreate = c
+	case *eventchecker.ProcessRawsockCloseChecker:
+		helper.ProcessRawsockClose = c
 	case *eventchecker.ProcessIcmpChecker:
 		helper.ProcessIcmp = c
 	case *eventchecker.ProcessIpErrorChecker:

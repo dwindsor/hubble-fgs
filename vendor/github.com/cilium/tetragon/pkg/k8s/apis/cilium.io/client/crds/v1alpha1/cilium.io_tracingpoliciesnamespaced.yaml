@@ -1313,6 +1313,18 @@ spec:
                     required:
                     - enable
                     type: object
+                  rawsock:
+                    description: Raw socket policy specification
+                    properties:
+                      enable:
+                        default: false
+                        description: Enable raw socket observability
+                        type: boolean
+                      reportClose:
+                        default: false
+                        description: Enable raw socket close events
+                        type: boolean
+                    type: object
                   tcp:
                     description: TCP policy specification
                     properties:

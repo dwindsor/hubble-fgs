@@ -66,6 +66,10 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_FILE_EXEC.String(), nil
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return tetragon.EventType_PROCESS_ICMP.String(), nil
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return tetragon.EventType_PROCESS_RAWSOCK_CREATE.String(), nil
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return tetragon.EventType_PROCESS_RAWSOCK_CLOSE.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -112,6 +116,10 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessListen.Process
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Process
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return ev.ProcessRawsockCreate.Process
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return ev.ProcessRawsockClose.Process
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp.Process
 	case *tetragon.GetEventsResponse_ProcessIpError:
@@ -183,6 +191,10 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessListen.Parent
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Parent
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return ev.ProcessRawsockCreate.Parent
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return ev.ProcessRawsockClose.Parent
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp.Parent
 	case *tetragon.GetEventsResponse_ProcessIpError:

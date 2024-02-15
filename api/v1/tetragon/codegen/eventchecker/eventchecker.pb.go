@@ -289,6 +289,10 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessListenChecker("").FromProcessListen(ev), nil
 	case *tetragon.ProcessAccept:
 		return NewProcessAcceptChecker("").FromProcessAccept(ev), nil
+	case *tetragon.ProcessRawsockCreate:
+		return NewProcessRawsockCreateChecker("").FromProcessRawsockCreate(ev), nil
+	case *tetragon.ProcessRawsockClose:
+		return NewProcessRawsockCloseChecker("").FromProcessRawsockClose(ev), nil
 	case *tetragon.ProcessIcmp:
 		return NewProcessIcmpChecker("").FromProcessIcmp(ev), nil
 	case *tetragon.ProcessIpError:
@@ -381,6 +385,10 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessListen, nil
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept, nil
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return ev.ProcessRawsockCreate, nil
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return ev.ProcessRawsockClose, nil
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp, nil
 	case *tetragon.GetEventsResponse_ProcessIpError:
@@ -2984,6 +2992,232 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAc
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	return checker
+}
+
+// ProcessRawsockCreateChecker implements a checker struct to check a ProcessRawsockCreate event
+type ProcessRawsockCreateChecker struct {
+	CheckerName string          `json:"checkerName"`
+	Process     *ProcessChecker `json:"process,omitempty"`
+	Parent      *ProcessChecker `json:"parent,omitempty"`
+	SockCookie  *uint64         `json:"sockCookie,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessRawsockCreateChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessRawsockCreate); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessRawsockCreate event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessRawsockCreateChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessRawsockCreateChecker creates a new ProcessRawsockCreateChecker
+func NewProcessRawsockCreateChecker(name string) *ProcessRawsockCreateChecker {
+	return &ProcessRawsockCreateChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessRawsockCreateChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessRawsockCreateChecker) GetCheckerType() string {
+	return "ProcessRawsockCreateChecker"
+}
+
+// Check checks a ProcessRawsockCreate event
+func (checker *ProcessRawsockCreateChecker) Check(event *tetragon.ProcessRawsockCreate) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessRawsockCreate event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessRawsockCreateChecker
+func (checker *ProcessRawsockCreateChecker) WithProcess(check *ProcessChecker) *ProcessRawsockCreateChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessRawsockCreateChecker
+func (checker *ProcessRawsockCreateChecker) WithParent(check *ProcessChecker) *ProcessRawsockCreateChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessRawsockCreateChecker
+func (checker *ProcessRawsockCreateChecker) WithSockCookie(check uint64) *ProcessRawsockCreateChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+//FromProcessRawsockCreate populates the ProcessRawsockCreateChecker using data from a ProcessRawsockCreate event
+func (checker *ProcessRawsockCreateChecker) FromProcessRawsockCreate(event *tetragon.ProcessRawsockCreate) *ProcessRawsockCreateChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	return checker
+}
+
+// ProcessRawsockCloseChecker implements a checker struct to check a ProcessRawsockClose event
+type ProcessRawsockCloseChecker struct {
+	CheckerName string                           `json:"checkerName"`
+	Process     *ProcessChecker                  `json:"process,omitempty"`
+	Parent      *ProcessChecker                  `json:"parent,omitempty"`
+	SockCookie  *uint64                          `json:"sockCookie,omitempty"`
+	Duration    *durationmatcher.DurationMatcher `json:"duration,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessRawsockCloseChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessRawsockClose); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessRawsockClose event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessRawsockCloseChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessRawsockCloseChecker creates a new ProcessRawsockCloseChecker
+func NewProcessRawsockCloseChecker(name string) *ProcessRawsockCloseChecker {
+	return &ProcessRawsockCloseChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessRawsockCloseChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessRawsockCloseChecker) GetCheckerType() string {
+	return "ProcessRawsockCloseChecker"
+}
+
+// Check checks a ProcessRawsockClose event
+func (checker *ProcessRawsockCloseChecker) Check(event *tetragon.ProcessRawsockClose) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessRawsockClose event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Duration != nil {
+			if err := checker.Duration.Match(event.Duration); err != nil {
+				return fmt.Errorf("Duration check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) WithProcess(check *ProcessChecker) *ProcessRawsockCloseChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) WithParent(check *ProcessChecker) *ProcessRawsockCloseChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) WithSockCookie(check uint64) *ProcessRawsockCloseChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithDuration adds a Duration check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) WithDuration(check *durationmatcher.DurationMatcher) *ProcessRawsockCloseChecker {
+	checker.Duration = check
+	return checker
+}
+
+//FromProcessRawsockClose populates the ProcessRawsockCloseChecker using data from a ProcessRawsockClose event
+func (checker *ProcessRawsockCloseChecker) FromProcessRawsockClose(event *tetragon.ProcessRawsockClose) *ProcessRawsockCloseChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	// NB: We don't want to match durations for now
+	checker.Duration = nil
 	return checker
 }
 

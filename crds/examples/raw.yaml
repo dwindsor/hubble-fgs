@@ -1,0 +1,9 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "rawsock"
+spec:
+  parser:
+    rawsock:
+      enable: true
+      reportClose: true
