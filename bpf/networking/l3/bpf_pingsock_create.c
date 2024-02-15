@@ -24,24 +24,37 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie);
+store_socket(void *ctx, u64 cookie, u8 protocol);
 
-// raw sockets are used for ping in some environments
+// Raw sockets are used for ping in some environments.
+// Use IPPROTO_ICMP to refer to both IPv4 and IPv6.
 __attribute__((section("kprobe/raw_sk_init"), used)) int
-tg_raw_sk_init(struct pt_regs *ctx)
+tg_icmp_raw_sk_init(struct pt_regs *ctx)
 {
 	u64 cookie = (u64)PT_REGS_PARM1(ctx);
+	struct sock *sk;
+	u16 skc_num;
 
-	return store_socket(ctx, cookie);
+	sk = (struct sock *)cookie;
+	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	if (skc_num == IPPROTO_ICMP)
+		return store_socket(ctx, cookie, IPPROTO_ICMP);
+	return 0;
 }
 
 // IPv6 version
 __attribute__((section("kprobe/rawv6_init_sk"), used)) int
-tg_rawv6_init_sk(struct pt_regs *ctx)
+tg_icmp_rawv6_init_sk(struct pt_regs *ctx)
 {
 	u64 cookie = (u64)PT_REGS_PARM1(ctx);
+	struct sock *sk;
+	u16 skc_num;
 
-	return store_socket(ctx, cookie);
+	sk = (struct sock *)cookie;
+	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	if (skc_num == IPPROTO_ICMP6)
+		return store_socket(ctx, cookie, IPPROTO_ICMP);
+	return 0;
 }
 
 // ping sockets are used for ping in other environments (handles IPv4 and IPv6)
@@ -50,11 +63,11 @@ tg_ping_init_sock(struct pt_regs *ctx)
 {
 	u64 cookie = (u64)PT_REGS_PARM1(ctx);
 
-	return store_socket(ctx, cookie);
+	return store_socket(ctx, cookie, IPPROTO_ICMP);
 }
 
 static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie)
+store_socket(void *ctx, u64 cookie, u8 protocol)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
 	struct socketmap_value process = { 0 };
@@ -92,6 +105,7 @@ store_socket(void *ctx, u64 cookie)
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
+	process.protocol = protocol;
 	// Don't update the tuple map because this is a ping/raw socket.
 	add_socketmap(&cookie, &process, false);
 	return 0;

@@ -99,24 +99,24 @@ func TestLoadIcmpSensor(t *testing.T) {
 
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) { // 5.4 - 5.9
 		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "tg_raw_sk_init", Type: ebpf.Kprobe},
+			0: tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe},
 			1: tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "tg_sk_free", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "tg_icmp_send_lazy", Type: ebpf.CGroupSKB},
 			4: tus.SensorProg{Name: "tg_icmp_recv_lazy", Type: ebpf.CGroupSKB},
 			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-			6: tus.SensorProg{Name: "tg_rawv6_init_sk", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe},
 		}
 	} else { // 5.10 -
 		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "tg_raw_sk_init", Type: ebpf.Kprobe},
+			0: tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe},
 			1: tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "tg_sk_free", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "tg_icmp_send", Type: ebpf.CGroupSKB},
 			4: tus.SensorProg{Name: "tg_icmp_recv", Type: ebpf.CGroupSKB},
 			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-			6: tus.SensorProg{Name: "tg_rawv6_init_sk", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe},
 		}
 	}

@@ -20,6 +20,7 @@
 #include "../lib/address_family.h"
 #include "../lib/config.h"
 #include "bpf_icmp_cookie.h"
+#include "bpf_tracing.h"
 
 #define ICMP_HDR_LEN	  4
 #define ICMP_HDR_DATA_OFF 4
@@ -338,6 +339,7 @@ icmp_handler(struct __sk_buff *skb, bool send)
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	struct msg_icmp_event *val;
+	struct socketmap_value *v;
 	struct icmp_config *cfg;
 	struct ipv6hdr *rep_ip6;
 	struct iphdr *rep_ip4;
@@ -352,6 +354,10 @@ icmp_handler(struct __sk_buff *skb, bool send)
 	u64 cookie;
 
 	write_cookie(&cookie, (u64)skb->sk);
+
+	v = lookup_socketmap(&cookie);
+	if (v && v->protocol != IPPROTO_ICMP)
+		return;
 
 	if (data + 1 > data_end) {
 		emit_ip_error_event(skb, 0, &cookie, false, 0, send + 1, 0, IP_ERROR_INET_READ_VER);

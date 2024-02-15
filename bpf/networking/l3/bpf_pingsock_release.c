@@ -64,17 +64,13 @@ tg_ping_close(struct pt_regs *ctx)
 // In some environments, ping sockets are initialised and not closed, so we use
 // __sk_free to catch those and remove them from the socket map.
 __attribute__((section("kprobe/__sk_free"), used)) int
-tg_sk_free(struct pt_regs *ctx)
+tg_icmp_sk_free(struct pt_regs *ctx)
 {
-	__u64 cookie = PT_REGS_PARM1(ctx);
-	struct sock *sk = (struct sock *)cookie;
-	u16 protocol;
+	__u64 cookie = (__u64)PT_REGS_PARM1(ctx);
+	struct socketmap_value *process;
 
-	probe_read(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
-	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32))
-		protocol >>= 8;
-
-	if (protocol != IPPROTO_ICMP && protocol != IPPROTO_ICMPFORIPV6)
+	process = lookup_socketmap(&cookie);
+	if (!process || process->protocol != IPPROTO_ICMP)
 		return 1;
 	del_socketmap(&cookie);
 	return 1;

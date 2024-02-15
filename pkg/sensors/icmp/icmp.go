@@ -49,7 +49,7 @@ var (
 		"bpf_pingsock_create.o",
 		"raw_sk_init",
 		"kprobe/raw_sk_init",
-		"tg_raw_sk_init",
+		"tg_icmp_raw_sk_init",
 		"kprobe",
 	)
 
@@ -57,7 +57,7 @@ var (
 		"bpf_pingsock_create.o",
 		"rawv6_init_sk",
 		"kprobe/rawv6_init_sk",
-		"tg_rawv6_init_sk",
+		"tg_icmp_rawv6_init_sk",
 		"kprobe",
 	)
 
@@ -99,7 +99,7 @@ var (
 		"bpf_pingsock_release.o",
 		"__sk_free",
 		"kprobe/__sk_free",
-		"tg_sk_free",
+		"tg_icmp_sk_free",
 		"kprobe",
 	)
 
