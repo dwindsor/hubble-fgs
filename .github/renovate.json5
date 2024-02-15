@@ -69,5 +69,14 @@
         "v1.10"
       ]
     },
+    {
+      "matchBaseBranches": [
+        "v1.10",
+        "v1.11",
+      ],
+      // This file was renamed to Docker.operator to follow the naming
+      // convention from v1.12 and after
+      includePaths: ["operator.Dockerfile"]
+    },
   ]
 }
