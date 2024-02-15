@@ -39,16 +39,17 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	 bool *read_ok, u16 *family)
 {
 	struct files_struct *files;
-	struct fdtable *fdt;
-	struct file **fd;
-	struct file *file;
 	struct inode *f_inode;
-	umode_t i_mode;
+	struct fdtable *fdt;
 	struct socket *sock;
+	struct file *file;
+	u16 read_protocol;
+	struct file **fd;
 	struct sock *sk;
 	long family_ret;
-	u16 read_protocol;
 	long proto_ret;
+	umode_t i_mode;
+	u16 type;
 
 	if (!read_ok || !family || !sk_ret)
 		return FD_TO_SK_INVALID_PTRS;
@@ -79,11 +80,17 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	if (probe_read(&sk, sizeof(sk), _(&(sock->sk))) < 0)
 		return FD_TO_SK_NO_SK;
 
+	/* Get the socket type so we can check for AF_PACKET and SOCK_RAW. */
+	probe_read(&type, sizeof(type), _(&(sk->sk_type)));
+
 	/* We only care about IPv4 and IPv6, but we also return the socket even if
 	 * we can't read the family for some reason.
 	 */
 	family_ret = probe_read(family, sizeof(*family),
 				_(&(sk->__sk_common.skc_family)));
+	/* Record AF_PACKET sockets as AF_INET. */
+	if (type == SOCK_RAW && *family == AF_PACKET)
+		*family = AF_INET;
 	if (family_ret == 0 && (*family != AF_INET && *family != AF_INET6))
 		return FD_TO_SK_WRONG_FAMILY;
 
@@ -104,7 +111,9 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
 		read_protocol >>= 8;
 	}
-
+	/* Record SOCK_RAW sockets as having protocol IPPROTO_RAW. */
+	if (type == SOCK_RAW)
+		read_protocol = IPPROTO_RAW;
 	if (proto_ret == 0 && read_protocol != required_protocol) {
 		return FD_TO_SK_WRONG_PROTO;
 	}

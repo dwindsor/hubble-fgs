@@ -369,6 +369,8 @@ func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol
 		socketFiles = append(socketFiles, "udp", "udp6")
 	case syscall.IPPROTO_ICMP:
 		socketFiles = append(socketFiles, "icmp", "icmp6")
+	case syscall.IPPROTO_RAW:
+		socketFiles = append(socketFiles, "raw", "raw6")
 	}
 
 	for _, file := range socketFiles {

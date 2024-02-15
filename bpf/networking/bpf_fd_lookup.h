@@ -73,19 +73,19 @@ static inline __attribute__((always_inline)) int
 __kprobe_proc_task_name(struct pt_regs *ctx)
 {
 	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
-	struct fd_lookup_config *config;
-	int zero = 0;
-	uint32_t pid;
-	struct sock *sk;
-	u64 cookie;
-	struct execve_map_value *value;
 	struct socketmap_value sockmap_process = { 0 };
+	struct fd_lookup_config *config;
+	struct execve_map_value *value;
 	u16 required_protocol;
 	bool read_ok = false;
+	struct sock *sk;
 	u16 family = 0;
 	int sk_err = 0;
-	u32 ppid;
+	int zero = 0;
+	uint32_t pid;
 	bool walked;
+	u64 cookie;
+	u32 ppid;
 
 	config = (struct fd_lookup_config *)map_lookup_elem(
 		&fd_lookup_config_map, &zero);
@@ -206,6 +206,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	sockmap_process.tuple.dport = config->dport;
 	sockmap_process.tuple.sport = config->sport;
 	sockmap_process.tuple.proto = required_protocol;
+	sockmap_process.protocol = required_protocol;
 
 	if (required_protocol == IPPROTO_TCP)
 		tcp_socketmap_stats(sk, &sockmap_process);
