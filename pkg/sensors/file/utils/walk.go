@@ -270,6 +270,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
+	removedDirectory := false
 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -333,7 +334,7 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 				}
 			} else if op == RemoveFromMap {
 				err := RemoveFilePath(maps.File, key)
-				if err != nil {
+				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
 			}
@@ -375,9 +376,10 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 				}
 			} else if op == RemoveFromMap {
 				err := RemoveFilePath(maps.Dir, key)
-				if err != nil {
+				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
+				removedDirectory = removedDirectory || (err == nil)
 			}
 
 			totalDirectories++
@@ -398,6 +400,51 @@ func WalkPathRaw(path string, rule uint32, maps FimMaps, op uint32, action uint3
 	for _, p := range paths {
 		if err := filepath.Walk(p, walkFn); err != nil {
 			return 0, 0, err
+		}
+	}
+
+	// In the case of file_paths_exclude the previous loop removes all
+	// entries that have been already added due to file_paths in a previous
+	// call of this function. The following adds an entry for the top-level
+	// directory with the FilterIgnore flag to avoid having new objects
+	// created there to be monitored.
+	// Checks:
+	// 1. !checkPrefix -> not a rename operation
+	// 2. removedDirectory -> if we did not removeany dirs in the previous step, the user excludes something that we didn't monitor
+	if op == RemoveFromMap && action == FilterIgnore && !checkPrefix && removedDirectory {
+		for _, p := range paths {
+			info, err := os.Stat(p)
+			if err != nil {
+				continue
+			}
+
+			if !info.Mode().IsDir() {
+				continue
+			}
+
+			stat, ok := info.Sys().(*syscall.Stat_t)
+			if !ok {
+				continue
+			}
+
+			key := fileapi.HashMapFileKey{
+				Ino:      stat.Ino,
+				DevMajor: GetDevMajor(stat.Dev),
+				DevMinor: GetDevMinor(stat.Dev),
+			}
+
+			if path[len(path)-1:] != "/" {
+				path += "/"
+			}
+
+			val := fileapi.HashMapFileVal{
+				Action:   FilterIgnore,
+				PathSize: uint32(len(path)),
+			}
+			copy(val.FullPath[:], path)
+			locationFn(&val)
+
+			AddFilePath(maps.Dir, key, val)
 		}
 	}
 

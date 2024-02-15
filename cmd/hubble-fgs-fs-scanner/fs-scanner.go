@@ -193,7 +193,7 @@ func tracingPolicyInit(args *fm.FsScannerInit) error {
 	}
 
 	for _, p := range args.Spec.PathsExclude {
-		if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, false, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Excluding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
@@ -297,7 +297,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 		}
 
 		for _, p := range tp.Spec.PathsExclude {
-			if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.AddToMap, fm.FilterIgnore, false, locFn); err != nil {
+			if fNum, dNum, err := fm.WalkPathRaw(p, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, false, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
 			} else {
 				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
