@@ -87,6 +87,31 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
 	labels := strings.Join(res.Socket.DestinationNames, ",")
 
+	if !udpconfig.CurrentLabels["ns"] {
+		ns = ""
+	}
+	if !udpconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !udpconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !udpconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+	if !udpconfig.CurrentLabels["dstns"] {
+		dstns = ""
+	}
+	if !udpconfig.CurrentLabels["dstworkload"] {
+		dstWorkload = ""
+	}
+	if !udpconfig.CurrentLabels["dstpod"] {
+		dstPodString = ""
+	}
+	if !udpconfig.CurrentLabels["dstlabels"] {
+		labels = ""
+	}
+
 	return &socketLabels{
 		ns:          ns,
 		workload:    w,
@@ -117,6 +142,28 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocke
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
 	sourceIP := res.Socket.SourceIp
 	dstIP := res.Socket.DestinationIp
+
+	if !udpconfig.CurrentLabels["ns"] {
+		ns = ""
+	}
+	if !udpconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !udpconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !udpconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+	if !udpconfig.CurrentLabels["dstns"] {
+		dstns = ""
+	}
+	if !udpconfig.CurrentLabels["dstworkload"] {
+		dstWorkload = ""
+	}
+	if !udpconfig.CurrentLabels["dstpod"] {
+		dstPodString = ""
+	}
 
 	return &multicastSocketLabels{
 		ns:          ns,
