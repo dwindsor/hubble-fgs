@@ -15,6 +15,7 @@ import (
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	gt "github.com/cilium/tetragon/pkg/generictypes"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/reader/network"
@@ -187,12 +188,12 @@ func getArg(r *bytes.Reader, a argPrinter) tracingapi.MsgGenericKprobeArg {
 		arg.Label = a.label
 		return arg
 	case gt.GenericCharBuffer, gt.GenericCharIovec, gt.GenericIovIter:
-		if arg, err := ReadArgBytes(r, a.index, a.maxData); err == nil {
+		arg, err := ReadArgBytes(r, a.index, a.maxData)
+		if err == nil {
 			arg.Label = a.label
 			return *arg
-		} else {
-			logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 		}
+		logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 	case gt.GenericSkbType:
 		var skb api.MsgGenericKprobeSkb
 		var arg api.MsgGenericKprobeArgSkb
@@ -439,6 +440,76 @@ func getArg(r *bytes.Reader, a argPrinter) tracingapi.MsgGenericKprobeArg {
 		arg.Value = int32(int8(output))
 		arg.Label = a.label
 		return arg
+	case gt.GenericKernelCap:
+		var output uint64
+		var arg api.MsgGenericKprobeArgKernelCapType
+
+		err := binary.Read(r, binary.LittleEndian, &output)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("kernel_cap_t type error")
+		} else {
+			arg.Caps = output
+		}
+
+		arg.Index = uint64(a.index)
+		arg.Label = a.label
+		return arg
+	case gt.GenericCapInheritable:
+		var output uint64
+		var arg api.MsgGenericKprobeArgCapInheritable
+
+		err := binary.Read(r, binary.LittleEndian, &output)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("kernel_cap_t cap_inheritable type error")
+		} else {
+			arg.Caps = output
+		}
+
+		arg.Index = uint64(a.index)
+		arg.Label = a.label
+		return arg
+	case gt.GenericCapPermitted:
+		var output uint64
+		var arg api.MsgGenericKprobeArgCapPermitted
+
+		err := binary.Read(r, binary.LittleEndian, &output)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("kernel_cap_t cap_permitted type error")
+		} else {
+			arg.Caps = output
+		}
+
+		arg.Index = uint64(a.index)
+		arg.Label = a.label
+		return arg
+	case gt.GenericCapEffective:
+		var output uint64
+		var arg api.MsgGenericKprobeArgCapEffective
+
+		err := binary.Read(r, binary.LittleEndian, &output)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("kernel_cap_t cap_effective type error")
+		} else {
+			arg.Caps = output
+		}
+
+		arg.Index = uint64(a.index)
+		arg.Label = a.label
+		return arg
+	case gt.GenericLinuxBinprmType:
+		var arg api.MsgGenericKprobeArgLinuxBinprm
+
+		arg.Index = uint64(a.index)
+		arg.Value, err = parseString(r)
+		if err != nil {
+			if errors.Is(err, errParseStringSize) {
+				arg.Value = "/"
+			} else {
+				logger.GetLogger().WithError(err).Warn("error parsing arg type linux_binprm")
+			}
+		}
+		arg.Label = a.label
+		return arg
 	default:
 		logger.GetLogger().WithError(err).WithField("event-type", a.ty).Warnf("Unknown event type")
 	}
@@ -463,7 +534,13 @@ func parseString(r io.Reader) (string, error) {
 	}
 
 	// limit the size of the string to avoid huge memory allocation and OOM kill in case of issue
-	if size > maxStringSize {
+	maxStrLen := int32(maxStringSize)
+	if !kernels.MinKernelVersion("5.4") {
+		maxStrLen = maxStringSizeTiny
+	} else if !kernels.MinKernelVersion("5.11") {
+		maxStrLen = maxStringSizeSmall
+	}
+	if size > maxStrLen {
 		return "", fmt.Errorf("string size too large: %d, max size is %d", size, maxStringSize)
 	}
 	stringBuffer := make([]byte, size)

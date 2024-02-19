@@ -283,7 +283,7 @@ github.com/cilium/proxy/go/envoy/type/tracing/v3
 github.com/cilium/proxy/go/envoy/type/v3
 github.com/cilium/proxy/pkg/policy/api/kafka
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
-## explicit; go 1.21.6
+## explicit; go 1.22.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/common
 github.com/cilium/tetragon/cmd/tetra/dump
@@ -433,7 +433,7 @@ github.com/cilium/tetragon/tests/e2e/install/tetragon
 github.com/cilium/tetragon/tests/e2e/runners
 github.com/cilium/tetragon/tests/e2e/state
 # github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss/pkg/k8s
-## explicit; go 1.21.0
+## explicit; go 1.22.0
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
 ## explicit; go 1.22.0
@@ -1003,7 +1003,7 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v1.1.12
 ## explicit; go 1.17
 github.com/opencontainers/runc/libcontainer/user
-# github.com/opencontainers/runtime-spec v1.1.1-0.20230922153023-c0e90434df2a
+# github.com/opencontainers/runtime-spec v1.2.0
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/opencontainers/selinux v1.11.0
@@ -1047,7 +1047,7 @@ github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/testutil
 github.com/prometheus/client_golang/prometheus/testutil/promlint
 github.com/prometheus/client_golang/prometheus/testutil/promlint/validations
-# github.com/prometheus/client_model v0.5.0
+# github.com/prometheus/client_model v0.6.0
 ## explicit; go 1.19
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.45.0
@@ -2100,7 +2100,7 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# sigs.k8s.io/controller-runtime v0.16.3
+# sigs.k8s.io/controller-runtime v0.16.5
 ## explicit; go 1.20
 sigs.k8s.io/controller-runtime
 sigs.k8s.io/controller-runtime/pkg/builder

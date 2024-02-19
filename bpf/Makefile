@@ -68,6 +68,10 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_execve_event_v61.o bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
 	  bpf_generic_tracepoint_v61.o \
 	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
+	  bpf_execve_event_v511.o \
+	  bpf_generic_kprobe_v511.o bpf_generic_retkprobe_v511.o \
+	  bpf_generic_tracepoint_v511.o \
+	  bpf_multi_kprobe_v511.o bpf_multi_retkprobe_v511.o \
 	  bpf_loader.o
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
@@ -323,6 +327,12 @@ objs/%_v53.ll:
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
+deps/bpf_execve_event_v511.d: $(PROCESSDIR)/bpf_execve_event.c
+deps/bpf_generic_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_generic_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_multi_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_multi_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_generic_tracepoint_v511.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
@@ -374,6 +384,19 @@ $(DEPSDIR)%_v419.d:
 $(DEPSDIR)%_v53.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
+objs/bpf_execve_event_v511.ll: $(PROCESSDIR)/bpf_execve_event.c
+objs/bpf_generic_kprobe_v511.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_generic_retkprobe_v511.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_multi_kprobe_v511.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_multi_retkprobe_v511.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_generic_tracepoint_v511.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
+
+objs/bpf_multi_kprobe_v511.ll objs/bpf_multi_retkprobe_v511.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__MULTI_KPROBE -c $< -o $@
+
+objs/%_v511.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -c $< -o $@
+
 objs/bpf_execve_event_v61.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v61.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
@@ -382,10 +405,10 @@ objs/bpf_multi_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v61.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
 objs/bpf_multi_kprobe_v61.ll objs/bpf_multi_retkprobe_v61.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V61_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
 
 objs/%_v61.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V61_BPF_PROG -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -c $< -o $@
 
 deps/bpf_execve_event_v61.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -395,7 +418,7 @@ deps/bpf_multi_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
 $(DEPSDIR)%_v61.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG  -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c

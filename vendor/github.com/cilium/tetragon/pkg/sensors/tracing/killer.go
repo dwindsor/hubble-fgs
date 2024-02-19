@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/cilium/tetragon/pkg/arch"
@@ -25,27 +26,63 @@ const (
 )
 
 type killerHandler struct {
-	configured   bool
 	syscallsSyms []string
 }
 
-func newKillerHandler() *killerHandler {
-	return &killerHandler{
-		configured: false,
+type killerPolicy struct {
+	mu      sync.Mutex
+	killers map[string]*killerHandler
+}
+
+func newKillerPolicy() *killerPolicy {
+	return &killerPolicy{
+		killers: map[string]*killerHandler{},
 	}
 }
 
 var (
-	// global killer handler
-	gKillerHandler = newKillerHandler()
+	// global killer policy
+	gKillerPolicy = newKillerPolicy()
 )
 
 func init() {
-	sensors.RegisterProbeType("killer", gKillerHandler)
-	sensors.RegisterPolicyHandlerAtInit("killer", gKillerHandler)
+	sensors.RegisterProbeType("killer", gKillerPolicy)
+	sensors.RegisterPolicyHandlerAtInit("killer", gKillerPolicy)
 }
 
-func (kh *killerHandler) PolicyHandler(
+func killerMap(policyName string, load *program.Program) *program.Map {
+	return program.MapBuilderPin(killerDataMapName,
+		fmt.Sprintf("%s_%s", killerDataMapName, policyName), load)
+}
+
+func (kp *killerPolicy) killerGet(name string) (*killerHandler, bool) {
+	kp.mu.Lock()
+	defer kp.mu.Unlock()
+	kh, ok := kp.killers[name]
+	return kh, ok
+}
+
+func (kp *killerPolicy) killerAdd(name string, kh *killerHandler) bool {
+	kp.mu.Lock()
+	defer kp.mu.Unlock()
+	if _, ok := kp.killers[name]; ok {
+		return false
+	}
+	kp.killers[name] = kh
+	return true
+}
+
+func (kp *killerPolicy) killerDel(name string) bool {
+	kp.mu.Lock()
+	defer kp.mu.Unlock()
+	if _, ok := kp.killers[name]; !ok {
+		return false
+	}
+	delete(kp.killers, name)
+	return true
+}
+
+func (kp *killerPolicy) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	_ policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
@@ -60,13 +97,14 @@ func (kh *killerHandler) PolicyHandler(
 	}
 	if len(spec.Killers) > 0 {
 		name := fmt.Sprintf("killer-sensor-%d", atomic.AddUint64(&sensorCounter, 1))
-		return kh.createKillerSensor(spec.Killers, spec.Lists, spec.Options, name)
+		return kp.createKillerSensor(spec.Killers, spec.Lists, spec.Options, name, policy.TpName())
 	}
 
 	return nil, nil
 }
 
-func (kh *killerHandler) loadSingleKillerSensor(
+func (kp *killerPolicy) loadSingleKillerSensor(
+	kh *killerHandler,
 	bpfDir, mapDir string, load *program.Program, verbose int,
 ) error {
 	if err := program.LoadKprobeProgramAttachMany(bpfDir, mapDir, load, kh.syscallsSyms, verbose); err == nil {
@@ -77,7 +115,10 @@ func (kh *killerHandler) loadSingleKillerSensor(
 	return nil
 }
 
-func (kh *killerHandler) loadMultiKillerSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
+func (kp *killerPolicy) loadMultiKillerSensor(
+	kh *killerHandler,
+	bpfDir, mapDir string, load *program.Program, verbose int,
+) error {
 	data := &program.MultiKprobeAttachData{}
 
 	data.Symbols = append(data.Symbols, kh.syscallsSyms...)
@@ -92,12 +133,21 @@ func (kh *killerHandler) loadMultiKillerSensor(bpfDir, mapDir string, load *prog
 	return nil
 }
 
-func (kh *killerHandler) LoadProbe(args sensors.LoadProbeArgs) error {
+func (kp *killerPolicy) LoadProbe(args sensors.LoadProbeArgs) error {
+	name, ok := args.Load.LoaderData.(string)
+	if !ok {
+		return fmt.Errorf("invalid loadData type: expecting string and got: %T (%v)",
+			args.Load.LoaderData, args.Load.LoaderData)
+	}
+	kh, ok := kp.killerGet(name)
+	if !ok {
+		return fmt.Errorf("failed to get killer handler for '%s'", name)
+	}
 	if args.Load.Label == "kprobe.multi/killer" {
-		return kh.loadMultiKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		return kp.loadMultiKillerSensor(kh, args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 	if args.Load.Label == "kprobe/killer" {
-		return kh.loadSingleKillerSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		return kp.loadSingleKillerSensor(kh, args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 
 	if strings.HasPrefix(args.Load.Label, "fmod_ret/") {
@@ -108,8 +158,7 @@ func (kh *killerHandler) LoadProbe(args sensors.LoadProbeArgs) error {
 }
 
 // select proper override method based on configuration and spec options
-func selectOverrideMethod(specOpts *specOptions, hasSyscall bool) (OverrideMethod, error) {
-	overrideMethod := specOpts.OverrideMethod
+func selectOverrideMethod(overrideMethod OverrideMethod, hasSyscall bool) (OverrideMethod, error) {
 	switch overrideMethod {
 	case OverrideMethodDefault:
 		// by default, first try OverrideReturn and if this does not work try fmod_ret
@@ -133,32 +182,26 @@ func selectOverrideMethod(specOpts *specOptions, hasSyscall bool) (OverrideMetho
 	return overrideMethod, nil
 }
 
-func (kh *killerHandler) unload() error {
-	kh.configured = false
-	kh.syscallsSyms = []string{}
-	logger.GetLogger().Infof("Cleaning up killer")
-	return nil
-}
-
-func (kh *killerHandler) createKillerSensor(
+func (kp *killerPolicy) createKillerSensor(
 	killers []v1alpha1.KillerSpec,
 	lists []v1alpha1.ListSpec,
 	opts []v1alpha1.OptionSpec,
 	name string,
+	policyName string,
 ) (*sensors.Sensor, error) {
 
 	if len(killers) > 1 {
 		return nil, fmt.Errorf("failed: we support only single killer sensor")
 	}
 
-	if kh.configured {
-		return nil, fmt.Errorf("failed: killer sensor is already configured")
-	}
-	kh.configured = true
-
 	killer := killers[0]
 
-	var hasSyscall bool
+	var (
+		hasSyscall  bool
+		hasSecurity bool
+	)
+
+	kh := &killerHandler{}
 
 	// get all the syscalls
 	for idx := range killer.Calls {
@@ -199,6 +242,7 @@ func (kh *killerHandler) createKillerSensor(
 		}
 
 		hasSyscall = hasSyscall || isSyscall || isPrefix
+		hasSecurity = hasSecurity || isSecurity
 	}
 
 	// register killer sensor
@@ -215,7 +259,20 @@ func (kh *killerHandler) createKillerSensor(
 	}
 
 	// select proper override method based on configuration and spec options
-	overrideMethod, err := selectOverrideMethod(specOpts, hasSyscall)
+	overrideMethod := specOpts.OverrideMethod
+
+	// we can't use override return for security_* functions (kernel limitation)
+	// switch to fmod_ret and warn
+	if hasSecurity && overrideMethod != OverrideMethodFmodRet {
+		// fail if override-return is directly requested
+		if overrideMethod == OverrideMethodReturn {
+			return nil, fmt.Errorf("killer: can't override security function with override-return")
+		}
+		overrideMethod = OverrideMethodFmodRet
+		logger.GetLogger().Infof("killer: forcing fmod_ret (security_* call detected)")
+	}
+
+	overrideMethod, err = selectOverrideMethod(overrideMethod, hasSyscall)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +294,9 @@ func (kh *killerHandler) createKillerSensor(
 			attach,
 			label,
 			pinPath,
-			"killer")
+			"killer").
+			SetLoaderData(name)
+
 		progs = append(progs, load)
 	case OverrideMethodFmodRet:
 		// for fmod_ret, we need one program per syscall
@@ -248,20 +307,34 @@ func (kh *killerHandler) createKillerSensor(
 				syscallSym,
 				"fmod_ret/security_task_prctl",
 				pinPath,
-				"killer")
+				"killer").
+				SetLoaderData(name)
 			progs = append(progs, load)
 		}
 	default:
 		return nil, fmt.Errorf("unexpected override method: %d", overrideMethod)
 	}
 
-	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
+	killerDataMap := killerMap(policyName, load)
 	maps = append(maps, killerDataMap)
 
+	if ok := kp.killerAdd(name, kh); !ok {
+		return nil, fmt.Errorf("failed to add killer: '%s'", name)
+	}
+
+	logger.GetLogger().Infof("Added killer sensor '%s'", name)
+
 	return &sensors.Sensor{
-		Name:           "__killer__",
-		Progs:          progs,
-		Maps:           maps,
-		PostUnloadHook: gKillerHandler.unload,
+		Name:  "__killer__",
+		Progs: progs,
+		Maps:  maps,
+		PostUnloadHook: func() error {
+			if ok := kp.killerDel(name); !ok {
+				logger.GetLogger().Infof("Failed to clean up killer sensor '%s'", name)
+			} else {
+				logger.GetLogger().Infof("Cleaned up killer sensor '%s'", name)
+			}
+			return nil
+		},
 	}, nil
 }

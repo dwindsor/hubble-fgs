@@ -21,7 +21,6 @@ import (
 	"github.com/cilium/tetragon/pkg/arch"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
-	cachedbtf "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
@@ -211,7 +210,12 @@ func filterMaps(load *program.Program, pinPath string, kprobeEntry *genericKprob
 	maps = append(maps, addr6FilterMaps)
 
 	var stringFilterMap [selectors.StringMapsNumSubMaps]*program.Map
-	for string_map_index := 0; string_map_index < selectors.StringMapsNumSubMaps; string_map_index++ {
+	numSubMaps := selectors.StringMapsNumSubMaps
+	if !kernels.MinKernelVersion("5.11") {
+		numSubMaps = selectors.StringMapsNumSubMapsSmall
+	}
+
+	for string_map_index := 0; string_map_index < numSubMaps; string_map_index++ {
 		stringFilterMap[string_map_index] = program.MapBuilderPin(fmt.Sprintf("string_maps_%d", string_map_index),
 			sensors.PathJoin(pinPath, fmt.Sprintf("string_maps_%d", string_map_index)), load)
 		if state != nil && !kernels.MinKernelVersion("5.9") {
@@ -244,7 +248,7 @@ func filterMaps(load *program.Program, pinPath string, kprobeEntry *genericKprob
 	return maps
 }
 
-func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*program.Program, []*program.Map, error) {
+func createMultiKprobeSensor(sensorPath, policyName string, multiIDs []idtable.EntryID) ([]*program.Program, []*program.Map, error) {
 	var multiRetIDs []idtable.EntryID
 	var progs []*program.Program
 	var maps []*program.Map
@@ -264,6 +268,9 @@ func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*
 	if kernels.EnableV61Progs() {
 		loadProgName = "bpf_multi_kprobe_v61.o"
 		loadProgRetName = "bpf_multi_retkprobe_v61.o"
+	} else if kernels.MinKernelVersion("5.11") {
+		loadProgName = "bpf_multi_kprobe_v511.o"
+		loadProgRetName = "bpf_multi_retkprobe_v511.o"
 	}
 
 	pinPath := multiKprobePinPath(sensorPath)
@@ -311,7 +318,7 @@ func createMultiKprobeSensor(sensorPath string, multiIDs []idtable.EntryID) ([]*
 		maps = append(maps, socktrack)
 	}
 
-	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
+	killerDataMap := killerMap(policyName, load)
 	maps = append(maps, killerDataMap)
 
 	filterMap.SetMaxEntries(len(multiIDs))
@@ -369,7 +376,7 @@ func preValidateKprobes(name string, kprobes []v1alpha1.KProbeSpec, lists []v1al
 	}
 
 	if len(option.Config.KMods) > 0 {
-		btfobj, err = cachedbtf.AddModulesToSpec(btfobj, option.Config.KMods)
+		btfobj, err = btf.AddModulesToSpec(btfobj, option.Config.KMods)
 		if err != nil {
 			return fmt.Errorf("adding modules to spec failed: %w", err)
 		}
@@ -557,7 +564,7 @@ func createGenericKprobeSensor(
 	}
 
 	if useMulti {
-		progs, maps, err = createMultiKprobeSensor(in.sensorPath, ids)
+		progs, maps, err = createMultiKprobeSensor(in.sensorPath, in.policyName, ids)
 	} else {
 		progs, maps, err = createSingleKprobeSensor(in.sensorPath, ids)
 	}
@@ -861,7 +868,7 @@ func createKprobeSensorFromEntry(kprobeEntry *genericKprobe, sensorPath string,
 		maps = append(maps, socktrack)
 	}
 
-	killerDataMap := program.MapBuilderPin(killerDataMapName, killerDataMapName, load)
+	killerDataMap := killerMap(kprobeEntry.policyName, load)
 	maps = append(maps, killerDataMap)
 
 	if kprobeEntry.loadArgs.retprobe {
@@ -1012,7 +1019,9 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, verbo
 var errParseStringSize = errors.New("error parsing string size from binary")
 
 // this is from bpf/process/types/basic.h 'MAX_STRING'
-const maxStringSize = 1024
+const maxStringSize = 4096
+const maxStringSizeSmall = 510
+const maxStringSizeTiny = 144
 
 func getUrl(url string) {
 	// We fire and forget URLs, and we don't care if they hit or not.
@@ -1023,7 +1032,7 @@ func dnsLookup(fqdn string) {
 	// We fire and forget DNS lookups, and we don't care if they hit or not.
 	res := &net.Resolver{
 		PreferGo: true,
-		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+		Dial: func(_ context.Context, _, _ string) (net.Conn, error) {
 			dial := net.Dialer{}
 			return dial.Dial("udp", "1.1.1.1:53")
 		},

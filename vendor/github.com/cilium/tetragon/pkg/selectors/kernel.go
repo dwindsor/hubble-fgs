@@ -176,46 +176,50 @@ const (
 
 	// mirrors gt.GenericSyscall64
 	argTypeSyscall64 = 28
+
+	argTypeLinuxBinprm = 29
 )
 
 var argTypeTable = map[string]uint32{
-	"int":        argTypeInt,
-	"uint32":     argTypeU32,
-	"int32":      argTypeS32,
-	"uint64":     argTypeU64,
-	"int64":      argTypeS64,
-	"char_buf":   argTypeCharBuf,
-	"char_iovec": argTypeCharIovec,
-	"sizet":      argTypeSizet,
-	"skb":        argTypeSkb,
-	"string":     argTypeString,
-	"fd":         argTypeFd,
-	"path":       argTypePath,
-	"file":       argTypeFile,
-	"sock":       argTypeSock,
-	"url":        argTypeUrl,
-	"fqdn":       argTypeFqdn,
-	"syscall64":  argTypeSyscall64,
+	"int":          argTypeInt,
+	"uint32":       argTypeU32,
+	"int32":        argTypeS32,
+	"uint64":       argTypeU64,
+	"int64":        argTypeS64,
+	"char_buf":     argTypeCharBuf,
+	"char_iovec":   argTypeCharIovec,
+	"sizet":        argTypeSizet,
+	"skb":          argTypeSkb,
+	"string":       argTypeString,
+	"fd":           argTypeFd,
+	"path":         argTypePath,
+	"file":         argTypeFile,
+	"sock":         argTypeSock,
+	"url":          argTypeUrl,
+	"fqdn":         argTypeFqdn,
+	"syscall64":    argTypeSyscall64,
+	"linux_binprm": argTypeLinuxBinprm,
 }
 
 var argTypeStringTable = map[uint32]string{
-	argTypeInt:       "int",
-	argTypeU32:       "uint32",
-	argTypeS32:       "int32",
-	argTypeU64:       "uint64",
-	argTypeS64:       "int64",
-	argTypeCharBuf:   "char_buf",
-	argTypeCharIovec: "char_iovec",
-	argTypeSizet:     "sizet",
-	argTypeSkb:       "skb",
-	argTypeString:    "string",
-	argTypeFd:        "fd",
-	argTypeFile:      "file",
-	argTypePath:      "path",
-	argTypeSock:      "sock",
-	argTypeUrl:       "url",
-	argTypeFqdn:      "fqdn",
-	argTypeSyscall64: "syscall64",
+	argTypeInt:         "int",
+	argTypeU32:         "uint32",
+	argTypeS32:         "int32",
+	argTypeU64:         "uint64",
+	argTypeS64:         "int64",
+	argTypeCharBuf:     "char_buf",
+	argTypeCharIovec:   "char_iovec",
+	argTypeSizet:       "sizet",
+	argTypeSkb:         "skb",
+	argTypeString:      "string",
+	argTypeFd:          "fd",
+	argTypeFile:        "file",
+	argTypePath:        "path",
+	argTypeSock:        "sock",
+	argTypeUrl:         "url",
+	argTypeFqdn:        "fqdn",
+	argTypeSyscall64:   "syscall64",
+	argTypeLinuxBinprm: "linux_binprm",
 }
 
 const (
@@ -728,8 +732,18 @@ func writeMatchStrings(k *KernelSelectorState, values []string, ty uint32) error
 		if err != nil {
 			return fmt.Errorf("MatchArgs value %s invalid: %w", v, err)
 		}
-		for sizeIdx := 0; sizeIdx < StringMapsNumSubMaps; sizeIdx++ {
-			if size == StringMapsSizes[sizeIdx] {
+		numSubMaps := StringMapsNumSubMaps
+		if !kernels.MinKernelVersion("5.11") {
+			numSubMaps = StringMapsNumSubMapsSmall
+		}
+
+		for sizeIdx := 0; sizeIdx < numSubMaps; sizeIdx++ {
+			stringMapSize := StringMapsSizes[sizeIdx]
+			if sizeIdx == 7 && !kernels.MinKernelVersion("5.11") {
+				stringMapSize = StringMapSize7a
+			}
+
+			if size == stringMapSize {
 				maps[sizeIdx][value] = struct{}{}
 				break
 			}
@@ -835,7 +849,7 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 		}
 	case SelectorOpEQ, SelectorOpNEQ:
 		switch ty {
-		case argTypeFd, argTypeFile, argTypePath, argTypeString, argTypeCharBuf:
+		case argTypeFd, argTypeFile, argTypePath, argTypeString, argTypeCharBuf, argTypeLinuxBinprm:
 			err := writeMatchStrings(k, arg.Values, ty)
 			if err != nil {
 				return fmt.Errorf("writeMatchStrings error: %w", err)
@@ -1383,7 +1397,7 @@ func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha
 func InitKernelReturnSelectorState(selectors []v1alpha1.KProbeSelector, returnArg *v1alpha1.KProbeArg,
 	actionArgTable *idtable.Table, listReader ValueReader, maps *KernelSelectorMaps) (*KernelSelectorState, error) {
 
-	parse := func(k *KernelSelectorState, selector *v1alpha1.KProbeSelector, selIdx int) error {
+	parse := func(k *KernelSelectorState, selector *v1alpha1.KProbeSelector, _ int) error {
 		if err := ParseMatchArgs(k, selector.MatchReturnArgs, []v1alpha1.KProbeArg{*returnArg}); err != nil {
 			return fmt.Errorf("parseMatchArgs  error: %w", err)
 		}
