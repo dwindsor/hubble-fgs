@@ -164,6 +164,12 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocke
 	if !udpconfig.CurrentLabels["dstpod"] {
 		dstPodString = ""
 	}
+	if !udpconfig.CurrentLabels["sourceip"] {
+		sourceIP = ""
+	}
+	if !udpconfig.CurrentLabels["dstIP"] {
+		dstIP = ""
+	}
 
 	return &multicastSocketLabels{
 		ns:          ns,
