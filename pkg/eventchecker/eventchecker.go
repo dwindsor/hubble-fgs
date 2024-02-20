@@ -501,7 +501,7 @@ func NewListenEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_LISTEN)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -513,7 +513,7 @@ func NewConnectEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_CONNECT)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -525,7 +525,7 @@ func NewExecEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_EXEC)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -537,7 +537,7 @@ func NewExitEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_EXIT)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -549,7 +549,7 @@ func NewTestEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_TEST)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -561,7 +561,7 @@ func NewAcceptEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_ACCEPT)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -573,7 +573,7 @@ func NewCloseEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_CLOSE)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -585,7 +585,7 @@ func NewTLSEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_TLS)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -597,7 +597,7 @@ func NewDNSEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_DNS)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -609,7 +609,7 @@ func NewHTTPEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_HTTP)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -621,7 +621,7 @@ func NewProcessNetworkWatermarksEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_NETWORK_WATERMARK)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -1335,7 +1335,7 @@ func ProcessWithDocker(sm StringMatcher) ProcessChecker {
 
 // ProcessWithUID matches the Uid field
 func ProcessWithUID(uid uint32) ProcessChecker {
-	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, _ Logger) error {
 		if p.Uid == nil {
 			return fmt.Errorf("uid %d does not match nil value", uid)
 		}
@@ -1348,7 +1348,7 @@ func ProcessWithUID(uid uint32) ProcessChecker {
 
 // ProcessWithPID matches the PID field
 func ProcessWithPID(pid uint32) ProcessChecker {
-	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, _ Logger) error {
 		if p.Pid == nil {
 			return fmt.Errorf("expected pid %d does not match nil value", pid)
 		}
@@ -1418,7 +1418,7 @@ func compareNamespace(p *tetragon.Process, ns *tetragon.Namespaces) error {
 
 // ProcessWithNs matches the Namespace field
 func ProcessWithNs(ns *tetragon.Namespaces) ProcessChecker {
-	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, _ Logger) error {
 		return compareNamespace(p, ns)
 	})
 }
@@ -1468,7 +1468,7 @@ func compareCapabilities(p *tetragon.Process, caps *tetragon.Capabilities, ctype
 
 // ProcessWithCaps matches the Capabilities field
 func ProcessWithCaps(caps *tetragon.Capabilities, ctype int) ProcessChecker {
-	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, _ Logger) error {
 		return compareCapabilities(p, caps, ctype)
 	})
 }
@@ -2680,7 +2680,7 @@ func NewTracepointEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_TRACEPOINT)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}
@@ -2874,7 +2874,7 @@ func NewKprobeEventChecker() *EventChainChecker {
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, tetragon.EventType_PROCESS_KPROBE)
 		},
-		eventCheck: func(ev fgsEvent, l Logger) error {
+		eventCheck: func(_ fgsEvent, _ Logger) error {
 			return nil
 		},
 	}

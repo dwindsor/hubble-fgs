@@ -51,7 +51,7 @@ func printInodeMapCmd() *cobra.Command {
 		Use:   "inode-map [path]",
 		Short: "dump inode-map contents",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			filter := func(key *fileapi.HashMapFileKey, val *fileapi.HashMapFileVal) bool {
 				if entryPath != "" && entryPath != string(val.FullPath[:val.PathSize]) {
 					return false
@@ -94,7 +94,7 @@ func printLpmMapCmd() *cobra.Command {
 		Use:   "lpm-map [path]",
 		Short: "dump lpm-map contents",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			path := args[0]
 			err := fm.PrintLPMMap(path)
 			if err != nil {
@@ -109,7 +109,7 @@ func supportEnforcementCmd() *cobra.Command {
 		Use:   "support-enforcement",
 		Short: "1 if host supports file enforcement, 0 otherwise",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			if file.SupportEnforcement() {
 				fmt.Print("1")
 			} else {

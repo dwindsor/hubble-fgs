@@ -136,7 +136,7 @@ func New() *cobra.Command {
 			}
 			return nil
 		},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, _ []string) error {
 			// Validate json file argument
 			if jsonFile != "" {
 				if err := validateFileArg(jsonFile); err != nil {
@@ -145,7 +145,7 @@ func New() *cobra.Command {
 			}
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			config, err := config.FileConfigYaml(args[0])
 			if err != nil {
 				logger.GetLogger().WithError(err).Fatal("Failed to parse recorder config")

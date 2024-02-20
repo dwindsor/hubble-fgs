@@ -2038,7 +2038,7 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 	}
 
 	// method 2
-	if err := filepath.Walk(in2, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(in2, func(_ string, _ os.FileInfo, _ error) error {
 		return nil
 	}); err != nil {
 		t.Fatalf("filepath.Walk failed (%s)", err)

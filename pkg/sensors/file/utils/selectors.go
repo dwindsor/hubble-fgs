@@ -171,7 +171,7 @@ func (k *SelOps) GetOpsSelMap() map[uint32]uint32 {
 
 func (k *SelOps) GetOpsSelMapSize() uint32 {
 	numItems := uint32(0)
-	k.opsMap.Range(func(key, val any) bool {
+	k.opsMap.Range(func(_, _ any) bool {
 		numItems++
 		return true
 	})
@@ -220,7 +220,7 @@ func (k *SelDigests) GetDigestsSelMap() map[fileapi.DigestKey]uint32 {
 
 func (k *SelDigests) GetDigestsSelMapSize() uint32 {
 	numItems := uint32(0)
-	k.digMap.Range(func(key, val any) bool {
+	k.digMap.Range(func(_, _ any) bool {
 		numItems++
 		return true
 	})

@@ -167,7 +167,7 @@ func (sink goHTTPSink) Start(ctx context.Context, _ bool) (int, chan SinkStats, 
 		// Start blocking serve. Will exit when the listener is closed.
 		http.Serve(l,
 			http.HandlerFunc(
-				func(w http.ResponseWriter, r *http.Request) {
+				func(w http.ResponseWriter, _ *http.Request) {
 					w.Write(buf)
 				}),
 		)
@@ -197,7 +197,7 @@ func (sink goHTTP2Sink) Start(ctx context.Context, _ bool) (int, chan SinkStats,
 	go func() {
 		// Start blocking serve. Will exit when the listener is closed.
 		handler := http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			func(w http.ResponseWriter, _ *http.Request) {
 				w.Write(buf)
 			})
 		s := http.Server{
@@ -237,7 +237,7 @@ func (sink nginxSink) Start(ctx context.Context, _ bool) (int, chan SinkStats, e
 		if err != nil {
 			log.Printf("nginx failed %s: %s\n", b.String(), err)
 		} else {
-			stats.CPUUsage, _ = CPUUsageFromTime(b.String(), func(line string) {})
+			stats.CPUUsage, _ = CPUUsageFromTime(b.String(), func(_ string) {})
 		}
 		statsCh <- stats
 	}()
@@ -292,7 +292,7 @@ func (sink netperfSink) Start(ctx context.Context, ns bool) (int, chan SinkStats
 		var err error
 
 		res, _ := cmd.CombinedOutput()
-		stats.CPUUsage, err = CPUUsageFromTime(b.String(), func(line string) {})
+		stats.CPUUsage, err = CPUUsageFromTime(b.String(), func(_ string) {})
 		if err != nil {
 			log.Printf("netserver CPU usage parsing failed: %s\n", err)
 		}

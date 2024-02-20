@@ -2235,7 +2235,7 @@ func testReadConfigSettings(t *testing.T, newConf bool, testCases []testCase, co
 		rootCmd := &cobra.Command{
 			Use:   "testing-only",
 			Short: "Perform read configuration tests including /etc/hubble-fgs/",
-			Run: func(cmd *cobra.Command, args []string) {
+			Run: func(_ *cobra.Command, _ []string) {
 				// Test old /etc/hubble-fgs directory
 				runTestCases(t, newConf, testCases, confDir, confDropIn)
 				// Test new /etc/tetragon directory
@@ -2253,7 +2253,7 @@ func testReadConfigSettings(t *testing.T, newConf bool, testCases []testCase, co
 		flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate hubble-fgs events with Cilium endpoints and DNS cache")
 		flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
 		viper.BindPFlags(flags)
-		t.Run(c.description, func(t *testing.T) {
+		t.Run(c.description, func(_ *testing.T) {
 			rootCmd.Execute()
 		})
 		viper.Reset()

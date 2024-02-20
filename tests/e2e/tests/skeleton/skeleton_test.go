@@ -91,7 +91,7 @@ func TestMain(m *testing.M) {
 	})
 
 	// Remove any tracing policies or pods here.
-	runner.Finish(func(ctx context.Context, c *envconf.Config) (context.Context, error) {
+	runner.Finish(func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
 		return ctx, nil
 	})
 

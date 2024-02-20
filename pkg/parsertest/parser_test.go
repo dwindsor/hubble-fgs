@@ -110,7 +110,7 @@ func (h *SensorsHandle) Close(t *testing.T) {
 	h.initSensor.Unload()
 
 	// Verify that all pins have been cleared.
-	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, err error) error {
+	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, _ error) error {
 		if !info.IsDir() {
 			t.Fatalf("FIXME: File '%s' still exists after sensor unload", path)
 		}

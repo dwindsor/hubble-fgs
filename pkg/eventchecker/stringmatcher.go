@@ -107,11 +107,11 @@ func (sm StringMatcher) GetMatcher() func(string) error {
 			return fmt.Errorf("'%s' does not contain '%s'", x, sm.s)
 		}
 	case strAlwaysMatch:
-		return func(x string) error {
+		return func(_ string) error {
 			return nil
 		}
 	}
-	return func(x string) error {
+	return func(_ string) error {
 		return fmt.Errorf("internal error: Unknown matcher: %d", sm.m)
 	}
 }

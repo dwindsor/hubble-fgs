@@ -979,14 +979,14 @@ func execute() error {
 	rootCmd := &cobra.Command{
 		Use:   "tetragon",
 		Short: "Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement",
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(_ *cobra.Command, _ []string) {
 			if len(os.Args) > 0 {
 				if path.Base(os.Args[0]) == "hubble-fgs" {
 					logger.GetLogger().Warn("The name 'hubble-fgs' has been deprecated and is going away, please use 'tetragon' instead.")
 				}
 			}
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			readAndSetFlags()
 			enterpriseOption.ReadAndSetEnterpriseFlags()
 

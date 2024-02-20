@@ -176,8 +176,8 @@ func LoadTC(
 ) (map[NamespaceInterface]bool, error) {
 	allAttached := make(map[NamespaceInterface]bool)
 
-	attach := func(coll *ebpf.Collection, collSpec *ebpf.CollectionSpec,
-		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+	attach := func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
+		prog *ebpf.Program, _ *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		seenNs := make(map[uint64]bool)
 
 		progMap[load] = prog

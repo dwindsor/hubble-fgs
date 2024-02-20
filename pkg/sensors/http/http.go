@@ -536,7 +536,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 
 	s.decoder.SetEmitEnabled(true)
 	s.decoder.SetMaxStringLength(256 /* XXX */)
-	defer s.decoder.SetEmitFunc(func(hf hpack.HeaderField) {})
+	defer s.decoder.SetEmitFunc(func(_ hpack.HeaderField) {})
 	s.decoder.SetEmitFunc(func(field hpack.HeaderField) {
 		switch field.Name {
 		case ":method":

@@ -913,7 +913,7 @@ func TestConnectEvent4(t *testing.T) {
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -939,7 +939,7 @@ func TestConnectEvent4(t *testing.T) {
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(event *logrus.Logger) error {
+		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientBytesSubmitted = 0
@@ -1587,7 +1587,7 @@ func TestConnectEvent6(t *testing.T) {
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -1613,7 +1613,7 @@ func TestConnectEvent6(t *testing.T) {
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(event *logrus.Logger) error {
+		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientBytesSubmitted = 0
@@ -2243,7 +2243,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	var serverSegsConsumed uint32
 
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -2279,7 +2279,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(event *logrus.Logger) error {
+		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientBytesSubmitted = 0

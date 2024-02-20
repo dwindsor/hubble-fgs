@@ -338,7 +338,7 @@ func (src goHTTP2RRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 		Transport: &http2.Transport{
 			AllowHTTP: true,
 			// Fake a TLS connection so the Go HTTP client uses HTTP/2.
-			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
 				conn, err := net.Dial(network, addr)
 				if err != nil {
 					return nil, err
