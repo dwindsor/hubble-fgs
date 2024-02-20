@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 
-	get_fs_info(&(msg->parent_fs), dir, parent_dentry);
+	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), dir, parent_dentry);
 
 	// If inode->i_nlink == 1 (i.e. last link) we should also remove that
 	// from hash_map_file_alloc.

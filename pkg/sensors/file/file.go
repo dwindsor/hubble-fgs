@@ -71,6 +71,19 @@ const (
 	maxLPMpaths     = 4096
 	maxWatchedDirs  = 128 * 1024 // 128K
 	maxWatchedFiles = 128 * 1024 // 128K
+
+	overlayModName = "overlay"
+	btfPath        = "/sys/kernel/btf/"
+)
+
+var (
+	// We check for struct ovl_entry in the BTF and set this variable.
+	hasOverlaySymbols = false
+
+	// We check if /sys/kernel/btf/overlay exists and then we use it to
+	// load it's symbols. If hasOverlaySymbols is false and hasOverlayBTF
+	// is false, FIM works without support for overlayfs.
+	hasOverlayBTF = false
 )
 
 const (
@@ -1471,6 +1484,19 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		return nil, fmt.Errorf("GetCachedBTF returns nil")
 	}
 
+	var fnType *btf.Struct
+	hasOverlaySymbols = (spec.TypeByName("ovl_entry", &fnType) == nil)
+	if _, err := os.Stat(filepath.Join(btfPath, overlayModName)); err == nil {
+		hasOverlayBTF = true
+	}
+
+	if !hasOverlaySymbols && hasOverlayBTF {
+		// Overlay is a module and here we load its symbols.
+		if newSpec, err := ossBTF.AddModulesToSpec(spec, []string{overlayModName}); err == nil {
+			spec = newSpec
+		}
+	}
+
 	var hooks []FimHook
 	m := ""
 	if mode == Observe {
@@ -1835,16 +1861,28 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 		return fmt.Errorf("type of LoaderData does not match FimLoaderData")
 	}
 
+	oldKmods := option.Config.KMods
+	if !hasOverlaySymbols && hasOverlayBTF {
+		option.Config.KMods = []string{overlayModName} // FIM only needs overlay module symbols
+	}
+
+	var err error
 	switch v.tp {
 	case "kprobe", "kretprobe":
-		return program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 	case "fentry", "fexit", "fmod_ret":
-		return program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
 	case "lsm", "lsm.s":
-		return program.LoadLSMProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadLSMProgram(args.BPFDir, args.Load, args.Verbose)
 	default:
-		return fmt.Errorf("file: %s programs are not supported", v.tp)
+		err = fmt.Errorf("file: %s programs are not supported", v.tp)
 	}
+
+	if !hasOverlaySymbols && hasOverlayBTF {
+		option.Config.KMods = oldKmods
+	}
+
+	return err
 }
 
 // LoadProbe() (called when the eBPF programs are actually loaded)

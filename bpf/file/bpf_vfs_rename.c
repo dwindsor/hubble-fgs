@@ -140,7 +140,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	probe_read(&(v->msg.src.ino), sizeof(v->msg.src.ino),
 		   _(&d_inode->i_ino));
 	probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
-	get_fs_info(&(v->msg.src.fs), d_inode, old_dentry);
+	get_fs_info(&(v->msg.src.fs), &(v->msg.src.ino), d_inode, old_dentry);
 
 	if (S_ISREG(i_mode))
 		v->msg.flags |= SRC_REG_FILE;
@@ -162,7 +162,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// get parent inode and fs info for src (old)
 	probe_read(&(v->msg.src.parent_ino), sizeof(v->msg.src.parent_ino),
 		   _(&old_dir->i_ino));
-	get_fs_info(&(v->msg.src.parent_fs), old_dir, old_dentry);
+	get_fs_info(&(v->msg.src.parent_fs), &(v->msg.src.parent_ino), old_dir, old_dentry);
 
 	// get current inode and fs info for dst (new)
 	probe_read(&d_inode, sizeof(d_inode), _(&new_dentry->d_inode));
@@ -173,7 +173,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		probe_read(&(v->msg.dst.ino), sizeof(v->msg.dst.ino),
 			   _(&d_inode->i_ino));
 		probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
-		get_fs_info(&(v->msg.dst.fs), d_inode, new_dentry);
+		get_fs_info(&(v->msg.dst.fs), &(v->msg.dst.ino), d_inode, new_dentry);
 
 		if (S_ISREG(i_mode))
 			v->msg.flags |= DST_REG_FILE;
@@ -196,7 +196,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// get parent inode and fs info for dst (new)
 	probe_read(&(v->msg.dst.parent_ino), sizeof(v->msg.dst.parent_ino),
 		   _(&new_dir->i_ino));
-	get_fs_info(&(v->msg.dst.parent_fs), new_dir, new_dentry);
+	get_fs_info(&(v->msg.dst.parent_fs), &(v->msg.dst.parent_ino), new_dir, new_dentry);
 
 	// optimization: try to avoid doing path resolution and path copies
 	// if we don't care both for src and dst

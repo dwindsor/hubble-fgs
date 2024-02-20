@@ -69,7 +69,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	// get parent inode and fs info
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
 		   _(&inode->i_ino));
-	get_fs_info(&(msg->parent_fs), inode, dentry);
+	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), inode, dentry);
 
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
 				     msg->parent_ino, msg->parent_fs.dev);

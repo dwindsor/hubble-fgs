@@ -30,7 +30,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 
 	// get parent inode and fs info
 	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
-	get_fs_info(&(msg->parent_fs), dir, dentry);
+	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), dir, dentry);
 
 	// check if we care about this directory
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
