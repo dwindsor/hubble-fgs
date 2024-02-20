@@ -50,6 +50,7 @@ var (
 		fileapi.FileHookIoRead:                 "io_read",
 		fileapi.FileHookIoWrite:                "io_write",
 		fileapi.FileHookIoIssueSqe:             "io_issue_sqe",
+		fileapi.FileHookFsNotify:               "fsnotify",
 	}
 
 	fileErrorReasonMap = map[int]string{
@@ -96,6 +97,8 @@ var (
 		fileapi.FileErrUpdateIoUringMap:         "update_io_uring_map",
 		fileapi.FileErrDeleteIoUringMap:         "delete_io_uring_map",
 		fileapi.FileErrIoUringTask:              "get_io_uring_task",
+		fileapi.FileErrUpdateFsNotifyMap:        "update_fsnotify_map",
+		fileapi.FileErrDeleteFsNotifyMap:        "delete_fsnotify_map",
 		fileapi.FileErrUnexpected:               "unexpected",
 	}
 )

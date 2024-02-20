@@ -74,7 +74,8 @@ enum {
 	hook_io_read = 24,
 	hook_io_write = 25,
 	hook_io_issue_sqe = 26,
-	hook_max = 27,
+	hook_fsnotify = 27,
+	hook_max = 28,
 };
 
 #define KRETPROBE_KEY 0
@@ -241,6 +242,7 @@ struct file_config_map_value {
 	__u32 policy_id;
 	__u32 max_watched_dirs;
 	__u32 max_watched_files;
+	__u32 is_less_than_419;
 };
 
 struct file_exec_config_map_value {
@@ -265,6 +267,13 @@ struct io_uring_op_key {
 
 struct io_uring_op_val {
 	struct task_struct *user_task;
+};
+
+struct inode_pair {
+	unsigned long ino_dir;
+	unsigned long ino_file;
+	__u32 dev_dir;
+	__u32 dev_file;
 };
 
 #define FILE_ERR_NO_ERROR		     0 // success
@@ -310,8 +319,10 @@ struct io_uring_op_val {
 #define FILE_ERR_UPDATE_IOURING_MAP	     40 // map_update_elem(&io_uring_map, ...) < 0
 #define FILE_ERR_DELETE_IOURING_MAP	     41 // map_delete_elem(&io_uring_map, ...) < 0
 #define FILE_ERR_IOURING_TASK		     42 // ((struct io_kiocb *)req)->ctx->mm->owner == NULL
-#define FILE_ERR_UNEXPECTED		     43
-#define FILE_ERR_MAX			     44
+#define FILE_ERR_UPDATE_FSNOTIFY_MAP	     43 // map_update_elem(&fsnotify_created_files_map, ...) < 0
+#define FILE_ERR_DELETE_FSNOTIFY_MAP	     44 // map_delete_elem(&fsnotify_created_files_map, ...) < 0
+#define FILE_ERR_UNEXPECTED		     45
+#define FILE_ERR_MAX			     46
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

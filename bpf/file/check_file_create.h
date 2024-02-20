@@ -16,16 +16,12 @@ static inline __attribute__((always_inline)) int check_file_create(void *ctx, st
 	struct bpf_lpm_trie_key *key = 0;
 	__u32 dlen_size = 0, dlen_offset = 0;
 	__u32 dir_size = 0, dir_offset = 0;
-	__u32 f_mode, path_size = 0;
+	__u32 path_size = 0;
 	int zero = 0, action = 0;
 	struct inode *inode;
 	struct qstr d_name;
 	char *buffer;
 	__u32 operation = 0, rule_id = 0;
-
-	probe_read(&f_mode, sizeof(f_mode), _(&f->f_mode));
-	if ((f_mode & FMODE_CREATED) == 0)
-		return 0; // no file created
 
 	msg = get_msg_init();
 	if (!msg)

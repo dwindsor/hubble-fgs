@@ -94,7 +94,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_fmod_v60.o bpf_security_inode_setattr_enforce_fmod_v63.o \
 	  bpf_security_bprm_check.o bpf_security_bprm_check_v419.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
-	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o
+	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o
 
 
 BPFTEST = bpf_lseek.o bpf_globals.o
@@ -345,6 +345,7 @@ objs/bpf_security_inode_setattr_v419.ll: $(FILEDIR)/bpf_security_inode_setattr.c
 objs/bpf_vfs_fallocate_v419.ll: $(FILEDIR)/bpf_vfs_fallocate.c
 objs/bpf_finish_open_v419.ll: $(FILEDIR)/bpf_finish_open.c
 objs/bpf_vfs_open_v419.ll: $(FILEDIR)/bpf_vfs_open.c
+objs/bpf_fsnotify_v419.ll: $(FILEDIR)/bpf_fsnotify.c
 objs/bpf_security_inode_rmdir_v419.ll: $(FILEDIR)/bpf_security_inode_rmdir.c
 objs/bpf_vfs_mkdir_v419.ll: $(FILEDIR)/bpf_vfs_mkdir.c
 objs/bpf_iterate_dir_v419.ll: $(FILEDIR)/bpf_iterate_dir.c
@@ -385,6 +386,7 @@ deps/bpf_security_inode_setattr_v419.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_vfs_fallocate_v419.d: $(FILEDIR)/bpf_vfs_fallocate.c
 deps/bpf_finish_open_v419.d: $(FILEDIR)/bpf_finish_open.c
 deps/bpf_vfs_open_v419.d: $(FILEDIR)/bpf_vfs_open.c
+deps/bpf_fsnotify_v419.d: $(FILEDIR)/bpf_fsnotify.c
 deps/bpf_security_inode_rmdir_v419.d: $(FILEDIR)/bpf_security_inode_rmdir.c
 deps/bpf_vfs_mkdir_v419.d: $(FILEDIR)/bpf_vfs_mkdir.c
 deps/bpf_iterate_dir_v419.d: $(FILEDIR)/bpf_iterate_dir.c

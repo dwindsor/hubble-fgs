@@ -152,6 +152,7 @@ type FileConfigMapValue struct {
 	PolicyId              uint32 `align:"policy_id"`
 	MaxWatchedDirs        uint32 `align:"max_watched_dirs"`
 	MaxWatchedFiles       uint32 `align:"max_watched_files"`
+	IsLessThan419         uint32 `align:"is_less_than_419"`
 }
 
 type FileExecConfigMapValue struct {
@@ -221,8 +222,10 @@ const (
 	FileErrUpdateIoUringMap         = 40
 	FileErrDeleteIoUringMap         = 41
 	FileErrIoUringTask              = 42
-	FileErrUnexpected               = 43
-	FileErrMax                      = 44
+	FileErrUpdateFsNotifyMap        = 43
+	FileErrDeleteFsNotifyMap        = 44
+	FileErrUnexpected               = 45
+	FileErrMax                      = 46
 )
 
 const (
@@ -253,7 +256,8 @@ const (
 	FileHookIoRead                 = 24
 	FileHookIoWrite                = 25
 	FileHookIoIssueSqe             = 26
-	FileHookMax                    = 27
+	FileHookFsNotify               = 27
+	FileHookMax                    = 28
 )
 
 type FileErrors struct {

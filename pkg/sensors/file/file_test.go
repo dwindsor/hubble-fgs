@@ -898,6 +898,10 @@ func TestLoadFileSensor(t *testing.T) {
 		sensorProgs = append(sensorProgs, ioUringProgs...)
 	}
 
+	if !kernels.MinKernelVersion("4.19.0") {
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "fsnotify", Type: ebpf.Kprobe})
+	}
+
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17}},

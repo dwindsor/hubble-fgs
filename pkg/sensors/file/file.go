@@ -134,8 +134,6 @@ var (
 			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512"},
 			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63"},
 		}},
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
 		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir"}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
@@ -171,8 +169,6 @@ var (
 		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file"}}},
 		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_fmod.o", "security_file_permission"}}},
 		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_fmod.o", "security_inode_unlink"}}},
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
 		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_fmod.o", "security_inode_create"}}},
 		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_fmod.o", "security_inode_rmdir"}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
@@ -211,8 +207,6 @@ var (
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file"}}},
 		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_lsm.o", "file_permission"}}},
 		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_lsm.o", "inode_unlink"}}},
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
 		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_lsm.o", "inode_create"}}},
 		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_lsm.o", "inode_rmdir"}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
@@ -291,6 +285,17 @@ var (
 	FimIoUringSingleHooks = [...]FimHook{
 		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
 		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
+	}
+
+	FimHooksFileCreate = [...]FimHook{
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
+	}
+
+	FimHooksFileCreate418 = [...]FimHook{
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
+		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify"}}},
 	}
 
 	SharedMaps = [...]string{
@@ -1347,6 +1352,15 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			)
 		}
 
+		// only for fsnotify (kernels < 4.18, i.e. rhel8)
+		if h.name == "fsnotify" || h.name == "finish_open" || h.name == "vfs_open" {
+			m := "fsnotify_created_files_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+			)
+		}
+
 		for _, m := range SharedMaps {
 			maps = append(
 				maps,
@@ -1367,7 +1381,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 }
 
 func fixProgName(p string) string {
-	if !kernels.IsKernelVersionLessThan("5.3.0") {
+	if bpf.HasProgramLargeSize() {
 		return p
 	}
 
@@ -1424,6 +1438,30 @@ func getIoUringHooks(spec *btf.Spec, ioUringSupport bool, hooks []FimHook) []Fim
 	return append(hooks, FimIoUringSingleHooks[:]...)
 }
 
+func getFileCreateHooks(spec *btf.Spec, hooks []FimHook, config *fileapi.FileConfigMapValue) []FimHook {
+	vfsOpenProto, err1 := fgsBTF.GetFuncProto(spec, "vfs_open", false)
+	finishOpenProto, err2 := fgsBTF.GetFuncProto(spec, "finish_open", false)
+	if err1 == nil && err2 == nil && vfsOpenProto == FimHooksFileCreate[1].prog[0].proto && finishOpenProto == FimHooksFileCreate[0].prog[0].proto {
+		return append(hooks, FimHooksFileCreate[:]...)
+	}
+
+	// In newer kernels (>= 4.19), we rely on (file->f_mode & FMODE_CREATED)
+	// to check if a file is created.
+	// Older kernels (< 4.19, i.e. 4.18 rhel8) use a different way to provide
+	// the information if the file is created. This is done by using an argument
+	// (int *opened) in finish_open hook. More specifically, we could use something
+	// like (*opened & FILE_CREATED) to determine if a file is created. The problem
+	// is that vfs_open hook does not have this argument to cover all cases.
+	// Using hooks in lower functions (i.e. lookup_open) is not possible as they
+	// are static and they are inlined in rhel8.
+	// To support those kernels, we also hook at the fsnotify hook. We do some
+	// checks to get events only for newly created file and we add the inode pair
+	// (i.e. file and directory inodes) into a map (fsnotify_created_files_map).
+	// Then we consume these from the normal hooks that we use for file creates.
+	config.IsLessThan419 = 1
+	return append(hooks, FimHooksFileCreate418[:]...)
+}
+
 func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioUringSupport bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
@@ -1437,6 +1475,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 	m := ""
 	if mode == Observe {
 		hooks = FimHooksObserve[:]
+		hooks = getFileCreateHooks(spec, hooks, config)
 		m = "observe"
 		if digestSupport {
 			for _, h := range FimHooksLsmExecDigests {
@@ -1449,6 +1488,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == EnforceFmodRet {
 		hooks = FimHooksFmodRet[:]
+		hooks = getFileCreateHooks(spec, hooks, config)
 		m = "enforce with fmod_ret"
 		if digestSupport {
 			for _, h := range FimHooksLsmExecDigests {
@@ -1461,6 +1501,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == EnforceLSM {
 		hooks = FimHooksLsm[:]
+		hooks = getFileCreateHooks(spec, hooks, config)
 		m = "enforce with lsm"
 		if digestSupport {
 			for _, h := range FimHooksLsmExecDigests {
@@ -1742,8 +1783,8 @@ func (k *observerFileSensor) PolicyHandler(
 		}
 	}
 
-	if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
-		return nil, fmt.Errorf("FileMonitoring requires at least 4.19.0 version")
+	if !forceLoad && !kernels.MinKernelVersion("4.18.0") {
+		return nil, fmt.Errorf("FileMonitoring requires at least 4.18.0 version")
 	}
 	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 

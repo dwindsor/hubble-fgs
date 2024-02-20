@@ -122,6 +122,8 @@
 #define NS_FILTER_HOST	 1
 #define NS_FILTER_NOHOST 2
 
+#define FS_CREATE 0x00000100 /* Subfile was created */
+
 static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
@@ -143,6 +145,13 @@ struct {
 	__type(value, struct vfs_mkdir_info);
 	__uint(max_entries, 1);
 } vfs_mkdir_info_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct inode_pair);
+	__type(value, int);
+	__uint(max_entries, 4096);
+} fsnotify_created_files_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
