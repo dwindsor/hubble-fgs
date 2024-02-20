@@ -33,6 +33,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -133,7 +134,8 @@ func TestHttp11Curl(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -199,7 +201,8 @@ func TestHttp11Curl6(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -298,7 +301,8 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -368,7 +372,8 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := enterpriseoth.GetDefaultObserverWithConfig(t, ctx, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}

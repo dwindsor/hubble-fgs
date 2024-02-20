@@ -21,6 +21,8 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -59,7 +61,8 @@ func TestNopSensorSmoke(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err := observertesthelper.GetDefaultObserverWithConfig(t, context.Background(), testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	base := base.GetInitialSensor()
+	_, err := enterpriseoth.GetDefaultObserverWithBase(t, context.Background(), base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	assert.NoError(t, err, "nop sensor should load")
 }
 
