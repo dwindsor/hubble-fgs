@@ -22,17 +22,19 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20240130.111018'
+          - 'rhel8-20240215.093821'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '6.1-20240130.111018'
+          - 'bpf-next-20240215.093821'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.15-20240130.111018'
+          - "6.1-20240215.093821"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.10-20240130.111018'
+          - "5.15-20240215.093821"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '5.4-20240130.111018'
+          - "5.10-20240215.093821"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - '4.19-20240130.111018'
+          - "5.4-20240215.093821"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "4.19-20240215.093821"
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -41,7 +43,7 @@ jobs:
           submodules: true
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@8410a93e544b7e180a2365e5fdab0724a39bc02a # v0.0.13
+        uses: cilium/little-vm-helper@9d758b756305e83718a51b792a5aeabd022a39ec # v0.0.16
         with:
           install-dependencies: true
           test-name: tetragon-unit-tests
@@ -76,7 +78,7 @@ jobs:
             DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd libc6-dev-i386
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@8410a93e544b7e180a2365e5fdab0724a39bc02a # v0.0.13
+        uses: cilium/little-vm-helper@9d758b756305e83718a51b792a5aeabd022a39ec # v0.0.16
         with:
           provision: 'false'
           cmd: |
