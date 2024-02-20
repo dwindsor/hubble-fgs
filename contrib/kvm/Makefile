@@ -1,6 +1,7 @@
 KERNEL     ?=
 KERNEL_URL ?=
-IMAGE      ?= kind.qcow2
+# renovate: datasource=docker
+IMAGE      ?= quay.io/lvh-images/kind:6.1-20240130.111018@sha256:a703f447538e354a2e15e388aa753ff5833c95454852db5ea3182fc2a0ee79fc
 SSH_PORT   ?= 3333
 SSH_ARGS   ?=
 HOST_MOUNT ?= ../..
@@ -40,7 +41,6 @@ help:
 	@echo ''
 	@echo 'Targets:'
 	@echo '    install-lvh  - install the lvh CLI'
-	@echo '    build-images - build root filesystem images'
 	@echo '    run          - start the VM. Configure with KERNEL, IMAGE, SSH_PORT, HOST_MOUNT, MEMORY, and CPU'
 	@echo '    start        - alias for start'
 	@echo '    ssh          - ssh into the VM. Configure with SSH_PORT and SSH_ARGS'
@@ -52,7 +52,7 @@ help:
 
 .PHONY: run
 run:
-	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 ${__daemonize_flags} --host-mount ${HOST_MOUNT} ${__kernel_flags} --mem ${MEMORY} --cpu ${CPU}
+	sudo lvh run --image ${IMAGE} -p ${SSH_PORT}:22 ${__daemonize_flags} --host-mount ${HOST_MOUNT} ${__kernel_flags} --mem ${MEMORY} --cpu ${CPU}
 
 .PHONY: start
 start: run
@@ -92,7 +92,3 @@ add-kernel:
 	@test ${KERNEL}
 	@test ${KERNEL_URL}
 	lvh kernels --dir _data add ${KERNEL} ${KERNEL_URL} --fetch
-
-.PHONY: build-images
-build-images:
-	./helpers/build-image.sh
