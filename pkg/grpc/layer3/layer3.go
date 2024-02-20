@@ -549,6 +549,7 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 	case ops.MSG_OP_TCPCONNECTRET,
 		ops.MSG_OP_UDPCONNECT,
 		ops.MSG_OP_LISTEN,
+		ops.MSG_OP_UDPLISTEN,
 		ops.MSG_OP_ACCEPT,
 		ops.MSG_OP_RAWSOCK_CREATE:
 		refAction = refInc
