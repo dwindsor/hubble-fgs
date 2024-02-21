@@ -442,7 +442,6 @@ func hubbleFGSExecute() error {
 	// Get observer bpf maps and programs directory
 	observerDir := getObserverDir()
 	option.Config.BpfDir = observerDir
-	option.Config.MapDir = observerDir
 
 	// Check if option to remove old BPF and maps is enabled.
 	if option.Config.ReleasePinned {
@@ -559,7 +558,7 @@ func hubbleFGSExecute() error {
 	}
 
 	// Probe runtime configuration and do not fail on errors
-	obs.UpdateRuntimeConf(option.Config.MapDir)
+	obs.UpdateRuntimeConf(option.Config.BpfDir)
 
 	var k8sWatcher watcher.K8sResourceWatcher
 	if option.Config.EnableK8s {
@@ -679,7 +678,7 @@ func hubbleFGSExecute() error {
 
 	// Load default base sensors
 	base := base.GetInitialSensor()
-	if err := base.Load(observerDir, observerDir); err != nil {
+	if err := base.Load(observerDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	defer func() {

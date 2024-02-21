@@ -430,7 +430,7 @@ func MultiKprobeAttach(load *Program, bpfDir string) AttachFunc {
 	}
 }
 
-func LoadTracepointProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadTracepointProgram(bpfDir string, load *Program, verbose int) error {
 	var ci *customInstall
 	for mName, mPath := range load.PinMap {
 		if mName == "tp_calls" || mName == "execve_calls" {
@@ -442,17 +442,17 @@ func LoadTracepointProgram(bpfDir, mapDir string, load *Program, verbose int) er
 		attach: TracepointAttach(load),
 		ci:     ci,
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadRawTracepointProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadRawTracepointProgram(bpfDir string, load *Program, verbose int) error {
 	opts := &loadOpts{
 		attach: RawTracepointAttach(load),
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadKprobeProgram(bpfDir string, load *Program, verbose int) error {
 	var ci *customInstall
 	for mName, mPath := range load.PinMap {
 		if mName == "kprobe_calls" || mName == "retkprobe_calls" {
@@ -465,7 +465,7 @@ func LoadKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error 
 		open:   KprobeOpen(load),
 		ci:     ci,
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
 func KprobeAttachMany(load *Program, syms []string) AttachFunc {
@@ -490,14 +490,14 @@ func KprobeAttachMany(load *Program, syms []string) AttachFunc {
 	}
 }
 
-func LoadKprobeProgramAttachMany(bpfDir, mapDir string, load *Program, syms []string, verbose int) error {
+func LoadKprobeProgramAttachMany(bpfDir string, load *Program, syms []string, verbose int) error {
 	opts := &loadOpts{
 		attach: KprobeAttachMany(load, syms),
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadUprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadUprobeProgram(bpfDir string, load *Program, verbose int) error {
 	var ci *customInstall
 	for mName, mPath := range load.PinMap {
 		if mName == "uprobe_calls" {
@@ -509,10 +509,10 @@ func LoadUprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error 
 		attach: UprobeAttach(load),
 		ci:     ci,
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadMultiKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadMultiKprobeProgram(bpfDir string, load *Program, verbose int) error {
 	var ci *customInstall
 	for mName, mPath := range load.PinMap {
 		if mName == "kprobe_calls" || mName == "retkprobe_calls" {
@@ -525,10 +525,10 @@ func LoadMultiKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) e
 		open:   KprobeOpen(load),
 		ci:     ci,
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadFmodRetProgram(bpfDir, mapDir string, load *Program, progName string, verbose int) error {
+func LoadFmodRetProgram(bpfDir string, load *Program, progName string, verbose int) error {
 	opts := &loadOpts{
 		attach: func(
 			_ *ebpf.Collection,
@@ -561,21 +561,21 @@ func LoadFmodRetProgram(bpfDir, mapDir string, load *Program, progName string, v
 			return nil
 		},
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadTracingProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadTracingProgram(bpfDir string, load *Program, verbose int) error {
 	opts := &loadOpts{
 		attach: TracingAttach(),
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadLSMProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+func LoadLSMProgram(bpfDir string, load *Program, verbose int) error {
 	opts := &loadOpts{
 		attach: LSMAttach(),
 	}
-	return loadProgram(bpfDir, []string{mapDir}, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }
 
 func slimVerifierError(errStr string) string {
@@ -613,7 +613,7 @@ func slimVerifierError(errStr string) string {
 	return errStr[:headEnd] + "\n...\n" + errStr[tailStart:]
 }
 
-func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection, ci *customInstall) error {
+func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection, ci *customInstall) error {
 	// FIXME(JM): This should be replaced by using the cilium/ebpf prog array initialization.
 
 	secToProgName := make(map[string]string)
@@ -622,7 +622,7 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 	}
 
 	install := func(mapName string, secPrefix string) error {
-		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
+		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(bpfDir, mapName), nil)
 		if err != nil {
 			return nil
 		}
@@ -662,7 +662,6 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 
 func doLoadProgram(
 	bpfDir string,
-	mapDirs []string,
 	load *Program,
 	loadOpts *loadOpts,
 	verbose int,
@@ -731,18 +730,13 @@ func doLoadProgram(
 	for name := range refMaps {
 		var m *ebpf.Map
 		var err error
-		for _, mapDir := range mapDirs {
-			var mapPath string
-			if pinName, ok := load.PinMap[name]; ok {
-				mapPath = filepath.Join(mapDir, pinName)
-			} else {
-				mapPath = filepath.Join(mapDir, name)
-			}
-			m, err = ebpf.LoadPinnedMap(mapPath, nil)
-			if err == nil {
-				break
-			}
+		var mapPath string
+		if pinName, ok := load.PinMap[name]; ok {
+			mapPath = filepath.Join(bpfDir, pinName)
+		} else {
+			mapPath = filepath.Join(bpfDir, name)
 		}
+		m, err = ebpf.LoadPinnedMap(mapPath, nil)
 		if err == nil {
 			defer m.Close()
 			pinnedMaps[name] = m
@@ -797,7 +791,7 @@ func doLoadProgram(
 	}
 	defer coll.Close()
 
-	err = installTailCalls(mapDirs[0], spec, coll, loadOpts.ci)
+	err = installTailCalls(bpfDir, spec, coll, loadOpts.ci)
 	if err != nil {
 		return nil, fmt.Errorf("installing tail calls failed: %s", err)
 	}
@@ -877,7 +871,6 @@ func doLoadProgram(
 
 func loadProgram(
 	bpfDir string,
-	mapDirs []string,
 	load *Program,
 	opts *loadOpts,
 	verbose int,
@@ -888,7 +881,7 @@ func loadProgram(
 		return fmt.Errorf("attach function is not provided")
 	}
 
-	lc, err := doLoadProgram(bpfDir, mapDirs, load, opts, verbose)
+	lc, err := doLoadProgram(bpfDir, load, opts, verbose)
 	if err != nil {
 		return err
 	}
@@ -901,11 +894,10 @@ func loadProgram(
 
 func LoadProgram(
 	bpfDir string,
-	mapDirs []string,
 	load *Program,
 	attach AttachFunc,
 	verbose int,
 ) error {
 	opts := &loadOpts{attach: attach}
-	return loadProgram(bpfDir, mapDirs, load, opts, verbose)
+	return loadProgram(bpfDir, load, opts, verbose)
 }

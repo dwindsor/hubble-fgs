@@ -179,8 +179,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
 
 	if err := base.LoadDefault(
-		option.Config.BpfDir,
-		option.Config.MapDir); err != nil {
+		option.Config.BpfDir); err != nil {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
@@ -222,7 +221,6 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	bpf.SetMapPrefix("fgs-race")
 
 	option.Config.BpfDir = fgsRaceDir
-	option.Config.MapDir = fgsRaceDir
 
 	if _, err := os.Stat("../../bpf/objs"); err == nil {
 		option.Config.HubbleLib = "../../bpf/objs"
@@ -248,7 +246,6 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	f.Close()
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	option.Config.MapDir = bpf.MapPrefixPath()
 	obs := observer.NewObserver(f.Name())
 
 	if err := obs.InitSensorManager(nil); err != nil {
@@ -277,8 +274,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	}
 
 	if err := startSensors.Load(
-		option.Config.BpfDir,
-		option.Config.MapDir); err != nil {
+		option.Config.BpfDir); err != nil {
 		log.Fatalf("Load Start Sensors failed: %v", err)
 	}
 

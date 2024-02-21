@@ -5,7 +5,7 @@ import (
 )
 
 func LoadSkProgram(
-	bpfDir, mapDir string,
+	bpfDir string,
 	load *program.Program,
 	sockmap *program.Map,
 	verbose int,
@@ -16,5 +16,5 @@ func LoadSkProgram(
 		return err
 	}
 
-	return program.LoadProgram(bpfDir, []string{mapDir}, load, program.RawAttach(fd), verbose)
+	return program.LoadProgram(bpfDir, load, program.RawAttach(fd), verbose)
 }

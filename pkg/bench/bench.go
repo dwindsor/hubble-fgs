@@ -123,7 +123,6 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	defer os.Remove(configFile)
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	option.Config.MapDir = bpf.MapPrefixPath()
 	obs := observer.NewObserver(configFile)
 
 	if err := obs.InitSensorManager(nil); err != nil {
@@ -164,14 +163,12 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	}
 
 	if err := base.LoadDefault(
-		option.Config.BpfDir,
-		option.Config.MapDir); err != nil {
+		option.Config.BpfDir); err != nil {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
 	if err := startSensors.Load(
-		option.Config.BpfDir,
-		option.Config.MapDir); err != nil {
+		option.Config.BpfDir); err != nil {
 		log.Fatalf("Load Start Sensors failed: %v", err)
 	}
 

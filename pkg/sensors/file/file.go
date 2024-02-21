@@ -389,7 +389,7 @@ func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID,
 	}
 	f := fm.FsScannerContainerInit{
 		Tp:          specPath,
-		MapDir:      option.Config.MapDir,
+		MapDir:      option.Config.BpfDir,
 		ContainerID: containerID,
 		PodNs:       podNs,
 		PodName:     podName,
@@ -410,7 +410,7 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 	specPath := pol.FileMonitoringTable.GetValuesFIM()
 	f := fm.FsScannerContainerDestroy{
 		Tp:          specPath,
-		MapDir:      option.Config.MapDir,
+		MapDir:      option.Config.BpfDir,
 		ContainerID: containerID,
 	}
 
@@ -975,7 +975,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			renameCid = dstCid // both not empty -- use destination containerID
 		}
 
-		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.PinPathPrefix, renameCid, m.RuleID); err != nil {
+		if err := RenameFsScanner(path, option.Config.BpfDir, op, action, s.PinPathPrefix, renameCid, m.RuleID); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_mv_scanner")
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
@@ -1188,7 +1188,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	filemetrics.FileSetDirectoryInodeMapMax(e.TpName, float64(config.MaxWatchedDirs))
 
 	if kprobes.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.MapDir, e.PinPathPrefix); err != nil {
+		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix); err != nil {
 			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		}
@@ -1796,11 +1796,11 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 
 	switch v.tp {
 	case "kprobe", "kretprobe":
-		return program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		return program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 	case "fentry", "fexit", "fmod_ret":
-		return program.LoadTracingProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		return program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
 	case "lsm", "lsm.s":
-		return program.LoadLSMProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		return program.LoadLSMProgram(args.BPFDir, args.Load, args.Verbose)
 	default:
 		return fmt.Errorf("file: %s programs are not supported", v.tp)
 	}

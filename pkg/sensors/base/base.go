@@ -233,12 +233,12 @@ func GetInitialSensor() *sensors.Sensor {
 
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
-func LoadDefault(bpfDir, mapDir string) error {
+func LoadDefault(bpfDir string) error {
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
 	load := GetInitialSensor()
-	if err := load.Load(bpfDir, mapDir); err != nil {
+	if err := load.Load(bpfDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	return nil

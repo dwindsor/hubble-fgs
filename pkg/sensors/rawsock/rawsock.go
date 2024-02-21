@@ -131,13 +131,13 @@ func (rawsock *rawsockSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if args.Load.Type == "cgrp_rawsock_ingress" || args.Load.Type == "cgrp_rawsock_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
 	if args.Load.Type == "kprobe_raw" {
-		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}

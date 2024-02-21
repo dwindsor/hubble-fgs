@@ -567,7 +567,7 @@ func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
 	return config, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, verbose int) error {
+func LoadGenericTracepointSensor(bpfDir string, load *program.Program, verbose int) error {
 
 	tracepointLog = logger.GetLogger()
 
@@ -598,7 +598,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 	}
 	load.MapLoad = append(load.MapLoad, cfg)
 
-	if err := program.LoadTracepointProgram(bpfDir, mapDir, load, verbose); err == nil {
+	if err := program.LoadTracepointProgram(bpfDir, load, verbose); err == nil {
 		logger.GetLogger().Infof("Loaded generic tracepoint program: %s -> %s", load.Name, load.Attach)
 	} else {
 		return err
@@ -760,5 +760,5 @@ func handleMsgGenericTracepoint(
 }
 
 func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	return LoadGenericTracepointSensor(args.BPFDir, args.Load, args.Verbose)
 }

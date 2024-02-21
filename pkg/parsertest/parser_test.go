@@ -127,7 +127,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	// Load the initial sensor.
 	initSensor := base.GetInitialSensor()
 
-	err := initSensor.Load(bpf.MapPrefixPath(), bpf.MapPrefixPath())
+	err := initSensor.Load(bpf.MapPrefixPath())
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}
@@ -225,7 +225,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	}
 	parserSensor := sensors.SensorCombine("parser", parserSensors...)
 
-	err = parserSensor.Load(bpf.MapPrefixPath(), bpf.MapPrefixPath())
+	err = parserSensor.Load(bpf.MapPrefixPath())
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}

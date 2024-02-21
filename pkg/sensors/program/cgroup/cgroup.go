@@ -16,15 +16,15 @@ var (
 )
 
 func LoadSockOpt(
-	bpfDir, mapDir string,
+	bpfDir string,
 	load *program.Program,
 	verbose int,
 ) error {
-	return LoadCgroupProgram(bpfDir, mapDir, load, verbose)
+	return LoadCgroupProgram(bpfDir, load, verbose)
 }
 
 func LoadCgroupProgram(
-	bpfDir, mapDir string,
+	bpfDir string,
 	load *program.Program, verbose int) error {
 	if fgsCgroupFD < 0 {
 		fd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
@@ -33,5 +33,5 @@ func LoadCgroupProgram(
 		}
 		fgsCgroupFD = fd
 	}
-	return program.LoadProgram(bpfDir, []string{mapDir}, load, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
+	return program.LoadProgram(bpfDir, load, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
 }

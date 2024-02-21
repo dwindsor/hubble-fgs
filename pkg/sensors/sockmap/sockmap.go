@@ -110,27 +110,27 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := cgroup.LoadSockOpt(args.BPFDir, args.MapDir, SockoptSet, args.Verbose)
+	err := cgroup.LoadSockOpt(args.BPFDir, SockoptSet, args.Verbose)
 	if err != nil {
 		return err
 	}
 
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, args.Load, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap, args.Verbose)
+		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.TlsSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
-	return sockops.SetFilter(args.MapDir, "tg_tls_filter_map", tlsFilters)
+	return sockops.SetFilter(args.BPFDir, "tg_tls_filter_map", tlsFilters)
 }
 
 type skSkbVerdictTLSSensor struct {
@@ -298,10 +298,10 @@ func (tls *tlsSensor) PolicyHandler(
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if args.Load.Type == "tls_cgrp_ingress" || args.Load.Type == "tls_cgrp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	return sockops.SetFilter(args.MapDir, "tg_tls_filter_map", tlsFilters)
+	return sockops.SetFilter(args.BPFDir, "tg_tls_filter_map", tlsFilters)
 }

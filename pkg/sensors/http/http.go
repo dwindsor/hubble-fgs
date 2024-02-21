@@ -123,22 +123,22 @@ type httpSensor struct {
 }
 
 func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.HttpSockMap, args.Verbose)
+	err := sk.LoadSkProgram(args.BPFDir, args.Load, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.HttpSockMap, args.Verbose)
+		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.HttpSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.HttpSockMap, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
-	return sockops.SetFilter(args.MapDir, "tg_http_filter_map", filters)
+	return sockops.SetFilter(args.BPFDir, "tg_http_filter_map", filters)
 }
 
 func (http *httpSensor) PolicyHandler(

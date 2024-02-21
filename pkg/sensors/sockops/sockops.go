@@ -81,7 +81,7 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+	err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 	return err
 }
 

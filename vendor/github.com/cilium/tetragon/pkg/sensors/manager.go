@@ -33,7 +33,7 @@ type SensorStatus struct {
 // something is received. The intention of this is to allow the main function
 // to first load the base sensor before the sensor manager starts loading other sensors.
 func StartSensorManager(
-	bpfDir, mapDir string,
+	bpfDir string,
 	waitChan chan struct{},
 ) (*Manager, error) {
 	pfState, err := policyfilter.GetState()
@@ -41,7 +41,7 @@ func StartSensorManager(
 		return nil, fmt.Errorf("failed to initialize policy filter state: %w", err)
 	}
 
-	handler, err := newHandler(pfState, bpfDir, mapDir)
+	handler, err := newHandler(pfState, bpfDir)
 	if err != nil {
 		return nil, err
 	}

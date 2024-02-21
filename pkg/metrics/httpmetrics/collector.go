@@ -56,7 +56,7 @@ func collectMapStats(mapPath string, sum *httpapi.HttpStateStats) error {
 
 func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 	sum := httpapi.HttpStateStats{}
-	err := filepath.Walk(option.Config.MapDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(option.Config.BpfDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

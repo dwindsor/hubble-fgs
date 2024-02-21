@@ -548,7 +548,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	getRunningSockets(true, true)
 
 	if args.Load.Type == "cgrp_tcp_ingress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
@@ -568,7 +568,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 				tcpconfig.RttHistogramMin)
 		}
 		configureTCPDisableEvents(disableConnect, disableClose, disableAccept, disableListen)
-		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
@@ -576,7 +576,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 	if !configured {
 		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()

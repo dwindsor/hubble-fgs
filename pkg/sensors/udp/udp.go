@@ -721,12 +721,12 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 	switch args.Load.Type {
 	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
 	case "kprobe_udp":
-		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
@@ -737,12 +737,12 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	}
 	if !configured {
-		if err := configureUdpSensor(args.MapDir, UdpConfigMapName, Config); err != nil {
+		if err := configureUdpSensor(args.BPFDir, UdpConfigMapName, Config); err != nil {
 			return err
 		}
 		logger.GetLogger().WithField("timestampEnabled", timestampEnabled).Debug("UDP Loader")
 		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.MapDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()

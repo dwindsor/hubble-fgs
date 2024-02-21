@@ -195,13 +195,13 @@ func (icmp *icmpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if args.Load.Type == "cgrp_icmp_ingress" || args.Load.Type == "cgrp_icmp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
 	if !configured {
-		m, err := ebpf.LoadPinnedMap(filepath.Join(args.MapDir, "tg_icmp_cfg_map"), nil)
+		m, err := ebpf.LoadPinnedMap(filepath.Join(args.BPFDir, "tg_icmp_cfg_map"), nil)
 		if err != nil {
 			return err
 		}

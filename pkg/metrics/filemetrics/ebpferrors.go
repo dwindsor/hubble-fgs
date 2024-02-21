@@ -113,7 +113,7 @@ func (c *bpfErrorCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *bpfErrorCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, tp := range pol.FileMonitoringTable.GetValuesFIM() {
-		filePinPath := path.Join(option.Config.MapDir, sensors.PathJoin(tp.PinPath, "file_errors_map"))
+		filePinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "file_errors_map"))
 		fileMapHandle, err := ebpf.LoadPinnedMap(filePinPath, nil)
 		if err != nil {
 			return
