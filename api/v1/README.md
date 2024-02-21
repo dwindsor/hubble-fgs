@@ -102,6 +102,8 @@
     - [SensorStatus](#tetragon.SensorStatus)
     - [TracingPolicyStatus](#tetragon.TracingPolicyStatus)
   
+    - [TracingPolicyState](#tetragon.TracingPolicyState)
+  
     - [FineGuidanceSensors](#tetragon.FineGuidanceSensors)
   
 - [tetragon/stack.proto](#tetragon/stack.proto)
@@ -1874,15 +1876,31 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | namespace | [string](#string) |  | namespace is the namespace of the policy (or empty of the policy is global) |
 | info | [string](#string) |  | info is additional information about the policy |
 | sensors | [string](#string) | repeated | sensors loaded in the scope of this policy |
-| enabled | [bool](#bool) |  | indicating if the policy is enabled |
+| enabled | [bool](#bool) |  | **Deprecated.** indicating if the policy is enabled. Deprecated: use &#39;state&#39; instead. |
 | filter_id | [uint64](#uint64) |  | filter ID of the policy used for k8s filtering |
 | error | [string](#string) |  | potential error of the policy |
+| state | [TracingPolicyState](#tetragon.TracingPolicyState) |  | current state of the tracing policy |
 
 
 
 
 
  
+
+
+<a name="tetragon.TracingPolicyState"></a>
+
+### TracingPolicyState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TP_STATE_UNKNOWN | 0 | unknown state |
+| TP_STATE_ENABLED | 1 | loaded and enabled |
+| TP_STATE_DISABLED | 2 | loaded but disabled |
+| TP_STATE_LOAD_ERROR | 3 | failed to load |
+| TP_STATE_ERROR | 4 | failed during lifetime |
+
 
  
 

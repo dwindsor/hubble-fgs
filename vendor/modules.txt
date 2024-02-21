@@ -358,6 +358,7 @@ github.com/cilium/tetragon/pkg/metrics/mapmetrics
 github.com/cilium/tetragon/pkg/metrics/metricsconfig
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
 github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics
+github.com/cilium/tetragon/pkg/metrics/policystatemetrics
 github.com/cilium/tetragon/pkg/metrics/processexecmetrics
 github.com/cilium/tetragon/pkg/metrics/ratelimitmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufmetrics

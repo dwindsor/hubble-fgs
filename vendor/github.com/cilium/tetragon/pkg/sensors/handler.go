@@ -88,10 +88,18 @@ func (h *handler) updatePolicyFilter(tp tracingpolicy.TracingPolicy, tpID uint64
 }
 
 func (h *handler) addTracingPolicy(op *tracingPolicyAdd) error {
-	if _, exists := h.collections[op.name]; exists {
+	// allow overriding existing policy collection that resulted in an error
+	// during the loading state
+	if col, exists := h.collections[op.name]; exists && col.state != LoadErrorState {
 		return fmt.Errorf("failed to add tracing policy %s, a sensor collection with the name already exists", op.name)
 	}
 	tpID := h.allocPolicyID()
+
+	col := collection{
+		name:            op.name,
+		tracingpolicy:   op.tp,
+		tracingpolicyID: uint64(tpID),
+	}
 
 	// update policy filter state before loading the sensors of the policy.
 	//
@@ -104,28 +112,30 @@ func (h *handler) addTracingPolicy(op *tracingPolicyAdd) error {
 	// other than filterID is passed.
 	filterID, err := h.updatePolicyFilter(op.tp, tpID)
 	if err != nil {
+		col.err = err
+		col.state = LoadErrorState
+		h.collections[op.name] = col
 		return err
 	}
+	col.policyfilterID = uint64(filterID)
 
 	sensors, err := sensorsFromPolicyHandlers(op.tp, filterID)
 	if err != nil {
+		col.err = err
+		col.state = LoadErrorState
+		h.collections[op.name] = col
 		return err
 	}
+	col.sensors = sensors
 
-	col := collection{
-		sensors:         sensors,
-		name:            op.name,
-		tracingpolicy:   op.tp,
-		tracingpolicyID: uint64(tpID),
-		policyfilterID:  uint64(filterID),
-	}
 	if err := col.load(h.bpfDir); err != nil {
+		col.err = err
+		col.state = LoadErrorState
+		h.collections[op.name] = col
 		return err
 	}
-	col.enabled = true
+	col.state = EnabledState
 
-	// NB: in some cases it might make sense to keep the policy registered if there was an
-	// error. For now, however, we only keep it if it was successfully loaded
 	h.collections[op.name] = col
 	return nil
 }
@@ -142,8 +152,7 @@ func (h *handler) deleteTracingPolicy(op *tracingPolicyDelete) error {
 	filterID := policyfilter.PolicyID(col.policyfilterID)
 	err := h.pfState.DelPolicy(filterID)
 	if err != nil {
-		col.err = fmt.Errorf("failed to remove from policyfilter: %w", err)
-		return err
+		return fmt.Errorf("failed to remove from policyfilter: %w", err)
 	}
 
 	return nil
@@ -159,9 +168,13 @@ func (h *handler) listTracingPolicies(op *tracingPolicyList) error {
 		pol := tetragon.TracingPolicyStatus{
 			Id:       col.tracingpolicyID,
 			Name:     name,
-			Enabled:  col.enabled,
+			Enabled:  col.state == EnabledState,
 			FilterId: col.policyfilterID,
-			Error:    fmt.Sprint(col.err),
+			State:    col.state.ToTetragonState(),
+		}
+
+		if col.err != nil {
+			pol.Error = col.err.Error()
 		}
 
 		pol.Namespace = ""
@@ -186,17 +199,21 @@ func (h *handler) disableTracingPolicy(op *tracingPolicyDisable) error {
 		return fmt.Errorf("tracing policy %s does not exist", op.name)
 	}
 
-	if !col.enabled {
+	if col.state == DisabledState {
 		return fmt.Errorf("tracing policy %s is already disabled", op.name)
 	}
 
 	err := col.unload()
 	if err != nil {
-		col.err = fmt.Errorf("failed to unload tracing policy: %w", err)
-		return err
+		// for now, the only way col.unload() can return an error is if the
+		// collection is not currently loaded, which should be impossible
+		col.err = fmt.Errorf("failed to unload tracing policy %q: %w", col.name, err)
+		col.state = ErrorState
+		h.collections[op.name] = col
+		return col.err
 	}
 
-	col.enabled = false
+	col.state = DisabledState
 	h.collections[op.name] = col
 	return nil
 }
@@ -207,15 +224,18 @@ func (h *handler) enableTracingPolicy(op *tracingPolicyEnable) error {
 		return fmt.Errorf("tracing policy %s does not exist", op.name)
 	}
 
-	if col.enabled {
+	if col.state == EnabledState {
 		return fmt.Errorf("tracing policy %s is already enabled", op.name)
 	}
 
 	if err := col.load(h.bpfDir); err != nil {
-		return err
+		col.state = LoadErrorState
+		col.err = fmt.Errorf("failed to load tracing policy %q: %w", col.name, err)
+		h.collections[op.name] = col
+		return col.err
 	}
 
-	col.enabled = true
+	col.state = EnabledState
 	h.collections[op.name] = col
 	return nil
 }
