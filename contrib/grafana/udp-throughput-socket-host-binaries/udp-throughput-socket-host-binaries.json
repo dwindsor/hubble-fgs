@@ -422,7 +422,7 @@
               }
             ]
           },
-          "unit": "pkt/s"
+          "unit": "seg/s"
         },
         "overrides": []
       },
@@ -519,7 +519,7 @@
               }
             ]
           },
-          "unit": "pkt/s"
+          "unit": "seg/s"
         },
         "overrides": []
       },
@@ -581,7 +581,7 @@
               }
             ]
           },
-          "unit": "pkt/s"
+          "unit": "seg/s"
         },
         "overrides": []
       },
@@ -678,7 +678,7 @@
               }
             ]
           },
-          "unit": "pkt/s"
+          "unit": "seg/s"
         },
         "overrides": []
       },
@@ -1241,7 +1241,7 @@
                   }
                 ]
               },
-              "unit": "pkt/s"
+              "unit": "seg/s"
             },
             "overrides": []
           },
@@ -1493,7 +1493,7 @@
                   }
                 ]
               },
-              "unit": "pkt/s"
+              "unit": "seg/s"
             },
             "overrides": []
           },
@@ -1853,7 +1853,7 @@
                   }
                 ]
               },
-              "unit": "pkt/s"
+              "unit": "seg/s"
             },
             "overrides": []
           },
@@ -2122,7 +2122,7 @@
                   }
                 ]
               },
-              "unit": "pkt/s"
+              "unit": "seg/s"
             },
             "overrides": []
           },
