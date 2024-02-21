@@ -1,7 +1,6 @@
-# Tetragon / TCP Throughput / Socket
+# Tetragon / UDP Throughput / Socket
 
-This dashboard is intended to monitor TCP throughput: bytes and segments flow, retransmits, socket drops, and
-zero window packets.
+This dashboard is intended to monitor UDP throughput: bytes and segments flow, and socket drops.
 
 While primarily tailored for traffic analysis in Kubernetes clusters, it's also functional in non-Kubernetes
 environments. It serves as an effective troubleshooting tool, offering a range of filters such as nodes, binaries,
@@ -10,5 +9,5 @@ a summary for the chosen filters, while subsequent rows break down the data acro
 
 ## Requirements
 
-This dashboard requires [Tetragon Enterprise](https://isovalent.com/projects/tetragon/) to be installed with TCP
+This dashboard requires [Tetragon Enterprise](https://isovalent.com/projects/tetragon/) to be installed with UDP
 visibility features configured. It's based on Prometheus metrics exported by Tetragon Enterprise.

@@ -1,3 +1,13 @@
-The "HTTP Golden Signals / Socket" dashboard shows requests, errors and duration of HTTP requests from the server perspective. It's designed as a troubleshooting tool, so it allows filtering by an arbitrary selection of nodes, binaries, remote DNS names, Host headers, as well as Kubernetes metadata: namespaces, workloads, pods. The top row shows the overview for the selection and the following rows split the data by different dimensions.
+# Tetragon / HTTP Golden Signals / Socket
 
-This dashboard requires Tetragon Enterprise with the HTTP sensor configured.
+This dashboard is intended to monitor HTTP golden signals: requests, errors and duration.
+
+While primarily tailored for traffic analysis in Kubernetes clusters, it's also functional in non-Kubernetes
+environments. It serves as an effective troubleshooting tool, offering a range of filters such as nodes, binaries,
+remote DNS names, as well as Kubernetes-specific metadata: namespaces, workloads, and pods. The top row provides
+a summary for the chosen filters, while subsequent rows break down the data across various dimensions.
+
+## Requirements
+
+This dashboard requires [Tetragon Enterprise](https://isovalent.com/projects/tetragon/) to be installed with HTTP
+visibility features configured. It's based on Prometheus metrics exported by Tetragon Enterprise.

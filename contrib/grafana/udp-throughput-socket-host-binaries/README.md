@@ -1,6 +1,6 @@
-# Tetragon / TCP Latency / Socket - Host Binaries
+# Tetragon / UDP Throughput / Socket - Host Binaries
 
-This dashboard is intended to monitor TCP Smoothed Round Trip Time (SRTT) and one-way latency.
+This dashboard is intended to monitor UDP throughput: bytes and segments flow, and socket drops.
 
 While primarily tailored for traffic analysis in Kubernetes clusters, it's also functional in non-Kubernetes
 environments. In Kubernetes context, it displays only host binaries (that is, not Kubernetes pods). It serves as
@@ -9,5 +9,5 @@ provides a summary for the chosen filters, while subsequent rows break down the 
 
 ## Requirements
 
-This dashboard requires [Tetragon Enterprise](https://isovalent.com/projects/tetragon/) to be installed with TCP
+This dashboard requires [Tetragon Enterprise](https://isovalent.com/projects/tetragon/) to be installed with UDP
 visibility features configured. It's based on Prometheus metrics exported by Tetragon Enterprise.
