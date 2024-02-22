@@ -96,18 +96,20 @@ func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & networkapi.SOCKFLAGS_TYPE_DNSREADY) != 0
 }
 
-type MsgIPEventUnix struct {
-	Msg        *networkapi.MsgIPEvent
+type IpEventUnixMeta struct {
 	Kube       processapi.MsgK8sUnix
 	RefCntDone [2]bool
 	Duration   time.Duration
 }
 
+type MsgIPEventUnix struct {
+	IpEventUnixMeta
+	Msg *networkapi.MsgIPEvent
+}
+
 type MsgIPWithStatsEventUnix struct {
-	Msg        *networkapi.MsgIPWithStatsEvent
-	Kube       processapi.MsgK8sUnix
-	RefCntDone [2]bool
-	Duration   time.Duration
+	IpEventUnixMeta
+	Msg *networkapi.MsgIPWithStatsEvent
 }
 
 type MsgUdpSeqCheckErrorEventUnix struct {

@@ -31,6 +31,11 @@ import (
 
 func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUnix, *MsgIPWithStatsEventUnix) {
 	connectMsg := MsgIPEventUnix{
+		IpEventUnixMeta: IpEventUnixMeta{
+			Kube: tetragonAPI.MsgK8sUnix{
+				Docker: Docker,
+			},
+		},
 		Msg: &networkapi.MsgIPEvent{
 			Common: tetragonAPI.MsgCommon{
 				Op:     ops.MSG_OP_TCPCONNECTRET,
@@ -45,12 +50,14 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 				Ktime: Ktime,
 			},
 		},
-		Kube: tetragonAPI.MsgK8sUnix{
-			Docker: Docker,
-		},
 	}
 
 	closeMsg := MsgIPWithStatsEventUnix{
+		IpEventUnixMeta: IpEventUnixMeta{
+			Kube: tetragonAPI.MsgK8sUnix{
+				Docker: Docker,
+			},
+		},
 		Msg: &networkapi.MsgIPWithStatsEvent{
 			MsgIPEvent: networkapi.MsgIPEvent{
 				Common: tetragonAPI.MsgCommon{
@@ -66,9 +73,6 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 					Ktime: Ktime,
 				},
 			},
-		},
-		Kube: tetragonAPI.MsgK8sUnix{
-			Docker: Docker,
 		},
 	}
 
