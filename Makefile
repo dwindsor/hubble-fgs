@@ -112,8 +112,8 @@ help:
 	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
 	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
 	@echo 'Generated files: '
-	@echo '    codegen      - genereate code based on .proto files'
-	@echo '    crds         - genereate kubebuilder files'
+	@echo '    protogen     - generate code based on .proto files'
+	@echo '    crds         - generate kubebuilder files'
 	@echo 'Compilation: '
 	@echo '    tetragon          - compile the Tetragon agent'
 	@echo '    tetragon-operator - compile the Tetragon operator'
@@ -371,16 +371,15 @@ image-test:
 	$(QUIET)@echo "Push like this when ready:"
 	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
-image-codegen:
-	$(CONTAINER_ENGINE) build -f Dockerfile.codegen -t "isovalent/tetragon-codegen:${DOCKER_IMAGE_TAG}" .
-	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/tetragon-codegen:$(DOCKER_IMAGE_TAG)"
-
 .PHONY: image-clang
 image-clang:
 	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)@echo "Push like this when ready:"
 	$(QUIET)@echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: protoc-gen-go-tetragon
+protoc-gen-go-tetragon:
+	$(GO_BUILD) -o bin/$@ ./tools/protoc-gen-go-tetragon/
 
 fetch-testdata:
 	docker stop fgs-md-temp || true
@@ -399,7 +398,9 @@ crds:
 	$(MAKE) -C pkg/k8s
 	$(MAKE) vendor
 
-codegen: image-codegen
+.PHONY: codegen protogen
+codegen: | protogen
+protogen: protoc-gen-go-tetragon
 	# Need to call vendor twice here, once before and once after codegen the reason
 	# being we need to grab changes first plus pull in whatever gets generated here.
 	$(MAKE) vendor
