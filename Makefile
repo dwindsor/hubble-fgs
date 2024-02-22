@@ -113,7 +113,7 @@ help:
 	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
 	@echo 'Generated files: '
 	@echo '    codegen      - genereate code based on .proto files'
-	@echo '    generate     - genereate kubebuilder files'
+	@echo '    crds         - genereate kubebuilder files'
 	@echo 'Compilation: '
 	@echo '    tetragon          - compile the Tetragon agent'
 	@echo '    tetragon-operator - compile the Tetragon operator'
@@ -390,7 +390,9 @@ fetch-testdata:
 	docker cp fgs-md-temp:/var/run/tetragon-ee-metadata/vmlinux-5.4.104+ testdata/btf
 	docker stop fgs-md-temp || true
 
-generate:
+.PHONY: generate crds
+generate: | crds
+crds:
 	# Need to call vendor twice here, once before and once after generate, the reason
 	# being we need to grab changes first plus pull in whatever gets generated here.
 	$(MAKE) vendor
@@ -434,7 +436,7 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-.PHONY: headers image install lint generate check
+.PHONY: headers image install lint check
 
 
 # generate cscope for bpf files
