@@ -94,6 +94,15 @@ EVENT TCPCLOSE
   h8 0x01020304deadbeef # ktime
   ? 8                   # socket cookie
 
+  ## socket flags
+  h4 0x02 # accept
+
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
+
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   h8 0 # create ktime
@@ -131,15 +140,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # latency sum
 
-  ## socket flags
-  h4 0x02 # accept
-
-  ## pad
-  $ 00 00 00 00
-
-  ## duration
-  ? 8
-
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 END
@@ -163,6 +163,15 @@ EVENT TCPCLOSE
   $ 00 00 00 00         # pad
   h8 0x01020304deadbeef # ktime
   ? 8                   # socket cookie
+
+  ## socket flags
+  h4 0x01 # connect
+
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
@@ -201,15 +210,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # latency sum
 
-  ## socket flags
-  h4 0x01 # connect
-
-  ## pad
-  $ 00 00 00 00
-
-  ## duration
-  ? 8
-
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
 END
@@ -232,6 +232,15 @@ EVENT TCPCLOSE
   $ 00 00 00 00         # pad
   h8 0x01020304deadbeef # ktime
   ? 8                   # socket cookie
+
+  ## socket flags
+  h4 0x04 # listen
+
+  ## pad
+  $ 00 00 00 00
+
+  ## duration
+  ? 8
 
   ## socket stats
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
@@ -269,15 +278,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # latency sum
-
-  ## socket flags
-  h4 0x04 # listen
-
-  ## pad
-  $ 00 00 00 00
-
-  ## duration
-  ? 8
 
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?

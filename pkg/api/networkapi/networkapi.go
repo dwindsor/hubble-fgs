@@ -126,15 +126,8 @@ type MsgIPEvent struct {
 }
 
 type MsgIPWithStatsEvent struct {
-	Common      processapi.MsgCommon    `align:"common"`
-	Tuple       MsgIPTuple              `align:"tuple"`
-	Return      int64                   `align:"ret"`
-	ProcessKey  processapi.MsgExecveKey `align:"key"`
-	SockCookie  uint64                  `align:"socket_cookie"`
-	SocketStats MsgSocketStats          `align:"stats"`
-	SocketFlags uint32                  `align:"socket_flags"`
-	Version     uint32                  `align:"version"`
-	Duration    uint64                  `align:"duration"`
+	MsgIPEvent
+	SocketStats MsgSocketStats `align:"stats"`
 }
 
 type MsgICMPData struct {

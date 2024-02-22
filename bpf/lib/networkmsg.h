@@ -78,10 +78,10 @@ struct msg_ip_with_stats_event {
 	unsigned long int ret;
 	struct msg_execve_key key;
 	__u64 socket_cookie;
-	struct msg_socket_stats stats;
 	__u32 socket_flags;
 	__u32 version;
 	__u64 duration; // only used on close events.
+	struct msg_socket_stats stats;
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_icmp_event {

@@ -52,17 +52,19 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 
 	closeMsg := MsgIPWithStatsEventUnix{
 		Msg: &networkapi.MsgIPWithStatsEvent{
-			Common: tetragonAPI.MsgCommon{
-				Op:     ops.MSG_OP_TCPCLOSE,
-				Flags:  0,
-				Pad_v2: [2]uint8{0, 0},
-				Size:   40,
-				Ktime:  0,
-			},
-			ProcessKey: tetragonAPI.MsgExecveKey{
-				Pid:   Pid,
-				Pad:   0,
-				Ktime: Ktime,
+			MsgIPEvent: networkapi.MsgIPEvent{
+				Common: tetragonAPI.MsgCommon{
+					Op:     ops.MSG_OP_TCPCLOSE,
+					Flags:  0,
+					Pad_v2: [2]uint8{0, 0},
+					Size:   40,
+					Ktime:  0,
+				},
+				ProcessKey: tetragonAPI.MsgExecveKey{
+					Pid:   Pid,
+					Pad:   0,
+					Ktime: Ktime,
+				},
 			},
 		},
 		Kube: tetragonAPI.MsgK8sUnix{
