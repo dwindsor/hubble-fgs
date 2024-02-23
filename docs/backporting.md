@@ -12,6 +12,7 @@ As of Tetragon EE 1.9, each EE version is in sync with an OSS version.
 | 1.9    | 0.8  |
 | 1.10   | 0.9  |
 | 1.11   | 0.10 |
+| 1.12   | 1.0  |
 
 Hence, backporting PRs that are in OSS or have dependencies in PRs that _are_ in OSS needs to go via
 the correspodning OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
