@@ -216,6 +216,30 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 	}
 }
 
+func createUDPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
+	b, p, w, ns := oss.GetProcessInfo(res)
+
+	if !udpconfig.CurrentLabels["ns"] {
+		ns = ""
+	}
+	if !udpconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !udpconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !udpconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+
+	return &srcSocketLabels{
+		ns:       ns,
+		workload: w,
+		pod:      p,
+		binary:   b,
+	}
+}
+
 func createSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 

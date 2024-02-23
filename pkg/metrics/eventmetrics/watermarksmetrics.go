@@ -60,7 +60,7 @@ func postTCPBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 func postProcessNetworkBurstEventStats(res *tetragon.ProcessNetworkBurst) {
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
-		l := createSrcSocketLabels(res.Process)
+		l := createUDPSrcSocketLabels(res.Process)
 		if udpconfig.MetricsEnabled {
 			postUDPBurstStats(l, res)
 		}
@@ -159,7 +159,7 @@ func postTCPWatermarksDipStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWat
 func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermark) {
 	switch res.Protocol {
 	case tetragon.SocketProtocol_UDP.String():
-		l := createSrcSocketLabels(res.Process)
+		l := createUDPSrcSocketLabels(res.Process)
 
 		if !udpconfig.MetricsEnabled {
 			break
