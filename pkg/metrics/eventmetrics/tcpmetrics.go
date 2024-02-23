@@ -91,27 +91,27 @@ func postTCPSocketStats(l *socketLabels, s *tetragon.SocketStats) {
 		c = float64(s.Latency.Buckets[0].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10)))
 		c += float64(s.Latency.Buckets[1].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25)))
 		c += float64(s.Latency.Buckets[2].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50)))
 		c += float64(s.Latency.Buckets[3].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75)))
 		c += float64(s.Latency.Buckets[4].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90)))
 		c += float64(s.Latency.Buckets[5].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99)))
 		c += float64(s.Latency.Buckets[6].Count)
 		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
 
