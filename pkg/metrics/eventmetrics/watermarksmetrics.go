@@ -17,7 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-func postUDPBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkBurst) {
+func postUDPBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {
@@ -37,7 +37,7 @@ func postUDPBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 	}
 }
 
-func postTCPBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkBurst) {
+func postTCPBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {
@@ -76,7 +76,7 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postUDPWatermarksBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {
@@ -96,7 +96,7 @@ func postUDPWatermarksBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkW
 	}
 }
 
-func postUDPWatermarksDipStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksDipStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {
@@ -116,7 +116,7 @@ func postUDPWatermarksDipStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWat
 	}
 }
 
-func postTCPWatermarksBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {
@@ -136,7 +136,7 @@ func postTCPWatermarksBurstStats(l *srcSocketLabels, s *tetragon.ProcessNetworkW
 	}
 }
 
-func postTCPWatermarksDipStats(l *srcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksDipStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	labelStrings := l.labelString()
 
 	if s.Direction == "egress" {

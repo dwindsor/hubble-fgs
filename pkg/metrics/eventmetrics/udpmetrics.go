@@ -19,71 +19,73 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-func postUDPSocketStats(l *socketLabels, s *tetragon.SocketStats) {
+func postUDPSocketStats(l *SocketLabels, s *tetragon.SocketStats) {
+	labels := l.LabelString()
+
 	c := float64(s.BytesSubmitted)
-	socketmetrics.SocketStatsUDPTxBytes.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPTxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsSubmitted)
-	socketmetrics.SocketStatsUDPTxSegs.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPTxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.BytesConsumed)
-	socketmetrics.SocketStatsUDPRxBytes.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPRxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsConsumed)
-	socketmetrics.SocketStatsUDPRxSegs.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPRxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.BytesSent)
-	socketmetrics.SocketStatsUDPStackTxBytes.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPStackTxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsOut)
-	socketmetrics.SocketStatsUDPStackTxSegs.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPStackTxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.BytesReceived)
-	socketmetrics.SocketStatsUDPStackRxBytes.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPStackRxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsIn)
-	socketmetrics.SocketStatsUDPStackRxSegs.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPStackRxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.SkDrop)
-	socketmetrics.SocketStatsUDPDrops.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPDrops.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.SkbConsumeMisses)
-	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(l.labelString()...).Add(c)
+	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(labels...).Add(c)
 
 	// Post UDP Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
 	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
 	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Latency != nil && s.Latency.Buckets != nil {
-		bstr := append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01)))
+		bucketLabels := append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01)))
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10)))
 		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25)))
 		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50)))
 		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75)))
 		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90)))
 		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99)))
+		bucketLabels = append(labels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99)))
 		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		bstr = append(l.labelString(), "+Inf")
+		bucketLabels = append(labels, "+Inf")
 		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(bstr...).Add(c)
-		socketmetrics.UdpLatencyCount.WithLabelValues(l.labelString()...).Add(c)
-		socketmetrics.UdpLatencySum.WithLabelValues(l.labelString()...).Add(float64(s.Latency.Sum))
+		socketmetrics.UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
+		socketmetrics.UdpLatencyCount.WithLabelValues(labels...).Add(c)
+		socketmetrics.UdpLatencySum.WithLabelValues(labels...).Add(float64(s.Latency.Sum))
 	}
 }
 

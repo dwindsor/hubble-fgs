@@ -20,22 +20,22 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-type socketLabels struct {
-	ns          string
-	workload    string
-	pod         string
-	binary      string
-	dstns       string
-	dstWorkload string
-	dstPod      string
-	dstDNS      string
+type SocketLabels struct {
+	Ns          string
+	Workload    string
+	Pod         string
+	Binary      string
+	DstNs       string
+	DstWorkload string
+	DstPod      string
+	DstDNS      string
 }
 
-func (s socketLabels) labelString() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.dstns, s.dstWorkload, s.dstPod, s.dstDNS}
+func (s SocketLabels) LabelString() []string {
+	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.DstNs, s.DstWorkload, s.DstPod, s.DstDNS}
 }
 
-func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
+func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -66,19 +66,19 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 		dstDNS = ""
 	}
 
-	return &socketLabels{
-		ns:          ns,
-		workload:    w,
-		pod:         p,
-		binary:      b,
-		dstns:       dstns,
-		dstWorkload: dstWorkload,
-		dstPod:      dstPodString,
-		dstDNS:      dstDNS,
+	return &SocketLabels{
+		Ns:          ns,
+		Workload:    w,
+		Pod:         p,
+		Binary:      b,
+		DstNs:       dstns,
+		DstWorkload: dstWorkload,
+		DstPod:      dstPodString,
+		DstDNS:      dstDNS,
 	}
 }
 
-func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
+func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -109,31 +109,31 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 		dstDNS = ""
 	}
 
-	return &socketLabels{
-		ns:          ns,
-		workload:    w,
-		pod:         p,
-		binary:      b,
-		dstns:       dstns,
-		dstWorkload: dstWorkload,
-		dstPod:      dstPodString,
-		dstDNS:      dstDNS,
+	return &SocketLabels{
+		Ns:          ns,
+		Workload:    w,
+		Pod:         p,
+		Binary:      b,
+		DstNs:       dstns,
+		DstWorkload: dstWorkload,
+		DstPod:      dstPodString,
+		DstDNS:      dstDNS,
 	}
 }
 
-type multicastSocketLabels struct {
-	ns          string
-	workload    string
-	pod         string
-	binary      string
-	srcMcast    string
-	dstns       string
-	dstWorkload string
-	dstPod      string
-	dstMcast    string
+type MulticastSocketLabels struct {
+	Ns          string
+	Workload    string
+	Pod         string
+	Binary      string
+	SrcMcast    string
+	DstNs       string
+	DstWorkload string
+	DstPod      string
+	DstMcast    string
 }
 
-func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocketLabels {
+func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *MulticastSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -168,31 +168,31 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocke
 		dstIP = ""
 	}
 
-	return &multicastSocketLabels{
-		ns:          ns,
-		workload:    w,
-		pod:         p,
-		binary:      b,
-		srcMcast:    sourceIP,
-		dstns:       dstns,
-		dstWorkload: dstWorkload,
-		dstPod:      dstPodString,
-		dstMcast:    dstIP,
+	return &MulticastSocketLabels{
+		Ns:          ns,
+		Workload:    w,
+		Pod:         p,
+		Binary:      b,
+		SrcMcast:    sourceIP,
+		DstNs:       dstns,
+		DstWorkload: dstWorkload,
+		DstPod:      dstPodString,
+		DstMcast:    dstIP,
 	}
 }
 
-func (s multicastSocketLabels) labelString() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.srcMcast, s.dstns, s.dstWorkload, s.dstPod, s.dstMcast}
+func (s MulticastSocketLabels) labelString() []string {
+	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.SrcMcast, s.DstNs, s.DstWorkload, s.DstPod, s.DstMcast}
 }
 
-type srcSocketLabels struct {
-	ns       string
-	workload string
-	pod      string
-	binary   string
+type SrcSocketLabels struct {
+	Ns       string
+	Workload string
+	Pod      string
+	Binary   string
 }
 
-func createTCPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
+func createTCPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !tcpconfig.CurrentLabels["ns"] {
@@ -208,21 +208,21 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 		b = ""
 	}
 
-	return &srcSocketLabels{
-		ns:       ns,
-		workload: w,
-		pod:      p,
-		binary:   b,
+	return &SrcSocketLabels{
+		Ns:       ns,
+		Workload: w,
+		Pod:      p,
+		Binary:   b,
 	}
 }
 
-func createUDPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
+func createUDPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !udpconfig.CurrentLabels["ns"] {
 		ns = ""
 	}
-	if !udpconfig.CurrentLabels["workload"] {
+	if !udpconfig.CurrentLabels["Workload"] {
 		w = ""
 	}
 	if !udpconfig.CurrentLabels["pod"] {
@@ -232,27 +232,27 @@ func createUDPSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
 		b = ""
 	}
 
-	return &srcSocketLabels{
-		ns:       ns,
-		workload: w,
-		pod:      p,
-		binary:   b,
+	return &SrcSocketLabels{
+		Ns:       ns,
+		Workload: w,
+		Pod:      p,
+		Binary:   b,
 	}
 }
 
-func createSrcSocketLabels(res *tetragon.Process) *srcSocketLabels {
+func createSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	return &srcSocketLabels{
-		ns:       ns,
-		workload: w,
-		pod:      p,
-		binary:   b,
+	return &SrcSocketLabels{
+		Ns:       ns,
+		Workload: w,
+		Pod:      p,
+		Binary:   b,
 	}
 }
 
-func (s srcSocketLabels) labelString() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary}
+func (s SrcSocketLabels) labelString() []string {
+	return []string{s.Ns, s.Workload, s.Pod, s.Binary}
 }
 
 func GetPromBucket(min, max, upperLimitPercent uint32) string {

@@ -18,107 +18,107 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 )
 
-func postTCPSocketStats(l *socketLabels, s *tetragon.SocketStats) {
-	labelStrings := l.labelString()
+func postTCPSocketStats(l *SocketLabels, s *tetragon.SocketStats) {
+	labels := l.LabelString()
 
 	c := float64(s.BytesSent)
-	socketmetrics.SocketStatsTxBytes.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsTxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsOut)
-	socketmetrics.SocketStatsTxSegs.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsTxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.BytesReceived)
-	socketmetrics.SocketStatsRxBytes.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsRxBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.SegsIn)
-	socketmetrics.SocketStatsRxSegs.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsRxSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.RetransmitsBytes)
-	socketmetrics.SocketStatsRetranBytes.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsRetranBytes.WithLabelValues(labels...).Add(c)
 	c = float64(s.RetransmitsSegs)
-	socketmetrics.SocketStatsRetranSegs.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsRetranSegs.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.ToZeroWindow)
-	socketmetrics.SocketStatsZeroWindow.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsZeroWindow.WithLabelValues(labels...).Add(c)
 
 	c = float64(s.Srtt)
-	socketmetrics.SocketStatsSrtt.WithLabelValues(labelStrings...).Observe(c)
+	socketmetrics.SocketStatsSrtt.WithLabelValues(labels...).Observe(c)
 
 	c = float64(s.SkDrop)
-	socketmetrics.SocketStatsDrops.WithLabelValues(labelStrings...).Add(c)
+	socketmetrics.SocketStatsDrops.WithLabelValues(labels...).Add(c)
 
 	// Post TCP Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
 	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
 	// "le" label value, so we always use (N+1)th bucket for that.
 	if s.Rtt != nil && s.Rtt.Buckets != nil {
-		b := append(labelStrings, getTcpRttPromBucket(1))
+		bucketLabels := append(labels, getTcpRttPromBucket(1))
 		c = float64(s.Rtt.Buckets[0].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(10))
+		bucketLabels = append(labels, getTcpRttPromBucket(10))
 		c += float64(s.Rtt.Buckets[1].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(25))
+		bucketLabels = append(labels, getTcpRttPromBucket(25))
 		c += float64(s.Rtt.Buckets[2].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(50))
+		bucketLabels = append(labels, getTcpRttPromBucket(50))
 		c += float64(s.Rtt.Buckets[3].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(75))
+		bucketLabels = append(labels, getTcpRttPromBucket(75))
 		c += float64(s.Rtt.Buckets[4].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(90))
+		bucketLabels = append(labels, getTcpRttPromBucket(90))
 		c += float64(s.Rtt.Buckets[5].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(99))
+		bucketLabels = append(labels, getTcpRttPromBucket(99))
 		c += float64(s.Rtt.Buckets[6].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, getTcpRttPromBucket(100))
+		bucketLabels = append(labels, getTcpRttPromBucket(100))
 		c += float64(s.Rtt.Buckets[7].Count)
-		socketmetrics.TcpRttBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpRttBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		socketmetrics.TcpRttCount.WithLabelValues(labelStrings...).Add(c)
-		socketmetrics.TcpRttSum.WithLabelValues(labelStrings...).Add(float64(s.Rtt.Sum))
+		socketmetrics.TcpRttCount.WithLabelValues(labels...).Add(c)
+		socketmetrics.TcpRttSum.WithLabelValues(labels...).Add(float64(s.Rtt.Sum))
 	}
 
 	if s.Latency != nil && s.Latency.Buckets != nil {
-		b := append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
+		bucketLabels := append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01)))
 		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10)))
 		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25)))
 		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50)))
 		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75)))
 		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90)))
 		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99)))
+		bucketLabels = append(labels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99)))
 		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
 
-		b = append(labelStrings, "+Inf")
+		bucketLabels = append(labels, "+Inf")
 		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(b...).Add(c)
-		socketmetrics.TcpLatencyCount.WithLabelValues(labelStrings...).Add(c)
-		socketmetrics.TcpLatencySum.WithLabelValues(labelStrings...).Add(float64(s.Latency.Sum))
+		socketmetrics.TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(c)
+		socketmetrics.TcpLatencyCount.WithLabelValues(labels...).Add(c)
+		socketmetrics.TcpLatencySum.WithLabelValues(labels...).Add(float64(s.Latency.Sum))
 	}
 }
