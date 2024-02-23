@@ -33,8 +33,6 @@ var defaultLabels = map[string]bool{
 	"dstworkload": true,
 	"dstpod":      true,
 	"dstdns":      true,
-	"dstip":       true,
-	"sourceip":    true,
 }
 
 var CurrentLabels = defaultLabels

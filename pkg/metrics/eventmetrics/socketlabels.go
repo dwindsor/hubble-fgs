@@ -126,11 +126,11 @@ type multicastSocketLabels struct {
 	workload    string
 	pod         string
 	binary      string
-	source      string
+	srcMcast    string
 	dstns       string
 	dstWorkload string
 	dstPod      string
-	dest        string
+	dstMcast    string
 }
 
 func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocketLabels {
@@ -161,10 +161,10 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocke
 	if !udpconfig.CurrentLabels["dstpod"] {
 		dstPodString = ""
 	}
-	if !udpconfig.CurrentLabels["sourceip"] {
+	if !udpconfig.CurrentLabels["srcmcast"] {
 		sourceIP = ""
 	}
-	if !udpconfig.CurrentLabels["dstIP"] {
+	if !udpconfig.CurrentLabels["dstmcast"] {
 		dstIP = ""
 	}
 
@@ -173,16 +173,16 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *multicastSocke
 		workload:    w,
 		pod:         p,
 		binary:      b,
-		source:      sourceIP,
+		srcMcast:    sourceIP,
 		dstns:       dstns,
 		dstWorkload: dstWorkload,
 		dstPod:      dstPodString,
-		dest:        dstIP,
+		dstMcast:    dstIP,
 	}
 }
 
 func (s multicastSocketLabels) labelString() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.source, s.dstns, s.dstWorkload, s.dstPod, s.dest}
+	return []string{s.ns, s.workload, s.pod, s.binary, s.srcMcast, s.dstns, s.dstWorkload, s.dstPod, s.dstMcast}
 }
 
 type srcSocketLabels struct {
