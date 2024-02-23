@@ -32,7 +32,7 @@ var defaultLabels = map[string]bool{
 	"dstns":       true,
 	"dstworkload": true,
 	"dstpod":      true,
-	"dstlabels":   true,
+	"dstdns":      true,
 	"dstip":       true,
 	"sourceip":    true,
 }

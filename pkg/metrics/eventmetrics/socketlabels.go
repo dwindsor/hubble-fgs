@@ -28,18 +28,18 @@ type socketLabels struct {
 	dstns       string
 	dstWorkload string
 	dstPod      string
-	dstLabels   string
+	dstDNS      string
 }
 
 func (s socketLabels) labelString() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.dstns, s.dstWorkload, s.dstPod, s.dstLabels}
+	return []string{s.ns, s.workload, s.pod, s.binary, s.dstns, s.dstWorkload, s.dstPod, s.dstDNS}
 }
 
 func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
-	labels := strings.Join(res.Socket.DestinationNames, ",")
+	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
 
 	if !tcpconfig.CurrentLabels["ns"] {
 		ns = ""
@@ -62,8 +62,8 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	if !tcpconfig.CurrentLabels["dstpod"] {
 		dstPodString = ""
 	}
-	if !tcpconfig.CurrentLabels["dstlabels"] {
-		labels = ""
+	if !tcpconfig.CurrentLabels["dstdns"] {
+		dstDNS = ""
 	}
 
 	return &socketLabels{
@@ -74,7 +74,7 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 		dstns:       dstns,
 		dstWorkload: dstWorkload,
 		dstPod:      dstPodString,
-		dstLabels:   labels,
+		dstDNS:      dstDNS,
 	}
 }
 
@@ -82,7 +82,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
-	labels := strings.Join(res.Socket.DestinationNames, ",")
+	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
 
 	if !udpconfig.CurrentLabels["ns"] {
 		ns = ""
@@ -105,8 +105,8 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 	if !udpconfig.CurrentLabels["dstpod"] {
 		dstPodString = ""
 	}
-	if !udpconfig.CurrentLabels["dstlabels"] {
-		labels = ""
+	if !udpconfig.CurrentLabels["dstdns"] {
+		dstDNS = ""
 	}
 
 	return &socketLabels{
@@ -117,7 +117,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketLabels {
 		dstns:       dstns,
 		dstWorkload: dstWorkload,
 		dstPod:      dstPodString,
-		dstLabels:   labels,
+		dstDNS:      dstDNS,
 	}
 }
 
