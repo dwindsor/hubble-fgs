@@ -24,11 +24,12 @@ jobs:
       with:
         path: go/src/github.com/isovalent/hubble-fgs/
         submodules: true
+
     - name: Install dependencies x86
-      with:
-        platforms: linux/amd64
       run: |
-        sudo apt-get -y install libc6-dev-i386
+        if [ "$RUNNER_ARCH" == "X64" ]; then
+          sudo apt-get -y install libc6-dev-i386
+        fi
 
     - name: Run go tests
       env:
