@@ -31,7 +31,7 @@ jobs:
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Scan image
         id: scan-image
-        uses: PaloAltoNetworks/prisma-cloud-scan@cd5348ac760a03c23e1e4fce5fe971dceb211f65 # v1.6.2
+        uses: PaloAltoNetworks/prisma-cloud-scan@0c9409e9bcf57caed9ea979918534169e694fa0e # v1.6.4
         with:
           pcc_console_url: https://us-east1.cloud.twistlock.com/us-1-111576212
           pcc_user: c2cb4b51-b118-44a6-a13b-e1f8647f2692
@@ -51,7 +51,7 @@ jobs:
       - name: Filter false positives
         run: vexctl filter ${{ steps.scan-image.outputs.sarif_file }} isovalent-tetragon-vex/.github/vex-data.vex.json > filtered-results.json
       - name: Upload SARIF scan results
-        uses: actions/upload-artifact@694cdabd8bdb0f10b2cea11669e1bf5453eed0a6 # v4.2.0
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: ${{ matrix.image }}-${{ matrix.branch }}.sarif.json
           path: filtered-results.json
