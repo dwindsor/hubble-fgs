@@ -87,7 +87,7 @@ func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 	if err != nil {
 		t.Fatalf("GetSensorsFromParserPolicy failed: %v", err)
 	} else if len(ret) > 2 {
-		// enforcement policies will have two sensors: the tracepoint one and the killer
+		// enforcement policies will have two sensors: the tracepoint one and the enforcer
 		t.Fatalf("GetSensorsFromParserPolicy returned unexpected number of sensors (%d)", len(ret))
 	}
 	tus.LoadSensor(t, base.GetInitialSensor())
