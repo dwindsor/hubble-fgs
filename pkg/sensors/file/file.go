@@ -941,7 +941,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 	srcDir := strutils.UTF8FromBPFBytes(m.Src.Path.Dir[:])
 	if m.Src.Path.DirSize == 0xffffffff { // due to missing security_path_rename
-		srcDir = "<UNRESOLVED>"
+		srcDir = "/<UNRESOLVED>"
 	} else if uint32(len(srcDir)) > m.Src.Path.DirSize {
 		srcDir = srcDir[:m.Src.Path.DirSize]
 	}
@@ -958,7 +958,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 	dstDir := strutils.UTF8FromBPFBytes(m.Dst.Path.Dir[:])
 	if m.Dst.Path.DirSize == 0xffffffff { // due to missing security_path_rename
-		srcDir = "<UNRESOLVED>"
+		srcDir = "/<UNRESOLVED>"
 	} else if uint32(len(dstDir)) > m.Dst.Path.DirSize {
 		dstDir = dstDir[:m.Dst.Path.DirSize]
 	}
