@@ -29,7 +29,7 @@ func convertCmd() *cobra.Command {
 		Short: "convert a sandbox policy to a tracing policy (intended for development)",
 		Long:  "Convert a sandbox policy to a tracing policy (intended for development).\nPipe it over \"yq 'del(.spec.parser) | del(.spec.file) | del(.spec.loader)'\" for better results",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			fname := args[0]
 			data, err := os.ReadFile(fname)
 			if err != nil {

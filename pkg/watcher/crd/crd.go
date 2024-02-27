@@ -74,10 +74,10 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(_ interface{}) {
 				// TODO
 			},
-			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			UpdateFunc: func(_ interface{}, _ interface{}) {
 				// TODO
 			}})
 

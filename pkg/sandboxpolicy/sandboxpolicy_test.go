@@ -218,7 +218,7 @@ func TestSandboxPolicies(t *testing.T) {
 					{Type: "Signal"},
 				},
 			},
-			runSyscalls: func(t *testing.T, st *testprogs.SyscallTester) {
+			runSyscalls: func(_ *testing.T, st *testprogs.SyscallTester) {
 				st.GetCPU()
 				// NB: the program will be killed
 
