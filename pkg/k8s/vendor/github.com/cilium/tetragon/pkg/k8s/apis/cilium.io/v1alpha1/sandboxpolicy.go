@@ -34,6 +34,24 @@ type SandboxPolicy struct {
 	Spec SandboxSpec `json:"spec"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type SandboxPolicyNamespacedList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []SandboxPolicyNamespaced `json:"items,omitempty"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:singular="sandboxpolicynamespaced",path="sandboxpoliciesnamespaced",scope="Namespaced",shortName={}
+type SandboxPolicyNamespaced struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Tracing policy specification.
+	Spec SandboxSpec `json:"spec"`
+}
+
 type SandboxAction struct {
 	// Type defines the type of action to be taken.
 	// Post: generate an event

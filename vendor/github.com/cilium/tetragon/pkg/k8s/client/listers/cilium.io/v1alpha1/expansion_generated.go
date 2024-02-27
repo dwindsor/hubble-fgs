@@ -17,6 +17,14 @@ type PodInfoNamespaceListerExpansion interface{}
 // SandboxPolicyLister.
 type SandboxPolicyListerExpansion interface{}
 
+// SandboxPolicyNamespacedListerExpansion allows custom methods to be added to
+// SandboxPolicyNamespacedLister.
+type SandboxPolicyNamespacedListerExpansion interface{}
+
+// SandboxPolicyNamespacedNamespaceListerExpansion allows custom methods to be added to
+// SandboxPolicyNamespacedNamespaceLister.
+type SandboxPolicyNamespacedNamespaceListerExpansion interface{}
+
 // TracingPolicyListerExpansion allows custom methods to be added to
 // TracingPolicyLister.
 type TracingPolicyListerExpansion interface{}

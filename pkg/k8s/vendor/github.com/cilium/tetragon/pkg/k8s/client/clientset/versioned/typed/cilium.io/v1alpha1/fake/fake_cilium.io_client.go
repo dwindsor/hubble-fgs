@@ -23,6 +23,10 @@ func (c *FakeCiliumV1alpha1) SandboxPolicies() v1alpha1.SandboxPolicyInterface {
 	return &FakeSandboxPolicies{c}
 }
 
+func (c *FakeCiliumV1alpha1) SandboxPoliciesNamespaced(namespace string) v1alpha1.SandboxPolicyNamespacedInterface {
+	return &FakeSandboxPoliciesNamespaced{c, namespace}
+}
+
 func (c *FakeCiliumV1alpha1) TracingPolicies() v1alpha1.TracingPolicyInterface {
 	return &FakeTracingPolicies{c}
 }

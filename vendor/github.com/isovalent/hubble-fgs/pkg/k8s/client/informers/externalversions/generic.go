@@ -44,6 +44,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cilium().V1alpha1().PodInfo().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("sandboxpolicies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cilium().V1alpha1().SandboxPolicies().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("sandboxpoliciesnamespaced"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Cilium().V1alpha1().SandboxPoliciesNamespaced().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tracingpolicies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cilium().V1alpha1().TracingPolicies().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tracingpoliciesnamespaced"):

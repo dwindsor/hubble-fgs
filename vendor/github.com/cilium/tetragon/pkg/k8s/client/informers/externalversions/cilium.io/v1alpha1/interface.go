@@ -15,6 +15,8 @@ type Interface interface {
 	PodInfo() PodInfoInformer
 	// SandboxPolicies returns a SandboxPolicyInformer.
 	SandboxPolicies() SandboxPolicyInformer
+	// SandboxPoliciesNamespaced returns a SandboxPolicyNamespacedInformer.
+	SandboxPoliciesNamespaced() SandboxPolicyNamespacedInformer
 	// TracingPolicies returns a TracingPolicyInformer.
 	TracingPolicies() TracingPolicyInformer
 	// TracingPoliciesNamespaced returns a TracingPolicyNamespacedInformer.
@@ -40,6 +42,11 @@ func (v *version) PodInfo() PodInfoInformer {
 // SandboxPolicies returns a SandboxPolicyInformer.
 func (v *version) SandboxPolicies() SandboxPolicyInformer {
 	return &sandboxPolicyInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// SandboxPoliciesNamespaced returns a SandboxPolicyNamespacedInformer.
+func (v *version) SandboxPoliciesNamespaced() SandboxPolicyNamespacedInformer {
+	return &sandboxPolicyNamespacedInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TracingPolicies returns a TracingPolicyInformer.
