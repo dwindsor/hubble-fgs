@@ -129,14 +129,24 @@ func TestMain(m *testing.M) {
 	})
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		grpc.WaitForTracingPolicy(ctx, "file-monitoring")
+		ctx, err := helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to load tracingPolicyYaml: %w", err)
+		}
+		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring"); err != nil {
+			return ctx, err
+		}
 		return ctx, nil
 	})
 
 	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.LoadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
-		grpc.WaitForTracingPolicy(ctx, "file-monitoring-namespaced")
+		ctx, err := helpers.LoadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to load tracingPolicyNamespacedYaml: %w", err)
+		}
+		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-namespaced"); err != nil {
+			return ctx, err
+		}
 		return ctx, nil
 	})
 
@@ -155,7 +165,10 @@ func TestMain(m *testing.M) {
 
 		if supportEnforcement {
 			klog.Info("Kernel supports file enforcement")
-			ctx, _ = helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
+			ctx, err := helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
+			if err != nil {
+				return ctx, fmt.Errorf("failed to load tracingEnforcePolicyYaml: %w", err)
+			}
 			if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-enforcement"); err != nil {
 				return ctx, err
 			}
