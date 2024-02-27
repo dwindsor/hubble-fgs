@@ -56,6 +56,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PodInfoList{},
 		&SandboxPolicy{},
 		&SandboxPolicyList{},
+		&SandboxPolicyNamespaced{},
+		&SandboxPolicyNamespacedList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
