@@ -60,6 +60,7 @@ __do_generate:
 	  -o . \
 	  --trim-path-prefix github.com/isovalent/hubble-fgs/pkg/k8s \
 	  --plural-exceptions TracingPolicyNamespaced:TracingPoliciesNamespaced \
+	  --plural-exceptions SandboxPolicyNamespaced:SandboxPoliciesNamespaced \
 	  --plural-exceptions PodInfo:PodInfo
 	find . -type f -name "*.go" -exec sed -i 's/isovalent\/hubble-fgs\/pkg\/k8s/cilium\/tetragon\/pkg\/k8s/g' {} +
 
