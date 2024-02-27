@@ -53,20 +53,38 @@ var (
 		crdsv1Alpha1SandboxPolicy,
 	)
 
+	//go:embed crds/v1alpha1/cilium.io_sandboxpoliciesnamespaced.yaml
+	crdsv1Alpha1SandboxPolicyNamespaced []byte
+
+	SandboxPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
+		"SandboxPolicyNamespaced/v1alpha1",
+		"sandboxpoliciesnamespaced.cilium.io",
+		crdsv1Alpha1SandboxPolicyNamespaced,
+	)
+
 	AllCRDs = []crdutils.CRD{
 		TracingPolicyCRD,
 		TracingPolicyNamespacedCRD,
 		PodInfoCRD,
 		SandboxPolicyCRD,
+		SandboxPolicyNamespacedCRD,
 	}
 )
 
-func RemoveSandboxPolicyCRD() {
+func RemoveSandboxPolicyCRDs() {
 	// NB: This is ugly, but we do it to avoid changes in OSS
-	for i := range AllCRDs {
-		if AllCRDs[i].CRDName == SandboxPolicyCRD.CRDName {
-			AllCRDs = append(AllCRDs[:i], AllCRDs[i+1:]...)
-			break
+	AllCRDs = removeSandboxPolicyCRDs(AllCRDs)
+}
+
+// NB(kkourt): got this wrong the first time, so add a wrapper for a simple test.
+func removeSandboxPolicyCRDs(crds []crdutils.CRD) []crdutils.CRD {
+	for _, name := range []string{SandboxPolicyCRD.CRDName, SandboxPolicyNamespacedCRD.CRDName} {
+		for i := range crds {
+			if crds[i].CRDName == name {
+				crds = append(crds[:i], crds[i+1:]...)
+				break
+			}
 		}
 	}
+	return crds
 }

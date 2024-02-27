@@ -21,7 +21,7 @@ func main() {
 	ossCmd.Run = func(cmd *cobra.Command, args []string) {
 		// NB: ossCmdRun is where CRDs are registered.
 		if viper.GetBool(options.SkipPolicySandboxCRD) {
-			client.RemoveSandboxPolicyCRD()
+			client.RemoveSandboxPolicyCRDs()
 		}
 		ossCmdRun(cmd, args)
 	}
