@@ -42,7 +42,7 @@ __do_generate:
 	./tools/controller-gen crd paths=./apis/... output:dir=apis/cilium.io/client/crds/v1alpha1
 	# Do two invocations of generate-groups.sh, one with --plural-exclude, one without
 	export GOPATH=$$(go env GOPATH); \
-	  bash vendor/k8s.io/code-generator/generate-groups.sh deepcopy,defaulter \
+	  bash vendor/k8s.io/code-generator/kube_codegen.sh deepcopy,defaulter \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  cilium.io:v1alpha1 \
@@ -50,7 +50,7 @@ __do_generate:
 	  -o . \
 	  --trim-path-prefix github.com/isovalent/hubble-fgs/pkg/k8s \
 	 ; \
-	 bash vendor/k8s.io/code-generator/generate-groups.sh lister,informer,client \
+	 bash vendor/k8s.io/code-generator/kube_codegen.sh lister,informer,client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  cilium.io:v1alpha1 \
@@ -67,4 +67,4 @@ vendor:
 	$(GO) mod tidy
 	$(GO) mod vendor
 	$(GO) mod verify
-	chmod +x vendor/k8s.io/code-generator/generate-internal-groups.sh
+	chmod +x vendor/k8s.io/code-generator/kube_codegen.sh
