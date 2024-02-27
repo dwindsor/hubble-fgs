@@ -358,7 +358,7 @@ tarball-clean:
 image:
 	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --target release --platform=linux/${TARGET_ARCH} .
 	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push ${IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 .PHONY: image-operator
 image-operator:
