@@ -2685,183 +2685,71 @@ func TestFileOps(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	t.Run("read", func(lt *testing.T) {
-		testFileRead(t, lt)
-	})
-	t.Run("readv", func(lt *testing.T) {
-		testFileReadV(t, lt)
-	})
-	t.Run("preadv", func(lt *testing.T) {
-		testFilePReadV(t, lt)
-	})
-	t.Run("preadv2", func(lt *testing.T) {
-		testFilePReadV2(t, lt)
-	})
-	t.Run("pread64", func(lt *testing.T) {
-		testFilePRead64(t, lt)
-	})
-	t.Run("write", func(lt *testing.T) {
-		testFileWrite(t, lt)
-	})
-	t.Run("writev", func(lt *testing.T) {
-		testFileWriteV(t, lt)
-	})
-	t.Run("pwritev", func(lt *testing.T) {
-		testFilePWriteV(t, lt)
-	})
-	t.Run("pwritev2", func(lt *testing.T) {
-		testFilePWriteV2(t, lt)
-	})
-	t.Run("pwrite64", func(lt *testing.T) {
-		testFilePWrite64(t, lt)
-	})
-	t.Run("mmapreadpopulate", func(lt *testing.T) {
-		testFileMmapReadPopulate(t, lt)
-	})
-	t.Run("mmapwritepopulate", func(lt *testing.T) {
-		testFileMmapWritePopulate(t, lt)
-	})
-	t.Run("mmapread", func(lt *testing.T) {
-		testFileMmapRead(t, lt)
-	})
-	t.Run("mmapreadwrite", func(lt *testing.T) {
-		testFileMmapReadWrite(t, lt)
-	})
-	t.Run("mmapwrite", func(lt *testing.T) {
-		testFileMmapWrite(t, lt)
-	})
-	t.Run("mmapwriteread", func(lt *testing.T) {
-		testFileMmapWriteRead(t, lt)
-	})
-	t.Run("sendfile", func(lt *testing.T) {
-		testSendfile(t, lt)
-	})
-	t.Run("copyfilerange", func(lt *testing.T) {
-		testCopyFileRange(t, lt)
-	})
-	t.Run("splice", func(lt *testing.T) {
-		testFileSplice(t, lt)
-	})
-	t.Run("fallocate", func(lt *testing.T) {
-		testFileFallocate(t, lt)
-	})
-	t.Run("dlopen", func(lt *testing.T) {
-		testDlopenRead(t, lt)
-	})
-	t.Run("aiopread", func(lt *testing.T) {
-		testFileAioPRead(t, lt)
-	})
-	t.Run("aiopreadv", func(lt *testing.T) {
-		testFileAioPReadV(t, lt)
-	})
-	t.Run("aiopwrite", func(lt *testing.T) {
-		testFileAioPWrite(t, lt)
-	})
-	t.Run("aiopwritev", func(lt *testing.T) {
-		testFileAioPWriteV(t, lt)
-	})
-	t.Run("cpiouring", func(lt *testing.T) {
-		testFileCpIouring(t, lt)
-	})
-	t.Run("catiouring", func(lt *testing.T) {
-		testFileCatIouring(t, lt)
-	})
-	t.Run("writeiouring", func(lt *testing.T) {
-		testFileWriteIouring(t, lt)
-	})
-	t.Run("polliouring", func(lt *testing.T) {
-		testFilePollingIouring(t, lt)
-	})
-	t.Run("create", func(lt *testing.T) {
-		testFileCreate(t, lt)
-	})
-	t.Run("delete", func(lt *testing.T) {
-		testFileDelete(t, lt)
-	})
-	t.Run("rename1", func(lt *testing.T) {
-		testFileRename1(t, lt)
-	})
-	t.Run("rename2", func(lt *testing.T) {
-		testFileRename2(t, lt)
-	})
-	t.Run("rename3", func(lt *testing.T) {
-		testFileRename3(t, lt)
-	})
-	t.Run("rename4", func(lt *testing.T) {
-		testFileRename4(t, lt)
-	})
-	t.Run("rename5", func(lt *testing.T) {
-		testFileRename5(t, lt)
-	})
-	t.Run("rename6", func(lt *testing.T) {
-		testFileRename6(t, lt)
-	})
-	t.Run("rename7", func(lt *testing.T) {
-		testFileRename7(t, lt)
-	})
-	t.Run("rename8", func(lt *testing.T) {
-		testFileRename8(t, lt)
-	})
-	t.Run("rename9", func(lt *testing.T) {
-		testFileRename9(t, lt)
-	})
-	t.Run("rename10", func(lt *testing.T) {
-		testFileRename10(t, lt)
-	})
-	t.Run("rename11", func(lt *testing.T) {
-		testFileRename11(t, lt)
-	})
-	t.Run("rename12", func(lt *testing.T) {
-		testFileRename12(t, lt)
-	})
-	t.Run("rename13", func(lt *testing.T) {
-		testFileRename13(t, lt)
-	})
-	t.Run("rename14", func(lt *testing.T) {
-		testFileRename14(t, lt)
-	})
-	t.Run("mkdir", func(lt *testing.T) {
-		testFileMkdir(t, lt)
-	})
-	t.Run("rmdir", func(lt *testing.T) {
-		testFileRmdir(t, lt)
-	})
-	t.Run("readdir", func(lt *testing.T) {
-		testFileReadDir(t, lt)
-	})
-	t.Run("truncate", func(lt *testing.T) {
-		testFileTruncate(t, lt)
-	})
-	t.Run("fileexec", func(lt *testing.T) {
-		testFileExec(t, lt)
-	})
-	t.Run("fileexecint", func(lt *testing.T) {
-		testFileExecInterpreter(t, lt)
-	})
-	t.Run("readcontainerfile", func(lt *testing.T) {
-		testFileReadContainerFile(t, lt)
-	})
-	t.Run("readmatchbinary", func(lt *testing.T) {
-		testFileReadMatchBinary(t, lt)
-	})
-	t.Run("readmatchoperation", func(lt *testing.T) {
-		testFileReadMatchOperation(t, lt)
-	})
-	t.Run("exactfiledelete", func(lt *testing.T) {
-		testExactFileDelete(t, lt)
-	})
-	t.Run("chmod", func(lt *testing.T) {
-		testFileChmod(t, lt)
-	})
-	t.Run("chown", func(lt *testing.T) {
-		testFileChown(t, lt)
-	})
-	t.Run("multipleselectors", func(lt *testing.T) {
-		testFileReadWriteMultipleSelectors(t, lt)
-	})
-	t.Run("selectorcapns", func(lt *testing.T) {
-		testFileReadSelectorCapNs(t, lt)
-	})
+	for name, fn := range map[string]func(*testing.T, *testing.T){
+		"read":               testFileRead,
+		"readv":              testFileReadV,
+		"preadv":             testFilePReadV,
+		"preadv2":            testFilePReadV2,
+		"pread64":            testFilePRead64,
+		"write":              testFileWrite,
+		"writev":             testFileWriteV,
+		"pwritev":            testFilePWriteV,
+		"pwritev2":           testFilePWriteV2,
+		"pwrite64":           testFilePWrite64,
+		"mmapreadpopulate":   testFileMmapReadPopulate,
+		"mmapwritepopulate":  testFileMmapWritePopulate,
+		"mmapread":           testFileMmapRead,
+		"mmapreadwrite":      testFileMmapReadWrite,
+		"mmapwrite":          testFileMmapWrite,
+		"mmapwriteread":      testFileMmapWriteRead,
+		"sendfile":           testSendfile,
+		"copyfilerange":      testCopyFileRange,
+		"splice":             testFileSplice,
+		"fallocate":          testFileFallocate,
+		"dlopen":             testDlopenRead,
+		"aiopread":           testFileAioPRead,
+		"aiopreadv":          testFileAioPReadV,
+		"aiopwrite":          testFileAioPWrite,
+		"aiopwritev":         testFileAioPWriteV,
+		"cpiouring":          testFileCpIouring,
+		"catiouring":         testFileCatIouring,
+		"writeiouring":       testFileWriteIouring,
+		"polliouring":        testFilePollingIouring,
+		"create":             testFileCreate,
+		"delete":             testFileDelete,
+		"rename1":            testFileRename1,
+		"rename2":            testFileRename2,
+		"rename3":            testFileRename3,
+		"rename4":            testFileRename4,
+		"rename5":            testFileRename5,
+		"rename6":            testFileRename6,
+		"rename7":            testFileRename7,
+		"rename8":            testFileRename8,
+		"rename9":            testFileRename9,
+		"rename10":           testFileRename10,
+		"rename11":           testFileRename11,
+		"rename12":           testFileRename12,
+		"rename13":           testFileRename13,
+		"rename14":           testFileRename14,
+		"mkdir":              testFileMkdir,
+		"rmdir":              testFileRmdir,
+		"readdir":            testFileReadDir,
+		"truncate":           testFileTruncate,
+		"fileexec":           testFileExec,
+		"fileexecint":        testFileExecInterpreter,
+		"readcontainerfile":  testFileReadContainerFile,
+		"readmatchbinary":    testFileReadMatchBinary,
+		"readmatchoperation": testFileReadMatchOperation,
+		"exactfiledelete":    testExactFileDelete,
+		"chmod":              testFileChmod,
+		"chown":              testFileChown,
+		"multipleselectors":  testFileReadWriteMultipleSelectors,
+		"selectorcapns":      testFileReadSelectorCapNs,
+	} {
+		if !t.Run(name, func(lt *testing.T) { fn(t, lt) }) {
+			break // stop on first failure
+		}
+	}
 }
 
 func getFileDigest(path string) (string, error) {
