@@ -59,6 +59,30 @@ func addSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Ma
 	}
 }
 
+func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) {
+	var err error
+	switch sp := obj.(type) {
+	case *v1alpha1.SandboxPolicy:
+		tpName := sandboxpolicy.TracingPolicyName(sp.ObjectMeta.Name)
+		log.WithFields(logrus.Fields{
+			"sp-name": sp.ObjectMeta.Name,
+			"tp-name": tpName,
+		}).Info("deleting sandbox policy")
+		err = s.DeleteTracingPolicy(ctx, tpName)
+
+	default:
+		log.WithFields(logrus.Fields{
+			"obj":      obj,
+			"obj-type": fmt.Sprintf("%T", obj),
+		}).Warn("deleteSandboxPolicy: invalid type")
+		return
+	}
+
+	if err != nil {
+		log.WithError(err).Warn("failed to delete sandbox policy")
+	}
+}
+
 func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 	log := logger.GetLogger()
 	log.Info("Starting to watch for sandbox policies")
@@ -74,11 +98,12 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
 			},
-			DeleteFunc: func(_ interface{}) {
-				// TODO
+			DeleteFunc: func(obj interface{}) {
+				deleteSandboxPolicy(ctx, log, s, obj)
 			},
-			UpdateFunc: func(_ interface{}, _ interface{}) {
-				// TODO
+			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+				deleteSandboxPolicy(ctx, log, s, oldObj)
+				addSandboxPolicy(ctx, log, s, newObj)
 			}})
 
 	go factory.Start(wait.NeverStop)

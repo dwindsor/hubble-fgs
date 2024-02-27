@@ -206,7 +206,7 @@ func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
 				APIVersion: "cilium.io/v1alpha1",
 			},
 			Metadata: k8sv1.ObjectMeta{
-				Name: fmt.Sprintf("tpsp-%s", b.name),
+				Name: b.name,
 			},
 			Spec: b.tpSpec,
 		},

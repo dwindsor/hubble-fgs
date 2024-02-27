@@ -60,6 +60,10 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 	}
 }
 
+func TracingPolicyName(spName string) string {
+	return fmt.Sprintf("tpsp-%s", spName)
+}
+
 // sandbox policies are translated into low-level tracing policies
 
 func toTracingPolicy(name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicy, error) {
@@ -68,7 +72,6 @@ func toTracingPolicy(name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPo
 		return nil, fmt.Errorf("sandboxpolicy spec is empty")
 	}
 
-	name = fmt.Sprintf("tp-sandbox-%s", name)
 	tpBuilder := newTpBuilder(name, spec.PodSelector)
 	for i, s := range spec.Syscalls {
 		listName := fmt.Sprintf("%s-syscalls-%d", name, i)
@@ -86,7 +89,8 @@ func ToTracingPolicy(p *v1alpha1.SandboxPolicy) (*SandboxTracingPolicy, error) {
 		return nil, fmt.Errorf("sandboxpolicy is empty")
 	}
 
-	pol, err := toTracingPolicy(p.ObjectMeta.Name, &p.Spec)
+	name := TracingPolicyName(p.ObjectMeta.Name)
+	pol, err := toTracingPolicy(name, &p.Spec)
 	if err != nil {
 		return nil, err
 	}
