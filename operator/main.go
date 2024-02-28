@@ -9,6 +9,7 @@ import (
 
 	"github.com/cilium/tetragon/operator/cmd"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
+	"github.com/isovalent/hubble-fgs/operator/daemon"
 	"github.com/isovalent/hubble-fgs/operator/options"
 
 	"github.com/spf13/cobra"
@@ -26,6 +27,20 @@ func main() {
 		ossCmdRun(cmd, args)
 	}
 
+	ossServe := serveCmd(ossCmd)
+	ossServeRunE := ossServe.RunE
+	ossServe.RunE = func(cmd *cobra.Command, args []string) error {
+		options.ConfigPopulate()
+		if options.Config.InstallDaemonSet {
+			go func() {
+				if err := daemon.InstallTetragonDaemonSet(); err != nil {
+					panic(err)
+				}
+			}()
+		}
+		return ossServeRunE(cmd, args)
+	}
+
 	ossCmd.Flags().Bool(
 		options.SkipPolicySandboxCRD,
 		true,
@@ -36,4 +51,15 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+const serveCmdName = "serve"
+
+func serveCmd(cmd *cobra.Command) *cobra.Command {
+	for i := range cmd.Commands() {
+		if cmd.Commands()[i].Use == serveCmdName {
+			return cmd.Commands()[i]
+		}
+	}
+	panic(fmt.Errorf("operator %s command not found", serveCmdName))
 }
