@@ -479,6 +479,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		SkbConsumeMisses: 0,
 		Rtt:              rttHist,
 		Latency:          latencyHist,
+		CreateKtime:      curr.CreateKtime,
 	}, nil
 }
 
@@ -487,29 +488,35 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp *layer3.MsgIPWithStatsEventUnix) (*layer3.MsgIPWithStatsEventUnix, error) {
+func correctedStatsEvent(tcp layer3.MsgIPWithStatsEventUnix) (layer3.MsgIPWithStatsEventUnix, error) {
 	statsKey := tcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
-	if ok {
-		if tcp.Msg.SocketStats.Ktime < last.Ktime {
-			// Current stats message is older than last stats message.
-			// This indicates the race has occurred, so we discard.
-			return nil, fmt.Errorf("TCP stats message is older than previous")
-		}
-
-		// If we already posted an entry and nothings changed skip it.
-		if tcp.Msg.SocketStats.Ktime == last.Ktime {
-			return nil, fmt.Errorf("TCP stats message duplicate")
-		}
-
-		tmpSocketStats, err := tcpDiffValues(&last, &tcp.Msg.SocketStats, &tcp.Msg.Tuple)
-		if err != nil {
-			return nil, err
-		}
-		stats.Add(statsKey, tcp.Msg.SocketStats)
-		tcp.Msg.SocketStats = tmpSocketStats
+	if !ok {
+		return tcp, nil
 	}
-	return tcp, nil
+	if tcp.Msg.SocketStats.Ktime < last.Ktime {
+		// Current stats message is older than last stats message.
+		// This indicates the race has occurred, so we discard.
+		return layer3.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message is older than previous")
+	}
+
+	// If we already posted an entry and nothings changed skip it.
+	if tcp.Msg.SocketStats.Ktime == last.Ktime {
+		return layer3.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message duplicate")
+	}
+
+	tmpSocketStats, err := tcpDiffValues(&last, &tcp.Msg.SocketStats, &tcp.Msg.Tuple)
+	if err != nil {
+		return layer3.MsgIPWithStatsEventUnix{}, err
+	}
+	// Make a copy of the event
+	newTcp := tcp
+	// Make a copy of the referenced Msg
+	newMsg := *tcp.Msg
+	newTcp.Msg = &newMsg
+	stats.Add(statsKey, tcp.Msg.SocketStats)
+	newTcp.Msg.SocketStats = tmpSocketStats
+	return newTcp, nil
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
@@ -521,7 +528,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	tcp := ip.MsgToIPWithStatsUnix(&m)
 	if tcpStatsEnabled {
 		cp := *tcp
-		c, err := correctedStatsEvent(&cp)
+		c, err := correctedStatsEvent(cp)
 		if err != nil {
 			return []observer.Event{tcp}, nil
 		}
@@ -529,7 +536,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		c.Msg.Common.Op = ops.MsgOpTCPStats
 		statsKey := tcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateKtime}
 		stats.Remove(statsKey)
-		return []observer.Event{tcp, c}, nil
+		return []observer.Event{tcp, &c}, nil
 	}
 	return []observer.Event{tcp}, nil
 }

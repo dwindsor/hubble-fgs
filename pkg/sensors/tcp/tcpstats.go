@@ -98,7 +98,7 @@ func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
 					stats.Add(statsKey, *tcpStats)
 					emitStatEvent(&statsKey, value, tuple, &diffValue)
 				} else {
-					fmt.Printf("diffvalue err %s\n", err)
+					logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
 				}
 			}
 		} else {

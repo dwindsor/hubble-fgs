@@ -102,6 +102,9 @@ get_socket_stats(struct sock *sk,
 	/* Set the time the stats were obtained to allow checking of event ordering */
 	stats->ktime = ktime_get_ns();
 
+	/* Copy the create time so that user space can match up the stats. */
+	stats->create_ktime = process->create_time;
+
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
 	 */
