@@ -572,6 +572,7 @@ func hubbleFGSExecute() error {
 		}
 		if enterpriseOption.Config.EnableSandboxPolicies {
 			crds[client.SandboxPolicyCRD.ResName] = struct{}{}
+			crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
 		}
 
 		config, err := k8sconf.K8sConfig()

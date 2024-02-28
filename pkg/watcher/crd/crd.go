@@ -46,6 +46,24 @@ func addSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Ma
 		}).Info("adding sandbox policy")
 		err = s.AddTracingPolicy(ctx, tp)
 
+	case *v1alpha1.SandboxPolicyNamespaced:
+		var tp *sandboxpolicy.SandboxTracingPolicyNamespaced
+		tp, err = sandboxpolicy.ToTracingPolicyNamespaced(sp)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"sandbox-policy-name":      sp.ObjectMeta.Name,
+				"sandbox-policy-namespace": sp.ObjectMeta.Namespace,
+			}).WithError(err).Warn("addSandboxPolicy: failed to convert to tracing policy")
+			return
+		}
+		log.WithFields(logrus.Fields{
+			"sp-name":   sp.ObjectMeta.Name,
+			"tp-name":   tp.TpName(),
+			"tp-info":   tp.TpInfo(),
+			"namespace": sp.ObjectMeta.Namespace,
+		}).Info("adding sandbox policy")
+		err = s.AddTracingPolicy(ctx, tp)
+
 	default:
 		log.WithFields(logrus.Fields{
 			"obj":      obj,
@@ -63,6 +81,14 @@ func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors
 	var err error
 	switch sp := obj.(type) {
 	case *v1alpha1.SandboxPolicy:
+		tpName := sandboxpolicy.TracingPolicyName(sp.ObjectMeta.Name)
+		log.WithFields(logrus.Fields{
+			"sp-name": sp.ObjectMeta.Name,
+			"tp-name": tpName,
+		}).Info("deleting sandbox policy")
+		err = s.DeleteTracingPolicy(ctx, tpName)
+
+	case *v1alpha1.SandboxPolicyNamespaced:
 		tpName := sandboxpolicy.TracingPolicyName(sp.ObjectMeta.Name)
 		log.WithFields(logrus.Fields{
 			"sp-name": sp.ObjectMeta.Name,
@@ -94,6 +120,19 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 	factory := externalversions.NewSharedInformerFactory(client, 0)
 
 	factory.Cilium().V1alpha1().SandboxPolicies().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				addSandboxPolicy(ctx, log, s, obj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				deleteSandboxPolicy(ctx, log, s, obj)
+			},
+			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+				deleteSandboxPolicy(ctx, log, s, oldObj)
+				addSandboxPolicy(ctx, log, s, newObj)
+			}})
+
+	factory.Cilium().V1alpha1().SandboxPoliciesNamespaced().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
