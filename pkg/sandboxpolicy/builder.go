@@ -214,3 +214,28 @@ func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
 		rawSyscallTracepointTranslate,
 	}, nil
 }
+
+func (b *tpBuilder) NamespacedPolicy(namespace string) (*SandboxTracingPolicyNamespaced, error) {
+	// NB(kkourt): The multi-kprobe enforcer fails to load. Will have to investigate in OSS side.
+	// One thing to note is that if multi-kprobes and bpf_override_return() is supported, we do
+	// not really need to use the enforcer. We can translate into tracing policies that hook
+	// directly into kprobes rather than the generic syscall tracepoint.
+	b.tpSpec.Options = []v1alpha1.OptionSpec{
+		{Name: "disable-kprobe-multi", Value: "1"},
+	}
+	return &SandboxTracingPolicyNamespaced{
+		tracingpolicy.GenericTracingPolicyNamespaced{
+			TypeMeta: k8sv1.TypeMeta{
+				Kind:       "TracingPolicy",
+				APIVersion: "cilium.io/v1alpha1",
+			},
+			Metadata: k8sv1.ObjectMeta{
+				Name:      b.name,
+				Namespace: namespace,
+			},
+			Spec: b.tpSpec,
+		},
+		nil,
+		rawSyscallTracepointTranslate,
+	}, nil
+}
