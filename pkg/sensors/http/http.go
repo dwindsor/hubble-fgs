@@ -328,7 +328,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 		}).Warnf("url length %d would exceed %d", m.Request.Length, HTTP_CLAMP_URL_LENGTH)
 	}
 
-	url := make([]byte, min(int(m.Request.Length), HTTP_CLAMP_URL_LENGTH))
+	url := make([]byte, int(min(m.Request.Length, HTTP_CLAMP_URL_LENGTH)))
 	if _, err := r.Read(url); err != nil {
 		logger.GetLogger().WithError(err).Warnf("HTTP URL read error")
 		return nil, err
