@@ -13,13 +13,8 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	struct msg_file_ops *msg;
 	struct hash_map_file_key file_key;
 	struct hash_map_file_val *file_val = 0;
-	__u32 dlen_size = 0, dlen_offset = 0;
-	__u32 dir_size = 0, dir_offset = 0;
-	__u32 path_size = 0;
-	int zero = 0, action = 0;
+	int zero = 0, action = 0, err = 0;
 	struct inode *inode;
-	struct qstr d_name;
-	char *buffer;
 	__u32 operation = 0, rule_id = 0;
 	struct file_config_map_value *conf = 0;
 
@@ -51,42 +46,9 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
 
-	// we care about files inside this directory
-	// get a buffer to generate its path
-	buffer = map_lookup_elem(&buffer_heap_map, &zero);
-	if (!buffer)
-		return -FILE_ERR_GET_BUFFER_HEAP;
-
-	// first write the dentry name
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
-	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
-		     :);
-	dlen_offset = MAX_FILEPATH_SIZE;
-	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
-	path_size += dlen_size;
-
-	// then write the directory name
-	// this is what we have in the map already (we don't traverse anything)
-	dir_size = file_val->size;
-	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
-		     :);
-	dir_offset = MAX_FILEPATH_SIZE - dir_size;
-	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
-		     :);
-	probe_read(buffer + dir_offset, dir_size, file_val->path);
-	path_size += dir_size;
-
-	// set the filepath inside msg
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
-		     :);
-	probe_read(msg->path.str, path_size, buffer + dir_offset);
-	msg->path.size = path_size;
-	msg->path.flags = 0;
-	if (file_val->location_flags == CONTAINER_FILE) {
-		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
-	}
-	msg->path.flags |= file_val->location_flags;
+	err = generate_new_file_path(dentry, msg, file_val);
+	if (err < 0)
+		return err;
 
 	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
 	if (action < 0) // error
@@ -105,9 +67,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 
 	file_val->action = action;
 	file_val->size = msg->path.size;
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
-		     :);
-	probe_read(file_val->path, path_size, msg->path.str);
+	probe_read_str(file_val->path, MAX_FILEPATH_SIZE, msg->path.str);
 
 	if (msg->path.flags & CONTAINER_FILE) {
 		file_val->location_flags = CONTAINER_FILE;

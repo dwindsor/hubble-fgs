@@ -120,7 +120,7 @@ struct hash_map_file_key {
 struct hash_map_file_val {
 	__u32 action;
 	__u32 size;
-	char path[256];
+	char path[MAX_FILEPATH_SIZE];
 	char container_id[CONTAINER_ID_LEN];
 	__u64 location_flags;
 	__u32 rule_id;

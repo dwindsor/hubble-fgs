@@ -988,3 +988,52 @@ static inline __attribute__((always_inline)) int eval_patterns(char *path, __u32
 
 	return FILTER_IGNORE;
 }
+
+static inline __attribute__((always_inline)) int generate_new_file_path(struct dentry *dentry, struct msg_file_ops *msg, struct hash_map_file_val *file_val)
+{
+	__u32 dlen_size = 0, dlen_offset = 0;
+	__u32 dir_size = 0, dir_offset = 0;
+	__u32 path_size = 0;
+	struct qstr d_name;
+	char *buffer;
+	int zero = 0;
+
+	// we care about files inside this directory
+	// get a buffer to generate its path
+	buffer = map_lookup_elem(&buffer_heap_map, &zero);
+	if (!buffer)
+		return -FILE_ERR_GET_BUFFER_HEAP;
+
+	// first write the dentry name
+	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	dlen_size = d_name.len;
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
+		     :);
+	dlen_offset = MAX_FILEPATH_SIZE;
+	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
+	path_size += dlen_size;
+
+	// then write the directory name
+	// this is what we have in the map already (we don't traverse anything)
+	dir_size = file_val->size;
+	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
+		     :);
+	dir_offset = MAX_FILEPATH_SIZE - dir_size;
+	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
+		     :);
+	probe_read(buffer + dir_offset, dir_size, file_val->path);
+	path_size += dir_size;
+
+	// set the filepath inside msg
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
+		     :);
+	probe_read(msg->path.str, path_size, buffer + dir_offset);
+	msg->path.size = path_size;
+	msg->path.flags = 0;
+	if (file_val->location_flags == CONTAINER_FILE) {
+		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
+	}
+	msg->path.flags |= file_val->location_flags;
+
+	return 0;
+}

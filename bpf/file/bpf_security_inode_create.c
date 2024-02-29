@@ -15,26 +15,17 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct hash_map_file_val *file_val = 0;
-	__u32 dlen_size = 0, dlen_offset = 0;
-	__u32 dir_size = 0, dir_offset = 0;
-	__u32 path_size = 0;
-	int zero = 0, action = 0;
-	struct qstr d_name;
-	char *buffer;
+	int zero = 0, action = 0, err = 0;
 	__u32 operation = 0, rule_id = 0;
-#ifdef __LARGE_BPF_PROG
 	struct file_config_map_value *conf;
-#endif
 
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;
 
-#ifdef __LARGE_BPF_PROG
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
 		return -FILE_ERR_LOOKUP_CONFIG_MAP;
-#endif
 
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
@@ -52,41 +43,9 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	if (file_val->action == FILTER_IGNORE)
 		return 0;
 
-	// we care about files inside this directory
-	// get a buffer to generate its path
-	buffer = map_lookup_elem(&buffer_heap_map, &zero);
-	if (!buffer)
-		return -FILE_ERR_GET_BUFFER_HEAP;
-
-	// first write the dentry name
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
-	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
-		     :);
-	dlen_offset = MAX_FILEPATH_SIZE;
-	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
-	path_size += dlen_size;
-
-	// then write the directory name
-	// this is what we have in the map already (we don't traverse anything)
-	dir_size = file_val->size;
-	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
-		     :);
-	dir_offset = MAX_FILEPATH_SIZE - dir_size;
-	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
-		     :);
-	probe_read(buffer + dir_offset, dir_size, file_val->path);
-	path_size += dir_size;
-
-	// set the filepath inside msg
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
-		     :);
-	probe_read(msg->path.str, path_size, buffer + dir_offset);
-	msg->path.size = path_size;
-	msg->path.flags = 0;
-	if (file_val->location_flags == CONTAINER_FILE)
-		memcpy(msg->path.container_id, file_val->container_id, CONTAINER_ID_LEN);
-	msg->path.flags |= file_val->location_flags;
+	err = generate_new_file_path(dentry, msg, file_val);
+	if (err < 0)
+		return err;
 
 	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
 	if (action < 0) // error
