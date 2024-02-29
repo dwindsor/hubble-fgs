@@ -910,8 +910,8 @@ func TestLoadFileSensor(t *testing.T) {
 
 		// shared maps
 		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14}},
-		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 12, 13, 14, 16, 17}},
-		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 8, 9, 12, 13, 14, 15}},
+		tus.SensorMap{Name: "hash_map_inode_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17}},
+
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
@@ -3013,23 +3013,14 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 		t.Fatalf("failed to run /bin/cat %s: err %s", filePasswd, err)
 	}
 
-	dirMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_dir_alloc")
-	dirHandle, err := ebpf.LoadPinnedMap(dirMapPath, nil)
+	inodeMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_inode_alloc")
+	inodeHandle, err := ebpf.LoadPinnedMap(inodeMapPath, nil)
 	if err != nil {
-		t.Fatalf("cannot open pinned map %s", dirMapPath)
+		t.Fatalf("cannot open pinned map %s", inodeMapPath)
 	}
-	defer dirHandle.Close()
-	// 1024 is the value of maxWatchedDirs in testdata/specs/file_monitoring_config.yaml.tmpl
-	assert.Equal(t, uint32(1024), dirHandle.MaxEntries())
-
-	fileMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_file_alloc")
-	fileHandle, err := ebpf.LoadPinnedMap(fileMapPath, nil)
-	if err != nil {
-		t.Fatalf("cannot open pinned map %s", fileMapPath)
-	}
-	defer fileHandle.Close()
-	// 4096 is the value of maxWatchedFiles in testdata/specs/file_monitoring_config.yaml.tmpl
-	assert.Equal(t, uint32(4096), fileHandle.MaxEntries())
+	defer inodeHandle.Close()
+	// 4096 is the value of maxWatchedInodes in testdata/specs/file_monitoring_config.yaml.tmpl
+	assert.Equal(t, uint32(4096), inodeHandle.MaxEntries())
 
 	ino, dev := getInodeInfo(t, filePasswd)
 	o := ec.NewFileOperationListMatcher().

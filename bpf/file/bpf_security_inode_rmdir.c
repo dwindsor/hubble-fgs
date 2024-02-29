@@ -33,7 +33,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), dir, dentry);
 
 	// check if we care about this directory
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
@@ -79,8 +79,8 @@ ignore_rmdir:
 	file_key.dev_major = MAJOR(msg->fs.dev);
 	file_key.dev_minor = MINOR(msg->fs.dev);
 
-	if (map_delete_elem(&hash_map_dir_alloc, &file_key) < 0)
-		return -FILE_ERR_DELETE_DIR_MAP;
+	if (map_delete_elem(&hash_map_inode_alloc, &file_key) < 0)
+		return -FILE_ERR_DELETE_INODE_MAP;
 
 	return operation;
 }

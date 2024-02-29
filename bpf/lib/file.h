@@ -113,6 +113,10 @@ struct hash_map_file_key {
 	__u32 dev_minor;
 };
 
+#define HASH_MAP_FILE_MODE_UNKNOWN   0
+#define HASH_MAP_FILE_MODE_FILE	     1
+#define HASH_MAP_FILE_MODE_DIRECTORY 2
+
 struct hash_map_file_val {
 	__u32 action;
 	__u32 size;
@@ -120,7 +124,7 @@ struct hash_map_file_val {
 	char container_id[CONTAINER_ID_LEN];
 	__u64 location_flags;
 	__u32 rule_id;
-	__u32 pad;
+	__u32 mode; // HASH_MAP_FILE_*
 };
 
 struct msg_file_path {
@@ -250,8 +254,7 @@ struct file_config_map_value {
 	__u32 tp_id;
 	__u32 num_selectors;
 	__u32 policy_id;
-	__u32 max_watched_dirs;
-	__u32 max_watched_files;
+	__u32 max_watched_inodes;
 	__u32 is_less_than_419;
 	__u32 num_patterns;
 };
@@ -300,41 +303,39 @@ struct inode_pair {
 #define FILE_ERR_GET_BUFFER_HEAP	     10 // map_lookup_elem(&buffer_heap_map, &zero) == 0
 #define FILE_ERR_GET_TRIE_HEAP		     11 // map_lookup_elem(&lpm_trie_heap_key, &zero) == 0
 #define FILE_ERR_GET_FILE_VAL_HEAP	     12 // map_lookup_elem(&file_val_map, &zero) == 0
-#define FILE_ERR_UPDATE_FILE_MAP	     13 // map_update_elem(&hash_map_file_alloc, ...) < 0
+#define FILE_ERR_UPDATE_INODE_MAP	     13 // map_update_elem(&hash_map_inode_alloc, ...) < 0
 #define FILE_ERR_DENTRY_FROM_PATH	     14 // path->dentry == 0
-#define FILE_ERR_DELETE_FILE_MAP	     15 // map_delete_elem(&hash_map_file_alloc, ...) < 0
+#define FILE_ERR_DELETE_INODE_MAP	     15 // map_delete_elem(&hash_map_inode_alloc, ...) < 0
 #define FILE_ERR_MKDIR_INFO_HEAP_HEAP	     16 // map_lookup_elem(&vfs_mkdir_info_heap, &zero) == 0
 #define FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP   17 // map_update_elem(&mkdir_retprobe_map, ...) < 0
 #define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP   18 // map_delete_elem(&mkdir_retprobe_map, ...) < 0
 #define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP   19 // map_lookup_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_UPDATE_DIR_MAP		     20 // map_update_elem(&hash_map_dir_alloc, ...) < 0
-#define FILE_ERR_DELETE_DIR_MAP		     21 // map_delete_elem(&hash_map_dir_alloc, ...) < 0
-#define FILE_ERR_RENAME_INFO_HEAP	     22 // map_lookup_elem(&vfs_rename_info_heap, &zero) == 0
-#define FILE_ERR_UPDATE_RENAME_RETPROBE_MAP  23 // map_update_elem(&rename_retprobe_map, ...) < 0
-#define FILE_ERR_DELETE_RENAME_RETPROBE_MAP  24 // map_delete_elem(&rename_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_RENAME_RETPROBE_MAP  25 // map_lookup_elem(&rename_retprobe_map, ...) == 0
-#define FILE_ERR_UPDATE_SPR_RETPROBE_MAP     26 // map_update_elem(&spr_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_SPR_RETPROBE_MAP     27 // map_lookup_elem(&spr_retprobe_map, ...) == 0
-#define FILE_ERR_DELETE_SPR_RETPROBE_MAP     28 // map_delete_elem(&spr_retprobe_map, ...) < 0
-#define FILE_ERR_UPDATE_VR_RETPROBE_MAP	     29 // map_update_elem(&vr_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_VR_RETPROBE_MAP	     30 // map_lookup_elem(&vr_retprobe_map, ...) == 0
-#define FILE_ERR_DELETE_VR_RETPROBE_MAP	     31 // map_delete_elem(&vr_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_CONFIG_MAP	     32 // map_lookup_elem(&file_config_map, &zero) == 0
-#define FILE_ERR_LOOKUP_RENAME_HEAP_MAP	     33 // map_lookup_elem(&file_rename_heap_map, &zero) == 0
-#define FILE_ERR_FILE_FROM_BPRM		     34 // linux_bprm->file == 0
-#define FILE_ERR_UPDATE_EXEC_RETPROBE_MAP    35 // map_update_elem(&exec_retprobe_map, ...) < 0
-#define FILE_ERR_DELETE_EXEC_RETPROBE_MAP    36 // map_delete_elem(&exec_retprobe_map, ...) < 0
-#define FILE_ERR_UPDATE_IOURING_RETPROBE_MAP 37 // map_update_elem(&io_uring_retprobe_map, ...) < 0
-#define FILE_ERR_DELETE_IOURING_RETPROBE_MAP 38 // map_delete_elem(&io_uring_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_IOURING_RETPROBE_MAP 39 // map_lookup_elem(&io_uring_retprobe_map, ...) == 0
-#define FILE_ERR_UPDATE_IOURING_MAP	     40 // map_update_elem(&io_uring_map, ...) < 0
-#define FILE_ERR_DELETE_IOURING_MAP	     41 // map_delete_elem(&io_uring_map, ...) < 0
-#define FILE_ERR_IOURING_TASK		     42 // ((struct io_kiocb *)req)->ctx->mm->owner == NULL
-#define FILE_ERR_UPDATE_FSNOTIFY_MAP	     43 // map_update_elem(&fsnotify_created_files_map, ...) < 0
-#define FILE_ERR_DELETE_FSNOTIFY_MAP	     44 // map_delete_elem(&fsnotify_created_files_map, ...) < 0
-#define FILE_ERR_GET_PATTERN_MAP	     45 // map_lookup_elem(&patterns_map_alloc, ...) == 0
-#define FILE_ERR_UNEXPECTED		     46
-#define FILE_ERR_MAX			     47
+#define FILE_ERR_RENAME_INFO_HEAP	     20 // map_lookup_elem(&vfs_rename_info_heap, &zero) == 0
+#define FILE_ERR_UPDATE_RENAME_RETPROBE_MAP  21 // map_update_elem(&rename_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_RENAME_RETPROBE_MAP  22 // map_delete_elem(&rename_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_RENAME_RETPROBE_MAP  23 // map_lookup_elem(&rename_retprobe_map, ...) == 0
+#define FILE_ERR_UPDATE_SPR_RETPROBE_MAP     24 // map_update_elem(&spr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_SPR_RETPROBE_MAP     25 // map_lookup_elem(&spr_retprobe_map, ...) == 0
+#define FILE_ERR_DELETE_SPR_RETPROBE_MAP     26 // map_delete_elem(&spr_retprobe_map, ...) < 0
+#define FILE_ERR_UPDATE_VR_RETPROBE_MAP	     27 // map_update_elem(&vr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_VR_RETPROBE_MAP	     28 // map_lookup_elem(&vr_retprobe_map, ...) == 0
+#define FILE_ERR_DELETE_VR_RETPROBE_MAP	     29 // map_delete_elem(&vr_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_CONFIG_MAP	     30 // map_lookup_elem(&file_config_map, &zero) == 0
+#define FILE_ERR_LOOKUP_RENAME_HEAP_MAP	     31 // map_lookup_elem(&file_rename_heap_map, &zero) == 0
+#define FILE_ERR_FILE_FROM_BPRM		     32 // linux_bprm->file == 0
+#define FILE_ERR_UPDATE_EXEC_RETPROBE_MAP    33 // map_update_elem(&exec_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_EXEC_RETPROBE_MAP    34 // map_delete_elem(&exec_retprobe_map, ...) < 0
+#define FILE_ERR_UPDATE_IOURING_RETPROBE_MAP 35 // map_update_elem(&io_uring_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_IOURING_RETPROBE_MAP 36 // map_delete_elem(&io_uring_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_IOURING_RETPROBE_MAP 37 // map_lookup_elem(&io_uring_retprobe_map, ...) == 0
+#define FILE_ERR_UPDATE_IOURING_MAP	     38 // map_update_elem(&io_uring_map, ...) < 0
+#define FILE_ERR_DELETE_IOURING_MAP	     39 // map_delete_elem(&io_uring_map, ...) < 0
+#define FILE_ERR_IOURING_TASK		     40 // ((struct io_kiocb *)req)->ctx->mm->owner == NULL
+#define FILE_ERR_UPDATE_FSNOTIFY_MAP	     41 // map_update_elem(&fsnotify_created_files_map, ...) < 0
+#define FILE_ERR_DELETE_FSNOTIFY_MAP	     42 // map_delete_elem(&fsnotify_created_files_map, ...) < 0
+#define FILE_ERR_GET_PATTERN_MAP	     43 // map_lookup_elem(&patterns_map_alloc, ...) == 0
+#define FILE_ERR_UNEXPECTED		     44
+#define FILE_ERR_MAX			     45
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

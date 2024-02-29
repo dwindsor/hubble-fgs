@@ -46,7 +46,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	// find this file inside the file inode map
 	// we don't care if we cannot find this in the map
 	// or the action is FILTER_IGNORE
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_file_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;

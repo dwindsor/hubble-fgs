@@ -45,6 +45,12 @@ const (
 	CONTAINER_FILE = (1 << 1)
 )
 
+const (
+	HashMapFileModeUnknown   = 0
+	HashMapFileModeFile      = 1
+	HashMapFileModeDirectory = 2
+)
+
 type HashMapFileVal struct {
 	Action        uint32    `align:"action"`
 	PathSize      uint32    `align:"size"`
@@ -52,7 +58,7 @@ type HashMapFileVal struct {
 	ContainerID   [64]byte  `align:"container_id"`
 	LocationFlags uint64    `align:"location_flags"` // HOST_FILE or CONTAINER_FILE
 	RuleID        uint32    `align:"rule_id"`
-	Pad           uint32    `align:"pad"`
+	Mode          uint32    `align:"mode"` // HashMapFileMode*
 }
 
 type MsgFilePath struct {
@@ -162,8 +168,7 @@ type FileConfigMapValue struct {
 	TpId                  uint32 `align:"tp_id"`
 	NumSelectors          uint32 `align:"num_selectors"`
 	PolicyId              uint32 `align:"policy_id"`
-	MaxWatchedDirs        uint32 `align:"max_watched_dirs"`
-	MaxWatchedFiles       uint32 `align:"max_watched_files"`
+	MaxWatchedInodes      uint32 `align:"max_watched_inodes"`
 	IsLessThan419         uint32 `align:"is_less_than_419"`
 	NumPatterns           uint32 `align:"num_patterns"`
 }
@@ -205,41 +210,39 @@ const (
 	FileErrGetBufferHeap            = 10
 	FileErrGetTrieHeap              = 11
 	FileErrGetFileValHeap           = 12
-	FileErrUpdateFileMap            = 13
+	FileErrUpdateInodeMap           = 13
 	FileErrDentryFromPath           = 14
-	FileErrDeleteFileMap            = 15
+	FileErrDeleteInodeMap           = 15
 	FileErrMkdirInfoHeap            = 16
 	FileErrUpdateMkdirRetprobeMap   = 17
 	FileErrDeleteMkdirRetprobeMap   = 18
 	FileErrLookupMkdirRetprobeMap   = 19
-	FileErrUpdateDirMap             = 20
-	FileErrDeleteDirMap             = 21
-	FileErrRenameInfoHeap           = 22
-	FileErrUpdateRenameRetprobeMap  = 23
-	FileErrDeleteRenameRetprobeMap  = 24
-	FileErrLookupRenameRetprobeMap  = 25
-	FileErrUpdateSprRetprobeMap     = 26
-	FileErrLookupSprRetprobeMap     = 27
-	FileErrDeleteSprRetprobeMap     = 28
-	FileErrUpdateVrRetprobeMap      = 29
-	FileErrLookupVrRetprobeMap      = 30
-	FileErrDeleteVrRetprobeMap      = 31
-	FileErrLookupConfigMap          = 32
-	FileErrLookupRenameHeapMap      = 33
-	FileErrFileFromBprm             = 34
-	FileErrUpdateExecRetProbeMap    = 35
-	FileErrDeleteExecRetprobeMap    = 36
-	FileErrUpdateIoUringRetprobeMap = 37
-	FileErrDeleteIoUringRetprobeMap = 38
-	FileErrLookupIoUringRetprobeMap = 39
-	FileErrUpdateIoUringMap         = 40
-	FileErrDeleteIoUringMap         = 41
-	FileErrIoUringTask              = 42
-	FileErrUpdateFsNotifyMap        = 43
-	FileErrDeleteFsNotifyMap        = 44
-	FileErrLookupPatternsMap        = 45
-	FileErrUnexpected               = 46
-	FileErrMax                      = 47
+	FileErrRenameInfoHeap           = 20
+	FileErrUpdateRenameRetprobeMap  = 21
+	FileErrDeleteRenameRetprobeMap  = 22
+	FileErrLookupRenameRetprobeMap  = 23
+	FileErrUpdateSprRetprobeMap     = 24
+	FileErrLookupSprRetprobeMap     = 25
+	FileErrDeleteSprRetprobeMap     = 26
+	FileErrUpdateVrRetprobeMap      = 27
+	FileErrLookupVrRetprobeMap      = 28
+	FileErrDeleteVrRetprobeMap      = 29
+	FileErrLookupConfigMap          = 30
+	FileErrLookupRenameHeapMap      = 31
+	FileErrFileFromBprm             = 32
+	FileErrUpdateExecRetProbeMap    = 33
+	FileErrDeleteExecRetprobeMap    = 34
+	FileErrUpdateIoUringRetprobeMap = 35
+	FileErrDeleteIoUringRetprobeMap = 36
+	FileErrLookupIoUringRetprobeMap = 37
+	FileErrUpdateIoUringMap         = 38
+	FileErrDeleteIoUringMap         = 39
+	FileErrIoUringTask              = 40
+	FileErrUpdateFsNotifyMap        = 41
+	FileErrDeleteFsNotifyMap        = 42
+	FileErrLookupPatternsMap        = 43
+	FileErrUnexpected               = 44
+	FileErrMax                      = 45
 )
 
 const (

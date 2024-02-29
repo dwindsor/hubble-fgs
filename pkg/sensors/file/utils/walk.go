@@ -24,46 +24,35 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-
-	"go.uber.org/multierr"
 )
 
 type FimMaps struct {
-	File, Dir, Lpm *ebpf.Map
+	Inode, Lpm *ebpf.Map
 }
 
 func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
-	var fileHandle, dirHandle, lpmHandle *ebpf.Map
+	var inodeHandle, lpmHandle *ebpf.Map
 	var err error
 
-	fileHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, FileMapName)), nil)
+	inodeHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, InodeMapName)), nil)
 	if err != nil {
-		return FimMaps{}, func() {}, err
-	}
-
-	dirHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, DirMapName)), nil)
-	if err != nil {
-		fileHandle.Close()
 		return FimMaps{}, func() {}, err
 	}
 
 	lpmHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, LpmMapName)), nil)
 	if err != nil {
-		fileHandle.Close()
-		dirHandle.Close()
+		inodeHandle.Close()
 		return FimMaps{}, func() {}, err
 	}
 
 	cleanupFn := func() {
-		fileHandle.Close()
-		dirHandle.Close()
+		inodeHandle.Close()
 		lpmHandle.Close()
 	}
 
 	maps := FimMaps{
-		File: fileHandle,
-		Dir:  dirHandle,
-		Lpm:  lpmHandle,
+		Inode: inodeHandle,
+		Lpm:   lpmHandle,
 	}
 
 	return maps, cleanupFn, nil
@@ -210,21 +199,11 @@ func RemoveContainerEntries(maps FimMaps, containerID string) error {
 		rmEntries = rmHandleContainerEntries56
 	}
 
-	var ret error
-	fNum, err := rmEntries(maps.File, containerID)
-	if err != nil {
-		ret = multierr.Append(ret, err)
+	num, err := rmEntries(maps.Inode, containerID)
+	if num != 0 {
+		logger.GetLogger().Warnf("Deleted %d inodes for container %s", num, containerID)
 	}
-
-	dNum, err := rmEntries(maps.Dir, containerID)
-	if err != nil {
-		ret = multierr.Append(ret, err)
-	}
-
-	if fNum != 0 || dNum != 0 {
-		logger.GetLogger().Warnf("Deleted %d files and %d directories for container %s", fNum, dNum, containerID)
-	}
-	return ret
+	return err
 }
 
 // This function gets a prefix and returns all paths that match this prefix.
@@ -394,6 +373,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 				copy(val.FullPath[:], path)
 				locationFn(&val)
 				val.RuleID = rule
+				val.Mode = fileapi.HashMapFileModeFile
 
 				addToMap := true
 				if checkPrefix {
@@ -402,13 +382,13 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 					}
 				}
 				if addToMap {
-					err := AddFilePath(maps.File, key, val)
+					err := AddFilePath(maps.Inode, key, val)
 					if err != nil {
 						return fmt.Errorf("failed to call addFilePath: %w", err)
 					}
 				}
 			} else if op == RemoveFromMap {
-				err := RemoveFilePath(maps.File, key)
+				err := RemoveFilePath(maps.Inode, key)
 				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
@@ -436,6 +416,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 				copy(val.FullPath[:], path)
 				locationFn(&val)
 				val.RuleID = rule
+				val.Mode = fileapi.HashMapFileModeDirectory
 
 				addToMap := true
 				if checkPrefix {
@@ -444,13 +425,13 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 					}
 				}
 				if addToMap {
-					err := AddFilePath(maps.Dir, key, val)
+					err := AddFilePath(maps.Inode, key, val)
 					if err != nil {
 						return fmt.Errorf("failed to call addDirPath: %w", err)
 					}
 				}
 			} else if op == RemoveFromMap {
-				err := RemoveFilePath(maps.Dir, key)
+				err := RemoveFilePath(maps.Inode, key)
 				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
@@ -516,11 +497,12 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 			val := fileapi.HashMapFileVal{
 				Action:   FilterIgnore,
 				PathSize: uint32(len(path)),
+				Mode:     fileapi.HashMapFileModeDirectory,
 			}
 			copy(val.FullPath[:], path)
 			locationFn(&val)
 
-			AddFilePath(maps.Dir, key, val)
+			AddFilePath(maps.Inode, key, val)
 		}
 	}
 
@@ -574,19 +556,20 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 		val := fileapi.HashMapFileVal{
 			Action:   FilterMonitor,
 			PathSize: uint32(len(path)),
+			Mode:     fileapi.HashMapFileModeDirectory,
 		}
 		copy(val.FullPath[:], path)
 		locationFn(&val)
 
 		var exVal fileapi.HashMapFileVal
-		if err := maps.Dir.Lookup(key, &exVal); err == nil { // key already exists
+		if err := maps.Inode.Lookup(key, &exVal); err == nil { // key already exists
 			// already exists with value FilterMatch, do not update to FilterIgnore.
 			if exVal.Action == FilterMatch {
 				continue
 			}
 		}
 
-		if err := AddFilePath(maps.Dir, key, val); err != nil {
+		if err := AddFilePath(maps.Inode, key, val); err != nil {
 			return 0, 0, fmt.Errorf("failed to call addDirPath: %w", err)
 		}
 

@@ -13,9 +13,8 @@ package file
 import "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 const (
-	DirMapName  = "hash_map_dir_alloc"
-	FileMapName = "hash_map_file_alloc"
-	LpmMapName  = "lpm_trie_map_alloc"
+	InodeMapName = "hash_map_inode_alloc"
+	LpmMapName   = "lpm_trie_map_alloc"
 
 	ScannerFifoName      = "fs_scanner.sock" // this is used for hubble-fgs-fs-scanner <-> file-sensor communication
 	LocalScannerFifoPath = "/var/run"

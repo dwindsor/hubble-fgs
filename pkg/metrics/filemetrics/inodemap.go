@@ -29,8 +29,7 @@ func NewBPFInodeMapCollector() prometheus.Collector {
 }
 
 func (c *bpfInodeMapCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- fileMapInodeFile.Desc()
-	ch <- fileMapInodeDir.Desc()
+	ch <- fileMapInode.Desc()
 }
 
 func countInodeMapEnties(handle *ebpf.Map) uint64 {
@@ -47,22 +46,13 @@ func countInodeMapEnties(handle *ebpf.Map) uint64 {
 
 func (c *bpfInodeMapCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, tp := range pol.FileMonitoringTable.GetValuesFIM() {
-		filePinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "hash_map_file_alloc"))
-		fileMapHandle, err := ebpf.LoadPinnedMap(filePinPath, nil)
+		inodePinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "hash_map_inode_alloc"))
+		inodeMapHandle, err := ebpf.LoadPinnedMap(inodePinPath, nil)
 		if err != nil {
 			return
 		}
-		defer fileMapHandle.Close()
+		defer inodeMapHandle.Close()
 
-		ch <- fileMapInodeFile.MustMetric(float64(countInodeMapEnties(fileMapHandle)), tp.PolicyName)
-
-		dirPinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "hash_map_dir_alloc"))
-		dirMapHandle, err := ebpf.LoadPinnedMap(dirPinPath, nil)
-		if err != nil {
-			return
-		}
-		defer dirMapHandle.Close()
-
-		ch <- fileMapInodeDir.MustMetric(float64(countInodeMapEnties(dirMapHandle)), tp.PolicyName)
+		ch <- fileMapInode.MustMetric(float64(countInodeMapEnties(inodeMapHandle)), tp.PolicyName)
 	}
 }

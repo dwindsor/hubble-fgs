@@ -15,13 +15,9 @@ spec:
       # we fallback to not using them.
       enableExecDigests: "false"
       # This option allows users to define a specific size for the map
-      # that holds the watched file. The default value (i.e. if
-      # the user does not specify that option) is 128K entries.
-      maxWatchedFiles: "131072"
-      # This option allows users to define a specific size for the map
-      # that holds the watched directories. The default value (i.e. if
-      # the user does not specify that option) is 128K entries.
-      maxWatchedDirs: "131072"
+      # that holds the watched inodes. The default value (i.e. if
+      # the user does not specify that option) is 256K entries.
+      maxWatchedInodes: "262144"
     file_paths_patterns:
     - type: FilePrefixSuffix # will match *ONLY* files that have prefix "/home/"" and suffix ".ssh/authorized_keys"
       file_prefix_suffix:

@@ -41,13 +41,13 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), dir, parent_dentry);
 
 	// If inode->i_nlink == 1 (i.e. last link) we should also remove that
-	// from hash_map_file_alloc.
+	// from hash_map_inode_alloc.
 	probe_read(&i_nlink, sizeof(i_nlink), _(&inode->i_nlink));
 	remove_entry = (i_nlink == 1);
 
 	// find this file inside the file inode map
 	// if we cannot find that in map we don't have anything to remove from the map
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_file_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
@@ -97,8 +97,8 @@ ignore_unlink:
 		file_key.dev_major = MAJOR(msg->fs.dev);
 		file_key.dev_minor = MINOR(msg->fs.dev);
 
-		if (map_delete_elem(&hash_map_file_alloc, &file_key) < 0)
-			return -FILE_ERR_DELETE_FILE_MAP;
+		if (map_delete_elem(&hash_map_inode_alloc, &file_key) < 0)
+			return -FILE_ERR_DELETE_INODE_MAP;
 	}
 
 	return operation;

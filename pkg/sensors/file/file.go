@@ -67,9 +67,8 @@ import (
 )
 
 const (
-	maxLPMpaths     = 4096
-	maxWatchedDirs  = 128 * 1024 // 128K
-	maxWatchedFiles = 128 * 1024 // 128K
+	maxLPMpaths      = 4096
+	maxWatchedInodes = 256 * 1024 // 256K
 
 	overlayModName = "overlay"
 	btfPath        = "/sys/kernel/btf/"
@@ -316,8 +315,7 @@ var (
 		"spr_retprobe_map",
 		"vr_retprobe_map",
 		"lpm_trie_map_alloc",
-		"hash_map_file_alloc",
-		"hash_map_dir_alloc",
+		"hash_map_inode_alloc",
 		"tg_mb_sel_opts",
 		"tg_mb_paths",
 		"file_ops_maps",
@@ -967,58 +965,31 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	hs := &ebpf.MapSpec{
-		Name:       "hash_map_file_alloc",
+		Name:       "hash_map_inode_alloc",
 		Type:       bpf.BPF_MAP_TYPE_HASH,
 		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
-		MaxEntries: config.MaxWatchedFiles,
+		MaxEntries: config.MaxWatchedInodes,
 		Flags:      0,
 	}
 
-	fileHandle, err := ebpf.NewMapWithOptions(hs, ebpf.MapOptions{})
+	inodeHandle, err := ebpf.NewMapWithOptions(hs, ebpf.MapOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
 	}
-	defer fileHandle.Close()
+	defer inodeHandle.Close()
 
-	filePinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_file_alloc"))
+	inodePinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_inode_alloc"))
 	// remove the map if already exists, otheriwse Pin() will fail
-	if _, err := os.Stat(filePinPath); err == nil {
-		os.Remove(filePinPath)
+	if _, err := os.Stat(inodePinPath); err == nil {
+		os.Remove(inodePinPath)
 	}
-	if err := fileHandle.Pin(filePinPath); err != nil {
-		return nil, fmt.Errorf("failed fileHandle.Pin: %w", err)
+	if err := inodeHandle.Pin(inodePinPath); err != nil {
+		return nil, fmt.Errorf("failed inodeHandle.Pin: %w", err)
 	}
 
 	// set metric to maximum size of inode map for files
-	filemetrics.FileSetFileInodeMapMax(e.TpName, float64(config.MaxWatchedFiles))
-
-	ds := &ebpf.MapSpec{
-		Name:       "hash_map_dir_alloc",
-		Type:       bpf.BPF_MAP_TYPE_HASH,
-		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
-		MaxEntries: config.MaxWatchedDirs,
-		Flags:      0,
-	}
-
-	dirHandle, err := ebpf.NewMapWithOptions(ds, ebpf.MapOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
-	}
-	defer dirHandle.Close()
-
-	dirPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_dir_alloc"))
-	// remove the map if already exists, otheriwse Pin() will fail
-	if _, err := os.Stat(dirPinPath); err == nil {
-		os.Remove(dirPinPath)
-	}
-	if err := dirHandle.Pin(dirPinPath); err != nil {
-		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
-	}
-
-	// set metric to maximum size of inode map for directories
-	filemetrics.FileSetDirectoryInodeMapMax(e.TpName, float64(config.MaxWatchedDirs))
+	filemetrics.FileSetInodeMapMax(e.TpName, float64(config.MaxWatchedInodes))
 
 	if kprobes.MonitorHostFiles {
 		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix); err != nil {
@@ -1074,8 +1045,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(sel),
 		}
 		load.MaxEntriesMap = map[string]uint32{
-			"hash_map_file_alloc": config.MaxWatchedFiles,
-			"hash_map_dir_alloc":  config.MaxWatchedDirs,
+			"hash_map_inode_alloc": config.MaxWatchedInodes,
 		}
 		progs = append(progs, load)
 
@@ -1630,23 +1600,13 @@ func (k *observerFileSensor) PolicyHandler(
 		enableExecDigests = true
 	}
 
-	configMaxWatchedDirs := uint32(maxWatchedDirs)
-	if val, ok := spec.FileMonitoring.Config["maxWatchedDirs"]; ok {
+	configMaxWatchedInodes := uint32(maxWatchedInodes)
+	if val, ok := spec.FileMonitoring.Config["maxWatchedInodes"]; ok {
 		if v, err := strconv.ParseUint(val, 10, 32); err == nil {
-			configMaxWatchedDirs = uint32(v)
-			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedDirs = %d", configMaxWatchedDirs)
+			configMaxWatchedInodes = uint32(v)
+			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedInodes = %d", configMaxWatchedInodes)
 		} else {
-			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedDirs should be a number. User input: [%s]", val)
-		}
-	}
-
-	configMaxWatchedFiles := uint32(maxWatchedFiles)
-	if val, ok := spec.FileMonitoring.Config["maxWatchedFiles"]; ok {
-		if v, err := strconv.ParseUint(val, 10, 32); err == nil {
-			configMaxWatchedFiles = uint32(v)
-			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedFiles = %d", configMaxWatchedFiles)
-		} else {
-			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedFiles should be a number. User input: [%s]", val)
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedInodes should be a number. User input: [%s]", val)
 		}
 	}
 
@@ -1679,8 +1639,7 @@ func (k *observerFileSensor) PolicyHandler(
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 		PolicyId:              uint32(fid),
-		MaxWatchedDirs:        configMaxWatchedDirs,
-		MaxWatchedFiles:       configMaxWatchedFiles,
+		MaxWatchedInodes:      configMaxWatchedInodes,
 	}
 	fileMode, digestSupport := probeFileMode(selState)
 	if !enableExecDigests { // we explicitly disable digests if the user has not enabled them

@@ -43,7 +43,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	get_parent_ino_fs(msg, parent_dentry);
 
 	// find the parent directory entry
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
@@ -94,7 +94,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	if (!action) // we didn't match
 		return 0;
 
-	// and insert that inode to the hash_map_file_alloc
+	// and insert that inode to the hash_map_inode_alloc
 	file_key.ino = msg->ino;
 	file_key.dev_major = MAJOR(msg->fs.dev);
 	file_key.dev_minor = MINOR(msg->fs.dev);
@@ -115,10 +115,11 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	} else {
 		file_val->location_flags = HOST_FILE;
 	}
+	file_val->mode = HASH_MAP_FILE_MODE_FILE;
 
 	// add this new file to the map of files
-	if (map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0) < 0)
-		return -FILE_ERR_UPDATE_FILE_MAP;
+	if (map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0) < 0)
+		return -FILE_ERR_UPDATE_INODE_MAP;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

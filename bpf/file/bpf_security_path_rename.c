@@ -6,7 +6,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
  * For the rename operation, we hook into four points:
  *   1. kprobe/security_path_rename: Store the old/new path using the thread id.
  *      We need that for the case where the src or dst directory is not in the
- *      watched path. For the watched paths we use hash_map_dir_alloc to get
+ *      watched path. For the watched paths we use hash_map_inode_alloc to get
  *      the directory path based on its inode number.
  *   2. kretprobe/security_path_rename: In the case where security_path_rename
  *      fails (i.e. not enough permissions) we just cleanup vfs_rename_info_heap

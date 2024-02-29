@@ -44,7 +44,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	get_parent_ino_fs(msg, parent_dentry);
 
 	// find the parent directory entry
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;

@@ -469,35 +469,19 @@ Total number of eBPF errors for process_file events per hook and reason.
 | ----- | ------ |
 | `hook ` | `chmod_common, chown_common, do_truncate, filemap_fault, filemap_map_pages, filemap_page_mkwrite, finish_open, fsnotify, io_issue_sqe, io_read, io_write, iterate_dir, security_bprm_check, security_file_permission, security_inode_create, security_inode_mkdir, security_inode_rename, security_inode_rmdir, security_inode_setattr, security_inode_unlink, security_mmap_file, security_path_rename, undef, vfs_fallocate, vfs_mkdir, vfs_open, vfs_rename, vfs_unlink` |
 | `policy` | `example-tracingpolicy` |
-| `reason` | `delete_dir_map, delete_exec_retprobe_map, delete_file_map, delete_fsnotify_map, delete_io_uring_map, delete_io_uring_retprobe_map, delete_mkdir_retprobe_map, delete_rename_retprobe_map, delete_spr_retprobe_map, delete_vr_retprobe_map, dentry_from_file, dentry_from_path, file_arg, file_from_bprm, file_from_vma, get_buffer_heap, get_file_val_heap, get_io_uring_task, get_msg_heap, get_trie_heap, inode_from_dentry, inode_from_file, lookup_config_map, lookup_io_uring_retprobe_map, lookup_mkdir_retprobe_map, lookup_patterns_map, lookup_rename_heap_map, lookup_rename_retprobe_map, lookup_spr_retprobe_map, lookup_vr_retprobe_map, mkdir_info_heap, parent_from_dentry, rename_info_heap, success, unexpected, unknown, update_dir_map, update_exec_retprobe_map, update_file_map, update_fsnotify_map, update_io_uring_map, update_io_uring_retprobe_map, update_mkdir_retprobe_map, update_rename_retprobe_map, update_spr_retprobe_map, update_vr_retprobe_map, vma_from_vmf` |
+| `reason` | `delete_exec_retprobe_map, delete_fsnotify_map, delete_inode_map, delete_io_uring_map, delete_io_uring_retprobe_map, delete_mkdir_retprobe_map, delete_rename_retprobe_map, delete_spr_retprobe_map, delete_vr_retprobe_map, dentry_from_file, dentry_from_path, file_arg, file_from_bprm, file_from_vma, get_buffer_heap, get_file_val_heap, get_io_uring_task, get_msg_heap, get_trie_heap, inode_from_dentry, inode_from_file, lookup_config_map, lookup_io_uring_retprobe_map, lookup_mkdir_retprobe_map, lookup_patterns_map, lookup_rename_heap_map, lookup_rename_retprobe_map, lookup_spr_retprobe_map, lookup_vr_retprobe_map, mkdir_info_heap, parent_from_dentry, rename_info_heap, success, unexpected, unknown, update_exec_retprobe_map, update_fsnotify_map, update_inode_map, update_io_uring_map, update_io_uring_retprobe_map, update_mkdir_retprobe_map, update_rename_retprobe_map, update_spr_retprobe_map, update_vr_retprobe_map, vma_from_vmf` |
 
-### `tetragon_inode_dir_map_entries`
+### `tetragon_inode_map_entries`
 
-Total number of entries in the inode map for directories.
-
-| label | values |
-| ----- | ------ |
-| `policy` | `example-tracingpolicy` |
-
-### `tetragon_inode_dir_map_max`
-
-Maximum number of entries in the inode map for directories.
+Total number of entries in the inode map.
 
 | label | values |
 | ----- | ------ |
 | `policy` | `example-tracingpolicy` |
 
-### `tetragon_inode_file_map_entries`
+### `tetragon_inode_map_max`
 
-Total number of entries in the inode map for files.
-
-| label | values |
-| ----- | ------ |
-| `policy` | `example-tracingpolicy` |
-
-### `tetragon_inode_file_map_max`
-
-Maximum number of entries in the inode map for files.
+Maximum number of entries in the inode map.
 
 | label | values |
 | ----- | ------ |

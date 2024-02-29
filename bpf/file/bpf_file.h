@@ -242,14 +242,7 @@ struct {
 	__type(key, struct hash_map_file_key);
 	__type(value, struct hash_map_file_val);
 	__uint(max_entries, 1); /* the user will setup this */
-} hash_map_file_alloc SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct hash_map_file_key);
-	__type(value, struct hash_map_file_val);
-	__uint(max_entries, 1); /* the user will setup this */
-} hash_map_dir_alloc SEC(".maps");
+} hash_map_inode_alloc SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

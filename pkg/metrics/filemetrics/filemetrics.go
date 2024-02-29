@@ -153,28 +153,16 @@ var (
 		Help:      "Total number of errors during the collector runs for process_file_exec events.",
 	})
 
-	fileMapInodeFile = metrics.NewBPFGauge(prometheus.NewDesc(
-		prometheus.BuildFQName(consts.MetricsNamespace, "", "inode_file_map_entries"),
-		"Total number of entries in the inode map for files.",
+	fileMapInode = metrics.NewBPFGauge(prometheus.NewDesc(
+		prometheus.BuildFQName(consts.MetricsNamespace, "", "inode_map_entries"),
+		"Total number of entries in the inode map.",
 		[]string{"policy"}, nil,
 	))
 
-	fileMapInodeFileMax = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:      "inode_file_map_max",
+	fileMapInodeMax = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      "inode_map_max",
 		Namespace: consts.MetricsNamespace,
-		Help:      "Maximum number of entries in the inode map for files.",
-	}, []string{"policy"})
-
-	fileMapInodeDir = metrics.NewBPFGauge(prometheus.NewDesc(
-		prometheus.BuildFQName(consts.MetricsNamespace, "", "inode_dir_map_entries"),
-		"Total number of entries in the inode map for directories.",
-		[]string{"policy"}, nil,
-	))
-
-	fileMapInodeDirMax = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:      "inode_dir_map_max",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Maximum number of entries in the inode map for directories.",
+		Help:      "Maximum number of entries in the inode map.",
 	}, []string{"policy"})
 
 	fileKernelErrors = metrics.NewBPFCounter(prometheus.NewDesc(
@@ -192,8 +180,7 @@ func initHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
 	registry.MustRegister(fileExecCollectorErrors)
-	registry.MustRegister(fileMapInodeFileMax)
-	registry.MustRegister(fileMapInodeDirMax)
+	registry.MustRegister(fileMapInodeMax)
 
 	// Initialize metrics with labels
 	fileTotalCacheEvents.WithLabelValues(directionIn).Add(0)
@@ -226,8 +213,7 @@ func InitHealthMetricsForDocs(registry *prometheus.Registry) {
 	initHealthMetrics(registry)
 
 	// Initialize metrics with example labels
-	fileMapInodeFileMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
-	fileMapInodeDirMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
+	fileMapInodeMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
 
 	// Register custom zero collectors
 	registry.MustRegister(NewBPFZeroCollector())
@@ -297,12 +283,8 @@ func FileFailedDigestInc(ev FileEvent) {
 	fileFailedDigest.WithLabelValues(ev.String()).Inc()
 }
 
-func FileSetFileInodeMapMax(policy string, val float64) {
-	fileMapInodeFileMax.WithLabelValues(policy).Set(val)
-}
-
-func FileSetDirectoryInodeMapMax(policy string, val float64) {
-	fileMapInodeDirMax.WithLabelValues(policy).Set(val)
+func FileSetInodeMapMax(policy string, val float64) {
+	fileMapInodeMax.WithLabelValues(policy).Set(val)
 }
 
 // bpfZeroCollector implements prometheus.Collector. It collects "zero" metrics.
@@ -332,8 +314,7 @@ func (c *bpfZeroCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, er := range fileapi.FileExecMetricTable {
 		ch <- fileExecEbpfErrors.MustMetric(0, er)
 	}
-	ch <- fileMapInodeFile.MustMetric(0, consts.ExamplePolicyLabel)
-	ch <- fileMapInodeDir.MustMetric(0, consts.ExamplePolicyLabel)
+	ch <- fileMapInode.MustMetric(0, consts.ExamplePolicyLabel)
 	for _, hook := range fileHookMap {
 		for _, er := range fileErrorReasonMap {
 			ch <- fileKernelErrors.MustMetric(0, consts.ExamplePolicyLabel, hook, er)

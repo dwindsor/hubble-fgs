@@ -31,7 +31,6 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20231206185938-4287122432b2
 	github.com/vishvananda/netns v0.0.4
 	github.com/yalue/native_endian v1.0.2
-	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.22.0
 	golang.org/x/sys v0.18.0
 	golang.org/x/time v0.5.0
@@ -130,6 +129,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.23.0 // indirect
 	go.opentelemetry.io/otel/trace v1.23.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect

@@ -207,7 +207,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		if ((v->msg.flags & SRC_REG_FILE) ||
 		    (v->msg.flags & SRC_DIRECTORY)) {
 			fv = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.src.parent_ino,
 				v->msg.src.parent_fs.dev);
 			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
@@ -218,7 +218,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		    (v->msg.flags & DST_DIRECTORY) ||
 		    (v->msg.flags & DST_NOT_EXISTS)) {
 			fv = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.dst.parent_ino,
 				v->msg.dst.parent_fs.dev);
 			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
@@ -239,12 +239,12 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		// first check if we care about the specific (source) file or directory
 		if (v->msg.flags & SRC_REG_FILE) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_file_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.src.ino,
 				v->msg.src.fs.dev);
 		} else if (v->msg.flags & SRC_DIRECTORY) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.src.ino,
 				v->msg.src.fs.dev);
 			if (!(fval && fval->action == FILTER_MATCH))
@@ -254,7 +254,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		// we need to get the parent path here in order to create the final path
 		if ((v->msg.flags & SRC_REG_FILE || v->msg.flags & SRC_DIRECTORY) && fval != 0) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.src.parent_ino,
 				v->msg.src.parent_fs.dev);
 			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
@@ -285,12 +285,12 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		// first check if we care about the specific (destination) file or directory
 		if (v->msg.flags & DST_REG_FILE) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_file_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.dst.ino,
 				v->msg.dst.fs.dev);
 		} else if (v->msg.flags & DST_DIRECTORY) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.dst.ino,
 				v->msg.dst.fs.dev);
 			if (!(fval && fval->action == FILTER_MATCH))
@@ -300,7 +300,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		// we need to get the parent path here in order to create the final path
 		if (((v->msg.flags & DST_REG_FILE || v->msg.flags & DST_DIRECTORY) && fval != 0) || (v->msg.flags & DST_NOT_EXISTS)) {
 			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_dir_alloc,
+				(struct bpf_map_def *)&hash_map_inode_alloc,
 				v->msg.dst.parent_ino,
 				v->msg.dst.parent_fs.dev);
 			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
@@ -422,7 +422,7 @@ remove_inode_rename(struct msg_rename_elem *v)
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	return map_delete_elem(&hash_map_file_alloc, &file_key);
+	return map_delete_elem(&hash_map_inode_alloc, &file_key);
 }
 
 static inline __attribute__((always_inline)) int
@@ -435,7 +435,7 @@ update_inode_rename(struct msg_rename_elem *v,
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	return map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
+	return map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0);
 }
 
 static inline __attribute__((always_inline)) struct hash_map_file_val *
@@ -453,7 +453,7 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 
 	// we can also get this from val->msg.src.path.dir but we have also to append a '/'
 	// which makes that a bit more complex in ebpf
-	dir_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+	dir_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				    dir->parent_ino, dir->parent_fs.dev);
 	if (!dir_val)
 		return 0;
@@ -471,6 +471,7 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 		     :);
 	probe_read(buf, dir_size, dir_val->path);
 	file_val->size = dir_size;
+	file_val->mode = HASH_MAP_FILE_MODE_FILE;
 
 	// copy file name
 	name_size = name->path.name_size;
@@ -504,20 +505,20 @@ static inline __attribute__((always_inline)) struct inode *path_to_inode(const s
 // SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY      // not possible(?) -- if possible do it in eBPF
 //
 // [GOLANG]
-// SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS     // traverse dst.filename and add everything to both hash_map_file_alloc and hash_map_dir_alloc
-// SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY      // traverse dst.filename and add everything to both hash_map_file_alloc and hash_map_dir_alloc
-// SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS    // traverse dst.filename and remove everything from both hash_map_file_alloc and hash_map_dir_alloc
-// SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY     // traverse dst.filename and remove everything from both hash_map_file_alloc and hash_map_dir_alloc
-// SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS // traverse dst.filename and update names in hash_map_dir_alloc only
-// SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY  // traverse dst.filename and update names in hash_map_dir_alloc only
+// SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS     // traverse dst.filename and add everything to hash_map_inode_alloc
+// SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY      // traverse dst.filename and add everything to hash_map_inode_alloc
+// SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS    // traverse dst.filename and remove everything from hash_map_inode_alloc
+// SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY     // traverse dst.filename and remove everything from hash_map_inode_alloc
+// SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS // traverse dst.filename and update names in hash_map_inode_alloc
+// SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY  // traverse dst.filename and update names in hash_map_inode_alloc
 //
 // [EBPF]
-// SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS      // add add src.inode to hash_map_file_alloc
-// SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE        // remove dst.inode from hash_map_file_alloc *and* src.inode to hash_map_file_alloc
-// SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS     // remove src.inode from hash_map_file_alloc
-// SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE       // remove src.inode from hash_map_file_alloc
-// SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS  // add add src.inode to hash_map_file_alloc to update the path
-// SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE    // remove dst.inode from hash_map_file_alloc *and* src.inode to hash_map_file_alloc to update the path
+// SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS      // add add src.inode to hash_map_inode_alloc
+// SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE        // remove dst.inode from hash_map_inode_alloc *and* src.inode to hash_map_inode_alloc
+// SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS     // remove src.inode from hash_map_inode_alloc
+// SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE       // remove src.inode from hash_map_inode_alloc
+// SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS  // add add src.inode to hash_map_inode_alloc to update the path
+// SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE    // remove dst.inode from hash_map_inode_alloc *and* src.inode to hash_map_inode_alloc to update the path
 SEC("kretprobe/vfs_rename")
 int BPF_KRETPROBE(vfs_rename_exit, long ret)
 {
@@ -581,10 +582,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 		if (val->msg.flags & MOVE_INSIDE) {
 			struct msg_rename_elem *name = 0;
 
-			// remove dst.inode from hash_map_file_alloc
+			// remove dst.inode from hash_map_inode_alloc
 			if (val->msg.flags & DST_REG_FILE) {
 				if (remove_inode_rename(&(val->msg.dst)) < 0) {
-					err = -FILE_ERR_DELETE_FILE_MAP;
+					err = -FILE_ERR_DELETE_INODE_MAP;
 					goto vfs_rename_exit_error;
 				}
 			}
@@ -620,19 +621,19 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 			file_val->rule_id = rule_id;
 
 			if (update_inode_rename(&(val->msg.src), file_val) < 0) {
-				err = -FILE_ERR_UPDATE_FILE_MAP;
+				err = -FILE_ERR_UPDATE_INODE_MAP;
 				goto vfs_rename_exit_error;
 			}
 		} else if (val->msg.flags & MOVE_INTERNALLY) {
-			// remove dst.inode from hash_map_file_alloc
+			// remove dst.inode from hash_map_inode_alloc
 			if (val->msg.flags & DST_REG_FILE) {
 				if (remove_inode_rename(&(val->msg.dst)) < 0) {
-					err = -FILE_ERR_DELETE_FILE_MAP;
+					err = -FILE_ERR_DELETE_INODE_MAP;
 					goto vfs_rename_exit_error;
 				}
 			}
 
-			// add add src.inode to hash_map_file_alloc
+			// add add src.inode to hash_map_inode_alloc
 			if ((val->msg.flags & DST_NOT_EXISTS) ||
 			    (val->msg.flags & DST_REG_FILE)) {
 				file_val = generate_file_val(&(val->msg.src),
@@ -653,16 +654,16 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				file_val->rule_id = rule_id;
 
 				if (update_inode_rename(&(val->msg.src), file_val) < 0) {
-					err = -FILE_ERR_UPDATE_FILE_MAP;
+					err = -FILE_ERR_UPDATE_INODE_MAP;
 					goto vfs_rename_exit_error;
 				}
 			}
 		} else if (val->msg.flags & MOVE_OUTSIDE) {
-			// remove src.inode from hash_map_file_alloc
+			// remove src.inode from hash_map_inode_alloc
 			if ((val->msg.flags & DST_NOT_EXISTS) ||
 			    (val->msg.flags & DST_REG_FILE)) {
 				if (remove_inode_rename(&(val->msg.src)) < 0) {
-					err = -FILE_ERR_DELETE_FILE_MAP;
+					err = -FILE_ERR_DELETE_INODE_MAP;
 					goto vfs_rename_exit_error;
 				}
 			}

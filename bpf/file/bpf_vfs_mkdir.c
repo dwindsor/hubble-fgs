@@ -71,7 +71,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 		   _(&inode->i_ino));
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), inode, dentry);
 
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
@@ -253,7 +253,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	get_ino_fs(msg, d_inode, dentry);
 
-	// and now add this to hash_map_dir_alloc
+	// and now add this to hash_map_inode_alloc
 	file_key.ino = msg->ino;
 	file_key.dev_major = MAJOR(msg->fs.dev);
 	file_key.dev_minor = MINOR(msg->fs.dev);
@@ -277,9 +277,10 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	} else {
 		file_val->location_flags = HOST_FILE;
 	}
+	file_val->mode = HASH_MAP_FILE_MODE_DIRECTORY;
 
-	if (map_update_elem(&hash_map_dir_alloc, &file_key, file_val, 0) < 0) {
-		err = -FILE_ERR_UPDATE_DIR_MAP;
+	if (map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0) < 0) {
+		err = -FILE_ERR_UPDATE_INODE_MAP;
 		goto vfs_mkdir_exit_error;
 	}
 
