@@ -207,12 +207,26 @@ func TestFileSuffixPattern(t *testing.T) {
 	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name)
 	assert.NoError(t, err)
 
-	// sort both slices to avoid flakes due to out-of-order event delivery
-	sort.Strings(executedEvents)
-	sort.Strings(capturedEvents)
-
 	assert.Equal(t, len(executedEvents), len(capturedEvents), "Got a different number of events compared to what expected")
-	for i := 0; i < len(capturedEvents); i++ {
-		assert.Equal(t, executedEvents[i], capturedEvents[i], "Got a different event compared to what expected")
+	if len(executedEvents) != len(capturedEvents) { // different number of events, print everything
+		execEvents := "Executed:"
+		for _, e := range executedEvents {
+			execEvents += ("\n" + e)
+		}
+		t.Log(execEvents)
+
+		captEvents := "Captured:"
+		for _, e := range capturedEvents {
+			captEvents += ("\n" + e)
+		}
+		t.Log(captEvents)
+	} else { // same number of events, compare all of them to be the same
+		// sort both slices to avoid flakes due to out-of-order event delivery
+		sort.Strings(executedEvents)
+		sort.Strings(capturedEvents)
+
+		for i := 0; i < len(capturedEvents); i++ {
+			assert.Equal(t, executedEvents[i], capturedEvents[i], "Got a different event compared to what expected")
+		}
 	}
 }
