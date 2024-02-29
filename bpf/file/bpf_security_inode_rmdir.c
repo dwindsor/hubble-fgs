@@ -12,8 +12,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(void *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct inode *d_inode;
-	struct hash_map_file_key file_key;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_key file_key;
+	struct inode_val *file_val = 0;
 	struct msg_file_ops *msg;
 	__u32 operation = 0;
 

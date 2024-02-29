@@ -967,8 +967,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	hs := &ebpf.MapSpec{
 		Name:       "hash_map_inode_alloc",
 		Type:       bpf.BPF_MAP_TYPE_HASH,
-		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
+		KeySize:    uint32(unsafe.Sizeof(fileapi.InodeKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.InodeVal{})),
 		MaxEntries: config.MaxWatchedInodes,
 		Flags:      0,
 	}

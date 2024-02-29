@@ -15,7 +15,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	struct dentry *dentry, *parent_dentry;
 	struct path path;
 	struct msg_file_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	__u32 operation = 0;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,

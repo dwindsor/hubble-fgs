@@ -14,7 +14,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	int zero = 0, action = 0, err = 0;
 	__u32 operation = 0, rule_id = 0;
 	struct file_config_map_value *conf;

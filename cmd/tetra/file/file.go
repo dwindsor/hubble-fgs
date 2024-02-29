@@ -52,7 +52,7 @@ func printInodeMapCmd() *cobra.Command {
 		Short: "dump inode-map contents",
 		Args:  cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			filter := func(key *fileapi.HashMapFileKey, val *fileapi.HashMapFileVal) bool {
+			filter := func(key *fileapi.InodeKey, val *fileapi.InodeVal) bool {
 				if entryPath != "" && entryPath != string(val.FullPath[:val.PathSize]) {
 					return false
 				}

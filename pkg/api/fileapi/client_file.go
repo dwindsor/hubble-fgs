@@ -34,7 +34,7 @@ type LPMMapValue struct {
 	Rule   uint32 `align:"rule"`
 }
 
-type HashMapFileKey struct {
+type InodeKey struct {
 	Ino      uint64 `align:"ino"`
 	DevMajor uint32 `align:"dev_major"`
 	DevMinor uint32 `align:"dev_minor"`
@@ -51,7 +51,7 @@ const (
 	HashMapFileModeDirectory = 2
 )
 
-type HashMapFileVal struct {
+type InodeVal struct {
 	Action        uint32    `align:"action"`
 	PathSize      uint32    `align:"size"`
 	FullPath      [256]byte `align:"path"`

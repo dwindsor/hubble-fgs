@@ -14,7 +14,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	struct inode *inode;
 	struct dentry *dentry, *parent_dentry;
 	struct msg_file_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	__u32 operation = 0;
 
 	if (!file)

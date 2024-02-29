@@ -239,15 +239,15 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct hash_map_file_key);
-	__type(value, struct hash_map_file_val);
+	__type(key, struct inode_key);
+	__type(value, struct inode_val);
 	__uint(max_entries, 1); /* the user will setup this */
 } hash_map_inode_alloc SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, struct hash_map_file_val);
+	__type(value, struct inode_val);
 	__uint(max_entries, 1);
 } file_val_map SEC(".maps");
 
@@ -853,10 +853,10 @@ get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *dentry)
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), inode, dentry);
 }
 
-static inline __attribute__((always_inline)) struct hash_map_file_val *
+static inline __attribute__((always_inline)) struct inode_val *
 find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
 {
-	struct hash_map_file_key file_key;
+	struct inode_key file_key;
 
 	file_key.ino = ino;
 	file_key.dev_major = MAJOR(dev);
@@ -989,7 +989,7 @@ static inline __attribute__((always_inline)) int eval_patterns(char *path, __u32
 	return FILTER_IGNORE;
 }
 
-static inline __attribute__((always_inline)) int generate_new_file_path(struct dentry *dentry, struct msg_file_ops *msg, struct hash_map_file_val *file_val)
+static inline __attribute__((always_inline)) int generate_new_file_path(struct dentry *dentry, struct msg_file_ops *msg, struct inode_val *file_val)
 {
 	__u32 dlen_size = 0, dlen_offset = 0;
 	__u32 dir_size = 0, dir_offset = 0;

@@ -53,7 +53,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	struct msg_file_ops *msg;
 	struct inode *inode = dir;
 	struct bpf_lpm_trie_key *key = 0;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	int action, zero = 0;
 	char *buffer;
 	__u32 path_size = 0;
@@ -196,8 +196,8 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	struct vfs_mkdir_info *val;
 	struct inode *d_inode;
 	struct dentry *dentry;
-	struct hash_map_file_key file_key;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_key file_key;
+	struct inode_val *file_val = 0;
 	struct msg_file_ops *msg;
 	int err, zero = 0, action = 0;
 	__u32 path_size = 0;

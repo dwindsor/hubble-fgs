@@ -11,8 +11,8 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 {
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
-	struct hash_map_file_key file_key;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_key file_key;
+	struct inode_val *file_val = 0;
 	int zero = 0, action = 0, err = 0;
 	struct inode *inode;
 	__u32 operation = 0, rule_id = 0;

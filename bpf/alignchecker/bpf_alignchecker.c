@@ -19,8 +19,8 @@ struct msg_tls_event _msg_tls_event;
 struct __http_state_stats _http_state_stats;
 
 // FIM
-struct hash_map_file_key _hash_map_file_key;
-struct hash_map_file_val _hash_map_file_val;
+struct inode_key _inode_key;
+struct inode_val _inode_val;
 struct msg_file_path _msg_file_path;
 struct msg_fs_info _msg_fs_info;
 struct msg_file_ops _msg_file_ops;

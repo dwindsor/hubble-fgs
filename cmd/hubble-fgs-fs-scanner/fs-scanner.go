@@ -180,7 +180,7 @@ func tracingPolicyInit(args *fm.FsScannerInit) error {
 
 	logger.GetLogger().Info("fim: Adding host files")
 
-	locFn := func(v *fileapi.HashMapFileVal) {
+	locFn := func(v *fileapi.InodeVal) {
 		v.LocationFlags = fileapi.HOST_FILE
 	}
 
@@ -231,7 +231,7 @@ func renameDir(args *fm.FsScannerRename) error {
 	// this should always be prefix-free
 	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 
-	locFn := func(v *fileapi.HashMapFileVal) {
+	locFn := func(v *fileapi.InodeVal) {
 		if containerID == "" {
 			v.LocationFlags = fileapi.HOST_FILE
 		} else {
@@ -315,7 +315,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 		}
 		containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 
-		locFn := func(v *fileapi.HashMapFileVal) {
+		locFn := func(v *fileapi.InodeVal) {
 			v.LocationFlags = fileapi.CONTAINER_FILE
 			copy(v.ContainerID[:], []byte(containerID))
 		}

@@ -105,7 +105,7 @@ func cleanupFIMMaps(tc *pol.FileMonitoring) error {
 	if err := cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.PinPathPrefix, "lpm_trie_map_alloc"); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.HashMapFileKey, fileapi.HashMapFileVal](tc.PinPathPrefix, "hash_map_inode_alloc"); err != nil {
+	if err := cleanupMap[fileapi.InodeKey, fileapi.InodeVal](tc.PinPathPrefix, "hash_map_inode_alloc"); err != nil {
 		return err
 	}
 	if err := cleanupArrayMapSelOpts(tc.PinPathPrefix, "tg_mb_sel_opts"); err != nil {

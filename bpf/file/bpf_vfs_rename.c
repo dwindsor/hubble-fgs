@@ -202,7 +202,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// if we don't care both for src and dst
 	{
 		__u32 src_watched = 0, dst_watched = 0;
-		struct hash_map_file_val *fv;
+		struct inode_val *fv;
 
 		if ((v->msg.flags & SRC_REG_FILE) ||
 		    (v->msg.flags & SRC_DIRECTORY)) {
@@ -234,7 +234,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 	// check if we care about src and get path for src (old)
 	{
-		struct hash_map_file_val *fval = 0;
+		struct inode_val *fval = 0;
 
 		// first check if we care about the specific (source) file or directory
 		if (v->msg.flags & SRC_REG_FILE) {
@@ -280,7 +280,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 	// get path for dst (new)
 	{
-		struct hash_map_file_val *fval = 0;
+		struct inode_val *fval = 0;
 
 		// first check if we care about the specific (destination) file or directory
 		if (v->msg.flags & DST_REG_FILE) {
@@ -416,7 +416,7 @@ int BPF_KPROBE(vfs_rename_v419, struct inode *old_dir, struct dentry *old_dentry
 static inline __attribute__((always_inline)) int
 remove_inode_rename(struct msg_rename_elem *v)
 {
-	struct hash_map_file_key file_key;
+	struct inode_key file_key;
 
 	file_key.ino = v->ino;
 	file_key.dev_major = MAJOR(v->fs.dev);
@@ -427,9 +427,9 @@ remove_inode_rename(struct msg_rename_elem *v)
 
 static inline __attribute__((always_inline)) int
 update_inode_rename(struct msg_rename_elem *v,
-		    struct hash_map_file_val *file_val)
+		    struct inode_val *file_val)
 {
-	struct hash_map_file_key file_key;
+	struct inode_key file_key;
 
 	file_key.ino = v->ino;
 	file_key.dev_major = MAJOR(v->fs.dev);
@@ -438,11 +438,11 @@ update_inode_rename(struct msg_rename_elem *v,
 	return map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0);
 }
 
-static inline __attribute__((always_inline)) struct hash_map_file_val *
+static inline __attribute__((always_inline)) struct inode_val *
 generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 {
-	struct hash_map_file_val *file_val = 0;
-	struct hash_map_file_val *dir_val = 0;
+	struct inode_val *file_val = 0;
+	struct inode_val *dir_val = 0;
 	int zero = 0;
 	char *buf = 0;
 	__u32 dir_size, name_size;
@@ -533,7 +533,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 		.flags = KRETPROBE_KEY,
 	};
 	struct msg_file_rename_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	int err, zero = 0, action = 0;
 	__u64 *old_dentry, old_dir = 0;
 	__u32 rule_id = 0;

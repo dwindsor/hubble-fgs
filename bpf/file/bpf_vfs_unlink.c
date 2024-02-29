@@ -14,8 +14,8 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	struct dentry *parent_dentry;
 	struct inode *inode;
 	struct msg_file_ops *msg;
-	struct hash_map_file_key file_key;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_key file_key;
+	struct inode_val *file_val = 0;
 	unsigned int i_nlink = 0;
 	bool remove_entry = false;
 	__u32 operation = 0;

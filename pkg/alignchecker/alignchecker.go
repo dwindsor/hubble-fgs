@@ -33,8 +33,8 @@ func CheckStructAlignments(pathToObj string) error {
 		"__http_state_stats": {httpapi.HttpStateStats{}},
 
 		// FIM
-		"hash_map_file_key":   {fileapi.HashMapFileKey{}},
-		"hash_map_file_val":   {fileapi.HashMapFileVal{}},
+		"inode_key":           {fileapi.InodeKey{}},
+		"inode_val":           {fileapi.InodeVal{}},
 		"msg_file_path":       {fileapi.MsgFilePath{}},
 		"msg_fs_info":         {fileapi.MsgFsInfo{}},
 		"msg_file_ops":        {fileapi.MsgFileEvent{}},

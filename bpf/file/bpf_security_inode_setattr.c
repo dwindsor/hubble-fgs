@@ -19,7 +19,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	struct inode *inode;
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 
 	msg = get_msg_init();
 	if (!msg) {

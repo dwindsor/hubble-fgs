@@ -28,15 +28,15 @@ func actToStr(act uint32) string {
 	return fmt.Sprintf("unknown(%d)", act)
 }
 
-func PrintInodeMap(path string, filter func(key *fileapi.HashMapFileKey, val *fileapi.HashMapFileVal) bool) error {
+func PrintInodeMap(path string, filter func(key *fileapi.InodeKey, val *fileapi.InodeVal) bool) error {
 	handle, err := ebpf.LoadPinnedMap(path, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", path)
 	}
 	defer handle.Close()
 
-	var key fileapi.HashMapFileKey
-	var val fileapi.HashMapFileVal
+	var key fileapi.InodeKey
+	var val fileapi.InodeVal
 	count := 0
 	matched := 0
 	entries := handle.Iterate()

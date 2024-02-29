@@ -14,7 +14,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	struct inode *inode;
 	struct dentry *dentry, *parent_dentry;
 	struct msg_file_ops *msg;
-	struct hash_map_file_val *file_val = 0;
+	struct inode_val *file_val = 0;
 	struct file *file;
 	__u32 operation = 0;
 	struct digest_key *digest = 0;

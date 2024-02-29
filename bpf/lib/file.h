@@ -107,7 +107,7 @@ struct lpm_val {
 	__u32 rule;
 };
 
-struct hash_map_file_key {
+struct inode_key {
 	__u64 ino;
 	__u32 dev_major;
 	__u32 dev_minor;
@@ -117,7 +117,7 @@ struct hash_map_file_key {
 #define HASH_MAP_FILE_MODE_FILE	     1
 #define HASH_MAP_FILE_MODE_DIRECTORY 2
 
-struct hash_map_file_val {
+struct inode_val {
 	__u32 action;
 	__u32 size;
 	char path[MAX_FILEPATH_SIZE];

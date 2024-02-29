@@ -119,7 +119,7 @@ func lookupFilter(handle *ebpf.Map, filter string) fileapi.LPMMapValue {
 	return v
 }
 
-func AddFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey, val fileapi.HashMapFileVal) error {
+func AddFilePath(handle *ebpf.Map, key fileapi.InodeKey, val fileapi.InodeVal) error {
 	err := handle.Update(key, val, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed handle.Update: %w", err)
@@ -127,7 +127,7 @@ func AddFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey, val fileapi.HashM
 	return nil
 }
 
-func RemoveFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey) error {
+func RemoveFilePath(handle *ebpf.Map, key fileapi.InodeKey) error {
 	err := handle.Delete(key)
 	if err != nil {
 		return fmt.Errorf("failed handle.Update: %w", err)
@@ -136,8 +136,8 @@ func RemoveFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey) error {
 }
 
 func rmHandleContainerEntries(handle *ebpf.Map, containerID string) (int, error) {
-	var key fileapi.HashMapFileKey
-	var val fileapi.HashMapFileVal
+	var key fileapi.InodeKey
+	var val fileapi.InodeVal
 
 	count := 0
 	for {
@@ -166,9 +166,9 @@ func rmHandleContainerEntries(handle *ebpf.Map, containerID string) (int, error)
 // similar to rmHandleContainerEntries but uses BatchDelete and thus it is more efficient
 // only supported in kernels >= 5.6
 func rmHandleContainerEntries56(handle *ebpf.Map, containerID string) (int, error) {
-	var key fileapi.HashMapFileKey
-	var val fileapi.HashMapFileVal
-	var keys []fileapi.HashMapFileKey
+	var key fileapi.InodeKey
+	var val fileapi.InodeVal
+	var keys []fileapi.InodeKey
 
 	entries := handle.Iterate()
 	for entries.Next(&key, &val) {
@@ -314,7 +314,7 @@ func (p PrefixSuffixFileMatcher) String() string {
 	return fmt.Sprintf("prefix:[%s], file_suffix:[%s]", p.Prefix, p.Suffix)
 }
 
-func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.HashMapFileVal)) (int, int, error) {
+func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -359,14 +359,14 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 
 		switch mode := fileinfo.Mode(); {
 		case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
-			key := fileapi.HashMapFileKey{
+			key := fileapi.InodeKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
 				DevMinor: GetDevMinor(stat.Dev),
 			}
 
 			if op == AddToMap {
-				var val fileapi.HashMapFileVal
+				var val fileapi.InodeVal
 
 				val.Action = action
 				val.PathSize = uint32(len(path))
@@ -396,14 +396,14 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 
 			totalFiles++
 		case mode.IsDir():
-			key := fileapi.HashMapFileKey{
+			key := fileapi.InodeKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
 				DevMinor: GetDevMinor(stat.Dev),
 			}
 
 			if op == AddToMap {
-				var val fileapi.HashMapFileVal
+				var val fileapi.InodeVal
 
 				// We should have all directory names to end with "/"
 				// Check if this is the case, otherwise add it.
@@ -484,7 +484,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 				continue
 			}
 
-			key := fileapi.HashMapFileKey{
+			key := fileapi.InodeKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
 				DevMinor: GetDevMinor(stat.Dev),
@@ -494,7 +494,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 				path += "/"
 			}
 
-			val := fileapi.HashMapFileVal{
+			val := fileapi.InodeVal{
 				Action:   FilterIgnore,
 				PathSize: uint32(len(path)),
 				Mode:     fileapi.HashMapFileModeDirectory,
@@ -541,7 +541,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 			return 0, 0, fmt.Errorf("stat is not a syscall.Stat_t")
 		}
 
-		key := fileapi.HashMapFileKey{
+		key := fileapi.InodeKey{
 			Ino:      stat.Ino,
 			DevMajor: GetDevMajor(stat.Dev),
 			DevMinor: GetDevMinor(stat.Dev),
@@ -553,7 +553,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 			path += "/"
 		}
 
-		val := fileapi.HashMapFileVal{
+		val := fileapi.InodeVal{
 			Action:   FilterMonitor,
 			PathSize: uint32(len(path)),
 			Mode:     fileapi.HashMapFileModeDirectory,
@@ -561,7 +561,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 		copy(val.FullPath[:], path)
 		locationFn(&val)
 
-		var exVal fileapi.HashMapFileVal
+		var exVal fileapi.InodeVal
 		if err := maps.Inode.Lookup(key, &exVal); err == nil { // key already exists
 			// already exists with value FilterMatch, do not update to FilterIgnore.
 			if exVal.Action == FilterMatch {

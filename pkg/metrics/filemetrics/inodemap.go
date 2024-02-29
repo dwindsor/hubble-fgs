@@ -33,8 +33,8 @@ func (c *bpfInodeMapCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func countInodeMapEnties(handle *ebpf.Map) uint64 {
-	var key fileapi.HashMapFileKey
-	var val fileapi.HashMapFileVal
+	var key fileapi.InodeKey
+	var val fileapi.InodeVal
 	var count uint64
 
 	entries := handle.Iterate()
