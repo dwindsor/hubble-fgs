@@ -30,10 +30,8 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/features"
-	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
@@ -47,7 +45,6 @@ import (
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/option"
@@ -1412,158 +1409,6 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 	return fimProgs, nil
 }
 
-func probeTracingModifyReturn() error {
-	spec := &ebpf.ProgramSpec{
-		Type:       ebpf.Tracing,
-		AttachType: ebpf.AttachModifyReturn,
-		AttachTo:   "security_file_mprotect",
-		License:    "GPL",
-		Instructions: asm.Instructions{
-			asm.LoadImm(asm.R0, 0, asm.DWord),
-			asm.Return(),
-		},
-	}
-
-	var prog *ebpf.Program
-	var lnk link.Link
-	var err error
-	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
-		LogDisabled: true,
-	})
-	if err == nil {
-		if lnk, err = link.AttachTracing(link.TracingOptions{Program: prog}); err == nil {
-			lnk.Close()
-		}
-		prog.Close()
-	}
-
-	switch {
-	// EINVAL occurs when attempting to create a program with an unknown type.
-	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
-	// of the struct known by the running kernel, meaning the kernel is too old
-	// to support the given prog type.
-	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
-		err = ebpf.ErrNotSupported
-	}
-	return err
-}
-
-func probeLSM() error {
-	spec := &ebpf.ProgramSpec{
-		Type:       ebpf.LSM,
-		AttachType: ebpf.AttachLSMMac,
-		AttachTo:   "file_mprotect",
-		License:    "GPL",
-		Instructions: asm.Instructions{
-			asm.LoadImm(asm.R0, 0, asm.DWord),
-			asm.Return(),
-		},
-	}
-
-	var prog *ebpf.Program
-	var lnk link.Link
-	var err error
-	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
-		LogDisabled: true,
-	})
-	if err == nil {
-		if lnk, err = link.AttachLSM(link.LSMOptions{Program: prog}); err == nil {
-			lnk.Close()
-		}
-		prog.Close()
-	}
-
-	switch {
-	// EINVAL occurs when attempting to create a program with an unknown type.
-	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
-	// of the struct known by the running kernel, meaning the kernel is too old
-	// to support the given prog type.
-	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
-		err = ebpf.ErrNotSupported
-	}
-	return err
-}
-
-func SupportEnforcement() bool {
-	if probeTracingModifyReturn() == nil {
-		return true
-	}
-	if probeLSM() == nil {
-		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
-			return strings.Contains(string(lsm), "bpf")
-		}
-	}
-	return false
-}
-
-//	int BPF_PROG(bprm_check, struct linux_binprm *bprm) {
-//	    __u64 data;
-//	    bpf_ima_file_hash(bprm->file, &data, sizeof(__u64));
-//	    return 0;
-//	}
-//
-// Binary code for the previous program
-var testImaFileHashHelper = []byte{
-	0x79, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 0)
-	0x79, 0x11, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 64)
-	0xbf, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r2 = r10
-	0x07, 0x02, 0x00, 0x00, 0xf8, 0xff, 0xff, 0xff, // r2 += -8
-	0xb7, 0x03, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, // r3 = 8
-	0x85, 0x00, 0x00, 0x00, 0xc1, 0x00, 0x00, 0x00, // call 193
-	0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r0 = 0
-	0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // exit
-}
-
-func probeImaFileHashHelper() error {
-	r := bytes.NewReader(testImaFileHashHelper)
-
-	var insns asm.Instructions
-	if err := insns.Unmarshal(r, binary.LittleEndian); err != nil {
-		return fmt.Errorf("probeImaFileHashHelper: Cannot Unmarshal instructions: %w", err)
-	}
-
-	spec := &ebpf.ProgramSpec{
-		Type:         ebpf.LSM,
-		AttachType:   ebpf.AttachLSMMac,
-		AttachTo:     "bprm_creds_for_exec",
-		License:      "GPL",
-		Flags:        unix.BPF_F_SLEEPABLE,
-		Instructions: insns,
-	}
-
-	var prog *ebpf.Program
-	var lnk link.Link
-	var err error
-	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
-		LogDisabled: true,
-	})
-	if err == nil {
-		if lnk, err = link.AttachLSM(link.LSMOptions{Program: prog}); err == nil {
-			lnk.Close()
-		}
-		prog.Close()
-	}
-
-	switch {
-	// EINVAL occurs when attempting to create a program with an unknown type.
-	// E2BIG occurs when ProgLoadAttr contains non-zero bytes past the end
-	// of the struct known by the running kernel, meaning the kernel is too old
-	// to support the given prog type.
-	case errors.Is(err, unix.EINVAL), errors.Is(err, unix.E2BIG):
-		err = ebpf.ErrNotSupported
-	}
-	return err
-}
-
-func SupportDigests() bool {
-	if probeImaFileHashHelper() == nil {
-		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
-			return strings.Contains(string(lsm), "bpf")
-		}
-	}
-	return false
-}
-
 // returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
 func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	supportTracing := (probeTracingModifyReturn() == nil)
@@ -1571,25 +1416,18 @@ func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
 
 	supportLSM := (probeLSM() == nil)
-	enabledLSM := false
-	if supportLSM {
-		if lsm, err := os.ReadFile("/sys/kernel/security/lsm"); err == nil {
-			enabledLSM = strings.Contains(string(lsm), "bpf")
-		}
-	}
 	supportImaFileHash := (probeImaFileHashHelper() == nil)
-	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t (enabled = %t)", supportLSM, supportImaFileHash, enabledLSM)
+	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
-	digestSupport := supportImaFileHash && supportTracing
+	digestSupport := supportLSM && supportImaFileHash
 
 	if !s.NeedEnforcement() {
 		return Observe, digestSupport
 	}
 
 	// If we have support for lsm and fmod_ret we prefer to use lsm.
-	// For lsm we should also check that this is enabled.
-	if supportLSM && enabledLSM {
+	if supportLSM {
 		return EnforceLSM, digestSupport
 	} else if supportTracing {
 		return EnforceFmodRet, digestSupport
