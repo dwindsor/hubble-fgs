@@ -25,7 +25,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
@@ -53,21 +55,27 @@ var runnerChan chan rpcRunner
 type FsScannerRpc struct{}
 
 type rpcInit struct {
-	arg  *fm.FsScannerInit
-	done chan error
+	arg   *fm.FsScannerInit
+	reply *map[fileapi.InodeKey]fileapi.InodeVal
+	done  chan error
 }
 
 func (r rpcInit) Run() {
-	err := tracingPolicyInit(r.arg)
+	err := tracingPolicyInit(r.arg, r.reply)
 	if r.done != nil {
 		r.done <- err
 	}
 }
 
-func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) error {
+func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]fileapi.InodeVal) error {
 	r := rpcInit{
-		arg:  args,
-		done: make(chan error),
+		arg:   args,
+		reply: reply,
+		done:  make(chan error),
+	}
+
+	if args.AddToMaps {
+		r.reply = nil
 	}
 
 	select {
@@ -105,21 +113,27 @@ func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
 }
 
 type rpcContainerInit struct {
-	arg  *fm.FsScannerContainerInit
-	done chan error
+	arg   *fm.FsScannerContainerInit
+	reply *map[fileapi.InodeKey]fileapi.InodeVal
+	done  chan error
 }
 
 func (r rpcContainerInit) Run() {
-	err := tracingPolicyContainerInit(r.arg)
+	err := tracingPolicyContainerInit(r.arg, r.reply)
 	if r.done != nil {
 		r.done <- err
 	}
 }
 
-func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerInit, _ *struct{}) error {
+func (f *FsScannerRpc) TracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[fileapi.InodeKey]fileapi.InodeVal) error {
 	r := rpcContainerInit{
-		arg:  args,
-		done: make(chan error),
+		arg:   args,
+		reply: reply,
+		done:  make(chan error),
+	}
+
+	if args.AddToMaps {
+		r.reply = nil
 	}
 
 	select {
@@ -171,12 +185,19 @@ func (f *FsScannerRpc) Terminate(_, _ *struct{}) error {
 	return nil
 }
 
-func tracingPolicyInit(args *fm.FsScannerInit) error {
-	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
-	if err != nil {
-		return err
+func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]fileapi.InodeVal) error {
+	var maps fm.InodeStore
+	if reply == nil {
+		var err error
+		var cleanup func()
+		maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, args.PinPath)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+	} else {
+		maps = fm.InitFimHashMap(*reply)
 	}
-	defer cleanup()
 
 	logger.GetLogger().Info("fim: Adding host files")
 
@@ -291,7 +312,7 @@ func chroot(path string) (func() error, error) {
 	}, nil
 }
 
-func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
+func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[fileapi.InodeKey]fileapi.InodeVal) error {
 	for _, tp := range args.Tp {
 		// check if we care about this namespace
 		if !fm.MatchPodSelector(tp.Spec.PodSelector, args.PodNs, args.PodName) {
@@ -300,11 +321,18 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 
 		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Info("fim: Adding container files")
 
-		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, tp.PinPath)
-		if err != nil {
-			return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, tp.PinPath, err)
+		var maps fm.InodeStore
+		var err error
+		if reply == nil {
+			var cleanup func()
+			maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, tp.PinPath)
+			if err != nil {
+				return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, tp.PinPath, err)
+			}
+			defer cleanup()
+		} else {
+			maps = fm.InitFimHashMap(*reply)
 		}
-		defer cleanup()
 
 		rootDir := args.RootDir
 		if rootDir == "" {
@@ -372,13 +400,13 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit) error {
 func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 	for _, tp := range args.Tp {
-		maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, tp.PinPath)
+		handle, err := ebpf.LoadPinnedMap(filepath.Join(args.MapDir, sensors.PathJoin(tp.PinPath, fm.InodeMapName)), nil)
 		if err != nil {
 			return err
 		}
-		defer cleanup()
+		defer handle.Close()
 
-		if err := fm.RemoveContainerEntries(maps, containerID); err != nil {
+		if err := fm.RemoveContainerEntries(handle, containerID); err != nil {
 			return err
 		}
 	}

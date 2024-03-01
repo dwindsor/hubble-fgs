@@ -194,7 +194,8 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 		return nil
 	}
 
-	return TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, arg.Req.RootDir)
+	_, err = TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, arg.Req.RootDir, true)
+	return err
 }
 
 func podhooksAddFunc(obj interface{}) {
@@ -241,7 +242,7 @@ func podhooksAddFunc(obj interface{}) {
 	}
 
 	for _, c := range newCIDs {
-		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod.Namespace, pod.Name, ""); err != nil {
+		if _, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod.Namespace, pod.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodAddScanner)
 			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyInitContainerFsScanner failed")
 		}
@@ -311,7 +312,7 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 		}
 	}
 	for _, c := range newCIDs {
-		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod1.Namespace, pod1.Name, ""); err != nil {
+		if _, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod1.Namespace, pod1.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodUpdateScanner)
 			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyInitContainerFsScanner failed")
 		}

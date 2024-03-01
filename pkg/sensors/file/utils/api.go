@@ -38,6 +38,7 @@ type FsScannerInit struct {
 	Spec       v1alpha1.FileSpec
 	MapDir     string
 	PinPath    string
+	AddToMaps  bool
 }
 
 type FsScannerRename struct {
@@ -65,6 +66,7 @@ type FsScannerContainerInit struct {
 	PodName     string
 	RootDir     string
 	MapDir      string
+	AddToMaps   bool
 }
 
 type FsScannerContainerDestroy struct {

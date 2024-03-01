@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	mapHelpers "maps"
 	"net/rpc"
 	"os"
 	"os/exec"
@@ -359,22 +360,27 @@ func TerminateFsScanner() error {
 	return killFsScanner() // to cleanup leftovers in the case of failures
 }
 
-func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pin string) error {
+func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pin string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
 	f := fm.FsScannerInit{
 		PolicyName: tpName,
 		Spec:       s,
 		MapDir:     m,
 		PinPath:    pin,
+		AddToMaps:  addToMaps,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
 		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitHost)
-		return err
+		return nil, err
 	}
 	defer client.Close()
 
-	return client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{})
+	reply := make(map[fileapi.InodeKey]fileapi.InodeVal)
+	if err := client.Call("FsScannerRpc.TracingPolicyInit", &f, &reply); err != nil {
+		return nil, err
+	}
+	return reply, nil
 }
 
 func RenameFsScanner(w string, m string, o uint32, a uint32, pin string, cid string, spec v1alpha1.FileSpec, polName string, ruleId uint32) error {
@@ -400,7 +406,7 @@ func RenameFsScanner(w string, m string, o uint32, a uint32, pin string, cid str
 	return client.Call("FsScannerRpc.RenameDir", &f, &struct{}{})
 }
 
-func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string) error {
+func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
 	if len(specPath) == 0 {
 		specPath = pol.FileMonitoringTable.GetValuesFIM()
 	}
@@ -411,16 +417,21 @@ func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID,
 		PodNs:       podNs,
 		PodName:     podName,
 		RootDir:     rootDir,
+		AddToMaps:   addToMaps,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
 		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitCont)
-		return err
+		return nil, err
 	}
 	defer client.Close()
 
-	return client.Call("FsScannerRpc.TracingPolicyContainerInit", &f, &struct{}{})
+	reply := make(map[fileapi.InodeKey]fileapi.InodeVal)
+	if err := client.Call("FsScannerRpc.TracingPolicyContainerInit", &f, &reply); err != nil {
+		return nil, err
+	}
+	return reply, nil
 }
 
 func TracingPolicyDestroyContainerFsScanner(containerID string) error {
@@ -964,39 +975,21 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
-	hs := &ebpf.MapSpec{
-		Name:       "hash_map_inode_alloc",
-		Type:       bpf.BPF_MAP_TYPE_HASH,
-		KeySize:    uint32(unsafe.Sizeof(fileapi.InodeKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.InodeVal{})),
-		MaxEntries: config.MaxWatchedInodes,
-		Flags:      0,
-	}
-
-	inodeHandle, err := ebpf.NewMapWithOptions(hs, ebpf.MapOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
-	}
-	defer inodeHandle.Close()
-
-	inodePinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "hash_map_inode_alloc"))
-	// remove the map if already exists, otheriwse Pin() will fail
-	if _, err := os.Stat(inodePinPath); err == nil {
-		os.Remove(inodePinPath)
-	}
-	if err := inodeHandle.Pin(inodePinPath); err != nil {
-		return nil, fmt.Errorf("failed inodeHandle.Pin: %w", err)
-	}
-
 	// set metric to maximum size of inode map for files
 	filemetrics.FileSetInodeMapMax(e.TpName, float64(config.MaxWatchedInodes))
 
+	allInodes := make(map[fileapi.InodeKey]fileapi.InodeVal)
+
 	if kprobes.MonitorHostFiles {
-		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix); err != nil {
+		hostInodes, err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix, false)
+		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
+		} else {
+			mapHelpers.Copy(allInodes, hostInodes)
 		}
 	}
+	numHostInodes := len(allInodes)
 
 	// check for existing pod files when we create a new tracing policy
 	allContainers := []ContInit{}
@@ -1018,11 +1011,22 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			PinPath:    e.PinPathPrefix,
 			Spec:       kprobes,
 		}
-		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root); err != nil {
+		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
+		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
 			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
+		} else {
+			mapHelpers.Copy(allInodes, containerInodes)
 		}
 	}
+
+	logger.GetLogger().WithFields(logrus.Fields{
+		"inode-map-size": config.MaxWatchedInodes,
+		"total-inodes":   len(allInodes),
+		"host-inodes":    numHostInodes,
+		"num-pods":       len(allPods),
+		"num-containers": len(allContainers),
+	}).Infof("Completed path scanning for %s.", e.TpName)
 
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
@@ -1050,6 +1054,18 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{
+			{
+				Index: 0,
+				Name:  "hash_map_inode_alloc",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					for k, v := range allInodes {
+						if err := m.Update(k, v, 0); err != nil {
+							return err
+						}
+					}
+					return nil
+				},
+			},
 			{
 				Index: 0,
 				Name:  "tg_mb_sel_opts",

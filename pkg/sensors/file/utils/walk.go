@@ -26,8 +26,16 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 
+type InodeStore interface {
+	LookupFilter(string) fileapi.LPMMapValue
+	AddInode(fileapi.InodeKey, fileapi.InodeVal) error
+	RemoveInode(fileapi.InodeKey) error
+	LookupInode(fileapi.InodeKey, *fileapi.InodeVal) error
+}
+
 type FimMaps struct {
-	Inode, Lpm *ebpf.Map
+	Inode *ebpf.Map
+	Lpm   *ebpf.Map
 }
 
 func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
@@ -56,6 +64,71 @@ func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
 	}
 
 	return maps, cleanupFn, nil
+}
+
+func (m FimMaps) LookupFilter(filter string) fileapi.LPMMapValue {
+	var k fileapi.LPMMapKey
+	var v fileapi.LPMMapValue
+
+	k.Prefixlen = uint32(len(filter)) * 8
+	copy(k.Data[:], filter)
+
+	err := m.Lpm.Lookup(k, &v)
+	if err != nil { // key does not exist so ignore
+		return fileapi.LPMMapValue{Action: FilterIgnore}
+	}
+	return v
+}
+
+func (m FimMaps) AddInode(key fileapi.InodeKey, val fileapi.InodeVal) error {
+	err := m.Inode.Update(key, val, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed handle.Update: %w", err)
+	}
+	return nil
+}
+
+func (m FimMaps) RemoveInode(key fileapi.InodeKey) error {
+	err := m.Inode.Delete(key)
+	if err != nil {
+		return fmt.Errorf("failed handle.Delete: %w", err)
+	}
+	return nil
+}
+
+func (m FimMaps) LookupInode(key fileapi.InodeKey, valOut *fileapi.InodeVal) error {
+	err := m.Inode.Lookup(key, valOut)
+	if err != nil {
+		return fmt.Errorf("failed handle.Lookup: %w", err)
+	}
+	return nil
+}
+
+type FimHashMap struct {
+	M map[fileapi.InodeKey]fileapi.InodeVal
+}
+
+func InitFimHashMap(m map[fileapi.InodeKey]fileapi.InodeVal) FimHashMap {
+	return FimHashMap{M: m}
+}
+
+func (m FimHashMap) LookupFilter(_ string) fileapi.LPMMapValue {
+	return fileapi.LPMMapValue{Action: FilterIgnore}
+}
+
+func (m FimHashMap) AddInode(key fileapi.InodeKey, val fileapi.InodeVal) error {
+	m.M[key] = val
+	return nil
+}
+
+func (m FimHashMap) RemoveInode(key fileapi.InodeKey) error {
+	delete(m.M, key)
+	return nil
+}
+
+func (m FimHashMap) LookupInode(key fileapi.InodeKey, valOut *fileapi.InodeVal) error {
+	*valOut = m.M[key]
+	return nil
 }
 
 func GetDevMajor(dev uint64) uint32 {
@@ -103,36 +176,6 @@ func CheckFileMode(mode fs.FileMode, path string) {
 	} else {
 		l.Warnf("Unknown file type %s -> %d", path, mode)
 	}
-}
-
-func lookupFilter(handle *ebpf.Map, filter string) fileapi.LPMMapValue {
-	var k fileapi.LPMMapKey
-	var v fileapi.LPMMapValue
-
-	k.Prefixlen = uint32(len(filter)) * 8
-	copy(k.Data[:], filter)
-
-	err := handle.Lookup(k, &v)
-	if err != nil { // key does not exist so ignore
-		return fileapi.LPMMapValue{Action: FilterIgnore}
-	}
-	return v
-}
-
-func AddFilePath(handle *ebpf.Map, key fileapi.InodeKey, val fileapi.InodeVal) error {
-	err := handle.Update(key, val, ebpf.UpdateAny)
-	if err != nil {
-		return fmt.Errorf("failed handle.Update: %w", err)
-	}
-	return nil
-}
-
-func RemoveFilePath(handle *ebpf.Map, key fileapi.InodeKey) error {
-	err := handle.Delete(key)
-	if err != nil {
-		return fmt.Errorf("failed handle.Update: %w", err)
-	}
-	return nil
 }
 
 func rmHandleContainerEntries(handle *ebpf.Map, containerID string) (int, error) {
@@ -193,13 +236,13 @@ func rmHandleContainerEntries56(handle *ebpf.Map, containerID string) (int, erro
 	return count, nil
 }
 
-func RemoveContainerEntries(maps FimMaps, containerID string) error {
+func RemoveContainerEntries(handle *ebpf.Map, containerID string) error {
 	rmEntries := rmHandleContainerEntries
 	if kernels.MinKernelVersion("5.6.0") {
 		rmEntries = rmHandleContainerEntries56
 	}
 
-	num, err := rmEntries(maps.Inode, containerID)
+	num, err := rmEntries(handle, containerID)
 	if num != 0 {
 		logger.GetLogger().Warnf("Deleted %d inodes for container %s", num, containerID)
 	}
@@ -314,7 +357,7 @@ func (p PrefixSuffixFileMatcher) String() string {
 	return fmt.Sprintf("prefix:[%s], file_suffix:[%s]", p.Prefix, p.Suffix)
 }
 
-func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
+func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -377,18 +420,18 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(maps.Lpm, path).Action == FilterIgnore {
+					if store.LookupFilter(path).Action == FilterIgnore {
 						addToMap = false
 					}
 				}
 				if addToMap {
-					err := AddFilePath(maps.Inode, key, val)
+					err := store.AddInode(key, val)
 					if err != nil {
 						return fmt.Errorf("failed to call addFilePath: %w", err)
 					}
 				}
 			} else if op == RemoveFromMap {
-				err := RemoveFilePath(maps.Inode, key)
+				err := store.RemoveInode(key)
 				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
@@ -420,18 +463,18 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(maps.Lpm, path).Action == FilterIgnore {
+					if store.LookupFilter(path).Action == FilterIgnore {
 						addToMap = false
 					}
 				}
 				if addToMap {
-					err := AddFilePath(maps.Inode, key, val)
+					err := store.AddInode(key, val)
 					if err != nil {
 						return fmt.Errorf("failed to call addDirPath: %w", err)
 					}
 				}
 			} else if op == RemoveFromMap {
-				err := RemoveFilePath(maps.Inode, key)
+				err := store.RemoveInode(key)
 				if err != nil && checkPrefix {
 					return fmt.Errorf("failed to call removeFilePath: %w", err)
 				}
@@ -502,7 +545,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 			copy(val.FullPath[:], path)
 			locationFn(&val)
 
-			AddFilePath(maps.Inode, key, val)
+			store.AddInode(key, val)
 		}
 	}
 
@@ -562,14 +605,14 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, maps FimMaps, op uint32, acti
 		locationFn(&val)
 
 		var exVal fileapi.InodeVal
-		if err := maps.Inode.Lookup(key, &exVal); err == nil { // key already exists
+		if err := store.LookupInode(key, &exVal); err == nil { // key already exists
 			// already exists with value FilterMatch, do not update to FilterIgnore.
 			if exVal.Action == FilterMatch {
 				continue
 			}
 		}
 
-		if err := AddFilePath(maps.Inode, key, val); err != nil {
+		if err := store.AddInode(key, val); err != nil {
 			return 0, 0, fmt.Errorf("failed to call addDirPath: %w", err)
 		}
 
