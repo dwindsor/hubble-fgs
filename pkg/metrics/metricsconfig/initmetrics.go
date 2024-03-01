@@ -25,17 +25,135 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func InitAllEEMetrics(registry *prometheus.Registry) {
+func initAllDNSHealthMetrics(registry *prometheus.Registry) {
 	dnsmetrics.InitMetrics(registry)
+}
+
+func InitDNSHealthMetricsForDocs(registry *prometheus.Registry) {
+	dnsmetrics.InitMetrics(registry)
+}
+
+func initAllDNSEventsMetrics(registry *prometheus.Registry) {
 	eventmetrics.InitMetrics(registry)
-	filemetrics.InitMetrics(registry)
-	httpmetrics.InitMetrics(registry)
+}
+
+func InitDNSEventsMetricsForDocs(registry *prometheus.Registry) {
+	eventmetrics.InitMetrics(registry)
+}
+
+func initAllFileHealthMetrics(registry *prometheus.Registry) {
+	filemetrics.InitHealthMetrics(registry)
+}
+
+func InitFileHealthMetricsForDocs(registry *prometheus.Registry) {
+	filemetrics.InitHealthMetrics(registry)
+}
+
+func initAllFileEventsMetrics(registry *prometheus.Registry) {
+	filemetrics.InitEventsMetrics(registry)
+}
+
+func InitFileEventsMetricsForDocs(registry *prometheus.Registry) {
+	filemetrics.InitEventsMetrics(registry)
+}
+
+func initAllHTTPHealthMetrics(registry *prometheus.Registry) {
+	httpmetrics.InitHealthMetrics(registry)
+}
+
+func InitHTTPHealthMetricsForDocs(registry *prometheus.Registry) {
+	httpmetrics.InitHealthMetrics(registry)
+}
+
+func initAllHTTPEventsMetrics(registry *prometheus.Registry) {
+	httpmetrics.InitEventsMetrics(registry)
+}
+
+func InitHTTPEventsMetricsForDocs(registry *prometheus.Registry) {
+	httpmetrics.InitEventsMetrics(registry)
+}
+
+func initAllICMPEventsMetrics(registry *prometheus.Registry) {
 	icmpmetrics.InitMetrics(registry)
+}
+
+func InitICMPEventsMetricsForDocs(registry *prometheus.Registry) {
+	icmpmetrics.InitMetrics(registry)
+}
+
+func initAllInterfaceEventsMetrics(registry *prometheus.Registry) {
 	interfacemetrics.InitMetrics(registry)
+}
+
+func InitInterfaceEventsMetricsForDocs(registry *prometheus.Registry) {
+	interfacemetrics.InitMetrics(registry)
+}
+
+func initAllNetworkHealthMetrics(registry *prometheus.Registry) {
 	iperrormetrics.InitMetrics(registry)
 	lrumetrics.InitMetrics(registry)
-	socketmetrics.InitMetrics(registry)
-	tlsmetrics.InitMetrics(registry)
+}
+
+func InitNetworkHealthMetricsForDocs(registry *prometheus.Registry) {
+	iperrormetrics.InitMetrics(registry)
+	lrumetrics.InitMetrics(registry)
+}
+
+func initAllTCPEventsMetrics(registry *prometheus.Registry) {
+	socketmetrics.InitTCPEventsMetrics(registry)
+}
+
+func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
+	socketmetrics.InitTCPEventsMetrics(registry)
+}
+
+func initAllUDPEventsMetrics(registry *prometheus.Registry) {
+	socketmetrics.InitUDPEventsMetrics(registry)
+}
+
+func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
+	socketmetrics.InitUDPEventsMetrics(registry)
+}
+
+func initAllRawSocketEventsMetrics(registry *prometheus.Registry) {
+	socketmetrics.InitRawSocketEventsMetrics(registry)
+}
+
+func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
+	socketmetrics.InitRawSocketEventsMetrics(registry)
+}
+
+func initAllTLSHealthMetrics(registry *prometheus.Registry) {
+	tlsmetrics.InitHealthMetrics(registry)
+}
+
+func InitTLSHealthMetricsForDocs(registry *prometheus.Registry) {
+	tlsmetrics.InitHealthMetrics(registry)
+}
+
+func initAllTLSEventsMetrics(registry *prometheus.Registry) {
+	tlsmetrics.InitEventsMetrics(registry)
+}
+
+func InitTLSEventsMetricsForDocs(registry *prometheus.Registry) {
+	tlsmetrics.InitEventsMetrics(registry)
+}
+
+func InitAllEEMetrics(registry *prometheus.Registry) {
+	initAllDNSHealthMetrics(registry)
+	initAllDNSEventsMetrics(registry)
+	initAllFileHealthMetrics(registry)
+	initAllFileEventsMetrics(registry)
+	initAllHTTPHealthMetrics(registry)
+	initAllHTTPEventsMetrics(registry)
+	initAllICMPEventsMetrics(registry)
+	initAllInterfaceEventsMetrics(registry)
+	initAllNetworkHealthMetrics(registry)
+	initAllTCPEventsMetrics(registry)
+	initAllUDPEventsMetrics(registry)
+	initAllRawSocketEventsMetrics(registry)
+	initAllTLSHealthMetrics(registry)
+	initAllTLSEventsMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {

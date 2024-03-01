@@ -42,10 +42,14 @@ var (
 	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "host"})
 )
 
-func InitMetrics(registry *prometheus.Registry) {
+func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(httpCollectorErrors)
+
+	registry.MustRegister(NewBPFCollector())
+}
+
+func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(HttpResponseTotal)
 	registry.MustRegister(HttpRequestDurationSeconds)
 
-	registry.MustRegister(NewBPFCollector())
 }

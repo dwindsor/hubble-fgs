@@ -47,10 +47,13 @@ var (
 	}, []string{"namespace", "pod", "workload", "binary", "version", "cipher", "sni_name"})
 )
 
-func InitMetrics(registry *prometheus.Registry) {
+func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(tlsErrorsTotal)
 	registry.MustRegister(tlsExpectedContinuationTotal)
 	registry.MustRegister(tlsActualContinuationTotal)
+}
+
+func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(tlsHandshakeTotal)
 }
 

@@ -108,13 +108,11 @@ var (
 	))
 )
 
-func InitMetrics(registry *prometheus.Registry) {
+func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalEvents)
 	registry.MustRegister(fileExecTotalEvents)
 	registry.MustRegister(fileTotalCacheEvents)
 	registry.MustRegister(fileExecTotalCacheEvents)
-	registry.MustRegister(fileTotalActionEvents)
-	registry.MustRegister(fileExecTotalActionEvents)
 	registry.MustRegister(fileTotalErrors)
 	registry.MustRegister(fileFailedDigest)
 	registry.MustRegister(fileExecCollectorErrors)
@@ -124,6 +122,11 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(NewBPFCollector())
 	registry.MustRegister(NewBPFInodeMapCollector())
 	registry.MustRegister(NewBPFErrorCollector())
+}
+
+func InitEventsMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(fileTotalActionEvents)
+	registry.MustRegister(fileExecTotalActionEvents)
 }
 
 func FileTotalEventsInc() {

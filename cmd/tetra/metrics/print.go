@@ -18,13 +18,29 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cilium/tetragon/pkg/metrics/metricsconfig"
+
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 )
 
 func New() *cobra.Command {
 	targets := map[string]string{
-		"health":    "Tetragon Health",
-		"resources": "Tetragon Resources",
-		"events":    "Tetragon Events",
+		"health":         "Tetragon Health",
+		"resources":      "Tetragon Resources",
+		"health-dns":     "Tetragon DNS Sensor Health",
+		"health-file":    "Tetragon File Sensor Health",
+		"health-http":    "Tetragon HTTP Sensor Health",
+		"health-network": "Tetragon Network Sensors Health",
+		"health-tls":     "Tetragon TLS Sensor Health",
+		"events":         "Tetragon Events",
+		"dns":            "Tetragon DNS",
+		"file":           "Tetragon File",
+		"http":           "Tetragon HTTP",
+		"icmp":           "Tetragon ICMP",
+		"interface":      "Tetragon Interface",
+		"tcp":            "Tetragon TCP",
+		"udp":            "Tetragon UDP",
+		"rawsocket":      "Tetragon Raw Socket",
+		"tls":            "Tetragon TLS",
 	}
 
 	overrides := []metricsmd.LabelOverrides{
@@ -82,8 +98,36 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		metricsconfig.InitHealthMetricsForDocs(reg)
 	case "resources":
 		metricsconfig.InitResourcesMetricsForDocs(reg)
+	case "health-dns":
+		enterpriseMetricsConfig.InitDNSHealthMetricsForDocs(reg)
+	case "health-file":
+		enterpriseMetricsConfig.InitFileHealthMetricsForDocs(reg)
+	case "health-http":
+		enterpriseMetricsConfig.InitHTTPHealthMetricsForDocs(reg)
+	case "health-network":
+		enterpriseMetricsConfig.InitNetworkHealthMetricsForDocs(reg)
+	case "health-tls":
+		enterpriseMetricsConfig.InitTLSHealthMetricsForDocs(reg)
 	case "events":
 		metricsconfig.InitEventsMetricsForDocs(reg)
+	case "dns":
+		enterpriseMetricsConfig.InitDNSEventsMetricsForDocs(reg)
+	case "file":
+		enterpriseMetricsConfig.InitFileEventsMetricsForDocs(reg)
+	case "http":
+		enterpriseMetricsConfig.InitHTTPEventsMetricsForDocs(reg)
+	case "icmp":
+		enterpriseMetricsConfig.InitICMPEventsMetricsForDocs(reg)
+	case "interface":
+		enterpriseMetricsConfig.InitInterfaceEventsMetricsForDocs(reg)
+	case "tcp":
+		enterpriseMetricsConfig.InitTCPEventsMetricsForDocs(reg)
+	case "udp":
+		enterpriseMetricsConfig.InitUDPEventsMetricsForDocs(reg)
+	case "rawsocket":
+		enterpriseMetricsConfig.InitRawSocketEventsMetricsForDocs(reg)
+	case "tls":
+		enterpriseMetricsConfig.InitTLSEventsMetricsForDocs(reg)
 	}
 	return nil
 }

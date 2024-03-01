@@ -32,6 +32,11 @@ var (
 
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(LruMapSize)
+
+	// NOTES:
+	// * lru_in_use_gauge is used only in UDP sensor, move it together with other UDP sensor health metrics?
+	//   Or maybe together with other map metrics?
+	// * Delete total label. Introduce a metric for map capacity instead.
 }
 
 // Get a new handle on LruMapSize for a given map name and capacity

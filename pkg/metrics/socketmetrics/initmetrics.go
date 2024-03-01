@@ -12,7 +12,7 @@ package socketmetrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
-func InitMetrics(registry *prometheus.Registry) {
+func InitTCPEventsMetrics(registry *prometheus.Registry) {
 	// TCP socket metrics
 	registry.MustRegister(SocketStatsTxBytes)
 	registry.MustRegister(SocketStatsTxSegs)
@@ -39,7 +39,9 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(TcpLatencyBucket)
 	registry.MustRegister(TcpLatencyCount)
 	registry.MustRegister(TcpLatencySum)
+}
 
+func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	// UDP socket metrics
 	registry.MustRegister(SocketStatsUDPTxBytes)
 	registry.MustRegister(SocketStatsUDPTxSegs)
@@ -78,7 +80,9 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(UdpMulticastLatencyBucket)
 	registry.MustRegister(UdpMulticastLatencyCount)
 	registry.MustRegister(UdpMulticastLatencySum)
+}
 
+func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
 	// Raw socket metrics
 	registry.MustRegister(RawsockCreateVol)
 	registry.MustRegister(RawsockCloseVol)
