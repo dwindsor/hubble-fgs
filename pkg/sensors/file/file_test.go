@@ -3019,7 +3019,7 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 		t.Fatalf("cannot open pinned map %s", inodeMapPath)
 	}
 	defer inodeHandle.Close()
-	// 4096 is the value of maxWatchedInodes in testdata/specs/file_monitoring_config.yaml.tmpl
+	// 4096 is the value of watchedInodeMapMaxiumSize in testdata/specs/file_monitoring_config.yaml.tmpl
 	assert.Equal(t, uint32(4096), inodeHandle.MaxEntries())
 
 	ino, dev := getInodeInfo(t, filePasswd)

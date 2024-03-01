@@ -14,10 +14,32 @@ spec:
       # If the user enables them but the kernel does not support them,
       # we fallback to not using them.
       enableExecDigests: "false"
+      # This option choose the way that we calculate the inode map size.
+      # Possible values are "fixed" and "auto" (default "fixed"). The final
+      # inode map size will be calculated based on the following formula:
+      #
+      # if watchedInodeMapSizePolicy == "fixed":
+      #   watchedInodeMapSize = watchedInodeMapMaxiumSize
+      # else if watchedInodeMapSizePolicy == "auto":
+      #   watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      # else:
+      #   return error
+      #
+      # The number_of_inodes defined as the number of inodes in the file system
+      # that match the respective tracing policy at the time that the policy is installed.
+      watchedInodeMapSizePolicy: "fixed"
       # This option allows users to define a specific size for the map
       # that holds the watched inodes. The default value (i.e. if
       # the user does not specify that option) is 256K entries.
-      maxWatchedInodes: "262144"
+      watchedInodeMapMaxiumSize: "262144"
+      # This option allows users to define a multiplier for the map
+      # that holds the watched inodes. The default value (i.e. if
+      # the user does not specify that option) is 4.
+      watchedInodeMapSizeMultiplier: "4"
+      # This option allows users to define a constant for the map
+      # that holds the watched inodes. The default value (i.e. if
+      # the user does not specify that option) is 262144.
+      watchedInodeMapSizeConstant: "262144"
     file_paths:
     - "/etc/"
     - "/var/testfile"

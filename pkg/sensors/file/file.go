@@ -68,8 +68,7 @@ import (
 )
 
 const (
-	maxLPMpaths      = 4096
-	maxWatchedInodes = 256 * 1024 // 256K
+	maxLPMpaths = 4096
 
 	overlayModName = "overlay"
 	btfPath        = "/sys/kernel/btf/"
@@ -863,7 +862,7 @@ type FimLoaderData struct {
 	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
 }
 
-func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
@@ -975,9 +974,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
-	// set metric to maximum size of inode map for files
-	filemetrics.FileSetInodeMapMax(e.TpName, float64(config.MaxWatchedInodes))
-
 	allInodes := make(map[fileapi.InodeKey]fileapi.InodeVal)
 
 	if kprobes.MonitorHostFiles {
@@ -1021,12 +1017,35 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
-		"inode-map-size": config.MaxWatchedInodes,
 		"total-inodes":   len(allInodes),
 		"host-inodes":    numHostInodes,
 		"num-pods":       len(allPods),
 		"num-containers": len(allContainers),
 	}).Infof("Completed path scanning for %s.", e.TpName)
+
+	if tpConf.watchedInodeMapSizePolicy == "auto" {
+		config.MaxWatchedInodes = uint32(float32(len(allInodes)) * tpConf.watchedInodeMapSizeMultiplier)
+		logger.GetLogger().WithFields(logrus.Fields{
+			"max-inode-map-size":      config.MaxWatchedInodes,
+			"user-defined-multiplier": tpConf.watchedInodeMapSizeMultiplier,
+			"user-defined-constant":   tpConf.watchedInodeMapSizeConstant,
+		}).Infof("Using automatic map sizing for %s.", e.TpName)
+	} else if tpConf.watchedInodeMapSizePolicy == "fixed" {
+		// first check if the fixed size is enough to start the sensor
+		if uint32(len(allInodes)) >= tpConf.watchedInodeMapMaxiumSize {
+			return nil, fmt.Errorf("the fixed size of inode map (%d) for files is not enough to start the sensor: %d", tpConf.watchedInodeMapMaxiumSize, len(allInodes))
+		}
+		config.MaxWatchedInodes = tpConf.watchedInodeMapMaxiumSize
+		logger.GetLogger().WithFields(logrus.Fields{
+			"max-inode-map-size": config.MaxWatchedInodes,
+			"user-defined-size":  tpConf.watchedInodeMapMaxiumSize,
+		}).Infof("Using fixed map sizing for %s.", e.TpName)
+	} else {
+		return nil, fmt.Errorf("unknown watchedInodeMapSizePolicy: %s", tpConf.watchedInodeMapSizePolicy)
+	}
+
+	// set metric to maximum size of inode map for files
+	filemetrics.FileSetInodeMapMax(e.TpName, float64(config.MaxWatchedInodes))
 
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
@@ -1578,6 +1597,75 @@ func probeFileMode(s *fm.KernelSelectorState) (Mode, bool) {
 	return EnforceNotSupported, digestSupport
 }
 
+type configFileSensorOptions struct {
+	forceLoad                     bool
+	enableExecDigests             bool
+	watchedInodeMapSizePolicy     string
+	watchedInodeMapMaxiumSize     uint32
+	watchedInodeMapSizeMultiplier float32
+	watchedInodeMapSizeConstant   uint32
+}
+
+func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptions, error) {
+	conf := configFileSensorOptions{
+		forceLoad:                     false,
+		enableExecDigests:             false,
+		watchedInodeMapSizePolicy:     "fixed",
+		watchedInodeMapMaxiumSize:     256 * 1024, // 256K
+		watchedInodeMapSizeMultiplier: 4.0,
+		watchedInodeMapSizeConstant:   256 * 1024, // 256K
+	}
+
+	if val, ok := opts["forceLoad"]; ok {
+		boolValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.forceLoad should be a boolean. User input: [%s]", val)
+		}
+		conf.forceLoad = boolValue
+	}
+
+	if val, ok := opts["enableExecDigests"]; ok {
+		boolValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.enableExecDigests should be a boolean. User input: [%s]", val)
+		}
+		conf.enableExecDigests = boolValue
+	}
+
+	if val, ok := opts["watchedInodeMapMaxiumSize"]; ok {
+		v, err := strconv.ParseUint(val, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.watchedInodeMapMaxiumSize should be a number. User input: [%s]", val)
+		}
+		conf.watchedInodeMapMaxiumSize = uint32(v)
+	}
+
+	if val, ok := opts["watchedInodeMapSizePolicy"]; ok {
+		if val != "fixed" && val != "auto" {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.watchedInodeMapSizePolicy should be fixed or dynamic. User input: [%s]", val)
+		}
+		conf.watchedInodeMapSizePolicy = val
+	}
+
+	if val, ok := opts["watchedInodeMapSizeMultiplier"]; ok {
+		v, err := strconv.ParseFloat(val, 32)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.watchedInodeMapSizeMultiplier should be a float. User input: [%s]", val)
+		}
+		conf.watchedInodeMapSizeMultiplier = float32(v)
+	}
+
+	if val, ok := opts["watchedInodeMapSizeConstant"]; ok {
+		v, err := strconv.ParseUint(val, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.watchedInodeMapSizeConstant should be a number. User input: [%s]", val)
+		}
+		conf.watchedInodeMapSizeConstant = uint32(v)
+	}
+
+	return &conf, nil
+}
+
 func (k *observerFileSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
@@ -1607,26 +1695,12 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
 	}
 
-	forceLoad := false
-	if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
-		forceLoad = true
-	}
-	enableExecDigests := false
-	if val, ok := spec.FileMonitoring.Config["enableExecDigests"]; ok && val == "true" {
-		enableExecDigests = true
+	tpConf, err := configFileSensorOptionsInit(spec.FileMonitoring.Config)
+	if err != nil {
+		return nil, fmt.Errorf("FileMonitoring failed to parse config: %w", err)
 	}
 
-	configMaxWatchedInodes := uint32(maxWatchedInodes)
-	if val, ok := spec.FileMonitoring.Config["maxWatchedInodes"]; ok {
-		if v, err := strconv.ParseUint(val, 10, 32); err == nil {
-			configMaxWatchedInodes = uint32(v)
-			logger.GetLogger().Infof("FileMonitoring is starting with spec.file.file_config.maxWatchedInodes = %d", configMaxWatchedInodes)
-		} else {
-			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.maxWatchedInodes should be a number. User input: [%s]", val)
-		}
-	}
-
-	if !forceLoad && !kernels.MinKernelVersion("4.18.0") {
+	if !tpConf.forceLoad && !kernels.MinKernelVersion("4.18.0") {
 		return nil, fmt.Errorf("FileMonitoring requires at least 4.18.0 version")
 	}
 	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
@@ -1655,20 +1729,19 @@ func (k *observerFileSensor) PolicyHandler(
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,
 		PolicyId:              uint32(fid),
-		MaxWatchedInodes:      configMaxWatchedInodes,
 	}
 	fileMode, digestSupport := probeFileMode(selState)
-	if !enableExecDigests { // we explicitly disable digests if the user has not enabled them
+	if !tpConf.enableExecDigests { // we explicitly disable digests if the user has not enabled them
 		digestSupport = false
 	}
-	if enableExecDigests && !digestSupport { // the user enables exec digests but the kernel does not support them
+	if tpConf.enableExecDigests && !digestSupport { // the user enables exec digests but the kernel does not support them
 		logger.GetLogger().Warn("FileMonitoring: User enables file digests but the kernel does not support them. Falling back to not using them.")
 	}
 	progs, err := findHooks(&config, fileMode, digestSupport, ioUringSupport)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState)
+	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf)
 }
 
 func loadProbe(args sensors.LoadProbeArgs) error {
