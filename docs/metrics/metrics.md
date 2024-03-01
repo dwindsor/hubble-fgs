@@ -371,6 +371,48 @@ Virtual memory size in bytes.
 
 Maximum amount of virtual memory available in bytes.
 
+## Tetragon DNS Sensor Health Metrics
+
+### `tetragon_dns_cache_evictions_total`
+
+DNS cache evictions. Some churn is expected, but this metric can be useful to determine the rate of churn
+
+### `tetragon_dns_cache_misses_total`
+
+Number of IPs not found in the DNS cache. Note that this is expected for IPs that don't have FQDNs
+
+## Tetragon File Sensor Health Metrics
+
+### `tetragon_file_events_total`
+
+Total number of process_file events (independently of going through the eventcache).
+
+### `tetragon_file_exec_collector_errors_total`
+
+Total number of errors during the collector runs for process_file_exec events.
+
+### `tetragon_file_exec_events_total`
+
+Total number of process_file_exec events (independently of going through the eventcache).
+
+## Tetragon HTTP Sensor Health Metrics
+
+### `tetragon_http_collector_errors_total`
+
+Total number of errors during the collector runs for the http parser
+
+## Tetragon Network Sensors Health Metrics
+
+## Tetragon TLS Sensor Health Metrics
+
+### `tetragon_tls_actual_continutation_events_total`
+
+Actual number of TLS continuation events. For internal use only.
+
+### `tetragon_tls_expected_continutation_events_total`
+
+Expected number of TLS continuation events. For internal use only.
+
 ## Tetragon Events Metrics
 
 ### `tetragon_events_total`
@@ -409,4 +451,22 @@ System calls observed.
 | `pod  ` | `example-pod` |
 | `syscall` | `example_syscall` |
 | `workload` | `example-workload` |
+
+## Tetragon DNS Metrics
+
+## Tetragon File Metrics
+
+## Tetragon HTTP Metrics
+
+## Tetragon ICMP Metrics
+
+## Tetragon Interface Metrics
+
+## Tetragon TCP Metrics
+
+## Tetragon UDP Metrics
+
+## Tetragon Raw Socket Metrics
+
+## Tetragon TLS Metrics
 
