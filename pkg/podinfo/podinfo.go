@@ -8,6 +8,8 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/watcher"
 	coreV1 "k8s.io/api/core/v1"
+
+	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
 var (
@@ -48,7 +50,7 @@ func getPodInfoOfIpFromCilium(ip net.IP) *tetragon.Pod {
 }
 
 func getPodInfoOfIpFromPodInfo(ip net.IP) *tetragon.Pod {
-	pods, err := k8sResourceWatcher.FindPodInfoByIP(ip.String())
+	pods, err := enterpriseWatcher.FindPodInfoByIP(k8sResourceWatcher, ip.String())
 	if err != nil || len(pods) != 1 {
 		return nil
 	}

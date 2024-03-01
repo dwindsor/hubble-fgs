@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -32,7 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -40,10 +38,11 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/cilium/tetragon/pkg/watcher"
 	"google.golang.org/protobuf/proto"
 
-	hubblev1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/cilium/tetragon/pkg/sensors"
@@ -101,17 +100,14 @@ func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	return &corev1.Pod{}, nil
 }
 
-func (r *raceK8sWatcher) GetPodInfo(_, _, _ string, _ uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
-	return nil, nil
+func (r *raceK8sWatcher) AddInformers(_ watcher.InternalSharedInformerFactory, _ ...*watcher.InternalInformer) {
 }
 
-func (r *raceK8sWatcher) FindServiceByIP(ip string) ([]*corev1.Service, error) {
-	return nil, fmt.Errorf("service with IP %s not found", ip)
+func (r *raceK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
+	return nil
 }
 
-func (r *raceK8sWatcher) FindPodInfoByIP(ip string) ([]*v1alpha1.PodInfo, error) {
-	return nil, fmt.Errorf("PodInfo with IP %s not found", ip)
-}
+func (r *raceK8sWatcher) Start() {}
 
 type raceEncoder struct {
 	count int

@@ -527,6 +527,7 @@ spec:
                             - cap_permitted
                             - cap_effective
                             - linux_binprm
+                            - data_loc
                             type: string
                         required:
                         - index
@@ -623,6 +624,7 @@ spec:
                           - cap_permitted
                           - cap_effective
                           - linux_binprm
+                          - data_loc
                           type: string
                       required:
                       - index
@@ -1864,6 +1866,7 @@ spec:
                             - cap_permitted
                             - cap_effective
                             - linux_binprm
+                            - data_loc
                             type: string
                         required:
                         - index
@@ -2419,6 +2422,7 @@ spec:
                             - cap_permitted
                             - cap_effective
                             - linux_binprm
+                            - data_loc
                             type: string
                         required:
                         - index

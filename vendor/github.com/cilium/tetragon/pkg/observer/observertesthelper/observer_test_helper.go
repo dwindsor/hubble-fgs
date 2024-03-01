@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	hubbleV1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	hubbleCilium "github.com/cilium/tetragon/pkg/oldhubble/cilium"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/exporter"
 	tetragonGrpc "github.com/cilium/tetragon/pkg/grpc"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -50,6 +50,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 )
 
 var (
@@ -340,10 +341,10 @@ func GetDefaultSensorsWithFile(tb testing.TB, file, lib string, opts ...TestOpti
 		}
 	}
 
-	var sensor *sensors.Sensor
+	var sens []*sensors.Sensor
 
 	if tp != nil {
-		sensor, err = sensors.GetMergedSensorFromParserPolicy(tp)
+		sens, err = sensors.SensorsFromPolicy(tp, policyfilter.NoFilterID)
 		if err != nil {
 			return nil, err
 		}
@@ -351,11 +352,12 @@ func GetDefaultSensorsWithFile(tb testing.TB, file, lib string, opts ...TestOpti
 
 	base := base.GetInitialSensor()
 
-	if err = loadSensor(tb, base, sensor); err != nil {
+	if err = loadSensors(tb, base, sens); err != nil {
 		return nil, err
 	}
 
-	return []*sensors.Sensor{sensor, base}, nil
+	sens = append(sens, base)
+	return sens, nil
 }
 
 func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, opts *testExporterOptions, oo *testObserverOptions) error {
@@ -451,13 +453,15 @@ func loadObserver(tb testing.TB, ctx context.Context, base *sensors.Sensor,
 	return nil
 }
 
-func loadSensor(tb testing.TB, base *sensors.Sensor, sens *sensors.Sensor) error {
+func loadSensors(tb testing.TB, base *sensors.Sensor, sens []*sensors.Sensor) error {
 	if err := base.Load(option.Config.BpfDir); err != nil {
 		tb.Fatalf("Load base error: %s\n", err)
 	}
 
-	if err := sens.Load(option.Config.BpfDir); err != nil {
-		tb.Fatalf("LoadConfig error: %s\n", err)
+	for _, s := range sens {
+		if err := s.Load(option.Config.BpfDir); err != nil {
+			tb.Fatalf("LoadConfig error: %s\n", err)
+		}
 	}
 	return nil
 }
@@ -565,13 +569,14 @@ func (f *fakeK8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1
 	return &pod, &container, true
 }
 
-func (f *fakeK8sWatcher) FindServiceByIP(ip string) ([]*corev1.Service, error) {
-	return nil, fmt.Errorf("service with IP %s not found", ip)
+func (f *fakeK8sWatcher) AddInformers(_ watcher.InternalSharedInformerFactory, _ ...*watcher.InternalInformer) {
 }
 
-func (f *fakeK8sWatcher) FindPodInfoByIP(ip string) ([]*v1alpha1.PodInfo, error) {
-	return nil, fmt.Errorf("PodInfo with IP %s not found", ip)
+func (f *fakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
+	return nil
 }
+
+func (f *fakeK8sWatcher) Start() {}
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this
 // may be called before obs is created.

@@ -6,8 +6,8 @@ package watcher
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 // FakeK8sWatcher is used as an "empty" K8sResourceWatcher when --enable-k8s-api flag is not set.
@@ -40,19 +40,6 @@ func (watcher *FakeK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	return nil, fmt.Errorf("podID %s not found (in %d pods)", podID, len(watcher.pods))
 }
 
-func (watcher *FakeK8sWatcher) FindServiceByIP(ip string) ([]*corev1.Service, error) {
-	for i := range watcher.services {
-		if service, ok := watcher.services[i].(*corev1.Service); ok {
-			for _, serviceIP := range service.Spec.ClusterIPs {
-				if serviceIP == ip {
-					return []*corev1.Service{service}, nil
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("service with IP %s not found", ip)
-}
-
 // AddPod adds a pod to the fake k8s watcher. This is intended for testing.
 func (watcher *FakeK8sWatcher) AddPod(pod *corev1.Pod) {
 	watcher.pods = append(watcher.pods, pod)
@@ -73,6 +60,11 @@ func (watcher *FakeK8sWatcher) ClearAllServices() {
 	watcher.services = nil
 }
 
-func (watcher *FakeK8sWatcher) FindPodInfoByIP(ip string) ([]*v1alpha1.PodInfo, error) {
-	return nil, fmt.Errorf("PodInfo with IP %q not found", ip)
+func (watcher *FakeK8sWatcher) AddInformers(_ InternalSharedInformerFactory, _ ...*InternalInformer) {
 }
+
+func (watcher *FakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
+	return nil
+}
+
+func (watcher *FakeK8sWatcher) Start() {}

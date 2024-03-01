@@ -25,6 +25,8 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/golang/protobuf/ptypes/wrappers"
+
+	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.
@@ -134,7 +136,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
 		}
 	} else {
-		k8sDestinationServices, err := h.watcher.FindServiceByIP(pc.GetDestinationIp())
+		k8sDestinationServices, err := enterpriseWatcher.FindServiceByIP(h.watcher, pc.GetDestinationIp())
 		if err == nil {
 			destination.Namespace = k8sDestinationServices[0].Namespace
 			destinationService = &flow.Service{

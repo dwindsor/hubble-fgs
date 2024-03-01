@@ -17,6 +17,7 @@ syntax = "proto3";
 package tetragon;
 
 import "tetragon/tetragon.proto";
+import "tetragon/capabilities.proto";
 import "tetragon/fgs.proto";
 import "tetragon/dns.proto";
 import "tetragon/sandbox.proto";
@@ -85,6 +86,8 @@ message Filter {
     repeated string labels = 9;
     // Filter events by tracing policy names
     repeated string policy_names = 10;
+    // Filter events by Linux process capability
+    CapFilter capabilities = 11;
     // Filter by source_ip field using an address range specified using CIDR notation.
     //
     // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
@@ -118,6 +121,32 @@ message Filter {
     // https://github.com/google/re2/wiki/Syntax
     repeated string host_regex = 1008;
 }
+ 
+ // Filter over a set of Linux process capabilities. See `message Capabilities`
+ // for more info.  WARNING: Multiple sets are ANDed. For example, if the
+ // permitted filter matches, but the effective filter does not, the filter will
+ // NOT match.
+ message CapFilter {
+        // Filter over the set of permitted capabilities.
+        CapFilterSet permitted = 1;
+        // Filter over the set of effective capabilities.
+        CapFilterSet effective = 2;
+        // Filter over the set of inheritable capabilities.
+        CapFilterSet inheritable = 3;
+ }
+ 
+ // Capability set to filter over. NOTE: you may specify only ONE set here.
+ message CapFilterSet {
+        // Match if the capability set contains any of the capabilities defined in this filter.
+        repeated CapabilitiesType any = 1;
+        // Match if the capability set contains all of the capabilities defined in this filter.
+        repeated CapabilitiesType all = 2;
+        // Match if the capability set exactly matches all of the capabilities defined in this filter.
+        repeated CapabilitiesType exactly = 3;
+        // Match if the capability set contains none of the capabilities defined in this filter.
+        repeated CapabilitiesType none = 4;
+ }
+
 
 message RateLimitInfo {
     uint64 number_of_dropped_process_events = 1;

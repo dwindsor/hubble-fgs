@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 	"golang.org/x/sys/unix"
 
@@ -613,14 +614,15 @@ func hubbleFGSExecute() error {
 		wg.Wait()
 		close(stop)
 		if option.Config.EnablePodInfo {
-			k8sWatcher = watcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
+			k8sWatcher = enterpriseWatcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
 		} else {
-			k8sWatcher = watcher.NewK8sWatcher(k8sClient, 60*time.Second)
+			k8sWatcher = enterpriseWatcher.NewK8sWatcher(k8sClient, 60*time.Second)
 		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
+	k8sWatcher.Start()
 	_, err = cilium.InitCiliumState(ctx, option.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)

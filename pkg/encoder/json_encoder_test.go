@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/cilium/api/v1/flow"
 	"github.com/cilium/cilium/api/v1/observer"
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,11 +26,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
 func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
-	e := NewJSONEncoder(&b, nil, watcher.NewK8sWatcher(fake.NewSimpleClientset(), 0), false)
+	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
+	k8sWatcher.Start()
+	e := NewJSONEncoder(&b, nil, k8sWatcher, false)
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -52,7 +55,9 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 
 func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
-	e := NewJSONEncoder(&b, &flowBuffer, watcher.NewK8sWatcher(fake.NewSimpleClientset(), 0), true)
+	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
+	k8sWatcher.Start()
+	e := NewJSONEncoder(&b, &flowBuffer, k8sWatcher, true)
 	event := tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
 		NodeName: "my-node",
@@ -108,7 +113,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				ClusterIPs: []string{"2.2.2.2"},
 			},
 		})
-	k8sWatcher := watcher.NewK8sWatcher(client, 0)
+	k8sWatcher := enterpriseWatcher.NewK8sWatcher(client, 0)
+	k8sWatcher.Start()
 	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true)
 
 	// Empty connect event
