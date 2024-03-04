@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cilium/tetragon/operator/cmd"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
-	"github.com/isovalent/hubble-fgs/operator/daemon"
-	"github.com/isovalent/hubble-fgs/operator/options"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/cilium/tetragon/operator/cmd"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
+
+	"github.com/isovalent/hubble-fgs/operator/daemon"
+	"github.com/isovalent/hubble-fgs/operator/options"
 )
 
 func main() {
@@ -31,12 +32,10 @@ func main() {
 	ossServeRunE := ossServe.RunE
 	ossServe.RunE = func(cmd *cobra.Command, args []string) error {
 		options.ConfigPopulate()
-		if options.Config.InstallDaemonSet {
-			go func() {
-				if err := daemon.InstallTetragonDaemonSet(); err != nil {
-					panic(err)
-				}
-			}()
+		if options.Config.ManageDaemonSet {
+			if err := daemon.Manage(); err != nil {
+				return err
+			}
 		}
 		return ossServeRunE(cmd, args)
 	}

@@ -40,15 +40,6 @@ spec:
         {{- if .Values.tetragonOperator.prometheus.enabled }}
           - --metrics-bind-address={{ .Values.tetragonOperator.prometheus.address }}:{{ .Values.tetragonOperator.prometheus.port }}
         {{- end }}
-        env:
-          - name: TETRAGON_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: EXPORT_CONTAINER_IMAGE
-            value: "{{ if .Values.export.stdout.image.override }}{{ .Values.export.stdout.image.override }}{{ else }}{{ .Values.export.stdout.image.repository }}:{{ .Values.export.stdout.image.tag }}{{ end }}"
-          - name: TETRAGON_CONTAINER_IMAGE
-            value: "{{ if .Values.tetragon.image.override }}{{ .Values.tetragon.image.override }}{{ else }}{{ .Values.tetragon.image.repository }}:{{ .Values.tetragon.image.tag }}{{ end }}"
         image: "{{ if .Values.tetragonOperator.image.override }}{{ .Values.tetragonOperator.image.override }}{{ else }}{{ .Values.tetragonOperator.image.repository }}:{{ .Values.tetragonOperator.image.tag }}{{ end }}"
         imagePullPolicy: {{ .Values.tetragonOperator.image.pullPolicy }}
         volumeMounts:
