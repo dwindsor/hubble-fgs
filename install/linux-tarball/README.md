@@ -29,7 +29,7 @@ Tarball should be:
 1. Helper Binaries:
    ```
    bpftool	=> /usr/local/lib/hubble-fgs/hubble-fgs-bpftool
-   hubble-fgs-fs-scanner	=> /usr/local/lib/hubble-fgs/bpf/hubble-fgs-fs-scanner
+   tetragon-fs-scanner	=> /usr/local/lib/hubble-fgs/bpf/tetragon-fs-scanner
    ```
 
 1. BPF files:

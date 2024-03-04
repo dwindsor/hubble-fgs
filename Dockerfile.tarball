@@ -23,7 +23,7 @@ COPY --from=tetragon-release /usr/bin/tetra /usr/local/bin/
 COPY --from=tetragon-release /usr/bin/bpftool /usr/local/lib/tetragon/bpftool
 COPY --from=tetragon-release /usr/bin/gops /usr/local/lib/tetragon/
 
-# BPF files and hubble-fgs-fs-scanner
+# BPF files and tetragon-fs-scanner
 COPY --from=tetragon-release /var/lib/tetragon /usr/local/lib/tetragon/bpf
 
 # We need one layer

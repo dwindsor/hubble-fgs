@@ -456,9 +456,9 @@ func checkRunningFsScanner(scannerFifo string) error {
 
 	for _, file := range matches {
 		target, _ := os.Readlink(file)
-		if len(target) > 0 && strings.Contains(target, "hubble-fgs-fs-scanner") {
-			logger.GetLogger().Warn("Found a running instance of hubble-fgs-fs-scanner on clean start. Killing it.")
-			exec.Command("killall", "-9", "hubble-fgs-fs-scanner").Run()
+		if len(target) > 0 && strings.Contains(target, "tetragon-fs-scanner") {
+			logger.GetLogger().Warn("Found a running instance of tetragon-fs-scanner on clean start. Killing it.")
+			exec.Command("killall", "-9", "tetragon-fs-scanner").Run()
 			break
 		}
 	}
@@ -478,7 +478,7 @@ func startFsScanner() (*exec.Cmd, error) {
 		}
 	}
 
-	execName := path.Join(option.Config.HubbleLib, "hubble-fgs-fs-scanner")
+	execName := path.Join(option.Config.HubbleLib, "tetragon-fs-scanner")
 	execFd, err := os.Open(execName)
 	if err != nil {
 		return nil, fmt.Errorf("startFsScanner: failed to open %s: %w", execName, err)
@@ -509,7 +509,7 @@ func startFsScanner() (*exec.Cmd, error) {
 		args = append(args, "-logFormat", format)
 	}
 
-	// After an agent crash, hubble-fgs-fs-scanner may be still running.
+	// After an agent crash, tetragon-fs-scanner may be still running.
 	// This is the point of a clean start, so we expect no fs-scanner running
 	// or the FIFO to exist. We do this check and cleanup appropriately if needed.
 	if err := checkRunningFsScanner(fm.ScannerFifoPath); err != nil {
@@ -517,7 +517,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "hubble-fgs-runner"), args...)
+	fsScannerCmd := exec.CommandContext(ctx, path.Join(option.Config.HubbleLib, "tetragon-runner"), args...)
 	fsScannerCancelFnMtx.Lock()
 	fsScannerCancelFn = cancel
 	fsScannerCancelFnMtx.Unlock()
@@ -540,9 +540,9 @@ func startFsScanner() (*exec.Cmd, error) {
 			break
 		}
 		if retry > 10 {
-			return nil, fmt.Errorf("failed to start hubble-fgs-fs-scanner")
+			return nil, fmt.Errorf("failed to start tetragon-fs-scanner")
 		}
-		logger.GetLogger().Infof("hubble-fgs-fs-scanner fifo does not exist [retry = %d]", retry)
+		logger.GetLogger().Infof("tetragon-fs-scanner fifo does not exist [retry = %d]", retry)
 		time.Sleep(2 * time.Second)
 		retry++
 	}
@@ -1552,12 +1552,12 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileMonitoring failed to parse selectors: %w", err)
 	}
 
-	// start hubble-fgs-fs-scanner if it hasn't started yet
+	// start tetragon-fs-scanner if it hasn't started yet
 	if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
 		var err error
 		fsScannerCmd, err = startFsScanner()
 		if err != nil {
-			return nil, fmt.Errorf("FileMonitoring failed to start hubble-fgs-fs-scanner: %w", err)
+			return nil, fmt.Errorf("FileMonitoring failed to start tetragon-fs-scanner: %w", err)
 		}
 	}
 

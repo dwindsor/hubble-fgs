@@ -469,12 +469,12 @@ func main() {
 	}
 
 	if !isFlagPassed("hostMntNs") {
-		logger.GetLogger().Warnf("hostMntNs flag is not passed in hubble-fgs-fs-scanner")
+		logger.GetLogger().Warnf("hostMntNs flag is not passed in tetragon-fs-scanner")
 		os.Exit(1)
 	}
 
 	if !isFlagPassed("scannerFifoPath") {
-		logger.GetLogger().Warnf("scannerFifoPath flag is not passed in hubble-fgs-fs-scanner")
+		logger.GetLogger().Warnf("scannerFifoPath flag is not passed in tetragon-fs-scanner")
 		os.Exit(1)
 	}
 
@@ -491,7 +491,7 @@ func main() {
 		os.Exit(2)
 	}
 	if inum != *hostMntNs {
-		logger.GetLogger().Warnf("Mnt namespace of hubble-fgs-fs-scanner (%d) does not match host mnt namespace", inum)
+		logger.GetLogger().Warnf("Mnt namespace of tetragon-fs-scanner (%d) does not match host mnt namespace", inum)
 		os.Exit(3)
 	}
 

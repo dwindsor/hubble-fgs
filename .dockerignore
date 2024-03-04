@@ -14,7 +14,8 @@ hubble-fgs
 fgs-alignchecker
 fgs-bench
 checkerpc
-hubble-fgs-fs-scanner
+tetragon-fs-scanner
+tetragon-runner
 contrib/tester-progs/capabilities-tester
 contrib/tester-progs/dup-tester
 contrib/tester-progs/fork-tester

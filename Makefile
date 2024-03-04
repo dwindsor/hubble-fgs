@@ -44,8 +44,8 @@ LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always --exclude 'api/*')
 
 OSS_DIR=./modules/tetragon-oss
-FS_SCANNER_BIN=bpf/objs/hubble-fgs-fs-scanner
-FS_SCANNER_RUNNER=bpf/objs/hubble-fgs-runner 
+FS_SCANNER_BIN=bpf/objs/tetragon-fs-scanner
+FS_SCANNER_RUNNER=bpf/objs/tetragon-runner 
 
 # Directories to enforce copyright headers on
 COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
@@ -193,7 +193,7 @@ tetragon-bpf-verify: tetragon-bpf
 	sudo contrib/fgs-verify-programs bpf/objs
 
 .PHONY: tetragon
-tetragon: hubble-fgs-fs-scanner
+tetragon: tetragon-fs-scanner
 	$(GO_BUILD) ./cmd/tetragon
 
 .PHONY: tetra
@@ -204,10 +204,10 @@ tetra:
 tetragon-operator:
 	$(GO_BUILD) -o $@ ./operator
 
-.PHONY: hubble-fgs-fs-scanner
-hubble-fgs-fs-scanner:
-	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/hubble-fgs-fs-scanner/
-	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/hubble-fgs-runner.c
+.PHONY: tetragon-fs-scanner
+tetragon-fs-scanner:
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
+	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
 
 .PHONY: ksyms
 ksyms:
@@ -231,7 +231,7 @@ vendor:
 clean: tarball-clean
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN)
+	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN) $(FS_SCANNER_RUNNER)
 	rm -fr ./release
 
 .PHONY: fgs-bench

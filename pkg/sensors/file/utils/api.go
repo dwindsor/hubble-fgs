@@ -16,7 +16,7 @@ const (
 	InodeMapName = "hash_map_inode_alloc"
 	LpmMapName   = "lpm_trie_map_alloc"
 
-	ScannerFifoName      = "fs_scanner.sock" // this is used for hubble-fgs-fs-scanner <-> file-sensor communication
+	ScannerFifoName      = "fs_scanner.sock" // this is used for tetragon-fs-scanner <-> file-sensor communication
 	LocalScannerFifoPath = "/var/run"
 )
 

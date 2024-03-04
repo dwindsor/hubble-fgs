@@ -9,7 +9,8 @@ lib/*
 /parsertest
 /checkerpc
 /build
-/hubble-fgs-fs-scanner
+/tetragon-fs-scanner
+/tetragon-runner
 /parsertest-gen
 observer.test
 go-tests

@@ -52,7 +52,7 @@ jobs:
         sudo -E go mod verify
         export FGS_LIB="${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs/bpf/objs/"
         sudo apt install gcc # needed for tester-progs
-        sudo -E make hubble-fgs-fs-scanner
+        sudo -E make tetragon-fs-scanner
         sudo -E make tester-progs
         export FLAKY_HTTP=1
         sudo -E make test GO_TEST_TIMEOUT=40m SUDO="sudo -E"
