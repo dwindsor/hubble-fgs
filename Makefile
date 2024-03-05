@@ -330,6 +330,9 @@ lint:
 
 .PHONY: tarball
 # Share same build environment as docker image
+# Then it uses docker save to dump the layer and use it to
+# contruct the tarball.
+# Requires 'jq' to be installed
 tarball: tarball-clean image
 	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
@@ -339,7 +342,11 @@ tarball: tarball-clean image
 	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
 	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	find $(BUILD_PKG_DIR)/docker/ -name 'layer.tar' -exec cp '{}' $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar \;
+	sync $(BUILD_PKG_DIR)/docker/manifest.json
+	cat $(BUILD_PKG_DIR)/docker/manifest.json
+	cp "${BUILD_PKG_DIR}/docker/$$(jq -r '.[].Layers[0]' "${BUILD_PKG_DIR}/docker/manifest.json")" ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
+	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/bin/tetragon" - \
+		|| (echo "make: '$@' Error: could not find tetragon inside generated tarball"; exit 1)
 	@rm -fr $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
 	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
 	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
