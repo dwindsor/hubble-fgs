@@ -217,6 +217,10 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 			matcher = fm.PrefixPathMatcher{
 				Prefix: p.PathPrefix.Prefix,
 			}
+		case "FileExactMatch":
+			matcher = fm.ExactPathFileMatcher{
+				Path: p.FileExactMatch.Path,
+			}
 		default:
 			return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
 		}
@@ -277,6 +281,11 @@ func renameDir(args *fm.FsScannerRename) error {
 		matcher = fm.PrefixPathMatcher{
 			WalkPath: args.WalkPath,
 			Prefix:   p.PathPrefix.Prefix,
+		}
+	case "FileExactMatch":
+		matcher = fm.ExactPathFileMatcher{
+			WalkPath: args.WalkPath,
+			Path:     p.FileExactMatch.Path,
 		}
 	default:
 		return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
@@ -365,6 +374,10 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			case "PathPrefix":
 				matcher = fm.PrefixPathMatcher{
 					Prefix: p.PathPrefix.Prefix,
+				}
+			case "FileExactMatch":
+				matcher = fm.ExactPathFileMatcher{
+					Path: p.FileExactMatch.Path,
 				}
 			default:
 				return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)

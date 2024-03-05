@@ -97,6 +97,10 @@ struct pattern_val {
 	__u32 rule;
 };
 
+struct full_path {
+	char path[256];
+};
+
 struct lpm_key {
 	struct bpf_lpm_trie_key key;
 	char data[256];

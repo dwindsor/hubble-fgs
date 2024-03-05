@@ -24,6 +24,10 @@ type PatternValue struct {
 	Rule      uint32    `align:"rule"`
 }
 
+type FullPath struct {
+	Path [256]byte `align:"path"`
+}
+
 type LPMMapKey struct {
 	Prefixlen uint32    `align:"key"`
 	Data      [256]byte `align:"data"`

@@ -49,6 +49,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"file_sel_namespaces": {fileapi.SelNs{}},
 		"file_errors":         {fileapi.FileErrors{}},
 		"pattern_val":         {fileapi.PatternValue{}},
+		"full_path":           {fileapi.FullPath{}},
 
 		"fd_lookup_config": {ip.FdLookupValue{}},
 	}

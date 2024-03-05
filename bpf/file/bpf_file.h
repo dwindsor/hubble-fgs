@@ -223,6 +223,13 @@ struct {
 } patterns_map_alloc SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct full_path);
+	__type(value, __u32);
+	__uint(max_entries, 1); /* the user will setup this */
+} exact_match_map_alloc SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
 	__type(key, struct lpm_key);
 	__type(value, struct lpm_val);
@@ -964,10 +971,27 @@ static inline __attribute__((always_inline)) int path_pattern_matcher(char *path
 	return FILTER_IGNORE;
 }
 
+// <  0 for error
+// == 0 ignore
+// >  0 match
+static inline __attribute__((always_inline)) int file_exact_matcher(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
+{
+	__u32 *ret;
+
+	ret = map_lookup_elem(&exact_match_map_alloc, path);
+	if (!ret)
+		return FILTER_IGNORE;
+
+	if (rule_id)
+		*rule_id = *ret;
+
+	return FILTER_MATCH;
+}
+
 typedef int (*matcher_type)(char *, __u32, __u32 *, struct file_config_map_value *);
 
 #ifdef __LARGE_BPF_PROG
-#define MATCHERS_LEN 2
+#define MATCHERS_LEN 3
 #else
 #define MATCHERS_LEN 1
 #endif
@@ -977,7 +1001,7 @@ typedef int (*matcher_type)(char *, __u32, __u32 *, struct file_config_map_value
 // >  0 match
 static inline __attribute__((always_inline)) int eval_patterns(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
 {
-	matcher_type matchers[2] = { path_prefix_matcher, path_pattern_matcher };
+	matcher_type matchers[3] = { path_prefix_matcher, path_pattern_matcher, file_exact_matcher };
 	int ret, i;
 
 	for (i = 0; i < MATCHERS_LEN; ++i) {

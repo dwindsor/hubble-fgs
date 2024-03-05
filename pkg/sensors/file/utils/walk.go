@@ -357,6 +357,39 @@ func (p PrefixSuffixFileMatcher) String() string {
 	return fmt.Sprintf("prefix:[%s], file_suffix:[%s]", p.Prefix, p.Suffix)
 }
 
+type ExactPathFileMatcher struct {
+	WalkPath string
+	Path     string
+}
+
+func (p ExactPathFileMatcher) GetWalkPath() string {
+	if p.WalkPath != "" {
+		return p.WalkPath
+	}
+	return p.Path
+}
+
+func (p ExactPathFileMatcher) OverrideAction(action uint32, mode fs.FileMode) uint32 {
+	if mode.IsDir() {
+		return FilterMonitor
+	}
+	return action
+}
+
+func (p ExactPathFileMatcher) MatchPath(path string, mode fs.FileMode) bool {
+	if mode.IsDir() {
+		return true
+	}
+	if !mode.IsRegular() {
+		return false
+	}
+	return path == p.Path
+}
+
+func (p ExactPathFileMatcher) String() string {
+	return fmt.Sprintf("exact:[%s]", p.Path)
+}
+
 func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
@@ -627,6 +660,8 @@ func PathPatternToString(p v1alpha1.FilePathPattern) string {
 		return fmt.Sprintf("FilePrefixSuffix{Prefix:[%s],Suffix:[%s]}", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
 	} else if p.Type == "PathPrefix" {
 		return fmt.Sprintf("PathPrefix{Prefix:[%s]}", p.PathPrefix.Prefix)
+	} else if p.Type == "FileExactMatch" {
+		return fmt.Sprintf("FileExactMatch{Path:[%s]}", p.FileExactMatch.Path)
 	}
 	return fmt.Sprintf("<unknown type: %s>", p.Type)
 }

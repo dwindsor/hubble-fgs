@@ -937,6 +937,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		return nil, fmt.Errorf("failed patternMap.Pin: %w", err)
 	}
 
+	exactFilePathMatch := make(map[string]uint32)
 	config.NumPatterns = uint32(len(kprobes.PathsPatterns))
 	for i, p := range kprobes.PathsPatterns {
 		if p.Type == "FilePrefixSuffix" {
@@ -965,6 +966,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		} else if p.Type == "PathPrefix" {
 			if err := addFilters(lpmMap, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
 				return nil, fmt.Errorf("failed to add WatchPath: %w", err)
+			}
+		} else if p.Type == "FileExactMatch" {
+			if strings.HasSuffix(p.FileExactMatch.Path, "/") {
+				return nil, fmt.Errorf("file path for exact match cannot end with /: [%s]", p.FileExactMatch.Path)
+			}
+
+			exactFilePathMatch[p.FileExactMatch.Path] = uint32(i)
+
+			if err := addFilters(lpmMap, filepath.Dir(p.FileExactMatch.Path), fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+				return nil, fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("unknown pattern type: [%s]", p.Type)
@@ -1044,6 +1055,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	// set metric to maximum size of inode map for files
 	filemetrics.FileSetInodeMapMax(e.TpName, float64(config.MaxWatchedInodes))
 
+	// make sure that when we do not use the exact match
+	// we sert the size of exact_match_map_alloc to 1, otherwise
+	// it will fail to load the program.
+	exactFilePathMatchSize := uint32(len(exactFilePathMatch))
+	if exactFilePathMatchSize == 0 {
+		exactFilePathMatchSize = 1
+	}
+
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
@@ -1065,7 +1084,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(sel),
 		}
 		load.MaxEntriesMap = map[string]uint32{
-			"hash_map_inode_alloc": config.MaxWatchedInodes,
+			"hash_map_inode_alloc":  config.MaxWatchedInodes,
+			"exact_match_map_alloc": exactFilePathMatchSize,
 		}
 		progs = append(progs, load)
 
@@ -1076,6 +1096,20 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				Load: func(m *ebpf.Map, _ uint32) error {
 					for k, v := range allInodes {
 						if err := m.Update(k, v, 0); err != nil {
+							return err
+						}
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "exact_match_map_alloc",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					for k, v := range exactFilePathMatch {
+						key := fileapi.FullPath{}
+						copy(key.Path[:], []byte(k))
+						if err := m.Update(key, v, 0); err != nil {
 							return err
 						}
 					}
@@ -1193,11 +1227,12 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 
 		// only for hooks that add files into maps
 		if h.name == "finish_open" || h.name == "vfs_open" || h.name == "security_inode_create" || h.name == "vfs_rename" {
-			m := "patterns_map_alloc"
-			maps = append(
-				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
-			)
+			for _, m := range []string{"patterns_map_alloc", "exact_match_map_alloc"} {
+				maps = append(
+					maps,
+					program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				)
+			}
 		}
 
 		for _, m := range SharedMaps {
