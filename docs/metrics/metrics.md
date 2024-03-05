@@ -381,6 +381,32 @@ DNS cache evictions. Some churn is expected, but this metric can be useful to de
 
 Number of IPs not found in the DNS cache. Note that this is expected for IPs that don't have FQDNs
 
+### `tetragon_dns_qtypes_total`
+
+DNS question types total
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `names` | `example.com,www.example.com` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `qtype` | `TypeA, TypeAAAA, TypeALL, TypeAXFR, TypeCNAME, TypeHINFO, TypeMINFO, TypeMX, TypeNS, TypeOPT, TypePTR, TypeSOA, TypeSRV, TypeTXT, TypeWKS` |
+| `workload` | `example-workload` |
+
+### `tetragon_dns_rtypes_total`
+
+DNS response types total
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `names` | `example.com,www.example.com` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `rtype` | `TypeA, TypeAAAA, TypeALL, TypeAXFR, TypeCNAME, TypeHINFO, TypeMINFO, TypeMX, TypeNS, TypeOPT, TypePTR, TypeSOA, TypeSRV, TypeTXT, TypeWKS` |
+| `workload` | `example-workload` |
+
 ## Tetragon File Sensor Health Metrics
 
 ### `tetragon_file_events_total`

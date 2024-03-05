@@ -13,6 +13,8 @@ package dnsmetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/dns/dnsmessage"
@@ -69,4 +71,13 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(dnsCacheEvictions)
 	registry.MustRegister(dnsQtypes)
 	registry.MustRegister(dnsRtypes)
+}
+
+func InitMetricsForDocs(registry *prometheus.Registry) {
+	InitMetrics(registry)
+
+	for _, t := range dnsapi.KnownDNSTypes {
+		dnsQtypes.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, t.String())...).Add(0)
+		dnsRtypes.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, t.String())...).Add(0)
+	}
 }

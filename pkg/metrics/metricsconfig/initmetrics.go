@@ -30,7 +30,7 @@ func initAllDNSHealthMetrics(registry *prometheus.Registry) {
 }
 
 func InitDNSHealthMetricsForDocs(registry *prometheus.Registry) {
-	dnsmetrics.InitMetrics(registry)
+	dnsmetrics.InitMetricsForDocs(registry)
 }
 
 func initAllDNSEventsMetrics(registry *prometheus.Registry) {
