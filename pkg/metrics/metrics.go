@@ -16,6 +16,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	ExampleDNSNamesLabel  = "example.com,www.example.com"
+	ExamplePodLabels      = []string{"example-namespace", "example-workload", "example-pod"}
+	ExampleDstLabels      = append(ExamplePodLabels, ExampleDNSNamesLabel)
+	ExampleDomain         = "example.org"
+	ExampleIPLabel        = "10.1.0.0"
+	ExampleLatencyBuckets = []string{"100", "1000", "2500", "5000", "7500", "9000", "9900", "+Inf"}
+	ExampleNodeLabel      = "example-nodename"
+)
+
 func DeleteMetricsForPod(pod *corev1.Pod) {
 	oss.DeleteMetricsForPod(pod)
 	// Delete metrics matching the deleted pod on the destination labels too.
