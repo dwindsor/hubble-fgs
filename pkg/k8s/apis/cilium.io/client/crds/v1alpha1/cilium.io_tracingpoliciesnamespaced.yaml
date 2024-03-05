@@ -227,6 +227,15 @@ spec:
                     description: What paths to monitor using patterns.
                     items:
                       properties:
+                        file_exact_match:
+                          description: Should be defined in the case of type=FileExactMatch.
+                          properties:
+                            path:
+                              description: The full path of a file to match.
+                              maxLength: 256
+                              pattern: \/.*
+                              type: string
+                          type: object
                         file_prefix_suffix:
                           description: Should be defined in the case of type=FilePrefixSuffix.
                           properties:
@@ -259,10 +268,12 @@ spec:
                             files that have a specific prefix and optionally a suffix.
                             PathPrefix has the same semantics as file_paths. This
                             can be used for all files and directories that match a
-                            specific prefix.
+                            specific prefix. FileExactMatch can be used to match only
+                            files that have a specific name.
                           enum:
                           - FilePrefixSuffix
                           - PathPrefix
+                          - FileExactMatch
                           type: string
                       required:
                       - type
@@ -270,8 +281,11 @@ spec:
                       x-kubernetes-validations:
                       - message: Type should match the argument type.
                         rule: (self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)
-                          && !has(self.path_prefix)) || (self.type == 'PathPrefix'
-                          && !has(self.file_prefix_suffix) && has(self.path_prefix))
+                          && !has(self.path_prefix) && !has(self.file_exact_match))
+                          || (self.type == 'PathPrefix' && !has(self.file_prefix_suffix)
+                          && has(self.path_prefix) && !has(self.file_exact_match))
+                          || (self.type == 'FileExactMatch' && !has(self.file_prefix_suffix)
+                          && !has(self.path_prefix) && has(self.file_exact_match))
                     type: array
                   monitorHostFiles:
                     default: true
