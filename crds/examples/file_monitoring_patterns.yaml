@@ -51,6 +51,9 @@ spec:
     - type: PathPrefix # will match all file and directory operations that have prefix "/etc/" (same semantics as file_paths)
       path_prefix:
         prefix: "/etc/"
+    - type: FileExactMatch # will match *ONLY* files that have the exact path "/etc/passwd"
+      file_exact_match:
+        path: "/etc/passwd"
     file_paths_exclude: # this will exclude paths from all the patterns defined in file_paths_patterns
     - "/etc/something/"
     - "/home/foo/"
