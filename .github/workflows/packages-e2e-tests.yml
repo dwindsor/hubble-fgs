@@ -39,6 +39,8 @@ jobs:
 
       - name: Generate Tetragon EE Tarball
         run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
           make tarball
           mkdir ${{ matrix.upload_path }}
           mv ./build/${{ matrix.arch }}/linux-tarball/tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz ./${{ matrix.upload_path }}

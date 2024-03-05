@@ -43,7 +43,10 @@ jobs:
 
       - name: Generate Tetragon EE Tarball Release
         id: tetragon-tarball-release
-        run: make tarball-release
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          make tarball-release
 
       - name: Checksum Tetragon EE Tarball
         run: sha256sum -c tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum
