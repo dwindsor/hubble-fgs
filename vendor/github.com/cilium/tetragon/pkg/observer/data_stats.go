@@ -8,6 +8,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type DataEventOp int
+
+const (
+	DataEventOpOk DataEventOp = iota
+	DataEventOpBad
+)
+
+var dataEventStrings = map[DataEventOp]string{
+	DataEventOpOk:  "ok",
+	DataEventOpBad: "bad",
+}
+
+func (e DataEventOp) String() string {
+	return dataEventStrings[e]
+}
+
 var (
 	// Define a counter metric for data event statistics
 	DataEventStats = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -29,6 +45,17 @@ var (
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(DataEventStats)
 	registry.MustRegister(DataEventSizeHist)
+
+	// Initialize metrics with labels
+	for _, ev := range DataEventTypeStrings {
+		DataEventStats.WithLabelValues(ev).Add(0)
+	}
+	DataEventSizeHist.WithLabelValues(DataEventOpOk.String())
+	DataEventSizeHist.WithLabelValues(DataEventOpBad.String())
+
+	// NOTES:
+	// * Don't confuse op in data_event_size with ops.OpCode
+	// * Don't confuse event in data_events_total with tetragon.EventType
 }
 
 type DataEventType int
@@ -57,9 +84,9 @@ func DataEventMetricInc(event DataEventType) {
 }
 
 func DataEventMetricSizeOk(size uint32) {
-	DataEventSizeHist.WithLabelValues("ok").Observe(float64(size))
+	DataEventSizeHist.WithLabelValues(DataEventOpOk.String()).Observe(float64(size))
 }
 
 func DataEventMetricSizeBad(size uint32) {
-	DataEventSizeHist.WithLabelValues("bad").Observe(float64(size))
+	DataEventSizeHist.WithLabelValues(DataEventOpBad.String()).Observe(float64(size))
 }

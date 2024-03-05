@@ -8,6 +8,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type Watcher int
+
+// TODO: Having only one watcher type, "k8s", makes it not a useful label.
+// Maybe "pod" would be more informative.
+const (
+	K8sWatcher Watcher = iota
+)
+
+var watcherTypeLabelValues = map[Watcher]string{
+	K8sWatcher: "k8s",
+}
+
+func (w Watcher) String() string {
+	return watcherTypeLabelValues[w]
+}
+
 type ErrorType string
 
 const (
@@ -32,14 +48,21 @@ var (
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(WatcherErrors)
 	registry.MustRegister(WatcherEvents)
+
+	// Initialize metrics with labels
+	GetWatcherEvents(K8sWatcher).Add(0)
+	GetWatcherErrors(K8sWatcher, FailedToGetPodError).Add(0)
+
+	// NOTES:
+	// * error, error_type, type - standardize on a label
 }
 
 // Get a new handle on an WatcherEvents metric for a watcher type
-func GetWatcherEvents(watcherType string) prometheus.Counter {
-	return WatcherEvents.WithLabelValues(watcherType)
+func GetWatcherEvents(watcherType Watcher) prometheus.Counter {
+	return WatcherEvents.WithLabelValues(watcherType.String())
 }
 
 // Get a new handle on an WatcherEvents metric for a watcher type
-func GetWatcherErrors(watcherType string, watcherError ErrorType) prometheus.Counter {
-	return WatcherErrors.WithLabelValues(watcherType, string(watcherError))
+func GetWatcherErrors(watcherType Watcher, watcherError ErrorType) prometheus.Counter {
+	return WatcherErrors.WithLabelValues(watcherType.String(), string(watcherError))
 }

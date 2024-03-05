@@ -14,6 +14,8 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
+type CRDOptions = osscrdutils.CRDOptions
+
 type CRD = osscrdutils.CRD
 
 func NewCRDBytes(crdName, resName string, crdBytes []byte) CRD {
@@ -22,4 +24,8 @@ func NewCRDBytes(crdName, resName string, crdBytes []byte) CRD {
 
 func RegisterCRDs(clientset apiextensionsclient.Interface, crds []CRD) error {
 	return osscrdutils.RegisterCRDs(clientset, crds)
+}
+
+func RegisterCRDsWithOptions(clientset apiextensionsclient.Interface, crds []CRD, opts CRDOptions) error {
+	return osscrdutils.RegisterCRDsWithOptions(clientset, crds, opts)
 }

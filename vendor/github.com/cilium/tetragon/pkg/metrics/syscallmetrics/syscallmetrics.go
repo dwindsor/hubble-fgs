@@ -4,6 +4,8 @@
 package syscallmetrics
 
 import (
+	"slices"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
@@ -22,6 +24,16 @@ var (
 
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(syscallStats.ToProm())
+
+	// NOTES:
+	// * Delete syscalls_total? It seems to duplicate policy_events_total.
+}
+
+func InitMetricsForDocs(registry *prometheus.Registry) {
+	InitMetrics(registry)
+
+	// Initialize metrics with example labels
+	syscallStats.WithLabelValues(slices.Concat([]string{consts.ExampleSyscallLabel}, consts.ExampleProcessLabels)...).Inc()
 }
 
 func Handle(event interface{}) {

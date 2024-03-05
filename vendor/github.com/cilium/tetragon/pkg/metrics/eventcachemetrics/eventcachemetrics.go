@@ -4,15 +4,42 @@
 package eventcachemetrics
 
 import (
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type CacheEntryType int
+
 const (
-	ProcessInfo = "process_info"
-	ParentInfo  = "parent_info"
-	PodInfo     = "pod_info"
+	ProcessInfo CacheEntryType = iota
+	ParentInfo
+	PodInfo
 )
+
+var cacheEntryTypeLabelValues = map[CacheEntryType]string{
+	ProcessInfo: "process_info",
+	ParentInfo:  "parent_info",
+	PodInfo:     "pod_info",
+}
+
+func (t CacheEntryType) String() string {
+	return cacheEntryTypeLabelValues[t]
+}
+
+type CacheError int
+
+const (
+	NilProcessPid CacheError = iota
+)
+
+var cacheErrorLabelValues = map[CacheError]string{
+	NilProcessPid: "nil_process_pid",
+}
+
+func (e CacheError) String() string {
+	return cacheErrorLabelValues[e]
+}
 
 var (
 	processInfoErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -38,7 +65,7 @@ var (
 		Name:        "event_cache_errors_total",
 		Help:        "The total of errors encountered while fetching process exec information from the cache.",
 		ConstLabels: nil,
-	}, []string{"error"})
+	}, []string{"error", "event_type"})
 	eventCacheRetriesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: consts.MetricsNamespace,
 		Name:      "event_cache_retries_total",
@@ -59,29 +86,49 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(eventCacheErrorsTotal)
 	registry.MustRegister(eventCacheRetriesTotal)
 	registry.MustRegister(parentInfoErrors)
+
+	// Initialize metrics with labels
+	for en := range cacheEntryTypeLabelValues {
+		EventCacheRetries(en).Add(0)
+	}
+	for ev := range tetragon.EventType_name {
+		if tetragon.EventType(ev) != tetragon.EventType_UNDEF && tetragon.EventType(ev) != tetragon.EventType_TEST {
+			ProcessInfoError(tetragon.EventType(ev)).Add(0)
+			PodInfoError(tetragon.EventType(ev)).Add(0)
+			ParentInfoError(tetragon.EventType(ev)).Add(0)
+			for er := range cacheErrorLabelValues {
+				EventCacheError(er, tetragon.EventType(ev)).Add(0)
+			}
+		}
+	}
+
+	// NOTES:
+	// * error, error_type, type - standardize on a label
+	// * event, event_type, type - standardize on a label
+	// * Consider merging event cache errors metrics into one with error, event, entry labels
+}
+
+// Get a new handle on a processInfoErrors metric for an eventType
+func ProcessInfoError(eventType tetragon.EventType) prometheus.Counter {
+	return processInfoErrors.WithLabelValues(eventType.String())
+}
+
+// Get a new handle on a podInfoErrors metric for an eventType
+func PodInfoError(eventType tetragon.EventType) prometheus.Counter {
+	return podInfoErrors.WithLabelValues(eventType.String())
+}
+
+// Get a new handle on an eventCacheErrorsTotal metric for an error
+func EventCacheError(er CacheError, eventType tetragon.EventType) prometheus.Counter {
+	return eventCacheErrorsTotal.WithLabelValues(er.String(), eventType.String())
+}
+
+// Get a new handle on an eventCacheRetriesTotal metric for an entryType
+func EventCacheRetries(entryType CacheEntryType) prometheus.Counter {
+	return eventCacheRetriesTotal.WithLabelValues(entryType.String())
 }
 
 // Get a new handle on an processInfoErrors metric for an eventType
-func ProcessInfoError(eventType string) prometheus.Counter {
-	return processInfoErrors.WithLabelValues(eventType)
-}
-
-// Get a new handle on an processInfoErrors metric for an eventType
-func PodInfoError(eventType string) prometheus.Counter {
-	return podInfoErrors.WithLabelValues(eventType)
-}
-
-// Get a new handle on an processInfoErrors metric for an eventType
-func EventCacheError(err string) prometheus.Counter {
-	return eventCacheErrorsTotal.WithLabelValues(err)
-}
-
-// Get a new handle on the eventCacheRetriesTotal metric for an entryType
-func EventCacheRetries(entryType string) prometheus.Counter {
-	return eventCacheRetriesTotal.WithLabelValues(entryType)
-}
-
-// Get a new handle on an processInfoErrors metric for an eventType
-func ParentInfoError(eventType string) prometheus.Counter {
-	return parentInfoErrors.WithLabelValues(eventType)
+func ParentInfoError(eventType tetragon.EventType) prometheus.Counter {
+	return parentInfoErrors.WithLabelValues(eventType.String())
 }

@@ -4,7 +4,6 @@
 package metricsconfig
 
 import (
-	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
@@ -14,49 +13,87 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics"
 	"github.com/cilium/tetragon/pkg/metrics/policystatemetrics"
-	"github.com/cilium/tetragon/pkg/metrics/processexecmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ratelimitmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ringbufqueuemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/syscallmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/watchermetrics"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/version"
 	grpcmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-func InitAllMetrics(registry *prometheus.Registry) {
+func initHealthMetrics(registry *prometheus.Registry) {
+	version.InitMetrics(registry)
 	errormetrics.InitMetrics(registry)
 	eventcachemetrics.InitMetrics(registry)
-	eventmetrics.InitMetrics(registry)
-	kprobemetrics.InitMetrics(registry)
+	eventmetrics.InitHealthMetrics(registry)
 	mapmetrics.InitMetrics(registry)
 	opcodemetrics.InitMetrics(registry)
 	policyfiltermetrics.InitMetrics(registry)
-	processexecmetrics.InitMetrics(registry)
 	ringbufmetrics.InitMetrics(registry)
 	ringbufqueuemetrics.InitMetrics(registry)
-	syscallmetrics.InitMetrics(registry)
 	watchermetrics.InitMetrics(registry)
 	observer.InitMetrics(registry)
 	tracing.InitMetrics(registry)
 	ratelimitmetrics.InitMetrics(registry)
+
+	// register common third-party collectors
+	registry.MustRegister(grpcmetrics.NewServerMetrics())
+}
+
+func initAllHealthMetrics(registry *prometheus.Registry) {
+	initHealthMetrics(registry)
+
+	kprobemetrics.InitMetrics(registry)
 	policystatemetrics.InitMetrics(registry)
 
-	// register BPF collectors
+	// register custom collectors
 	registry.MustRegister(mapmetrics.NewBPFCollector(
-		eventcache.NewBPFCollector(),
 		observer.NewBPFCollector(),
-		process.NewBPFCollector(),
 	))
 	registry.MustRegister(eventmetrics.NewBPFCollector())
+}
 
+func InitHealthMetricsForDocs(registry *prometheus.Registry) {
+	initHealthMetrics(registry)
+
+	kprobemetrics.InitMetricsForDocs(registry)
+	policystatemetrics.InitMetricsForDocs(registry)
+
+	// register custom zero collectors
+	registry.MustRegister(observer.NewBPFZeroCollector())
+	registry.MustRegister(eventmetrics.NewBPFZeroCollector())
+}
+
+func initResourcesMetrics(registry *prometheus.Registry) {
 	// register common third-party collectors
 	registry.MustRegister(collectors.NewGoCollector())
 	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	registry.MustRegister(grpcmetrics.NewServerMetrics())
-	version.InitMetrics(registry)
+}
+
+func initAllResourcesMetrics(registry *prometheus.Registry) {
+	initResourcesMetrics(registry)
+}
+
+func InitResourcesMetricsForDocs(registry *prometheus.Registry) {
+	initResourcesMetrics(registry)
+}
+
+func initAllEventsMetrics(registry *prometheus.Registry) {
+	eventmetrics.InitEventsMetrics(registry)
+	syscallmetrics.InitMetrics(registry)
+}
+
+func InitEventsMetricsForDocs(registry *prometheus.Registry) {
+	eventmetrics.InitEventsMetricsForDocs(registry)
+	syscallmetrics.InitMetricsForDocs(registry)
+}
+
+func InitAllMetrics(registry *prometheus.Registry) {
+	initAllHealthMetrics(registry)
+	initAllResourcesMetrics(registry)
+	initAllEventsMetrics(registry)
 }

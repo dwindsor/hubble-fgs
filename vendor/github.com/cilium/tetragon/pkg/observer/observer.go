@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -76,47 +77,44 @@ func (k *Observer) RemoveListener(listener Listener) {
 	}
 }
 
-type handlePerfUnknownOp struct {
-	op byte
+type HandlePerfError struct {
+	kind   errormetrics.EventHandlerError
+	err    error
+	opcode byte
 }
 
-func (e handlePerfUnknownOp) Error() string {
-	return fmt.Sprintf("unknown op: %d", e.op)
+func (e *HandlePerfError) Error() string {
+	return e.err.Error()
 }
 
-type handlePerfHandlerErr struct {
-	op  byte
-	err error
-}
-
-func (e *handlePerfHandlerErr) Error() string {
-	return fmt.Sprintf("handler for op %d failed: %s", e.op, e.err)
-}
-
-func (e *handlePerfHandlerErr) Unwrap() error {
-	return e.err
-}
-
-func (e *handlePerfHandlerErr) Cause() error {
+func (e *HandlePerfError) Unwrap() error {
 	return e.err
 }
 
 // HandlePerfData returns the events from raw bytes
 // NB: It is made public so that it can be used in testing.
-func HandlePerfData(data []byte) (byte, []Event, error) {
+func HandlePerfData(data []byte) (byte, []Event, *HandlePerfError) {
 	op := data[0]
 	r := bytes.NewReader(data)
 	// These ops handlers are registered by RegisterEventHandlerAtInit().
 	handler, ok := eventHandler[op]
 	if !ok {
-		return op, nil, handlePerfUnknownOp{op: op}
+		return op, nil, &HandlePerfError{
+			kind:   errormetrics.HandlePerfUnknownOp,
+			err:    fmt.Errorf("unknown op: %d", op),
+			opcode: op,
+		}
 	}
 
 	events, err := handler(r)
 	if err != nil {
-		err = &handlePerfHandlerErr{op: op, err: err}
+		return op, events, &HandlePerfError{
+			kind:   errormetrics.HandlePerfHandlerError,
+			err:    fmt.Errorf("handler for op %d failed: %w", op, err),
+			opcode: op,
+		}
 	}
-	return op, events, err
+	return op, events, nil
 }
 
 func (k *Observer) receiveEvent(data []byte) {
@@ -126,18 +124,16 @@ func (k *Observer) receiveEvent(data []byte) {
 	}
 
 	op, events, err := HandlePerfData(data)
-	opcodemetrics.OpTotalInc(int(op))
+	opcodemetrics.OpTotalInc(ops.OpCode(op))
 	if err != nil {
 		// Increment error metrics
 		errormetrics.ErrorTotalInc(errormetrics.HandlerError)
-		errormetrics.HandlerErrorsInc(int(op), err)
-		switch e := err.(type) {
-		case handlePerfUnknownOp:
-			k.log.WithField("opcode", e.op).Debug("unknown opcode ignored")
-		case *handlePerfHandlerErr:
-			k.log.WithError(e.err).WithField("opcode", e.op).Debug("error occurred in event handler")
+		errormetrics.HandlerErrorsInc(ops.OpCode(op), err.kind)
+		switch err.kind {
+		case errormetrics.HandlePerfUnknownOp:
+			k.log.WithField("opcode", err.opcode).Debug("unknown opcode ignored")
 		default:
-			k.log.WithError(err).Debug("error occurred in event handler")
+			k.log.WithError(err).WithField("opcode", err.opcode).Debug("error occurred in event handler")
 		}
 	}
 	for _, event := range events {

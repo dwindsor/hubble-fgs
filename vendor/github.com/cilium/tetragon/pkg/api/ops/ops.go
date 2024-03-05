@@ -3,6 +3,12 @@
 
 package ops
 
+import (
+	"fmt"
+
+	"github.com/cilium/tetragon/pkg/logger"
+)
+
 const (
 	MSG_OP_UNDEF = 0
 	// MSG_OP_EXECVE event indicates a process was created. The 'PID'
@@ -65,21 +71,36 @@ const (
 	MsgOpKfreeSkb           = 11
 	MsgOpGenericKprobe      = 13
 	MsgOpGeneric_Tracepoint = 14
+	MsgOpGenericUprobe      = 15
+	MsgOpClone              = 23
+	MsgOpData               = 24
+	MsgOpCgroup             = 25
+	MsgOpLoader             = 26
 	MsgOpTest               = 254
 )
 
+var OpCodeStrings = map[OpCode]string{
+	MsgOpUndef:              "Undef",
+	MsgOpExecve:             "Execve",
+	MsgOpExit:               "Exit",
+	MsgOpKfreeSkb:           "KfreeSkb",
+	MsgOpGenericKprobe:      "GenericKprobe",
+	MsgOpGeneric_Tracepoint: "GenericTracepoint",
+	MsgOpGenericUprobe:      "GenericUprobe",
+	MsgOpClone:              "Clone",
+	MsgOpData:               "Data",
+	MsgOpCgroup:             "Cgroup",
+	MsgOpLoader:             "Loader",
+	MsgOpTest:               "Test",
+}
+
 func (op OpCode) String() string {
-	return [...]string{
-		0:   "Undef",
-		5:   "Execve",
-		7:   "Exit",
-		13:  "GenericKprobe",
-		14:  "GenericTracepoint",
-		23:  "Clone",
-		24:  "Data",
-		25:  "Cgroup",
-		254: "Test",
-	}[op]
+	s, ok := OpCodeStrings[op]
+	if !ok {
+		logger.GetLogger().WithField("opcode", op).Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.")
+		return fmt.Sprintf("Unknown(%d)", op)
+	}
+	return s
 }
 
 func (op CgroupOpCode) String() string {

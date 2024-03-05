@@ -5,31 +5,61 @@ package errormetrics
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type ErrorType string
+type ErrorType int
 
-var (
+const (
 	// Process not found on get() call.
-	ProcessCacheMissOnGet ErrorType = "process_cache_miss_on_get"
+	ProcessCacheMissOnGet ErrorType = iota
 	// Process evicted from the cache.
-	ProcessCacheEvicted ErrorType = "process_cache_evicted"
+	ProcessCacheEvicted
 	// Process not found on remove() call.
-	ProcessCacheMissOnRemove ErrorType = "process_cache_miss_on_remove"
+	ProcessCacheMissOnRemove
 	// Tid and Pid mismatch that could affect BPF and user space caching logic
-	ProcessPidTidMismatch ErrorType = "process_pid_tid_mismatch"
+	ProcessPidTidMismatch
 	// An event is missing process info.
-	EventMissingProcessInfo ErrorType = "event_missing_process_info"
+	EventMissingProcessInfo
 	// An error occurred in an event handler.
-	HandlerError ErrorType = "handler_error"
+	HandlerError
 	// An event finalizer on Process failed
-	EventFinalizeProcessInfoFailed ErrorType = "event_finalize_process_info_failed"
+	EventFinalizeProcessInfoFailed
 )
+
+var errorTypeLabelValues = map[ErrorType]string{
+	ProcessCacheMissOnGet:          "process_cache_miss_on_get",
+	ProcessCacheEvicted:            "process_cache_evicted",
+	ProcessCacheMissOnRemove:       "process_cache_miss_on_remove",
+	ProcessPidTidMismatch:          "process_pid_tid_mismatch",
+	EventMissingProcessInfo:        "event_missing_process_info",
+	HandlerError:                   "handler_error",
+	EventFinalizeProcessInfoFailed: "event_finalize_process_info_failed",
+}
+
+func (e ErrorType) String() string {
+	return errorTypeLabelValues[e]
+}
+
+type EventHandlerError int
+
+// TODO: Recognize different errors returned by individual handlers
+const (
+	HandlePerfUnknownOp EventHandlerError = iota
+	HandlePerfHandlerError
+)
+
+var eventHandlerErrorLabelValues = map[EventHandlerError]string{
+	HandlePerfUnknownOp:    "unknown_opcode",
+	HandlePerfHandlerError: "event_handler_failed",
+}
+
+func (e EventHandlerError) String() string {
+	return eventHandlerErrorLabelValues[e]
+}
 
 var (
 	ErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -50,24 +80,44 @@ var (
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(ErrorTotal)
 	registry.MustRegister(HandlerErrors)
+
+	// Initialize metrics with labels
+	for er := range errorTypeLabelValues {
+		GetErrorTotal(er).Add(0)
+	}
+	for opcode := range ops.OpCodeStrings {
+		if opcode != ops.MsgOpUndef && opcode != ops.MsgOpTest {
+			GetHandlerErrors(opcode, HandlePerfHandlerError).Add(0)
+		}
+	}
+	// NB: We initialize only ops.MsgOpUndef here, but unknown_opcode can occur for any opcode
+	// that is not explicitly handled.
+	GetHandlerErrors(ops.MsgOpUndef, HandlePerfUnknownOp).Add(0)
+
+	// NOTES:
+	// * op, msg_op, opcode - standardize on a label (+ add human-readable label)
+	// * error, error_type, type - standardize on a label
+	// * Delete errors_total{type="handler_error"} - it duplicates handler_errors_total
+	// * Consider further splitting errors_total
+	// * Rename handler_errors_total to event_handler_errors_total?
 }
 
 // Get a new handle on an ErrorTotal metric for an ErrorType
-func GetErrorTotal(t ErrorType) prometheus.Counter {
-	return ErrorTotal.WithLabelValues(string(t))
+func GetErrorTotal(er ErrorType) prometheus.Counter {
+	return ErrorTotal.WithLabelValues(er.String())
 }
 
 // Increment an ErrorTotal for an ErrorType
-func ErrorTotalInc(t ErrorType) {
-	GetErrorTotal(t).Inc()
+func ErrorTotalInc(er ErrorType) {
+	GetErrorTotal(er).Inc()
 }
 
 // Get a new handle on the HandlerErrors metric
-func GetHandlerErrors(opcode int, err error) prometheus.Counter {
-	return HandlerErrors.WithLabelValues(fmt.Sprint(opcode), strings.ReplaceAll(fmt.Sprintf("%T", errors.Cause(err)), "*", ""))
+func GetHandlerErrors(opcode ops.OpCode, er EventHandlerError) prometheus.Counter {
+	return HandlerErrors.WithLabelValues(fmt.Sprint(int32(opcode)), er.String())
 }
 
 // Increment the HandlerErrors metric
-func HandlerErrorsInc(opcode int, err error) {
-	GetHandlerErrors(opcode, err).Inc()
+func HandlerErrorsInc(opcode ops.OpCode, er EventHandlerError) {
+	GetHandlerErrors(opcode, er).Inc()
 }

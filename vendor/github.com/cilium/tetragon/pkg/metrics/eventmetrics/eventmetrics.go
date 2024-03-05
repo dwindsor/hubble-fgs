@@ -4,6 +4,8 @@
 package eventmetrics
 
 import (
+	"slices"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -52,11 +54,36 @@ var (
 	}, []string{"policy", "hook"})
 )
 
-func InitMetrics(registry *prometheus.Registry) {
-	registry.MustRegister(EventsProcessed.ToProm())
+func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(FlagCount)
 	registry.MustRegister(NotifyOverflowedEvents)
+	// custom collectors are registered independently
+
+	// Initialize metrics with labels
+	for _, v := range exec.FlagStrings {
+		FlagCount.WithLabelValues(v).Add(0)
+	}
+
+	// NOTES:
+	// * op, msg_op, opcode - standardize on a label (+ add human-readable label)
+	// * event, event_type, type - standardize on a label
+}
+
+func InitEventsMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(EventsProcessed.ToProm())
 	registry.MustRegister(policyStats.ToProm())
+}
+
+func InitEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitEventsMetrics(registry)
+
+	// Initialize metrics with example labels
+	for ev, evString := range tetragon.EventType_name {
+		if tetragon.EventType(ev) != tetragon.EventType_UNDEF && tetragon.EventType(ev) != tetragon.EventType_TEST {
+			EventsProcessed.WithLabelValues(slices.Concat([]string{evString}, consts.ExampleProcessLabels)...).Add(0)
+		}
+	}
+	policyStats.WithLabelValues(slices.Concat([]string{consts.ExamplePolicyLabel, consts.ExampleKprobeLabel}, consts.ExampleProcessLabels)...).Add(0)
 }
 
 func GetProcessInfo(process *tetragon.Process) (binary, pod, workload, namespace string) {
