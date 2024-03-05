@@ -1564,10 +1564,6 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileMonitoring requires only one of file_paths or file_paths_patterns to be defined")
 	}
 
-	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsExclude) > 0 {
-		return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
-	}
-
 	tpConf, err := configFileSensorOptionsInit(spec.FileMonitoring.Config)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to parse config: %w", err)
