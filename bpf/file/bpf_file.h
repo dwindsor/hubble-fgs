@@ -961,6 +961,9 @@ static inline __attribute__((always_inline)) int path_pattern_matcher(char *path
 				goto try_next_pattern;
 		}
 
+		if (rule_id)
+			*rule_id = val->rule;
+
 		// Here we have matched both.
 		return FILTER_MATCH;
 
