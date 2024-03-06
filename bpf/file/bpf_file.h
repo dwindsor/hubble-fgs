@@ -758,6 +758,8 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 	if (!msg)
 		return 0;
 
+	memset(msg, 0, sizeof(struct msg_file_ops));
+
 	msg->common.op = ISO_MSG_OP_FILE;
 	msg->common.flags = 0;
 	msg->common.pad[0] = 0;
