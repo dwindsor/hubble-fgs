@@ -70,7 +70,7 @@ func initAllHTTPEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitHTTPEventsMetricsForDocs(registry *prometheus.Registry) {
-	httpmetrics.InitEventsMetrics(registry)
+	httpmetrics.InitEventsMetricsForDocs(registry)
 }
 
 func initAllICMPEventsMetrics(registry *prometheus.Registry) {

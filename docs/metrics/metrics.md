@@ -506,6 +506,39 @@ Dns request/response statistics
 
 ## Tetragon HTTP Metrics
 
+### `tetragon_http_response_total`
+
+HTTP return code statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `code ` | `100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 307, 308, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `host ` | `example.org` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_http_stats_latency`
+
+Duration of HTTP request processing.
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `host ` | `example.org` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ## Tetragon ICMP Metrics
 
 ## Tetragon Interface Metrics

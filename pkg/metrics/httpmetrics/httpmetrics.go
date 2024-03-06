@@ -11,9 +11,15 @@
 package httpmetrics
 
 import (
+	"slices"
+	"strconv"
+
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 )
 
 var (
@@ -57,5 +63,15 @@ func InitHealthMetricsForDocs(registry *prometheus.Registry) {
 func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(HttpResponseTotal)
 	registry.MustRegister(HttpRequestDurationSeconds)
+}
 
+func InitEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitEventsMetrics(registry)
+
+	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels, []string{enterpriseMetrics.ExampleDomain})
+
+	for _, code := range httpapi.KnownHTTPStatusCodes {
+		HttpResponseTotal.WithLabelValues(append(labels, strconv.Itoa(code))...).Add(0)
+	}
+	HttpRequestDurationSeconds.WithLabelValues(labels...)
 }
