@@ -91,6 +91,12 @@ func TestFileSuffixPattern(t *testing.T) {
 							Suffix: ".sh",
 						},
 					},
+					{
+						Type: "FileExactMatch",
+						FileExactMatch: &v1alpha1.FileExactMatchPattern{
+							Path: filepath.Join(testDir, "aaa"),
+						},
+					},
 				},
 				MonitorHostFiles: true,
 			},
@@ -117,6 +123,7 @@ func TestFileSuffixPattern(t *testing.T) {
 
 	executedEvents := []string{}
 	ops := func() {
+		// (1) check the prefix-suffix patterns
 		path := filepath.Join(testDir, "a.txt")
 		pid := execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
@@ -190,6 +197,37 @@ func TestFileSuffixPattern(t *testing.T) {
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_DELETE", path))
 
 		path = filepath.Join(testDir, "dada")
+		execFn("/usr/bin/rm", path) // no event for that
+
+		// (2) check the exact match
+		path = filepath.Join(testDir, "aaa")
+		pid = execFn("/usr/bin/touch", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+
+		path = filepath.Join(testDir, "aa")
+		execFn("/usr/bin/touch", path) // no event for that
+
+		path = filepath.Join(testDir, "aaaa")
+		execFn("/usr/bin/touch", path) // no event for that
+
+		path = filepath.Join(testDir, "aaa")
+		pid = execFn("/usr/bin/cat", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_READ", path))
+
+		path = filepath.Join(testDir, "aa")
+		execFn("/usr/bin/cat", path) // no event for that
+
+		path = filepath.Join(testDir, "aaaa")
+		execFn("/usr/bin/cat", path) // no event for that
+
+		path = filepath.Join(testDir, "aaa")
+		pid = execFn("/usr/bin/rm", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_DELETE", path))
+
+		path = filepath.Join(testDir, "aa")
+		execFn("/usr/bin/rm", path) // no event for that
+
+		path = filepath.Join(testDir, "aaaa")
 		execFn("/usr/bin/rm", path) // no event for that
 	}
 
