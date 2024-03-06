@@ -86,7 +86,7 @@ func initAllInterfaceEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitInterfaceEventsMetricsForDocs(registry *prometheus.Registry) {
-	interfacemetrics.InitMetrics(registry)
+	interfacemetrics.InitMetricsForDocs(registry)
 }
 
 func initAllNetworkHealthMetrics(registry *prometheus.Registry) {
