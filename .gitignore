@@ -25,3 +25,5 @@ cscope.in.out
 compile_commands.json
 /fgs-bench-graph
 /vendor/github.com/cilium/tetragon/contrib
+/tetragon-oci-hook
+/tetragon-oci-hook-setup

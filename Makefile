@@ -470,3 +470,14 @@ hubble-bpf: tetragon-bpf
 .PHONY: hubble-bpf-verify
 hubble-bpf-verify: tetragon-bpf-verify
 
+
+GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/rthooks/tetragon-oci-hook build $(GO_BUILD_FLAGS)
+
+.PHONY: tetragon-oci-hook
+tetragon-oci-hook:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/hook
+
+.PHONY: tetragon-oci-hook-setup
+tetragon-oci-hook-setup:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/setup
+

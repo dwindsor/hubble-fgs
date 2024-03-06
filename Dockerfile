@@ -31,8 +31,8 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
 RUN ldconfig /usr/local/
 COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
-    then make tetragon tetra hubble-fgs-fs-scanner TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
-    else make tetragon tetra hubble-fgs-fs-scanner TARGET_ARCH=$TARGETARCH; fi
+    then make tetragon tetra hubble-fgs-fs-scanner tetragon-oci-hook tetragon-oci-hook-setup TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
+    else make tetragon tetra hubble-fgs-fs-scanner tetragon-oci-hook tetragon-oci-hook-setup TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.22.0-alpine@sha256:8e96e6cff6a388c2f70f5f662b64120941fcd7d4b89d62fec87520323a316bd9 as gops
@@ -93,6 +93,8 @@ COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-fs-scanner /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/hubble-fgs-runner /var/lib/tetragon/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon-oci-hook /usr/bin/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon-oci-hook-setup /usr/bin/
 # legacy aliases
 RUN ln -s /usr/bin/tetra /usr/bin/hubble-fgs-printer
 RUN ln -s /usr/bin/tetra /usr/bin/hubble-enterprise
