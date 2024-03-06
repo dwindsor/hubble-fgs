@@ -62,7 +62,7 @@ func initAllHTTPHealthMetrics(registry *prometheus.Registry) {
 }
 
 func InitHTTPHealthMetricsForDocs(registry *prometheus.Registry) {
-	httpmetrics.InitHealthMetrics(registry)
+	httpmetrics.InitHealthMetricsForDocs(registry)
 }
 
 func initAllHTTPEventsMetrics(registry *prometheus.Registry) {

@@ -48,6 +48,12 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(NewBPFCollector())
 }
 
+func InitHealthMetricsForDocs(registry *prometheus.Registry) {
+	registry.MustRegister(httpCollectorErrors)
+
+	registry.MustRegister(NewBPFZeroCollector())
+}
+
 func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(HttpResponseTotal)
 	registry.MustRegister(HttpRequestDurationSeconds)

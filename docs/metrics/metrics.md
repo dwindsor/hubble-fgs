@@ -427,6 +427,14 @@ Total number of process_file_exec events (independently of going through the eve
 
 Total number of errors during the collector runs for the http parser
 
+### `tetragon_http_parser_states_total`
+
+Number of HTTP parser states
+
+| label | values |
+| ----- | ------ |
+| `state` | `missing_context, missing_process, skipped_header, skipped_method` |
+
 ## Tetragon Network Sensors Health Metrics
 
 ## Tetragon TLS Sensor Health Metrics

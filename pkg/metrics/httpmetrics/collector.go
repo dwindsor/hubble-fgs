@@ -78,3 +78,26 @@ func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- httpParserStatesTotal.MustMetric(float64(sum.Count[i]), name)
 	}
 }
+
+// bpfZeroCollector implements prometheus.Collector. It collects "zero" metrics.
+// It's intended to be used when BPF metrics are not collected, but we still want
+// Prometheus metrics to be exposed.
+type bpfZeroCollector struct {
+	bpfCollector
+}
+
+func NewBPFZeroCollector() prometheus.Collector {
+	return &bpfZeroCollector{
+		bpfCollector: bpfCollector{},
+	}
+}
+
+func (c *bpfZeroCollector) Describe(ch chan<- *prometheus.Desc) {
+	c.bpfCollector.Describe(ch)
+}
+
+func (c *bpfZeroCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, name := range httpapi.HttpStateNames {
+		ch <- httpParserStatesTotal.MustMetric(0, name)
+	}
+}
