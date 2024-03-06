@@ -135,6 +135,54 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(UdpMulticastLatencySum)
 }
 
+func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitUDPEventsMetrics(registry)
+
+	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels)
+
+	SocketStatsUDPTxBytes.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPTxSegs.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPRxBytes.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPRxSegs.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPDrops.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPConsumeMisses.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPStackTxBytes.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPStackTxSegs.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPStackRxBytes.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPStackRxSegs.WithLabelValues(labels...).Add(0)
+
+	// Watermarks
+	SocketStatsUDPTxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	SocketStatsUDPTxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	SocketStatsUDPRxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	SocketStatsUDPRxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	SocketStatsUDPTxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	SocketStatsUDPRxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+
+	// Multicast
+	multicastLabels := slices.Concat(consts.ExampleProcessLabels, []string{enterpriseMetrics.ExampleIPLabel}, enterpriseMetrics.ExamplePodLabels, []string{enterpriseMetrics.ExampleIPLabel})
+	SocketStatsUDPMulticastTxBytes.WithLabelValues(multicastLabels...).Add(0)
+	SocketStatsUDPMulticastTxSegs.WithLabelValues(multicastLabels...).Add(0)
+	SocketStatsUDPMulticastRxBytes.WithLabelValues(multicastLabels...).Add(0)
+	SocketStatsUDPMulticastRxSegs.WithLabelValues(multicastLabels...).Add(0)
+	SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels...).Add(0)
+	SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels...).Add(0)
+
+	// Histograms. They are defined not with Prometheus histogram struct, but as sets of counters.
+	// This means they are rendered differently than "regular" histograms in the metrics docs.
+	// We might consider improving docs for histograms, both Prometheus and Tetragon.
+	for _, b := range enterpriseMetrics.ExampleLatencyBuckets {
+		bucketLabels := append(labels, b)
+		UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(0)
+		multicastBucketLabels := append(multicastLabels, b)
+		UdpMulticastLatencyBucket.WithLabelValues(multicastBucketLabels...).Add(0)
+	}
+	UdpLatencyCount.WithLabelValues(labels...).Add(0)
+	UdpLatencySum.WithLabelValues(labels...).Add(0)
+	UdpMulticastLatencyCount.WithLabelValues(multicastLabels...).Add(0)
+	UdpMulticastLatencySum.WithLabelValues(multicastLabels...).Add(0)
+}
+
 func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
 	// Raw socket metrics
 	registry.MustRegister(RawsockCreateVol)

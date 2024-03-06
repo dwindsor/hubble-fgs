@@ -114,7 +114,7 @@ func initAllUDPEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
-	socketmetrics.InitUDPEventsMetrics(registry)
+	socketmetrics.InitUDPEventsMetricsForDocs(registry)
 }
 
 func initAllRawSocketEventsMetrics(registry *prometheus.Registry) {

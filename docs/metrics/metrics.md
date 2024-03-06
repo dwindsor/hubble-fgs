@@ -1003,6 +1003,413 @@ Histogram sum for TCP socket rtt in microseconds
 
 ## Tetragon UDP Metrics
 
+### `tetragon_socket_stats_udp_consume_misses_total`
+
+UDP socket consume packet misses
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_drops_total`
+
+UDP socket drops statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_consume_misses_total`
+
+UDP socket consume packet misses
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_drops_total`
+
+UDP socket drops statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_rxbytes_total`
+
+UDP socket RX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_rxsegs_total`
+
+UDP socket RX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_txbytes_total`
+
+UDP socket TX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_mcast_txsegs_total`
+
+UDP socket TX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_rx_watermarks_state`
+
+UDP socket RX watermarks state
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_rxbursts_total`
+
+UDP socket RX bursts statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_rxbytes_total`
+
+UDP socket RX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_rxdips_total`
+
+UDP socket RX dips statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_rxsegs_total`
+
+UDP socket RX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_stack_rxbytes_total`
+
+UDP stack RX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_stack_rxsegs_total`
+
+UDP stack RX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_stack_txbytes_total`
+
+UDP stack TX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_stack_txsegs_total`
+
+UDP stack TX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_tx_watermarks_state`
+
+UDP socket TX watermarks state
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_txbursts_total`
+
+UDP socket TX bursts statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_txbytes_total`
+
+UDP socket TX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_txdips_total`
+
+UDP socket TX dips statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_udp_txsegs_total`
+
+UDP socket TX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_latency_microseconds_bucket`
+
+Histogram bucket for UDP socket latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_latency_microseconds_count`
+
+Histogram count for UDP socket latency
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_latency_microseconds_sum`
+
+Histogram sum for UDP socket latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_mcast_latency_microseconds_bucket`
+
+Histogram bucket for UDP socket multicast latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_mcast_latency_microseconds_count`
+
+Histogram count for UDP socket multicast latency
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
+### `tetragon_udp_mcast_latency_microseconds_sum`
+
+Histogram sum for UDP socket multicast latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstmcast` | `10.1.0.0` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `srcmcast` | `10.1.0.0` |
+| `workload` | `example-workload` |
+
 ## Tetragon Raw Socket Metrics
 
 ## Tetragon TLS Metrics
