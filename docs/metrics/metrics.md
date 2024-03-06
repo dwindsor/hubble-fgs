@@ -700,6 +700,299 @@ Segments sent per network interface
 
 ## Tetragon TCP Metrics
 
+### `tetragon_socket_stats_drops_total`
+
+TCP socket socket drops statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_retransmitbytes_total`
+
+TCP socket retransmit bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_retransmitsegs_total`
+
+TCP socket retransmit seg statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_rx_watermarks_state`
+
+TCP socket RX watermarks state
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_rxbursts_total`
+
+TCP socket RX bursts statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_rxbytes_total`
+
+TCP socket RX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_rxdips_total`
+
+TCP socket RX dips statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_rxsegs_total`
+
+TCP socket RX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_srtt`
+
+TCP socket smoothed RTT latency distribution in microseconds.
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_tx_watermarks_state`
+
+TCP socket TX watermarks state
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_txbursts_total`
+
+TCP socket TX bursts statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_txbytes_total`
+
+TCP socket TX bytes statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_txdips_total`
+
+TCP socket TX dips statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_txsegs_total`
+
+TCP socket TX segment statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_socket_stats_zerowindow_total`
+
+TCP socket zero window events
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_latency_microseconds_bucket`
+
+Histogram bucket for TCP socket latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_latency_microseconds_count`
+
+Histogram count for TCP socket latency
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_latency_microseconds_sum`
+
+Histogram sum for TCP socket latency in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_rtt_microseconds_bucket`
+
+Histogram bucket for TCP socket rtt in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_rtt_microseconds_count`
+
+Histogram count for TCP socket rtt
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_tcp_rtt_microseconds_sum`
+
+Histogram sum for TCP socket rtt in microseconds
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ## Tetragon UDP Metrics
 
 ## Tetragon Raw Socket Metrics
