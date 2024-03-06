@@ -67,6 +67,12 @@ var (
 
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(processIpErrors)
+
+	for _, error := range IpErrorToString {
+		for _, version := range networkapi.IPFamilies {
+			ProcessIpErrors(error, version).Add(0)
+		}
+	}
 }
 
 func ProcessIpErrors(err string, version string) prometheus.Counter {

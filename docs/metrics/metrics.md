@@ -437,6 +437,15 @@ Number of HTTP parser states
 
 ## Tetragon Network Sensors Health Metrics
 
+### `tetragon_layer3_event_errors_total`
+
+Errors propagated to userspace by the L3 event sensors
+
+| label | values |
+| ----- | ------ |
+| `error` | `Header error, No heap available, Read IPv6 next failed (probe), Read IPv6 next failed (skb), Read IPv6 next failed (skb_load), Socket discovery no process, Socket discovery no sk, Socket discovery read error, Too many IPv6 extensions, UDP failed to read IP option, UDP recv invalid IP version, UDP recv missing process, UDP recv no cookie, UDP recv read IP header failed, UDP recv read UDP header failed, UDP retprobe add failed, UDP retprobe delete failed, UDP send missing process, UDP send no cookie, UDP send no socket info, UDP sequence check read payload data, UDP sequence check read payload flags, UDP sock create PID=0, UDP sock create no cookie, UDP sock create no process, UDP sock release no cookie, UDP sock release no sock, UDP stack burst no PID, UDP stack burst no process, UDP stack invalid IP version, UDP stack no cookie, UDP stack no payload offset, UDP stack read IP header failed, UDP stack read UDP header failed, UDP stack read payload failed, UDP stack read version failed, Unknown IPv6 extension, Update socketmap no process` |
+| `version` | `IPv4, IPv6` |
+
 ## Tetragon TLS Sensor Health Metrics
 
 ### `tetragon_tls_actual_continutation_events_total`
