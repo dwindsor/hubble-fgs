@@ -43,6 +43,23 @@ var rCodeNames = map[uint16]string{
 	RCodeRefused:        "Refused",
 }
 
+type dnsRR int
+
+// TODO: That's a bit silly, we might want to revisit this label.
+const (
+	rrRequest dnsRR = iota
+	rrResponse
+)
+
+var dnsRRLabelValues = map[dnsRR]string{
+	rrRequest:  "Request",
+	rrResponse: "Response",
+}
+
+func (rr dnsRR) String() string {
+	return dnsRRLabelValues[rr]
+}
+
 var (
 	dnsRequestTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "dns_total",
@@ -63,21 +80,18 @@ func getRCodeString(rc *wrapperspb.Int32Value) string {
 }
 
 func postDnsMetric(res *tetragon.ProcessDns) {
-	var rr string
-
 	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
 	codes := getRCodeString(dns.GetReturnCode())
 
+	rr := rrRequest
 	if dns.Response {
-		rr = "Response"
-	} else {
-		rr = "Request"
+		rr = rrResponse
 	}
 
-	dnsRequestTotal.WithLabelValues(ns, workload, pod, binary, names, codes, rr).Inc()
+	dnsRequestTotal.WithLabelValues(ns, workload, pod, binary, names, codes, rr.String()).Inc()
 }
 
 func HandleDnsEvent(res *tetragon.ProcessDns) {
