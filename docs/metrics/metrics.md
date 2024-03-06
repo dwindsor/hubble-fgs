@@ -455,6 +455,14 @@ The total number of LRU in-use entries.
 | `map  ` | `lru_udp_stats_map` |
 | `total` | `    0` |
 
+### `tetragon_socket_stats_udp_retrieve_total`
+
+UDP socket retrieval stats. For internal use only.
+
+| label | values |
+| ----- | ------ |
+| `count` | `Delete Key Failed, DiffValues Failure, DiffValues GC Failure, Failed To Open Map, NanoTimeSince Failure, Pid Is Zero, Ticker, Total Retrieved` |
+
 ## Tetragon TLS Sensor Health Metrics
 
 ### `tetragon_tls_actual_continutation_events_total`

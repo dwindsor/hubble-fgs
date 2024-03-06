@@ -85,6 +85,18 @@ func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	TcpLatencySum.WithLabelValues(labels...).Add(0)
 }
 
+func InitUDPHealthMetrics(registry *prometheus.Registry) {
+	// UDP metrics collection errors
+	registry.MustRegister(SocketStatsUDPGC)
+
+	for _, er := range UDPGCTypeStrings {
+		SocketStatsUDPGC.WithLabelValues(er).Add(0)
+	}
+
+	// NOTES:
+	// * Rename count label (to e.g. error)?
+}
+
 func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	// UDP socket metrics
 	registry.MustRegister(SocketStatsUDPTxBytes)
@@ -111,9 +123,6 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(SocketStatsUDPMulticastRxSegs)
 	registry.MustRegister(SocketStatsUDPMulticastDrops)
 	registry.MustRegister(SocketStatsUDPMulticastConsumeMisses)
-
-	// UDP metrics collection errors
-	registry.MustRegister(SocketStatsUDPGC)
 
 	// UDP Latency Histogram
 	registry.MustRegister(UdpLatencyBucket)
