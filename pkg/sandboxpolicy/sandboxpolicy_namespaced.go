@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -27,6 +28,13 @@ type SandboxTracingPolicyNamespaced struct {
 
 	// xlateTPEvent translates a tracepoint event (orig) to a ProcessSandboxSyscall event
 	xlateTPEvent func(orig *tracing.MsgGenericTracepointUnix, ev *tetragon.ProcessSandboxSyscall) error
+}
+
+func (p *SandboxTracingPolicyNamespaced) spName() string {
+	if p == nil || p.sp == nil {
+		return "unknown-nssp-name"
+	}
+	return p.sp.ObjectMeta.Name
 }
 
 func toTracingPolicyNamespaced(namespace string, name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicyNamespaced, error) {
@@ -58,4 +66,8 @@ func ToTracingPolicyNamespaced(p *v1alpha1.SandboxPolicyNamespaced) (*SandboxTra
 	}
 	pol.sp = p
 	return pol, nil
+}
+
+func (p *SandboxTracingPolicyNamespaced) Handler() eventhandler.Handler {
+	return sandboxHandler(p.spName(), p.xlateTPEvent)
 }

@@ -34,13 +34,19 @@ type SandboxTracingPolicy struct {
 }
 
 func (p *SandboxTracingPolicy) spName() string {
+	if p == nil || p.sp == nil {
+		return "unknown-sp-name"
+	}
 	return p.sp.ObjectMeta.Name
 }
 
-func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
+func sandboxHandler(
+	spName string,
+	xlateFn func(orig *tracing.MsgGenericTracepointUnix, ev *tetragon.ProcessSandboxSyscall) error,
+) eventhandler.Handler {
 	return func(evs []observer.Event, err error) ([]observer.Event, error) {
 		if err != nil {
-			return nil, fmt.Errorf("error in handling sandbox policy '%s' event: %w", p.spName(), err)
+			return nil, fmt.Errorf("error in handling sandbox policy '%s' event: %w", spName, err)
 		}
 
 		out := make([]observer.Event, 0, len(evs))
@@ -48,7 +54,7 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 			ev := evs[i]
 			switch xev := ev.(type) {
 			case *tracing.MsgGenericTracepointUnix:
-				spev := sandboxGRPC.NewMsgRawSyscall(xev, p.xlateTPEvent)
+				spev := sandboxGRPC.NewMsgRawSyscall(xev, xlateFn)
 				out = append(out, spev)
 			default:
 				logger.GetLogger().Warn("unexpected event type (%T) in sandbox policy handler", ev)
@@ -58,6 +64,10 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 
 		return out, nil
 	}
+}
+
+func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
+	return sandboxHandler(p.spName(), p.xlateTPEvent)
 }
 
 func TracingPolicyName(spName string) string {
