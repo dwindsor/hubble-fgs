@@ -78,7 +78,7 @@ func initAllICMPEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitICMPEventsMetricsForDocs(registry *prometheus.Registry) {
-	icmpmetrics.InitMetrics(registry)
+	icmpmetrics.InitMetricsForDocs(registry)
 }
 
 func initAllInterfaceEventsMetrics(registry *prometheus.Registry) {

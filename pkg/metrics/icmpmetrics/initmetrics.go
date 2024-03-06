@@ -10,9 +10,22 @@
 
 package icmpmetrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"slices"
+
+	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/prometheus/client_golang/prometheus"
+
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
+)
 
 func InitMetrics(registry *prometheus.Registry) {
 	// ICMP metrics
 	registry.MustRegister(IcmpStatsVol)
+}
+
+func InitMetricsForDocs(registry *prometheus.Registry) {
+	InitMetrics(registry)
+
+	IcmpStatsVol.WithLabelValues(slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels)...).Add(0)
 }

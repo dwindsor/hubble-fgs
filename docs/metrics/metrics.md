@@ -541,6 +541,21 @@ Duration of HTTP request processing.
 
 ## Tetragon ICMP Metrics
 
+### `tetragon_icmp_datagrams_total`
+
+The number of sent/received ICMP datagrams
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `dstdns` | `example.com,www.example.com` |
+| `dstnamespace` | `example-namespace` |
+| `dstpod` | `example-pod` |
+| `dstworkload` | `example-workload` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ## Tetragon Interface Metrics
 
 ## Tetragon TCP Metrics
