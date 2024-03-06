@@ -38,7 +38,7 @@ func initAllDNSEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitDNSEventsMetricsForDocs(registry *prometheus.Registry) {
-	eventmetrics.InitMetrics(registry)
+	eventmetrics.InitMetricsForDocs(registry)
 }
 
 func initAllFileHealthMetrics(registry *prometheus.Registry) {

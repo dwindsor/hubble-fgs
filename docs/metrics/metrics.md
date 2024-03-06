@@ -480,6 +480,20 @@ System calls observed.
 
 ## Tetragon DNS Metrics
 
+### `tetragon_dns_total`
+
+Dns request/response statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `names` | `example.com,www.example.com` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `rcodes` | `FormatError, NameError, NotImplemented, Refused, ServerFailure, Success` |
+| `response` | `Request, Response` |
+| `workload` | `example-workload` |
+
 ## Tetragon File Metrics
 
 ## Tetragon HTTP Metrics

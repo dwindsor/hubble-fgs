@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 )
 
@@ -70,6 +71,15 @@ var (
 
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(dnsRequestTotal)
+}
+
+func InitMetricsForDocs(registry *prometheus.Registry) {
+	InitMetrics(registry)
+
+	dnsRequestTotal.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, "", rrRequest.String())...).Add(0)
+	for _, rcode := range rCodeNames {
+		dnsRequestTotal.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, rcode, rrResponse.String())...).Add(0)
+	}
 }
 
 func getRCodeString(rc *wrapperspb.Int32Value) string {
