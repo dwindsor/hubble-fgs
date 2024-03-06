@@ -1412,5 +1412,27 @@ Histogram sum for UDP socket multicast latency in microseconds
 
 ## Tetragon Raw Socket Metrics
 
+### `tetragon_rawsock_close_total`
+
+The number of raw sockets closed
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
+### `tetragon_rawsock_create_total`
+
+The number of raw sockets created
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ## Tetragon TLS Metrics
 

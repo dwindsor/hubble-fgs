@@ -188,3 +188,10 @@ func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(RawsockCreateVol)
 	registry.MustRegister(RawsockCloseVol)
 }
+
+func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitRawSocketEventsMetrics(registry)
+
+	RawsockCreateVol.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	RawsockCloseVol.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+}

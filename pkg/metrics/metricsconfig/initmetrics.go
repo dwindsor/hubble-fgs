@@ -122,7 +122,7 @@ func initAllRawSocketEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
-	socketmetrics.InitRawSocketEventsMetrics(registry)
+	socketmetrics.InitRawSocketEventsMetricsForDocs(registry)
 }
 
 func initAllTLSHealthMetrics(registry *prometheus.Registry) {
