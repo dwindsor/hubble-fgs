@@ -768,9 +768,9 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 
 	var version string
 	if event.Msg.Tuple.IPv6 == 0 {
-		version = "IPv4"
+		version = networkapi.IPv4Family
 	} else {
-		version = "IPv6"
+		version = networkapi.IPv6Family
 	}
 
 	var details string

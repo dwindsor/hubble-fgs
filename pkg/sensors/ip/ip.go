@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/yalue/native_endian"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
@@ -240,9 +241,9 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		// Just increment the metric and don't report the event.
 		var version string
 		if m.Tuple.IPv6 == 0 {
-			version = "IPv4"
+			version = networkapi.IPv4Family
 		} else {
-			version = "IPv6"
+			version = networkapi.IPv6Family
 		}
 		iperrormetrics.ProcessIpErrors(layer3.IpErrorToString[m.Return], version).Inc()
 		return nil, fmt.Errorf("IP Error handled as metric only")

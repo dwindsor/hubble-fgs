@@ -5,9 +5,21 @@ import (
 	"fmt"
 	"net"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
+
+const (
+	IPv4Family = string(corev1.IPv4Protocol)
+	IPv6Family = string(corev1.IPv6Protocol)
+)
+
+var IPFamilies = []string{
+	IPv4Family,
+	IPv6Family,
+}
 
 // Socket Flags
 const (
