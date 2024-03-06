@@ -49,48 +49,7 @@ const (
 	refDec
 )
 
-var IpErrorToString = []string{
-	0:  "Header error",
-	1:  "No heap available",
-	2:  "Read IPv6 next failed (probe)",
-	3:  "Read IPv6 next failed (skb_load)",
-	4:  "Read IPv6 next failed (skb)",
-	5:  "Unknown IPv6 extension",
-	6:  "Too many IPv6 extensions",
-	7:  "UDP stack no cookie",
-	8:  "UDP stack read version failed",
-	9:  "UDP stack read IP header failed",
-	10: "UDP stack read UDP header failed",
-	11: "UDP stack no payload offset",
-	12: "UDP stack invalid IP version",
-	13: "UDP stack burst no process",
-	14: "UDP stack burst no PID",
-	15: "UDP stack read payload failed",
-	16: "UDP send no socket info",
-	17: "UDP send no cookie",
-	18: "UDP recv no cookie",
-	19: "UDP recv read IP header failed",
-	20: "UDP recv read UDP header failed",
-	21: "UDP recv invalid IP version",
-	22: "UDP sock create no cookie",
-	23: "UDP sock release no cookie",
-	24: "UDP failed to read IP option",
-	25: "UDP retprobe add failed",
-	26: "UDP retprobe delete failed",
-	27: "UDP sock release no sock",
-	28: "UDP send missing process",
-	29: "UDP recv missing process",
-	30: "Update socketmap no process",
-	31: "Socket discovery no process",
-	32: "Socket discovery read error",
-	33: "UDP sock create no process",
-	34: "Socket discovery no sk",
-	35: "UDP sock create PID=0",
-	36: "UDP sequence check read payload flags",
-	37: "UDP sequence check read payload data",
-}
-
-var IpErrorMax = int64(len(IpErrorToString) - 1)
+var IpErrorMax = int64(len(iperrormetrics.IpErrorToString) - 1)
 
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & networkapi.SOCKFLAGS_TYPE_DNSREADY) != 0
@@ -778,7 +737,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	// Lower 32 bits is error code, upper 32 bits is data if required.
 	errorCode := event.Msg.Return & 0xffffffff
 	if errorCode <= IpErrorMax {
-		details = IpErrorToString[errorCode]
+		details = iperrormetrics.IpErrorToString[errorCode]
 		// Populate the metrics here before we parameterize with any data, otherwise we
 		// risk cardinality exploding
 		iperrormetrics.ProcessIpErrors(details, version).Inc()

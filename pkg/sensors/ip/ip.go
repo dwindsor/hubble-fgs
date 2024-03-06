@@ -228,7 +228,7 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 
-	if m.Return >= 0 && m.Return <= layer3.IpErrorMax && layer3.IpErrorToString[m.Return] == "UDP stack burst no process" {
+	if m.Return >= 0 && m.Return <= layer3.IpErrorMax && iperrormetrics.IpErrorToString[m.Return] == "UDP stack burst no process" {
 		pid, fd, family, err := findPidFdForCookie(m.SockCookie)
 		if err == nil {
 			GetSocketForFD(syscall.IPPROTO_UDP, pid, fd, m.SockCookie, family)
@@ -236,8 +236,8 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	if m.Return >= 0 && m.Return <= layer3.IpErrorMax &&
-		(layer3.IpErrorToString[m.Return] == "UDP stack burst no process" ||
-			layer3.IpErrorToString[m.Return] == "Socket discovery read error") {
+		(iperrormetrics.IpErrorToString[m.Return] == "UDP stack burst no process" ||
+			iperrormetrics.IpErrorToString[m.Return] == "Socket discovery read error") {
 		// Just increment the metric and don't report the event.
 		var version string
 		if m.Tuple.IPv6 == 0 {
@@ -245,7 +245,7 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		} else {
 			version = networkapi.IPv6Family
 		}
-		iperrormetrics.ProcessIpErrors(layer3.IpErrorToString[m.Return], version).Inc()
+		iperrormetrics.ProcessIpErrors(iperrormetrics.IpErrorToString[m.Return], version).Inc()
 		return nil, fmt.Errorf("IP Error handled as metric only")
 	}
 
