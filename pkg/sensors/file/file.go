@@ -661,9 +661,9 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		} else {
 			// failed to get file digest
 			if isFileExecEvent(m.Action, m.Hook) {
-				filemetrics.FileFailedDigestInc("process_file_exec")
+				filemetrics.FileFailedDigestInc(filemetrics.FileEventProcessExec)
 			} else {
-				filemetrics.FileFailedDigestInc("process_file")
+				filemetrics.FileFailedDigestInc(filemetrics.FileEventProcess)
 			}
 		}
 	}

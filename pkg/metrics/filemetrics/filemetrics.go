@@ -73,6 +73,22 @@ func (e FileError) String() string {
 	return fileErrorLabelValues[e]
 }
 
+type FileEvent int
+
+const (
+	FileEventProcess FileEvent = iota
+	FileEventProcessExec
+)
+
+var fileEventLabelValues = map[FileEvent]string{
+	FileEventProcess:     "process_file",
+	FileEventProcessExec: "process_file_exec",
+}
+
+func (e FileEvent) String() string {
+	return fileEventLabelValues[e]
+}
+
 var (
 	fileTotalEvents = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "file_events_total",
@@ -222,8 +238,8 @@ func FileTotalErrorsInc(er FileError) {
 	fileTotalErrors.WithLabelValues(er.String()).Inc()
 }
 
-func FileFailedDigestInc(event string) {
-	fileFailedDigest.WithLabelValues(event).Inc()
+func FileFailedDigestInc(ev FileEvent) {
+	fileFailedDigest.WithLabelValues(ev.String()).Inc()
 }
 
 func FileSetFileInodeMapMax(policy string, val float64) {
