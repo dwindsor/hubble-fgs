@@ -54,7 +54,7 @@ func initAllFileEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitFileEventsMetricsForDocs(registry *prometheus.Registry) {
-	filemetrics.InitEventsMetrics(registry)
+	filemetrics.InitEventsMetricsForDocs(registry)
 }
 
 func initAllHTTPHealthMetrics(registry *prometheus.Registry) {

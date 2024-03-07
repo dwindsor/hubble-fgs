@@ -24,6 +24,9 @@ var (
 	ExampleIPLabel        = "10.1.0.0"
 	ExampleLatencyBuckets = []string{"100", "1000", "2500", "5000", "7500", "9000", "9900", "+Inf"}
 	ExampleNodeLabel      = "example-nodename"
+	ExampleDir            = "/etc/example/"
+	ExampleFile           = "/bin/example"
+	ExampleFileDigest     = "HASH_ALGO_SHA256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 )
 
 func DeleteMetricsForPod(pod *corev1.Pod) {

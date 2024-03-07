@@ -11,9 +11,11 @@
 package filemetrics
 
 import (
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -234,6 +236,25 @@ func InitHealthMetricsForDocs(registry *prometheus.Registry) {
 func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileExecTotalActionEvents)
+
+	// NOTES:
+	// * action, operation - standardize labels (+ don't confuse with ops.OpCode)
+	// * Add binary and policy labels to all event metrics?
+}
+
+func InitEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitEventsMetrics(registry)
+
+	// Initialize metrics with example labels
+	podLabels := append([]string{enterpriseMetrics.ExampleNodeLabel}, enterpriseMetrics.ExamplePodLabels...)
+	for _, operation := range tetragon.FileOperation_name {
+		for _, action := range tetragon.FileAction_name {
+			fileTotalActionEvents.WithLabelValues(
+				append(podLabels, consts.ExamplePolicyLabel, enterpriseMetrics.ExampleDir, action, operation)...).Add(0)
+		}
+		fileExecTotalActionEvents.WithLabelValues(
+			append(podLabels, enterpriseMetrics.ExampleFile, enterpriseMetrics.ExampleFileDigest, operation)...).Add(0)
+	}
 }
 
 func FileTotalEventsInc() {

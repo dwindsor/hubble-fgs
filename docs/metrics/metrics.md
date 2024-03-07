@@ -621,6 +621,35 @@ Dns request/response statistics
 
 ## Tetragon File Metrics
 
+### `tetragon_file_actions_total`
+
+Total file events per action
+
+| label | values |
+| ----- | ------ |
+| `action` | `FILE_CHATTR, FILE_CREATE, FILE_DELETE, FILE_EXEC, FILE_INVALID, FILE_MKDIR, FILE_READ, FILE_READDIR, FILE_RENAME, FILE_RMDIR, FILE_WRITE` |
+| `namespace` | `example-namespace` |
+| `node ` | `example-nodename` |
+| `operation` | `FILE_OP_BLOCK, FILE_OP_POST, FILE_OP_UNKNOWN` |
+| `pod  ` | `example-pod` |
+| `policy` | `example-tracingpolicy` |
+| `rule ` | `/etc/example/` |
+| `workload` | `example-workload` |
+
+### `tetragon_file_exec_actions_total`
+
+Total file exec events per action
+
+| label | values |
+| ----- | ------ |
+| `action` | `FILE_OP_BLOCK, FILE_OP_POST, FILE_OP_UNKNOWN` |
+| `digest` | `HASH_ALGO_SHA256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef` |
+| `file ` | `/bin/example` |
+| `namespace` | `example-namespace` |
+| `node ` | `example-nodename` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ## Tetragon HTTP Metrics
 
 ### `tetragon_http_response_total`
