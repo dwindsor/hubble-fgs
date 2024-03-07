@@ -21,6 +21,58 @@ const (
 	directionOut = "out"
 )
 
+type FileError int
+
+const (
+	SensorFileRPCTerminate FileError = iota
+	SensorFileRPCInitHost
+	SensorFileRPCScanner
+	SensorFileRPCInitCont
+	SensorFileRPCDestroyCont
+	SensorFileOp
+	SensorFileMv
+	SensorFileMvTcId
+	SensorFileMvScanner
+	SensorFileInitScanner
+	SensorFileInitContainerScanner
+	SensorFileInitPodAddScanner
+	SensorFileDestroyPodUpdateScanner
+	SensorFileInitPodUpdateScanner
+	SensorFileDestroyPodDeleteScanner
+	GrpcNilEvProc
+	GrpcNotValidAction
+	GrpcOpGtOne
+	GrpcNotValidOp
+	GrpcEventcacheRetry
+)
+
+var fileErrorLabelValues = map[FileError]string{
+	SensorFileRPCTerminate:            "sensor_file_rpc_terminate",
+	SensorFileRPCInitHost:             "sensor_file_rpc_init_host",
+	SensorFileRPCScanner:              "sensor_file_rpc_scanner",
+	SensorFileRPCInitCont:             "sensor_file_rpc_init_cont",
+	SensorFileRPCDestroyCont:          "sensor_file_rpc_destroy_cont",
+	SensorFileOp:                      "sensor_file_op",
+	SensorFileMv:                      "sensor_file_mv",
+	SensorFileMvTcId:                  "sensor_file_mv_tcid",
+	SensorFileMvScanner:               "sensor_file_mv_scanner",
+	SensorFileInitScanner:             "sensor_file_init_scanner",
+	SensorFileInitContainerScanner:    "sensor_file_init_container_scanner",
+	SensorFileInitPodAddScanner:       "sensor_file_init_podAdd_scanner",
+	SensorFileDestroyPodUpdateScanner: "sensor_file_destroy_podUpdate_scanner",
+	SensorFileInitPodUpdateScanner:    "sensor_file_init_podUpdate_scanner",
+	SensorFileDestroyPodDeleteScanner: "sensor_file_destroy_podDelete_scanner",
+	GrpcNilEvProc:                     "grpc_nil_ev_proc",
+	GrpcNotValidAction:                "grpc_not_valid_action",
+	GrpcOpGtOne:                       "grpc_op_gt_one",
+	GrpcNotValidOp:                    "grpc_not_valid_op",
+	GrpcEventcacheRetry:               "grpc_eventcache_retry",
+}
+
+func (e FileError) String() string {
+	return fileErrorLabelValues[e]
+}
+
 var (
 	fileTotalEvents = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "file_events_total",
@@ -166,8 +218,8 @@ func FileExecTotalActionEventsInc(node, namespace, workload, pod, file, digest, 
 	fileExecTotalActionEvents.WithLabelValues(node, namespace, workload, pod, file, digest, action).Inc()
 }
 
-func FileTotalErrorsInc(reason string) {
-	fileTotalErrors.WithLabelValues(reason).Inc()
+func FileTotalErrorsInc(er FileError) {
+	fileTotalErrors.WithLabelValues(er.String()).Inc()
 }
 
 func FileFailedDigestInc(event string) {

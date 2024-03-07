@@ -242,7 +242,7 @@ func podhooksAddFunc(obj interface{}) {
 
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod.Namespace, pod.Name, ""); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_init_podAdd_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodAddScanner)
 			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
@@ -306,13 +306,13 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_destroy_podUpdate_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileDestroyPodUpdateScanner)
 			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}
 	for _, c := range newCIDs {
 		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod1.Namespace, pod1.Name, ""); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_init_podUpdate_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodUpdateScanner)
 			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyInitContainerFsScanner failed")
 		}
 	}
@@ -356,7 +356,7 @@ func podhooksDeleteFunc(obj interface{}) {
 
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_destroy_podDelete_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileDestroyPodDeleteScanner)
 			logger.GetLogger().WithError(err).Warnf("delete: TracingPolicyDestroyContainerFsScanner failed")
 		}
 	}

@@ -333,7 +333,7 @@ var (
 func TerminateFsScanner() error {
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_rpc_terminate")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCTerminate)
 		return err
 	}
 	defer client.Close()
@@ -371,7 +371,7 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_rpc_init_host")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitHost)
 		return err
 	}
 	defer client.Close()
@@ -394,7 +394,7 @@ func RenameFsScanner(w string, m string, o uint32, a uint32, pin string, cid str
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_rpc_scanner")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCScanner)
 		return err
 	}
 	defer client.Close()
@@ -417,7 +417,7 @@ func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID,
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_rpc_init_cont")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitCont)
 		return err
 	}
 	defer client.Close()
@@ -435,7 +435,7 @@ func TracingPolicyDestroyContainerFsScanner(containerID string) error {
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_rpc_destroy_cont")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCDestroyCont)
 		return err
 	}
 	defer client.Close()
@@ -633,7 +633,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_op")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileOp)
 		return nil, fmt.Errorf("Failed to read file operation: %w", err)
 	}
 
@@ -691,7 +691,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileRenameEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		filemetrics.FileTotalErrorsInc("sensor_file_mv")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMv)
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
 
@@ -744,7 +744,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 		s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
 		if err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_mv_tcid")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
 		}
 
@@ -758,7 +758,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		}
 
 		if err := RenameFsScanner(path, option.Config.BpfDir, op, action, s.PinPathPrefix, renameCid, *s.Spec, s.TpName, m.RuleID); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_mv_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvScanner)
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
 	}
@@ -1022,7 +1022,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 
 	if kprobes.MonitorHostFiles {
 		if err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_init_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		}
 	}
@@ -1048,7 +1048,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			Spec:       kprobes,
 		}
 		if err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root); err != nil {
-			filemetrics.FileTotalErrorsInc("sensor_file_init_container_scanner")
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
 			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
 		}
 	}
