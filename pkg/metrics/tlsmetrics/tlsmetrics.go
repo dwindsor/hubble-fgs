@@ -51,6 +51,11 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(tlsErrorsTotal)
 	registry.MustRegister(tlsExpectedContinuationTotal)
 	registry.MustRegister(tlsActualContinuationTotal)
+
+	for er := range tlsErrorString {
+		TlsErrorsTotal(er, false).Add(0)
+		TlsErrorsTotal(er, true).Add(0)
+	}
 }
 
 func InitEventsMetrics(registry *prometheus.Registry) {
