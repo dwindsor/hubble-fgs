@@ -195,6 +195,23 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(NewBPFCollector())
 	registry.MustRegister(NewBPFInodeMapCollector())
 	registry.MustRegister(NewBPFErrorCollector())
+
+	// Initialize metrics with labels
+	fileTotalCacheEvents.WithLabelValues(directionIn).Add(0)
+	fileTotalCacheEvents.WithLabelValues(directionOut).Add(0)
+	fileExecTotalCacheEvents.WithLabelValues(directionIn).Add(0)
+	fileExecTotalCacheEvents.WithLabelValues(directionOut).Add(0)
+	for er := range fileErrorLabelValues {
+		fileTotalErrors.WithLabelValues(er.String()).Add(0)
+	}
+	for ev := range fileEventLabelValues {
+		fileFailedDigest.WithLabelValues(ev.String()).Add(0)
+	}
+
+	// NOTES:
+	// * error, reason - standardize on a label
+	// * event - standardize on a label (value formatting)
+	// * Consider merging custom collectors into one
 }
 
 func InitEventsMetrics(registry *prometheus.Registry) {
