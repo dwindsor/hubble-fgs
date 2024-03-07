@@ -50,8 +50,8 @@ import (
 
 	// Init sensors for benchmarking
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 )
 

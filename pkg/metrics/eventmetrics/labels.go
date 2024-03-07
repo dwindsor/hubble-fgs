@@ -20,7 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 

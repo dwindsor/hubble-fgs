@@ -19,9 +19,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
 
 var expectedPacketPayload = []byte{

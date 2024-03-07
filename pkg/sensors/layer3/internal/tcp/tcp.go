@@ -1,28 +1,36 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+
 package tcp
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"syscall"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -32,24 +40,23 @@ var (
 	// default for random env is very difficult and users expected
 	// setting the interval to zero would disable it.
 	//TcpIntervalDefault            = time.Duration(60 * time.Second)
-	tcpInterval                   time.Duration
-	tcpStatsEnabled               bool
-	tcpWatermarksEnable           bool
-	tcpWatermarksWindowSize       uint64
-	tcpWatermarksBurstTriggerMult uint64
-	tcpWatermarksDipTriggerMult   uint64
-	watermarksEnabled             = false
+	Interval                   time.Duration
+	StatsEnabled               bool
+	WatermarksEnable           bool
+	WatermarksWindowSize       uint64
+	WatermarksBurstTriggerMult uint64
+	WatermarksDipTriggerMult   uint64
+	WatermarksEnabled          = false
 
 	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStats]
 	stataCacheSize = 32000
 
-	configured       = false
-	timestampEnabled = false
+	TimestampEnabled = false
 
-	disableConnect = false
-	disableClose   = false
-	disableAccept  = false
-	disableListen  = false
+	DisableConnect = false
+	DisableClose   = false
+	DisableAccept  = false
+	DisableListen  = false
 )
 
 var (
@@ -98,14 +105,14 @@ var (
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"tg_tcp_v4_send_check",
-		"tcp_sensor")
+		"layer3_sensor")
 
 	SendCheck6 = program.Builder(
 		"bpf_tcp_send_check.o",
 		"inet6_csk_xmit",
 		"kprobe/inet6_csk_xmit",
 		"tg_inet6_csk_xmit",
-		"tcp_sensor")
+		"layer3_sensor")
 
 	// RTT Tracer uses kprobe on the TCP ACK Send Check to get the rtt_us value
 	// as that is easily obtained. This is probably as good as we can easily get,
@@ -258,24 +265,20 @@ func (t *tcpValue) ToMsgIpTuple() *networkapi.MsgIPTuple {
 	return &t.MsgIPTuple
 }
 
-func unloadTcpSensor() error {
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
-	timestampEnabled = false
+func UnloadSensor() error {
+	TimestampEnabled = false
 
 	networklatency.Stop(unix.IPPROTO_TCP)
-	if watermarksEnabled {
-		networkWatermarksEvents.Stop(IPPROTO_TCP)
+	if WatermarksEnabled {
+		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
 	return nil
 }
 
-func EnableTcp(timestampEnable bool) *sensors.Sensor {
+func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
-	timestampEnabled = false
+	TimestampEnabled = false
 
 	progs = []*program.Program{
 		Connect,
@@ -311,7 +314,7 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 
 	if timestampEnable && kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Info("Enabling TCP latency")
-		timestampEnabled = true
+		TimestampEnabled = true
 		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
 		if err == nil {
 			progs = append(progs, timestampProg)
@@ -328,33 +331,18 @@ func EnableTcp(timestampEnable bool) *sensors.Sensor {
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
-		"statsInterval":              tcpInterval,
-		"watermarksEnable":           tcpWatermarksEnable,
-		"watermarksWindowSize":       tcpWatermarksWindowSize,
-		"watermarksBurstTriggerMult": tcpWatermarksBurstTriggerMult,
+		"statsInterval":              Interval,
+		"watermarksEnable":           WatermarksEnable,
+		"watermarksWindowSize":       WatermarksWindowSize,
+		"watermarksBurstTriggerMult": WatermarksBurstTriggerMult,
 		"maxRttHistogram":            tcpconfig.RttHistogramMax,
 		"minRttHistogram":            tcpconfig.RttHistogramMin,
 		"metrics":                    tcpconfig.MetricsEnabled,
 	}).Infof("Enable TCP")
-	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
-	tcpSensor.PreUnloadHook = unloadTcpSensor
-	return tcpSensor
+	return progs, maps
 }
 
-type tcpSensor struct {
-	name string
-}
-
-func (tcp *tcpSensor) PolicyHandler(
-	policy tracingpolicy.TracingPolicy,
-	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
-	spec := policy.TpSpec()
-
-	if !spec.Parser.Tcp.Enable {
-		return nil, nil
-	}
-
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	if spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)
@@ -363,52 +351,48 @@ func (tcp *tcpSensor) PolicyHandler(
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter()
 	}
 
-	if fid != policyfilter.NoFilterID {
-		return nil, fmt.Errorf("tcp sensor does not implement policy filtering")
-	}
-
 	if spec.Parser.Tcp.StatsInterval > 0 {
-		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
-		tcpStatsEnabled = true
+		Interval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
+		StatsEnabled = true
 	} else {
-		tcpStatsEnabled = false
+		StatsEnabled = false
 	}
 	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
-		watermarksEnabled = true
-		tcpWatermarksEnable = true
-		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
-		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
-		tcpWatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(spec, IPPROTO_TCP, false)
+		WatermarksEnabled = true
+		WatermarksEnable = true
+		WatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
+		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
+		WatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
+		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_TCP, false)
 	} else if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
-		watermarksEnabled = true
-		tcpWatermarksEnable = true
-		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
-		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
-		go networkWatermarksEvents.Start(spec, IPPROTO_TCP, true)
+		WatermarksEnabled = true
+		WatermarksEnable = true
+		WatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
+		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
+		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_TCP, true)
 	} else {
-		tcpWatermarksEnable = false
-		tcpWatermarksWindowSize = 0
-		tcpWatermarksBurstTriggerMult = 0
-		tcpWatermarksDipTriggerMult = 0
+		WatermarksEnable = false
+		WatermarksWindowSize = 0
+		WatermarksBurstTriggerMult = 0
+		WatermarksDipTriggerMult = 0
 	}
 	if spec.Parser.Tcp.RttHistogram.Enable {
 		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
 		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
 
 		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
-			return nil, fmt.Errorf("Misconfigured Rtt Histogram: Min value must be less than Max")
+			return false, fmt.Errorf("Misconfigured Rtt Histogram: Min value must be less than Max")
 		}
 	} else {
 		tcpconfig.RttHistogramMax = 0
 	}
 	tcpconfig.LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
 
-	disableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
-	disableClose = spec.Parser.Tcp.DisableEvents.DisableClose
-	disableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
-	disableListen = spec.Parser.Tcp.DisableEvents.DisableListen
-	return EnableTcp(spec.Parser.Tcp.Latency.Enable), nil
+	DisableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
+	DisableClose = spec.Parser.Tcp.DisableEvents.DisableClose
+	DisableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
+	DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
+	return spec.Parser.Tcp.Latency.Enable, nil
 }
 
 func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string) (networkapi.Histogram, error) {
@@ -489,7 +473,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp layer3.MsgIPWithStatsEventUnix) (layer3.MsgIPWithStatsEventUnix, error) {
+func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
 	statsKey := tcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
 	if !ok {
@@ -498,17 +482,17 @@ func correctedStatsEvent(tcp layer3.MsgIPWithStatsEventUnix) (layer3.MsgIPWithSt
 	if tcp.Msg.SocketStats.Ktime < last.Ktime {
 		// Current stats message is older than last stats message.
 		// This indicates the race has occurred, so we discard.
-		return layer3.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message is older than previous")
+		return grpc.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message is older than previous")
 	}
 
 	// If we already posted an entry and nothings changed skip it.
 	if tcp.Msg.SocketStats.Ktime == last.Ktime {
-		return layer3.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message duplicate")
+		return grpc.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message duplicate")
 	}
 
 	tmpSocketStats, err := tcpDiffValues(&last, &tcp.Msg.SocketStats, &tcp.Msg.Tuple)
 	if err != nil {
-		return layer3.MsgIPWithStatsEventUnix{}, err
+		return grpc.MsgIPWithStatsEventUnix{}, err
 	}
 	// Make a copy of the event
 	newTcp := tcp
@@ -527,7 +511,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	tcp := ip.MsgToIPWithStatsUnix(&m)
-	if tcpStatsEnabled {
+	if StatsEnabled {
 		cp := *tcp
 		c, err := correctedStatsEvent(cp)
 		if err != nil {
@@ -552,68 +536,13 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{tcp}, nil
 }
 
-func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	getRunningSockets(true, true)
-
-	if args.Load.Type == "cgrp_tcp_ingress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	} else if args.Load.Type == "tcp_tc_egress" {
-		err := networklatency.AttachTc(args)
-		if err != nil {
-			return err
-		}
-	} else {
-		if tcpStatsEnabled {
-			configureSockStatSampler(tcpInterval,
-				tcpWatermarksEnable,
-				tcpWatermarksWindowSize,
-				tcpWatermarksBurstTriggerMult,
-				tcpWatermarksDipTriggerMult,
-				tcpconfig.RttHistogramMax,
-				tcpconfig.RttHistogramMin)
-		}
-		configureTCPDisableEvents(disableConnect, disableClose, disableAccept, disableListen)
-		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	}
-
-	if !configured {
-		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
-				return err
-			}
-			networklatency.Start()
-		}
-		configured = true
-	}
-
-	return nil
-}
-
-func init() {
-	AddTCP()
-}
-
-func AddTCP() {
+func Init() error {
 	var err error
 
 	stats, err = lru.New[tcpKey, networkapi.MsgSocketStats](stataCacheSize)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("TCP cache failed. Disabling TCP")
-		return
+		return err
 	}
-
-	tcp := &tcpSensor{
-		name: "TCP sensor",
-	}
-
-	sensors.RegisterProbeType("tcp_sensor", tcp)
-	sensors.RegisterPolicyHandlerAtInit(tcp.name, tcp)
 
 	/* Core set of TCP events */
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcp)
@@ -623,7 +552,5 @@ func AddTCP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
-
-	sensors.RegisterProbeType("cgrp_tcp_ingress", tcp)
-	sensors.RegisterProbeType("tcp_tc_egress", tcp)
+	return nil
 }

@@ -35,9 +35,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 

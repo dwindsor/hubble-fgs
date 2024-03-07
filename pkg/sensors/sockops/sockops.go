@@ -22,8 +22,8 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
 
 var (
@@ -69,7 +69,7 @@ func builder(_ string) (*sensors.Sensor, error) {
 		progs = append(progs, SockopsEstablished)
 		maps = append(maps,
 			HttpSockMap, TlsSockMap, NopSockMap,
-			HttpFilterMap, TlsFilterMap, NopFilterMap, tcp.SocketMap)
+			HttpFilterMap, TlsFilterMap, NopFilterMap, layer3.SocketMap())
 
 		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
 	}

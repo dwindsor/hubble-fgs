@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package tcp
+package layer3
 
 import (
 	"context"
@@ -50,12 +50,12 @@ func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 	getFDAndCookie := func() (int, uint64, error) {
 		// syscall.Socket needs a ForkLock. See https://go.dev/src/syscall/exec_unix.go
 		syscall.ForkLock.Lock()
-		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, IPPROTO_TCP)
+		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 		syscall.ForkLock.Unlock()
 		if err != nil {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}
-		cookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), fd, 0, 0)
+		cookie := ip.GetSocketForFD(syscall.IPPROTO_TCP, os.Getpid(), fd, 0, 0)
 		if cookie == 0 {
 			socket, err := ip.GetAndAddSocketViaProc(uint32(os.Getpid()), uint32(fd), unix.IPPROTO_TCP, nil)
 			if err != nil {
@@ -96,7 +96,7 @@ func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
-	aCookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), aFD, 0, 0)
+	aCookie := ip.GetSocketForFD(syscall.IPPROTO_TCP, os.Getpid(), aFD, 0, 0)
 	// cannot set cookie for accept from user-space
 	checker.AddChecks(ec.NewProcessAcceptChecker("accept"))
 

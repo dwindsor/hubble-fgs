@@ -15,7 +15,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 

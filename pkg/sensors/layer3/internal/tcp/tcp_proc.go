@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -21,13 +22,12 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	IPPROTO_TCP           = 6
 	TCP_PROC_STATE_LISTEN = 10
 )
 
@@ -57,7 +57,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 		return
 	}
 
-	tcp := layer3.MsgIPEventUnix{}
+	tcp := grpc.MsgIPEventUnix{}
 	tcp.Msg = &networkapi.MsgIPEvent{}
 
 	tcp.Msg.ProcessKey.Pid = pid
@@ -85,7 +85,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	}
 }
 
-func getRunningSockets(_, pushEvents bool) {
+func GetRunningSockets(_, pushEvents bool) {
 	/* Lock is required to prevent concurrent access to object vars,
 	 * just in case this gets called twice at once.
 	 */
@@ -93,5 +93,5 @@ func getRunningSockets(_, pushEvents bool) {
 	defer loading.Unlock()
 
 	_pushEvents = pushEvents
-	ip.LoadSockets(FdCallback, IPPROTO_TCP)
+	ip.LoadSockets(FdCallback, syscall.IPPROTO_TCP)
 }

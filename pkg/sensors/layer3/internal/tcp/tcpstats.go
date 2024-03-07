@@ -1,8 +1,19 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+
 package tcp
 
 import (
 	"fmt"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -13,7 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -56,7 +67,7 @@ var (
 )
 
 func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
-	unix := layer3.MsgIPWithStatsEventUnix{}
+	unix := grpc.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
@@ -88,7 +99,7 @@ func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
 	// socket handling of the UDP data.
 	if value.Key.Pid == 0 {
 		return
-	} else if tuple.Proto == IPPROTO_TCP {
+	} else if tuple.Proto == syscall.IPPROTO_TCP {
 		last, ok := stats.Get(statsKey)
 		if ok {
 			// If Ktime is the same as last read then nothing has changed.
@@ -129,7 +140,7 @@ func runTcpGC() {
 	}
 }
 
-func configureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
+func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
 	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name), nil)
 	if err != nil {

@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package tcp
+package layer3
 
 import (
 	"fmt"

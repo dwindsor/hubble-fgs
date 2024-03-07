@@ -35,9 +35,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -108,15 +108,15 @@ var (
 		"sk_skb_verdict")
 
 	// Http maps
-	HTTPContext  = tcp.HTTPContext
+	HTTPContext  = layer3.HTTPContext()
 	TailCalls    = program.MapBuilder("http1_calls", Skmsg)
 	SkbTailCalls = program.MapBuilder("http1_calls_skb", SkSkbVerdict)
 	HttpErrorMap = program.MapBuilder("tg_http_err_stats", Skmsg)
 	// Sockops filters
 	HTTPFilterMap = sockops.HttpFilterMap
 	// Socket links
-	SocketMap   = tcp.SocketMap
-	SocketStats = tcp.SocketStats
+	SocketMap   = layer3.SocketMap()
+	SocketStats = layer3.SocketStats()
 )
 
 type httpSensor struct {

@@ -32,8 +32,8 @@ import (
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"

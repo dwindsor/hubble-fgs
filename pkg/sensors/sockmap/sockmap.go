@@ -23,11 +23,11 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap/tlsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -82,10 +82,10 @@ var (
 		"tls_cgrp_egress")
 
 	// TLS maps
-	Map         = tcp.TLSContext
-	MapStats    = tcp.TLSMapStats
-	Bottle      = tcp.TLSBottles
-	BottleStats = tcp.TLSBottleStats
+	Map         = layer3.TLSContext()
+	MapStats    = layer3.TLSMapStats()
+	Bottle      = layer3.TLSBottles()
+	BottleStats = layer3.TLSBottleStats()
 	TailCalls   = program.MapBuilder("tg_tls_calls", Skmsg)
 	// CGroup TLS maps
 	CGParserStats = program.MapBuilder("tg_tls_parser_stats", CGEgress)
@@ -94,8 +94,8 @@ var (
 	FilterMap   = sockops.TlsFilterMap
 	ParserStats = program.MapBuilder("tg_tls_parser_stats", sockops.SockopsEstablished)
 	// Socket links
-	SocketMap   = tcp.SocketMap
-	SocketStats = tcp.SocketStats
+	SocketMap   = layer3.SocketMap()
+	SocketStats = layer3.SocketStats()
 
 	// HTTP maps
 	HTTPMap       = http.HTTPContext
