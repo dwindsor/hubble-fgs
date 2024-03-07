@@ -16,6 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	directionIn  = "in"
+	directionOut = "out"
+)
+
 var (
 	fileTotalEvents = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:      "file_events_total",
@@ -138,19 +143,19 @@ func FileExecTotalEventsInc() {
 }
 
 func FileTotalCacheInEventsInc() {
-	fileTotalCacheEvents.WithLabelValues("in").Inc()
+	fileTotalCacheEvents.WithLabelValues(directionIn).Inc()
 }
 
 func FileTotalCacheOutEventsInc() {
-	fileTotalCacheEvents.WithLabelValues("out").Inc()
+	fileTotalCacheEvents.WithLabelValues(directionOut).Inc()
 }
 
 func FileExecTotalCacheInEventsInc() {
-	fileExecTotalCacheEvents.WithLabelValues("in").Inc()
+	fileExecTotalCacheEvents.WithLabelValues(directionIn).Inc()
 }
 
 func FileExecTotalCacheOutEventsInc() {
-	fileExecTotalCacheEvents.WithLabelValues("out").Inc()
+	fileExecTotalCacheEvents.WithLabelValues(directionOut).Inc()
 }
 
 func FileTotalActionEventsInc(node, namespace, workload, pod, policy, rule, action, operation string) {
