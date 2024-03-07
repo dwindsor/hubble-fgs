@@ -1445,3 +1445,17 @@ The number of raw sockets created
 
 ## Tetragon TLS Metrics
 
+### `tetragon_tls_handshakes_total`
+
+TLS handshake statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `cipher` | `TLS_EXAMPLE_CIPHER` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-workload` |
+| `sni_name` | `example.org` |
+| `version` | `TLS1.0, TLS1.1, TLS1.2, TLS1.3` |
+| `workload` | `example-pod` |
+

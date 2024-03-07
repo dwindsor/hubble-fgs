@@ -138,7 +138,7 @@ func initAllTLSEventsMetrics(registry *prometheus.Registry) {
 }
 
 func InitTLSEventsMetricsForDocs(registry *prometheus.Registry) {
-	tlsmetrics.InitEventsMetrics(registry)
+	tlsmetrics.InitEventsMetricsForDocs(registry)
 }
 
 func InitAllEEMetrics(registry *prometheus.Registry) {

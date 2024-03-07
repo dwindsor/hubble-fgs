@@ -18,6 +18,8 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -60,6 +62,16 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 
 func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(tlsHandshakeTotal)
+}
+
+func InitEventsMetricsForDocs(registry *prometheus.Registry) {
+	InitEventsMetrics(registry)
+
+	for _, v := range tlsapi.KnownTLSVersions {
+		// We could iterate over all known ciphers here, but that's a lot of ciphers.
+		// Let's initialize only with one example cipher.
+		tlsHandshakeTotal.WithLabelValues(append(consts.ExampleProcessLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain)...).Add(0)
+	}
 }
 
 // Maps TLS error codes to strings for display in metrics
