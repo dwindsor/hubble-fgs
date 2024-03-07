@@ -14,13 +14,6 @@ import (
 	"github.com/yalue/native_endian"
 )
 
-var (
-	tlsVersion1_0 = "TLS1.0"
-	tlsVersion1_1 = "TLS1.1"
-	tlsVersion1_2 = "TLS1.2"
-	tlsVersion1_3 = "TLS1.3"
-)
-
 func GetTLSSession(flv *api.FLV64) (s string) {
 	session, _ := flv.Bytes()
 	//       ^ TODO handle truncation?
@@ -110,13 +103,13 @@ func GetTLSFlags(flags uint32) string {
 func GetTLSVersion(version uint16) string {
 	switch version {
 	case api.TLSVersion13:
-		return tlsVersion1_3
+		return api.TLSVersion1_3
 	case api.TLSVersion12:
-		return tlsVersion1_2
+		return api.TLSVersion1_2
 	case api.TLSVersion11:
-		return tlsVersion1_1
+		return api.TLSVersion1_1
 	case api.TLSVersion10:
-		return tlsVersion1_0
+		return api.TLSVersion1_0
 	case api.TLSNone:
 		return ""
 	default:
@@ -180,12 +173,12 @@ func GetTLSNegotitatedVersion12(clientVersion, serverVersion string) string {
 		return clientVersion
 	} else if strings.Contains(serverVersion, "unknown") {
 		return serverVersion
-	} else if clientVersion == tlsVersion1_0 || serverVersion == tlsVersion1_0 {
-		return tlsVersion1_0
-	} else if clientVersion == tlsVersion1_1 || serverVersion == tlsVersion1_1 {
-		return tlsVersion1_1
-	} else if clientVersion == tlsVersion1_2 || serverVersion == tlsVersion1_2 {
-		return tlsVersion1_2
+	} else if clientVersion == api.TLSVersion1_0 || serverVersion == api.TLSVersion1_0 {
+		return api.TLSVersion1_0
+	} else if clientVersion == api.TLSVersion1_1 || serverVersion == api.TLSVersion1_1 {
+		return api.TLSVersion1_1
+	} else if clientVersion == api.TLSVersion1_2 || serverVersion == api.TLSVersion1_2 {
+		return api.TLSVersion1_2
 	}
 	// We should never get here if we do lets use the
 	// code below and we can count it in metrics because

@@ -52,6 +52,13 @@ const (
 	TLSNone      = 0x0000
 )
 
+const (
+	TLSVersion1_0 = "TLS1.0"
+	TLSVersion1_1 = "TLS1.1"
+	TLSVersion1_2 = "TLS1.2"
+	TLSVersion1_3 = "TLS1.3"
+)
+
 // TLS flags
 const (
 	TlsFlagCopyError           = 0x0001
