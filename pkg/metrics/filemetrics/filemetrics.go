@@ -13,6 +13,7 @@ package filemetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -181,7 +182,7 @@ var (
 	))
 )
 
-func InitHealthMetrics(registry *prometheus.Registry) {
+func initHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalEvents)
 	registry.MustRegister(fileExecTotalEvents)
 	registry.MustRegister(fileTotalCacheEvents)
@@ -191,10 +192,6 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileExecCollectorErrors)
 	registry.MustRegister(fileMapInodeFileMax)
 	registry.MustRegister(fileMapInodeDirMax)
-
-	registry.MustRegister(NewBPFCollector())
-	registry.MustRegister(NewBPFInodeMapCollector())
-	registry.MustRegister(NewBPFErrorCollector())
 
 	// Initialize metrics with labels
 	fileTotalCacheEvents.WithLabelValues(directionIn).Add(0)
@@ -207,6 +204,15 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	for ev := range fileEventLabelValues {
 		fileFailedDigest.WithLabelValues(ev.String()).Add(0)
 	}
+}
+
+func InitHealthMetrics(registry *prometheus.Registry) {
+	initHealthMetrics(registry)
+
+	// Register custom collectors
+	registry.MustRegister(NewBPFCollector())
+	registry.MustRegister(NewBPFInodeMapCollector())
+	registry.MustRegister(NewBPFErrorCollector())
 
 	// NOTES:
 	// * error, reason - standardize on a label
@@ -215,11 +221,14 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 }
 
 func InitHealthMetricsForDocs(registry *prometheus.Registry) {
-	InitHealthMetrics(registry)
+	initHealthMetrics(registry)
 
 	// Initialize metrics with example labels
 	fileMapInodeFileMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
 	fileMapInodeDirMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
+
+	// Register custom zero collectors
+	registry.MustRegister(NewBPFZeroCollector())
 }
 
 func InitEventsMetrics(registry *prometheus.Registry) {
@@ -273,4 +282,40 @@ func FileSetFileInodeMapMax(policy string, val float64) {
 
 func FileSetDirectoryInodeMapMax(policy string, val float64) {
 	fileMapInodeDirMax.WithLabelValues(policy).Set(val)
+}
+
+// bpfZeroCollector implements prometheus.Collector. It collects "zero" metrics.
+// It's intended to be used when BPF metrics are not collected, but we still want
+// Prometheus metrics to be exposed.
+type bpfZeroCollector struct {
+	collectors []prometheus.Collector
+}
+
+func NewBPFZeroCollector() prometheus.Collector {
+	return &bpfZeroCollector{
+		collectors: []prometheus.Collector{
+			&bpfCollector{},
+			&bpfInodeMapCollector{},
+			&bpfErrorCollector{},
+		},
+	}
+}
+
+func (c *bpfZeroCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, collector := range c.collectors {
+		collector.Describe(ch)
+	}
+}
+
+func (c *bpfZeroCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, er := range fileapi.FileExecMetricTable {
+		ch <- fileExecEbpfErrors.MustMetric(0, er)
+	}
+	ch <- fileMapInodeFile.MustMetric(0, consts.ExamplePolicyLabel)
+	ch <- fileMapInodeDir.MustMetric(0, consts.ExamplePolicyLabel)
+	for _, hook := range fileHookMap {
+		for _, er := range fileErrorReasonMap {
+			ch <- fileKernelErrors.MustMetric(0, consts.ExamplePolicyLabel, hook, er)
+		}
+	}
 }
