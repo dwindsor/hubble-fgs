@@ -59,6 +59,13 @@ const (
 	TLSVersion1_3 = "TLS1.3"
 )
 
+var KnownTLSVersions = []string{
+	TLSVersion1_0,
+	TLSVersion1_1,
+	TLSVersion1_2,
+	TLSVersion1_3,
+}
+
 // TLS flags
 const (
 	TlsFlagCopyError           = 0x0001
