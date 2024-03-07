@@ -214,6 +214,14 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 	// * Consider merging custom collectors into one
 }
 
+func InitHealthMetricsForDocs(registry *prometheus.Registry) {
+	InitHealthMetrics(registry)
+
+	// Initialize metrics with example labels
+	fileMapInodeFileMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
+	fileMapInodeDirMax.WithLabelValues(consts.ExamplePolicyLabel).Set(0)
+}
+
 func InitEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(fileTotalActionEvents)
 	registry.MustRegister(fileExecTotalActionEvents)

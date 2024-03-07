@@ -453,6 +453,22 @@ Total number of errors during the collector runs for process_file_exec events.
 
 Total number of process_file_exec events (independently of going through the eventcache).
 
+### `tetragon_inode_dir_map_max`
+
+Maximum number of entries in the inode map for directories.
+
+| label | values |
+| ----- | ------ |
+| `policy` | `example-tracingpolicy` |
+
+### `tetragon_inode_file_map_max`
+
+Maximum number of entries in the inode map for files.
+
+| label | values |
+| ----- | ------ |
+| `policy` | `example-tracingpolicy` |
+
 ## Tetragon HTTP Sensor Health Metrics
 
 ### `tetragon_http_collector_errors_total`
