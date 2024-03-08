@@ -379,17 +379,15 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 	return reply, nil
 }
 
-func RenameFsScanner(w string, m string, o uint32, a uint32, pin string, cid string, spec v1alpha1.FileSpec, polName string, ruleId uint32) error {
+func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.FileSpec, flags uint32) error {
 	f := fm.FsScannerRename{
-		WalkPath:    w,
-		MapDir:      m,
-		Op:          o,
-		Action:      a,
-		PinPath:     pin,
-		ContainerID: cid,
+		WalkPath:    path,
+		MapDir:      mapDir,
+		PinPath:     pinPath,
+		ContainerID: cId,
 		Spec:        spec,
 		PolicyName:  polName,
-		RuleID:      ruleId,
+		Flags:       flags,
 	}
 
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
@@ -735,18 +733,6 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	if hasFlag(m.Flags, SRC_DIRECTORY) {
-		var op uint32
-		var action uint32
-
-		path := filepath.Join(dstDir, dstName)
-		if hasFlag(m.Flags, MOVE_INSIDE) || hasFlag(m.Flags, MOVE_INTERNALLY) {
-			op = fm.AddToMap
-			action = fm.FilterMatch
-		} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
-			op = fm.RemoveFromMap
-			action = fm.FilterIgnore
-		}
-
 		s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
@@ -762,7 +748,8 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			renameCid = dstCid // both not empty -- use destination containerID
 		}
 
-		if err := RenameFsScanner(path, option.Config.BpfDir, op, action, s.PinPathPrefix, renameCid, *s.Spec, s.TpName, m.RuleID); err != nil {
+		path := filepath.Join(dstDir, dstName)
+		if err := RenameFsScanner(path, option.Config.BpfDir, s.PinPathPrefix, renameCid, s.TpName, *s.Spec, m.Flags); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvScanner)
 			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}

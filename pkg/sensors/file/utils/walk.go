@@ -688,3 +688,152 @@ func GetMatcher(p v1alpha1.FilePathPattern, walkPath string) (PathMatcher, error
 		return nil, fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
 	}
 }
+
+// CheckPath checks if the path should be monitored or ignored based on the
+// file spec. It returns the action to be taken and the ruleID that matched.
+func CheckPath(spec v1alpha1.FileSpec, path string, mode fs.FileMode) (uint32, uint32, error) {
+	// if this is a directory add a trailing slash
+	if mode.IsDir() {
+		if path[len(path)-1] != '/' {
+			path += "/"
+		}
+	}
+
+	// by default we ignore the path
+	ret := uint32(FilterIgnore)
+	ruleID := uint32(0)
+	for i, p := range spec.PathsPatterns {
+		matcher, err := GetMatcher(p, "")
+		if err != nil {
+			return 0, 0, err
+		}
+
+		if !matcher.MatchPath(path, mode) {
+			continue
+		}
+
+		a := matcher.OverrideAction(uint32(FilterMatch), mode)
+		if a == FilterMatch || a == FilterMonitor {
+			ret = a
+			ruleID = uint32(i)
+		}
+
+		// we matched so no need to check more rules
+		if ret == FilterMatch {
+			break
+		}
+	}
+
+	// nothing matched, so no need to check exclude
+	if ret == FilterIgnore {
+		return ret, ruleID, nil
+	}
+
+	// now check if this path should be excluded
+	for _, e := range spec.PathsExclude {
+		if strings.HasPrefix(path, e) {
+			return FilterIgnore, 0, nil
+		}
+	}
+
+	return ret, ruleID, nil
+}
+
+// This function is used to walk the path and remove inodes from the map.
+func WalkPathRenameCleanup(path string, store InodeStore) error {
+	return filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		stat, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			return fmt.Errorf("stat is not a syscall.Stat_t")
+		}
+
+		switch mode := info.Mode(); {
+		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
+			store.RemoveInode(fileapi.InodeKey{
+				Ino:      stat.Ino,
+				DevMajor: GetDevMajor(stat.Dev),
+				DevMinor: GetDevMinor(stat.Dev),
+			})
+		}
+
+		return nil
+	})
+}
+
+// This function is used to walk the path and add inodes to the map.
+// It is used in the case of a rename operation when we move a directory
+// inside or internally a watched directory.
+func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.FileMode) (uint32, uint32, error), locationFn func(v *fileapi.InodeVal)) error {
+	return filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if IsSymlink(info.Mode()) {
+			link, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return nil
+			}
+			path = link
+		}
+
+		fileinfo, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+
+		action, ruleID, err := actionFn(path, fileinfo.Mode())
+		if err != nil {
+			return err
+		}
+
+		if action == FilterIgnore {
+			return nil
+		}
+
+		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return fmt.Errorf("stat is not a syscall.Stat_t")
+		}
+
+		key := fileapi.InodeKey{
+			Ino:      stat.Ino,
+			DevMajor: GetDevMajor(stat.Dev),
+			DevMinor: GetDevMinor(stat.Dev),
+		}
+
+		val := fileapi.InodeVal{
+			Action:   action,
+			PathSize: uint32(len(path)),
+			RuleID:   ruleID,
+		}
+		locationFn(&val)
+
+		switch mode := fileinfo.Mode(); {
+		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
+			if mode.IsDir() {
+				// We should have all directory names to end with "/"
+				// Check if this is the case, otherwise add it.
+				if path[len(path)-1] != '/' {
+					path += "/"
+				}
+
+				val.Mode = fileapi.HashMapFileModeDirectory
+			} else {
+				val.Mode = fileapi.HashMapFileModeFile
+			}
+
+			copy(val.FullPath[:], path)
+
+			if err := store.AddInode(key, val); err != nil {
+				return fmt.Errorf("failed to call AddInode: %w", err)
+			}
+		}
+
+		return nil
+	})
+}

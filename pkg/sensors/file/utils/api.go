@@ -46,11 +46,10 @@ type FsScannerRename struct {
 	Spec        v1alpha1.FileSpec
 	WalkPath    string
 	MapDir      string
-	Op          uint32
-	Action      uint32
 	PinPath     string
 	ContainerID string
 	RuleID      uint32
+	Flags       uint32
 }
 
 type SpecPinPath struct {

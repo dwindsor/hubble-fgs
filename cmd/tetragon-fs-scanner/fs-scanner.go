@@ -13,6 +13,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/rpc"
@@ -30,6 +31,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -253,16 +255,24 @@ func renameDir(args *fm.FsScannerRename) error {
 		}
 	}
 
-	p := args.Spec.PathsPatterns[args.RuleID]
-	matcher, err := fm.GetMatcher(p, args.WalkPath)
-	if err != nil {
-		return err
+	actionFn := func(path string, mode fs.FileMode) (uint32, uint32, error) {
+		return fm.CheckPath(args.Spec, path, mode)
 	}
 
-	if fNum, dNum, err := fm.WalkPathRaw(matcher, args.RuleID, maps, args.Op, args.Action, true, locFn); err != nil {
-		logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories failed")
-	} else {
-		logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+	hasFlag := func(flags, flag uint32) bool {
+		return (flags & flag) != 0
+	}
+
+	if hasFlag(args.Flags, file.MOVE_OUTSIDE) || hasFlag(args.Flags, file.MOVE_INTERNALLY) {
+		if err := fm.WalkPathRenameCleanup(args.WalkPath, maps); err != nil {
+			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Removing files/directories during rename failed")
+		}
+	}
+
+	if hasFlag(args.Flags, file.MOVE_INSIDE) || hasFlag(args.Flags, file.MOVE_INTERNALLY) {
+		if err := fm.WalkPathRenameAdd(args.WalkPath, maps, actionFn, locFn); err != nil {
+			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories during rename failed")
+		}
 	}
 
 	return nil
