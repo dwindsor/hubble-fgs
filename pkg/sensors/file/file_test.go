@@ -3039,3 +3039,65 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
+
+func TestFileRenameDirSuffix(t *testing.T) {
+	if !bpf.HasProgramLargeSize() {
+		t.Skip("Suffix match in FIM requires support for large programs")
+	}
+
+	outTest := filepath.Join(workingDir, t.Name())
+	createTestDir(t, outTest)
+
+	outDst := filepath.Join(outTest, "a")
+	createTestDir(t, outDst)
+
+	outSrc := filepath.Join(outTest, "b")
+	createTestDir(t, outSrc)
+
+	files := []string{"file.a", "file.b", "file.c", "file.d"}
+	for _, file := range files {
+		oFile := filepath.Join(outSrc, file)
+		createFileInDir(t, oFile)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	base := base.GetInitialSensor()
+	specFile := newSpecFile(t, fmt.Sprintf("%s/", outDst), "file_monitoring_suffix.yaml.tmpl")
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		pol.ResetFIMTracingPolicies()
+	})
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(outSrc, fmt.Sprintf("%s/b", outDst)); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	time.Sleep(renameDelay * time.Millisecond) // should be enough to handle rename in user-space
+
+	outRead := filepath.Join(outTest, "a", "b")
+	for _, file := range files {
+		fileRead(t, filepath.Join(outRead, file))
+	}
+
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, outSrc, fmt.Sprintf("%s/b", outDst), "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS"),
+		renameReadChecker(t, filepath.Join(outRead, files[0])),
+		renameReadChecker(t, filepath.Join(outRead, files[1])),
+	}
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}

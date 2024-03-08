@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-suffix"
+spec:
+  file:
+    file_paths_patterns:
+    - type: FilePrefixSuffix
+      file_prefix_suffix:
+        prefix: {{.MatchedPath}}
+        suffix: ".a"
+    - type: FilePrefixSuffix
+      file_prefix_suffix:
+        prefix: {{.MatchedPath}}
+        suffix: ".b"
+    monitorHostFiles: true
