@@ -206,23 +206,9 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 	}
 
 	for i, p := range args.Spec.PathsPatterns {
-		var matcher fm.PathMatcher
-		switch p.Type {
-		case "FilePrefixSuffix":
-			matcher = fm.PrefixSuffixFileMatcher{
-				Prefix: p.FilePrefixSuffix.Prefix,
-				Suffix: p.FilePrefixSuffix.Suffix,
-			}
-		case "PathPrefix":
-			matcher = fm.PrefixPathMatcher{
-				Prefix: p.PathPrefix.Prefix,
-			}
-		case "FileExactMatch":
-			matcher = fm.ExactPathFileMatcher{
-				Path: p.FileExactMatch.Path,
-			}
-		default:
-			return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
+		matcher, err := fm.GetMatcher(p, "")
+		if err != nil {
+			return err
 		}
 
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
@@ -268,27 +254,9 @@ func renameDir(args *fm.FsScannerRename) error {
 	}
 
 	p := args.Spec.PathsPatterns[args.RuleID]
-
-	var matcher fm.PathMatcher
-	switch p.Type {
-	case "FilePrefixSuffix":
-		matcher = fm.PrefixSuffixFileMatcher{
-			WalkPath: args.WalkPath,
-			Prefix:   p.FilePrefixSuffix.Prefix,
-			Suffix:   p.FilePrefixSuffix.Suffix,
-		}
-	case "PathPrefix":
-		matcher = fm.PrefixPathMatcher{
-			WalkPath: args.WalkPath,
-			Prefix:   p.PathPrefix.Prefix,
-		}
-	case "FileExactMatch":
-		matcher = fm.ExactPathFileMatcher{
-			WalkPath: args.WalkPath,
-			Path:     p.FileExactMatch.Path,
-		}
-	default:
-		return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
+	matcher, err := fm.GetMatcher(p, args.WalkPath)
+	if err != nil {
+		return err
 	}
 
 	if fNum, dNum, err := fm.WalkPathRaw(matcher, args.RuleID, maps, args.Op, args.Action, true, locFn); err != nil {
@@ -364,23 +332,9 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 		}
 
 		for i, p := range tp.Spec.PathsPatterns {
-			var matcher fm.PathMatcher
-			switch p.Type {
-			case "FilePrefixSuffix":
-				matcher = fm.PrefixSuffixFileMatcher{
-					Prefix: p.FilePrefixSuffix.Prefix,
-					Suffix: p.FilePrefixSuffix.Suffix,
-				}
-			case "PathPrefix":
-				matcher = fm.PrefixPathMatcher{
-					Prefix: p.PathPrefix.Prefix,
-				}
-			case "FileExactMatch":
-				matcher = fm.ExactPathFileMatcher{
-					Path: p.FileExactMatch.Path,
-				}
-			default:
-				return fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
+			matcher, err := fm.GetMatcher(p, "")
+			if err != nil {
+				return err
 			}
 
 			if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {

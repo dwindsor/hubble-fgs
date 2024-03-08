@@ -665,3 +665,26 @@ func PathPatternToString(p v1alpha1.FilePathPattern) string {
 	}
 	return fmt.Sprintf("<unknown type: %s>", p.Type)
 }
+
+func GetMatcher(p v1alpha1.FilePathPattern, walkPath string) (PathMatcher, error) {
+	switch p.Type {
+	case "FilePrefixSuffix":
+		return PrefixSuffixFileMatcher{
+			WalkPath: walkPath,
+			Prefix:   p.FilePrefixSuffix.Prefix,
+			Suffix:   p.FilePrefixSuffix.Suffix,
+		}, nil
+	case "PathPrefix":
+		return PrefixPathMatcher{
+			WalkPath: walkPath,
+			Prefix:   p.PathPrefix.Prefix,
+		}, nil
+	case "FileExactMatch":
+		return ExactPathFileMatcher{
+			WalkPath: walkPath,
+			Path:     p.FileExactMatch.Path,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
+	}
+}
