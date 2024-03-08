@@ -198,40 +198,6 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		   _(&new_dir->i_ino));
 	get_fs_info(&(v->msg.dst.parent_fs), &(v->msg.dst.parent_ino), new_dir, new_dentry);
 
-	// optimization: try to avoid doing path resolution and path copies
-	// if we don't care both for src and dst
-	{
-		__u32 src_watched = 0, dst_watched = 0;
-		struct inode_val *fv;
-
-		if ((v->msg.flags & SRC_REG_FILE) ||
-		    (v->msg.flags & SRC_DIRECTORY)) {
-			fv = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.src.parent_ino,
-				v->msg.src.parent_fs.dev);
-			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
-				src_watched = 1;
-		}
-
-		if ((v->msg.flags & DST_REG_FILE) ||
-		    (v->msg.flags & DST_DIRECTORY) ||
-		    (v->msg.flags & DST_NOT_EXISTS)) {
-			fv = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.dst.parent_ino,
-				v->msg.dst.parent_fs.dev);
-			if (fv && (fv->action == FILTER_MATCH || fv->action == FILTER_MONITOR))
-				dst_watched = 1;
-		}
-
-		if (!src_watched && !dst_watched) {
-			if (map_delete_elem(&rename_retprobe_map, &k) < 0)
-				return -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
-			return 0; // we don't care about the source and/or the destination
-		}
-	}
-
 	// check if we care about src and get path for src (old)
 	{
 		struct inode_val *fval = 0;
