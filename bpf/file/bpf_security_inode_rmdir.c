@@ -45,7 +45,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	operation = eval_selectors(action_rmdir, 0);
+	operation = eval_selectors(action_rmdir, 0, 0);
 	if (!(operation & FILE_OP_POST))
 		goto ignore_rmdir;
 

@@ -60,7 +60,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	operation = eval_selectors(action_delete, 0);
+	operation = eval_selectors(action_delete, 0, 0);
 	if (!(operation & FILE_OP_POST))
 		goto ignore_unlink;
 

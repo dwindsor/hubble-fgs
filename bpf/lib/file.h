@@ -158,6 +158,11 @@ struct file_sel_caps {
 	__u64 filter; // Capabilities to match (ORed)
 };
 
+struct file_sel_rename {
+	__u32 op;
+	__u32 matchMask;
+};
+
 struct ns_filter {
 	union {
 		struct {

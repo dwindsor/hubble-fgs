@@ -314,6 +314,13 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
 	__type(key, __u32); /* selector id */
+	__type(value, struct file_sel_rename);
+} file_rename_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__type(key, __u32); /* selector id */
 	__type(value, struct file_sel_namespaces);
 } file_namespaces_map SEC(".maps");
 
@@ -584,6 +591,28 @@ static inline __attribute__((always_inline)) int check_match_namespaces(__u32 se
 }
 
 // returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_rename(__u32 sel_idx, __u32 action, __u32 flags)
+{
+	struct file_sel_rename *sel;
+
+	// only applicable to rename events
+	if (action != action_rename)
+		return 1;
+
+	sel = map_lookup_elem(&file_rename_map, &sel_idx);
+	if (!sel) // no matchRenameSrcType for this selector
+		return 1;
+
+	// the agent ensures that this is always in
+	if (sel->op != op_filter_in)
+		return 0;
+
+	// The user sets SRC_REG_FILE or SRC_DIRECTORY in sel->matchMask.
+	// We compare that with the flags computed in the kprobe/vfs_rename program.
+	return (sel->matchMask & flags) != 0;
+}
+
+// returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
 	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
@@ -593,7 +622,7 @@ static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct execve_map_value *execve)
+__eval_selectors(__u32 sel_idx, __u32 action, __u32 rename_flags, struct digest_key *digest, struct execve_map_value *execve)
 {
 	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
@@ -607,6 +636,8 @@ __eval_selectors(__u32 sel_idx, __u32 action, struct digest_key *digest, struct 
 	if (!check_match_capabilities(sel_idx))
 		goto nopost;
 #endif
+	if (!check_match_rename(sel_idx, action, rename_flags))
+		goto nopost;
 	if (!check_enforcement(sel_idx))
 		goto post;
 
@@ -618,7 +649,7 @@ nopost:
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action, struct digest_key *digest)
+eval_selectors(__u32 action, __u32 rename_flags, struct digest_key *digest)
 {
 	__u32 ppid, i, val = 0, zero = 0;
 	struct file_config_map_value *conf;
@@ -652,7 +683,7 @@ eval_selectors(__u32 action, struct digest_key *digest)
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, digest, execve);
+		val = __eval_selectors(i, action, rename_flags, digest, execve);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}

@@ -33,6 +33,29 @@ const (
 	RemoveFromMap = 1
 )
 
+const (
+	MOVE_INSIDE     = (1 << 0)
+	MOVE_OUTSIDE    = (1 << 1)
+	MOVE_INTERNALLY = (1 << 2)
+	SRC_REG_FILE    = (1 << 3)
+	SRC_DIRECTORY   = (1 << 4)
+	SRC_CHAR_DEV    = (1 << 5)
+	SRC_BLOCK_DEV   = (1 << 6)
+	SRC_NAMED_PIPE  = (1 << 7)
+	SRC_SYMLINK     = (1 << 8)
+	SRC_SOCKET      = (1 << 9)
+	SRC_INVALID     = (1 << 10)
+	DST_NOT_EXISTS  = (1 << 11)
+	DST_REG_FILE    = (1 << 12)
+	DST_DIRECTORY   = (1 << 13)
+	DST_CHAR_DEV    = (1 << 14)
+	DST_BLOCK_DEV   = (1 << 15)
+	DST_NAMED_PIPE  = (1 << 16)
+	DST_SYMLINK     = (1 << 17)
+	DST_SOCKET      = (1 << 18)
+	DST_INVALID     = (1 << 19)
+)
+
 type FsScannerInit struct {
 	PolicyName string
 	Spec       v1alpha1.FileSpec

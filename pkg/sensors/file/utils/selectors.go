@@ -95,6 +95,11 @@ type SelOps struct {
 	opsMap sync.Map
 }
 
+type RenameOps struct {
+	opVal        uint32
+	opsMatchMask uint32
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -110,6 +115,9 @@ type KernelSelectorState struct {
 	// matchLinuxNamespaces
 	namespaces map[uint32]*fileapi.SelNs
 
+	// matchRenameSrcType
+	rename map[uint32]*RenameOps
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -124,6 +132,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		digests:             map[uint32]*SelDigests{},
 		capabilities:        map[uint32]*fileapi.SelCaps{},
 		namespaces:          map[uint32]*fileapi.SelNs{},
+		rename:              map[uint32]*RenameOps{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -149,6 +158,16 @@ func (k *KernelSelectorState) InitOrGetNamespaces(selIdx uint32) *fileapi.SelNs 
 	}
 	inner := &fileapi.SelNs{}
 	k.namespaces[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) InitOrGetRename(selIdx uint32) *RenameOps {
+	val, ok := k.rename[selIdx]
+	if ok {
+		return val
+	}
+	inner := &RenameOps{}
+	k.rename[selIdx] = inner
 	return inner
 }
 
@@ -435,6 +454,15 @@ func GenerateFileNamespacesMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	return nil
 }
 
+func GenerateFileRenameMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, rename := range sel.rename {
+		if err := m.Update(idx, rename, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -681,6 +709,47 @@ func ParseLinuxMatchNamespaces(k *KernelSelectorState, nses []v1alpha1.FileNames
 	return nil
 }
 
+func ParseRenameSrcType(k *KernelSelectorState, m v1alpha1.FileRenameTypeSelector, selIdx int) error {
+	val := k.InitOrGetRename(uint32(selIdx))
+	var err error
+
+	// operator
+	val.opVal, err = selectors.SelectorOp(m.Operator)
+	if err != nil {
+		return fmt.Errorf("matchRenameSrcType error: %w", err)
+	}
+	if val.opVal != selectors.SelectorOpIn {
+		return fmt.Errorf("matchRenameSrcType supports only In operator")
+	}
+
+	// values
+	val.opsMatchMask = 0
+	for _, v := range m.Values {
+		valstr := strings.ToUpper(v)
+		if valstr == "FILE" {
+			val.opsMatchMask |= SRC_REG_FILE
+		} else if valstr == "DIRECTORY" {
+			val.opsMatchMask |= SRC_DIRECTORY
+		} else {
+			return fmt.Errorf("parseRenameSrcType: value %s unknown", valstr)
+		}
+	}
+
+	return nil
+}
+
+func ParseRenameSrcTypes(k *KernelSelectorState, mv []v1alpha1.FileRenameTypeSelector, selIdx int) error {
+	if len(mv) > 1 {
+		return fmt.Errorf("only support one rename type filter inside a single selector")
+	}
+	for _, m := range mv {
+		if err := ParseRenameSrcType(k, m, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > MaxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -701,6 +770,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 		}
 		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)
+		}
+		if err := ParseRenameSrcTypes(kernelSelectors, s.MatchRenameSrcType, i); err != nil {
+			return nil, fmt.Errorf("parseRenameSrcType error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)

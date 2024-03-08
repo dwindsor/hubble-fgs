@@ -31,7 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -263,13 +262,13 @@ func renameDir(args *fm.FsScannerRename) error {
 		return (flags & flag) != 0
 	}
 
-	if hasFlag(args.Flags, file.MOVE_OUTSIDE) || hasFlag(args.Flags, file.MOVE_INTERNALLY) {
+	if hasFlag(args.Flags, fm.MOVE_OUTSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
 		if err := fm.WalkPathRenameCleanup(args.WalkPath, maps); err != nil {
 			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Removing files/directories during rename failed")
 		}
 	}
 
-	if hasFlag(args.Flags, file.MOVE_INSIDE) || hasFlag(args.Flags, file.MOVE_INTERNALLY) {
+	if hasFlag(args.Flags, fm.MOVE_INSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
 		if err := fm.WalkPathRenameAdd(args.WalkPath, maps, actionFn, locFn); err != nil {
 			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories during rename failed")
 		}

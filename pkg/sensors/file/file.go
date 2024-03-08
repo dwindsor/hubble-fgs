@@ -81,29 +81,6 @@ var (
 	hasOverlayBTF = false
 )
 
-const (
-	MOVE_INSIDE     = (1 << 0)
-	MOVE_OUTSIDE    = (1 << 1)
-	MOVE_INTERNALLY = (1 << 2)
-	SRC_REG_FILE    = (1 << 3)
-	SRC_DIRECTORY   = (1 << 4)
-	SRC_CHAR_DEV    = (1 << 5)
-	SRC_BLOCK_DEV   = (1 << 6)
-	SRC_NAMED_PIPE  = (1 << 7)
-	SRC_SYMLINK     = (1 << 8)
-	SRC_SOCKET      = (1 << 9)
-	SRC_INVALID     = (1 << 10)
-	DST_NOT_EXISTS  = (1 << 11)
-	DST_REG_FILE    = (1 << 12)
-	DST_DIRECTORY   = (1 << 13)
-	DST_CHAR_DEV    = (1 << 14)
-	DST_BLOCK_DEV   = (1 << 15)
-	DST_NAMED_PIPE  = (1 << 16)
-	DST_SYMLINK     = (1 << 17)
-	DST_SOCKET      = (1 << 18)
-	DST_INVALID     = (1 << 19)
-)
-
 type Mode uint32
 
 const (
@@ -732,7 +709,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		dstCid = string(m.Dst.Path.ContainerID[:])
 	}
 
-	if hasFlag(m.Flags, SRC_DIRECTORY) {
+	if hasFlag(m.Flags, fm.SRC_DIRECTORY) {
 		s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
@@ -757,23 +734,23 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 	// The following should not be possible to happen. If we catch any of these we should handle them
 	// (not difficult to implement)
-	if hasFlag(m.Flags, SRC_DIRECTORY) {
-		if hasFlag(m.Flags, DST_REG_FILE) {
-			if hasFlag(m.Flags, MOVE_INSIDE) {
+	if hasFlag(m.Flags, fm.SRC_DIRECTORY) {
+		if hasFlag(m.Flags, fm.DST_REG_FILE) {
+			if hasFlag(m.Flags, fm.MOVE_INSIDE) {
 				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INSIDE - DST_REG_FILE]")
-			} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
+			} else if hasFlag(m.Flags, fm.MOVE_OUTSIDE) {
 				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_OUTSIDE - DST_REG_FILE]")
-			} else if hasFlag(m.Flags, MOVE_INTERNALLY) {
+			} else if hasFlag(m.Flags, fm.MOVE_INTERNALLY) {
 				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INTERNALLY - DST_REG_FILE]")
 			}
 		}
-	} else if hasFlag(m.Flags, SRC_REG_FILE) {
-		if hasFlag(m.Flags, DST_DIRECTORY) {
-			if hasFlag(m.Flags, MOVE_INSIDE) {
+	} else if hasFlag(m.Flags, fm.SRC_REG_FILE) {
+		if hasFlag(m.Flags, fm.DST_DIRECTORY) {
+			if hasFlag(m.Flags, fm.MOVE_INSIDE) {
 				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]")
-			} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
+			} else if hasFlag(m.Flags, fm.MOVE_OUTSIDE) {
 				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]")
-			} else if hasFlag(m.Flags, MOVE_INTERNALLY) {
+			} else if hasFlag(m.Flags, fm.MOVE_INTERNALLY) {
 				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]")
 			}
 		}
@@ -1159,6 +1136,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			},
 			{
 				Index: 0,
+				Name:  "file_rename_map",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
+						return fmt.Errorf("file_rename_map: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
 				Name:  "file_actions_map",
 				Load: func(m *ebpf.Map, _ uint32) error {
 					if err := fm.GenerateFileActionsMap(m, sel); err != nil {
@@ -1220,6 +1207,15 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 				)
 			}
+		}
+
+		// only for rename hooks
+		if h.name == "vfs_rename" {
+			m := "file_rename_map"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+			)
 		}
 
 		for _, m := range SharedMaps {

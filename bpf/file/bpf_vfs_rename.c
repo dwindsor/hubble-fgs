@@ -289,7 +289,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// resolve any paths (if needed) for items outside of watched path
 	resolve_missed_paths(v, conf);
 
-	v->operation = eval_selectors(action_rename, 0);
+	v->operation = eval_selectors(action_rename, v->msg.flags, 0);
 
 	/*
 	 * We will use 2 keys:
