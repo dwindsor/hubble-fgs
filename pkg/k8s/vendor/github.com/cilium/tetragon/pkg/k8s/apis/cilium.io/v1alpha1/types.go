@@ -169,6 +169,17 @@ type DigestSelector struct {
 	Values []DigestSelectorValue `json:"values,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=File;Directory
+type RenameTypeSelectorValue = string
+
+type FileRenameTypeSelector struct {
+	// +kubebuilder:validation:Enum=In
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []RenameTypeSelectorValue `json:"values,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -186,6 +197,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of capabilities and IDs
 	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of file rename type filters.
+	MatchRenameSrcType []FileRenameTypeSelector `json:"matchRenameSrcType,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
