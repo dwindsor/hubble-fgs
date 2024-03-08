@@ -208,12 +208,12 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 	}
 
 	for i, p := range args.Spec.PathsPatterns {
-		matcher, err := fm.GetMatcher(p, "")
+		matcher, err := fm.GetMatcher(p)
 		if err != nil {
 			return err
 		}
 
-		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
@@ -224,7 +224,7 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		matcher := fm.PrefixPathMatcher{
 			Prefix: p,
 		}
-		if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, false, locFn); err != nil {
+		if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
 			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Excluding files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
@@ -342,12 +342,12 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 		}
 
 		for i, p := range tp.Spec.PathsPatterns {
-			matcher, err := fm.GetMatcher(p, "")
+			matcher, err := fm.GetMatcher(p)
 			if err != nil {
 				return err
 			}
 
-			if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, false, locFn); err != nil {
+			if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding files/directories failed")
 			} else {
 				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
@@ -358,7 +358,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			matcher := fm.PrefixPathMatcher{
 				Prefix: p,
 			}
-			if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, false, locFn); err != nil {
+			if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
 				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
 			} else {
 				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)

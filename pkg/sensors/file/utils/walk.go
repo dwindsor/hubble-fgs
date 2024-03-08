@@ -27,7 +27,6 @@ import (
 )
 
 type InodeStore interface {
-	LookupFilter(string) fileapi.LPMMapValue
 	AddInode(fileapi.InodeKey, fileapi.InodeVal) error
 	RemoveInode(fileapi.InodeKey) error
 	LookupInode(fileapi.InodeKey, *fileapi.InodeVal) error
@@ -66,20 +65,6 @@ func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
 	return maps, cleanupFn, nil
 }
 
-func (m FimMaps) LookupFilter(filter string) fileapi.LPMMapValue {
-	var k fileapi.LPMMapKey
-	var v fileapi.LPMMapValue
-
-	k.Prefixlen = uint32(len(filter)) * 8
-	copy(k.Data[:], filter)
-
-	err := m.Lpm.Lookup(k, &v)
-	if err != nil { // key does not exist so ignore
-		return fileapi.LPMMapValue{Action: FilterIgnore}
-	}
-	return v
-}
-
 func (m FimMaps) AddInode(key fileapi.InodeKey, val fileapi.InodeVal) error {
 	err := m.Inode.Update(key, val, ebpf.UpdateAny)
 	if err != nil {
@@ -110,10 +95,6 @@ type FimHashMap struct {
 
 func InitFimHashMap(m map[fileapi.InodeKey]fileapi.InodeVal) FimHashMap {
 	return FimHashMap{M: m}
-}
-
-func (m FimHashMap) LookupFilter(_ string) fileapi.LPMMapValue {
-	return fileapi.LPMMapValue{Action: FilterIgnore}
 }
 
 func (m FimHashMap) AddInode(key fileapi.InodeKey, val fileapi.InodeVal) error {
@@ -297,14 +278,10 @@ type PathMatcher interface {
 }
 
 type PrefixPathMatcher struct {
-	WalkPath string
-	Prefix   string
+	Prefix string
 }
 
 func (p PrefixPathMatcher) GetWalkPath() string {
-	if p.WalkPath != "" {
-		return p.WalkPath
-	}
 	return p.Prefix
 }
 
@@ -320,15 +297,11 @@ func (p PrefixPathMatcher) String() string {
 }
 
 type PrefixSuffixFileMatcher struct {
-	WalkPath string
-	Prefix   string
-	Suffix   string
+	Prefix string
+	Suffix string
 }
 
 func (p PrefixSuffixFileMatcher) GetWalkPath() string {
-	if p.WalkPath != "" {
-		return p.WalkPath
-	}
 	return p.Prefix
 }
 
@@ -358,14 +331,10 @@ func (p PrefixSuffixFileMatcher) String() string {
 }
 
 type ExactPathFileMatcher struct {
-	WalkPath string
-	Path     string
+	Path string
 }
 
 func (p ExactPathFileMatcher) GetWalkPath() string {
-	if p.WalkPath != "" {
-		return p.WalkPath
-	}
 	return p.Path
 }
 
@@ -390,11 +359,10 @@ func (p ExactPathFileMatcher) String() string {
 	return fmt.Sprintf("exact:[%s]", p.Path)
 }
 
-func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, checkPrefix bool, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
+func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
-	removedDirectory := false
 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -451,23 +419,11 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				val.RuleID = rule
 				val.Mode = fileapi.HashMapFileModeFile
 
-				addToMap := true
-				if checkPrefix {
-					if store.LookupFilter(path).Action == FilterIgnore {
-						addToMap = false
-					}
-				}
-				if addToMap {
-					err := store.AddInode(key, val)
-					if err != nil {
-						return fmt.Errorf("failed to call addFilePath: %w", err)
-					}
+				if err := store.AddInode(key, val); err != nil {
+					return fmt.Errorf("failed to call addFilePath: %w", err)
 				}
 			} else if op == RemoveFromMap {
-				err := store.RemoveInode(key)
-				if err != nil && checkPrefix {
-					return fmt.Errorf("failed to call removeFilePath: %w", err)
-				}
+				store.RemoveInode(key)
 			}
 
 			totalFiles++
@@ -494,24 +450,11 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				val.RuleID = rule
 				val.Mode = fileapi.HashMapFileModeDirectory
 
-				addToMap := true
-				if checkPrefix {
-					if store.LookupFilter(path).Action == FilterIgnore {
-						addToMap = false
-					}
-				}
-				if addToMap {
-					err := store.AddInode(key, val)
-					if err != nil {
-						return fmt.Errorf("failed to call addDirPath: %w", err)
-					}
+				if err := store.AddInode(key, val); err != nil {
+					return fmt.Errorf("failed to call addDirPath: %w", err)
 				}
 			} else if op == RemoveFromMap {
-				err := store.RemoveInode(key)
-				if err != nil && checkPrefix {
-					return fmt.Errorf("failed to call removeFilePath: %w", err)
-				}
-				removedDirectory = removedDirectory || (err == nil)
+				store.RemoveInode(key)
 			}
 
 			totalDirectories++
@@ -534,58 +477,6 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		if err := filepath.Walk(p, walkFn); err != nil {
 			return 0, 0, err
 		}
-	}
-
-	// In the case of file_paths_exclude the previous loop removes all
-	// entries that have been already added due to file_paths in a previous
-	// call of this function. The following adds an entry for the top-level
-	// directory with the FilterIgnore flag to avoid having new objects
-	// created there to be monitored.
-	// Checks:
-	// 1. !checkPrefix -> not a rename operation
-	// 2. removedDirectory -> if we did not removeany dirs in the previous step, the user excludes something that we didn't monitor
-	if op == RemoveFromMap && action == FilterIgnore && !checkPrefix && removedDirectory {
-		for _, p := range paths {
-			info, err := os.Stat(p)
-			if err != nil {
-				continue
-			}
-
-			if !info.Mode().IsDir() {
-				continue
-			}
-
-			stat, ok := info.Sys().(*syscall.Stat_t)
-			if !ok {
-				continue
-			}
-
-			key := fileapi.InodeKey{
-				Ino:      stat.Ino,
-				DevMajor: GetDevMajor(stat.Dev),
-				DevMinor: GetDevMinor(stat.Dev),
-			}
-
-			if path[len(path)-1:] != "/" {
-				path += "/"
-			}
-
-			val := fileapi.InodeVal{
-				Action:   FilterIgnore,
-				PathSize: uint32(len(path)),
-				Mode:     fileapi.HashMapFileModeDirectory,
-			}
-			copy(val.FullPath[:], path)
-			locationFn(&val)
-
-			store.AddInode(key, val)
-		}
-	}
-
-	// we are doing a rename operation so no need to follow all
-	// path components
-	if checkPrefix {
-		return totalFiles, totalDirectories, nil
 	}
 
 	// Once walk is done successfully, we should add other path components
@@ -666,23 +557,20 @@ func PathPatternToString(p v1alpha1.FilePathPattern) string {
 	return fmt.Sprintf("<unknown type: %s>", p.Type)
 }
 
-func GetMatcher(p v1alpha1.FilePathPattern, walkPath string) (PathMatcher, error) {
+func GetMatcher(p v1alpha1.FilePathPattern) (PathMatcher, error) {
 	switch p.Type {
 	case "FilePrefixSuffix":
 		return PrefixSuffixFileMatcher{
-			WalkPath: walkPath,
-			Prefix:   p.FilePrefixSuffix.Prefix,
-			Suffix:   p.FilePrefixSuffix.Suffix,
+			Prefix: p.FilePrefixSuffix.Prefix,
+			Suffix: p.FilePrefixSuffix.Suffix,
 		}, nil
 	case "PathPrefix":
 		return PrefixPathMatcher{
-			WalkPath: walkPath,
-			Prefix:   p.PathPrefix.Prefix,
+			Prefix: p.PathPrefix.Prefix,
 		}, nil
 	case "FileExactMatch":
 		return ExactPathFileMatcher{
-			WalkPath: walkPath,
-			Path:     p.FileExactMatch.Path,
+			Path: p.FileExactMatch.Path,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown type (%s) in PathsPatterns", p.Type)
@@ -703,7 +591,7 @@ func CheckPath(spec v1alpha1.FileSpec, path string, mode fs.FileMode) (uint32, u
 	ret := uint32(FilterIgnore)
 	ruleID := uint32(0)
 	for i, p := range spec.PathsPatterns {
-		matcher, err := GetMatcher(p, "")
+		matcher, err := GetMatcher(p)
 		if err != nil {
 			return 0, 0, err
 		}
