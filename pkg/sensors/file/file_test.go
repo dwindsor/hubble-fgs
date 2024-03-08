@@ -1911,7 +1911,7 @@ func testFileRename14(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	fileRead(t, inFile1)
 
 	fileCheckers := make([]ec.EventChecker, 2)
-	fileCheckers[0] = renameRenameChecker(t, inFile2, inFile1, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[0] = renameRenameChecker(t, inFile2, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
 	fileCheckers[1] = renameReadChecker(t, inFile1)
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
