@@ -83,6 +83,11 @@ spec:
         - "CAP_CHOWN"
         - "CAP_NET_RAW"
         - "CAP_SYS_ADMIN"
+      matchRenameSrcType:
+      - operator: "In"
+        values:
+        - "File"
+        - "Directory"
       matchOperations:
       - operator: "In"
         values:
