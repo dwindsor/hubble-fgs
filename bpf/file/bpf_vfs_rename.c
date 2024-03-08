@@ -104,6 +104,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 			v->old_dir = v->new_dir = 0;
 			v->need_old = v->need_new = 0;
+			v->ignore_old = v->ignore_new = 0;
 			if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0)
 				return -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
 			v = map_lookup_elem(&rename_retprobe_map, &k);
@@ -202,31 +203,16 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	{
 		struct inode_val *fval = 0;
 
-		// first check if we care about the specific (source) file or directory
-		if (v->msg.flags & SRC_REG_FILE) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.src.ino,
-				v->msg.src.fs.dev);
-		} else if (v->msg.flags & SRC_DIRECTORY) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.src.ino,
-				v->msg.src.fs.dev);
-			if (!(fval && fval->action == FILTER_MATCH))
-				fval = 0;
+		// Assuming that we will find the parent in the next step, the only
+		// reason that we don't care is for the src is that the source is a
+		// directory and it is explicitly ignored.
+		if (v->msg.flags & SRC_DIRECTORY) {
+			fval = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, v->msg.src.ino, v->msg.src.fs.dev);
+			if (fval && fval->action == FILTER_IGNORE)
+				v->ignore_old = 1;
 		}
 
-		// we need to get the parent path here in order to create the final path
-		if ((v->msg.flags & SRC_REG_FILE || v->msg.flags & SRC_DIRECTORY) && fval != 0) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.src.parent_ino,
-				v->msg.src.parent_fs.dev);
-			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
-				fval = 0;
-		}
-
+		fval = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, v->msg.src.parent_ino, v->msg.src.parent_fs.dev);
 		if (fval == 0) { // we care for the path not for the action
 			v->need_old = 1;
 		} else {
@@ -248,31 +234,16 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	{
 		struct inode_val *fval = 0;
 
-		// first check if we care about the specific (destination) file or directory
-		if (v->msg.flags & DST_REG_FILE) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.dst.ino,
-				v->msg.dst.fs.dev);
-		} else if (v->msg.flags & DST_DIRECTORY) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.dst.ino,
-				v->msg.dst.fs.dev);
-			if (!(fval && fval->action == FILTER_MATCH))
-				fval = 0;
+		// Assuming that we will find the parent in the next step, the only
+		// reason that we don't care is for the dst is that the destination
+		// is a directory and it is explicitly ignored.
+		if (v->msg.flags & DST_DIRECTORY) {
+			fval = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, v->msg.dst.ino, v->msg.dst.fs.dev);
+			if (fval && fval->action == FILTER_IGNORE)
+				v->ignore_new = 1;
 		}
 
-		// we need to get the parent path here in order to create the final path
-		if (((v->msg.flags & DST_REG_FILE || v->msg.flags & DST_DIRECTORY) && fval != 0) || (v->msg.flags & DST_NOT_EXISTS)) {
-			fval = find_inode_in_map(
-				(struct bpf_map_def *)&hash_map_inode_alloc,
-				v->msg.dst.parent_ino,
-				v->msg.dst.parent_fs.dev);
-			if (!(fval && (fval->action == FILTER_MATCH || fval->action == FILTER_MONITOR)))
-				fval = 0;
-		}
-
+		fval = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, v->msg.dst.parent_ino, v->msg.dst.parent_fs.dev);
 		if (fval == 0) { // we care for the path not for the action
 			v->need_new = 1;
 		} else {
@@ -288,6 +259,12 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 
 		rename_copy_dname(new_dentry, &(v->msg.dst));
 		v->msg.dst.pad = 0;
+	}
+
+	if (v->ignore_old || v->ignore_new) {
+		if (map_delete_elem(&rename_retprobe_map, &k) < 0)
+			return -FILE_ERR_DELETE_RENAME_RETPROBE_MAP;
+		return 0;
 	}
 
 	if (v->need_old) {

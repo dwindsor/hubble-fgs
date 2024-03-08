@@ -249,6 +249,7 @@ struct vfs_rename_info {
 	const struct path *old_dir;
 	const struct path *new_dir;
 	__u32 need_old, need_new;
+	__u32 ignore_old, ignore_new;
 	struct msg_file_rename_ops msg;
 	__u32 operation;
 };

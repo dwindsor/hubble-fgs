@@ -57,8 +57,8 @@ int BPF_KPROBE(security_path_rename, const struct path *old_dir,
 
 	v->old_dir = old_dir;
 	v->new_dir = new_dir;
-	v->need_old = 0;
-	v->need_new = 0;
+	v->need_old = v->need_new = 0;
+	v->ignore_old = v->ignore_new = 0;
 
 	if (map_update_elem(&rename_retprobe_map, &k, v, 0) < 0) {
 		err = -FILE_ERR_UPDATE_RENAME_RETPROBE_MAP;
