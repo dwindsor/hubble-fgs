@@ -23,3 +23,6 @@ jobs:
           # The following make targets will checkout OSS code, and run make generate and make codegen
           make oss-init oss-checkout
           test -z "$(git status --porcelain)" || (git status --porcelain; exit 1)
+      - name: Check metrics docs
+        run: |
+          make lint-metrics-md
