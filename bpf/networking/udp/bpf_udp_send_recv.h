@@ -72,21 +72,21 @@ udp4_get_info(struct udp_sock_info *sock_info)
 	if (!info)
 		return 0;
 
-	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
-	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
+	probe_read_kernel(&in, sizeof(void *), _(&(msg->msg_name)));
+	probe_read_kernel(&namelen, sizeof(int), _(&(msg->msg_namelen)));
 	info->ipv6 = false;
 	if (in && namelen >= sizeof(*in)) {
-		probe_read(&info->daddr.ipv4, sizeof(u32),
-			   _(&(in->sin_addr.s_addr)));
-		probe_read(&info->dport, sizeof(u16), _(&(in->sin_port)));
+		probe_read_kernel(&info->daddr.ipv4, sizeof(u32),
+				  _(&(in->sin_addr.s_addr)));
+		probe_read_kernel(&info->dport, sizeof(u16), _(&(in->sin_port)));
 	} else {
-		probe_read(&info->daddr.ipv4, sizeof(u32),
-			   _(&(sk->__sk_common.skc_daddr)));
-		probe_read(&info->dport, sizeof(u16),
-			   _(&(sk->__sk_common.skc_dport)));
+		probe_read_kernel(&info->daddr.ipv4, sizeof(u32),
+				  _(&(sk->__sk_common.skc_daddr)));
+		probe_read_kernel(&info->dport, sizeof(u16),
+				  _(&(sk->__sk_common.skc_dport)));
 	}
-	probe_read(&info->saddr.ipv4, sizeof(u32), _(&(inet->inet_saddr)));
-	probe_read(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
+	probe_read_kernel(&info->saddr.ipv4, sizeof(u32), _(&(inet->inet_saddr)));
+	probe_read_kernel(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
@@ -117,21 +117,21 @@ udp6_get_info(struct udp_sock_info *sock_info)
 	if (!info)
 		return 0;
 
-	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
-	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
+	probe_read_kernel(&in, sizeof(void *), _(&(msg->msg_name)));
+	probe_read_kernel(&namelen, sizeof(int), _(&(msg->msg_namelen)));
 	if (in && namelen >= sizeof(*in)) {
-		probe_read(&info->daddr, sizeof(struct in6_addr),
-			   _(&(in->sin6_addr)));
-		probe_read(&info->dport, sizeof(u16), _(&(in->sin6_port)));
+		probe_read_kernel(&info->daddr, sizeof(struct in6_addr),
+				  _(&(in->sin6_addr)));
+		probe_read_kernel(&info->dport, sizeof(u16), _(&(in->sin6_port)));
 	} else {
-		probe_read(&info->daddr, sizeof(struct in6_addr),
-			   _(&(sk->__sk_common.skc_v6_daddr)));
-		probe_read(&info->dport, sizeof(u16),
-			   _(&(sk->__sk_common.skc_dport)));
+		probe_read_kernel(&info->daddr, sizeof(struct in6_addr),
+				  _(&(sk->__sk_common.skc_v6_daddr)));
+		probe_read_kernel(&info->dport, sizeof(u16),
+				  _(&(sk->__sk_common.skc_dport)));
 	}
-	probe_read(&pinet6, sizeof(struct ipv6_pinfo *), _(&(inet->pinet6)));
-	probe_read(&info->saddr, sizeof(struct in6_addr), _(&(pinet6->saddr)));
-	probe_read(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
+	probe_read_kernel(&pinet6, sizeof(struct ipv6_pinfo *), _(&(inet->pinet6)));
+	probe_read_kernel(&info->saddr, sizeof(struct in6_addr), _(&(pinet6->saddr)));
+	probe_read_kernel(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
 	info->ipv6 = true;
 	info->padding[0] = 0;
 	info->padding[1] = 0;
@@ -154,30 +154,30 @@ udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, struc
 	struct sockaddr_in *in;
 	int namelen;
 
-	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
+	probe_read_kernel(&in, sizeof(void *), _(&(msg->msg_name)));
 	in6 = (struct sockaddr_in6 *)in;
-	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
+	probe_read_kernel(&namelen, sizeof(int), _(&(msg->msg_namelen)));
 
 	if (!key->ipv6) {
 		u32 daddr;
 		if (in && namelen >= sizeof(*in)) {
-			probe_read(&daddr, sizeof(daddr), _(&(in->sin_addr.s_addr)));
+			probe_read_kernel(&daddr, sizeof(daddr), _(&(in->sin_addr.s_addr)));
 			key->daddr[0] = daddr;
 			key->daddr[1] = 0;
-			probe_read(&key->dport, sizeof(key->dport), _(&(in->sin_port)));
+			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(in->sin_port)));
 		} else {
-			probe_read(&daddr, sizeof(daddr), _(&(sk->__sk_common.skc_daddr)));
+			probe_read_kernel(&daddr, sizeof(daddr), _(&(sk->__sk_common.skc_daddr)));
 			key->daddr[0] = daddr;
 			key->daddr[1] = 0;
-			probe_read(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
+			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
 		}
 	} else {
 		if (in6 && namelen >= sizeof(*in6)) {
-			probe_read(&key->daddr, sizeof(struct in6_addr), _(&(in6->sin6_addr)));
-			probe_read(&key->dport, sizeof(key->dport), _(&(in6->sin6_port)));
+			probe_read_kernel(&key->daddr, sizeof(struct in6_addr), _(&(in6->sin6_addr)));
+			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(in6->sin6_port)));
 		} else {
-			probe_read(&key->daddr, sizeof(struct in6_addr), _(&(sk->__sk_common.skc_v6_daddr)));
-			probe_read(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
+			probe_read_kernel(&key->daddr, sizeof(struct in6_addr), _(&(sk->__sk_common.skc_v6_daddr)));
+			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
 		}
 	}
 	key->dport = bpf_ntohs(key->dport);

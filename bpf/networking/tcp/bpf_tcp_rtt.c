@@ -51,7 +51,7 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 	}
 
-	probe_read(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
+	probe_read_kernel(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
 		&tg_tcp_send_check_sampler, &zero);
 	if (!cfg) {

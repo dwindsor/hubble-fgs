@@ -56,16 +56,16 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	*read_ok = false;
 	*family = 0;
 
-	if (probe_read(&files, sizeof(files), _(&(p->files))) < 0)
+	if (probe_read_kernel(&files, sizeof(files), _(&(p->files))) < 0)
 		return FD_TO_SK_READ_ERROR_OTHER;
-	if (probe_read(&fdt, sizeof(fdt), _(&(files->fdt))) < 0)
+	if (probe_read_kernel(&fdt, sizeof(fdt), _(&(files->fdt))) < 0)
 		return FD_TO_SK_READ_ERROR_OTHER;
-	if (probe_read(&fd, sizeof(fd), _(&(fdt->fd))) < 0)
+	if (probe_read_kernel(&fd, sizeof(fd), _(&(fdt->fd))) < 0)
 		return FD_TO_SK_READ_ERROR_OTHER;
-	if (probe_read(&file, sizeof(file), fd + filedesc) < 0)
+	if (probe_read_kernel(&file, sizeof(file), fd + filedesc) < 0)
 		return FD_TO_SK_READ_ERROR_FILE;
-	if (probe_read(&f_inode, sizeof(f_inode), _(&(file->f_inode))) == 0) {
-		if (probe_read(&i_mode, sizeof(i_mode), _(&(f_inode->i_mode))) == 0) {
+	if (probe_read_kernel(&f_inode, sizeof(f_inode), _(&(file->f_inode))) == 0) {
+		if (probe_read_kernel(&i_mode, sizeof(i_mode), _(&(f_inode->i_mode))) == 0) {
 			if ((i_mode & S_IFMT) != S_IFSOCK)
 				return FD_TO_SK_READ_ERROR_INODE;
 		}
@@ -74,20 +74,20 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	/* In a socket, the private_data in the struct file *is* the struct sock.
 	 * See sock_from_file() in net/socket.c for confirmation.
 	 */
-	if (probe_read(&sock, sizeof(sock), _(&(file->private_data))) < 0)
+	if (probe_read_kernel(&sock, sizeof(sock), _(&(file->private_data))) < 0)
 		return FD_TO_SK_READ_ERROR_FILE;
 
-	if (probe_read(&sk, sizeof(sk), _(&(sock->sk))) < 0)
+	if (probe_read_kernel(&sk, sizeof(sk), _(&(sock->sk))) < 0)
 		return FD_TO_SK_NO_SK;
 
 	/* Get the socket type so we can check for AF_PACKET and SOCK_RAW. */
-	probe_read(&type, sizeof(type), _(&(sk->sk_type)));
+	probe_read_kernel(&type, sizeof(type), _(&(sk->sk_type)));
 
 	/* We only care about IPv4 and IPv6, but we also return the socket even if
 	 * we can't read the family for some reason.
 	 */
-	family_ret = probe_read(family, sizeof(*family),
-				_(&(sk->__sk_common.skc_family)));
+	family_ret = probe_read_kernel(family, sizeof(*family),
+				       _(&(sk->__sk_common.skc_family)));
 	/* Record AF_PACKET sockets as AF_INET. */
 	if (type == SOCK_RAW && *family == AF_PACKET)
 		*family = AF_INET;
@@ -97,8 +97,8 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	/* We only return the socket for the required protocol, but we also return
 	 * the socket if we can't read the protocol for some reason.
 	 */
-	proto_ret = probe_read(&read_protocol, sizeof(read_protocol),
-			       _(&(sk->sk_protocol)));
+	proto_ret = probe_read_kernel(&read_protocol, sizeof(read_protocol),
+				      _(&(sk->sk_protocol)));
 
 	/* On kernels >=5.6, sk_protocol is a u16 and correctly maps to a protocol number.
 	 * On kernels <5.6, sk_protocol is 8 bits of a u32. We can detect this by checking

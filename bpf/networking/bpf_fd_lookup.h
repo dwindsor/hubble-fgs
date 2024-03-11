@@ -60,10 +60,10 @@ event_find_task(struct task_struct *task, __u32 pid, __u32 *ppid, bool *walked)
 			break;
 		value = 0;
 		*walked = 1;
-		probe_read(&task, sizeof(task), _(&task->parent));
+		probe_read_kernel(&task, sizeof(task), _(&task->parent));
 		if (!task)
 			break;
-		probe_read(&pid, sizeof(pid), _(&task->tgid));
+		probe_read_kernel(&pid, sizeof(pid), _(&task->tgid));
 	}
 	*ppid = pid;
 	return value;
@@ -101,7 +101,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	 */
 	config->protocol = 0;
 
-	if (probe_read(&pid, sizeof(pid), _(&(p->tgid))) < 0)
+	if (probe_read_kernel(&pid, sizeof(pid), _(&(p->tgid))) < 0)
 		return 0;
 	if (config->pid != pid)
 		return 0;
@@ -163,13 +163,13 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	 * buffer here because this preceeds the event handlers being
 	 * established.
 	 */
-	probe_read(&config->sport, sizeof(config->sport),
-		   _(&(sk->__sk_common.skc_num)));
-	probe_read(&config->dport, sizeof(config->dport),
-		   _(&(sk->__sk_common.skc_dport)));
+	probe_read_kernel(&config->sport, sizeof(config->sport),
+			  _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&config->dport, sizeof(config->dport),
+			  _(&(sk->__sk_common.skc_dport)));
 	config->dport = bpf_ntohs(config->dport);
-	probe_read(&config->state, sizeof(config->state),
-		   (const void *)_(&(sk->__sk_common.skc_state)));
+	probe_read_kernel(&config->state, sizeof(config->state),
+			  (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;
 	config->sockaddr = cookie;
 	if (family == AF_INET) {
@@ -178,16 +178,16 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		config->saddr[1] = 0;
 		config->saddr[0] = 0;
 		config->saddr[1] = 0;
-		probe_read(&config->saddr[0], sizeof(uint32_t),
-			   _(&(sk->__sk_common.skc_rcv_saddr)));
-		probe_read(&config->daddr[0], sizeof(uint32_t),
-			   _(&(sk->__sk_common.skc_daddr)));
+		probe_read_kernel(&config->saddr[0], sizeof(uint32_t),
+				  _(&(sk->__sk_common.skc_rcv_saddr)));
+		probe_read_kernel(&config->daddr[0], sizeof(uint32_t),
+				  _(&(sk->__sk_common.skc_daddr)));
 	} else {
 		config->ipv6 = 1;
-		probe_read(config->saddr, sizeof(config->saddr),
-			   _(&(sk->__sk_common.skc_v6_rcv_saddr)));
-		probe_read(config->daddr, sizeof(config->daddr),
-			   _(&(sk->__sk_common.skc_v6_daddr)));
+		probe_read_kernel(config->saddr, sizeof(config->saddr),
+				  _(&(sk->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(config->daddr, sizeof(config->daddr),
+				  _(&(sk->__sk_common.skc_v6_daddr)));
 	}
 
 	sockmap_process.key.pid = value->key.pid;

@@ -74,21 +74,21 @@ tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
 	 * stats run 4.19 or higher.
 	 */
 	if (bpf_core_field_exists(tcp->bytes_sent))
-		probe_read(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	if (bpf_core_field_exists(tcp->segs_out))
-		probe_read(&v->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
+		probe_read_kernel(&v->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
 	if (bpf_core_field_exists(tcp->bytes_retrans))
-		probe_read(&v->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
+		probe_read_kernel(&v->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
 	if (bpf_core_field_exists(sk->sk_drops))
-		probe_read(&v->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
+		probe_read_kernel(&v->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
 
 	/* These statistics are known to exist back to 4.12 kernels.
 	 */
-	probe_read(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
-	probe_read(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
-	probe_read(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	probe_read_kernel(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
+	probe_read_kernel(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	v->srtt = v->srtt / 8; // SRTT is reported <<3 in us.
-	probe_read(&v->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
+	probe_read_kernel(&v->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
 }
 
 static inline __attribute__((always_inline)) void
@@ -109,26 +109,26 @@ get_socket_stats(struct sock *sk,
 	 * stats run 4.19 or higher.
 	 */
 	if (bpf_core_field_exists(tcp->bytes_sent))
-		probe_read(&stats->bytes_sent, sizeof(__u64),
-			   _(&(tcp->bytes_sent)));
+		probe_read_kernel(&stats->bytes_sent, sizeof(__u64),
+				  _(&(tcp->bytes_sent)));
 	if (bpf_core_field_exists(tcp->segs_out))
-		probe_read(&stats->segs_out, sizeof(__u32),
-			   _(&(tcp->segs_out)));
+		probe_read_kernel(&stats->segs_out, sizeof(__u32),
+				  _(&(tcp->segs_out)));
 	if (bpf_core_field_exists(tcp->bytes_retrans))
-		probe_read(&stats->retransbytes, sizeof(__u64),
-			   _(&(tcp->bytes_retrans)));
+		probe_read_kernel(&stats->retransbytes, sizeof(__u64),
+				  _(&(tcp->bytes_retrans)));
 	if (bpf_core_field_exists(sk->sk_drops))
-		probe_read(&stats->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
+		probe_read_kernel(&stats->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
 
 	/* These statistics are known to exist back to 4.12 kernels.
 	 */
-	probe_read(&stats->bytes_received, sizeof(__u64),
-		   _(&(tcp->bytes_received)));
-	probe_read(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
-	probe_read(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	probe_read_kernel(&stats->bytes_received, sizeof(__u64),
+			  _(&(tcp->bytes_received)));
+	probe_read_kernel(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
+	probe_read_kernel(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	stats->srtt = stats->srtt / 8; // SRTT is reported <<3 in us.
-	probe_read(&stats->retranssegs, sizeof(__u32),
-		   _(&(tcp->total_retrans)));
+	probe_read_kernel(&stats->retranssegs, sizeof(__u32),
+			  _(&(tcp->total_retrans)));
 
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->tozerowin = process->zero_window;
@@ -165,12 +165,12 @@ get_ip_version(u16 *network_header_offset, void **skbh, struct sk_buff *skb)
 	void *skb_head;
 	struct ip_ver ver;
 
-	if (probe_read(&network_header_off, sizeof(u16),
-		       _(&skb->network_header)) < 0)
+	if (probe_read_kernel(&network_header_off, sizeof(u16),
+			      _(&skb->network_header)) < 0)
 		return 0;
-	if (probe_read(&skb_head, sizeof(void *), _(&skb->head)) < 0)
+	if (probe_read_kernel(&skb_head, sizeof(void *), _(&skb->head)) < 0)
 		return 0;
-	if (probe_read(&ver, sizeof(ver), skb_head + network_header_off) < 0)
+	if (probe_read_kernel(&ver, sizeof(ver), skb_head + network_header_off) < 0)
 		return 0;
 	if (skbh)
 		*skbh = skb_head;
@@ -183,8 +183,8 @@ static inline __attribute__((always_inline)) bool
 get_ip_header(void *network_header, u32 network_header_size,
 	      u16 network_header_off, void *skb_head)
 {
-	if (probe_read(network_header, network_header_size,
-		       skb_head + network_header_off) < 0)
+	if (probe_read_kernel(network_header, network_header_size,
+			      skb_head + network_header_off) < 0)
 		return false;
 	return true;
 }
@@ -197,11 +197,11 @@ get_transport_header(void *transport_header, u32 transport_header_size,
 {
 	u16 transport_header_off;
 
-	if (probe_read(&transport_header_off, sizeof(u16),
-		       _(&skb->transport_header)) < 0)
+	if (probe_read_kernel(&transport_header_off, sizeof(u16),
+			      _(&skb->transport_header)) < 0)
 		return false;
-	if (probe_read(transport_header, transport_header_size,
-		       skb_head + transport_header_off) < 0)
+	if (probe_read_kernel(transport_header, transport_header_size,
+			      skb_head + transport_header_off) < 0)
 		return false;
 	if (payload_off != 0) {
 		if (tcp) {
@@ -333,8 +333,8 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 		if (lazy) {
 			if (kp) {
 				// Kprobe: we have a void *skb_head
-				if (probe_read(&e->next, 2,
-					       skb_head + e->ip_off) < 0) {
+				if (probe_read_kernel(&e->next, 2,
+						      skb_head + e->ip_off) < 0) {
 					if (err) {
 						*err = IP_ERROR_IPV6_READ_PROBE;
 					}

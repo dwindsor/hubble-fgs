@@ -58,8 +58,8 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	cookie = (u64)skp;
 
 	/* Get the state that we are transitioning from */
-	probe_read(&old_state, sizeof(old_state),
-		   _((const void *)&(skp->__sk_common.skc_state)));
+	probe_read_kernel(&old_state, sizeof(old_state),
+			  _((const void *)&(skp->__sk_common.skc_state)));
 
 	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
 		return __event_tcp_accept_state(ctx, skp);

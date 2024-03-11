@@ -38,7 +38,7 @@ __udp_bind_sock(struct pt_regs *ctx, bool ipv6)
 	size_t size;
 
 	sk = (struct sock *)cookie;
-	probe_read(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
+	probe_read_kernel(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
 	// Check if sk_protocol is a u8 within a u32 or is a u16 in its own right.
 	// See bpf_fd_to_sk.h for info.
 	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
@@ -67,17 +67,17 @@ __udp_bind_sock(struct pt_regs *ctx, bool ipv6)
 
 	if (!ipv6) {
 		event->tuple.ipv6 = 0;
-		probe_read(&event->tuple.saddr[0], sizeof(__u32),
-			   _(&(sk->__sk_common.skc_rcv_saddr)));
+		probe_read_kernel(&event->tuple.saddr[0], sizeof(__u32),
+				  _(&(sk->__sk_common.skc_rcv_saddr)));
 		event->tuple.saddr[1] = 0;
 	} else {
 		event->tuple.ipv6 = 1;
-		probe_read(&event->tuple.saddr[0], sizeof(event->tuple.saddr),
-			   _(&(sk->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(&event->tuple.saddr[0], sizeof(event->tuple.saddr),
+				  _(&(sk->__sk_common.skc_v6_rcv_saddr)));
 	}
 
-	probe_read(&event->tuple.sport, sizeof(event->tuple.sport),
-		   _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&event->tuple.sport, sizeof(event->tuple.sport),
+			  _(&(sk->__sk_common.skc_num)));
 	event->tuple.proto = IPPROTO_UDP;
 
 	event->version = process->version;

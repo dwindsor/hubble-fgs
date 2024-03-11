@@ -75,28 +75,28 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		.duration = 0,
 	};
 
-	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
-		   _(&(skp->__sk_common.skc_num)));
-	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
-		   _(&(skp->__sk_common.skc_dport)));
+	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
+			  _(&(skp->__sk_common.skc_num)));
+	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
+			  _(&(skp->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
-	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
+	probe_read_kernel(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 
 	if (family != AF_INET6) {
 		val->tuple.ipv6 = false;
-		probe_read(&val->tuple.saddr[0], sizeof(__u32),
-			   _(&(skp->__sk_common.skc_rcv_saddr)));
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(__u32),
+				  _(&(skp->__sk_common.skc_rcv_saddr)));
 		val->tuple.saddr[1] = 0;
-		probe_read(&val->tuple.daddr[0], sizeof(__u32),
-			   _(&(skp->__sk_common.skc_daddr)));
+		probe_read_kernel(&val->tuple.daddr[0], sizeof(__u32),
+				  _(&(skp->__sk_common.skc_daddr)));
 		val->tuple.daddr[1] = 0;
 	} else {
 		val->tuple.ipv6 = true;
-		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
-		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
-			   _(&(skp->__sk_common.skc_v6_daddr)));
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
+				  _(&(skp->__sk_common.skc_v6_daddr)));
 	}
 
 	event_cfg = (struct tcp_event_disable_config *)

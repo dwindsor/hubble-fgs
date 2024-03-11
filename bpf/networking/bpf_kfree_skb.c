@@ -30,39 +30,39 @@ set_tuple_from_skb(struct msg_ip_tuple *tuple, struct sk_buff *skb)
 	unsigned char *skb_head = 0;
 	u16 l3_off;
 
-	probe_read(&skb_head, sizeof(skb_head), _(&skb->head));
-	probe_read(&l3_off, sizeof(l3_off), _(&skb->network_header));
+	probe_read_kernel(&skb_head, sizeof(skb_head), _(&skb->head));
+	probe_read_kernel(&l3_off, sizeof(l3_off), _(&skb->network_header));
 
 	struct iphdr *ip = (struct iphdr *)(skb_head + l3_off);
 	u8 iphdr_byte0;
-	probe_read(&iphdr_byte0, 1, _(ip));
+	probe_read_kernel(&iphdr_byte0, 1, _(ip));
 
 	u8 ip_ver = iphdr_byte0 >> 4;
 	if (ip_ver == 4) { // IPv4
 		u8 v4_prot;
-		probe_read(&v4_prot, 1, _(&ip->protocol));
+		probe_read_kernel(&v4_prot, 1, _(&ip->protocol));
 
 		tuple->proto = v4_prot;
 		tuple->ipv6 = false;
 
-		probe_read(&tuple->saddr[0], sizeof(ip->saddr), _(&ip->saddr));
-		probe_read(&tuple->daddr[0], sizeof(ip->daddr), _(&ip->daddr));
+		probe_read_kernel(&tuple->saddr[0], sizeof(ip->saddr), _(&ip->saddr));
+		probe_read_kernel(&tuple->daddr[0], sizeof(ip->daddr), _(&ip->daddr));
 		typeof(skb->transport_header) l4_off;
-		probe_read(&l4_off, sizeof(l4_off), _(&skb->transport_header));
+		probe_read_kernel(&l4_off, sizeof(l4_off), _(&skb->transport_header));
 		if (v4_prot == 0x06) { // TCP
 			struct tcphdr *tcp =
 				(struct tcphdr *)(skb_head + l4_off);
-			probe_read(&tuple->sport, sizeof(tuple->sport),
-				   _(&tcp->source));
-			probe_read(&tuple->dport, sizeof(tuple->dport),
-				   _(&tcp->dest));
+			probe_read_kernel(&tuple->sport, sizeof(tuple->sport),
+					  _(&tcp->source));
+			probe_read_kernel(&tuple->dport, sizeof(tuple->dport),
+					  _(&tcp->dest));
 		} else if (v4_prot == 0x11) { // UDP
 			struct udphdr *udp =
 				(struct udphdr *)(skb_head + l4_off);
-			probe_read(&tuple->sport, sizeof(tuple->sport),
-				   _(&udp->source));
-			probe_read(&tuple->dport, sizeof(tuple->dport),
-				   _(&udp->dest));
+			probe_read_kernel(&tuple->sport, sizeof(tuple->sport),
+					  _(&udp->source));
+			probe_read_kernel(&tuple->dport, sizeof(tuple->dport),
+					  _(&udp->dest));
 		}
 		tuple->sport = bpf_ntohs(tuple->sport);
 		tuple->dport = bpf_ntohs(tuple->dport);

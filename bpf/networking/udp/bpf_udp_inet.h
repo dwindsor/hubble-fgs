@@ -369,7 +369,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	bool ipv6 = false;
 	void *ip = 0;
 
-	if (probe_read(&ethertype, sizeof(ethertype), _(&(skb->protocol))) < 0)
+	if (probe_read_kernel(&ethertype, sizeof(ethertype), _(&(skb->protocol))) < 0)
 		return;
 
 	ethertype = bpf_ntohs(ethertype);
@@ -408,11 +408,11 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 			 * so check if the first option is the Timestamp option that we
 			 * add to detect UDP latency.
 			 */
-			if (probe_read(&packet->ipopt,
-				       sizeof(struct timestamp_option),
-				       packet->skb_head +
-					       packet->network_header_off +
-					       sizeof(struct iphdr)) < 0) {
+			if (probe_read_kernel(&packet->ipopt,
+					      sizeof(struct timestamp_option),
+					      packet->skb_head +
+						      packet->network_header_off +
+						      sizeof(struct iphdr)) < 0) {
 				emit_ip_error_event(
 					ctx, &packet->ip, &cookie, false,
 					packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);

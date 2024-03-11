@@ -75,8 +75,8 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		return 0;
 
 	/* Get the current socket TCP state. */
-	probe_read(&state, sizeof(state),
-		   _((const void *)&(skp->__sk_common.skc_state)));
+	probe_read_kernel(&state, sizeof(state),
+			  _((const void *)&(skp->__sk_common.skc_state)));
 
 	/* If we're in FIN_WAIT2, then the packet we are sending *must*
 	 * (according to the TCP finite state machine, caveat emptor) be
@@ -108,13 +108,13 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	/* Check for zero window event. On zero window events we want to
 	 * do some extra accounting to report these events to user space.
 	 */
-	probe_read(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
+	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 	if (!rcv_wnd)
 		process->zero_window++;
 
 	u64 tcp_bytes_sent, tcp_bytes_received;
-	probe_read(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
-	probe_read(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
 	if (cfg && cfg->watermarksEnable && process->key.pid != 0) {

@@ -36,7 +36,7 @@ tg_icmp_raw_sk_init(struct pt_regs *ctx)
 	u16 skc_num;
 
 	sk = (struct sock *)cookie;
-	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 	if (skc_num == IPPROTO_ICMP)
 		return store_socket(ctx, cookie, IPPROTO_ICMP);
 	return 0;
@@ -51,7 +51,7 @@ tg_icmp_rawv6_init_sk(struct pt_regs *ctx)
 	u16 skc_num;
 
 	sk = (struct sock *)cookie;
-	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 	if (skc_num == IPPROTO_ICMP6)
 		return store_socket(ctx, cookie, IPPROTO_ICMP);
 	return 0;

@@ -152,7 +152,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
 #ifndef IS_KPROBE
 	err = skb_load_bytes((struct __sk_buff *)ctx, off, &val->payload, payload_size);
 #else
-	err = probe_read(&val->payload, payload_size, skb_head + off);
+	err = probe_read_kernel(&val->payload, payload_size, skb_head + off);
 #endif
 	if (err < 0) {
 		emit_ip_error_event(ctx, ip, cookie, ipv6,

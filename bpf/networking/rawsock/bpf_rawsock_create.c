@@ -35,7 +35,7 @@ tg_rawsock_sk_init(struct pt_regs *ctx)
 	u16 skc_num;
 
 	sk = (struct sock *)cookie;
-	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 	if (skc_num != IPPROTO_ICMP)
 		return store_socket(ctx, cookie, IPPROTO_RAW);
 	return 0;
@@ -50,7 +50,7 @@ tg_rawsockv6_init_sk(struct pt_regs *ctx)
 	u16 skc_num;
 
 	sk = (struct sock *)cookie;
-	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 	if (skc_num != IPPROTO_ICMP6)
 		return store_socket(ctx, cookie, IPPROTO_RAW);
 	return 0;
@@ -87,7 +87,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 
 	struct sock *sk = (struct sock *)cookie;
 	u16 skc_num;
-	probe_read(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 
 	/* Ideally we would be able to bind the socket to create early,
 	 * but its possible that we don't have an entry for the thread

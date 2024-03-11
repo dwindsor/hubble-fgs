@@ -69,7 +69,7 @@ struct {
 static inline __attribute__((always_inline)) u64 get_cookie(struct sock *sk)
 {
 	u64 cookie = 0;
-	probe_read(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));
+	probe_read_kernel(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));
 	return cookie;
 }
 

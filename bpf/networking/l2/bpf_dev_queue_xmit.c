@@ -106,11 +106,11 @@ get_netns(struct net_device *dev)
 	struct ns_common nscommon;
 	possible_net_t nd_net;
 
-	probe_read(&nd_net, sizeof(nd_net), _(&(dev->nd_net)));
+	probe_read_kernel(&nd_net, sizeof(nd_net), _(&(dev->nd_net)));
 	if (!nd_net.net)
 		return 0;
 
-	probe_read(&nscommon, sizeof(nscommon), _(&(nd_net.net->ns)));
+	probe_read_kernel(&nscommon, sizeof(nscommon), _(&(nd_net.net->ns)));
 	return nscommon.inum;
 }
 
@@ -126,11 +126,11 @@ interface_stats(struct sk_buff *skb, bool xmit)
 	if (!key)
 		return 1;
 
-	probe_read(&dev, sizeof(dev), _(&skb->dev));
+	probe_read_kernel(&dev, sizeof(dev), _(&skb->dev));
 	if (!dev)
 		return 1;
 
-	probe_read(&key->index, sizeof(int), _(&(dev->ifindex)));
+	probe_read_kernel(&key->index, sizeof(int), _(&(dev->ifindex)));
 	key->netns = get_netns(dev);
 
 	value = map_lookup_elem(&network_map, key);
@@ -138,7 +138,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 		value = map_lookup_elem(&value_heap, &zero);
 		if (!value)
 			return 1;
-		probe_read(&value->name, NAME_STRING, _(&(dev->name)));
+		probe_read_kernel(&value->name, NAME_STRING, _(&(dev->name)));
 		value->txbytes = value->rxbytes = value->txpackets =
 			value->rxpackets = 0;
 
@@ -148,7 +148,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 			return 1;
 	}
 
-	probe_read(&len, sizeof(len), _(&(skb->len)));
+	probe_read_kernel(&len, sizeof(len), _(&(skb->len)));
 	if (xmit) {
 		struct Qdisc *qdisc;
 		struct qdisc_skb_head q;
@@ -164,12 +164,12 @@ interface_stats(struct sk_buff *skb, bool xmit)
 		 * we get the answer +-num_cores we are bucktizing the values
 		 * anyways. :wave :wave :wave
 		 */
-		probe_read(&qdisc, sizeof(qdisc), _(&(dev->qdisc)));
+		probe_read_kernel(&qdisc, sizeof(qdisc), _(&(dev->qdisc)));
 		if (!qdisc)
 			return 0;
-		probe_read(&q, sizeof(q), _(&(qdisc->q)));
+		probe_read_kernel(&q, sizeof(q), _(&(qdisc->q)));
 		qlen_hist(value, q.qlen);
-		probe_read(&qstats, sizeof(qstats), _(&(qdisc->qstats)));
+		probe_read_kernel(&qstats, sizeof(qstats), _(&(qdisc->qstats)));
 		value->txdrops += qstats.drops;
 	} else {
 		__sync_fetch_and_add(&value->rxbytes, (u64)len);
@@ -230,8 +230,8 @@ unregister_netdevice(struct pt_regs *ctx)
 	if (!key)
 		return 1;
 
-	probe_read(&dev, sizeof(dev), _(&(info->dev)));
-	probe_read(&key->index, sizeof(int), _(&(dev->ifindex)));
+	probe_read_kernel(&dev, sizeof(dev), _(&(info->dev)));
+	probe_read_kernel(&key->index, sizeof(int), _(&(dev->ifindex)));
 	key->netns = get_netns(dev);
 
 	map_delete_elem(&network_map, key);
@@ -258,7 +258,7 @@ net_ns_net_exit(struct pt_regs *ctx)
 	struct ns_common nscommon;
 	int zero = 0;
 
-	probe_read(&nscommon, sizeof(nscommon), _(&(net->ns)));
+	probe_read_kernel(&nscommon, sizeof(nscommon), _(&(net->ns)));
 
 	val = map_lookup_elem(&netns_exit_heap, &zero);
 	if (!val)

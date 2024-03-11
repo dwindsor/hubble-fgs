@@ -77,19 +77,19 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		.duration = 0,
 	};
 
-	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
+	probe_read_kernel(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 
-	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
-		   _(&(skp->__sk_common.skc_num)));
+	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
+			  _(&(skp->__sk_common.skc_num)));
 
 	if (family != AF_INET6) {
 		val->tuple.ipv6 = false;
-		probe_read(&val->tuple.saddr[0], sizeof(__u32),
-			   _(&(skp->__sk_common.skc_rcv_saddr)));
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(__u32),
+				  _(&(skp->__sk_common.skc_rcv_saddr)));
 	} else {
 		val->tuple.ipv6 = true;
-		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
 	}
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);
