@@ -1,6 +1,6 @@
 module github.com/isovalent/hubble-fgs/pkg/k8s
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/blang/semver/v4 v4.0.0
