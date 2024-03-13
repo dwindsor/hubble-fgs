@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/cilium/cilium/pkg/logging"
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/operator/cmd"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 
@@ -18,6 +20,7 @@ import (
 )
 
 func main() {
+	log := logging.DefaultLogger.WithField(logfields.LogSubsys, "tetragon-operator")
 	ossCmd := cmd.New()
 	ossCmdRun := ossCmd.Run
 	ossCmd.Run = func(cmd *cobra.Command, args []string) {
@@ -36,6 +39,9 @@ func main() {
 			if err := daemon.Manage(); err != nil {
 				return err
 			}
+		} else {
+			// TODO (FGI): the constant in options package should be used after it has been made public
+			log.Info("Tetragon daemon set manager deactivated, set manage-agent to true for its activation")
 		}
 		return ossServeRunE(cmd, args)
 	}

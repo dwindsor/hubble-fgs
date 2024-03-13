@@ -1,72 +1,81 @@
+// TODO(FGI) rename to agent
 package daemon
 
 import (
 	"fmt"
+	"os"
 
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/isovalent/hubble-fgs/operator/options"
+	"sigs.k8s.io/yaml"
 )
 
 const (
-	dsName                 = "tetragon"
-	dsManagedByLabel       = "app.kubernetes.io/managed-by"
-	dsManagedByValue       = "tetragon-operator"
-	dsUpdateMaxUnavailable = int32(1)
-	dsUpdateMaxSurge       = int32(0)
+	DaemonSetName = "tetragon"
+	// TODO (FGI) ManagedByLabel, TetragonOperatorName, OperatorConfigMapDaemonSetKey should be put at the right location.
+	ManagedByLabel                     = "app.kubernetes.io/managed-by"
+	TetragonOperatorName               = "tetragon-operator"
+	OperatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
+	dsUpdateMaxUnavailable             = int32(1)
+	dsUpdateMaxSurge                   = int32(0)
 )
 
-func daemonSet() *appv1.DaemonSet {
-	var (
-		dirHostPath                 = corev1.HostPathDirectory
-		dirOrCreateHostPath         = corev1.HostPathDirectoryOrCreate
-		dsVolumeDefaultMode         = int32(420)
-		dsRevisionHistoryLimit      = int32(10)
-		dsTerminationGracePeriodSec = int64(1)
-	)
+func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
+
+	hostPathDirectoryVolumeType := corev1.HostPathDirectory
+	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
+	dsVolumeDefaultMode := int32(420)
+	dsTerminationGracePeriodSec := int64(1)
+	dsRevisionHistoryLimit := int32(10)
+
+	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
+	cmFields := make(map[string]interface{})
+	err := yaml.Unmarshal([]byte(configYaml), &cmFields)
+	if err != nil {
+		log.WithField("value", configYaml).WithError(err).Error("could not unmarshal the DaemonSet configuration")
+		return nil, err
+	}
+
 	ds := &appv1.DaemonSet{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "DaemonSet",
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      dsName,
-			Namespace: options.Config.DaemonSetNamespace,
-			//TODO: add annotation and make them configurable
-			Labels: map[string]string{ //TODO: make configurable
-				"app.kubernetes.io/instance": dsName,
-				"app.kubernetes.io/name":     dsName,
-				dsManagedByLabel:             dsManagedByValue,
-			},
+			Name:      name,
+			Namespace: namespace,
+			// TODO: add annotation and make them configurable
+			Labels: labels(cmFields, "labels"),
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{ //TODO: make configurable
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/instance": dsName,
-					"app.kubernetes.io/name":     dsName,
+					"app.kubernetes.io/instance": name,
+					"app.kubernetes.io/name":     name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: k8sv1.ObjectMeta{
 					Labels: map[string]string{ //TODO: make configurable
-						"app.kubernetes.io/instance": dsName,
-						"app.kubernetes.io/name":     dsName,
-						dsManagedByLabel:             dsManagedByValue,
+						"app.kubernetes.io/instance": name,
+						"app.kubernetes.io/name":     name,
+						// TODO (FGI): TetragonOperatorName should be injected
+						ManagedByLabel: TetragonOperatorName,
 					},
 				},
 				Spec: corev1.PodSpec{
 					//TODO: add init container with condition
-					Containers: daemonSetContainers(),
+					Containers: daemonSetContainers(cmFields),
 					Volumes: []corev1.Volume{
 						{
 							Name: "cilium-run",
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/var/run/cilium",
-									Type: &dirOrCreateHostPath,
+									Type: &hostPathDirectoryOrCreateVolumeType,
 								},
 							},
 						},
@@ -75,7 +84,7 @@ func daemonSet() *appv1.DaemonSet {
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/var/run/cilium/tetragon",
-									Type: &dirOrCreateHostPath,
+									Type: &hostPathDirectoryOrCreateVolumeType,
 								},
 							},
 						},
@@ -95,7 +104,7 @@ func daemonSet() *appv1.DaemonSet {
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/sys/fs/bpf",
-									Type: &dirOrCreateHostPath,
+									Type: &hostPathDirectoryOrCreateVolumeType,
 								},
 							},
 						},
@@ -104,25 +113,28 @@ func daemonSet() *appv1.DaemonSet {
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/procHost",
-									Type: &dirHostPath,
+									Type: &hostPathDirectoryVolumeType,
 								},
 							},
 						},
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
-					DNSPolicy:                     options.Config.DaemonSetDNSPolicy,
-					ServiceAccountName:            options.Config.DaemonSetServiceAccountName,
-					HostNetwork:                   options.Config.DaemonSetHostNetwork,
-					SchedulerName:                 "default-scheduler",
-					SecurityContext:               &corev1.PodSecurityContext{},
+					// TODO (FGI): This is unsafe
+					DNSPolicy:          corev1.DNSPolicy(configValue(cmFields, "dnsPolicy", string(corev1.DNSDefault))),
+					ServiceAccountName: configValue(cmFields, "serviceAccountName", "tetragon"),
+					HostNetwork:        configValue(cmFields, "hostNetwork", true),
+					SchedulerName:      "default-scheduler",
+					// TODO(FGI): this should be configurable but "kubernetes.io/os: linux" is the bare minimum
+					NodeSelector:    map[string]string{"kubernetes.io/os": "linux"},
+					SecurityContext: &corev1.PodSecurityContext{},
 					Tolerations: []corev1.Toleration{
 						{
 							Operator: "Exists",
 						},
 					},
 					// This is required to avoid diff with actual K8S object
-					DeprecatedServiceAccount: options.Config.DaemonSetServiceAccountName,
+					DeprecatedServiceAccount: configValue(cmFields, "serviceAccountName", "tetragon"),
 				},
 			},
 			UpdateStrategy: appv1.DaemonSetUpdateStrategy{
@@ -141,45 +153,47 @@ func daemonSet() *appv1.DaemonSet {
 			RevisionHistoryLimit: &dsRevisionHistoryLimit,
 		},
 	}
-	return ds
+	return ds, nil
 }
 
-func daemonSetContainers() []corev1.Container {
+// TODO(FGI): The metadata container is missing
+func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 	privilegedContext := true
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	containers := make([]corev1.Container, 0)
 
-	if options.Config.ExportContainerMode == "stdout" {
-		args := make([]string, 0, len(options.Config.ExportContainerFilenames))
-		for _, f := range options.Config.ExportContainerFilenames {
-			args = append(args, fmt.Sprintf("%s/%s", options.Config.DaemonSetExportDirectory, f))
+	if cmFields["exportMode"] == "stdout" {
+		exportFilenames := configArray(cmFields, "exportFilenames", []string{"tetragon.log"})
+		args := make([]string, 0, len(exportFilenames))
+		for _, f := range exportFilenames {
+			args = append(args, fmt.Sprintf("%s/%s", configValue(cmFields, "exportDirectory", "/var/run/cilium/tetragon"), f))
 		}
 		containers = append(containers, corev1.Container{
 			Name:    "export-stdout",
-			Image:   options.Config.ExportContainerImage,
+			Image:   os.Getenv("EXPORT_IMAGE"),
 			Command: []string{"hubble-export-stdout"},
 			Args:    args,
 			Env:     []corev1.EnvVar{}, //TODO: make configurable
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "export-logs",
-					MountPath: options.Config.DaemonSetExportDirectory,
+					MountPath: configValue(cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
 				},
 			},
 			Resources:                corev1.ResourceRequirements{}, //TODO: make configurable
 			SecurityContext:          &corev1.SecurityContext{},     //TODO: make configurable
 			TerminationMessagePath:   "/dev/termination-log",
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			ImagePullPolicy:          options.Config.DaemonSetImagePullPolicy,
+			ImagePullPolicy:          corev1.PullPolicy(configValue(cmFields, "imagePullPolicy", "IfNotPresent")),
 		})
 	}
 
 	tetragon := corev1.Container{
 		Name:  "tetragon",
-		Image: options.Config.TetragonContainerImage,
+		Image: os.Getenv("TETRAGON_IMAGE"),
 		Args: append(
 			[]string{"--config-dir=/etc/tetragon/tetragon.conf.d/"},
-			options.Config.TetragonContainerArgsOverride...,
+			configArray(cmFields, "argsOverride", []string{})...,
 		),
 		EnvFrom: nil,
 		Env: []corev1.EnvVar{
@@ -219,12 +233,13 @@ func daemonSetContainers() []corev1.Container {
 		},
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		ImagePullPolicy:          options.Config.DaemonSetImagePullPolicy,
+		// TODO (FGI) unsafe
+		ImagePullPolicy: corev1.PullPolicy(configValue(cmFields, "imagePullPolicy", "IfNotPresent")),
 		SecurityContext: &corev1.SecurityContext{ //TODO: make configurable
 			Privileged: &privilegedContext,
 		},
 	}
-	if options.Config.TetragonContainerGRPCEnabled {
+	if configValue(cmFields, "grpcEnabled", true) {
 		tetragon.LivenessProbe = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
@@ -232,7 +247,7 @@ func daemonSetContainers() []corev1.Container {
 						"tetra",
 						"status",
 						"--server-address",
-						options.Config.TetragonContainerGRPCAddr,
+						configValue(cmFields, "grpcAddress", "localhost:54321"),
 						"--retries",
 						"5",
 					},
@@ -246,4 +261,54 @@ func daemonSetContainers() []corev1.Container {
 	}
 
 	return append(containers, tetragon)
+}
+
+// labels returns the labels configured by the user in the operator ConfigMap
+// in addition to the ones that always get applied.
+func labels(values map[string]any, key string) map[string]string {
+	cmLabels, ok := values[key]
+	labels := map[string]string{}
+	if ok {
+		typedLabels, ok := cmLabels.(map[string]interface{})
+		if !ok {
+			log.WithField("value", cmLabels).Error("could not unmarshal the DaemonSet labels, labels not applied")
+		} else {
+			for k, v := range typedLabels {
+				labels[k] = v.(string)
+			}
+		}
+	}
+	labels["app.kubernetes.io/instance"] = DaemonSetName
+	labels["app.kubernetes.io/name"] = DaemonSetName
+	labels[ManagedByLabel] = TetragonOperatorName
+	return labels
+}
+
+func configValue[V string | bool](config map[string]any, key string, defaultValue V) V {
+	value, ok := config[key]
+	if ok {
+		typedValue, ok := value.(V)
+		if ok {
+			return typedValue
+		}
+		log.WithField("key", key).WithField("value", value).Error("could not unmarshal, default value used instead")
+	}
+	return defaultValue
+}
+
+func configArray(config map[string]any, key string, defaultValue []string) []string {
+	value, ok := config[key]
+	if ok {
+		a, ok := value.([]interface{})
+		if !ok {
+			log.WithField("key", key).WithField("value", value).Error("could not unmarshal, default values used instead")
+		} else {
+			result := []string{}
+			for _, v := range a {
+				result = append(result, v.(string))
+			}
+			return result
+		}
+	}
+	return defaultValue
 }

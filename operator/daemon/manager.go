@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -23,11 +24,13 @@ import (
 )
 
 var (
+	// TODO (FGI): avoid a package variable for the logger.
 	log    = logging.DefaultLogger.WithField(logfields.LogSubsys, "tetragon-operator")
 	scheme = runtime.NewScheme()
 )
 
 func Manage() error {
+	log.Info("instantiation of the manager of the Tetragon agent")
 	client, err := getK8SClient()
 	if err != nil {
 		return err
@@ -35,33 +38,35 @@ func Manage() error {
 
 	ctx := context.Background()
 
-	log.Info("checking if Tetragon daemon set already exists")
-	ds, err := client.AppsV1().DaemonSets(options.Config.DaemonSetNamespace).Get(ctx, dsName, metav1.GetOptions{})
+	log.Info("checking if the operator ConfigMap already exists")
+	_, err = client.CoreV1().ConfigMaps(options.Config.DaemonSetNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get Tetragon daemon set: %w", err)
+			return fmt.Errorf("failed to get Tetragon operator ConfigMap: %w", err)
 		}
-		log.Info("Tetragon daemon set does not exist, creating")
-		ds, err = client.AppsV1().DaemonSets(options.Config.DaemonSetNamespace).Create(ctx, daemonSet(), metav1.CreateOptions{})
+		// Creating an empty ConfigMap ensures that the reconciliation is triggered.
+		// Default settings for the agent DaemonSet and ConfigMap are applied.
+		log.Info("Tetragon operator ConfigMap does not exist, creating an empty one (default configuration)")
+		_, err = client.CoreV1().ConfigMaps(options.Config.DaemonSetNamespace).Create(
+			ctx, defaultOperatorConfigMap(options.Config.DaemonSetNamespace, OperatorConfigMapName), metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create Tetragon daemon set: %w", err)
 		}
-		log.Info("Tetragon daemon set created")
-	}
-
-	if ds.Labels[dsManagedByLabel] != dsManagedByValue {
-		log.Info("Tetragon daemon set exists and is not manager by operator")
-		return nil
+		// The new ConfigMap does not need to get mounted as its content is retrieved through the API,
+		// which provides a nicer interface for the reconciliation.
 	}
 
 	log.Info("starting Tetragon daemon set manager")
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme})
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme,
+		// Only watching the operator namespace
+		Cache: ctrlcache.Options{DefaultNamespaces: map[string]ctrlcache.Config{options.Config.DaemonSetNamespace: {}}}})
 	if err != nil {
 		return fmt.Errorf("failed to create Tetragon daemon set reconciler manager: %w", err)
 	}
 
 	reconciler := &Reconciler{
 		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
 		Log:    ctrl.Log.WithName("tetragon-ds-reconciler"),
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
@@ -72,7 +77,7 @@ func Manage() error {
 		if err := mgr.Start(ctx); err != nil {
 			log.Fatalf("reconciler Tetragon daemon set manager failed: %s", err)
 		}
-		//TODO: handle graceful termination through context
+		//TODO (FGI): handle graceful termination through context
 	}()
 	return nil
 }
