@@ -2,14 +2,15 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/go-logr/logr"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
 	"sigs.k8s.io/yaml"
 )
 
@@ -23,8 +24,7 @@ const (
 	dsUpdateMaxSurge                   = int32(0)
 )
 
-func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
-
+func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
 	dsVolumeDefaultMode := int32(420)
@@ -35,7 +35,7 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 	cmFields := make(map[string]interface{})
 	err := yaml.Unmarshal([]byte(configYaml), &cmFields)
 	if err != nil {
-		log.WithField("value", configYaml).WithError(err).Error("could not unmarshal the DaemonSet configuration")
+		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
 		return nil, err
 	}
 
@@ -48,7 +48,7 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 			Name:      name,
 			Namespace: namespace,
 			// TODO: add annotation and make them configurable
-			Labels: labels(cmFields, "labels"),
+			Labels: labels(log, cmFields, "labels"),
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{ //TODO: make configurable
@@ -68,7 +68,7 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 				},
 				Spec: corev1.PodSpec{
 					//TODO: add init container with condition
-					Containers: daemonSetContainers(cmFields),
+					Containers: daemonSetContainers(log, cmFields),
 					Volumes: []corev1.Volume{
 						{
 							Name: "cilium-run",
@@ -121,9 +121,9 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
 					// TODO (FGI): This is unsafe
-					DNSPolicy:          corev1.DNSPolicy(configValue(cmFields, "dnsPolicy", string(corev1.DNSDefault))),
-					ServiceAccountName: configValue(cmFields, "serviceAccountName", "tetragon"),
-					HostNetwork:        configValue(cmFields, "hostNetwork", true),
+					DNSPolicy:          corev1.DNSPolicy(configValue(log, cmFields, "dnsPolicy", string(corev1.DNSDefault))),
+					ServiceAccountName: configValue(log, cmFields, "serviceAccountName", "tetragon"),
+					HostNetwork:        configValue(log, cmFields, "hostNetwork", true),
 					SchedulerName:      "default-scheduler",
 					// TODO(FGI): this should be configurable but "kubernetes.io/os: linux" is the bare minimum
 					NodeSelector:    map[string]string{"kubernetes.io/os": "linux"},
@@ -134,7 +134,7 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 						},
 					},
 					// This is required to avoid diff with actual K8S object
-					DeprecatedServiceAccount: configValue(cmFields, "serviceAccountName", "tetragon"),
+					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", "tetragon"),
 				},
 			},
 			UpdateStrategy: appv1.DaemonSetUpdateStrategy{
@@ -157,16 +157,16 @@ func daemonSet(namespace string, name string, cm *corev1.ConfigMap) (*appv1.Daem
 }
 
 // TODO(FGI): The metadata container is missing
-func daemonSetContainers(cmFields map[string]any) []corev1.Container {
+func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
 	privilegedContext := true
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	containers := make([]corev1.Container, 0)
 
 	if cmFields["exportMode"] == "stdout" {
-		exportFilenames := configArray(cmFields, "exportFilenames", []string{"tetragon.log"})
+		exportFilenames := configArray(log, cmFields, "exportFilenames", []string{"tetragon.log"})
 		args := make([]string, 0, len(exportFilenames))
 		for _, f := range exportFilenames {
-			args = append(args, fmt.Sprintf("%s/%s", configValue(cmFields, "exportDirectory", "/var/run/cilium/tetragon"), f))
+			args = append(args, fmt.Sprintf("%s/%s", configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"), f))
 		}
 		containers = append(containers, corev1.Container{
 			Name:    "export-stdout",
@@ -177,14 +177,14 @@ func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "export-logs",
-					MountPath: configValue(cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+					MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
 				},
 			},
 			Resources:                corev1.ResourceRequirements{}, //TODO: make configurable
 			SecurityContext:          &corev1.SecurityContext{},     //TODO: make configurable
 			TerminationMessagePath:   "/dev/termination-log",
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			ImagePullPolicy:          corev1.PullPolicy(configValue(cmFields, "imagePullPolicy", "IfNotPresent")),
+			ImagePullPolicy:          corev1.PullPolicy(configValue(log, cmFields, "imagePullPolicy", "IfNotPresent")),
 		})
 	}
 
@@ -193,7 +193,7 @@ func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 		Image: os.Getenv("TETRAGON_IMAGE"),
 		Args: append(
 			[]string{"--config-dir=/etc/tetragon/tetragon.conf.d/"},
-			configArray(cmFields, "argsOverride", []string{})...,
+			configArray(log, cmFields, "argsOverride", []string{})...,
 		),
 		EnvFrom: nil,
 		Env: []corev1.EnvVar{
@@ -234,12 +234,12 @@ func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		// TODO (FGI) unsafe
-		ImagePullPolicy: corev1.PullPolicy(configValue(cmFields, "imagePullPolicy", "IfNotPresent")),
+		ImagePullPolicy: corev1.PullPolicy(configValue(log, cmFields, "imagePullPolicy", "IfNotPresent")),
 		SecurityContext: &corev1.SecurityContext{ //TODO: make configurable
 			Privileged: &privilegedContext,
 		},
 	}
-	if configValue(cmFields, "grpcEnabled", true) {
+	if configValue(log, cmFields, "grpcEnabled", true) {
 		tetragon.LivenessProbe = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
@@ -247,7 +247,7 @@ func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 						"tetra",
 						"status",
 						"--server-address",
-						configValue(cmFields, "grpcAddress", "localhost:54321"),
+						configValue(log, cmFields, "grpcAddress", "localhost:54321"),
 						"--retries",
 						"5",
 					},
@@ -265,13 +265,13 @@ func daemonSetContainers(cmFields map[string]any) []corev1.Container {
 
 // labels returns the labels configured by the user in the operator ConfigMap
 // in addition to the ones that always get applied.
-func labels(values map[string]any, key string) map[string]string {
+func labels(log logr.Logger, values map[string]any, key string) map[string]string {
 	cmLabels, ok := values[key]
 	labels := map[string]string{}
 	if ok {
 		typedLabels, ok := cmLabels.(map[string]interface{})
 		if !ok {
-			log.WithField("value", cmLabels).Error("could not unmarshal the DaemonSet labels, labels not applied")
+			log.WithValues("value", cmLabels).Error(errors.New("could not unmarshal the DaemonSet labels"), "labels not applied")
 		} else {
 			for k, v := range typedLabels {
 				labels[k] = v.(string)
@@ -284,24 +284,21 @@ func labels(values map[string]any, key string) map[string]string {
 	return labels
 }
 
-func configValue[V string | bool](config map[string]any, key string, defaultValue V) V {
-	value, ok := config[key]
-	if ok {
-		typedValue, ok := value.(V)
-		if ok {
+func configValue[V string | bool](log logr.Logger, config map[string]any, key string, defaultValue V) V {
+	if value, ok := config[key]; ok {
+		if typedValue, ok := value.(V); ok {
 			return typedValue
 		}
-		log.WithField("key", key).WithField("value", value).Error("could not unmarshal, default value used instead")
+		log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default value used instead")
 	}
 	return defaultValue
 }
 
-func configArray(config map[string]any, key string, defaultValue []string) []string {
-	value, ok := config[key]
-	if ok {
+func configArray(log logr.Logger, config map[string]any, key string, defaultValue []string) []string {
+	if value, ok := config[key]; ok {
 		a, ok := value.([]interface{})
 		if !ok {
-			log.WithField("key", key).WithField("value", value).Error("could not unmarshal, default values used instead")
+			log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default values used instead")
 		} else {
 			result := []string{}
 			for _, v := range a {

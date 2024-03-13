@@ -34,14 +34,13 @@ func main() {
 	ossServe := serveCmd(ossCmd)
 	ossServeRunE := ossServe.RunE
 	ossServe.RunE = func(cmd *cobra.Command, args []string) error {
-		options.ConfigPopulate()
-		if options.Config.ManageDaemonSet {
-			if err := daemon.Manage(); err != nil {
+		cfg := options.NewConfig()
+		if cfg.ManageAgent {
+			if err := daemon.Manage(cfg); err != nil {
 				return err
 			}
 		} else {
-			// TODO (FGI): the constant in options package should be used after it has been made public
-			log.Info("Tetragon daemon set manager deactivated, set manage-agent to true for its activation")
+			log.Infof("Tetragon daemon set manager deactivated, set %s to true for its activation", options.ManageAgentKey)
 		}
 		return ossServeRunE(cmd, args)
 	}

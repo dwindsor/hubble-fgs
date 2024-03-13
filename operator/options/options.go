@@ -20,31 +20,26 @@ const (
 	// SkipPolicySandboxCRD specifies whether operator will skip the creation of the
 	// sandboxpolicy CRD
 	SkipPolicySandboxCRD = "skip-policysandbox-crd"
-	// TODO(FGI) constants should be made public
-	kubeCfgPath = "kube-config"
+	ManageAgentKey       = "manage-agent"
 )
 
 // OperatorConfig is the configuration used by the operator.
 type OperatorConfig struct {
-	// KubeCfgPath allows users to specify a kubeconfig file to be used by the operator
-	KubeCfgPath     string
-	ManageDaemonSet bool
-	// TODO(FGI): Rename DaemonSetNamespace to TetragonNamespace
-	DaemonSetNamespace string
+	// KubeconfigPath allows users to specify a kubeconfig file to be used by the operator
+	KubeconfigPath    string
+	ManageAgent       bool
+	TetragonNamespace string
 }
 
-// Config represents the operator configuration.
-// TODO(FGI): Don't use a package variable here
-var Config = &OperatorConfig{}
-
-// ConfigPopulate sets all options with the values from viper.
-func ConfigPopulate() {
-	Config.KubeCfgPath = viper.GetString(kubeCfgPath)
-
-	Config.ManageDaemonSet = viper.GetBool("manage-agent")
-
-	Config.DaemonSetNamespace = viper.GetString("namespace")
-	if Config.DaemonSetNamespace == "" {
-		Config.DaemonSetNamespace = "kube-system"
+// NewConfig sets all options with the values from viper and returns OperatorConfig.
+func NewConfig() OperatorConfig {
+	namespace := viper.GetString("namespace")
+	if namespace == "" {
+		namespace = "default"
+	}
+	return OperatorConfig{
+		KubeconfigPath:    viper.GetString("kube-config"),
+		ManageAgent:       viper.GetBool(ManageAgentKey),
+		TetragonNamespace: namespace,
 	}
 }

@@ -3,7 +3,6 @@ package daemon
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -12,13 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logr "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconciler reconciles the Tetragon agent.
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Log    logr.Logger
 }
 
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
@@ -28,7 +27,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		// Skip reconcile request if it's not related to the management of the Tetragon agent.
 		return ctrl.Result{}, nil
 	}
-	log := r.Log.WithValues("name-namespace", req.NamespacedName)
+	log := logr.FromContext(ctx).WithName("agent").WithValues("name-namespace", req.NamespacedName)
 	log.Info("starting the reconciliation")
 
 	// Retrieve the intent.
@@ -56,7 +55,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent DaemonSet.
-	desiredDS, err := daemonSet(req.NamespacedName.Namespace, DaemonSetName, opCM)
+	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
 	if err != nil {
 		log.Error(err, "unable to generate the desired DaemonSet")
 		return ctrl.Result{}, err
@@ -94,7 +93,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent ConfigMap.
-	desiredCM := agentConfigMap(req.NamespacedName.Namespace, AgentConfigMapName, opCM)
+	desiredCM := agentConfigMap(log, req.NamespacedName.Namespace, AgentConfigMapName, opCM)
 	if err := ctrl.SetControllerReference(opCM, desiredCM, r.Scheme); err != nil {
 		log.Error(err, "unable to set the owner reference to the ConfigMap")
 		return ctrl.Result{}, err

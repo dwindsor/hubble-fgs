@@ -15,8 +15,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 
-	"github.com/cilium/cilium/pkg/logging"
-	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/version"
 
@@ -24,14 +22,13 @@ import (
 )
 
 var (
-	// TODO (FGI): avoid a package variable for the logger.
-	log    = logging.DefaultLogger.WithField(logfields.LogSubsys, "tetragon-operator")
 	scheme = runtime.NewScheme()
 )
 
-func Manage() error {
+func Manage(cfg options.OperatorConfig) error {
+	log := ctrl.Log.WithName("tetragon-operator")
 	log.Info("instantiation of the manager of the Tetragon agent")
-	client, err := getK8SClient()
+	client, err := getK8SClient(cfg.KubeconfigPath)
 	if err != nil {
 		return err
 	}
@@ -39,7 +36,7 @@ func Manage() error {
 	ctx := context.Background()
 
 	log.Info("checking if the operator ConfigMap already exists")
-	_, err = client.CoreV1().ConfigMaps(options.Config.DaemonSetNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
+	_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get Tetragon operator ConfigMap: %w", err)
@@ -47,8 +44,8 @@ func Manage() error {
 		// Creating an empty ConfigMap ensures that the reconciliation is triggered.
 		// Default settings for the agent DaemonSet and ConfigMap are applied.
 		log.Info("Tetragon operator ConfigMap does not exist, creating an empty one (default configuration)")
-		_, err = client.CoreV1().ConfigMaps(options.Config.DaemonSetNamespace).Create(
-			ctx, defaultOperatorConfigMap(options.Config.DaemonSetNamespace, OperatorConfigMapName), metav1.CreateOptions{})
+		_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Create(
+			ctx, defaultOperatorConfigMap(cfg.TetragonNamespace, OperatorConfigMapName), metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create Tetragon daemon set: %w", err)
 		}
@@ -59,7 +56,7 @@ func Manage() error {
 	log.Info("starting Tetragon daemon set manager")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme,
 		// Only watching the operator namespace
-		Cache: ctrlcache.Options{DefaultNamespaces: map[string]ctrlcache.Config{options.Config.DaemonSetNamespace: {}}}})
+		Cache: ctrlcache.Options{DefaultNamespaces: map[string]ctrlcache.Config{cfg.TetragonNamespace: {}}}})
 	if err != nil {
 		return fmt.Errorf("failed to create Tetragon daemon set reconciler manager: %w", err)
 	}
@@ -67,7 +64,6 @@ func Manage() error {
 	reconciler := &Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("tetragon-ds-reconciler"),
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("failed to create Tetragon daemon set reconciler: %w", err)
@@ -75,15 +71,15 @@ func Manage() error {
 
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
-			log.Fatalf("reconciler Tetragon daemon set manager failed: %s", err)
+			panic(fmt.Errorf("reconciler Tetragon daemon set manager failed: %w", err))
 		}
 		//TODO (FGI): handle graceful termination through context
 	}()
 	return nil
 }
 
-func getK8SClient() (*kubernetes.Clientset, error) {
-	restConfig, err := getConfig()
+func getK8SClient(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	restConfig, err := getConfig(kubeconfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to check k8s configuration: %w", err)
 	}
@@ -99,9 +95,9 @@ func getK8SClient() (*kubernetes.Clientset, error) {
 	return client, nil
 }
 
-func getConfig() (*rest.Config, error) {
-	if options.Config.KubeCfgPath != "" {
-		return clientcmd.BuildConfigFromFlags("", options.Config.KubeCfgPath)
+func getConfig(kubeconfigPath string) (*rest.Config, error) {
+	if kubeconfigPath != "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	}
 	return rest.InClusterConfig()
 }

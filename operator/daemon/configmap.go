@@ -2,6 +2,7 @@
 package daemon
 
 import (
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -55,7 +56,7 @@ func defaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
 }
 
 // agentConfigMap instantiates a ConfigMap based on the operator configuration.
-func agentConfigMap(namespace string, name string, opCM *corev1.ConfigMap) *corev1.ConfigMap {
+func agentConfigMap(log logr.Logger, namespace string, name string, opCM *corev1.ConfigMap) *corev1.ConfigMap {
 	agentCM := &corev1.ConfigMap{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -71,16 +72,16 @@ func agentConfigMap(namespace string, name string, opCM *corev1.ConfigMap) *core
 				ManagedByLabel:               TetragonOperatorName,
 			},
 		},
-		Data: valuesAsMap(opCM.Data[OperatorConfigMapAgentConfigMapKey]),
+		Data: valuesAsMap(log, opCM.Data[OperatorConfigMapAgentConfigMapKey]),
 	}
 	return agentCM
 }
 
-func valuesAsMap(yamlValues string) map[string]string {
+func valuesAsMap(log logr.Logger, yamlValues string) map[string]string {
 	values := map[string]string{}
 	err := yaml.Unmarshal([]byte(yamlValues), &values)
 	if err != nil {
-		log.WithField("value", yamlValues).WithError(err).Error("could not unmarshal the agent ConfigMap, left empty")
+		log.WithValues("value", yamlValues).Error(err, "could not unmarshal the agent ConfigMap, left empy")
 	}
 	return values
 }
