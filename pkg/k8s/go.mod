@@ -4,7 +4,7 @@ go 1.22.1
 
 require (
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cilium/cilium v1.15.1
+	github.com/cilium/cilium v1.15.2
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
 	github.com/stretchr/testify v1.9.0
