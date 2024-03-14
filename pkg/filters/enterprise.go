@@ -26,5 +26,6 @@ func init() {
 		&DestinationPodRegexFilter{},
 		&DnsNamesRegexFilter{},
 		&HostRegexFilter{},
+		&ProtocolFilter{},
 	}...)
 }

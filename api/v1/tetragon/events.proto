@@ -120,6 +120,10 @@ message Filter {
     // Filter by process_http.http.request.host field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax
     repeated string host_regex = 1008;
+    // Filter by socket protocol. An event matches if its socket protocol
+    // matches any of the protocols listed here. Note that events without a
+    // protocol field will never match.
+    repeated SocketProtocol protocol = 1009;
 }
  
  // Filter over a set of Linux process capabilities. See `message Capabilities`

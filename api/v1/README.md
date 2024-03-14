@@ -482,6 +482,7 @@ Example 1: {&#34;event_set&#34;: [&#34;PROCESS_ACCEPT&#34;], ip_cidr&#34;: [&#34
 | destination_pod_regex | [string](#string) | repeated | Filter by destination_pod.name field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
 | dns_names_regex | [string](#string) | repeated | Filter by process_dns.dns.names field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
 | host_regex | [string](#string) | repeated | Filter by process_http.http.request.host field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
+| protocol | [SocketProtocol](#tetragon.SocketProtocol) | repeated | Filter by socket protocol. An event matches if its socket protocol matches any of the protocols listed here. Note that events without a protocol field will never match. |
 
 
 
