@@ -45,10 +45,10 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			// TODO: add annotation and make them configurable
-			Labels: labels(log, cmFields, "labels"),
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: configMapOfString(log, cmFields, "annotations"),
+			Labels:      labels(log, cmFields, "labels"),
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{ //TODO: make configurable
@@ -266,18 +266,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 // labels returns the labels configured by the user in the operator ConfigMap
 // in addition to the ones that always get applied.
 func labels(log logr.Logger, values map[string]any, key string) map[string]string {
-	cmLabels, ok := values[key]
-	labels := map[string]string{}
-	if ok {
-		typedLabels, ok := cmLabels.(map[string]interface{})
-		if !ok {
-			log.WithValues("value", cmLabels).Error(errors.New("could not unmarshal the DaemonSet labels"), "labels not applied")
-		} else {
-			for k, v := range typedLabels {
-				labels[k] = v.(string)
-			}
-		}
-	}
+	labels := configMapOfString(log, values, key)
 	labels["app.kubernetes.io/instance"] = DaemonSetName
 	labels["app.kubernetes.io/name"] = DaemonSetName
 	labels[ManagedByLabel] = TetragonOperatorName
@@ -308,4 +297,20 @@ func configArray(log logr.Logger, config map[string]any, key string, defaultValu
 		}
 	}
 	return defaultValue
+}
+
+func configMapOfString(log logr.Logger, m map[string]any, key string) map[string]string {
+	values, ok := m[key]
+	stringValues := map[string]string{}
+	if ok {
+		typedValues, ok := values.(map[string]interface{})
+		if !ok {
+			log.WithValues("key", key, "value", values).Error(errors.New("could not unmarshal"), "not applied")
+		} else {
+			for k, v := range typedValues {
+				stringValues[k] = v.(string)
+			}
+		}
+	}
+	return stringValues
 }
