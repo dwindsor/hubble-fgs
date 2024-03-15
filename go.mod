@@ -19,7 +19,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/isovalent/metricstool v0.1.0
-	github.com/mennanov/fieldmask-utils v1.1.0
+	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.51
 	github.com/pawelgaczynski/giouring v0.0.0-20230826085535-69588b89acb9
 	github.com/prometheus/client_golang v1.19.0
