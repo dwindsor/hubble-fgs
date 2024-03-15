@@ -1,13 +1,20 @@
 package agent
 
 import (
+	_ "embed"
+
 	"github.com/go-logr/logr"
+
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"sigs.k8s.io/yaml"
 )
 
 const operatorConfigMapAgentConfigMapKey = "agentConfigMap"
+
+//go:embed tetragon-config.yaml
+var defaultAgentConfig string
 
 // defaultOperatorConfigMap creates an empty ConfigMap.
 // It matches the mount configuration of the operator.
@@ -27,9 +34,7 @@ func defaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
 			Labels: map[string]string{},
 		},
 		Data: map[string]string{
-			operatorConfigMapAgentConfigMapKey: `# Configuration of the agent ConfigMap
-# The content specified here will be copied into it.
-# Refer to Tetragon documentation for the options.`,
+			operatorConfigMapAgentConfigMapKey: defaultAgentConfig,
 			OperatorConfigMapAgentDaemonSetKey: `# Configuration of the agent DaemonSet
 #   labels:
 #     key1: value1
