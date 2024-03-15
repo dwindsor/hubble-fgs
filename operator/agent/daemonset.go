@@ -153,11 +153,68 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	return ds, nil
 }
 
-// TODO(FGI): The metadata container is missing
 func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
 	privilegedContext := true
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	containers := make([]corev1.Container, 0)
+
+	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
+		privileged := true
+		securityContext := corev1.SecurityContext{Privileged: &privileged}
+		securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
+		if securityContextValue != "" {
+			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
+				log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the security context, default value used instead")
+			}
+		}
+
+		extraMounts := make([]corev1.VolumeMount, 0)
+		for _, m := range configArray(log, cmFields, "ociHookSetupExtraVolumeMounts", []string{}) {
+			v := corev1.VolumeMount{}
+			if err := yaml.Unmarshal([]byte(m), &v); err != nil {
+				log.WithValues("value", m).Error(err, "could not unmarshal the extra volume mount, mount not applied")
+				continue
+			}
+			extraMounts = append(extraMounts, v)
+		}
+
+		resources := corev1.ResourceRequirements{}
+		resourcesValue := configValue(log, cmFields, "ociHookSetupResources", "")
+		if resourcesValue != "" {
+			if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
+				log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
+			}
+		}
+
+		containers = append(containers, corev1.Container{
+			Name:                     "oci-hook-setup",
+			SecurityContext:          &securityContext,
+			Image:                    os.Getenv("TETRAGON_IMAGE"),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Command: []string{
+				"tetragon-oci-hook-setup",
+				"install",
+				"--interface",
+				configValue(log, cmFields, "ociHookSetupInterface", "oci-hooks"),
+				"--local-install-dir=/hostInstall",
+				"--host-install-dir",
+				configValue(log, cmFields, "ociHookSetupInstallDir", "/opt/tetragon"),
+				"--oci-hooks.local-dir=/hostHooks",
+			},
+			VolumeMounts: append(
+				extraMounts,
+				corev1.VolumeMount{
+					Name:      "oci-hooks-path",
+					MountPath: "/hostHooks",
+				},
+				corev1.VolumeMount{
+					Name:      "oci-hooks-install-path",
+					MountPath: "/hostInstall",
+				},
+			),
+			Resources: resources,
+		})
+	}
 
 	if cmFields["exportMode"] == "stdout" {
 		exportFilenames := configArray(log, cmFields, "exportFilenames", []string{"tetragon.log"})
