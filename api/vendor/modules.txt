@@ -9,8 +9,8 @@ github.com/cilium/tetragon/pkg/matchers/timestampmatcher
 ## explicit; go 1.22.0
 github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
-# github.com/golang/protobuf v1.5.3
-## explicit; go 1.9
+# github.com/golang/protobuf v1.5.4
+## explicit; go 1.17
 github.com/golang/protobuf/proto
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13

@@ -134,6 +134,7 @@
     - [KprobeCred](#tetragon.KprobeCred)
     - [KprobeFile](#tetragon.KprobeFile)
     - [KprobeLinuxBinprm](#tetragon.KprobeLinuxBinprm)
+    - [KprobeNetDev](#tetragon.KprobeNetDev)
     - [KprobePath](#tetragon.KprobePath)
     - [KprobePerfEvent](#tetragon.KprobePerfEvent)
     - [KprobeSkb](#tetragon.KprobeSkb)
@@ -2298,6 +2299,7 @@ https://github.com/opencontainers/runtime-spec/blob/main/config.md#createcontain
 | cap_permitted_arg | [string](#string) |  | Capabilities that are currently permitted in hexadecimal format. |
 | cap_effective_arg | [string](#string) |  | Capabilities that are actually used in hexadecimal format. |
 | linux_binprm_arg | [KprobeLinuxBinprm](#tetragon.KprobeLinuxBinprm) |  |  |
+| net_dev_arg | [KprobeNetDev](#tetragon.KprobeNetDev) |  |  |
 | label | [string](#string) |  |  |
 
 
@@ -2400,6 +2402,21 @@ https://github.com/opencontainers/runtime-spec/blob/main/config.md#createcontain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon.KprobeNetDev"></a>
+
+### KprobeNetDev
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
 
 
 
