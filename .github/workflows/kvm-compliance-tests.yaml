@@ -40,7 +40,7 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20240315.012542'
+          - 'bpf-next-20240319.012540'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - '6.6-20240305.092417'
           # FIXME: following kernels temporarily disabled pending bugfixes
