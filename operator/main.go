@@ -15,7 +15,7 @@ import (
 	"github.com/cilium/tetragon/operator/cmd"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 
-	"github.com/isovalent/hubble-fgs/operator/daemon"
+	"github.com/isovalent/hubble-fgs/operator/agent"
 	"github.com/isovalent/hubble-fgs/operator/options"
 )
 
@@ -36,7 +36,7 @@ func main() {
 	ossServe.RunE = func(cmd *cobra.Command, args []string) error {
 		cfg := options.NewConfig()
 		if cfg.ManageAgent {
-			if err := daemon.Manage(cfg); err != nil {
+			if err := agent.Manage(cfg); err != nil {
 				return err
 			}
 		} else {

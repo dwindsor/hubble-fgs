@@ -1,5 +1,4 @@
-// TODO(FGI) rename to agent
-package daemon
+package agent
 
 import (
 	"github.com/go-logr/logr"
@@ -8,11 +7,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	OperatorConfigMapName              = "tetragon-operator-config"
-	AgentConfigMapName                 = "tetragon-config"
-	OperatorConfigMapAgentConfigMapKey = "agentConfigMap"
-)
+const operatorConfigMapAgentConfigMapKey = "agentConfigMap"
 
 // defaultOperatorConfigMap creates an empty ConfigMap.
 // It matches the mount configuration of the operator.
@@ -32,7 +27,7 @@ func defaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
 			Labels: map[string]string{},
 		},
 		Data: map[string]string{
-			OperatorConfigMapAgentConfigMapKey: `# Configuration of the agent ConfigMap
+			operatorConfigMapAgentConfigMapKey: `# Configuration of the agent ConfigMap
 # The content specified here will be copied into it.
 # Refer to Tetragon documentation for the options.`,
 			OperatorConfigMapAgentDaemonSetKey: `# Configuration of the agent DaemonSet
@@ -72,7 +67,7 @@ func agentConfigMap(log logr.Logger, namespace string, name string, opCM *corev1
 				ManagedByLabel:               TetragonOperatorName,
 			},
 		},
-		Data: valuesAsMap(log, opCM.Data[OperatorConfigMapAgentConfigMapKey]),
+		Data: valuesAsMap(log, opCM.Data[operatorConfigMapAgentConfigMapKey]),
 	}
 	return agentCM
 }

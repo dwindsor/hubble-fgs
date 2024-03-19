@@ -1,5 +1,4 @@
-// TODO(FGI) rename to agent
-package daemon
+package agent
 
 import (
 	"errors"
@@ -15,15 +14,13 @@ import (
 )
 
 const (
-	DaemonSetName = "tetragon"
-	// TODO (FGI) ManagedByLabel, TetragonOperatorName, OperatorConfigMapDaemonSetKey should be put at the right location.
+	DaemonSetName                      = "tetragon"
 	ManagedByLabel                     = "app.kubernetes.io/managed-by"
 	TetragonOperatorName               = "tetragon-operator"
 	OperatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
-	dsUpdateMaxUnavailable             = int32(1)
-	dsUpdateMaxSurge                   = int32(0)
 )
 
+// daemonSet instantiates a Tetragon DaemonSet configuration.
 func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
@@ -142,11 +139,11 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 				RollingUpdate: &appv1.RollingUpdateDaemonSet{
 					MaxUnavailable: &intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: dsUpdateMaxUnavailable,
+						IntVal: 1,
 					},
 					MaxSurge: &intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: dsUpdateMaxSurge,
+						IntVal: 0,
 					},
 				},
 			},
