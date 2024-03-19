@@ -152,7 +152,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	process->received = 0;
 	process->sent = 0;
 	process->zero_window = 0;
-	process->ack_finack = 0;
+	process->fin_rx = 0;
 	process->tuple.saddr[0] = val->tuple.saddr[0];
 	process->tuple.saddr[1] = val->tuple.saddr[1];
 	process->tuple.daddr[0] = val->tuple.daddr[0];

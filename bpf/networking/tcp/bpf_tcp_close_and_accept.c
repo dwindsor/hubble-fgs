@@ -42,8 +42,8 @@ __attribute__((section("kprobe/tcp_set_state"), used)) int
 tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
-	struct socketmap_value *process;
 	struct msg_ip_with_stats_event *val;
+	struct socketmap_value *process;
 	unsigned char old_state;
 	struct sock *skp;
 	u32 zero = 0;
@@ -64,8 +64,25 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
 		return __event_tcp_accept_state(ctx, skp);
 
-	if (state != TCP_CLOSE)
+	if (state != TCP_CLOSE && state != TCP_CLOSE_WAIT)
 		return 0;
+
+	process = lookup_socketmap(&cookie);
+	if (!process)
+		return 0;
+
+	if (state == TCP_CLOSE_WAIT) {
+		/* When a socket is closing, it may have received a FIN/ACK segment.
+		* Unfortunately, a FIN/ACK increases the received sequence counter
+		* by 1 (in order to maintain appropriate state). We use the received
+		* sequence counter to indicate the number of bytes received, so if
+		* we have received a FIN/ACK then our counter will be 1 greater than
+		* it should be. Mark the socket so that stats calculations can take
+		* this into account.
+		*/
+		process->fin_rx = 1;
+		return 0;
+	}
 
 	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tcp_close_event_map,
 								&zero);
@@ -82,10 +99,6 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 		.version = 0,
 	};
 
-	process = lookup_socketmap(&cookie);
-	if (!process)
-		return 0;
-
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
 	val->key.pid = process->key.pid;
 	val->key.ktime = process->key.ktime;
@@ -94,24 +107,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	val->tuple = process->tuple;
 
 	get_socket_stats(skp, process, &val->stats);
-
-	/* When a socket is closing, it may have received a FIN/ACK segment.
-	 * Unfortunately, a FIN/ACK increases the received sequence counter
-	 * by 1 (in order to maintain appropriate state). We use the received
-	 * sequence counter to indicate the number of bytes received, so if
-	 * we have received a FIN/ACK then our counter will be 1 greater than
-	 * it should be.
-	 * 
-	 * The situations where this will be the case are any where we are
-	 * transitioning from LAST_ACK to CLOSE, as all of these imply a
-	 * FIN/ACK was received (as the remote end has initiated the close);
-	 * and the specific case where the local end initiated the close and
-	 * a FIN/ACK was ACKed, recorded in the ack_finack flag on the socket
-	 * (see bpf_tcp_send_check.h for details).
-	 */
-	if ((old_state == TCP_LAST_ACK || process->ack_finack) &&
-	    val->stats.bytes_received > 0)
-		val->stats.bytes_received--;
+	val->stats.bytes_received -= process->fin_rx;
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);

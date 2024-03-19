@@ -191,7 +191,7 @@ type tcpValue struct {
 	Pad1            uint32
 	RttBuckets      [8]uint64
 	LatencyBuckets  [8]uint64
-	AckFinAck       uint8
+	FinRx           uint8
 	Pad2            [7]uint8
 	RttSum          uint64
 	LatencySum      uint64
@@ -202,7 +202,7 @@ func (t *tcpValue) String() string {
 	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
 		t.Key.Pid,
 		t.CreateTime, t.LastTime,
-		t.Sent, t.SegsOut, t.Recv, t.SegsIn,
+		t.Sent, t.SegsOut, t.Recv-uint64(t.FinRx), t.SegsIn,
 		t.ZeroWindow,
 		t.RetransmitBytes, t.RetransmitSegs,
 		t.SkDrops, t.Srtt)
@@ -213,11 +213,11 @@ func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStats {
 	s.Ktime = t.LastTime
 	s.CreateKtime = t.CreateTime
 	s.BytesSent = t.Sent
-	s.BytesReceived = t.Recv
+	s.BytesReceived = t.Recv - uint64(t.FinRx)
 	s.SegsIn = t.SegsIn
 	s.SegsOut = t.SegsOut
-	s.BytesSubmitted = t.Sent
-	s.BytesConsumed = t.Recv
+	s.BytesSubmitted = 0
+	s.BytesConsumed = 0
 	s.SegsConsumed = 0
 	s.SegsSubmitted = 0
 	s.SRtt = t.Srtt

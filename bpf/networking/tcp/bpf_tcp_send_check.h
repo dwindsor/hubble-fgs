@@ -20,6 +20,7 @@
 #include "../bpf_network_helpers.h"
 #include "../bpf_process_network_watermarks.h"
 #include "../../lib/tlsmsg.h"
+#include "bpf_tracing.h"
 
 struct tcp_send_check_sample_cfg {
 	__u64 ktime;
@@ -84,14 +85,11 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 * where FIN packets do not have a payload (i.e. payloads are
 	 * sent, and then afterwards a FIN is sent) - this means that a
 	 * FIN packet with 0 payload was received, and this would have
-	 * incremented our receive sequence number by 1. As we use this
-	 * value as our bytes_received count, we need to reduce it by 1
-	 * when we report the count, which we do in the tcp_close program.
-	 * We therefore set a flag on the socket to indicate this and do
-	 * not process further in this program.
+	 * incremented our receive sequence number by 1. Mark the socket
+	 * so that stats calculations can take this into account.
 	 */
 	if (state == TCP_FIN_WAIT2) {
-		process->ack_finack = 1;
+		process->fin_rx = 1;
 		return 0;
 	}
 

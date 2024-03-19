@@ -36,7 +36,7 @@ struct socketmap_value {
 	__u32 version;
 	__u64 rtt_buckets[8];
 	__u64 latency_buckets[8];
-	__u8 ack_finack;
+	__u8 fin_rx;
 	__u8 protocol;
 	__u8 pad[6];
 	__u64 rtt_sum;
@@ -211,7 +211,7 @@ update_socketmap(u64 *cookie, u32 pid)
 			process->sent = 0;
 			process->socket_flags = 0;
 			process->zero_window = 0;
-			process->ack_finack = 0;
+			process->fin_rx = 0;
 #pragma unroll
 			for (i = 0; i < 8; i++) {
 				process->rtt_buckets[i] = 0;
@@ -230,7 +230,7 @@ update_socketmap(u64 *cookie, u32 pid)
 			process->sent = 0;
 			process->socket_flags = 0;
 			process->zero_window = 0;
-			process->ack_finack = 0;
+			process->fin_rx = 0;
 #pragma unroll
 			for (i = 0; i < 8; i++) {
 				process->rtt_buckets[i] = 0;
