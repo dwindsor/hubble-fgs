@@ -68,6 +68,7 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_ge
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
 	  bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
 	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o \
+	  bpf_generic_uprobe.o bpf_generic_uprobe_v53.o bpf_generic_uprobe_v511.o bpf_generic_uprobe_v61.o \
 	  bpf_execve_event_v61.o bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
 	  bpf_generic_tracepoint_v61.o \
 	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
@@ -334,6 +335,7 @@ objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_multi_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_generic_uprobe_v53.ll: $(PROCESSDIR)/bpf_generic_uprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_vfs_rename_v419.ll: $(FILEDIR)/bpf_vfs_rename.c
 objs/bpf_filemap_fault_v419.ll: $(FILEDIR)/bpf_filemap_fault.c
@@ -369,12 +371,14 @@ deps/bpf_generic_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_generic_uprobe_v511.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 deps/bpf_generic_tracepoint_v511.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_generic_uprobe_v53.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_vfs_rename_v419.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_filemap_fault_v419.d: $(FILEDIR)/bpf_filemap_fault.c
@@ -428,6 +432,7 @@ objs/bpf_generic_retkprobe_v511.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v511.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_multi_retkprobe_v511.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v511.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
+objs/bpf_generic_uprobe_v511.ll: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v511.ll objs/bpf_multi_retkprobe_v511.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__MULTI_KPROBE -c $< -o $@
@@ -441,6 +446,7 @@ objs/bpf_generic_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v61.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_multi_retkprobe_v61.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v61.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
+objs/bpf_generic_uprobe_v61.ll: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v61.ll objs/bpf_multi_retkprobe_v61.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
@@ -454,6 +460,7 @@ deps/bpf_generic_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
+deps/bpf_generic_uprobe_v61.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 $(DEPSDIR)%_v61.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
