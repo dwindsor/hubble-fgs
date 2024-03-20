@@ -1559,7 +1559,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if !tpConf.forceLoad && !kernels.MinKernelVersion("4.18.0") {
 		return nil, fmt.Errorf("FileMonitoring requires at least 4.18.0 version")
 	}
-	logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
+	logger.GetLogger().Infof("FileMonitoring is enabled with %d prefixes and %d patterns to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsPatterns), len(spec.FileMonitoring.PathsExclude))
 
 	if !spec.FileMonitoring.MonitorHostFiles && spec.FileMonitoring.PodSelector == nil {
 		logger.GetLogger().Warnf("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
