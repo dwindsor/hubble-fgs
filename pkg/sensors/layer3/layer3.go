@@ -12,14 +12,18 @@ package layer3
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"golang.org/x/sys/unix"
@@ -27,22 +31,49 @@ import (
 
 var (
 	configured = false
+	tcpEnabled = false
+	udpEnabled = false
 )
 
 func unloadLayer3Sensor() error {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	configured = false
-	err := tcp.UnloadSensor()
-	return err
+	if tcpEnabled {
+		err := tcp.UnloadSensor()
+		if err != nil {
+			return err
+		}
+		tcpEnabled = false
+	}
+	if udpEnabled {
+		err := udp.UnloadSensor()
+		if err != nil {
+			return err
+		}
+		udpEnabled = false
+	}
+	return nil
 }
 
-func EnableLayer3(timestampEnable bool) *sensors.Sensor {
+func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	configured = false
 
-	tcpProgs, tcpMaps := tcp.EnableTcp(timestampEnable)
+	var progs []*program.Program
+	var maps []*program.Map
+	if tcpEnabled {
+		tcpProgs, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
+		progs = append(progs, tcpProgs...)
+		maps = append(maps, tcpMaps...)
+	}
 
-	l3Sensor := sensors.SensorBuilder("tcp_sensors", tcpProgs, tcpMaps)
+	if udpEnabled {
+		udpProgs, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
+		progs = append(progs, udpProgs...)
+		maps = append(maps, udpMaps...)
+	}
+
+	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
 }
@@ -57,7 +88,7 @@ func (l3 *l3Sensor) PolicyHandler(
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
 
-	if !spec.Parser.Tcp.Enable {
+	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable {
 		return nil, nil
 	}
 
@@ -65,29 +96,55 @@ func (l3 *l3Sensor) PolicyHandler(
 		return nil, fmt.Errorf("layer3 sensor does not implement policy filtering")
 	}
 
-	timestampEnable, err := tcp.PolicyHandler(spec)
-	if err != nil {
-		return nil, err
+	tcpTimestampEnable := false
+	var err error
+	if spec.Parser.Tcp.Enable {
+		tcpTimestampEnable, err = tcp.PolicyHandler(spec)
+		if err != nil {
+			return nil, err
+		}
+		tcpEnabled = true
 	}
-	return EnableLayer3(timestampEnable), nil
+	cgroup := false
+	udpTimestampEnable := false
+	var udpInterval time.Duration
+	if spec.Parser.Udp.Enable {
+		cgroup, udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
+		if err != nil {
+			return nil, err
+		}
+		udpEnabled = true
+	}
+	return EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable, udpInterval), nil
 }
 
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
-		tcp.GetRunningSockets(true, true)
+		if tcpEnabled {
+			tcp.GetRunningSockets(true, true)
+		}
+		if udpEnabled {
+			ip.LoadSockets(udp.FdCallback, unix.IPPROTO_UDP)
+		}
 	}
 
-	if args.Load.Type == "cgrp_tcp_ingress" {
+	switch args.Load.Type {
+	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}
-	} else if args.Load.Type == "tcp_tc_egress" {
+	case "kprobe_udp":
+		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+		if err != nil {
+			return err
+		}
+	case "udp_tc_egress", "tcp_tc_egress":
 		err := networklatency.AttachTc(args)
 		if err != nil {
 			return err
 		}
-	} else {
+	case "layer3_sensor":
 		if tcp.StatsEnabled {
 			tcp.ConfigureSockStatSampler(tcp.Interval,
 				tcp.WatermarksEnable,
@@ -105,11 +162,23 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if !configured {
-		if tcp.TimestampEnabled {
+		if tcpEnabled && tcp.TimestampEnabled {
 			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()
+		}
+		if udpEnabled {
+			if err := udp.ConfigureUdpSensor(args.BPFDir, udp.ConfigMapName, udp.Config); err != nil {
+				return err
+			}
+			logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("UDP Loader")
+			if udp.TimestampEnabled {
+				if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
+					return err
+				}
+				networklatency.Start()
+			}
 		}
 		configured = true
 	}
@@ -135,7 +204,12 @@ func AddLayer3() {
 	sensors.RegisterPolicyHandlerAtInit(l3.name, l3)
 
 	sensors.RegisterProbeType("layer3_sensor", l3)
-	sensors.RegisterProbeType("cgrp_tcp_ingress", l3)
+	sensors.RegisterProbeType("cgrp_ingress", l3)
+	sensors.RegisterProbeType("cgrp_egress", l3)
+	sensors.RegisterProbeType("cgrp_inet4_bind", l3)
+	sensors.RegisterProbeType("cgrp_inet6_bind", l3)
+	sensors.RegisterProbeType("kprobe_udp", l3)
+	sensors.RegisterProbeType("udp_tc_egress", l3)
 	sensors.RegisterProbeType("tcp_tc_egress", l3)
 }
 

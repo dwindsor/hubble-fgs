@@ -21,9 +21,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 )
 
 const (
@@ -182,7 +182,7 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 // needed for BPF to identify UDP watermarks and run the monitor on it.
 func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Watermarks.Enable && spec.Parser.Udp.Watermarks.WindowSize > 0 && spec.Parser.Udp.Watermarks.BurstTriggerPercent > 0 {
-		watermarkEnabled = true
+		WatermarksEnabled = true
 		config.watermarksEnable = 1
 		// WindowSize is in milliseconds
 		config.watermarksAvgWindowSizeMs = uint64(spec.Parser.Udp.Watermarks.WindowSize)
@@ -197,7 +197,7 @@ func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpe
 		config.watermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
 		go networkWatermarksEvents.Start(spec, unix.IPPROTO_UDP, false)
 	} else if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
-		watermarkEnabled = true
+		WatermarksEnabled = true
 		config.watermarksEnable = 1
 		// WindowSize is in milliseconds
 		config.watermarksAvgWindowSizeMs = uint64(spec.Parser.Udp.Burst.WindowSize)
@@ -240,11 +240,11 @@ func ParseSeqCheckSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 }
 
 func ParseDisableSpec(spec *v1alpha1.TracingPolicySpec) {
-	disableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
-	disableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
-	disableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
-	disableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+	DisableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
+	DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
+	DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
+	DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
 	logger.GetLogger().WithField("disableEvents", spec.Parser.Udp.DisableEvents).Warn("UDP")
-	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": disableCloseEvents, "disableListen": disableListenEvents,
-		"disableClose": disableCloseEvents, "disableStats": disableStatsEvents}).Info("UDP event types")
+	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": DisableCloseEvents, "disableListen": DisableListenEvents,
+		"disableClose": DisableCloseEvents, "disableStats": DisableStatsEvents}).Info("UDP event types")
 }

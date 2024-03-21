@@ -20,7 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/dnsconfig"
 )
 
 // An RCode is a DNS response status code.

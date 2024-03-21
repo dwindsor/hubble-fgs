@@ -71,6 +71,20 @@ func addWriteRequest(socket int, ring *giouring.Ring, iovecs []syscall.Iovec, me
 	ring.Submit()
 }
 
+func addRecvRequest(socket int, ring *giouring.Ring, msg *syscall.Msghdr) {
+	sqe := ring.GetSQE()
+	sqe.PrepareRecvMsg(socket, msg, 0)
+	sqe.UserData = eventTypeRead
+	ring.Submit()
+}
+
+func addSendRequest(socket int, ring *giouring.Ring, msg *syscall.Msghdr) {
+	sqe := ring.GetSQE()
+	sqe.PrepareSendMsg(socket, msg, 0)
+	sqe.UserData = eventTypeWrite
+	ring.Submit()
+}
+
 func addCloseRequest(socket int, ring *giouring.Ring, ty uint64) {
 	sqe := ring.GetSQE()
 	sqe.PrepareClose(socket)
@@ -78,7 +92,7 @@ func addCloseRequest(socket int, ring *giouring.Ring, ty uint64) {
 	ring.Submit()
 }
 
-func tcpIouServer() {
+func runTcpIouServer() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
@@ -202,7 +216,7 @@ func htons(v uint16) uint16 {
 	return (v<<8)&0xff00 | v>>8
 }
 
-func tcpIouClient() {
+func runTcpIouClient() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
@@ -286,6 +300,85 @@ func tcpIouClient() {
 			}
 		case eventTypeClose:
 			os.Exit(0)
+		}
+	}
+}
+
+func runUdpIouServer() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		if sig == syscall.SIGTERM {
+			os.Exit(0)
+		}
+	}()
+
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, 0)
+	if err != nil {
+		logger.GetLogger().Warn("socket failed")
+		panic(err)
+	}
+	addr := &unix.SockaddrInet4{
+		Port: 8000,
+		Addr: [4]byte{0, 0, 0, 0},
+	}
+	err = unix.Bind(fd, addr)
+	if err != nil {
+		logger.GetLogger().Warn("bind failed")
+		panic(err)
+	}
+
+	uring := giouring.NewRing()
+	err = uring.QueueInit(64, 0)
+	if err != nil {
+		logger.GetLogger().Warn("QueueInit failed")
+		panic(err)
+	}
+
+	buffer := make([]byte, 1024)
+	iovec := syscall.Iovec{
+		Base: &buffer[0],
+		Len:  1024,
+	}
+	clientAddr := syscall.RawSockaddrAny{}
+	msg := syscall.Msghdr{
+		Name:    (*byte)(unsafe.Pointer(&clientAddr)),
+		Namelen: uint32(syscall.SizeofSockaddrAny),
+		Iov:     &iovec,
+		Iovlen:  1,
+	}
+
+	addRecvRequest(fd, uring, &msg)
+	fmt.Printf("Ready\n")
+
+	for {
+		cqe, err := uring.WaitCQE()
+		if err != nil {
+			logger.GetLogger().Warn("WaitCQE failed")
+			panic(err)
+		}
+		uring.CQESeen(cqe)
+		eventType := cqe.UserData
+		if cqe.Res < 0 {
+			panic(fmt.Errorf("async request failed: %d for event: %d", cqe.Res, eventType))
+		}
+		switch eventType {
+		case eventTypeRead:
+			if cqe.Res == 0 {
+				logger.GetLogger().Warn("Empty read received!")
+				continue
+			}
+			logger.GetLogger().WithFields(logrus.Fields{"buffer": buffer[:cqe.Res], "msg": string(buffer[:cqe.Res])}).Info("Read")
+			msg.Iov.Len = uint64(cqe.Res)
+			addSendRequest(fd, uring, &msg)
+		case eventTypeWrite:
+			if cqe.Res == 0 {
+				logger.GetLogger().Warn("Empty write sent!")
+				continue
+			}
+			logger.GetLogger().WithFields(logrus.Fields{"buffer": buffer[:cqe.Res], "msg": string(buffer[:cqe.Res])}).Info("Written")
+			addRecvRequest(fd, uring, &msg)
 		}
 	}
 }

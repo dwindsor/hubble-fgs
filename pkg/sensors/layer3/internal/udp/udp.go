@@ -22,17 +22,15 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/reader/proc"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
@@ -48,10 +46,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
 const (
@@ -60,11 +57,11 @@ const (
 	UdpVerMapName        = "tg_udp_ver_map"
 	UdpRetprobeMapName   = "tg_udp_retprobe_map"
 	UdpRetprobeStatsName = "tg_udp_retprobe_map_stats"
-	UdpConfigMapName     = "tg_udp_config_map"
+	ConfigMapName        = "tg_udp_config_map"
 	UdpPayloadMapName    = "tg_udp_payload_map"
 	SocketMapName        = "tg_socket_map"
 
-	stataCacheSize = 32000
+	udpStatsCacheSize = 32000
 )
 
 type udpPseudoSocket struct {
@@ -84,20 +81,19 @@ var (
 
 	stats *lru.Cache[udpInfoKey, udpInfoValue]
 
-	Config           ConfigValue
-	configured       = false
-	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
-	watermarkEnabled = false
+	Config            ConfigValue
+	gcTimer           = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
+	WatermarksEnabled = false
 
 	pseudoSockets       = make(map[cookieVer](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex
 
-	timestampEnabled = false
+	TimestampEnabled = false
 
-	disableConnectEvents = false
-	disableListenEvents  = false
-	disableCloseEvents   = false
-	disableStatsEvents   = false
+	DisableConnectEvents = false
+	DisableListenEvents  = false
+	DisableCloseEvents   = false
+	DisableStatsEvents   = false
 )
 
 var (
@@ -259,9 +255,9 @@ var (
 	UdpVerMapLazyKprobe        = program.MapBuilder(UdpVerMapName, InetSendRecvLazy)
 	UdpRetprobeMap             = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
 	UdpRetprobeStats           = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
-	UdpConfigMap               = program.MapBuilder(UdpConfigMapName, InetSend)
-	UdpConfigLazyMap           = program.MapBuilder(UdpConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe     = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpConfigMap               = program.MapBuilder(ConfigMapName, InetSend)
+	UdpConfigLazyMap           = program.MapBuilder(ConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe     = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
 	UdpPayloadMap              = program.MapBuilder(UdpPayloadMapName, InetSend)
 	UdpPayloadLazyMap          = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
 	UdpPayloadLazyMapKprobe    = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
@@ -437,7 +433,7 @@ func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPWithStatsEvent
 func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := createStatEvent(k, v)
 
-	if disableStatsEvents {
+	if DisableStatsEvents {
 		layer3.CreateProcessSockStats(unix, false)
 	} else {
 		observer.AllListeners(unix)
@@ -616,7 +612,7 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 
 	if t > UdpDeleteInterval {
 		if udpValue.Pid != 0 {
-			if !disableCloseEvents {
+			if !DisableCloseEvents {
 				emitCloseEvent(udpKey, udpValue)
 			}
 		}
@@ -656,11 +652,7 @@ func runUdpGC() {
 	for iter.Next(&key, &val) {
 		udpGcCb(m, &key, &val)
 	}
-	lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
-}
-
-type udpSensor struct {
-	name string
+	lrumetrics.LruMapSizeSet("lru_udp_stats_map", udpStatsCacheSize, float64(stats.Len()))
 }
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
@@ -676,12 +668,12 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	udp.Msg = &networkapi.MsgIPEvent{}
 
 	if socket.State == unix.BPF_TCP_CLOSE {
-		if disableListenEvents {
+		if DisableListenEvents {
 			return
 		}
 		udp.Msg.Common.Op = ops.MsgOpUDPListen
 	} else {
-		if disableConnectEvents {
+		if DisableConnectEvents {
 			return
 		}
 		udp.Msg.Common.Op = ops.MsgOpUDPConnect
@@ -714,45 +706,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	observer.AllListeners(&udp)
 }
 
-func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	if !configured {
-		ip.LoadSockets(FdCallback, unix.IPPROTO_UDP)
-	}
-
-	switch args.Load.Type {
-	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	case "kprobe_udp":
-		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	case "udp_tc_egress":
-		err := networklatency.AttachTc(args)
-		if err != nil {
-			return err
-		}
-	}
-	if !configured {
-		if err := configureUdpSensor(args.BPFDir, UdpConfigMapName, Config); err != nil {
-			return err
-		}
-		logger.GetLogger().WithField("timestampEnabled", timestampEnabled).Debug("UDP Loader")
-		if timestampEnabled {
-			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
-				return err
-			}
-			networklatency.Start()
-		}
-		configured = true
-	}
-	return nil
-}
-
-func configureUdpSensor(mapDir string, mapName string, config ConfigValue) error {
+func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return err
@@ -767,25 +721,19 @@ func configureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 	return nil
 }
 
-func unloadUdpSensor() error {
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
-
+func UnloadSensor() error {
 	gcTimer.Stop()
 	networklatency.Stop(unix.IPPROTO_UDP)
-	if watermarkEnabled {
+	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(unix.IPPROTO_UDP)
 	}
 	return nil
 }
 
-func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sensors.Sensor {
+func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var versionStr string
-
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
 
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Infof("Minimum kernel version (5.4) not met for UDP cgroup mode, falling back to socket mode")
@@ -818,7 +766,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6RetSend,
 			UdpRecv,
 		}
-		if !disableListenEvents {
+		if !DisableListenEvents {
 			progs = append(progs, SkUdpBind)
 		}
 		maps = []*program.Map{
@@ -846,7 +794,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6RetSend,
 			UdpRecv,
 		}
-		if !disableListenEvents {
+		if !DisableListenEvents {
 			progs = append(progs, SkUdpBind)
 		}
 		maps = []*program.Map{
@@ -878,7 +826,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6RetSend,
 			UdpRecv,
 		}
-		if !disableListenEvents {
+		if !DisableListenEvents {
 			progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
@@ -910,7 +858,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 			Udp6RetSend,
 			UdpRecv,
 		}
-		if !disableListenEvents {
+		if !DisableListenEvents {
 			progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
@@ -937,7 +885,7 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 	}
 
 	if timestampEnable {
-		timestampEnabled = true
+		TimestampEnabled = true
 		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_UDP)
 		if err == nil {
 			progs = append(progs, timestampProg)
@@ -954,25 +902,10 @@ func EnableUdpParser(cgroup, timestampEnable bool, interval time.Duration) *sens
 		"metrics":        udpconfig.MetricsEnabled,
 		"cgroup":         cgroup,
 	}).Infof("Enable UDP")
-	udpSensor := sensors.SensorBuilder(versionStr, progs, maps)
-	udpSensor.PreUnloadHook = unloadUdpSensor
-	return udpSensor
+	return progs, maps
 }
 
-func (udp *udpSensor) PolicyHandler(
-	policy tracingpolicy.TracingPolicy,
-	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
-	spec := policy.TpSpec()
-
-	if !spec.Parser.Udp.Enable {
-		return nil, nil
-	}
-
-	if fid != policyfilter.NoFilterID {
-		return nil, fmt.Errorf("udp sensor does not implement policy filtering")
-	}
-
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, bool, time.Duration, error) {
 	if spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
@@ -1004,7 +937,7 @@ func (udp *udpSensor) PolicyHandler(
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
-	return EnableUdpParser(spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval), nil
+	return spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval, nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
@@ -1029,7 +962,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		// If there is an existing cache entry for this pseudosocket then it must be stale, so remove it.
 		udpKey := udpInfoKey{Cookie: m.SockCookie, Version: m.Version, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}
 		stats.Remove(udpKey)
-		if disableConnectEvents {
+		if DisableConnectEvents {
 			return []observer.Event{}, nil
 		}
 	case ops.MSG_OP_UDPCLOSE:
@@ -1074,7 +1007,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 					diffValue, err := udpDiffValues(&udpKey, &entry, &udpValue)
 					if err == nil {
 						statsEvent := createStatEvent(&udpKey, &diffValue)
-						if disableStatsEvents {
+						if DisableStatsEvents {
 							layer3.CreateProcessSockStats(statsEvent, false)
 						} else {
 							closeEvents = append(closeEvents, statsEvent)
@@ -1084,20 +1017,20 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 					}
 				}
 				// Send close event – Duration actually indicates close time
-				if !disableCloseEvents {
+				if !DisableCloseEvents {
 					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
 				}
 				stats.Remove(udpKey)
 			} else {
 				// Send stats event – no stats event previously sent
 				statsEvent := createStatEvent(&udpKey, &udpValue)
-				if disableStatsEvents {
+				if DisableStatsEvents {
 					layer3.CreateProcessSockStats(statsEvent, false)
 				} else {
 					closeEvents = append(closeEvents, statsEvent)
 				}
 				// Send close event – Duration actually indicates close time
-				if !disableCloseEvents {
+				if !DisableCloseEvents {
 					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
 				}
 			}
@@ -1110,7 +1043,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Lock()
 		delete(pseudoSockets, pseudoKey)
 		pseudoSocketsUpdate.Unlock()
-		lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
+		lrumetrics.LruMapSizeSet("lru_udp_stats_map", udpStatsCacheSize, float64(stats.Len()))
 		return closeEvents, nil
 	}
 	return []observer.Event{msgUnix}, nil
@@ -1137,20 +1070,14 @@ func init() {
 	AddUDP()
 }
 
-func AddUDP() {
+func AddUDP() error {
 	var err error
 
-	stats, err = lru.New[udpInfoKey, udpInfoValue](stataCacheSize)
+	stats, err = lru.New[udpInfoKey, udpInfoValue](udpStatsCacheSize)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("UDP cache failed. Disabling UDP")
-		return
+		return err
 	}
 
-	udp := &udpSensor{
-		name: "UDP sensor",
-	}
-	sensors.RegisterProbeType("udp_sensor", udp)
-	sensors.RegisterPolicyHandlerAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPLISTEN, handleUdp)
@@ -1158,11 +1085,5 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDP_SEQ_ERROR, handleUdpSeqError)
-
-	sensors.RegisterProbeType("cgrp_ingress", udp)
-	sensors.RegisterProbeType("cgrp_egress", udp)
-	sensors.RegisterProbeType("cgrp_inet4_bind", udp)
-	sensors.RegisterProbeType("cgrp_inet6_bind", udp)
-	sensors.RegisterProbeType("kprobe_udp", udp)
-	sensors.RegisterProbeType("udp_tc_egress", udp)
+	return nil
 }

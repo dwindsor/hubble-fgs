@@ -21,7 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
 func getPromBucket(min, max, upperLimitPercent uint32) string {

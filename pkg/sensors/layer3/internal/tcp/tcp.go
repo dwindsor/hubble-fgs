@@ -49,7 +49,7 @@ var (
 	WatermarksEnabled          = false
 
 	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStats]
-	stataCacheSize = 32000
+	statsCacheSize = 32000
 
 	TimestampEnabled = false
 
@@ -131,7 +131,7 @@ var (
 		"tcp_recv",
 		"cgroup_skb/ingress",
 		"tg_skb_ingress",
-		"cgrp_tcp_ingress",
+		"cgrp_ingress",
 	)
 
 	LatencyLazy = program.Builder(
@@ -139,7 +139,7 @@ var (
 		"tcp_recv",
 		"cgroup_skb/ingress",
 		"tg_skb_ingress",
-		"cgrp_tcp_ingress",
+		"cgrp_ingress",
 	)
 
 	// Maps for TCP Sockets
@@ -539,7 +539,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	var err error
 
-	stats, err = lru.New[tcpKey, networkapi.MsgSocketStats](stataCacheSize)
+	stats, err = lru.New[tcpKey, networkapi.MsgSocketStats](statsCacheSize)
 	if err != nil {
 		return err
 	}

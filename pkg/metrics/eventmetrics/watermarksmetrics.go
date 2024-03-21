@@ -16,7 +16,7 @@ import (
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
 func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {

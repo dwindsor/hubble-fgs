@@ -9,12 +9,11 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package udp
+package layer3
 
 import (
 	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -47,11 +46,12 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	//_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,54 +64,11 @@ import (
 )
 
 var (
-	watermarksClient bool
-	layer7Client     bool
-	server           bool
-	iouServer        bool
+	udpWatermarksClient bool
+	udpLayer7Client     bool
+	udpServer           bool
+	udpIouServer        bool
 )
-
-const (
-	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
-)
-
-func init() {
-	flag.BoolVar(&watermarksClient, "watermarksClient", false, "internal")
-	flag.BoolVar(&layer7Client, "layer7Client", false, "internal")
-	flag.BoolVar(&server, "server", false, "internal")
-	flag.BoolVar(&iouServer, "iouServer", false, "internal")
-}
-
-func TestMain(m *testing.M) {
-	// FIXME: we need to skip these tests in kvm ci kernels <5.10 due to extreme flakiness
-	// in CI. Once we have a chance to debug the issue, let's drop this check.
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
-		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for UDP tests in KVM CI not met, skipping", v)
-		return
-	}
-	bpf.CheckOrMountCgroup2()
-
-	flag.Parse()
-	if server {
-		udpServer()
-		os.Exit(0)
-	}
-	if iouServer {
-		logger.GetLogger().Info("iouServer flag")
-		udpIouServer()
-		os.Exit(0)
-	}
-	if watermarksClient {
-		udpWatermarksClient()
-		os.Exit(0)
-	}
-	if layer7Client {
-		udpLayer7Client()
-		os.Exit(0)
-	}
-
-	ec := runner.TestSensorsRun(m, "SensorUdp")
-	os.Exit(ec)
-}
 
 const udpConfigLegacy = `
 apiversion: cilium.io/v1alpha1
@@ -237,12 +194,12 @@ spec:
       enable: true
       cgroup: true
 `
-const BUFSIZE, BUFVAR = 1024, 256
-const hostname = "127.0.0.1"
-const portno = 31337
-const protocol = "udp4"
+const UDPBUFSIZE, UDPBUFVAR = 1024, 256
+const udpHostname = "127.0.0.1"
+const udpPortno = 31337
+const udpProtocol = "udp4"
 
-func udpServer() {
+func runUdpServer() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
@@ -252,11 +209,11 @@ func udpServer() {
 		}
 	}()
 
-	conn, err := net.ListenPacket(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	conn, err := net.ListenPacket(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
 	if err != nil {
 		panic(err)
 	}
-	buf := make([]byte, 2*BUFSIZE)
+	buf := make([]byte, 2*UDPBUFSIZE)
 	fmt.Printf("Ready\n")
 	for {
 		_, _, err = conn.ReadFrom(buf)
@@ -267,8 +224,8 @@ func udpServer() {
 	}
 }
 
-func sendData(socket net.Conn, buf []byte) {
-	bufLen := rand.Intn(BUFVAR) - (BUFVAR / 2) + BUFSIZE
+func udpSendData(socket net.Conn, buf []byte) {
+	bufLen := rand.Intn(UDPBUFVAR) - (UDPBUFVAR / 2) + UDPBUFSIZE
 	_, err := socket.Write(buf[0:bufLen])
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")
@@ -276,7 +233,7 @@ func sendData(socket net.Conn, buf []byte) {
 	}
 }
 
-func udpWatermarksClient() {
+func runUdpWatermarksClient() {
 	baselineRate := 5
 	burstRate := 10
 	baselineDuration := 1
@@ -292,7 +249,7 @@ func udpWatermarksClient() {
 		panic(err)
 	}
 
-	buf := make([]byte, BUFSIZE+BUFVAR)
+	buf := make([]byte, UDPBUFSIZE+UDPBUFVAR)
 	randReader := bufio.NewReader(randFile)
 	_, err = randReader.Read(buf)
 	if err != nil {
@@ -301,7 +258,7 @@ func udpWatermarksClient() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	socket, err := net.Dial(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)
@@ -309,11 +266,11 @@ func udpWatermarksClient() {
 
 	for i := 0; i < numBursts; i++ {
 		for j := 0; j < (baselineDuration * baselineRate); j++ {
-			sendData(socket, buf)
+			udpSendData(socket, buf)
 			time.Sleep(baselineWait * time.Microsecond)
 		}
 		for j := 0; j < (burstDuration * burstRate); j++ {
-			sendData(socket, buf)
+			udpSendData(socket, buf)
 			time.Sleep(burstWait * time.Microsecond)
 		}
 	}
@@ -326,11 +283,11 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-watermarksClient"))
+		WithArguments(sm.Full("-udpWatermarksClient"))
 
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-server"))
+		WithArguments(sm.Full("-udpServer"))
 
 	var checker *ec.UnorderedEventChecker
 
@@ -454,7 +411,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-server")
+	serverCmd := exec.Command(os.Args[0], "-udpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
@@ -487,7 +444,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	err = m.Lookup(processKey, &processValue)
 	assert.Error(t, err, "server process in watermarks map before traffic")
 
-	clientCmd := exec.Command(os.Args[0], "-watermarksClient")
+	clientCmd := exec.Command(os.Args[0], "-udpWatermarksClient")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -548,18 +505,18 @@ func sendSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqN
 	buf[0] = flags
 	storeMSB(buf, 1, lineIdSize, lineId)
 	storeMSB(buf, 1+lineIdSize, seqNumSize, seqNum)
-	sendData(socket, buf)
+	udpSendData(socket, buf)
 	time.Sleep(10 * time.Millisecond)
 }
 
-func udpLayer7Client() {
+func runUdpLayer7Client() {
 	randFile, err := os.Open("/dev/urandom")
 	if err != nil {
 		fmt.Printf("ERROR opening urandom\n")
 		panic(err)
 	}
 
-	buf := make([]byte, BUFSIZE+BUFVAR)
+	buf := make([]byte, UDPBUFSIZE+UDPBUFVAR)
 	randReader := bufio.NewReader(randFile)
 	_, err = randReader.Read(buf)
 	if err != nil {
@@ -568,7 +525,7 @@ func udpLayer7Client() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	socket, err := net.Dial(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)
@@ -618,11 +575,11 @@ func TestUdpSeqCheck(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-layer7Client"))
+		WithArguments(sm.Full("-udpLayer7Client"))
 
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-server"))
+		WithArguments(sm.Full("-udpServer"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -633,35 +590,35 @@ func TestUdpSeqCheck(t *testing.T) {
 			WithProcess(serverProcess).
 			WithApplicationId(1).
 			WithAppSpecificId(5).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
 			WithSeqNumExpected(3).
 			WithSeqNumReceived(4),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId6Seq4Got5").
 			WithProcess(serverProcess).
 			WithApplicationId(1).
 			WithAppSpecificId(6).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
 			WithSeqNumExpected(4).
 			WithSeqNumReceived(5),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId8Seq3Got4").
 			WithProcess(serverProcess).
 			WithApplicationId(1).
 			WithAppSpecificId(8).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
 			WithSeqNumExpected(3).
 			WithSeqNumReceived(4),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq0Got5").
 			WithProcess(serverProcess).
 			WithApplicationId(1).
 			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
 			WithSeqNumExpected(0).
 			WithSeqNumReceived(5),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq8Got9").
 			WithProcess(serverProcess).
 			WithApplicationId(1).
 			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(portno)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
 			WithSeqNumExpected(8).
 			WithSeqNumReceived(9),
 		ec.NewProcessCloseChecker("serverClose").
@@ -690,7 +647,7 @@ func TestUdpSeqCheck(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-server")
+	serverCmd := exec.Command(os.Args[0], "-udpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
@@ -714,7 +671,7 @@ func TestUdpSeqCheck(t *testing.T) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	clientCmd := exec.Command(os.Args[0], "-layer7Client")
+	clientCmd := exec.Command(os.Args[0], "-udpLayer7Client")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -818,32 +775,7 @@ func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConne
 	return getUdpObserver(t, ctx, udpDisableEventsConfig)
 }
 
-func getNCCommand(t *testing.T, orig string) string {
-	if _, err := exec.LookPath(orig); err == nil {
-		return orig
-	}
-
-	server := "nc.openbsd"
-	if _, err := exec.LookPath(server); err != nil {
-		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
-	}
-	t.Logf("Using %q instead of original program %q", server, orig)
-
-	return server
-}
-
-func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
-	if cmd != nil {
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		} else {
-			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
-		}
-		_ = cmd.Wait()
-	}
-}
-
-func TestConnectEvent4(t *testing.T) {
+func TestUdpConnectEvent4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -1197,7 +1129,7 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestDetectLatency4(t *testing.T) {
+func TestUdpDetectLatency4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -1296,7 +1228,7 @@ func TestLoadUdpSensor(t *testing.T) {
 		if spec == nil {
 			logger.GetLogger().Warn("GetCachedBTF returned nil")
 		} else {
-			_, err := fgsBTF.GetFuncProto(spec, SkUdpAlloc6.Attach, false)
+			_, err := fgsBTF.GetFuncProto(spec, udp.SkUdpAlloc6.Attach, false)
 			if err == nil {
 				useIPv6InitHook = true
 			}
@@ -1517,7 +1449,7 @@ func TestLoadUdpSensor(t *testing.T) {
 	sensors.UnloadSensors(sens)
 }
 
-func TestConnectEvent6(t *testing.T) {
+func TestUdpConnectEvent6(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -1942,7 +1874,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-server"))
+		WithArguments(sm.Full("-udpServer"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessCloseChecker("serverClose").
@@ -1967,7 +1899,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-server")
+	serverCmd := exec.Command(os.Args[0], "-udpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
@@ -1991,7 +1923,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	clientCmd := exec.Command(os.Args[0], "-layer7Client")
+	clientCmd := exec.Command(os.Args[0], "-udpLayer7Client")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -2027,7 +1959,7 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-server"))
+		WithArguments(sm.Full("-udpServer"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessListenChecker("serverListen").
@@ -2052,7 +1984,7 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-server")
+	serverCmd := exec.Command(os.Args[0], "-udpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
@@ -2155,7 +2087,7 @@ func TestGCWithNonzeroInterval(t *testing.T) {
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func TestIOUringConnectEvent(t *testing.T) {
+func TestUdpIOUringConnectEvent(t *testing.T) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skipf("io_uring requires kernel >= 5.4")
 	}
@@ -2177,7 +2109,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-iouServer"))
+		WithArguments(sm.Full("-udpIouServer"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -2371,7 +2303,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(os.Args[0], "-iouServer")
+	cmdServer := exec.Command(os.Args[0], "-udpIouServer")
 	serverOutput, err := cmdServer.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr

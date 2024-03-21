@@ -12,7 +12,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/rawsock"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 
 	// Import OSS sensor handlers
 	_ "github.com/cilium/tetragon/pkg/sensors/test"

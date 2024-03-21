@@ -55,10 +55,10 @@ import (
 )
 
 var (
-	client    bool
-	server    bool
-	iouServer bool
-	iouClient bool
+	tcpClient    bool
+	tcpServer    bool
+	tcpIouServer bool
+	tcpIouClient bool
 )
 
 const (
@@ -149,10 +149,15 @@ spec:
 `
 
 func init() {
-	flag.BoolVar(&client, "client", false, "internal")
-	flag.BoolVar(&server, "server", false, "internal")
-	flag.BoolVar(&iouServer, "iouServer", false, "internal")
-	flag.BoolVar(&iouClient, "iouClient", false, "internal")
+	flag.BoolVar(&tcpClient, "tcpClient", false, "internal")
+	flag.BoolVar(&tcpServer, "tcpServer", false, "internal")
+	flag.BoolVar(&tcpIouServer, "tcpIouServer", false, "internal")
+	flag.BoolVar(&tcpIouClient, "tcpIouClient", false, "internal")
+
+	flag.BoolVar(&udpWatermarksClient, "udpWatermarksClient", false, "internal")
+	flag.BoolVar(&udpLayer7Client, "udpLayer7Client", false, "internal")
+	flag.BoolVar(&udpServer, "udpServer", false, "internal")
+	flag.BoolVar(&udpIouServer, "udpIouServer", false, "internal")
 }
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
@@ -205,24 +210,47 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 }
 
 func TestMain(m *testing.M) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
+		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for Layer3 tests in KVM CI not met, skipping", v)
+		return
+	}
+	bpf.CheckOrMountCgroup2()
+
 	flag.Parse()
-	if server {
-		tcpServer()
+	if tcpServer {
+		runTcpServer()
 		os.Exit(0)
 	}
-	if iouServer {
-		tcpIouServer()
+	if tcpIouServer {
+		runTcpIouServer()
 		os.Exit(0)
 	}
-	if client {
-		tcpClient()
+	if tcpClient {
+		runTcpClient()
 		os.Exit(0)
 	}
-	if iouClient {
-		tcpIouClient()
+	if tcpIouClient {
+		runTcpIouClient()
 		os.Exit(0)
 	}
-	ec := runner.TestSensorsRun(m, "SensorTcp")
+	if udpServer {
+		runUdpServer()
+		os.Exit(0)
+	}
+	if udpIouServer {
+		runUdpIouServer()
+		os.Exit(0)
+	}
+	if udpWatermarksClient {
+		runUdpWatermarksClient()
+		os.Exit(0)
+	}
+	if udpLayer7Client {
+		runUdpLayer7Client()
+		os.Exit(0)
+	}
+
+	ec := runner.TestSensorsRun(m, "SensorLayer3")
 	os.Exit(ec)
 }
 
@@ -840,15 +868,15 @@ func TestDockerListenConnect4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-const BUFSIZE, BUFVAR = 1024, 256
-const hostname = "127.0.0.1"
-const portno = 31337
-const protocol = "tcp4"
+const TCPBUFSIZE, TCPBUFVAR = 1024, 256
+const tcpHostname = "127.0.0.1"
+const tcpPortno = 31337
+const tcpProtocol = "tcp4"
 
 var watermarksQuit = false
 
 func handleSes(ses net.Conn) {
-	buf := make([]byte, 2*BUFSIZE)
+	buf := make([]byte, 2*TCPBUFSIZE)
 	quit := false
 	ses.SetDeadline(time.Now().Add(200 * time.Millisecond))
 	for !quit && !watermarksQuit {
@@ -862,11 +890,11 @@ func handleSes(ses net.Conn) {
 	}
 }
 
-func tcpServer() {
+func runTcpServer() {
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
-	conn, err := net.Listen(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	conn, err := net.Listen(tcpProtocol, fmt.Sprintf("%s:%d", tcpHostname, tcpPortno))
 	if err != nil {
 		panic(err)
 	}
@@ -892,8 +920,8 @@ func tcpServer() {
 	}
 }
 
-func sendData(socket net.Conn, buf []byte) {
-	bufLen := rand.Intn(BUFVAR) - (BUFVAR / 2) + BUFSIZE
+func tcpSendData(socket net.Conn, buf []byte) {
+	bufLen := rand.Intn(TCPBUFVAR) - (TCPBUFVAR / 2) + TCPBUFSIZE
 	_, err := socket.Write(buf[0:bufLen])
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")
@@ -901,7 +929,7 @@ func sendData(socket net.Conn, buf []byte) {
 	}
 }
 
-func tcpClient() {
+func runTcpClient() {
 	baselineRate := 5
 	burstRate := 10
 	baselineDuration := 1
@@ -917,7 +945,7 @@ func tcpClient() {
 		panic(err)
 	}
 
-	buf := make([]byte, BUFSIZE+BUFVAR)
+	buf := make([]byte, TCPBUFSIZE+TCPBUFVAR)
 	randReader := bufio.NewReader(randFile)
 	_, err = randReader.Read(buf)
 	if err != nil {
@@ -926,7 +954,7 @@ func tcpClient() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	socket, err := net.Dial(tcpProtocol, fmt.Sprintf("%s:%d", tcpHostname, tcpPortno))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)
@@ -934,11 +962,11 @@ func tcpClient() {
 
 	for i := 0; i < numBursts; i++ {
 		for j := 0; j < (baselineDuration * baselineRate); j++ {
-			sendData(socket, buf)
+			tcpSendData(socket, buf)
 			time.Sleep(baselineWait * time.Microsecond)
 		}
 		for j := 0; j < (burstDuration * burstRate); j++ {
-			sendData(socket, buf)
+			tcpSendData(socket, buf)
 			time.Sleep(burstWait * time.Microsecond)
 		}
 	}
@@ -958,10 +986,10 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-client"))
+		WithArguments(sm.Full("-tcpClient"))
 	serverProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-server"))
+		WithArguments(sm.Full("-tcpServer"))
 
 	var checker *ec.UnorderedEventChecker
 
@@ -1083,7 +1111,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-server")
+	serverCmd := exec.Command(os.Args[0], "-tcpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	if err != nil {
 		fmt.Printf("ERROR Could not connect to server output pipe\n")
@@ -1132,7 +1160,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		os.Exit(-1)
 	}
 
-	clientCmd := exec.Command(os.Args[0], "-client")
+	clientCmd := exec.Command(os.Args[0], "-tcpClient")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -1852,7 +1880,7 @@ func TestIOUringAcceptEvent(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-iouServer"))
+		WithArguments(sm.Full("-tcpIouServer"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -1892,7 +1920,7 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(os.Args[0], "-iouServer")
+	cmdServer := exec.Command(os.Args[0], "-tcpIouServer")
 	serverOutput, err := cmdServer.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr
@@ -1958,7 +1986,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-iouClient"))
+		WithArguments(sm.Full("-tcpIouClient"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -2018,7 +2046,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	serverPid := uint32(cmdServer.Process.Pid)
 	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
 
-	cmdClient := exec.Command(os.Args[0], "-iouClient")
+	cmdClient := exec.Command(os.Args[0], "-tcpIouClient")
 	cmdClient.Stderr = os.Stderr
 	cmdClient.Stdout = os.Stdout
 
