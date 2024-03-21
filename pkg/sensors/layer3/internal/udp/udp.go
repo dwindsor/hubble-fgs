@@ -1066,11 +1066,7 @@ func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
-func init() {
-	AddUDP()
-}
-
-func AddUDP() error {
+func Init() error {
 	var err error
 
 	stats, err = lru.New[udpInfoKey, udpInfoValue](udpStatsCacheSize)

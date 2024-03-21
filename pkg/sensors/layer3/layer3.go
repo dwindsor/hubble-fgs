@@ -101,7 +101,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	if spec.Parser.Tcp.Enable {
 		tcpTimestampEnable, err = tcp.PolicyHandler(spec)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("tcp.PolicyHandler error: %w", err)
 		}
 		tcpEnabled = true
 	}
@@ -111,7 +111,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	if spec.Parser.Udp.Enable {
 		cgroup, udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("udp.PolicyHandler error: %w", err)
 		}
 		udpEnabled = true
 	}
@@ -194,6 +194,12 @@ func AddLayer3() {
 	err := tcp.Init()
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("TCP init failed. Disabling Layer3")
+		return
+	}
+
+	err = udp.Init()
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("UDP init failed. Disabling Layer3")
 		return
 	}
 
