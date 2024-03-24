@@ -13,12 +13,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	DaemonSetName                      = "tetragon"
-	ManagedByLabel                     = "app.kubernetes.io/managed-by"
-	TetragonOperatorName               = "tetragon-operator"
-	OperatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
-)
+const operatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
 
 // daemonSet instantiates a Tetragon DaemonSet configuration.
 func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
@@ -28,7 +23,7 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	dsTerminationGracePeriodSec := int64(1)
 	dsRevisionHistoryLimit := int32(10)
 
-	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
+	configYaml := cm.Data[operatorConfigMapAgentDaemonSetKey]
 	cmFields := make(map[string]interface{})
 	err := yaml.Unmarshal([]byte(configYaml), &cmFields)
 	if err != nil {
@@ -53,23 +48,15 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: configMapOfString(log, cmFields, "annotations"),
-			Labels:      labels(log, cmFields, "labels"),
+			Labels:      aggregatedLabels(log, cm, "labels"),
 		},
 		Spec: appv1.DaemonSetSpec{
-			Selector: &k8sv1.LabelSelector{ //TODO: make configurable
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/instance": name,
-					"app.kubernetes.io/name":     name,
-				},
+			Selector: &k8sv1.LabelSelector{
+				MatchLabels: labelsForManaged(),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: k8sv1.ObjectMeta{
-					Labels: map[string]string{ //TODO: make configurable
-						"app.kubernetes.io/instance": name,
-						"app.kubernetes.io/name":     name,
-						// TODO (FGI): TetragonOperatorName should be injected
-						ManagedByLabel: TetragonOperatorName,
-					},
+					Labels: labelsForManaged(),
 				},
 				Spec: corev1.PodSpec{
 					InitContainers: daemonSetInitContainers(log, cmFields),
@@ -365,16 +352,6 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 	}
 
 	return append(containers, tetragon)
-}
-
-// labels returns the labels configured by the user in the operator ConfigMap
-// in addition to the ones that always get applied.
-func labels(log logr.Logger, values map[string]any, key string) map[string]string {
-	labels := configMapOfString(log, values, key)
-	labels["app.kubernetes.io/instance"] = DaemonSetName
-	labels["app.kubernetes.io/name"] = DaemonSetName
-	labels[ManagedByLabel] = TetragonOperatorName
-	return labels
 }
 
 // nodeSelector returns the selectors configured by the user in the operator ConfigMap

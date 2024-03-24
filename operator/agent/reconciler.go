@@ -23,6 +23,7 @@ type Reconciler struct {
 const (
 	agentConfigMapName    = "tetragon-config"
 	operatorConfigMapName = "tetragon-operator-config"
+	daemonSetName         = "tetragon"
 )
 
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
@@ -56,12 +57,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if apierrors.IsAlreadyExists(err) {
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "unable to create daemon set")
+		log.Error(err, "unable to create operator ConfigMap")
 		return ctrl.Result{}, err
 	}
 
 	// Reconcile the agent DaemonSet.
-	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
+	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, daemonSetName, opCM)
 	if err != nil {
 		log.Error(err, "unable to generate the desired DaemonSet")
 		return ctrl.Result{}, err
@@ -73,7 +74,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	ds := &appsv1.DaemonSet{}
 	dsNamespacedName := types.NamespacedName{
 		Namespace: req.NamespacedName.Namespace,
-		Name:      DaemonSetName,
+		Name:      daemonSetName,
 	}
 	if err := r.Get(ctx, dsNamespacedName, ds); err != nil {
 		if !apierrors.IsNotFound(err) {

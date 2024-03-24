@@ -35,7 +35,7 @@ func defaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
 		},
 		Data: map[string]string{
 			operatorConfigMapAgentConfigMapKey: defaultAgentConfig,
-			OperatorConfigMapAgentDaemonSetKey: `# Configuration of the agent DaemonSet
+			operatorConfigMapAgentDaemonSetKey: `# Configuration of the agent DaemonSet
 #   labels:
 #     key1: value1
 #   dnsPolicy: Default
@@ -65,12 +65,7 @@ func agentConfigMap(log logr.Logger, namespace string, name string, opCM *corev1
 		ObjectMeta: k8sv1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			// .
-			Labels: map[string]string{ //TODO: make configurable
-				"app.kubernetes.io/instance": DaemonSetName,
-				"app.kubernetes.io/name":     DaemonSetName,
-				ManagedByLabel:               TetragonOperatorName,
-			},
+			Labels:    aggregatedLabels(log, opCM, "labels"),
 		},
 		Data: valuesAsMap(log, opCM.Data[operatorConfigMapAgentConfigMapKey]),
 	}
