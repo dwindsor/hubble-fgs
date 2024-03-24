@@ -122,9 +122,8 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					ServiceAccountName: configValue(log, cmFields, "serviceAccountName", "tetragon"),
 					HostNetwork:        configValue(log, cmFields, "hostNetwork", true),
 					SchedulerName:      "default-scheduler",
-					// TODO(FGI): this should be configurable but "kubernetes.io/os: linux" is the bare minimum
-					NodeSelector:    map[string]string{"kubernetes.io/os": "linux"},
-					SecurityContext: &corev1.PodSecurityContext{},
+					NodeSelector:       nodeSelector(log, cmFields, "nodeSelector"),
+					SecurityContext:    &corev1.PodSecurityContext{},
 					Tolerations: []corev1.Toleration{
 						{
 							Operator: "Exists",
@@ -325,6 +324,14 @@ func labels(log logr.Logger, values map[string]any, key string) map[string]strin
 	labels["app.kubernetes.io/name"] = DaemonSetName
 	labels[ManagedByLabel] = TetragonOperatorName
 	return labels
+}
+
+// nodeSelector returns the selectors configured by the user in the operator ConfigMap
+// in addition to the ones that always get applied.
+func nodeSelector(log logr.Logger, values map[string]any, key string) map[string]string {
+	selector := configMapOfString(log, values, key)
+	selector["kubernetes.io/os"] = "linux"
+	return selector
 }
 
 func configValue[V string | bool](log logr.Logger, config map[string]any, key string, defaultValue V) V {
