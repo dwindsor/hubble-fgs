@@ -64,8 +64,8 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					},
 				},
 				Spec: corev1.PodSpec{
-					//TODO: add init container with condition
-					Containers: daemonSetContainers(log, cmFields),
+					InitContainers: daemonSetInitContainers(log, cmFields),
+					Containers:     daemonSetContainers(log, cmFields),
 					Volumes: []corev1.Volume{
 						{
 							Name: "cilium-run",
@@ -152,40 +152,40 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	return ds, nil
 }
 
-func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
-	privilegedContext := true
-	bidirectionalMount := corev1.MountPropagationBidirectional
-	containers := make([]corev1.Container, 0)
+func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
+	if !configValue(log, cmFields, "ociHookSetupEnabled", false) {
+		return []corev1.Container{}
+	}
 
-	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
-		privileged := true
-		securityContext := corev1.SecurityContext{Privileged: &privileged}
-		securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
-		if securityContextValue != "" {
-			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
-				log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the security context, default value used instead")
-			}
+	privileged := true
+	securityContext := corev1.SecurityContext{Privileged: &privileged}
+	securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
+	if securityContextValue != "" {
+		if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
+			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the security context, default value used instead")
 		}
+	}
 
-		extraMounts := make([]corev1.VolumeMount, 0)
-		for _, m := range configArray(log, cmFields, "ociHookSetupExtraVolumeMounts", []string{}) {
-			v := corev1.VolumeMount{}
-			if err := yaml.Unmarshal([]byte(m), &v); err != nil {
-				log.WithValues("value", m).Error(err, "could not unmarshal the extra volume mount, mount not applied")
-				continue
-			}
-			extraMounts = append(extraMounts, v)
+	extraMounts := make([]corev1.VolumeMount, 0)
+	for _, m := range configArray(log, cmFields, "ociHookSetupExtraVolumeMounts", []string{}) {
+		v := corev1.VolumeMount{}
+		if err := yaml.Unmarshal([]byte(m), &v); err != nil {
+			log.WithValues("value", m).Error(err, "could not unmarshal the extra volume mount, mount not applied")
+			continue
 		}
+		extraMounts = append(extraMounts, v)
+	}
 
-		resources := corev1.ResourceRequirements{}
-		resourcesValue := configValue(log, cmFields, "ociHookSetupResources", "")
-		if resourcesValue != "" {
-			if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
-				log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
-			}
+	resources := corev1.ResourceRequirements{}
+	resourcesValue := configValue(log, cmFields, "ociHookSetupResources", "")
+	if resourcesValue != "" {
+		if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
+			log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
 		}
+	}
 
-		containers = append(containers, corev1.Container{
+	return []corev1.Container{
+		{
 			Name:                     "oci-hook-setup",
 			SecurityContext:          &securityContext,
 			Image:                    os.Getenv("TETRAGON_IMAGE"),
@@ -212,8 +212,14 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 				},
 			),
 			Resources: resources,
-		})
+		},
 	}
+}
+
+func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
+	privilegedContext := true
+	bidirectionalMount := corev1.MountPropagationBidirectional
+	containers := make([]corev1.Container, 0)
 
 	if cmFields["exportMode"] == "stdout" {
 		exportFilenames := configArray(log, cmFields, "exportFilenames", []string{"tetragon.log"})
