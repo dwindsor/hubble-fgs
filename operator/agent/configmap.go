@@ -74,8 +74,7 @@ func agentConfigMap(log logr.Logger, namespace string, name string, opCM *corev1
 
 func valuesAsMap(log logr.Logger, yamlValues string) map[string]string {
 	values := map[string]string{}
-	err := yaml.Unmarshal([]byte(yamlValues), &values)
-	if err != nil {
+	if err := yaml.Unmarshal([]byte(yamlValues), &values); err != nil {
 		log.WithValues("value", yamlValues).Error(err, "could not unmarshal the agent ConfigMap, left empy")
 	}
 	return values
