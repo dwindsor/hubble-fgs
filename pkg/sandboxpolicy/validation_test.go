@@ -24,7 +24,6 @@ apiVersion: cilium.io/v1alpha1
 kind: SandboxPolicy
 metadata:
   name: "syscalls"
-  namespace: "default"
 spec:
   syscalls:
     - list:
@@ -35,7 +34,8 @@ spec:
        - type: "Block"
        - type: "Block"
 `
-	_, err := FromYAML(p)
+	pol, _, err := FromYAML(p)
+	require.NotNil(t, pol)
 	require.Error(t, err)
 }
 
@@ -53,7 +53,7 @@ spec:
       - name: "sys_dup2"
 `
 
-	pol, err := FromYAML(p)
+	pol, _, err := FromYAML(p)
 	require.Nil(t, err)
 	_, err = yaml.Marshal(pol)
 	require.Nil(t, err)
@@ -63,4 +63,25 @@ spec:
 	}
 	require.Equal(t, "In", pol.Spec.Syscalls[0].Op)
 	require.ElementsMatch(t, defaultActions, pol.Spec.Syscalls[0].Actions)
+}
+
+func TestValidationNamespaced(t *testing.T) {
+	var p = `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicyNamespaced
+metadata:
+  name: "syscalls"
+  namespace: "default"
+spec:
+  syscalls:
+    - list:
+      - name: "sys_dup"
+      - name: "sys_dup2"
+      op: "In"
+      actions:
+       - type: "Post"
+`
+	_, pol, err := FromYAML(p)
+	require.NotNil(t, pol)
+	require.Nil(t, err)
 }

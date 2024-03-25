@@ -48,6 +48,21 @@ var getStructuralSandboxPolicy func() (*apischema.Structural, error) = sync.Once
 	},
 )
 
+var getStructuralSandboxPolicyNamespaced func() (*apischema.Structural, error) = sync.OnceValues(
+	func() (*apischema.Structural, error) {
+		var crdSandboxPol ext.CustomResourceDefinition
+		err := extv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(
+			&client.SandboxPolicyNamespacedCRD.Definition,
+			&crdSandboxPol,
+			nil,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return apischema.NewStructural(crdSandboxPol.Spec.Validation.OpenAPIV3Schema)
+	},
+)
+
 type validatorInfo struct {
 	validator        validation.SchemaValidator
 	structuralSchema *apischema.Structural
@@ -60,56 +75,62 @@ var getValidators func() (validatorMap, error) = sync.OnceValues(
 
 		ret := make(validatorMap)
 
-		crd := &client.SandboxPolicyCRD.Definition
-		internal := &ext.CustomResourceDefinition{}
-		if err := extv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(crd, internal, nil); err != nil {
-			return nil, err
+		crds := []*extv1.CustomResourceDefinition{
+			&client.SandboxPolicyCRD.Definition,
+			&client.SandboxPolicyNamespacedCRD.Definition,
 		}
 
-		for _, ver := range crd.Spec.Versions {
-
-			bytes, err := json.Marshal(ver.Schema)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal schema: %w", err)
-			}
-
-			var crv extv1.CustomResourceValidation
-			err = json.Unmarshal(bytes, &crv)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshall CRD: %w", err)
-			}
-
-			var crvInternal ext.CustomResourceValidation
-			err = extv1.Convert_v1_CustomResourceValidation_To_apiextensions_CustomResourceValidation(
-				&crv,
-				&crvInternal,
-				nil,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("coversion failed: %w", err)
-			}
-
-			validator, _, err := validation.NewSchemaValidator(crvInternal.OpenAPIV3Schema)
-			if err != nil {
-				return nil, fmt.Errorf("failed to initialize validator: %w", err)
-			}
-
-			key := schema.GroupVersionKind{
-				Version: ver.Name,
-				Group:   crd.Spec.Group,
-				Kind:    crd.Spec.Names.Kind,
-			}
-
-			structural, err := apischema.NewStructural(crvInternal.OpenAPIV3Schema)
-			if err != nil {
+		for _, crd := range crds {
+			internal := &ext.CustomResourceDefinition{}
+			if err := extv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(crd, internal, nil); err != nil {
 				return nil, err
 			}
 
-			ret[key] = validatorInfo{
-				validator:        validator,
-				structuralSchema: structural,
-			}
+			for _, ver := range crd.Spec.Versions {
 
+				bytes, err := json.Marshal(ver.Schema)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal schema: %w", err)
+				}
+
+				var crv extv1.CustomResourceValidation
+				err = json.Unmarshal(bytes, &crv)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshall CRD: %w", err)
+				}
+
+				var crvInternal ext.CustomResourceValidation
+				err = extv1.Convert_v1_CustomResourceValidation_To_apiextensions_CustomResourceValidation(
+					&crv,
+					&crvInternal,
+					nil,
+				)
+				if err != nil {
+					return nil, fmt.Errorf("coversion failed: %w", err)
+				}
+
+				validator, _, err := validation.NewSchemaValidator(crvInternal.OpenAPIV3Schema)
+				if err != nil {
+					return nil, fmt.Errorf("failed to initialize validator: %w", err)
+				}
+
+				key := schema.GroupVersionKind{
+					Version: ver.Name,
+					Group:   crd.Spec.Group,
+					Kind:    crd.Spec.Names.Kind,
+				}
+
+				structural, err := apischema.NewStructural(crvInternal.OpenAPIV3Schema)
+				if err != nil {
+					return nil, err
+				}
+
+				ret[key] = validatorInfo{
+					validator:        validator,
+					structuralSchema: structural,
+				}
+
+			}
 		}
 
 		return ret, nil
@@ -118,16 +139,33 @@ var getValidators func() (validatorMap, error) = sync.OnceValues(
 
 func validatePolicy(
 	unstructuredPolicy unstructured.Unstructured,
-	p *v1alpha1.SandboxPolicy,
+	policy interface{},
 ) (*validate.Result, field.ErrorList, error) {
-	// first, validate meta
-	// SandboxPolicy is namespaced
+
 	var metaErrors []error
-	errorList := apivalidation.ValidateObjectMeta(
-		&p.ObjectMeta,
-		true, /* SanbdoxPolicy is namespaced */
-		apivalidation.NameIsDNSSubdomain,
-		field.NewPath("metadata"))
+	var errorList field.ErrorList
+	var kind schema.GroupVersionKind
+	switch pol := policy.(type) {
+	case *v1alpha1.SandboxPolicy:
+		// first, validate meta
+		errorList = apivalidation.ValidateObjectMeta(
+			&pol.ObjectMeta,
+			false, /* SanbdoxPolicy is not namespaced */
+			apivalidation.NameIsDNSSubdomain,
+			field.NewPath("metadata"))
+		kind = pol.GroupVersionKind()
+	case *v1alpha1.SandboxPolicyNamespaced:
+		// first, validate meta
+		errorList = apivalidation.ValidateObjectMeta(
+			&pol.ObjectMeta,
+			true, /* SanbdoxPolicyNamespaced is namespaced */
+			apivalidation.NameIsDNSSubdomain,
+			field.NewPath("metadata"))
+		kind = pol.GroupVersionKind()
+	default:
+		return nil, nil, fmt.Errorf("unexpected policy type: %T", policy)
+	}
+
 	for _, err := range errorList {
 		metaErrors = append(metaErrors, err)
 	}
@@ -138,12 +176,12 @@ func validatePolicy(
 		return nil, nil, fmt.Errorf("failed to initialize validators: %w", err)
 	}
 
-	v, ok := validatorMap[p.GroupVersionKind()]
+	v, ok := validatorMap[kind]
 	if !ok {
-		return nil, nil, fmt.Errorf("could not find validator for: " + p.GroupVersionKind().String())
+		return nil, nil, fmt.Errorf("could not find validator for: " + kind.String())
 	}
 
-	specErrors := v.validator.Validate(p)
+	specErrors := v.validator.Validate(policy)
 	// combine meta and spec validation errors
 	specErrors.Errors = append(metaErrors, specErrors.Errors...)
 
@@ -151,21 +189,37 @@ func validatePolicy(
 	return specErrors, listErrs, nil
 }
 
-func FromYAML(data string) (*v1alpha1.SandboxPolicy, error) {
+func FromYAML(data string) (*v1alpha1.SandboxPolicy, *v1alpha1.SandboxPolicyNamespaced, error) {
 	rawPolicy, unstructuredPolicy, err := applyDefaults([]byte(data))
 	if err != nil {
-		return nil, fmt.Errorf("error applying CRD defaults: %w", err)
+		return nil, nil, fmt.Errorf("error applying CRD defaults: %w", err)
 	}
 
-	var policy v1alpha1.SandboxPolicy
-	err = yaml.UnmarshalStrict(rawPolicy, &policy)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal object with defaults: %w", err)
+	var policyCW v1alpha1.SandboxPolicy
+	var policyNS v1alpha1.SandboxPolicyNamespaced
+	var policy interface{}
+
+	kind := unstructuredPolicy.GetKind()
+	switch kind {
+	case "SandboxPolicy":
+		err = yaml.UnmarshalStrict(rawPolicy, &policyCW)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal object with defaults: %w", err)
+		}
+		policy = &policyCW
+	case "SandboxPolicyNamespaced":
+		err = yaml.UnmarshalStrict(rawPolicy, &policyNS)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal object with defaults: %w", err)
+		}
+		policy = &policyNS
+	default:
+		return nil, nil, fmt.Errorf("unknown kind: %s", kind)
 	}
 
-	validationResult, listErrs, err := validatePolicy(unstructuredPolicy, &policy)
+	validationResult, listErrs, err := validatePolicy(unstructuredPolicy, policy)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(validationResult.Errors) > 0 {
@@ -176,30 +230,37 @@ func FromYAML(data string) (*v1alpha1.SandboxPolicy, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("vailidation failed: %w", err)
+		return nil, nil, fmt.Errorf("vailidation failed: %w", err)
 	}
 
-	return &policy, nil
+	return &policyCW, &policyNS, nil
 }
 
 func applyDefaults(rawPolicy []byte) ([]byte, unstructured.Unstructured, error) {
 
 	var policyUnstr unstructured.Unstructured
-
-	schemaSP, err := getStructuralSandboxPolicy()
-	if err != nil {
-		return nil, policyUnstr, err
-	}
-
-	err = yaml.UnmarshalStrict(rawPolicy, &policyUnstr)
+	err := yaml.UnmarshalStrict(rawPolicy, &policyUnstr)
 	if err != nil {
 		return nil, policyUnstr, fmt.Errorf("failed to unmarshall policy: %v", err)
 	}
 
 	kind := policyUnstr.GetKind()
+	var schema *apischema.Structural
 	switch kind {
 	case "SandboxPolicy":
-		structuraldefaulting.Default(policyUnstr.Object, schemaSP)
+		schema, err = getStructuralSandboxPolicy()
+		if err != nil {
+			return nil, policyUnstr, err
+		}
+		structuraldefaulting.Default(policyUnstr.Object, schema)
+
+	case "SandboxPolicyNamespaced":
+		schema, err := getStructuralSandboxPolicyNamespaced()
+		if err != nil {
+			return nil, policyUnstr, err
+		}
+		structuraldefaulting.Default(policyUnstr.Object, schema)
+
 	default:
 		return nil, policyUnstr, fmt.Errorf("unknown kind: %s", kind)
 	}
