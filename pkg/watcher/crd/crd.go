@@ -28,50 +28,7 @@ import (
 )
 
 func addSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) {
-	var err error
-	switch sp := obj.(type) {
-	case *v1alpha1.SandboxPolicy:
-		var tp *sandboxpolicy.SandboxTracingPolicy
-		tp, err = sandboxpolicy.ToTracingPolicy(sp)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"sandbox-policy-name": sp.ObjectMeta.Name,
-			}).WithError(err).Warn("addSandboxPolicy: failed to convert to tracing policy")
-			return
-		}
-		log.WithFields(logrus.Fields{
-			"sp-name": sp.ObjectMeta.Name,
-			"tp-name": tp.TpName(),
-			"tp-info": tp.TpInfo(),
-		}).Info("adding sandbox policy")
-		err = s.AddTracingPolicy(ctx, tp)
-
-	case *v1alpha1.SandboxPolicyNamespaced:
-		var tp *sandboxpolicy.SandboxTracingPolicyNamespaced
-		tp, err = sandboxpolicy.ToTracingPolicyNamespaced(sp)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"sandbox-policy-name":      sp.ObjectMeta.Name,
-				"sandbox-policy-namespace": sp.ObjectMeta.Namespace,
-			}).WithError(err).Warn("addSandboxPolicy: failed to convert to tracing policy")
-			return
-		}
-		log.WithFields(logrus.Fields{
-			"sp-name":   sp.ObjectMeta.Name,
-			"tp-name":   tp.TpName(),
-			"tp-info":   tp.TpInfo(),
-			"namespace": sp.ObjectMeta.Namespace,
-		}).Info("adding sandbox policy")
-		err = s.AddTracingPolicy(ctx, tp)
-
-	default:
-		log.WithFields(logrus.Fields{
-			"obj":      obj,
-			"obj-type": fmt.Sprintf("%T", obj),
-		}).Warn("addSandboxPolicy: invalid type")
-		return
-	}
-
+	err := sandboxpolicy.AddSandboxPolicy(ctx, log, s, obj)
 	if err != nil {
 		log.WithError(err).Warn("failed to add sandbox policy")
 	}
@@ -116,6 +73,7 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 	if err != nil {
 		log.WithError(err).Fatal("couldn't get cluster config")
 	}
+	log = log.WithField("crd-watcher", true)
 	client := versioned.NewForConfigOrDie(conf)
 	factory := externalversions.NewSharedInformerFactory(client, 0)
 
