@@ -26,3 +26,13 @@ jobs:
       - name: Check metrics docs
         run: |
           make lint-metrics-md
+      - name: Check Tetragon daemon flags
+        run: |
+          make generate-flags
+          git status
+          git diff
+          test -z "$(git status --porcelain)"
+          if [ $? != 0 ]; then
+            git status --porcelain
+            echo "Please run 'make generate-flags' and submit your changes'"; exit 1
+          fi
