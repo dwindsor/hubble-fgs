@@ -85,6 +85,8 @@ const (
 	keyEnablePodInfo = "enable-pod-info"
 
 	keyEnableMsgHandlingLatency = "enable-msg-handling-latency"
+
+	KeyGenerateDocs = "generate-docs"
 )
 
 func readAndSetFlags() {

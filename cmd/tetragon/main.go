@@ -73,6 +73,7 @@ import (
 	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -999,7 +1000,13 @@ func execute() error {
 				}
 			}
 		},
-		Run: func(_ *cobra.Command, _ []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
+			if viper.GetBool(KeyGenerateDocs) {
+				if err := doc.GenYaml(cmd, os.Stdout); err != nil {
+					log.WithError(err).Fatal("Failed to generate docs")
+				}
+				return
+			}
 			readAndSetFlags()
 			enterpriseOption.ReadAndSetEnterpriseFlags()
 
@@ -1125,6 +1132,8 @@ func execute() error {
 	flags.String(keyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
 
 	flags.Bool(keyEnableMsgHandlingLatency, false, "Enable metrics for message handling latency")
+
+	flags.Bool(KeyGenerateDocs, false, "Generate documentation in YAML format to stdout")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
