@@ -112,9 +112,10 @@ help:
 	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
 	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
 	@echo 'Generated files: '
-	@echo '    protogen     - generate code based on .proto files'
-	@echo '    crds         - generate kubebuilder files'
-	@echo '    metrics-docs - generate metrics reference'
+	@echo '    protogen          - generate code based on .proto files'
+	@echo '    crds              - generate kubebuilder files'
+	@echo '    metrics-docs      - generate metrics reference'
+	@echo '    generate-flags    - generate Tetragon daemon flags for documentation'
 	@echo 'Compilation: '
 	@echo '    tetragon          - compile the Tetragon agent'
 	@echo '    tetragon-operator - compile the Tetragon operator'
@@ -213,6 +214,10 @@ tetragon-operator:
 tetragon-fs-scanner:
 	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
+
+.PHONY: generate-flags
+generate-flags: tetragon
+	echo "$$(./tetragon --generate-docs)" > docs/tetragon_flags.yaml
 
 .PHONY: ksyms
 ksyms:

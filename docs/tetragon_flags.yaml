@@ -1,0 +1,202 @@
+name: tetragon
+synopsis: |
+    Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
+usage: tetragon [flags]
+options:
+    - name: bpf-lib
+      default_value: /var/lib/tetragon/
+      usage: Location of hubble libs (btf and bpf files)
+    - name: btf
+      usage: Location of btf
+    - name: config-dir
+      usage: Configuration directory that contains a file for each option
+    - name: config-file
+      usage: Configuration file to load from
+    - name: data-cache-size
+      default_value: "1024"
+      usage: Size of the data events cache
+    - name: debug
+      shorthand: d
+      default_value: "false"
+      usage: Enable debug messages. Equivalent to '--log-level=debug'
+    - name: detach-old-bpf
+      default_value: "false"
+      usage: |
+        Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.
+    - name: disable-kprobe-multi
+      default_value: "false"
+      usage: Allow to disable kprobe multi interface
+    - name: dns-cache-size
+      default_value: "1024"
+      usage: |
+        Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones
+    - name: enable-cilium-api
+      default_value: "false"
+      usage: |
+        Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache
+    - name: enable-dns-debug
+      default_value: "false"
+      usage: Enable DNS debug messages
+    - name: enable-export-aggregation
+      default_value: "false"
+      usage: Enable JSON export aggregation
+    - name: enable-icmp-tracking
+      default_value: "true"
+      usage: Enable additional socket tracking for ICMP
+    - name: enable-k8s-api
+      default_value: "false"
+      usage: |
+        Access Kubernetes API to associate Tetragon events with Kubernetes pods
+    - name: enable-msg-handling-latency
+      default_value: "false"
+      usage: Enable metrics for message handling latency
+    - name: enable-pod-info
+      default_value: "false"
+      usage: |
+        Enable getting additional Kubernetes metadata from PodInfo custom resources
+    - name: enable-policy-filter
+      default_value: "false"
+      usage: Enable policy filter (beta) code
+    - name: enable-policy-filter-debug
+      default_value: "false"
+      usage: Enable policy filter debug messages
+    - name: enable-process-ancestors
+      default_value: "true"
+      usage: Include ancestors in process exec events
+    - name: enable-process-cred
+      default_value: "false"
+      usage: Enable process_cred events
+    - name: enable-process-ns
+      default_value: "false"
+      usage: |
+        Enable namespace information in process_exec and process_kprobe events
+    - name: enable-sandboxpolicies
+      default_value: "false"
+      usage: Enable sandboxpolicies (beta)
+    - name: event-queue-size
+      default_value: "10000"
+      usage: Set the size of the internal event queue.
+    - name: export-aggregation-buffer-size
+      default_value: "10000"
+      usage: Aggregator channel buffer size
+    - name: export-aggregation-window-size
+      default_value: 15s
+      usage: JSON export aggregation time window
+    - name: export-allowlist
+      usage: JSON export allowlist
+    - name: export-denylist
+      usage: JSON export denylist
+    - name: export-file-compress
+      default_value: "false"
+      usage: Compress rotated JSON export files
+    - name: export-file-max-backups
+      default_value: "5"
+      usage: Number of rotated JSON export files to retain
+    - name: export-file-max-size-mb
+      default_value: "10"
+      usage: Size in MB for rotating JSON export files
+    - name: export-file-perm
+      default_value: "600"
+      usage: Access permissions on JSON export files
+    - name: export-file-rotation-interval
+      default_value: 0s
+      usage: |
+        Interval at which to rotate JSON export files in addition to rotating them by size
+    - name: export-filename
+      usage: Filename for JSON export. Disabled by default
+    - name: export-rate-limit
+      default_value: "-1"
+      usage: |
+        Rate limit (per minute) for event export. Set to -1 to disable
+    - name: field-filters
+      usage: Field filters for event exports
+    - name: fim-fifo-path
+      default_value: /var/run/tetragon/
+      usage: |
+        Path for the FIFO used for fs-scanner and tetragon communication
+    - name: fim-runtime-endpoint
+      usage: |
+        Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
+    - name: flow-export-file-compress
+      default_value: "false"
+      usage: Compress rotated flow JSON export files
+    - name: flow-export-file-max-backups
+      default_value: "5"
+      usage: Number of rotated flow JSON export files to retain
+    - name: flow-export-file-max-size-mb
+      default_value: "10"
+      usage: Size in MB for rotating flow JSON export files
+    - name: flow-export-filename
+      usage: Filename for flow JSON export. Disabled by default
+    - name: force-small-progs
+      default_value: "false"
+      usage: |
+        Force loading small programs, even in kernels with >= 5.3 versions
+    - name: generate-docs
+      default_value: "false"
+      usage: Generate documentation in YAML format to stdout
+    - name: gops-address
+      usage: |
+        gops server address (e.g. 'localhost:8118'). Disabled by default
+    - name: help
+      shorthand: h
+      default_value: "false"
+      usage: help for tetragon
+    - name: hubble-lib
+      default_value: /var/lib/tetragon/
+      usage: Location of hubble libs (btf and bpf files)
+    - name: k8s-kubeconfig-path
+      usage: Absolute path of the kubernetes kubeconfig file
+    - name: kernel
+      usage: Kernel version
+    - name: log-format
+      default_value: text
+      usage: Set log format
+    - name: log-level
+      default_value: info
+      usage: Set log level
+    - name: metrics-server
+      usage: Metrics server address (e.g. ':2112'). Disabled by default
+    - name: net-ns-cache-size
+      default_value: "256"
+      usage: |
+        Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system
+    - name: netns-dir
+      default_value: /var/run/docker/netns/
+      usage: Network namespace dir
+    - name: process-cache-size
+      default_value: "65536"
+      usage: Size of the process cache
+    - name: procfs
+      default_value: /proc/
+      usage: Location of procfs to consume existing PIDs
+    - name: protocol-shift
+      default_value: auto
+      usage: (deprecated)
+    - name: rb-size
+      default_value: "0"
+      usage: Set perf ring buffer size for single cpu (default 65k)
+    - name: rb-size-total
+      default_value: "0"
+      usage: |
+        Set perf ring buffer size in total for all cpus (default 65k per cpu)
+    - name: release-pinned-bpf
+      default_value: "true"
+      usage: |
+        Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable
+    - name: server-address
+      default_value: localhost:54321
+      usage: |
+        gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')
+    - name: tls-cache-size
+      default_value: "1024"
+      usage: |
+        Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones
+    - name: tracing-policy
+      usage: Tracing policy file to load at startup
+    - name: tracing-policy-dir
+      default_value: /etc/tetragon/tetragon.tp.d
+      usage: Directory from where to load Tracing Policies
+    - name: verbose
+      default_value: "0"
+      usage: set verbosity level
