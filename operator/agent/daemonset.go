@@ -117,13 +117,12 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
-					// TODO (FGI): This is unsafe
-					DNSPolicy:          corev1.DNSPolicy(configValue(log, cmFields, "dnsPolicy", string(corev1.DNSDefault))),
-					ServiceAccountName: configValue(log, cmFields, "serviceAccountName", "tetragon"),
-					HostNetwork:        configValue(log, cmFields, "hostNetwork", true),
-					SchedulerName:      "default-scheduler",
-					NodeSelector:       nodeSelector(log, cmFields, "nodeSelector"),
-					SecurityContext:    &corev1.PodSecurityContext{},
+					DNSPolicy:                     dnsPolicy(log, cmFields),
+					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", "tetragon"),
+					HostNetwork:                   configValue(log, cmFields, "hostNetwork", true),
+					SchedulerName:                 "default-scheduler",
+					NodeSelector:                  nodeSelector(log, cmFields, "nodeSelector"),
+					SecurityContext:               &corev1.PodSecurityContext{},
 					Tolerations: []corev1.Toleration{
 						{
 							Operator: "Exists",
@@ -292,8 +291,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 		},
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		// TODO (FGI) unsafe
-		ImagePullPolicy: corev1.PullPolicy(configValue(log, cmFields, "imagePullPolicy", "IfNotPresent")),
+		ImagePullPolicy:          imagePullPolicy(log, cmFields),
 		SecurityContext: &corev1.SecurityContext{ //TODO: make configurable
 			Privileged: &privilegedContext,
 		},
@@ -338,6 +336,26 @@ func nodeSelector(log logr.Logger, values map[string]any, key string) map[string
 	selector := configMapOfString(log, values, key)
 	selector["kubernetes.io/os"] = "linux"
 	return selector
+}
+
+func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
+	policy := corev1.DNSPolicy(configValue(log, config, "dnsPolicy", string(corev1.DNSDefault)))
+	switch policy {
+	case corev1.DNSClusterFirstWithHostNet, corev1.DNSClusterFirst, corev1.DNSNone, corev1.DNSDefault:
+		return policy
+	}
+	log.WithValues("key", "dnsPolicy", "value", policy).Error(errors.New("could not resolve dnsPolicy"), "default value used instead")
+	return corev1.DNSDefault
+}
+
+func imagePullPolicy(log logr.Logger, config map[string]any) corev1.PullPolicy {
+	policy := corev1.PullPolicy(configValue(log, config, "imagePullPolicy", string(corev1.DNSDefault)))
+	switch policy {
+	case corev1.PullAlways, corev1.PullNever, corev1.PullIfNotPresent:
+		return policy
+	}
+	log.WithValues("key", "imagePullPolicy", "value", policy).Error(errors.New("could not resolve imagePullPolicy"), "default value used instead")
+	return corev1.PullIfNotPresent
 }
 
 func configValue[V string | bool](log logr.Logger, config map[string]any, key string, defaultValue V) V {
