@@ -32,6 +32,7 @@ pushd modules/tetragon-oss
 git status
 git fetch
 git checkout $v
+git merge --ff-only origin/$v
 popd
 
 # get the new sha of OSS
