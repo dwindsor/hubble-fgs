@@ -34,15 +34,19 @@ type MsgRawSyscall struct {
 	tpMsg *tracing.MsgGenericTracepointUnix
 	// xlateFn translates the original tracepoint event to a ProcessSandboxSyscall event
 	xlateFn func(orig *tracing.MsgGenericTracepointUnix, ev *tetragon.ProcessSandboxSyscall) error
+	// sandboxPolicy is the name of the sandbox policy that generated the event
+	sandboxPolicy string
 }
 
 func NewMsgRawSyscall(
 	m *tracing.MsgGenericTracepointUnix,
 	xlateFn func(orig *tracing.MsgGenericTracepointUnix, ev *tetragon.ProcessSandboxSyscall) error,
+	spName string,
 ) *MsgRawSyscall {
 	return &MsgRawSyscall{
-		tpMsg:   m,
-		xlateFn: xlateFn,
+		tpMsg:         m,
+		xlateFn:       xlateFn,
+		sandboxPolicy: spName,
 	}
 }
 
@@ -121,5 +125,6 @@ func (msg *MsgRawSyscall) HandleMessage() *tetragon.GetEventsResponse {
 }
 
 func (msg *MsgRawSyscall) Translate(ev *tetragon.ProcessSandboxSyscall) error {
+	ev.Policy = msg.sandboxPolicy
 	return msg.xlateFn(msg.tpMsg, ev)
 }
