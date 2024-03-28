@@ -195,24 +195,28 @@ func FromYAML(data string) (*v1alpha1.SandboxPolicy, *v1alpha1.SandboxPolicyName
 		return nil, nil, fmt.Errorf("error applying CRD defaults: %w", err)
 	}
 
-	var policyCW v1alpha1.SandboxPolicy
-	var policyNS v1alpha1.SandboxPolicyNamespaced
+	var policyCW *v1alpha1.SandboxPolicy
+	var policyNS *v1alpha1.SandboxPolicyNamespaced
 	var policy interface{}
 
 	kind := unstructuredPolicy.GetKind()
 	switch kind {
 	case "SandboxPolicy":
-		err = yaml.UnmarshalStrict(rawPolicy, &policyCW)
+		var polCW v1alpha1.SandboxPolicy
+		err = yaml.UnmarshalStrict(rawPolicy, &polCW)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal object with defaults: %w", err)
 		}
-		policy = &policyCW
+		policyCW = &polCW
+		policy = policyCW
 	case "SandboxPolicyNamespaced":
-		err = yaml.UnmarshalStrict(rawPolicy, &policyNS)
+		var polNS v1alpha1.SandboxPolicyNamespaced
+		err = yaml.UnmarshalStrict(rawPolicy, &polNS)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal object with defaults: %w", err)
 		}
-		policy = &policyNS
+		policyNS = &polNS
+		policy = policyNS
 	default:
 		return nil, nil, fmt.Errorf("unknown kind: %s", kind)
 	}
@@ -233,7 +237,7 @@ func FromYAML(data string) (*v1alpha1.SandboxPolicy, *v1alpha1.SandboxPolicyName
 		return nil, nil, fmt.Errorf("vailidation failed: %w", err)
 	}
 
-	return &policyCW, &policyNS, nil
+	return policyCW, policyNS, nil
 }
 
 func applyDefaults(rawPolicy []byte) ([]byte, unstructured.Unstructured, error) {

@@ -34,8 +34,7 @@ spec:
        - type: "Block"
        - type: "Block"
 `
-	pol, _, err := FromYAML(p)
-	require.NotNil(t, pol)
+	_, _, err := FromYAML(p)
 	require.Error(t, err)
 }
 
@@ -45,7 +44,6 @@ apiVersion: cilium.io/v1alpha1
 kind: SandboxPolicy
 metadata:
   name: "syscalls"
-  namespace: "default"
 spec:
   syscalls:
     - list:
@@ -84,4 +82,25 @@ spec:
 	_, pol, err := FromYAML(p)
 	require.NotNil(t, pol)
 	require.Nil(t, err)
+}
+
+func TestValidationName(t *testing.T) {
+	var p = `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicyNamespaced
+metadata:
+  name: "syscalls"
+  namespace: "default"
+spec:
+  syscalls:
+    - list:
+      - name: "sys_dup"
+      op: "In"
+      actions:
+       - type: "Post"
+`
+	_, pol, err := FromYAML(p)
+	require.NotNil(t, pol)
+	require.Nil(t, err)
+	require.Equal(t, pol.ObjectMeta.Name, "syscalls")
 }

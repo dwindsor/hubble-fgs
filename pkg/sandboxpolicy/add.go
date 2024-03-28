@@ -3,6 +3,8 @@ package sandboxpolicy
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -50,4 +52,36 @@ func AddSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Ma
 		"tp-info": tp.TpInfo(),
 	}).Info("adding sandbox policy")
 	return s.AddTracingPolicy(ctx, tp)
+}
+
+func AddSandboxPolicyFromYAML(
+	ctx context.Context,
+	log logrus.FieldLogger,
+	s *sensors.Manager,
+	fname string,
+) error {
+	fname, err := filepath.Abs(filepath.Clean(fname))
+	if err != nil {
+		return err
+	}
+
+	data, err := os.ReadFile(fname)
+	if err != nil {
+		return err
+	}
+
+	spCW, spNS, err := FromYAML(string(data))
+	if err != nil {
+		return err
+	}
+
+	log = log.WithField("from-yaml", true)
+	if spCW != nil {
+		return AddSandboxPolicy(ctx, log, s, spCW)
+	}
+	if spNS != nil {
+		return AddSandboxPolicy(ctx, log, s, spNS)
+	}
+
+	return fmt.Errorf("unepected result: no sandbox policy returned")
 }
