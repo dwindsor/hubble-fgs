@@ -226,7 +226,7 @@ func (b *tpBuilder) NamespacedPolicy(namespace string) (*SandboxTracingPolicyNam
 	return &SandboxTracingPolicyNamespaced{
 		tracingpolicy.GenericTracingPolicyNamespaced{
 			TypeMeta: k8sv1.TypeMeta{
-				Kind:       "TracingPolicy",
+				Kind:       "TracingPolicyNamespaced",
 				APIVersion: "cilium.io/v1alpha1",
 			},
 			Metadata: k8sv1.ObjectMeta{
