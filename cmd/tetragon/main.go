@@ -128,6 +128,11 @@ func getFieldFilters() ([]*tetragon.FieldFilter, error) {
 	return filters, nil
 }
 
+func getRedactionFilters() (fieldfilters.RedactionFilterList, error) {
+	redactionFilters := viper.GetString(option.KeyRedactionFilters)
+	return fieldfilters.ParseRedactionFilterList(redactionFilters)
+}
+
 func saveInitInfo() error {
 	info := bugtool.InitInfo{
 		ExportFname: option.Config.ExportFilename,
@@ -654,11 +659,19 @@ func hubbleFGSExecute() error {
 
 	hookRunner := rthooks.GlobalRunner().WithWatcher(k8sWatcher)
 
+	redactionFilters, err := getRedactionFilters()
+	if err != nil {
+		return err
+	}
+
+	log.WithFields(logrus.Fields{"redactionFilters": redactionFilters}).Info("Configured redaction filters")
+
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
 		observer.GetSensorManager(),
-		hookRunner)
+		hookRunner,
+		redactionFilters)
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
@@ -940,7 +953,7 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 		}
 	}
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions, FieldFilters: fieldFilters}
-	log.WithFields(logrus.Fields{"fieldFilters": fieldFilters}).Debug("Configured field filters")
+	log.WithFields(logrus.Fields{"fieldFilters": fieldFilters}).Info("Configured field filters")
 	log.WithFields(logrus.Fields{"logger": writer, "request": &req}).Info("Starting JSON exporter")
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 	exporter.Start()
@@ -1121,6 +1134,7 @@ func execute() error {
 
 	// Field filters options for export
 	flags.String(keyFieldFilters, "", "Field filters for event exports")
+	flags.String(KeyRedactionFilters, "", "Redaction filters for events")
 
 	// Network namespace options
 	flags.String(keyNetnsDir, "/var/run/docker/netns/", "Network namespace dir")

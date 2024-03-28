@@ -56,7 +56,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.extraArgs | object | `{}` |  |
 | tetragon.extraEnv | list | `[]` |  |
 | tetragon.extraVolumeMounts | list | `[]` |  |
-| tetragon.fieldFilters | string | `"{}"` |  |
+| tetragon.fieldFilters | string | `""` |  |
 | tetragon.fimRuntimeEndpoint | string | `""` |  |
 | tetragon.flowExportFileCompress | bool | `false` |  |
 | tetragon.flowExportFileMaxBackups | int | `5` |  |
@@ -89,6 +89,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.prometheus.serviceMonitor.enabled | bool | `false` | Whether to create a 'ServiceMonitor' resource targeting the tetragon pods. |
 | tetragon.prometheus.serviceMonitor.labelsOverride | object | `{}` | The set of labels to place on the 'ServiceMonitor' resource. |
 | tetragon.prometheus.serviceMonitor.scrapeInterval | string | `"10s"` | Interval at which metrics should be scraped. If not specified, Prometheus' global scrape interval is used. |
+| tetragon.redactionFilters | string | `""` |  |
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.tcpStatsSampleSegs | int | `0` | EXPERIMENTAL: This field may be removed in the future without notice.  Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.  Note that the counter for sampling is global, and it is not per socket. |

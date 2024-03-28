@@ -784,6 +784,7 @@ type ProcessKprobeChecker struct {
 	PolicyName   *stringmatcher.StringMatcher `json:"policyName,omitempty"`
 	ReturnAction *KprobeActionChecker         `json:"returnAction,omitempty"`
 	Message      *stringmatcher.StringMatcher `json:"message,omitempty"`
+	Tags         *StringListMatcher           `json:"tags,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -875,6 +876,11 @@ func (checker *ProcessKprobeChecker) Check(event *tetragon.ProcessKprobe) error 
 				return fmt.Errorf("Message check failed: %w", err)
 			}
 		}
+		if checker.Tags != nil {
+			if err := checker.Tags.Check(event.Tags); err != nil {
+				return fmt.Errorf("Tags check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -945,6 +951,12 @@ func (checker *ProcessKprobeChecker) WithMessage(check *stringmatcher.StringMatc
 	return checker
 }
 
+// WithTags adds a Tags check to the ProcessKprobeChecker
+func (checker *ProcessKprobeChecker) WithTags(check *StringListMatcher) *ProcessKprobeChecker {
+	checker.Tags = check
+	return checker
+}
+
 //FromProcessKprobe populates the ProcessKprobeChecker using data from a ProcessKprobe event
 func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKprobe) *ProcessKprobeChecker {
 	if event == nil {
@@ -990,6 +1002,17 @@ func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKp
 	checker.PolicyName = stringmatcher.Full(event.PolicyName)
 	checker.ReturnAction = NewKprobeActionChecker(event.ReturnAction)
 	checker.Message = stringmatcher.Full(event.Message)
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Tags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Tags = lm
+	}
 	return checker
 }
 
@@ -1193,6 +1216,106 @@ nextCheck:
 	return nil
 }
 
+// StringListMatcher checks a list of string fields
+type StringListMatcher struct {
+	Operator listmatcher.Operator           `json:"operator"`
+	Values   []*stringmatcher.StringMatcher `json:"values"`
+}
+
+// NewStringListMatcher creates a new StringListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
+func NewStringListMatcher() *StringListMatcher {
+	return &StringListMatcher{
+		Operator: listmatcher.Subset,
+	}
+}
+
+// WithOperator sets the match kind for the StringListMatcher
+func (checker *StringListMatcher) WithOperator(operator listmatcher.Operator) *StringListMatcher {
+	checker.Operator = operator
+	return checker
+}
+
+// WithValues sets the checkers that the StringListMatcher should use
+func (checker *StringListMatcher) WithValues(values ...*stringmatcher.StringMatcher) *StringListMatcher {
+	checker.Values = values
+	return checker
+}
+
+// Check checks a list of string fields
+func (checker *StringListMatcher) Check(values []string) error {
+	switch checker.Operator {
+	case listmatcher.Ordered:
+		return checker.orderedCheck(values)
+	case listmatcher.Unordered:
+		return checker.unorderedCheck(values)
+	case listmatcher.Subset:
+		return checker.subsetCheck(values)
+	default:
+		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
+	}
+}
+
+// orderedCheck checks a list of ordered string fields
+func (checker *StringListMatcher) orderedCheck(values []string) error {
+	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
+		if err := check.Match(value); err != nil {
+			return fmt.Errorf("Tags check failed: %w", err)
+		}
+		return nil
+	}
+
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("StringListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	for i, check := range checker.Values {
+		value := values[i]
+		if err := innerCheck(check, value); err != nil {
+			return fmt.Errorf("StringListMatcher: Check failed on element %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// unorderedCheck checks a list of unordered string fields
+func (checker *StringListMatcher) unorderedCheck(values []string) error {
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("StringListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	return checker.subsetCheck(values)
+}
+
+// subsetCheck checks a subset of string fields
+func (checker *StringListMatcher) subsetCheck(values []string) error {
+	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
+		if err := check.Match(value); err != nil {
+			return fmt.Errorf("Tags check failed: %w", err)
+		}
+		return nil
+	}
+
+	numDesired := len(checker.Values)
+	numMatched := 0
+
+nextCheck:
+	for _, check := range checker.Values {
+		for _, value := range values {
+			if err := innerCheck(check, value); err == nil {
+				numMatched += 1
+				continue nextCheck
+			}
+		}
+	}
+
+	if numMatched < numDesired {
+		return fmt.Errorf("StringListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
+	}
+
+	return nil
+}
+
 // ProcessTracepointChecker implements a checker struct to check a ProcessTracepoint event
 type ProcessTracepointChecker struct {
 	CheckerName string                       `json:"checkerName"`
@@ -1204,6 +1327,7 @@ type ProcessTracepointChecker struct {
 	PolicyName  *stringmatcher.StringMatcher `json:"policyName,omitempty"`
 	Action      *KprobeActionChecker         `json:"action,omitempty"`
 	Message     *stringmatcher.StringMatcher `json:"message,omitempty"`
+	Tags        *StringListMatcher           `json:"tags,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1285,6 +1409,11 @@ func (checker *ProcessTracepointChecker) Check(event *tetragon.ProcessTracepoint
 				return fmt.Errorf("Message check failed: %w", err)
 			}
 		}
+		if checker.Tags != nil {
+			if err := checker.Tags.Check(event.Tags); err != nil {
+				return fmt.Errorf("Tags check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -1342,6 +1471,12 @@ func (checker *ProcessTracepointChecker) WithMessage(check *stringmatcher.String
 	return checker
 }
 
+// WithTags adds a Tags check to the ProcessTracepointChecker
+func (checker *ProcessTracepointChecker) WithTags(check *StringListMatcher) *ProcessTracepointChecker {
+	checker.Tags = check
+	return checker
+}
+
 //FromProcessTracepoint populates the ProcessTracepointChecker using data from a ProcessTracepoint event
 func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *tetragon.ProcessTracepoint) *ProcessTracepointChecker {
 	if event == nil {
@@ -1371,6 +1506,17 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *tetragon.P
 	checker.PolicyName = stringmatcher.Full(event.PolicyName)
 	checker.Action = NewKprobeActionChecker(event.Action)
 	checker.Message = stringmatcher.Full(event.Message)
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Tags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Tags = lm
+	}
 	return checker
 }
 
@@ -1384,6 +1530,7 @@ type ProcessUprobeChecker struct {
 	PolicyName  *stringmatcher.StringMatcher `json:"policyName,omitempty"`
 	Message     *stringmatcher.StringMatcher `json:"message,omitempty"`
 	Args        *KprobeArgumentListMatcher   `json:"args,omitempty"`
+	Tags        *StringListMatcher           `json:"tags,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1460,6 +1607,11 @@ func (checker *ProcessUprobeChecker) Check(event *tetragon.ProcessUprobe) error 
 				return fmt.Errorf("Args check failed: %w", err)
 			}
 		}
+		if checker.Tags != nil {
+			if err := checker.Tags.Check(event.Tags); err != nil {
+				return fmt.Errorf("Tags check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -1510,6 +1662,12 @@ func (checker *ProcessUprobeChecker) WithArgs(check *KprobeArgumentListMatcher) 
 	return checker
 }
 
+// WithTags adds a Tags check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) WithTags(check *StringListMatcher) *ProcessUprobeChecker {
+	checker.Tags = check
+	return checker
+}
+
 //FromProcessUprobe populates the ProcessUprobeChecker using data from a ProcessUprobe event
 func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUprobe) *ProcessUprobeChecker {
 	if event == nil {
@@ -1537,6 +1695,17 @@ func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUp
 		lm := NewKprobeArgumentListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Args = lm
+	}
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Tags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Tags = lm
 	}
 	return checker
 }
@@ -2259,106 +2428,6 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.Process
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
 	return checker
-}
-
-// StringListMatcher checks a list of string fields
-type StringListMatcher struct {
-	Operator listmatcher.Operator           `json:"operator"`
-	Values   []*stringmatcher.StringMatcher `json:"values"`
-}
-
-// NewStringListMatcher creates a new StringListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
-func NewStringListMatcher() *StringListMatcher {
-	return &StringListMatcher{
-		Operator: listmatcher.Subset,
-	}
-}
-
-// WithOperator sets the match kind for the StringListMatcher
-func (checker *StringListMatcher) WithOperator(operator listmatcher.Operator) *StringListMatcher {
-	checker.Operator = operator
-	return checker
-}
-
-// WithValues sets the checkers that the StringListMatcher should use
-func (checker *StringListMatcher) WithValues(values ...*stringmatcher.StringMatcher) *StringListMatcher {
-	checker.Values = values
-	return checker
-}
-
-// Check checks a list of string fields
-func (checker *StringListMatcher) Check(values []string) error {
-	switch checker.Operator {
-	case listmatcher.Ordered:
-		return checker.orderedCheck(values)
-	case listmatcher.Unordered:
-		return checker.unorderedCheck(values)
-	case listmatcher.Subset:
-		return checker.subsetCheck(values)
-	default:
-		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
-	}
-}
-
-// orderedCheck checks a list of ordered string fields
-func (checker *StringListMatcher) orderedCheck(values []string) error {
-	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
-		if err := check.Match(value); err != nil {
-			return fmt.Errorf("DestinationNames check failed: %w", err)
-		}
-		return nil
-	}
-
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("StringListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	for i, check := range checker.Values {
-		value := values[i]
-		if err := innerCheck(check, value); err != nil {
-			return fmt.Errorf("StringListMatcher: Check failed on element %d: %w", i, err)
-		}
-	}
-
-	return nil
-}
-
-// unorderedCheck checks a list of unordered string fields
-func (checker *StringListMatcher) unorderedCheck(values []string) error {
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("StringListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	return checker.subsetCheck(values)
-}
-
-// subsetCheck checks a subset of string fields
-func (checker *StringListMatcher) subsetCheck(values []string) error {
-	innerCheck := func(check *stringmatcher.StringMatcher, value string) error {
-		if err := check.Match(value); err != nil {
-			return fmt.Errorf("DestinationNames check failed: %w", err)
-		}
-		return nil
-	}
-
-	numDesired := len(checker.Values)
-	numMatched := 0
-
-nextCheck:
-	for _, check := range checker.Values {
-		for _, value := range values {
-			if err := innerCheck(check, value); err == nil {
-				numMatched += 1
-				continue nextCheck
-			}
-		}
-	}
-
-	if numMatched < numDesired {
-		return fmt.Errorf("StringListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
-	}
-
-	return nil
 }
 
 // ProcessCloseChecker implements a checker struct to check a ProcessClose event

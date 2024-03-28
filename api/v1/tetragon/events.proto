@@ -151,6 +151,12 @@ message Filter {
         repeated CapabilitiesType none = 4;
  }
 
+message RedactionFilter {
+    // Match events that the redaction filter will apply to.
+    repeated Filter match = 1;
+    // Regular expressions to use for redaction. Strings inside capture groups are redacted.
+    repeated string redact = 2;
+}
 
 message RateLimitInfo {
     uint64 number_of_dropped_process_events = 1;

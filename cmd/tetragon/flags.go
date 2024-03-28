@@ -60,7 +60,8 @@ const (
 	keyExportAllowlist = "export-allowlist"
 	keyExportDenylist  = "export-denylist"
 
-	keyFieldFilters = "field-filters"
+	keyFieldFilters     = "field-filters"
+	KeyRedactionFilters = "redaction-filters"
 
 	keyNetnsDir = "netns-dir"
 
