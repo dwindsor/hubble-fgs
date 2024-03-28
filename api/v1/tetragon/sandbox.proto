@@ -23,5 +23,7 @@ message ProcessSandboxSyscall {
         tetragon.Process parent = 2;
         // syscall name
         string name = 3;
+	// policy name
+	string policy = 4;
 }
 
