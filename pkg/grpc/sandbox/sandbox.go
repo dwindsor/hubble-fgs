@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -117,6 +118,7 @@ func (msg *MsgRawSyscall) HandleMessage() *tetragon.GetEventsResponse {
 		process.UpdateEventProcessTid(tetragonEvent.Process, &msg.tpMsg.Msg.Tid)
 	}
 
+	sandboxmetrics.HandleEvent(tetragonEvent)
 	return &tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessSandboxSyscall{ProcessSandboxSyscall: tetragonEvent},
 		NodeName: nodeName,

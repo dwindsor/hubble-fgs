@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -141,6 +142,14 @@ func InitTLSEventsMetricsForDocs(registry *prometheus.Registry) {
 	tlsmetrics.InitEventsMetricsForDocs(registry)
 }
 
+func initAllSandboxMetrics(registry *prometheus.Registry) {
+	sandboxmetrics.InitEventsMetrics(registry)
+}
+
+func InitSandboxMetricsForDocs(registry *prometheus.Registry) {
+	sandboxmetrics.InitEventsMetricsForDocs(registry)
+}
+
 func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllDNSHealthMetrics(registry)
 	initAllDNSEventsMetrics(registry)
@@ -156,6 +165,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllRawSocketEventsMetrics(registry)
 	initAllTLSHealthMetrics(registry)
 	initAllTLSEventsMetrics(registry)
+	initAllSandboxMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {

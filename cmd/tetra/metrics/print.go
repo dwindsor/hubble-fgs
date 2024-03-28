@@ -41,6 +41,7 @@ func New() *cobra.Command {
 		"udp":            "Tetragon UDP",
 		"rawsocket":      "Tetragon Raw Socket",
 		"tls":            "Tetragon TLS",
+		"sandbox":        "Tetragon SandboxPolicy metrics",
 	}
 
 	overrides := []metricsmd.LabelOverrides{
@@ -128,6 +129,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitRawSocketEventsMetricsForDocs(reg)
 	case "tls":
 		enterpriseMetricsConfig.InitTLSEventsMetricsForDocs(reg)
+	case "sandbox":
+		enterpriseMetricsConfig.InitSandboxMetricsForDocs(reg)
 	}
 	return nil
 }
