@@ -67,8 +67,8 @@ ifeq ($(DEBUG),1)
 	__BPF_DEBUG_FLAGS += DEBUG=1
 endif
 
-# Branch in the OSS repo we want to sync with. Default is origin/main
-OSS_SYNC_TARGET ?= origin/main
+# Branch in the OSS repo we want to sync with.
+OSS_SYNC_TARGET ?= 
 
 # GO_BUILD_LDFLAGS is initialized to empty use EXTRA_GO_BUILD_LDFLAGS to add link flags
 GO_BUILD_LDFLAGS =
