@@ -15,7 +15,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,8 +25,8 @@ func convertCmd() *cobra.Command {
 	var useMulti bool
 	ret := &cobra.Command{
 		Use:   "convert [file]",
-		Short: "convert a sandbox policy to a tracing policy (intended for development)",
-		Long:  "Convert a sandbox policy to a tracing policy (intended for development).\nPipe it over \"yq 'del(.spec.parser) | del(.spec.file) | del(.spec.loader)'\" for better results",
+		Short: "convert a sandbox policy to a tracing policy (intended for testing)",
+		Long:  "Convert a sandbox policy to a tracing policy (intended for testing).\nPipe it over \"yq 'del(.spec.parser) | del(.spec.file) | del(.spec.loader)'\" for better results",
 		Args:  cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
 			fname := args[0]
@@ -36,15 +35,24 @@ func convertCmd() *cobra.Command {
 				log.Fatalf("failed to read %s: %v", fname, err)
 			}
 
-			var sbPolicy v1alpha1.SandboxPolicy
-			err = yaml.UnmarshalStrict(data, &sbPolicy)
+			spCW, spNS, err := sandboxpolicy.FromYAML(string(data))
 			if err != nil {
-				log.Fatalf("failed to unmarshal %s: %v", fname, err)
+				log.Fatalf("failed to parse %s: %v", fname, err)
 			}
 
-			tp, err := sandboxpolicy.ToTracingPolicy(&sbPolicy)
-			if err != nil {
-				log.Fatalf("failed to convert %s: %v", fname, err)
+			var tp interface{}
+			if spCW != nil {
+				tp, err = sandboxpolicy.ToTracingPolicy(spCW)
+				if err != nil {
+					log.Fatalf("failed to convert %s: %v", fname, err)
+				}
+			} else if spNS != nil {
+				tp, err = sandboxpolicy.ToTracingPolicyNamespaced(spNS)
+				if err != nil {
+					log.Fatalf("failed to convert %s: %v", fname, err)
+				}
+			} else {
+				log.Fatalf("unexpected parsing result of %s", fname)
 			}
 
 			out, err := yaml.Marshal(tp)
