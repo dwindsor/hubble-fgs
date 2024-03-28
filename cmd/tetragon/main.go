@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 	"golang.org/x/sys/unix"
@@ -708,6 +709,23 @@ func hubbleFGSExecute() error {
 		err = addTracingPolicy(ctx, option.Config.TracingPolicy)
 		if err != nil {
 			return err
+		}
+	}
+
+	if len(enterpriseOption.Config.SandboxPolicies) > 0 {
+		if enterpriseOption.Config.EnableSandboxPolicies {
+			sm := observer.GetSensorManager()
+			for _, fname := range enterpriseOption.Config.SandboxPolicies {
+				err = sandboxpolicy.AddSandboxPolicyFromYAML(ctx, log, sm, fname)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			log.WithField(
+				"sandboxpolicies",
+				enterpriseOption.Config.SandboxPolicies,
+			).Fatal("sandbox policies specified but the feature is disabled")
 		}
 	}
 

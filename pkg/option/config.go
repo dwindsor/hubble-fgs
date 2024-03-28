@@ -22,6 +22,7 @@ type config struct {
 	EnableDnsDebug bool
 
 	EnableSandboxPolicies bool
+	SandboxPolicies       []string
 }
 
 var (

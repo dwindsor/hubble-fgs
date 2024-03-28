@@ -35,6 +35,7 @@ const (
 	KeyEnableProcessAncestors   = "enable-process-ancestors"
 	keyEnableIcmpTracking       = "enable-icmp-tracking"
 	keyEnableSandboxPolicies    = "enable-sandboxpolicies"
+	keySandboxPolicy            = "sandbox-policy"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -62,6 +63,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
 	flags.Bool(keyEnableSandboxPolicies, false, "Enable sandboxpolicies (beta)")
+	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -87,4 +89,5 @@ func ReadAndSetEnterpriseFlags() {
 		}
 	}
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
+	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
 }
