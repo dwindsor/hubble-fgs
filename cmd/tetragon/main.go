@@ -466,7 +466,7 @@ func hubbleFGSExecute() error {
 	}
 
 	// Get observer from configFile
-	obs := observer.NewObserver(option.Config.TracingPolicy)
+	obs := observer.NewObserver()
 	defer func() {
 		file.TerminateFsScanner()
 		obs.PrintStats()

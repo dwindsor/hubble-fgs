@@ -123,7 +123,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	defer os.Remove(configFile)
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	obs := observer.NewObserver(configFile)
+	obs := observer.NewObserver()
 
 	if err := obs.InitSensorManager(nil); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)

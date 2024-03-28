@@ -8287,9 +8287,10 @@ func (checker *KprobeNetDevChecker) FromKprobeNetDev(event *tetragon.KprobeNetDe
 
 // KprobePathChecker implements a checker struct to check a KprobePath field
 type KprobePathChecker struct {
-	Mount *stringmatcher.StringMatcher `json:"mount,omitempty"`
-	Path  *stringmatcher.StringMatcher `json:"path,omitempty"`
-	Flags *stringmatcher.StringMatcher `json:"flags,omitempty"`
+	Mount      *stringmatcher.StringMatcher `json:"mount,omitempty"`
+	Path       *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Flags      *stringmatcher.StringMatcher `json:"flags,omitempty"`
+	Permission *stringmatcher.StringMatcher `json:"permission,omitempty"`
 }
 
 // NewKprobePathChecker creates a new KprobePathChecker
@@ -8324,6 +8325,11 @@ func (checker *KprobePathChecker) Check(event *tetragon.KprobePath) error {
 				return fmt.Errorf("Flags check failed: %w", err)
 			}
 		}
+		if checker.Permission != nil {
+			if err := checker.Permission.Match(event.Permission); err != nil {
+				return fmt.Errorf("Permission check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -8350,6 +8356,12 @@ func (checker *KprobePathChecker) WithFlags(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
+// WithPermission adds a Permission check to the KprobePathChecker
+func (checker *KprobePathChecker) WithPermission(check *stringmatcher.StringMatcher) *KprobePathChecker {
+	checker.Permission = check
+	return checker
+}
+
 //FromKprobePath populates the KprobePathChecker using data from a KprobePath field
 func (checker *KprobePathChecker) FromKprobePath(event *tetragon.KprobePath) *KprobePathChecker {
 	if event == nil {
@@ -8358,14 +8370,16 @@ func (checker *KprobePathChecker) FromKprobePath(event *tetragon.KprobePath) *Kp
 	checker.Mount = stringmatcher.Full(event.Mount)
 	checker.Path = stringmatcher.Full(event.Path)
 	checker.Flags = stringmatcher.Full(event.Flags)
+	checker.Permission = stringmatcher.Full(event.Permission)
 	return checker
 }
 
 // KprobeFileChecker implements a checker struct to check a KprobeFile field
 type KprobeFileChecker struct {
-	Mount *stringmatcher.StringMatcher `json:"mount,omitempty"`
-	Path  *stringmatcher.StringMatcher `json:"path,omitempty"`
-	Flags *stringmatcher.StringMatcher `json:"flags,omitempty"`
+	Mount      *stringmatcher.StringMatcher `json:"mount,omitempty"`
+	Path       *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Flags      *stringmatcher.StringMatcher `json:"flags,omitempty"`
+	Permission *stringmatcher.StringMatcher `json:"permission,omitempty"`
 }
 
 // NewKprobeFileChecker creates a new KprobeFileChecker
@@ -8400,6 +8414,11 @@ func (checker *KprobeFileChecker) Check(event *tetragon.KprobeFile) error {
 				return fmt.Errorf("Flags check failed: %w", err)
 			}
 		}
+		if checker.Permission != nil {
+			if err := checker.Permission.Match(event.Permission); err != nil {
+				return fmt.Errorf("Permission check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -8426,6 +8445,12 @@ func (checker *KprobeFileChecker) WithFlags(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
+// WithPermission adds a Permission check to the KprobeFileChecker
+func (checker *KprobeFileChecker) WithPermission(check *stringmatcher.StringMatcher) *KprobeFileChecker {
+	checker.Permission = check
+	return checker
+}
+
 //FromKprobeFile populates the KprobeFileChecker using data from a KprobeFile field
 func (checker *KprobeFileChecker) FromKprobeFile(event *tetragon.KprobeFile) *KprobeFileChecker {
 	if event == nil {
@@ -8434,6 +8459,7 @@ func (checker *KprobeFileChecker) FromKprobeFile(event *tetragon.KprobeFile) *Kp
 	checker.Mount = stringmatcher.Full(event.Mount)
 	checker.Path = stringmatcher.Full(event.Path)
 	checker.Flags = stringmatcher.Full(event.Flags)
+	checker.Permission = stringmatcher.Full(event.Permission)
 	return checker
 }
 
@@ -8611,7 +8637,9 @@ func (checker *KprobeCredChecker) FromKprobeCred(event *tetragon.KprobeCred) *Kp
 
 // KprobeLinuxBinprmChecker implements a checker struct to check a KprobeLinuxBinprm field
 type KprobeLinuxBinprmChecker struct {
-	Path *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Path       *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Flags      *stringmatcher.StringMatcher `json:"flags,omitempty"`
+	Permission *stringmatcher.StringMatcher `json:"permission,omitempty"`
 }
 
 // NewKprobeLinuxBinprmChecker creates a new KprobeLinuxBinprmChecker
@@ -8636,6 +8664,16 @@ func (checker *KprobeLinuxBinprmChecker) Check(event *tetragon.KprobeLinuxBinprm
 				return fmt.Errorf("Path check failed: %w", err)
 			}
 		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Match(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		if checker.Permission != nil {
+			if err := checker.Permission.Match(event.Permission); err != nil {
+				return fmt.Errorf("Permission check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -8650,12 +8688,26 @@ func (checker *KprobeLinuxBinprmChecker) WithPath(check *stringmatcher.StringMat
 	return checker
 }
 
+// WithFlags adds a Flags check to the KprobeLinuxBinprmChecker
+func (checker *KprobeLinuxBinprmChecker) WithFlags(check *stringmatcher.StringMatcher) *KprobeLinuxBinprmChecker {
+	checker.Flags = check
+	return checker
+}
+
+// WithPermission adds a Permission check to the KprobeLinuxBinprmChecker
+func (checker *KprobeLinuxBinprmChecker) WithPermission(check *stringmatcher.StringMatcher) *KprobeLinuxBinprmChecker {
+	checker.Permission = check
+	return checker
+}
+
 //FromKprobeLinuxBinprm populates the KprobeLinuxBinprmChecker using data from a KprobeLinuxBinprm field
 func (checker *KprobeLinuxBinprmChecker) FromKprobeLinuxBinprm(event *tetragon.KprobeLinuxBinprm) *KprobeLinuxBinprmChecker {
 	if event == nil {
 		return checker
 	}
 	checker.Path = stringmatcher.Full(event.Path)
+	checker.Flags = stringmatcher.Full(event.Flags)
+	checker.Permission = stringmatcher.Full(event.Permission)
 	return checker
 }
 

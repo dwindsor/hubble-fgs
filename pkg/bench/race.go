@@ -242,7 +242,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	f.Close()
 
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	obs := observer.NewObserver(f.Name())
+	obs := observer.NewObserver()
 
 	if err := obs.InitSensorManager(nil); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
