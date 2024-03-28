@@ -1587,6 +1587,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | process | [Process](#tetragon.Process) |  |  |
 | parent | [Process](#tetragon.Process) |  |  |
 | name | [string](#string) |  | syscall name |
+| policy | [string](#string) |  | policy name |
 
 
 

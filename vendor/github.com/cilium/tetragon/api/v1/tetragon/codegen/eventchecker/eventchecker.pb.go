@@ -5735,6 +5735,7 @@ type ProcessSandboxSyscallChecker struct {
 	Process     *ProcessChecker              `json:"process,omitempty"`
 	Parent      *ProcessChecker              `json:"parent,omitempty"`
 	Name        *stringmatcher.StringMatcher `json:"name,omitempty"`
+	Policy      *stringmatcher.StringMatcher `json:"policy,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -5791,6 +5792,11 @@ func (checker *ProcessSandboxSyscallChecker) Check(event *tetragon.ProcessSandbo
 				return fmt.Errorf("Name check failed: %w", err)
 			}
 		}
+		if checker.Policy != nil {
+			if err := checker.Policy.Match(event.Policy); err != nil {
+				return fmt.Errorf("Policy check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -5817,6 +5823,12 @@ func (checker *ProcessSandboxSyscallChecker) WithName(check *stringmatcher.Strin
 	return checker
 }
 
+// WithPolicy adds a Policy check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) WithPolicy(check *stringmatcher.StringMatcher) *ProcessSandboxSyscallChecker {
+	checker.Policy = check
+	return checker
+}
+
 //FromProcessSandboxSyscall populates the ProcessSandboxSyscallChecker using data from a ProcessSandboxSyscall event
 func (checker *ProcessSandboxSyscallChecker) FromProcessSandboxSyscall(event *tetragon.ProcessSandboxSyscall) *ProcessSandboxSyscallChecker {
 	if event == nil {
@@ -5829,6 +5841,7 @@ func (checker *ProcessSandboxSyscallChecker) FromProcessSandboxSyscall(event *te
 		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Name = stringmatcher.Full(event.Name)
+	checker.Policy = stringmatcher.Full(event.Policy)
 	return checker
 }
 
