@@ -844,6 +844,7 @@ TCP socket socket drops statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -859,6 +860,7 @@ TCP socket retransmit bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -874,6 +876,7 @@ TCP socket retransmit seg statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -911,6 +914,7 @@ TCP socket RX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -937,6 +941,7 @@ TCP socket RX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -952,6 +957,7 @@ TCP socket smoothed RTT latency distribution in microseconds.
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -989,6 +995,7 @@ TCP socket TX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1015,6 +1022,7 @@ TCP socket TX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1030,6 +1038,7 @@ TCP socket zero window events
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1045,6 +1054,7 @@ Histogram bucket for TCP socket latency in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1061,6 +1071,7 @@ Histogram count for TCP socket latency
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1076,6 +1087,7 @@ Histogram sum for TCP socket latency in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1091,6 +1103,7 @@ Histogram bucket for TCP socket rtt in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1107,6 +1120,7 @@ Histogram count for TCP socket rtt
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1122,6 +1136,7 @@ Histogram sum for TCP socket rtt in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1139,6 +1154,7 @@ UDP socket consume packet misses
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1154,6 +1170,7 @@ UDP socket drops statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1287,6 +1304,7 @@ UDP socket RX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1313,6 +1331,7 @@ UDP socket RX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1328,6 +1347,7 @@ UDP stack RX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1343,6 +1363,7 @@ UDP stack RX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1358,6 +1379,7 @@ UDP stack TX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1373,6 +1395,7 @@ UDP stack TX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1410,6 +1433,7 @@ UDP socket TX bytes statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1436,6 +1460,7 @@ UDP socket TX segment statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1451,6 +1476,7 @@ Histogram bucket for UDP socket latency in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1467,6 +1493,7 @@ Histogram count for UDP socket latency
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
@@ -1482,6 +1509,7 @@ Histogram sum for UDP socket latency in microseconds
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `dstdns` | `example.com,www.example.com` |
+| `dstip` | `10.1.0.0` |
 | `dstnamespace` | `example-namespace` |
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |

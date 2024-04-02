@@ -51,7 +51,7 @@ func InitTCPEventsMetrics(registry *prometheus.Registry) {
 func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitTCPEventsMetrics(registry)
 
-	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels)
+	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleSocketDstLabels)
 
 	SocketStatsTxBytes.WithLabelValues(labels...).Add(0)
 	SocketStatsTxSegs.WithLabelValues(labels...).Add(0)
@@ -138,7 +138,7 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitUDPEventsMetrics(registry)
 
-	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels)
+	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleSocketDstLabels)
 
 	SocketStatsUDPTxBytes.WithLabelValues(labels...).Add(0)
 	SocketStatsUDPTxSegs.WithLabelValues(labels...).Add(0)
