@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -33,6 +34,7 @@ var (
 	configured = false
 	tcpEnabled = false
 	udpEnabled = false
+	dnsEnabled = false
 )
 
 func unloadLayer3Sensor() error {
@@ -88,7 +90,7 @@ func (l3 *l3Sensor) PolicyHandler(
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
 
-	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable {
+	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable {
 		return nil, nil
 	}
 
@@ -96,26 +98,47 @@ func (l3 *l3Sensor) PolicyHandler(
 		return nil, fmt.Errorf("layer3 sensor does not implement policy filtering")
 	}
 
+	tcpEnabled = spec.Parser.Tcp.Enable
+	udpEnabled = spec.Parser.Udp.Enable
+	dnsEnabled = spec.Parser.Dns.Enable
+	udpCgroup := spec.Parser.Udp.Cgroup
+	// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
+	if tcpEnabled || udpEnabled {
+		dnsEnabled = true
+		// DNS requires cgroup programs.
+		udpCgroup = true
+	}
+	// If DNS then turn on UDP otherwise DNS doesn't work.
+	if dnsEnabled {
+		udpEnabled = true
+		// DNS requires cgroup programs.
+		udpCgroup = true
+	}
+	// However, disable cgroup and therefore DNS if the kernel is too old
+	if !kernels.MinKernelVersion("5.4.0") {
+		udpCgroup = false
+		dnsEnabled = false
+	}
 	tcpTimestampEnable := false
 	var err error
-	if spec.Parser.Tcp.Enable {
+	if tcpEnabled {
 		tcpTimestampEnable, err = tcp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("tcp.PolicyHandler error: %w", err)
 		}
-		tcpEnabled = true
 	}
-	cgroup := false
+
 	udpTimestampEnable := false
 	var udpInterval time.Duration
-	if spec.Parser.Udp.Enable {
-		cgroup, udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
+	if udpEnabled {
+		udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("udp.PolicyHandler error: %w", err)
 		}
-		udpEnabled = true
 	}
-	return EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable, udpInterval), nil
+
+	return EnableLayer3(tcpTimestampEnable,
+		udpCgroup, udpTimestampEnable, udpInterval), nil
 }
 
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {

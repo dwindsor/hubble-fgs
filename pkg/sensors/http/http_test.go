@@ -36,7 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -398,56 +398,51 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
 	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	sensorProgs := []tus.SensorProg{
-		0:  tus.SensorProg{Name: "tg_http_sk_msg_fgs", Type: ebpf.SkMsg},
-		1:  tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
-		2:  tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
-		3:  tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
-		4:  tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe},
-		5:  tus.SensorProg{Name: "tg_http_sk_msg_fgs_response", Type: ebpf.SkMsg},
-		6:  tus.SensorProg{Name: "tg_http_sk_msg_fgs_request", Type: ebpf.SkMsg},
-		7:  tus.SensorProg{Name: "tg_http_sk_msg_get_more_headers", Type: ebpf.SkMsg},
-		8:  tus.SensorProg{Name: "tg_skmsg_http2", Type: ebpf.SkMsg},
-		9:  tus.SensorProg{Name: "tg_skskb_http_response", Type: ebpf.SkSKB},
-		10: tus.SensorProg{Name: "tg_skskb_http_request", Type: ebpf.SkSKB},
-		11: tus.SensorProg{Name: "tg_skskb_http_get_more_headers", Type: ebpf.SkSKB},
-		12: tus.SensorProg{Name: "tg_skskb_http2", Type: ebpf.SkSKB},
-		13: tus.SensorProg{Name: "tg_skskb_http_verdict", Type: ebpf.SkSKB},
-		14: tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
+	sensorProgs, sensorMaps := layer3.ProgsAndMaps(false)
+	ni := uint(len(sensorProgs)) // next index
+
+	sensorProgs = append(sensorProgs, []tus.SensorProg{
+		tus.SensorProg{Name: "tg_http_sk_msg_fgs", Type: ebpf.SkMsg}, // Index ni
+		tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_http_sk_msg_fgs_response", Type: ebpf.SkMsg},
+		tus.SensorProg{Name: "tg_http_sk_msg_fgs_request", Type: ebpf.SkMsg},
+		tus.SensorProg{Name: "tg_http_sk_msg_get_more_headers", Type: ebpf.SkMsg},
+		tus.SensorProg{Name: "tg_skmsg_http2", Type: ebpf.SkMsg},
+		tus.SensorProg{Name: "tg_skskb_http_response", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_skskb_http_request", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_skskb_http_get_more_headers", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_skskb_http2", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_skskb_http_verdict", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
 
 		// new accept sensor
-		15: tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
-		16: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
 
 		// IPv6 sensor
-		17: tus.SensorProg{Name: "tg_event_tcp_v6_send_check", Type: ebpf.Kprobe},
-	}
+		tus.SensorProg{Name: "tg_event_tcp_v6_send_check", Type: ebpf.Kprobe}, // ni + 17
+	}...)
 
-	sensorMaps := []tus.SensorMap{
-		// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 4, 17}},
-
-		// all but base and tg_sockmap
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17}},
-
-		// event_tcp4_connect, event_tcp4_close, event_sys_listen
-		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{1, 2, 3, 16}},
-
-		// all but tg_sockmap
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17}},
-
-		// accept and accept_ret
-		tus.SensorMap{Name: "tg_tcp_accept_sock_map", Progs: []uint{15, 16}},
-	}
+	// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
+	layer3.AddToMap(sensorMaps, "execve_map", []uint{ni + 1, ni + 3, ni + 4, ni + 17})
+	// all but base and tg_sockmap
+	layer3.AddToMap(sensorMaps, "tg_socket_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
+		ni + 12, ni + 13, ni + 16, ni + 17})
+	// event_tcp4_connect, event_tcp4_close, event_sys_listen
+	layer3.AddToMap(sensorMaps, "tg_socket_map_stats", []uint{ni + 1, ni + 2, ni + 3, ni + 16})
+	// all but tg_sockmap
+	layer3.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
+		ni + 12, ni + 13, ni + 17})
+	// accept and accept_ret
+	layer3.AddToMap(sensorMaps, "tg_tcp_accept_sock_map", []uint{ni + 15, ni + 16})
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

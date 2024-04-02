@@ -149,33 +149,33 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (ConfigValue, networklatency
 // The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
 // the map in bpf_inet.h.
 func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.Dns.Enable {
-		// Only consider the first maxDnsPorts ports that are specified
-		if len(spec.Parser.Dns.Ports) == 0 {
-			config.dnsPorts[0] = defaultDnsPort
-		} else if len(spec.Parser.Dns.Ports) <= maxDnsPorts {
-			copy(config.dnsPorts[:], spec.Parser.Dns.Ports)
-		} else {
-			copy(config.dnsPorts[:], spec.Parser.Dns.Ports[0:maxDnsPorts])
-		}
-
-		if spec.Parser.Dns.Metrics != nil {
-			dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
-			dnsconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)
-		} else {
-			dnsconfig.MetricsEnabled = true
-			dnsconfig.CurrentLabels = option.DefaultLabelFilter()
-		}
-
-		// Enable DNS cache in core, abstraction breaking but
-		// fix is to do in kernel BPF parser.
-		ip.EnableDns()
-		logger.GetLogger().Info("Enable DNS")
-	} else {
+	if !spec.Parser.Dns.Enable {
 		// If DNS is disabled and udp enabled then we can disable
 		// dns caching.
 		ip.DisableDns()
+		return
 	}
+	// Only consider the first maxDnsPorts ports that are specified
+	if len(spec.Parser.Dns.Ports) == 0 {
+		config.dnsPorts[0] = defaultDnsPort
+	} else if len(spec.Parser.Dns.Ports) <= maxDnsPorts {
+		copy(config.dnsPorts[:], spec.Parser.Dns.Ports)
+	} else {
+		copy(config.dnsPorts[:], spec.Parser.Dns.Ports[0:maxDnsPorts])
+	}
+
+	if spec.Parser.Dns.Metrics != nil {
+		dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
+		dnsconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)
+	} else {
+		dnsconfig.MetricsEnabled = true
+		dnsconfig.CurrentLabels = option.DefaultLabelFilter()
+	}
+
+	// Enable DNS cache in core, abstraction breaking but
+	// fix is to do in kernel BPF parser.
+	ip.EnableDns()
+	logger.GetLogger().Info("Enable DNS")
 }
 
 // ParseUdpWatermarksSpec parses the input yaml/crd and outputs the kernel selectors

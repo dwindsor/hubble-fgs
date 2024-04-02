@@ -905,7 +905,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 	return progs, maps
 }
 
-func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, bool, time.Duration, error) {
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {
 	if spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
@@ -937,7 +937,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, bool, time.Duration,
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
-	return spec.Parser.Udp.Cgroup, spec.Parser.Udp.Latency.Enable, interval, nil
+	return spec.Parser.Udp.Latency.Enable, interval, nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {

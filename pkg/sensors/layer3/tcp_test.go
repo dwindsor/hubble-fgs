@@ -13,7 +13,6 @@ package layer3
 import (
 	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -38,7 +37,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,20 +48,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-)
-
-var (
-	tcpClient    bool
-	tcpServer    bool
-	tcpIouServer bool
-	tcpIouClient bool
-)
-
-const (
-	testConfigFile  = "/tmp/hubble-tetragon.gotest.yaml"
-	alpineCurlImage = "quay.io/cilium/alpine-curl:v1.6.0"
 )
 
 const tcpConfigLegacy = `
@@ -148,18 +132,6 @@ spec:
         max: 1000000
 `
 
-func init() {
-	flag.BoolVar(&tcpClient, "tcpClient", false, "internal")
-	flag.BoolVar(&tcpServer, "tcpServer", false, "internal")
-	flag.BoolVar(&tcpIouServer, "tcpIouServer", false, "internal")
-	flag.BoolVar(&tcpIouClient, "tcpIouClient", false, "internal")
-
-	flag.BoolVar(&udpWatermarksClient, "udpWatermarksClient", false, "internal")
-	flag.BoolVar(&udpLayer7Client, "udpLayer7Client", false, "internal")
-	flag.BoolVar(&udpServer, "udpServer", false, "internal")
-	flag.BoolVar(&udpIouServer, "udpIouServer", false, "internal")
-}
-
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 //
@@ -207,76 +179,6 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 
 	tcpDisableEventsConfig := tcpBasicConfig + eventDisableConfig
 	return getTcpObserver(t, ctx, tcpDisableEventsConfig, docker)
-}
-
-func TestMain(m *testing.M) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
-		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for Layer3 tests in KVM CI not met, skipping", v)
-		return
-	}
-	bpf.CheckOrMountCgroup2()
-
-	flag.Parse()
-	if tcpServer {
-		runTcpServer()
-		os.Exit(0)
-	}
-	if tcpIouServer {
-		runTcpIouServer()
-		os.Exit(0)
-	}
-	if tcpClient {
-		runTcpClient()
-		os.Exit(0)
-	}
-	if tcpIouClient {
-		runTcpIouClient()
-		os.Exit(0)
-	}
-	if udpServer {
-		runUdpServer()
-		os.Exit(0)
-	}
-	if udpIouServer {
-		runUdpIouServer()
-		os.Exit(0)
-	}
-	if udpWatermarksClient {
-		runUdpWatermarksClient()
-		os.Exit(0)
-	}
-	if udpLayer7Client {
-		runUdpLayer7Client()
-		os.Exit(0)
-	}
-
-	ec := runner.TestSensorsRun(m, "SensorLayer3")
-	os.Exit(ec)
-}
-
-func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
-	if cmd != nil {
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		} else {
-			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
-		}
-		_ = cmd.Wait()
-	}
-}
-
-func getNCCommand(t *testing.T, orig string) string {
-	if _, err := exec.LookPath(orig); err == nil {
-		return orig
-	}
-
-	server := "nc.openbsd"
-	if _, err := exec.LookPath(server); err != nil {
-		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
-	}
-	t.Logf("Using %q instead of original program %q", server, orig)
-
-	return server
 }
 
 func TestConnectEvent4(t *testing.T) {
@@ -1327,60 +1229,6 @@ func TestDetectLatency4(t *testing.T) {
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-}
-
-func TestLoadTcpSensor(t *testing.T) {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
-	}
-
-	sensorProgs := []tus.SensorProg{
-		0: tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe},
-
-		// new accept sensor
-		4: tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
-		5: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
-
-		// IPv6 sensor
-		6: tus.SensorProg{Name: "tg_event_tcp_v6_send_check", Type: ebpf.Kprobe},
-	}
-	sensorMaps := []tus.SensorMap{
-		// all but accept
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 5, 6}},
-
-		// all but base, accept, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 5}},
-
-		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{0, 1, 2, 5}},
-
-		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{0, 1, 2, 5}},
-
-		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{0, 1, 2, 5}},
-
-		// accept and accept_ret
-		tus.SensorMap{Name: "tg_tcp_accept_sock_map", Progs: []uint{4, 5}},
-
-		// all but accept and accept_ret
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 6}},
-
-		// all but accept, accept_ret and event_tcp4_close
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 6}},
-	}
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
-
-	sensors.UnloadSensors(sens)
 }
 
 func TestConnectEvent6(t *testing.T) {
