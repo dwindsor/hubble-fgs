@@ -56,8 +56,7 @@ If you create a `X.Y` branch:
 - [ ] Open a pull request to update the Helm chart version:
   ```
   git checkout -b pr/prepare-$RELEASE
-  ./modules/tetragon-oss/contrib/update-helm-chart.sh $RELEASE
-  ./install/kubernetes/test.sh
+  ./contrib/update-helm-chart.sh $RELEASE
   git add install/kubernetes/
   git commit -s -m "Prepare for $RELEASE release"
   git push origin HEAD
