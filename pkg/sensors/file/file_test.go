@@ -557,6 +557,19 @@ func testFilePollingIouring(gt *testing.T, t *testing.T) {
 		t.Skip("File monitoring (sq_poll) requires at least 5.10.0 version")
 	}
 
+	// temporary check for buggy kernel
+	// https://lore.kernel.org/io-uring/Zg1aVQVgBO3Rw0_4@tinh.kkourt.io/t/#u
+	execPath := "contrib/tester-progs/io_uring/sq_poll"
+	testBin := testutils.RepoRootPath(execPath)
+	out, err := exec.Command(testBin, "/tmp/fim_my_sq_poll_test_file").CombinedOutput()
+	os.Remove("/tmp/fim_my_sq_poll_test_file")
+	if err != nil {
+		if strings.Contains(string(out), "Bad file descriptor") {
+			t.Skip("buggy kernel")
+		}
+		t.Fatalf("failed to execute sq_poll: %s", err)
+	}
+
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, test_path)
 
@@ -565,8 +578,6 @@ func testFilePollingIouring(gt *testing.T, t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	execPath := "contrib/tester-progs/io_uring/sq_poll"
-	testBin := testutils.RepoRootPath(execPath)
 	testCmd := exec.CommandContext(ctx, testBin, test_file)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
@@ -591,7 +602,7 @@ func testFilePollingIouring(gt *testing.T, t *testing.T) {
 	logWG.Wait()
 
 	if err := testCmd.Wait(); err != nil {
-		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
+		t.Fatalf("command failed with %s. Context error: %v", err, ctx.Err())
 	}
 
 	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(filepath.Base(execPath)))

@@ -25,7 +25,7 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 	fds[0] = open(filename, O_RDWR | O_TRUNC | O_CREAT, 0644);
 	if (fds[0] < 0) {
 		perror("open");
-		return 1;
+		exit(1);
 	}
 
 	memset(buff1, 0, BUF_SIZE);
@@ -37,14 +37,14 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 
 	int ret = io_uring_register_files(ring, fds, 1);
 	if (ret) {
-		fprintf(stderr, "Error registering buffers: %s", strerror(-ret));
-		return 1;
+		fprintf(stderr, "Error registering buffers: %s\n", strerror(-ret));
+		exit(1);
 	}
 
 	sqe = io_uring_get_sqe(ring);
 	if (!sqe) {
 		fprintf(stderr, "Could not get SQE.\n");
-		return 1;
+		exit(1);
 	}
 	io_uring_prep_write(sqe, 0, buff1, str1_sz, 0);
 	sqe->flags |= IOSQE_FIXED_FILE;
@@ -52,7 +52,7 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 	sqe = io_uring_get_sqe(ring);
 	if (!sqe) {
 		fprintf(stderr, "Could not get SQE.\n");
-		return 1;
+		exit(1);
 	}
 	io_uring_prep_write(sqe, 0, buff2, str2_sz, str1_sz);
 	sqe->flags |= IOSQE_FIXED_FILE;
@@ -64,7 +64,7 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 		if (ret < 0) {
 			fprintf(stderr, "Error waiting for completion: %s\n",
 				strerror(-ret));
-			return 1;
+			exit(1);
 		}
 		/* Now that we have the CQE, let's process the data */
 		if (cqe->res < 0) {
@@ -76,7 +76,7 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 	sqe = io_uring_get_sqe(ring);
 	if (!sqe) {
 		fprintf(stderr, "Could not get SQE.\n");
-		return 1;
+		exit(1);
 	}
 	io_uring_prep_read(sqe, 0, buff3, str1_sz, 0);
 	sqe->flags |= IOSQE_FIXED_FILE;
@@ -84,7 +84,7 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 	sqe = io_uring_get_sqe(ring);
 	if (!sqe) {
 		fprintf(stderr, "Could not get SQE.\n");
-		return 1;
+		exit(1);
 	}
 	io_uring_prep_read(sqe, 0, buff4, str2_sz, str1_sz);
 	sqe->flags |= IOSQE_FIXED_FILE;
@@ -106,11 +106,11 @@ int start_sq_polling_ops(const char *filename, struct io_uring *ring)
 
 	if (memcmp(buff1, buff3, BUF_SIZE)) {
 		fprintf(stderr, "buff1 != buff3\n");
-		return 1;
+		exit(1);
 	}
 	if (memcmp(buff2, buff4, BUF_SIZE)) {
 		fprintf(stderr, "buff2 != buff4\n");
-		return 1;
+		exit(1);
 	}
 	return 0;
 }
