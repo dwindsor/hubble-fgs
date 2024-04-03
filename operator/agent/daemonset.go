@@ -409,9 +409,8 @@ func configArray(log logr.Logger, config map[string]any, key string, defaultValu
 }
 
 func configMapOfString(log logr.Logger, m map[string]any, key string) map[string]string {
-	values, ok := m[key]
 	stringValues := map[string]string{}
-	if ok {
+	if values, ok := m[key]; ok {
 		typedValues, ok := values.(map[string]interface{})
 		if !ok {
 			log.WithValues("key", key, "value", values).Error(errors.New("could not unmarshal"), "not applied")
