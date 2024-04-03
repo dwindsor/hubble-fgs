@@ -127,8 +127,46 @@ func getNCCommand(t *testing.T, orig string) string {
 	return server
 }
 
+// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
+// This is included to test latency timestamps are NOT added
+// to any real TCP packets.
+const layer3Config = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "layer3"
+spec:
+  parser:
+    tcp:
+      enable: true
+      statsInterval: 20
+      watermarks:
+        enable: true
+        windowSize: 1000
+        burstTriggerPercent: 50
+        dipTriggerPercent: 10
+    udp:
+      enable: true
+      statsInterval: 20
+      watermarks:
+        enable: true
+        windowSize: 1000
+        burstTriggerPercent: 50
+        dipTriggerPercent: 10
+      latency:
+        enable: true
+        matchSubnets: [20.0.0.0/8]
+        min: 0
+        max: 10000
+    networkWatermarksExitGen:
+      enable: true
+      interval: 1000
+    dns:
+      enable: true
+`
+
 func TestLoadLayer3Sensor(t *testing.T) {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, layer3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
