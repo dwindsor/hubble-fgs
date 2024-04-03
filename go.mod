@@ -3,8 +3,8 @@ module github.com/isovalent/hubble-fgs
 go 1.22.1
 
 require (
-	github.com/cilium/cilium v1.15.2
-	github.com/cilium/ebpf v0.13.2
+	github.com/cilium/cilium v1.15.3
+	github.com/cilium/ebpf v0.14.0
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
@@ -42,9 +42,9 @@ require (
 	k8s.io/apiextensions-apiserver v0.29.3
 	k8s.io/client-go v0.29.3
 	k8s.io/code-generator v0.29.3
-	k8s.io/klog/v2 v2.110.1
-	k8s.io/utils v0.0.0-20231127182322-b307cd553661
-	sigs.k8s.io/controller-tools v0.13.0
+	k8s.io/klog/v2 v2.120.1
+	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
+	sigs.k8s.io/controller-tools v0.14.0
 	sigs.k8s.io/e2e-framework v0.2.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -81,7 +81,7 @@ require (
 	github.com/google/cel-go v0.17.7 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.5 // indirect
 	github.com/hashicorp/consul/api v1.26.1 // indirect
@@ -155,19 +155,19 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
+	github.com/emicklei/go-restful/v3 v3.11.2 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.22.0 // indirect
-	github.com/go-openapi/jsonpointer v0.20.0 // indirect
-	github.com/go-openapi/jsonreference v0.20.2 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-openapi/runtime v0.26.2 // indirect
 	github.com/go-openapi/spec v0.20.11 // indirect
 	github.com/go-openapi/strfmt v0.23.0 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/swag v0.22.7 // indirect
 	github.com/go-openapi/validate v0.22.3 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -227,7 +227,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	k8s.io/apimachinery v0.29.3
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
-	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
+	k8s.io/kube-openapi v0.0.0-20240105020646-a37d4de58910
 	sigs.k8s.io/controller-runtime v0.16.5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
