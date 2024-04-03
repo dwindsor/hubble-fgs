@@ -394,16 +394,14 @@ func configValue[V string | bool](log logr.Logger, config map[string]any, key st
 
 func configArray(log logr.Logger, config map[string]any, key string, defaultValue []string) []string {
 	if value, ok := config[key]; ok {
-		a, ok := value.([]interface{})
-		if !ok {
-			log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default values used instead")
-		} else {
-			result := []string{}
+		if a, ok := value.([]interface{}); ok {
+			result := make([]string, 0, len(a))
 			for _, v := range a {
 				result = append(result, v.(string))
 			}
 			return result
 		}
+		log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default values used instead")
 	}
 	return defaultValue
 }

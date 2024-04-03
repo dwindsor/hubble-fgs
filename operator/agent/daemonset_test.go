@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 func TestDnsPolicy(t *testing.T) {
@@ -170,6 +171,37 @@ func TestConfigMapOfString(t *testing.T) {
 	for _, tt := range testCases {
 		// function to test
 		actual := configMapOfString(logr.Log, tt.configMap, key)
+
+		require.Equal(t, tt.expected, actual)
+	}
+}
+
+func TestConfigArray(t *testing.T) {
+	key := "test"
+	testCases := []struct {
+		yamlString   string
+		defaultValue []string
+		expected     []string
+	}{
+		{
+			yamlString:   "",
+			defaultValue: []string{"default"},
+			expected:     []string{"default"},
+		},
+		{
+			yamlString: key + `:
+- tetragon-1.log
+- tetragon-2.log`,
+			defaultValue: []string{"default"},
+			expected:     []string{"tetragon-1.log", "tetragon-2.log"},
+		},
+	}
+
+	for _, tt := range testCases {
+		cfgMap := make(map[string]any)
+		require.NoError(t, yaml.Unmarshal([]byte(tt.yamlString), &cfgMap))
+		// function to test
+		actual := configArray(logr.Log, cfgMap, key, tt.defaultValue)
 
 		require.Equal(t, tt.expected, actual)
 	}
