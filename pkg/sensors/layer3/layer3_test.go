@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 
@@ -164,9 +165,20 @@ spec:
     dns:
       enable: true
 `
+const layer3IcmpConfig = layer3Config + `
+    icmp:
+      enable: true
+`
 
 func TestLoadLayer3Sensor(t *testing.T) {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, layer3Config); err != nil {
+	var l3Config string
+	if !kernels.MinKernelVersion("5.4.0") {
+		logger.GetLogger().Info("Disabling ICMP as it requires kernel v5.4 or later")
+		l3Config = layer3Config
+	} else {
+		l3Config = layer3IcmpConfig
+	}
+	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
@@ -175,7 +187,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := ProgsAndMaps(false)
+	sensorProgs, sensorMaps := ProgsAndMaps(true, true)
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)

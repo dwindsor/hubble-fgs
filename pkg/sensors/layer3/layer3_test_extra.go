@@ -32,7 +32,7 @@ func AddToMap(maps []tus.SensorMap, name string, progs []uint) {
 	}
 }
 
-func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
+func ProgsAndMaps(withUdpLatency bool, withIcmp bool) ([]tus.SensorProg, []tus.SensorMap) {
 	sensorProgs := []tus.SensorProg{
 		0: tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
 		1: tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
@@ -67,6 +67,9 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 
 	// all but accept, accept_ret and event_tcp4_close
 	execveMap := tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 6}}
+
+	// all but accept, accept_ret and event_tcp4_close
+	cfgMap := tus.SensorMap{Name: "tg_cfg_map", Progs: []uint{0, 1, 2, 5}}
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
 
@@ -122,14 +125,15 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 		}...)
 
 		// udp_destroy_sock
-		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{8}...)
-		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{8}...)
+		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{8, 11, 13, 14}...)
+		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{8, 11, 13, 14}...)
+		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{8, 11, 13, 14}...)
 		// udp_init_sock, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 		execveMap.Progs = append(execveMap.Progs, []uint{7, 9, 11, 13, 14}...)
 
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
 		// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-		socketMap.Progs = append(socketMap.Progs, []uint{7, 8, 9, 11, 13, 14, 16}...)
+		socketMap.Progs = append(socketMap.Progs, []uint{7, 8, 9, 11, 13, 14, 15, 16}...)
 		socketMapStats.Progs = append(socketMapStats.Progs, []uint{7, 8, 11, 13, 14}...)
 
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send_kp, udp4_sendret_lazy_kprobe,
@@ -137,6 +141,8 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{7, 8, 9, 10, 11, 12, 13, 14, 15}...)
 
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, 9)
+
+		cfgMap.Progs = append(cfgMap.Progs, []uint{8, 11, 13, 14}...)
 
 		if useIPv6InitHook {
 			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 16
@@ -177,9 +183,9 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 		}...)
 
 		// udp_destroy_sock, inet_lazy_send, inet_lazy_recv
-		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{8, 10, 11, 12, 14, 15}...)
-		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{8, 10, 11, 12, 14, 15}...)
-		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{8, 10, 11, 12, 14, 15}...)
+		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{8, 9, 10, 12, 14, 15}...)
+		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{8, 9, 10, 12, 14, 15}...)
+		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{8, 9, 10, 12, 14, 15}...)
 
 		// udp_init_sock, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 		execveMap.Progs = append(execveMap.Progs, []uint{7, 9, 10, 12, 14, 15}...)
@@ -194,6 +200,8 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{7, 8, 9, 10, 11, 12, 13, 14, 15, 16}...)
 
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, 10)
+
+		cfgMap.Progs = append(cfgMap.Progs, []uint{8, 9, 10, 12, 14, 15}...)
 
 		if useIPv6InitHook {
 			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 17
@@ -254,6 +262,8 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, 10)
 
+		cfgMap.Progs = append(cfgMap.Progs, []uint{8, 9, 10, 12, 14, 15}...)
+
 		if useIPv6InitHook {
 			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 19
 			execveMap.Progs = append(execveMap.Progs, 19)
@@ -267,7 +277,42 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 	if withUdpLatency {
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_egress_timestamp", Type: ebpf.SchedCLS}) // index ni
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, ni)
-		execveMap.Progs = append(execveMap.Progs, ni)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, ni)
+		ni++
+	}
+
+	if withIcmp && kernels.MinKernelVersion("5.4.0") {
+		if !kernels.MinKernelVersion("5.10.0") { // 5.4 - 5.9
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
+				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_send_lazy", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_icmp_recv_lazy", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 7
+			}...)
+		} else { // 5.10 -
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
+				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_send", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_icmp_recv", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
+				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 7
+			}...)
+		}
+		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7}...)
+		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni, ni + 1, ni + 2, ni + 6}...)
+		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{ni + 2, ni + 5, ni + 7}...)
+		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{ni + 2}...)
+		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 2, ni + 5, ni + 7}...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7}...)
+		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 6}...)
+		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 2, ni + 3, ni + 4, ni + 5, ni + 7}...)
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -279,6 +324,7 @@ func ProgsAndMaps(withUdpLatency bool) ([]tus.SensorProg, []tus.SensorMap) {
 		execveMap,
 		tcpMonMap,
 		latencyConfigMap,
+		cfgMap,
 	}...)
 
 	return sensorProgs, sensorMaps

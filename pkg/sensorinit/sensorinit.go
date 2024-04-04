@@ -7,7 +7,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/heartbeat"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/icmp"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/rawsock"

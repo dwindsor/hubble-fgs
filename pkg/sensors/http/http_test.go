@@ -403,7 +403,7 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := layer3.ProgsAndMaps(false)
+	sensorProgs, sensorMaps := layer3.ProgsAndMaps(false, false)
 	ni := uint(len(sensorProgs)) // next index
 
 	sensorProgs = append(sensorProgs, []tus.SensorProg{

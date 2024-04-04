@@ -163,7 +163,7 @@ var (
 		"__cgroup_bpf_run_filter_skb",
 		"kprobe/__cgroup_bpf_run_filter_skb",
 		"tg_run_filter_skb",
-		"kprobe_udp",
+		"layer3_sensor",
 	)
 
 	Udp4Send = program.Builder(

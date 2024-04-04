@@ -17,31 +17,24 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
-	"golang.org/x/sys/unix"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-)
-
-const (
-	SocketMapName = "tg_socket_map"
 )
 
 var (
-	configured = false
-	config     ConfigValue
+	Config        ConfigValue
+	ConfigMapName = "tg_icmp_cfg_map"
+	SocketMapName = "tg_socket_map"
 )
 
 var (
@@ -108,7 +101,7 @@ var (
 		"icmp_send",
 		"cgroup_skb/egress",
 		"tg_icmp_egress",
-		"cgrp_icmp_egress",
+		"cgrp_egress",
 	)
 
 	IcmpRecv = program.Builder(
@@ -116,7 +109,7 @@ var (
 		"icmp_recv",
 		"cgroup_skb/ingress",
 		"tg_icmp_ingress",
-		"cgrp_icmp_ingress",
+		"cgrp_ingress",
 	)
 
 	IcmpSendLazy = program.Builder(
@@ -124,7 +117,7 @@ var (
 		"icmp_lazy_send",
 		"cgroup_skb/egress",
 		"tg_icmp_egress",
-		"cgrp_icmp_egress",
+		"cgrp_egress",
 	)
 
 	IcmpRecvLazy = program.Builder(
@@ -132,7 +125,7 @@ var (
 		"icmp_lazy_recv",
 		"cgroup_skb/ingress",
 		"tg_icmp_ingress",
-		"cgrp_icmp_ingress",
+		"cgrp_ingress",
 	)
 
 	IcmpRcv = program.Builder(
@@ -168,11 +161,7 @@ var (
 	IcmpCfgMapLazy         = program.MapBuilder("tg_icmp_cfg_map", IcmpSendLazy)
 )
 
-type icmpSensor struct {
-	name string
-}
-
-type icmpSensorConfigKey struct {
+type sensorConfigKey struct {
 	Zero uint32
 }
 
@@ -185,49 +174,13 @@ func (v *ConfigValue) String() string {
 	return fmt.Sprintf("v6info: %d, ", v.v6info)
 }
 
-func FdCallback(socket *ip.FdLookupValue, pid uint32) {
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
-}
-
-func (icmp *icmpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	if !configured {
-		ip.LoadSockets(FdCallback, unix.IPPROTO_ICMP)
-	}
-
-	if args.Load.Type == "cgrp_icmp_ingress" || args.Load.Type == "cgrp_icmp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	}
-	if !configured {
-		m, err := ebpf.LoadPinnedMap(filepath.Join(args.BPFDir, "tg_icmp_cfg_map"), nil)
-		if err != nil {
-			return err
-		}
-		defer m.Close()
-
-		key := &icmpSensorConfigKey{
-			Zero: uint32(0),
-		}
-		m.Put(key, &config)
-
-		configured = true
-	}
-	return nil
-}
-
-func EnableIcmpParser() *sensors.Sensor {
+func EnableIcmp() ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 	var maps []*program.Map
-	var versionStr string
-
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
 
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
-		return nil
+		return nil, nil
 	} else if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*program.Program{
 			SkRawAllocV4,
@@ -250,7 +203,6 @@ func EnableIcmpParser() *sensors.Sensor {
 			CfgMapLazy,
 			IcmpCfgMapLazy,
 		}
-		versionStr = "__icmp_sensor_probe__"
 	} else {
 		progs = []*program.Program{
 			SkRawAllocV4,
@@ -273,35 +225,48 @@ func EnableIcmpParser() *sensors.Sensor {
 			CfgMap,
 			IcmpCfgMap,
 		}
-		versionStr = "__icmp_sensor_probe__"
 	}
 
 	logger.GetLogger().Infof("Enable ICMP")
-	icmpSensor := sensors.SensorBuilder(versionStr, progs, maps)
-	return icmpSensor
+	return progs, maps
 }
 
-func (icmp *icmpSensor) PolicyHandler(
-	policy tracingpolicy.TracingPolicy,
-	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
-	spec := policy.TpSpec()
-
-	if !spec.Parser.Icmp.Enable {
-		return nil, nil
+func ConfigureIcmpSensor(mapDir string, mapName string, config ConfigValue) error {
+	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("LoadPinnedMap")
+		return err
 	}
+	defer m.Close()
 
-	if fid != policyfilter.NoFilterID {
-		return nil, fmt.Errorf("icmp sensor does not implement policy filtering")
+	key := &sensorConfigKey{
+		Zero: uint32(0),
+	}
+	m.Put(key, &config)
+	return nil
+}
+
+func UnloadSensor() error {
+	return nil
+}
+
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
+	if !kernels.MinKernelVersion("5.4.0") {
+		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
+		return fmt.Errorf("icmp requires kernel v5.4 or later")
 	}
 
 	if spec.Parser.Icmp.V6Info {
-		config.v6info = 1
+		Config.v6info = 1
 	} else {
-		config.v6info = 0
+		Config.v6info = 0
 	}
 
-	return EnableIcmpParser(), nil
+	return nil
+}
+
+func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
 }
 
 func MsgToICMPUnix(m *api.MsgICMPEvent) *icmp.MsgICMPEventUnix {
@@ -321,20 +286,9 @@ func handleIcmp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
-func init() {
-	AddICMP()
-}
-
-func AddICMP() {
-	icmp := &icmpSensor{
-		name: "ICMP sensor",
-	}
-	sensors.RegisterProbeType("icmp_sensor", icmp)
-	sensors.RegisterPolicyHandlerAtInit(icmp.name, icmp)
+func Init() error {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ICMP, handleIcmp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ICMPV6, handleIcmp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
-
-	sensors.RegisterProbeType("cgrp_icmp_ingress", icmp)
-	sensors.RegisterProbeType("cgrp_icmp_egress", icmp)
+	return nil
 }

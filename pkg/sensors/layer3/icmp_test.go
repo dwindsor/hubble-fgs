@@ -9,17 +9,15 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package icmp_test
+package layer3
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -28,30 +26,14 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
-
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
-
-const (
-	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
-)
-
-func TestMain(m *testing.M) {
-	ec := runner.TestSensorsRun(m, "SensorIcmp")
-	os.Exit(ec)
-}
 
 const icmpBasicConfig = `
 apiversion: cilium.io/v1alpha1
@@ -77,76 +59,6 @@ spec:
     icmp:
       enable: true
 `
-
-func TestLoadIcmpSensor(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	if err := observertesthelper.WriteConfigFile(testConfigFile, icmpBasicConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
-	var sensorProgs []tus.SensorProg
-
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) { // 5.4 - 5.9
-		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe},
-			1: tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-			3: tus.SensorProg{Name: "tg_icmp_send_lazy", Type: ebpf.CGroupSKB},
-			4: tus.SensorProg{Name: "tg_icmp_recv_lazy", Type: ebpf.CGroupSKB},
-			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-			6: tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
-			7: tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe},
-		}
-	} else { // 5.10 -
-		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe},
-			1: tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-			3: tus.SensorProg{Name: "tg_icmp_send", Type: ebpf.CGroupSKB},
-			4: tus.SensorProg{Name: "tg_icmp_recv", Type: ebpf.CGroupSKB},
-			5: tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-			6: tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
-			7: tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe},
-		}
-	}
-
-	sensorMaps := []tus.SensorMap{
-		// all
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7}},
-
-		// all but egress and ingress
-		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 6}},
-
-		// free and rcv
-		tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{2, 5, 7}},
-
-		// just free
-		tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{2}},
-
-		// free, send, recv, and rcv
-		tus.SensorMap{Name: "tg_cfg_map", Progs: []uint{2, 3, 4, 5, 7}},
-
-		// all but close
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 3, 4, 5, 6, 7}},
-
-		// just init
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 6}},
-	}
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
-
-	sensors.UnloadAll()
-}
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.

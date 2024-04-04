@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
@@ -31,10 +32,11 @@ import (
 )
 
 var (
-	configured = false
-	tcpEnabled = false
-	udpEnabled = false
-	dnsEnabled = false
+	configured  = false
+	tcpEnabled  = false
+	udpEnabled  = false
+	dnsEnabled  = false
+	icmpEnabled = false
 )
 
 func unloadLayer3Sensor() error {
@@ -53,6 +55,13 @@ func unloadLayer3Sensor() error {
 			return err
 		}
 		udpEnabled = false
+	}
+	if icmpEnabled {
+		err := icmp.UnloadSensor()
+		if err != nil {
+			return err
+		}
+		icmpEnabled = false
 	}
 	return nil
 }
@@ -74,6 +83,11 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 		progs = append(progs, udpProgs...)
 		maps = append(maps, udpMaps...)
 	}
+	if icmpEnabled {
+		icmpProgs, icmpMaps := icmp.EnableIcmp()
+		progs = append(progs, icmpProgs...)
+		maps = append(maps, icmpMaps...)
+	}
 
 	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
@@ -89,8 +103,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	fid policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
-
-	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable {
+	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable {
 		return nil, nil
 	}
 
@@ -101,6 +114,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	tcpEnabled = spec.Parser.Tcp.Enable
 	udpEnabled = spec.Parser.Udp.Enable
 	dnsEnabled = spec.Parser.Dns.Enable
+	icmpEnabled = spec.Parser.Icmp.Enable
 	udpCgroup := spec.Parser.Udp.Cgroup
 	// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
 	if tcpEnabled || udpEnabled {
@@ -137,6 +151,14 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
+	if spec.Parser.Icmp.Enable {
+		err = icmp.PolicyHandler(spec)
+		if err != nil {
+			return nil, fmt.Errorf("icmp.PolicyHandler error: %w", err)
+		}
+		icmpEnabled = true
+	}
+
 	return EnableLayer3(tcpTimestampEnable,
 		udpCgroup, udpTimestampEnable, udpInterval), nil
 }
@@ -149,22 +171,22 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		if udpEnabled {
 			ip.LoadSockets(udp.FdCallback, unix.IPPROTO_UDP)
 		}
+		if icmpEnabled {
+			ip.LoadSockets(icmp.FdCallback, unix.IPPROTO_ICMP)
+		}
 	}
 
 	switch args.Load.Type {
 	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
-			return err
-		}
-	case "kprobe_udp":
-		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
+			logger.GetLogger().WithError(err).Warn("CGRP")
 			return err
 		}
 	case "udp_tc_egress", "tcp_tc_egress":
 		err := networklatency.AttachTc(args)
 		if err != nil {
+			logger.GetLogger().WithError(err).Warn("TC_EGRESS")
 			return err
 		}
 	case "layer3_sensor":
@@ -180,6 +202,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		tcp.ConfigureTCPDisableEvents(tcp.DisableConnect, tcp.DisableClose, tcp.DisableAccept, tcp.DisableListen)
 		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
+			logger.GetLogger().WithError(err).Warn("LAYER3_SENSOR")
 			return err
 		}
 	}
@@ -187,6 +210,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
 		if tcpEnabled && tcp.TimestampEnabled {
 			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
+				logger.GetLogger().WithError(err).Warn("ConfigureLatency TCP")
 				return err
 			}
 			networklatency.Start()
@@ -203,6 +227,12 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 				networklatency.Start()
 			}
 		}
+		if icmpEnabled {
+			if err := icmp.ConfigureIcmpSensor(args.BPFDir, icmp.ConfigMapName, icmp.Config); err != nil {
+				return err
+			}
+		}
+
 		configured = true
 	}
 
@@ -226,6 +256,12 @@ func AddLayer3() {
 		return
 	}
 
+	err = icmp.Init()
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("ICMP init failed. Disabling Layer3")
+		return
+	}
+
 	l3 := &l3Sensor{
 		name: "Layer3 sensor",
 	}
@@ -237,7 +273,6 @@ func AddLayer3() {
 	sensors.RegisterProbeType("cgrp_egress", l3)
 	sensors.RegisterProbeType("cgrp_inet4_bind", l3)
 	sensors.RegisterProbeType("cgrp_inet6_bind", l3)
-	sensors.RegisterProbeType("kprobe_udp", l3)
 	sensors.RegisterProbeType("udp_tc_egress", l3)
 	sensors.RegisterProbeType("tcp_tc_egress", l3)
 }
