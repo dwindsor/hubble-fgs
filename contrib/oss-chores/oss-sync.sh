@@ -56,4 +56,8 @@ git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss api
 make -C install/kubernetes
 git add install/kubernetes/tetragon
 
+# Generate metrics docs
+make metrics-docs
+git add docs/metrics
+
 git commit -s -F $outf
