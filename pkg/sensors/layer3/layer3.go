@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
@@ -37,6 +38,7 @@ var (
 	udpEnabled  = false
 	dnsEnabled  = false
 	icmpEnabled = false
+	rawEnabled  = false
 )
 
 func unloadLayer3Sensor() error {
@@ -63,10 +65,17 @@ func unloadLayer3Sensor() error {
 		}
 		icmpEnabled = false
 	}
+	if rawEnabled {
+		err := rawsock.UnloadSensor()
+		if err != nil {
+			return err
+		}
+		rawEnabled = false
+	}
 	return nil
 }
 
-func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration) *sensors.Sensor {
+func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	configured = false
 
@@ -88,6 +97,11 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 		progs = append(progs, icmpProgs...)
 		maps = append(maps, icmpMaps...)
 	}
+	if rawEnabled {
+		rawProgs, rawMaps := rawsock.EnableRawsock(reportRawClose)
+		progs = append(progs, rawProgs...)
+		maps = append(maps, rawMaps...)
+	}
 
 	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
@@ -103,7 +117,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	fid policyfilter.PolicyID,
 ) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
-	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable {
+	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable && !spec.Parser.Rawsock.Enable {
 		return nil, nil
 	}
 
@@ -115,6 +129,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	udpEnabled = spec.Parser.Udp.Enable
 	dnsEnabled = spec.Parser.Dns.Enable
 	icmpEnabled = spec.Parser.Icmp.Enable
+	rawEnabled = spec.Parser.Rawsock.Enable
 	udpCgroup := spec.Parser.Udp.Cgroup
 	// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
 	if tcpEnabled || udpEnabled {
@@ -151,16 +166,23 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	if spec.Parser.Icmp.Enable {
+	if icmpEnabled {
 		err = icmp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("icmp.PolicyHandler error: %w", err)
 		}
-		icmpEnabled = true
+	}
+
+	reportRawClose := false
+	if rawEnabled {
+		reportRawClose, err = rawsock.PolicyHandler(spec)
+		if err != nil {
+			return nil, fmt.Errorf("rawsock.PolicyHandler error: %w", err)
+		}
 	}
 
 	return EnableLayer3(tcpTimestampEnable,
-		udpCgroup, udpTimestampEnable, udpInterval), nil
+		udpCgroup, udpTimestampEnable, udpInterval, reportRawClose), nil
 }
 
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
@@ -173,6 +195,9 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 		if icmpEnabled {
 			ip.LoadSockets(icmp.FdCallback, unix.IPPROTO_ICMP)
+		}
+		if rawEnabled {
+			ip.LoadSockets(rawsock.FdCallback, unix.IPPROTO_RAW)
 		}
 	}
 
@@ -259,6 +284,12 @@ func AddLayer3() {
 	err = icmp.Init()
 	if err != nil {
 		logger.GetLogger().WithError(err).Errorf("ICMP init failed. Disabling Layer3")
+		return
+	}
+
+	err = rawsock.Init()
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("RAW init failed. Disabling Layer3")
 		return
 	}
 

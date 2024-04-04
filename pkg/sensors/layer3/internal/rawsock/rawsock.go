@@ -16,35 +16,23 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/reader/proc"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
-	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
-)
-
-const (
-	SocketMapName = "tg_socket_map"
-)
-
-var (
-	configured = false
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
 )
 
 var (
@@ -80,14 +68,12 @@ var (
 		"kprobe",
 	)
 
-	// Set this to the novel 'kprobe_raw' to force our LoadProbe function to get called
-	// so that we can trigger discovery of existing sockets.
 	PacketRelease = program.Builder(
 		"bpf_rawsock_release.o",
 		"__sk_free",
 		"kprobe/__sk_free",
 		"tg_rawsock_sk_free",
-		"kprobe_raw",
+		"layer3_sensor",
 	)
 
 	// Shared socket cookie infrastructure
@@ -95,8 +81,62 @@ var (
 	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4)
 )
 
-type rawsockSensor struct {
-	name string
+const (
+	SocketMapName = "tg_socket_map"
+)
+
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
+	if spec.Parser.Rawsock.Metrics != nil {
+		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
+		rawsockconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
+	} else {
+		rawsockconfig.MetricsEnabled = true
+		rawsockconfig.CurrentLabels = option.DefaultLabelFilter()
+	}
+
+	return spec.Parser.Rawsock.ReportClose, nil
+}
+
+func EnableRawsock(reportClose bool) ([]*program.Program, []*program.Map) {
+	var progs []*program.Program
+	var maps []*program.Map
+
+	if !kernels.MinKernelVersion("5.4.0") {
+		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
+		return nil, nil
+	}
+
+	progs = []*program.Program{
+		SkRawAllocV4,
+		SkRawAllocV6,
+	}
+	ks, err := ksyms.KernelSymbols()
+	if err != nil {
+		logger.GetLogger().Warn("Raw socket sensor cannot access kallsyms")
+		return nil, nil
+	}
+	if ks.IsAvailable("__register_prot_hook.part.0") {
+		progs = append(progs, PacketCreateV1)
+	} else if ks.IsAvailable("__register_prot_hook") {
+		progs = append(progs, PacketCreateV2)
+	} else {
+		logger.GetLogger().Warn("Raw socket sensor cannot locate __register_prot_hook")
+		return nil, nil
+	}
+
+	if reportClose {
+		progs = append(progs, PacketRelease)
+	}
+	maps = []*program.Map{
+		SocketCookieMap,
+		SocketCookieStats,
+	}
+	logger.GetLogger().Infof("Enable Raw socket")
+	return progs, maps
+}
+
+func UnloadSensor() error {
+	return nil
 }
 
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
@@ -122,100 +162,6 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	raw.Msg.Common.Op = ops.MsgOpRawsockCreate
 
 	observer.AllListeners(&raw)
-
-}
-
-func (rawsock *rawsockSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	if !configured {
-		ip.LoadSockets(FdCallback, unix.IPPROTO_RAW)
-	}
-
-	if args.Load.Type == "cgrp_rawsock_ingress" || args.Load.Type == "cgrp_rawsock_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	}
-	if args.Load.Type == "kprobe_raw" {
-		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			return err
-		}
-	}
-	if !configured {
-		configured = true
-	}
-	return nil
-}
-
-func EnableRawsockParser(reportClose bool) *sensors.Sensor {
-	var progs []*program.Program
-	var maps []*program.Map
-	var versionStr string
-
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	configured = false
-
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
-		return nil
-	}
-
-	progs = []*program.Program{
-		SkRawAllocV4,
-		SkRawAllocV6,
-	}
-	ks, err := ksyms.KernelSymbols()
-	if err != nil {
-		logger.GetLogger().Warn("Raw socket sensor cannot access kallsyms")
-		return nil
-	}
-	if ks.IsAvailable("__register_prot_hook.part.0") {
-		progs = append(progs, PacketCreateV1)
-	} else if ks.IsAvailable("__register_prot_hook") {
-		progs = append(progs, PacketCreateV2)
-	} else {
-		logger.GetLogger().Warn("Raw socket sensor cannot locate __register_prot_hook")
-		return nil
-	}
-
-	if reportClose {
-		progs = append(progs, PacketRelease)
-	}
-	maps = []*program.Map{
-		SocketCookieMap,
-		SocketCookieStats,
-	}
-	versionStr = "__rawsock_sensor_probe__"
-
-	logger.GetLogger().Infof("Enable Raw socket")
-	rawsockSensor := sensors.SensorBuilder(versionStr, progs, maps)
-	return rawsockSensor
-}
-
-func (rawsock *rawsockSensor) PolicyHandler(
-	policy tracingpolicy.TracingPolicy,
-	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
-	spec := policy.TpSpec()
-
-	if !spec.Parser.Rawsock.Enable {
-		return nil, nil
-	}
-
-	if fid != policyfilter.NoFilterID {
-		return nil, fmt.Errorf("raw socket sensor does not implement policy filtering")
-	}
-
-	if spec.Parser.Rawsock.Metrics != nil {
-		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
-		rawsockconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
-	} else {
-		rawsockconfig.MetricsEnabled = true
-		rawsockconfig.CurrentLabels = option.DefaultLabelFilter()
-	}
-
-	return EnableRawsockParser(spec.Parser.Rawsock.ReportClose), nil
 }
 
 func handleRawsock(r *bytes.Reader) ([]observer.Event, error) {
@@ -229,21 +175,8 @@ func handleRawsock(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
-func init() {
-	AddRawsock()
-}
-
-func AddRawsock() {
-	rawsock := &rawsockSensor{
-		name: "Raw socket sensor",
-	}
-	sensors.RegisterProbeType("rawsock_sensor", rawsock)
-	sensors.RegisterPolicyHandlerAtInit(rawsock.name, rawsock)
+func Init() error {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_RAWSOCK_CREATE, handleRawsock)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_RAWSOCK_CLOSE, handleRawsock)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
-
-	sensors.RegisterProbeType("cgrp_rawsock_ingress", rawsock)
-	sensors.RegisterProbeType("cgrp_rawsock_egress", rawsock)
-	sensors.RegisterProbeType("kprobe_raw", rawsock)
+	return nil
 }

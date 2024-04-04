@@ -9,48 +9,30 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package rawsock_test
+package layer3
 
 import (
 	"context"
-	"os"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/cilium/ebpf"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
-	"github.com/cilium/tetragon/pkg/sensors"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
-
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
-
-const (
-	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
-)
-
-func TestMain(m *testing.M) {
-	ec := runner.TestSensorsRun(m, "SensorIcmp")
-	os.Exit(ec)
-}
 
 const rawsockConfigWithCloseEvents = `
 apiversion: cilium.io/v1alpha1
@@ -63,48 +45,6 @@ spec:
       enable: true
       reportClose: true
 `
-
-func TestLoadRawsockSensor(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	if err := observertesthelper.WriteConfigFile(testConfigFile, rawsockConfigWithCloseEvents); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
-	sensorProgs := []tus.SensorProg{
-		0: tus.SensorProg{Name: "tg_rawsock_sk_init", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "tg_rawsockv6_init_sk", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "tg_raw_packet_reg_prot_hook", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: "tg_rawsock_sk_free", Type: ebpf.Kprobe},
-	}
-
-	sensorMaps := []tus.SensorMap{
-		// all
-		tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 3}},
-
-		// all
-		tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 3}},
-
-		// all
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3}},
-
-		// just init
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2}},
-	}
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
-
-	sensors.UnloadAll()
-}
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.

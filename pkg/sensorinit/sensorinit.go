@@ -9,7 +9,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/rawsock"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	// Import OSS sensor handlers

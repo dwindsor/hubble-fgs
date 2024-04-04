@@ -32,7 +32,7 @@ func AddToMap(maps []tus.SensorMap, name string, progs []uint) {
 	}
 }
 
-func ProgsAndMaps(withUdpLatency bool, withIcmp bool) ([]tus.SensorProg, []tus.SensorMap) {
+func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
 	sensorProgs := []tus.SensorProg{
 		0: tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
 		1: tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
@@ -313,6 +313,24 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool) ([]tus.SensorProg, []tus.S
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7}...)
 		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 6}...)
 		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 2, ni + 3, ni + 4, ni + 5, ni + 7}...)
+		ni += 8
+	}
+
+	if withRaw && kernels.MinKernelVersion("5.4.0") {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			tus.SensorProg{Name: "tg_rawsock_sk_init", Type: ebpf.Kprobe}, // index ni
+			tus.SensorProg{Name: "tg_rawsockv6_init_sk", Type: ebpf.Kprobe},
+			tus.SensorProg{Name: "tg_raw_packet_reg_prot_hook", Type: ebpf.Kprobe},
+			tus.SensorProg{Name: "tg_rawsock_sk_free", Type: ebpf.Kprobe}, // index ni + 3
+		}...)
+		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
+		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
+		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 2}...)
+		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{ni + 3}...)
+		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{ni + 3}...)
+		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 3}...)
+		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 3}...)
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{

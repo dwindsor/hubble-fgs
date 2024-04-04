@@ -165,9 +165,12 @@ spec:
     dns:
       enable: true
 `
-const layer3IcmpConfig = layer3Config + `
+const layer3IcmpRawConfig = layer3Config + `
     icmp:
       enable: true
+    rawsock:
+      enable: true
+      reportClose: true
 `
 
 func TestLoadLayer3Sensor(t *testing.T) {
@@ -176,7 +179,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		logger.GetLogger().Info("Disabling ICMP as it requires kernel v5.4 or later")
 		l3Config = layer3Config
 	} else {
-		l3Config = layer3IcmpConfig
+		l3Config = layer3IcmpRawConfig
 	}
 	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
@@ -187,7 +190,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := ProgsAndMaps(true, true)
+	sensorProgs, sensorMaps := ProgsAndMaps(true, true, true)
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
