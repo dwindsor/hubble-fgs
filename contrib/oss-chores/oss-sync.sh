@@ -5,8 +5,6 @@
 # on the given argument. For example, for testing a PR on oss, users can use the name of the branch
 # there under orign, e.g., origin/pr/kkourt/pizza-is-the-best.
 #
-# The script will create a new branch (using timestamp) before doing any changes.
-#
 # NB(kkourt): please treat this as beta for now, since there might be things that I've missed.
 
 set -e
