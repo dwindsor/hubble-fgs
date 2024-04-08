@@ -28,6 +28,7 @@ $(EE_CHART): $(OSS_CHART) $(EE_PATCHES)
 	$(MAKE) $(EE_CHART)/Chart.yaml
 	$(MAKE) $(EE_CHART)/values.yaml
 	$(MAKE) $(EE_CHART)/templates
+	$(MAKE) tracingpolicy_v1alpha1.json
 	$(MAKE) $(EE_CHART)/README.md
 
 .PHONY: clean
