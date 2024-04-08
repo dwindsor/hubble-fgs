@@ -45,7 +45,19 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 
 	err := bspec.TypeByName(call, &fn)
 	if err != nil {
-		return &ValidationFailed{s: fmt.Sprintf("call %q not found", call)}
+		if !kspec.Syscall {
+			return &ValidationFailed{s: fmt.Sprintf("call %q not found", call)}
+		}
+		origCall := call
+		call, err = arch.AddSyscallPrefix(call)
+		if err == nil {
+			err = bspec.TypeByName(call, &fn)
+		}
+		if err != nil {
+			return &ValidationFailed{
+				s: fmt.Sprintf("syscall %q (or %q) not found.", origCall, call),
+			}
+		}
 	}
 
 	proto, ok := fn.Type.(*btf.FuncProto)
@@ -115,6 +127,9 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 
 	if kspec.Return {
 		retTyStr := getKernelType(proto.Return)
+		if kspec.ReturnArg == nil {
+			return &ValidationWarn{s: "return is set to true, but there is no return arg specified"}
+		}
 		if !typesCompatible(kspec.ReturnArg.Type, retTyStr) {
 			return &ValidationWarn{s: fmt.Sprintf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)}
 		}
@@ -126,7 +141,6 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 func getKernelType(arg btf.Type) string {
 	suffix := ""
 	ptr, ok := arg.(*btf.Pointer)
-
 	if ok {
 		arg = ptr.Target
 		_, ok = arg.(*btf.Void)
@@ -143,6 +157,25 @@ func getKernelType(arg btf.Type) string {
 	if ok {
 		return "struct " + strct.Name + suffix
 	}
+
+	union, ok := arg.(*btf.Union)
+	if ok {
+		return "union " + union.Name + suffix
+	}
+
+	cnst, ok := arg.(*btf.Const)
+	if ok {
+		// NB: ignore const
+		ty := cnst.Type
+		if ptr != nil {
+			// NB: if this was a pointer, reconstruct the type without const
+			ty = &btf.Pointer{
+				Target: ty,
+			}
+		}
+		return getKernelType(ty)
+	}
+
 	// TODO - add more types, above is enough to make validation_test pass
 	return arg.TypeName() + suffix
 }
@@ -151,7 +184,7 @@ func typesCompatible(specTy string, kernelTy string) bool {
 	switch specTy {
 	case "uint64":
 		switch kernelTy {
-		case "u64", "void *":
+		case "u64", "void *", "long unsigned int":
 			return true
 		}
 	case "int64":
