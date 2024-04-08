@@ -1,2 +1,20 @@
-/install/kubernetes/tetragon/README.md linguist-generated
-/install/metrics/metrics.md linguist-generated
+# Go dependencies
+go.sum linguist-generated
+vendor/* linguist-vendored
+api/go.sum linguist-generated
+api/vendor/* linguist-vendored
+pkg/k8s/go.sum linguist-generated
+pkg/k8s/vendor/* linguist-vendored
+
+# API
+api/v1/README.md linguist-generated
+api/v1/tetragon/*.go linguist-generated
+
+# CRDs
+# TODO
+
+# Helm chart
+install/kubernetes/tetragon/* linguist-generated
+
+# docs
+docs/metrics/metrics.md linguist-generated
