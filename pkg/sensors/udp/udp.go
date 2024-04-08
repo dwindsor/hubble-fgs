@@ -1024,6 +1024,9 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		pseudoSockets[pseudoKey][udpPseudoSocket{DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
 		pseudoSocketsUpdate.Unlock()
+		// If there is an existing cache entry for this pseudosocket then it must be stale, so remove it.
+		udpKey := udpInfoKey{Cookie: m.SockCookie, Version: m.Version, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}
+		stats.Remove(udpKey)
 		if disableConnectEvents {
 			return []observer.Event{}, nil
 		}
