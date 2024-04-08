@@ -6,9 +6,11 @@ on:
       - v*
     paths:
     - 'install/kubernetes/**'
+    - 'pkg/k8s/apis/cilium.io/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml'
   pull_request:
     paths:
     - 'install/kubernetes/**'
+    - 'pkg/k8s/apis/cilium.io/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml'
 
 jobs:
   generated-files:
@@ -18,6 +20,15 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           submodules: true
+      - name: Check if vendored kubeconform script is up to date
+        run: |
+          make -C install/kubernetes openapi2jsonschema.py
+          test -z "$(git status --porcelain)"
+          if [ $? != 0 ]; then
+            git status --porcelain
+            echo "Vendored kubeconform script is out of date."
+            echo "Please run 'make -C install/kubernetes openapi2jsonschema.py' and submit your changes."; exit 1
+          fi
       - name: Generate Helm chart
         run: |
           make -C install/kubernetes
