@@ -1,0 +1,3530 @@
+{
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "Tracing policy specification.",
+      "properties": {
+        "enforcers": {
+          "description": "A enforcer spec.",
+          "items": {
+            "properties": {
+              "calls": {
+                "description": "Calls where enforcer is executed in",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "calls"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "exec": {
+          "description": "File exec monitoring policy specification.",
+          "properties": {
+            "defaultActions": {
+              "description": "Sets the default actions (i.e. what to do if we have selectors and none macthed)",
+              "items": {
+                "properties": {
+                  "action": {
+                    "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
+                    "enum": [
+                      "Post",
+                      "Block"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array"
+            },
+            "enable": {
+              "default": false,
+              "description": "Enables process_file_exec events",
+              "type": "boolean"
+            },
+            "selectors": {
+              "description": "Selectors to apply before producing trace output. Selectors are ORed.",
+              "items": {
+                "description": "FileExecSelector selects file operations.",
+                "properties": {
+                  "matchActions": {
+                    "description": "A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.",
+                    "items": {
+                      "properties": {
+                        "action": {
+                          "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
+                          "enum": [
+                            "Post",
+                            "Block"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "action"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchBinaries": {
+                    "description": "A list of binary exec name filters.",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "In",
+                            "NotIn",
+                            "Prefix",
+                            "NotPrefix"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Value to compare the argument against.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator",
+                        "values"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchDigests": {
+                    "description": "A list of operation filters.",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "In",
+                            "NotIn"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Value to compare the argument against.",
+                          "items": {
+                            "description": "Example: \"sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f\"",
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchLinuxCapabilities": {
+                    "description": "A list of capabilities and IDs",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Namespace selector operator.",
+                          "enum": [
+                            "In",
+                            "NotIn"
+                          ],
+                          "type": "string"
+                        },
+                        "type": {
+                          "default": "Effective",
+                          "description": "Type of capabilities",
+                          "enum": [
+                            "Effective",
+                            "Inheritable",
+                            "Permitted"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Capabilities to match.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator",
+                        "values"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchLinuxNamespaces": {
+                    "description": "A list of namespaces and IDs",
+                    "items": {
+                      "properties": {
+                        "filter": {
+                          "default": "All",
+                          "description": "Namespace selector filter type.",
+                          "enum": [
+                            "All",
+                            "Host",
+                            "NoHost"
+                          ],
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "description": "Namespace selector name.",
+                          "enum": [
+                            "Uts",
+                            "Ipc",
+                            "Mnt",
+                            "Pid",
+                            "PidForChildren",
+                            "Net",
+                            "Time",
+                            "TimeForChildren",
+                            "Cgroup",
+                            "User"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "filter",
+                        "namespace"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enable"
+          ],
+          "type": "object",
+          "additionalProperties": false
+        },
+        "file": {
+          "description": "File monitoring policy specification.",
+          "properties": {
+            "file_config": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Config flags to enable/disable specific functionality",
+              "type": "object"
+            },
+            "file_paths": {
+              "description": "What paths to monitor. Only prefixes. Deprecated, please use file_paths_patterns instead.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "file_paths_exclude": {
+              "description": "What paths to exclude from monitored paths. Applies both to file_paths and file_paths_patterns.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "file_paths_patterns": {
+              "description": "What paths to monitor using patterns.",
+              "items": {
+                "properties": {
+                  "file_exact_match": {
+                    "description": "Should be defined in the case of type=FileExactMatch.",
+                    "properties": {
+                      "path": {
+                        "description": "The full path of a file to match.",
+                        "maxLength": 256,
+                        "pattern": "\\/.*",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "file_prefix_suffix": {
+                    "description": "Should be defined in the case of type=FilePrefixSuffix.",
+                    "properties": {
+                      "prefix": {
+                        "description": "The prefix of the path to match.",
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "pattern": "\\/.*",
+                        "type": "string"
+                      },
+                      "suffix": {
+                        "description": "The suffix of the file to match. Can be empty. In that case, we only use the prefix. Maximum length is 128 characters.",
+                        "maxLength": 128,
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "path_prefix": {
+                    "description": "Should be defined in the case of type=PathPrefix.",
+                    "properties": {
+                      "prefix": {
+                        "description": "The prefix of the path to match. Similar to file_paths.",
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "pattern": "\\/.*",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": {
+                    "description": "FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix. PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix. FileExactMatch can be used to match only files that have a specific name.",
+                    "enum": [
+                      "FilePrefixSuffix",
+                      "PathPrefix",
+                      "FileExactMatch"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object",
+                "x-kubernetes-validations": [
+                  {
+                    "message": "Type should match the argument type.",
+                    "rule": "(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix) && !has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'PathPrefix' && !has(self.file_prefix_suffix) && has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'FileExactMatch' && !has(self.file_prefix_suffix) && !has(self.path_prefix) && has(self.file_exact_match))"
+                  }
+                ],
+                "additionalProperties": false
+              },
+              "type": "array"
+            },
+            "monitorHostFiles": {
+              "default": true,
+              "description": "Do monitoring on host files",
+              "type": "boolean"
+            },
+            "podSelector": {
+              "description": "This is a label selector which selects Pods. This field follows standard label selector semantics; if present but empty, it selects all pods.",
+              "properties": {
+                "matchExpressions": {
+                  "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                  "items": {
+                    "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+                    "properties": {
+                      "key": {
+                        "description": "key is the label key that the selector applies to.",
+                        "type": "string"
+                      },
+                      "operator": {
+                        "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
+                        "enum": [
+                          "In",
+                          "NotIn",
+                          "Exists",
+                          "DoesNotExist"
+                        ],
+                        "type": "string"
+                      },
+                      "values": {
+                        "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operator"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                },
+                "matchLabels": {
+                  "additionalProperties": {
+                    "description": "MatchLabelsValue represents the value from the MatchLabels {key,value} pair.",
+                    "maxLength": 63,
+                    "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$",
+                    "type": "string"
+                  },
+                  "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                  "type": "object"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "selectors": {
+              "description": "Selectors to apply before producing trace output. Selectors are ORed.",
+              "items": {
+                "description": "FileSelector selects file operations.",
+                "properties": {
+                  "matchActions": {
+                    "description": "A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.",
+                    "items": {
+                      "properties": {
+                        "action": {
+                          "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
+                          "enum": [
+                            "Post",
+                            "Block"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "action"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchBinaries": {
+                    "description": "A list of binary exec name filters.",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "In",
+                            "NotIn",
+                            "Prefix",
+                            "NotPrefix"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Value to compare the argument against.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator",
+                        "values"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchDigests": {
+                    "description": "A list of operation filters.",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "In",
+                            "NotIn"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Value to compare the argument against.",
+                          "items": {
+                            "description": "Example: \"sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f\"",
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchLinuxCapabilities": {
+                    "description": "A list of capabilities and IDs",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Namespace selector operator.",
+                          "enum": [
+                            "In",
+                            "NotIn"
+                          ],
+                          "type": "string"
+                        },
+                        "type": {
+                          "default": "Effective",
+                          "description": "Type of capabilities",
+                          "enum": [
+                            "Effective",
+                            "Inheritable",
+                            "Permitted"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Capabilities to match.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator",
+                        "values"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchLinuxNamespaces": {
+                    "description": "A list of namespaces and IDs",
+                    "items": {
+                      "properties": {
+                        "filter": {
+                          "default": "All",
+                          "description": "Namespace selector filter type.",
+                          "enum": [
+                            "All",
+                            "Host",
+                            "NoHost"
+                          ],
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "description": "Namespace selector name.",
+                          "enum": [
+                            "Uts",
+                            "Ipc",
+                            "Mnt",
+                            "Pid",
+                            "PidForChildren",
+                            "Net",
+                            "Time",
+                            "TimeForChildren",
+                            "Cgroup",
+                            "User"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "filter",
+                        "namespace"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "matchOperations": {
+                    "description": "A list of operation filters.",
+                    "items": {
+                      "properties": {
+                        "operator": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "In",
+                            "NotIn"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Value to compare the argument against.",
+                          "items": {
+                            "description": "OperationSelectorValue represents the value for MatchOperations.",
+                            "enum": [
+                              "FILE_INVALID",
+                              "FILE_WRITE",
+                              "FILE_READ",
+                              "FILE_DELETE",
+                              "FILE_CREATE",
+                              "FILE_RMDIR",
+                              "FILE_MKDIR",
+                              "FILE_RENAME",
+                              "FILE_READDIR",
+                              "FILE_CHATTR",
+                              "FILE_EXEC"
+                            ],
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "operator"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array"
+            }
+          },
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "We support up to 32 entries with type FilePrefixSuffix under file_paths_patterns.",
+              "rule": "(has(self.file_paths_patterns) && (size(self.file_paths_patterns.filter(c, c.type == 'FilePrefixSuffix')) <= 32)) || (!has(self.file_paths_patterns))"
+            },
+            {
+              "message": "You should define exactly one of file_paths or file_paths_patterns.",
+              "rule": "((has(self.file_paths) && (size(self.file_paths) > 0)) || (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))) && (!((has(self.file_paths) && (size(self.file_paths) > 0)) && (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))))"
+            }
+          ],
+          "additionalProperties": false
+        },
+        "kprobes": {
+          "description": "A list of kprobe specs.",
+          "items": {
+            "properties": {
+              "args": {
+                "description": "A list of function arguments to include in the trace output.",
+                "items": {
+                  "properties": {
+                    "index": {
+                      "description": "Position of the argument.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "label": {
+                      "description": "Label to output in the JSON",
+                      "type": "string"
+                    },
+                    "maxData": {
+                      "default": false,
+                      "description": "Read maximum possible data (currently 327360). This field is only used for char_buff data. When this value is false (default), the bpf program will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon supports fetching up to 327360 bytes if this flag is turned on",
+                      "type": "boolean"
+                    },
+                    "returnCopy": {
+                      "default": false,
+                      "description": "This field is used only for char_buf and char_iovec types. It indicates that this argument should be read later (when the kretprobe for the symbol is triggered) because it might not be populated when the kprobe is triggered at the entrance of the function. For example, a buffer supplied to read(2) won't have content until kretprobe is triggered.",
+                      "type": "boolean"
+                    },
+                    "sizeArgIndex": {
+                      "description": "Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "default": "auto",
+                      "description": "Argument type.",
+                      "enum": [
+                        "auto",
+                        "int",
+                        "int8",
+                        "uint8",
+                        "int16",
+                        "uint16",
+                        "uint32",
+                        "int32",
+                        "uint64",
+                        "int64",
+                        "char_buf",
+                        "char_iovec",
+                        "size_t",
+                        "skb",
+                        "sock",
+                        "string",
+                        "fd",
+                        "file",
+                        "filename",
+                        "path",
+                        "nop",
+                        "bpf_attr",
+                        "perf_event",
+                        "bpf_map",
+                        "user_namespace",
+                        "capability",
+                        "kiocb",
+                        "iov_iter",
+                        "cred",
+                        "load_info",
+                        "module",
+                        "syscall64",
+                        "kernel_cap_t",
+                        "cap_inheritable",
+                        "cap_permitted",
+                        "cap_effective",
+                        "linux_binprm",
+                        "data_loc"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "type"
+                  ],
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "call": {
+                "description": "Name of the function to apply the kprobe spec to.",
+                "type": "string"
+              },
+              "message": {
+                "description": "A short message of 256 characters max that will be included in the event output to inform users what is going on.",
+                "type": "string"
+              },
+              "return": {
+                "default": false,
+                "description": "Indicates whether to collect return value of the traced function.",
+                "type": "boolean"
+              },
+              "returnArg": {
+                "description": "A return argument to include in the trace output.",
+                "properties": {
+                  "index": {
+                    "description": "Position of the argument.",
+                    "format": "int32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "label": {
+                    "description": "Label to output in the JSON",
+                    "type": "string"
+                  },
+                  "maxData": {
+                    "default": false,
+                    "description": "Read maximum possible data (currently 327360). This field is only used for char_buff data. When this value is false (default), the bpf program will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon supports fetching up to 327360 bytes if this flag is turned on",
+                    "type": "boolean"
+                  },
+                  "returnCopy": {
+                    "default": false,
+                    "description": "This field is used only for char_buf and char_iovec types. It indicates that this argument should be read later (when the kretprobe for the symbol is triggered) because it might not be populated when the kprobe is triggered at the entrance of the function. For example, a buffer supplied to read(2) won't have content until kretprobe is triggered.",
+                    "type": "boolean"
+                  },
+                  "sizeArgIndex": {
+                    "description": "Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.",
+                    "format": "int32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": {
+                    "default": "auto",
+                    "description": "Argument type.",
+                    "enum": [
+                      "auto",
+                      "int",
+                      "int8",
+                      "uint8",
+                      "int16",
+                      "uint16",
+                      "uint32",
+                      "int32",
+                      "uint64",
+                      "int64",
+                      "char_buf",
+                      "char_iovec",
+                      "size_t",
+                      "skb",
+                      "sock",
+                      "string",
+                      "fd",
+                      "file",
+                      "filename",
+                      "path",
+                      "nop",
+                      "bpf_attr",
+                      "perf_event",
+                      "bpf_map",
+                      "user_namespace",
+                      "capability",
+                      "kiocb",
+                      "iov_iter",
+                      "cred",
+                      "load_info",
+                      "module",
+                      "syscall64",
+                      "kernel_cap_t",
+                      "cap_inheritable",
+                      "cap_permitted",
+                      "cap_effective",
+                      "linux_binprm",
+                      "data_loc"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "index",
+                  "type"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              },
+              "returnArgAction": {
+                "description": "An action to perform on the return argument. Available actions are: Post;TrackSock;UntrackSock",
+                "type": "string"
+              },
+              "selectors": {
+                "description": "Selectors to apply before producing trace output. Selectors are ORed.",
+                "items": {
+                  "description": "KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The results of MatchPIDs and MatchArgs are ANDed.",
+                  "properties": {
+                    "matchActions": {
+                      "description": "A list of actions to execute when this selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchBinaries": {
+                      "description": "A list of binary exec name filters.",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "In",
+                              "NotIn",
+                              "Prefix",
+                              "NotPrefix"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilities": {
+                      "description": "A list of capabilities and IDs",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilityChanges": {
+                      "description": "IDs for capabilities changes",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaceChanges": {
+                      "description": "IDs for namespace changes",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace types (e.g., Mnt, Pid) to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaces": {
+                      "description": "A list of namespaces and IDs",
+                      "items": {
+                        "properties": {
+                          "namespace": {
+                            "description": "Namespace selector name.",
+                            "enum": [
+                              "Uts",
+                              "Ipc",
+                              "Mnt",
+                              "Pid",
+                              "PidForChildren",
+                              "Net",
+                              "Time",
+                              "TimeForChildren",
+                              "Cgroup",
+                              "User"
+                            ],
+                            "type": "string"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace IDs (or host_ns for host namespace) of namespaces to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "namespace",
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchPIDs": {
+                      "description": "A list of process ID filters. MatchPIDs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "followForks": {
+                            "default": false,
+                            "description": "Matches any descendant processes of the matching PIDs.",
+                            "type": "boolean"
+                          },
+                          "isNamespacePID": {
+                            "default": false,
+                            "description": "Indicates whether PIDs are namespace PIDs.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "PID selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Process IDs to match.",
+                            "items": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnActions": {
+                      "description": "A list of actions to execute when MatchReturnArgs selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "syscall": {
+                "default": true,
+                "description": "Indicates whether the traced function is a syscall.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "call"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "lists": {
+          "description": "A list of list specs.",
+          "items": {
+            "properties": {
+              "name": {
+                "description": "Name of the list",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Pattern for 'generated' lists.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Indicates the type of the list values.",
+                "enum": [
+                  "syscalls",
+                  "generated_syscalls",
+                  "generated_ftrace"
+                ],
+                "type": "string"
+              },
+              "validated": {
+                "description": "List was validated",
+                "type": "boolean"
+              },
+              "values": {
+                "description": "Values of the list",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "loader": {
+          "description": "Enable loader events",
+          "type": "boolean"
+        },
+        "options": {
+          "description": "A list of overloaded options",
+          "items": {
+            "properties": {
+              "name": {
+                "description": "Name of the option",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value of the option",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "parser": {
+          "description": "Parser policy specification.",
+          "properties": {
+            "burstExitGen": {
+              "description": "UDP and TCP burst exit checking policy specification",
+              "properties": {
+                "enable": {
+                  "default": true,
+                  "description": "Enable watermarks checks for end events from userland",
+                  "type": "boolean"
+                },
+                "interval": {
+                  "default": 1000,
+                  "description": "Configures the checking interval in milliseconds",
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "dns": {
+              "description": "Network policy specification",
+              "properties": {
+                "enable": {
+                  "description": "DNS enable parser",
+                  "type": "boolean"
+                },
+                "metrics": {
+                  "description": "Metrics Configuration",
+                  "properties": {
+                    "enable": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "labelFilters": {
+                      "description": "Label Filters mask out labels in the metrics",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "ports": {
+                  "description": "A list of DNS ports",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "heartbeat": {
+              "description": "UDP and TCP heartbeat policy specification",
+              "properties": {
+                "enable": {
+                  "default": true,
+                  "description": "Enable heartbeat",
+                  "type": "boolean"
+                },
+                "interval": {
+                  "default": 60,
+                  "description": "Configures the heartbeat interval in seconds",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "tcpPort": {
+                  "default": 6399,
+                  "description": "Configures the TCP port",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "udpPort": {
+                  "default": 6399,
+                  "description": "Configures the UDP port",
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "http": {
+              "description": "A Http spec.",
+              "properties": {
+                "enable": {
+                  "description": "Http enable parser",
+                  "type": "boolean"
+                },
+                "http2": {
+                  "default": false,
+                  "description": "Enable HTTP2 parser",
+                  "type": "boolean"
+                },
+                "selectors": {
+                  "description": "Selectors to apply TLS parser against. Selectors are ORed.",
+                  "items": {
+                    "properties": {
+                      "matchPorts": {
+                        "description": "A list of ports to match. Ports are ORd.",
+                        "items": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "https": {
+              "description": "A Tls specs.",
+              "properties": {
+                "enable": {
+                  "description": "HTTPS enable parser",
+                  "type": "boolean"
+                },
+                "selectors": {
+                  "description": "Selectors to apply TLS parser against. Selectors are ORed.",
+                  "items": {
+                    "properties": {
+                      "matchPorts": {
+                        "description": "A list of ports to match. Ports are ORd.",
+                        "items": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "icmp": {
+              "description": "ICMP policy specification",
+              "properties": {
+                "enable": {
+                  "default": false,
+                  "description": "Enable ICMP observability",
+                  "type": "boolean"
+                },
+                "v6info": {
+                  "default": false,
+                  "description": "Enable ICMPv6 info message observability",
+                  "type": "boolean"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "interface": {
+              "description": "Network policy specification",
+              "properties": {
+                "enable": {
+                  "description": "Interface enable parser",
+                  "type": "boolean"
+                },
+                "packet": {
+                  "description": "Interface packet level BPF",
+                  "type": "boolean"
+                },
+                "statsInterval": {
+                  "description": "Interface interval in seconds",
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "networkWatermarksExitGen": {
+              "description": "UDP and TCP watermarks exit checking policy specification",
+              "properties": {
+                "enable": {
+                  "default": true,
+                  "description": "Enable watermarks checks for end events from userland",
+                  "type": "boolean"
+                },
+                "interval": {
+                  "default": 1000,
+                  "description": "Configures the checking interval in milliseconds",
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "nop": {
+              "description": "Network policy specification",
+              "properties": {
+                "enable": {
+                  "description": "Nop enable parser",
+                  "type": "boolean"
+                },
+                "selectors": {
+                  "description": "Selectors to apply Nop parser against. Selectors are ORed.",
+                  "items": {
+                    "properties": {
+                      "matchPorts": {
+                        "description": "A list of ports to match. Ports are ORd.",
+                        "items": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "rawsock": {
+              "description": "Raw socket policy specification",
+              "properties": {
+                "enable": {
+                  "default": false,
+                  "description": "Enable raw socket observability",
+                  "type": "boolean"
+                },
+                "metrics": {
+                  "description": "Metrics Configuration",
+                  "properties": {
+                    "enable": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "labelFilters": {
+                      "description": "Label Filters mask out labels in the metrics",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "reportClose": {
+                  "default": false,
+                  "description": "Enable raw socket close events",
+                  "type": "boolean"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "tcp": {
+              "description": "TCP policy specification",
+              "properties": {
+                "burst": {
+                  "description": "Network policy specification",
+                  "properties": {
+                    "burstTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "dipTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent under average deemed to be a dip",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable TCP watermarks observability",
+                      "type": "boolean"
+                    },
+                    "triggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "windowSize": {
+                      "default": 1000,
+                      "description": "Configures the watermarks window size in milliseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "disableEvents": {
+                  "description": "Disable TCP events",
+                  "properties": {
+                    "disableAccept": {
+                      "default": false,
+                      "description": "Disable accept events",
+                      "type": "boolean"
+                    },
+                    "disableClose": {
+                      "default": false,
+                      "description": "Disable close events",
+                      "type": "boolean"
+                    },
+                    "disableConnect": {
+                      "default": false,
+                      "description": "Disable connect events",
+                      "type": "boolean"
+                    },
+                    "disableListen": {
+                      "default": false,
+                      "description": "Disable listen events",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "enable": {
+                  "description": "Enable TCP statistics",
+                  "type": "boolean"
+                },
+                "histogram": {
+                  "description": "Rtt Histogram",
+                  "properties": {
+                    "enable": {
+                      "description": "Enable TCP RTT Histogram",
+                      "type": "boolean"
+                    },
+                    "max": {
+                      "description": "Configures the expected RTT Max value",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "min": {
+                      "description": "Configures the expected RTT Min value",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "enable"
+                  ],
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "latency": {
+                  "description": "TCP latency observability policy specification",
+                  "properties": {
+                    "clockCheckInterval": {
+                      "description": "Configures the clock check interval in seconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "clockMaxSkew": {
+                      "description": "Configures the maximum acceptable clock skew before updating in microseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable UDP latency observability",
+                      "type": "boolean"
+                    },
+                    "interfaces": {
+                      "description": "Configures the interfaces to enable on",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "interfacesCheckInterval": {
+                      "description": "Configures the interfaces check interval in seconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "matchPorts": {
+                      "description": "Configures the ports to enable on",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "matchSubnets": {
+                      "description": "Configures the subnets to enable on",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "max": {
+                      "description": "Configures the expected Max Latency value",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "maxPacketSize": {
+                      "description": "Configures the maximum packet size",
+                      "type": "integer"
+                    },
+                    "min": {
+                      "description": "Configures the expected Min Latency value",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "metrics": {
+                  "description": "Metrics Configuration",
+                  "properties": {
+                    "enable": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "labelFilters": {
+                      "description": "Label Filters mask out labels in the metrics",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "statsInterval": {
+                  "description": "Configures the Stat collection interval in seconds",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "watermarks": {
+                  "description": "Network policy specification",
+                  "properties": {
+                    "burstTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "dipTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent under average deemed to be a dip",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable TCP watermarks observability",
+                      "type": "boolean"
+                    },
+                    "triggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "windowSize": {
+                      "default": 1000,
+                      "description": "Configures the watermarks window size in milliseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "tls": {
+              "description": "A Tls specs.",
+              "properties": {
+                "enable": {
+                  "description": "TLS enable parser",
+                  "type": "boolean"
+                },
+                "mode": {
+                  "default": "tc",
+                  "description": "TLS parser type",
+                  "enum": [
+                    "socket",
+                    "tc",
+                    "cgroup"
+                  ],
+                  "type": "string"
+                },
+                "selectors": {
+                  "description": "Selectors to apply TLS parser against. Selectors are ORed.",
+                  "items": {
+                    "properties": {
+                      "matchPorts": {
+                        "description": "A list of ports to match. Ports are ORd.",
+                        "items": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            },
+            "udp": {
+              "description": "UDP policy specification",
+              "properties": {
+                "burst": {
+                  "description": "Network policy specification kubebuilder:deprecatedversion:warning=\"burst is deprecated. Use watermarks instead\"",
+                  "properties": {
+                    "burstTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "dipTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent under average deemed to be a dip",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable UDP watermarks observability",
+                      "type": "boolean"
+                    },
+                    "triggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "windowSize": {
+                      "default": 1000,
+                      "description": "Configures the burst window size in milliseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "cgroup": {
+                  "default": true,
+                  "description": "UDP has two modes one for newer kernels (cgroup) and then an older fallback mode for kprobe use cases. Allow running older kprobe version on newer kernels by setting cgroup knob to false.",
+                  "type": "boolean"
+                },
+                "deleteIdleSocketInterval": {
+                  "description": "Configure socket idle time to delete sockets in seconds",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "disableEvents": {
+                  "description": "Disable UDP events",
+                  "properties": {
+                    "disableClose": {
+                      "default": false,
+                      "description": "Disable close events",
+                      "type": "boolean"
+                    },
+                    "disableConnect": {
+                      "default": false,
+                      "description": "Disable connect events",
+                      "type": "boolean"
+                    },
+                    "disableListen": {
+                      "default": false,
+                      "description": "Disable listen events",
+                      "type": "boolean"
+                    },
+                    "disableStats": {
+                      "default": false,
+                      "description": "Disable stats events, write to metrics directly",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "enable": {
+                  "description": "Enable UDP observability",
+                  "type": "boolean"
+                },
+                "latency": {
+                  "description": "UDP latency observability policy specification",
+                  "properties": {
+                    "clockCheckInterval": {
+                      "description": "Configures the clock check interval in seconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "clockMaxSkew": {
+                      "description": "Configures the maximum acceptable clock skew before updating in microseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable UDP latency observability",
+                      "type": "boolean"
+                    },
+                    "interfaces": {
+                      "description": "Configures the interfaces to enable on",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "interfacesCheckInterval": {
+                      "description": "Configures the interfaces check interval in seconds",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "matchPorts": {
+                      "description": "Configures the ports to enable on",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "matchSubnets": {
+                      "description": "Configures the subnets to enable on",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "max": {
+                      "description": "Configures the expected Max Latency value",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "maxPacketSize": {
+                      "description": "Configures the maximum packet size",
+                      "type": "integer"
+                    },
+                    "min": {
+                      "description": "Configures the expected Min Latency value",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "metrics": {
+                  "description": "Metrics Configuration",
+                  "properties": {
+                    "enable": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "labelFilters": {
+                      "description": "Label Filters mask out labels in the metrics",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "seqCheck": {
+                  "description": "UDP sequence check observability policy specification",
+                  "properties": {
+                    "appId": {
+                      "description": "Configures the UDP sequence checker application",
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable UDP sequence check observability",
+                      "type": "boolean"
+                    },
+                    "ports": {
+                      "description": "Configures the ports to enable on",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "statsInterval": {
+                  "description": "Configures the Stat collection interval in seconds",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "watermarks": {
+                  "description": "Network policy specification",
+                  "properties": {
+                    "burstTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "dipTriggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent under average deemed to be a dip",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "enable": {
+                      "default": false,
+                      "description": "Enable UDP watermarks observability",
+                      "type": "boolean"
+                    },
+                    "triggerPercent": {
+                      "default": 100,
+                      "description": "Configures the percent over average deemed to be a burst",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "windowSize": {
+                      "default": 1000,
+                      "description": "Configures the burst window size in milliseconds",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "enable"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        "podSelector": {
+          "description": "PodSelector selects pods that this policy applies to",
+          "properties": {
+            "matchExpressions": {
+              "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+              "items": {
+                "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+                "properties": {
+                  "key": {
+                    "description": "key is the label key that the selector applies to.",
+                    "type": "string"
+                  },
+                  "operator": {
+                    "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
+                    "enum": [
+                      "In",
+                      "NotIn",
+                      "Exists",
+                      "DoesNotExist"
+                    ],
+                    "type": "string"
+                  },
+                  "values": {
+                    "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "key",
+                  "operator"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array"
+            },
+            "matchLabels": {
+              "additionalProperties": {
+                "description": "MatchLabelsValue represents the value from the MatchLabels {key,value} pair.",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$",
+                "type": "string"
+              },
+              "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+              "type": "object"
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        "tracepoints": {
+          "description": "A list of tracepoint specs.",
+          "items": {
+            "properties": {
+              "args": {
+                "description": "A list of function arguments to include in the trace output.",
+                "items": {
+                  "properties": {
+                    "index": {
+                      "description": "Position of the argument.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "label": {
+                      "description": "Label to output in the JSON",
+                      "type": "string"
+                    },
+                    "maxData": {
+                      "default": false,
+                      "description": "Read maximum possible data (currently 327360). This field is only used for char_buff data. When this value is false (default), the bpf program will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon supports fetching up to 327360 bytes if this flag is turned on",
+                      "type": "boolean"
+                    },
+                    "returnCopy": {
+                      "default": false,
+                      "description": "This field is used only for char_buf and char_iovec types. It indicates that this argument should be read later (when the kretprobe for the symbol is triggered) because it might not be populated when the kprobe is triggered at the entrance of the function. For example, a buffer supplied to read(2) won't have content until kretprobe is triggered.",
+                      "type": "boolean"
+                    },
+                    "sizeArgIndex": {
+                      "description": "Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "default": "auto",
+                      "description": "Argument type.",
+                      "enum": [
+                        "auto",
+                        "int",
+                        "int8",
+                        "uint8",
+                        "int16",
+                        "uint16",
+                        "uint32",
+                        "int32",
+                        "uint64",
+                        "int64",
+                        "char_buf",
+                        "char_iovec",
+                        "size_t",
+                        "skb",
+                        "sock",
+                        "string",
+                        "fd",
+                        "file",
+                        "filename",
+                        "path",
+                        "nop",
+                        "bpf_attr",
+                        "perf_event",
+                        "bpf_map",
+                        "user_namespace",
+                        "capability",
+                        "kiocb",
+                        "iov_iter",
+                        "cred",
+                        "load_info",
+                        "module",
+                        "syscall64",
+                        "kernel_cap_t",
+                        "cap_inheritable",
+                        "cap_permitted",
+                        "cap_effective",
+                        "linux_binprm",
+                        "data_loc"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "type"
+                  ],
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "event": {
+                "description": "Tracepoint event",
+                "type": "string"
+              },
+              "message": {
+                "description": "A short message of 256 characters max that will be included in the event output to inform users what is going on.",
+                "type": "string"
+              },
+              "selectors": {
+                "description": "Selectors to apply before producing trace output. Selectors are ORed.",
+                "items": {
+                  "description": "KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The results of MatchPIDs and MatchArgs are ANDed.",
+                  "properties": {
+                    "matchActions": {
+                      "description": "A list of actions to execute when this selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchBinaries": {
+                      "description": "A list of binary exec name filters.",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "In",
+                              "NotIn",
+                              "Prefix",
+                              "NotPrefix"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilities": {
+                      "description": "A list of capabilities and IDs",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilityChanges": {
+                      "description": "IDs for capabilities changes",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaceChanges": {
+                      "description": "IDs for namespace changes",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace types (e.g., Mnt, Pid) to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaces": {
+                      "description": "A list of namespaces and IDs",
+                      "items": {
+                        "properties": {
+                          "namespace": {
+                            "description": "Namespace selector name.",
+                            "enum": [
+                              "Uts",
+                              "Ipc",
+                              "Mnt",
+                              "Pid",
+                              "PidForChildren",
+                              "Net",
+                              "Time",
+                              "TimeForChildren",
+                              "Cgroup",
+                              "User"
+                            ],
+                            "type": "string"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace IDs (or host_ns for host namespace) of namespaces to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "namespace",
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchPIDs": {
+                      "description": "A list of process ID filters. MatchPIDs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "followForks": {
+                            "default": false,
+                            "description": "Matches any descendant processes of the matching PIDs.",
+                            "type": "boolean"
+                          },
+                          "isNamespacePID": {
+                            "default": false,
+                            "description": "Indicates whether PIDs are namespace PIDs.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "PID selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Process IDs to match.",
+                            "items": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnActions": {
+                      "description": "A list of actions to execute when MatchReturnArgs selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "subsystem": {
+                "description": "Tracepoint subsystem",
+                "type": "string"
+              }
+            },
+            "required": [
+              "event",
+              "subsystem"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "uprobes": {
+          "description": "A list of uprobe specs.",
+          "items": {
+            "properties": {
+              "args": {
+                "description": "A list of function arguments to include in the trace output.",
+                "items": {
+                  "properties": {
+                    "index": {
+                      "description": "Position of the argument.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "label": {
+                      "description": "Label to output in the JSON",
+                      "type": "string"
+                    },
+                    "maxData": {
+                      "default": false,
+                      "description": "Read maximum possible data (currently 327360). This field is only used for char_buff data. When this value is false (default), the bpf program will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon supports fetching up to 327360 bytes if this flag is turned on",
+                      "type": "boolean"
+                    },
+                    "returnCopy": {
+                      "default": false,
+                      "description": "This field is used only for char_buf and char_iovec types. It indicates that this argument should be read later (when the kretprobe for the symbol is triggered) because it might not be populated when the kprobe is triggered at the entrance of the function. For example, a buffer supplied to read(2) won't have content until kretprobe is triggered.",
+                      "type": "boolean"
+                    },
+                    "sizeArgIndex": {
+                      "description": "Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.",
+                      "format": "int32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "default": "auto",
+                      "description": "Argument type.",
+                      "enum": [
+                        "auto",
+                        "int",
+                        "int8",
+                        "uint8",
+                        "int16",
+                        "uint16",
+                        "uint32",
+                        "int32",
+                        "uint64",
+                        "int64",
+                        "char_buf",
+                        "char_iovec",
+                        "size_t",
+                        "skb",
+                        "sock",
+                        "string",
+                        "fd",
+                        "file",
+                        "filename",
+                        "path",
+                        "nop",
+                        "bpf_attr",
+                        "perf_event",
+                        "bpf_map",
+                        "user_namespace",
+                        "capability",
+                        "kiocb",
+                        "iov_iter",
+                        "cred",
+                        "load_info",
+                        "module",
+                        "syscall64",
+                        "kernel_cap_t",
+                        "cap_inheritable",
+                        "cap_permitted",
+                        "cap_effective",
+                        "linux_binprm",
+                        "data_loc"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "type"
+                  ],
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "message": {
+                "description": "A short message of 256 characters max that will be included in the event output to inform users what is going on.",
+                "type": "string"
+              },
+              "path": {
+                "description": "Name of the traced binary",
+                "type": "string"
+              },
+              "selectors": {
+                "description": "Selectors to apply before producing trace output. Selectors are ORed.",
+                "items": {
+                  "description": "KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The results of MatchPIDs and MatchArgs are ANDed.",
+                  "properties": {
+                    "matchActions": {
+                      "description": "A list of actions to execute when this selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchBinaries": {
+                      "description": "A list of binary exec name filters.",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "In",
+                              "NotIn",
+                              "Prefix",
+                              "NotPrefix"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilities": {
+                      "description": "A list of capabilities and IDs",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchCapabilityChanges": {
+                      "description": "IDs for capabilities changes",
+                      "items": {
+                        "properties": {
+                          "isNamespaceCapability": {
+                            "default": false,
+                            "description": "Indicates whether these caps are namespace caps.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "type": {
+                            "default": "Effective",
+                            "description": "Type of capabilities",
+                            "enum": [
+                              "Effective",
+                              "Inheritable",
+                              "Permitted"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Capabilities to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaceChanges": {
+                      "description": "IDs for namespace changes",
+                      "items": {
+                        "properties": {
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace types (e.g., Mnt, Pid) to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchNamespaces": {
+                      "description": "A list of namespaces and IDs",
+                      "items": {
+                        "properties": {
+                          "namespace": {
+                            "description": "Namespace selector name.",
+                            "enum": [
+                              "Uts",
+                              "Ipc",
+                              "Mnt",
+                              "Pid",
+                              "PidForChildren",
+                              "Net",
+                              "Time",
+                              "TimeForChildren",
+                              "Cgroup",
+                              "User"
+                            ],
+                            "type": "string"
+                          },
+                          "operator": {
+                            "description": "Namespace selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Namespace IDs (or host_ns for host namespace) of namespaces to match.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "namespace",
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchPIDs": {
+                      "description": "A list of process ID filters. MatchPIDs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "followForks": {
+                            "default": false,
+                            "description": "Matches any descendant processes of the matching PIDs.",
+                            "type": "boolean"
+                          },
+                          "isNamespacePID": {
+                            "default": false,
+                            "description": "Indicates whether PIDs are namespace PIDs.",
+                            "type": "boolean"
+                          },
+                          "operator": {
+                            "description": "PID selector operator.",
+                            "enum": [
+                              "In",
+                              "NotIn"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Process IDs to match.",
+                            "items": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "operator",
+                          "values"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnActions": {
+                      "description": "A list of actions to execute when MatchReturnArgs selector matches",
+                      "items": {
+                        "properties": {
+                          "action": {
+                            "description": "Action to execute.",
+                            "enum": [
+                              "Post",
+                              "FollowFD",
+                              "UnfollowFD",
+                              "Sigkill",
+                              "CopyFD",
+                              "Override",
+                              "GetUrl",
+                              "DnsLookup",
+                              "NoPost",
+                              "Signal",
+                              "TrackSock",
+                              "UntrackSock",
+                              "NotifyEnforcer"
+                            ],
+                            "type": "string"
+                          },
+                          "argError": {
+                            "description": "error value for override action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFd": {
+                            "description": "An arg index for the fd for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argFqdn": {
+                            "description": "A FQDN to lookup for the dnsLookup action",
+                            "type": "string"
+                          },
+                          "argName": {
+                            "description": "An arg index for the filename for fdInstall action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSig": {
+                            "description": "A signal number for signal action",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argSock": {
+                            "description": "An arg index for the sock for trackSock and untrackSock actions",
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "argUrl": {
+                            "description": "A URL for the getUrl action",
+                            "type": "string"
+                          },
+                          "rateLimit": {
+                            "description": "A time period within which repeated messages will not be posted. Can be specified in seconds (default or with 's' suffix), minutes ('m' suffix) or hours ('h' suffix). Only valid with the post action.",
+                            "type": "string"
+                          },
+                          "rateLimitScope": {
+                            "description": "The scope of the provided rate limit argument. Can be \"thread\" (default), \"process\" (all threads for the same process), or \"global\". If \"thread\" is selected then rate limiting applies per thread; if \"process\" is selected then rate limiting applies per process; if \"global\" is selected then rate limiting applies regardless of which process or thread caused the action. Only valid with the post action and with a rateLimit specified.",
+                            "type": "string"
+                          },
+                          "stackTrace": {
+                            "description": "Enable stack trace export. Only valid with the post action.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "matchReturnArgs": {
+                      "description": "A list of argument filters. MatchArgs are ANDed.",
+                      "items": {
+                        "properties": {
+                          "index": {
+                            "description": "Position of the argument to apply fhe filter to.",
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "operator": {
+                            "description": "Filter operation.",
+                            "enum": [
+                              "Equal",
+                              "NotEqual",
+                              "Prefix",
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix",
+                              "GreaterThan",
+                              "LessThan",
+                              "GT",
+                              "LT",
+                              "Mask",
+                              "SPort",
+                              "NotSPort",
+                              "SPortPriv",
+                              "NotSportPriv",
+                              "DPort",
+                              "NotDPort",
+                              "DPortPriv",
+                              "NotDPortPriv",
+                              "SAddr",
+                              "NotSAddr",
+                              "DAddr",
+                              "NotDAddr",
+                              "Protocol",
+                              "Family",
+                              "State",
+                              "InMap",
+                              "NotInMap"
+                            ],
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Value to compare the argument against.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "operator"
+                        ],
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
+              },
+              "symbols": {
+                "description": "List of the traced symbols",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "path",
+              "symbols"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "metadata",
+    "spec"
+  ],
+  "type": "object"
+}
