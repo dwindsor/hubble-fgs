@@ -13,6 +13,8 @@ spec:
       type: "path"
     - index: 1 # to_path
       type: "path"
+    returnArg:
+      type: "int"
   # int security_sb_mount(const char *dev_name, const struct path *path, const char *type, unsigned long flags, void *data);
   - call: "security_sb_mount"
     syscall: false
@@ -25,6 +27,8 @@ spec:
     - index: 2 # type
       type: "string"
     - index: 3 # flags
-      type: "uint32"
+      type: "uint64"
     - index: 4 # data
-      type: "nop"
+      type: "uint64"
+    returnArg:
+      type: "int"
