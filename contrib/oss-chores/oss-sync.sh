@@ -15,6 +15,7 @@ if [ -z "$1" ]; then
 	v=$(git config -f .gitmodules --get submodule.modules/tetragon-oss.branch)
 	echo "No argument specified: using default branch: $v"
 else
+	custom_branch=1
 	v="$1"
 fi
 
@@ -30,7 +31,9 @@ pushd modules/tetragon-oss
 git status
 git fetch
 git checkout $v
-git merge --ff-only origin/$v
+if [ "$custom_branch" != "1" ]; then
+	git merge --ff-only origin/$v
+fi
 popd
 
 # get the new sha of OSS
