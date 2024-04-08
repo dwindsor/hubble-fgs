@@ -50,6 +50,7 @@ $(EE_CHART)/values.yaml:
 
 .PHONY: $(EE_CHART)/templates
 $(EE_CHART)/templates:
+	cp -rf $(EE_PATCHES)/baseline-policies/. $(EE_CHART)/baseline-policies
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
 .PHONY: $(EE_CHART)/README.md

@@ -1,0 +1,22 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "bpf-load"
+  annotations:
+    author: "Isovalent"
+spec:
+ kprobes:
+ # Bpf verifier check during program loads
+ # int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
+ - call: "bpf_check"
+   syscall: false
+   args:
+   - index: 1
+     type: "bpf_attr"
+ # Called during bpf map create
+ # int security_bpf_map_alloc(struct bpf_map *map)
+ - call: "security_bpf_map_alloc"
+   syscall: false
+   args:
+   - index: 0
+     type: "bpf_map"

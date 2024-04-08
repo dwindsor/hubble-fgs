@@ -336,3 +336,10 @@ export:
       override: ~
       repository: quay.io/isovalent/hubble-export-stdout
       tag: v1.0.4
+tracingPolicies:
+  baseline:
+    # -- Enable the recommended baseline tracing policies.
+    # This option requires the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
+    # the Tetragon operator, which is installed by the same Helm chart. Therefore, most users should disable baseline
+    # policies when first installing Tetragon and enable them after the CRDs are created.
+    enabled: false

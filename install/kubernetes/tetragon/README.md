@@ -118,6 +118,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.strategy | object | `{}` | resources for the Tetragon Operator Deployment update strategy |
 | tetragonOperator.tracingPolicy.enabled | bool | `true` | Enables the TracingPolicy and TracingPolicyNamespaced CRD creation. |
 | tolerations[0].operator | string | `"Exists"` |  |
+| tracingPolicies.baseline.enabled | bool | `false` | Enable the recommended baseline tracing policies. This option requires the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by the Tetragon operator, which is installed by the same Helm chart. Therefore, most users should disable baseline policies when first installing Tetragon and enable them after the CRDs are created. |
 | updateStrategy | object | `{}` |  |
 
 ----------------------------------------------
