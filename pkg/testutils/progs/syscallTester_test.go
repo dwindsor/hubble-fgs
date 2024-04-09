@@ -36,9 +36,7 @@ func TestSyscallTesterSigkill(t *testing.T) {
 	defer cancel()
 	st := StartSyscallTester(t, ctx)
 	st.Process().Kill()
-	err := st.Stop()
-	require.Nil(t, err)
-	err = st.Cmd.Wait()
+	err := st.Cmd.Wait()
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), "signal: killed")
 }
