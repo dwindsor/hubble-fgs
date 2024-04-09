@@ -11,9 +11,9 @@ endif
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f ./install/olm/bundle.Dockerfile -t $(IMAGE_REPOSITORY)/tetragon-operator-bundle:$(DOCKER_IMAGE_TAG) ./install/olm
+	$(CONTAINER_ENGINE) build -f ./install/olm/bundle.Dockerfile -t $(IMAGE_REPOSITORY)/tetragon-operator-bundle:$(DOCKER_IMAGE_TAG) ./install/olm
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	docker push $(IMAGE_REPOSITORY)/tetragon-operator-bundle:$(DOCKER_IMAGE_TAG)
+	$(CONTAINER_ENGINE) push $(IMAGE_REPOSITORY)/tetragon-operator-bundle:$(DOCKER_IMAGE_TAG)
 
