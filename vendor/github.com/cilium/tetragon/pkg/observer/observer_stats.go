@@ -4,7 +4,6 @@
 package observer
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -26,6 +25,7 @@ func NewBPFCollector() prometheus.Collector {
 
 func (c *bpfCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- mapmetrics.MapSize.Desc()
+	ch <- mapmetrics.MapCapacity.Desc()
 	ch <- mapmetrics.MapErrors.Desc()
 }
 
@@ -72,12 +72,16 @@ func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 		defer mapLink.Close()
 
-		updateMapSize(ch, mapLinkStats, int(mapLink.MaxEntries()), name)
+		updateMapSize(ch, mapLinkStats, name)
+		ch <- mapmetrics.MapCapacity.MustMetric(
+			float64(mapLink.MaxEntries()),
+			name,
+		)
 		updateMapErrors(ch, mapLinkStats, name)
 	}
 }
 
-func updateMapSize(ch chan<- prometheus.Metric, mapLinkStats *ebpf.Map, maxEntries int, name string) {
+func updateMapSize(ch chan<- prometheus.Metric, mapLinkStats *ebpf.Map, name string) {
 	var values []int64
 	if err := mapLinkStats.Lookup(int32(0), &values); err != nil {
 		return
@@ -89,7 +93,7 @@ func updateMapSize(ch chan<- prometheus.Metric, mapLinkStats *ebpf.Map, maxEntri
 	}
 	ch <- mapmetrics.MapSize.MustMetric(
 		float64(sum),
-		name, fmt.Sprint(maxEntries),
+		name,
 	)
 }
 
@@ -137,7 +141,11 @@ func (c *bpfZeroCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, m := range monitoredMaps {
 		ch <- mapmetrics.MapSize.MustMetric(
 			0,
-			m, fmt.Sprint(0),
+			m,
+		)
+		ch <- mapmetrics.MapCapacity.MustMetric(
+			0,
+			m,
 		)
 		ch <- mapmetrics.MapErrors.MustMetric(
 			0,

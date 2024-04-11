@@ -30,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/exporter"
-	"github.com/cilium/tetragon/pkg/fieldfilters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -164,7 +163,6 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 		&wg,
 		observer.GetSensorManager(),
 		glblHookRunner,
-		fieldfilters.RedactionFilterList{},
 	)
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@
 package metricsconfig
 
 import (
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
@@ -19,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/syscallmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/watchermetrics"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/version"
 	grpcmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,10 +31,12 @@ func initHealthMetrics(registry *prometheus.Registry) {
 	version.InitMetrics(registry)
 	errormetrics.InitMetrics(registry)
 	eventcachemetrics.InitMetrics(registry)
+	registry.MustRegister(eventcache.NewCacheCollector())
 	eventmetrics.InitHealthMetrics(registry)
 	mapmetrics.InitMetrics(registry)
 	opcodemetrics.InitMetrics(registry)
 	policyfiltermetrics.InitMetrics(registry)
+	process.InitMetrics(registry)
 	ringbufmetrics.InitMetrics(registry)
 	ringbufqueuemetrics.InitMetrics(registry)
 	watchermetrics.InitMetrics(registry)
@@ -51,9 +55,7 @@ func initAllHealthMetrics(registry *prometheus.Registry) {
 	policystatemetrics.InitMetrics(registry)
 
 	// register custom collectors
-	registry.MustRegister(mapmetrics.NewBPFCollector(
-		observer.NewBPFCollector(),
-	))
+	registry.MustRegister(observer.NewBPFCollector())
 	registry.MustRegister(eventmetrics.NewBPFCollector())
 }
 

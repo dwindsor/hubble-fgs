@@ -17,7 +17,6 @@ import (
 	tetragonAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
-	"github.com/cilium/tetragon/pkg/fieldfilters"
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/process"
@@ -287,7 +286,7 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 	dn := DummyNotifier{t}
 	do := &server.FakeObserver{}
 	dr := rthooks.DummyHookRunner{}
-	lServer := server.NewServer(ctx, cancelWg, dn, do, dr, fieldfilters.RedactionFilterList{})
+	lServer := server.NewServer(ctx, cancelWg, dn, do, dr)
 
 	// Exec cache is always needed to ensure events have an associated Process{}
 	eventcache.NewWithTimer(lServer, time.Millisecond*execOSS.CacheTimerMs)

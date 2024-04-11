@@ -773,18 +773,19 @@ func (checker *ProcessExitChecker) FromProcessExit(event *tetragon.ProcessExit) 
 
 // ProcessKprobeChecker implements a checker struct to check a ProcessKprobe event
 type ProcessKprobeChecker struct {
-	CheckerName  string                       `json:"checkerName"`
-	Process      *ProcessChecker              `json:"process,omitempty"`
-	Parent       *ProcessChecker              `json:"parent,omitempty"`
-	FunctionName *stringmatcher.StringMatcher `json:"functionName,omitempty"`
-	Args         *KprobeArgumentListMatcher   `json:"args,omitempty"`
-	Return       *KprobeArgumentChecker       `json:"return,omitempty"`
-	Action       *KprobeActionChecker         `json:"action,omitempty"`
-	StackTrace   *StackTraceEntryListMatcher  `json:"stackTrace,omitempty"`
-	PolicyName   *stringmatcher.StringMatcher `json:"policyName,omitempty"`
-	ReturnAction *KprobeActionChecker         `json:"returnAction,omitempty"`
-	Message      *stringmatcher.StringMatcher `json:"message,omitempty"`
-	Tags         *StringListMatcher           `json:"tags,omitempty"`
+	CheckerName      string                       `json:"checkerName"`
+	Process          *ProcessChecker              `json:"process,omitempty"`
+	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	FunctionName     *stringmatcher.StringMatcher `json:"functionName,omitempty"`
+	Args             *KprobeArgumentListMatcher   `json:"args,omitempty"`
+	Return           *KprobeArgumentChecker       `json:"return,omitempty"`
+	Action           *KprobeActionChecker         `json:"action,omitempty"`
+	KernelStackTrace *StackTraceEntryListMatcher  `json:"kernelStackTrace,omitempty"`
+	PolicyName       *stringmatcher.StringMatcher `json:"policyName,omitempty"`
+	ReturnAction     *KprobeActionChecker         `json:"returnAction,omitempty"`
+	Message          *stringmatcher.StringMatcher `json:"message,omitempty"`
+	Tags             *StringListMatcher           `json:"tags,omitempty"`
+	UserStackTrace   *StackTraceEntryListMatcher  `json:"userStackTrace,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -856,9 +857,9 @@ func (checker *ProcessKprobeChecker) Check(event *tetragon.ProcessKprobe) error 
 				return fmt.Errorf("Action check failed: %w", err)
 			}
 		}
-		if checker.StackTrace != nil {
-			if err := checker.StackTrace.Check(event.StackTrace); err != nil {
-				return fmt.Errorf("StackTrace check failed: %w", err)
+		if checker.KernelStackTrace != nil {
+			if err := checker.KernelStackTrace.Check(event.KernelStackTrace); err != nil {
+				return fmt.Errorf("KernelStackTrace check failed: %w", err)
 			}
 		}
 		if checker.PolicyName != nil {
@@ -879,6 +880,11 @@ func (checker *ProcessKprobeChecker) Check(event *tetragon.ProcessKprobe) error 
 		if checker.Tags != nil {
 			if err := checker.Tags.Check(event.Tags); err != nil {
 				return fmt.Errorf("Tags check failed: %w", err)
+			}
+		}
+		if checker.UserStackTrace != nil {
+			if err := checker.UserStackTrace.Check(event.UserStackTrace); err != nil {
+				return fmt.Errorf("UserStackTrace check failed: %w", err)
 			}
 		}
 		return nil
@@ -926,9 +932,9 @@ func (checker *ProcessKprobeChecker) WithAction(check tetragon.KprobeAction) *Pr
 	return checker
 }
 
-// WithStackTrace adds a StackTrace check to the ProcessKprobeChecker
-func (checker *ProcessKprobeChecker) WithStackTrace(check *StackTraceEntryListMatcher) *ProcessKprobeChecker {
-	checker.StackTrace = check
+// WithKernelStackTrace adds a KernelStackTrace check to the ProcessKprobeChecker
+func (checker *ProcessKprobeChecker) WithKernelStackTrace(check *StackTraceEntryListMatcher) *ProcessKprobeChecker {
+	checker.KernelStackTrace = check
 	return checker
 }
 
@@ -954,6 +960,12 @@ func (checker *ProcessKprobeChecker) WithMessage(check *stringmatcher.StringMatc
 // WithTags adds a Tags check to the ProcessKprobeChecker
 func (checker *ProcessKprobeChecker) WithTags(check *StringListMatcher) *ProcessKprobeChecker {
 	checker.Tags = check
+	return checker
+}
+
+// WithUserStackTrace adds a UserStackTrace check to the ProcessKprobeChecker
+func (checker *ProcessKprobeChecker) WithUserStackTrace(check *StackTraceEntryListMatcher) *ProcessKprobeChecker {
+	checker.UserStackTrace = check
 	return checker
 }
 
@@ -988,7 +1000,7 @@ func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKp
 	checker.Action = NewKprobeActionChecker(event.Action)
 	{
 		var checks []*StackTraceEntryChecker
-		for _, check := range event.StackTrace {
+		for _, check := range event.KernelStackTrace {
 			var convertedCheck *StackTraceEntryChecker
 			if check != nil {
 				convertedCheck = NewStackTraceEntryChecker().FromStackTraceEntry(check)
@@ -997,7 +1009,7 @@ func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKp
 		}
 		lm := NewStackTraceEntryListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
-		checker.StackTrace = lm
+		checker.KernelStackTrace = lm
 	}
 	checker.PolicyName = stringmatcher.Full(event.PolicyName)
 	checker.ReturnAction = NewKprobeActionChecker(event.ReturnAction)
@@ -1012,6 +1024,19 @@ func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKp
 		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Tags = lm
+	}
+	{
+		var checks []*StackTraceEntryChecker
+		for _, check := range event.UserStackTrace {
+			var convertedCheck *StackTraceEntryChecker
+			if check != nil {
+				convertedCheck = NewStackTraceEntryChecker().FromStackTraceEntry(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStackTraceEntryListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.UserStackTrace = lm
 	}
 	return checker
 }
@@ -1159,7 +1184,7 @@ func (checker *StackTraceEntryListMatcher) Check(values []*tetragon.StackTraceEn
 func (checker *StackTraceEntryListMatcher) orderedCheck(values []*tetragon.StackTraceEntry) error {
 	innerCheck := func(check *StackTraceEntryChecker, value *tetragon.StackTraceEntry) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("StackTrace check failed: %w", err)
+			return fmt.Errorf("KernelStackTrace check failed: %w", err)
 		}
 		return nil
 	}
@@ -1191,7 +1216,7 @@ func (checker *StackTraceEntryListMatcher) unorderedCheck(values []*tetragon.Sta
 func (checker *StackTraceEntryListMatcher) subsetCheck(values []*tetragon.StackTraceEntry) error {
 	innerCheck := func(check *StackTraceEntryChecker, value *tetragon.StackTraceEntry) error {
 		if err := check.Check(value); err != nil {
-			return fmt.Errorf("StackTrace check failed: %w", err)
+			return fmt.Errorf("KernelStackTrace check failed: %w", err)
 		}
 		return nil
 	}
@@ -10093,6 +10118,7 @@ type StackTraceEntryChecker struct {
 	Address *uint64                      `json:"address,omitempty"`
 	Offset  *uint64                      `json:"offset,omitempty"`
 	Symbol  *stringmatcher.StringMatcher `json:"symbol,omitempty"`
+	Module  *stringmatcher.StringMatcher `json:"module,omitempty"`
 }
 
 // NewStackTraceEntryChecker creates a new StackTraceEntryChecker
@@ -10127,6 +10153,11 @@ func (checker *StackTraceEntryChecker) Check(event *tetragon.StackTraceEntry) er
 				return fmt.Errorf("Symbol check failed: %w", err)
 			}
 		}
+		if checker.Module != nil {
+			if err := checker.Module.Match(event.Module); err != nil {
+				return fmt.Errorf("Module check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -10153,6 +10184,12 @@ func (checker *StackTraceEntryChecker) WithSymbol(check *stringmatcher.StringMat
 	return checker
 }
 
+// WithModule adds a Module check to the StackTraceEntryChecker
+func (checker *StackTraceEntryChecker) WithModule(check *stringmatcher.StringMatcher) *StackTraceEntryChecker {
+	checker.Module = check
+	return checker
+}
+
 //FromStackTraceEntry populates the StackTraceEntryChecker using data from a StackTraceEntry field
 func (checker *StackTraceEntryChecker) FromStackTraceEntry(event *tetragon.StackTraceEntry) *StackTraceEntryChecker {
 	if event == nil {
@@ -10167,6 +10204,7 @@ func (checker *StackTraceEntryChecker) FromStackTraceEntry(event *tetragon.Stack
 		checker.Offset = &val
 	}
 	checker.Symbol = stringmatcher.Full(event.Symbol)
+	checker.Module = stringmatcher.Full(event.Module)
 	return checker
 }
 
