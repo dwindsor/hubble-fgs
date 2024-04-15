@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
@@ -89,8 +89,11 @@ func (v *networkInfoValue) String() string {
 		v.Name, v.TxBytes, v.PacketsOut, v.RxBytes, v.PacketsIn)
 }
 
-func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
-	n, _ := strconv.ParseUint(netns, 10, 64)
+func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns uint64, pod *tetragon.Pod) {
+	name := ""
+	if pod != nil {
+		name = pod.Container.Name
+	}
 	unix := iface.MsgInterfaceEventUnix{
 		Common: processapi.MsgCommon{
 			Op:    ops.MSG_OP_INTERFACE_STATS,
@@ -100,8 +103,8 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath st
 		Iface: api.MsgInterface{
 			Index:         attrs.Index,
 			Name:          attrs.Name,
-			Netns:         n,
-			ContainerName: getContainerName(netnsFilePath),
+			Netns:         netns,
+			ContainerName: name,
 		},
 		Stats: api.MsgInterfaceStats{
 			BytesSent:       attrs.Statistics.TxBytes,
@@ -227,19 +230,19 @@ func runNetworkCB() {
 		logger.GetLogger().WithError(err).Infof("Link list failed")
 	} else {
 		for _, l := range links {
-			emitInterfaceEvent(l.Attrs(), "", "")
+			emitInterfaceEvent(l.Attrs(), 0, nil)
 		}
 	}
 
-	nsDir, err := os.ReadDir(defaults.NetnsDir)
-	if err != nil {
-		return
-	}
-
-	for fileIndex := range nsDir {
-		nsFile := nsDir[fileIndex]
-		nsFileName := filepath.Join(defaults.NetnsDir, nsFile.Name())
-
+	cache := nscache.GetCache()
+	values := cache.Values()
+	for _, v := range values {
+		pidStr := strconv.FormatUint(uint64(v.Pid), 10)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Unable to convert Pid to string")
+			continue
+		}
+		nsFileName := filepath.Join("procRoot", pidStr, "ns", "net")
 		netns, err := ns.GetNS(nsFileName)
 		if err != nil {
 			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("GetNS from path failed")
@@ -254,7 +257,7 @@ func runNetworkCB() {
 				return fmt.Errorf("Netlink LinkList() error: %v", err)
 			}
 			for _, l := range links {
-				emitInterfaceEvent(l.Attrs(), nsFile.Name(), nsFileName)
+				emitInterfaceEvent(l.Attrs(), v.Netns, v.Pod)
 			}
 			return nil
 		})

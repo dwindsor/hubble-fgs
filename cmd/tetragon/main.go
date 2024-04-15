@@ -433,10 +433,6 @@ func hubbleFGSExecute() error {
 	}
 	defer pidfile.Delete()
 
-	if viper.IsSet(keyNetnsDir) {
-		defaults.NetnsDir = viper.GetString(keyNetnsDir)
-	}
-
 	if err := checkStructAlignments(); err != nil {
 		return fmt.Errorf("struct alignment checks failed: %w", err)
 	}

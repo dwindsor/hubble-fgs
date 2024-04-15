@@ -8,8 +8,14 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
+type nscacheData struct {
+	Pod   *tetragon.Pod
+	Pid   uint32
+	Netns uint64
+}
+
 var (
-	cache *lru.Cache[uint64, *tetragon.Pod]
+	cache *lru.Cache[uint64, *nscacheData]
 )
 
 func init() {
@@ -23,7 +29,7 @@ func NewCache() error {
 		return nil
 	}
 
-	cache, err = lru.New[uint64, *tetragon.Pod](enterpriseOption.Config.NetNsCacheSize)
+	cache, err = lru.New[uint64, *nscacheData](enterpriseOption.Config.NetNsCacheSize)
 	return err
 }
 
@@ -43,16 +49,26 @@ func GetPod(netns uint64) (*tetragon.Pod, error) {
 	if !ok {
 		return nil, fmt.Errorf("no pod entry found")
 	}
-	return entry, nil
+	return entry.Pod, nil
 }
 
-func AddNetNs(netns uint64, pod *tetragon.Pod) {
+func AddNetNs(netns uint64, pod *tetragon.Pod, pid uint32) {
 	if _, ok := cache.Get(netns); ok {
 		return
 	}
-	cache.Add(netns, pod)
+
+	data := &nscacheData{
+		Pod:   pod,
+		Pid:   pid,
+		Netns: netns,
+	}
+	cache.Add(netns, data)
 }
 
 func DelNetNs(netns uint64) {
 	cache.Remove(netns)
+}
+
+func GetCache() *lru.Cache[uint64, *nscacheData] {
+	return cache
 }

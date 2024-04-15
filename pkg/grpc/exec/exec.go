@@ -115,7 +115,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 
 	netinum := event.Unix.Msg.Namespaces.NetInum
 	if netinum != 0 && fgsEvent.Process.Pod != nil {
-		nscache.AddNetNs(uint64(netinum), fgsEvent.Process.Pod)
+		nscache.AddNetNs(uint64(netinum), fgsEvent.Process.Pod, fgsEvent.Process.GetPid().GetValue())
 	}
 
 	// Finalize the process event with extra fields
@@ -168,7 +168,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 		}
 		netinum := msg.Unix.Msg.Namespaces.NetInum
 		if netinum != 0 && podInfo != nil {
-			nscache.AddNetNs(uint64(netinum), podInfo)
+			nscache.AddNetNs(uint64(netinum), podInfo, proc.Pid.Value)
 		}
 	}
 
