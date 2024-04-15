@@ -11,8 +11,6 @@
 package sandboxmetrics
 
 import (
-	"slices"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
@@ -21,7 +19,7 @@ import (
 )
 
 var (
-	eventsSyscalls = metrics.MustNewGranularCounter(prometheus.CounterOpts{
+	eventsSyscalls = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Namespace:   consts.MetricsNamespace,
 		Name:        "sandboxpolicy_syscalls_total",
 		Help:        "Sadnboxoplicy syscall events observed.",
@@ -30,15 +28,17 @@ var (
 )
 
 func InitEventsMetrics(registry *prometheus.Registry) {
-	registry.MustRegister(eventsSyscalls.ToProm())
+	registry.MustRegister(eventsSyscalls)
 }
 
 func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitEventsMetrics(registry)
-	eventsSyscalls.WithLabelValues(slices.Concat([]string{"example-sandboxpolicy", "example_syscall"}, consts.ExampleProcessLabels)...).Add(0)
+	processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
+	eventsSyscalls.WithLabelValues(processLabels, "example-sandboxpolicy", "example_syscall").Add(0)
 }
 
 func HandleEvent(ev *tetragon.ProcessSandboxSyscall) {
 	binary, pod, workload, namespace := eventmetrics.GetProcessInfo(ev.Process)
-	eventsSyscalls.WithLabelValues(ev.Policy, ev.Name, namespace, workload, pod, binary)
+	processLabels := metrics.NewProcessLabels(namespace, workload, pod, binary)
+	eventsSyscalls.WithLabelValues(processLabels, ev.Policy, ev.Name)
 }

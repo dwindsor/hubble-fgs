@@ -26,7 +26,7 @@ import (
 )
 
 func Test_eventHandleProcessedEvent(t *testing.T) {
-	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed.ToProm(), strings.NewReader("")))
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, strings.NewReader("")))
 	eventmetrics.HandleProcessedEvent(nil)
 	// empty process
 	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: &tetragon.ProcessConnect{}}})
@@ -103,7 +103,7 @@ tetragon_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",type
 tetragon_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT",workload=""} 1
 tetragon_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT",workload="workload_e"} 1
 `)
-	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed.ToProm(), expected))
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, expected))
 }
 
 func Test_handleOriginalEvent(t *testing.T) {
