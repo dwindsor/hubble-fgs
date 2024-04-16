@@ -32,6 +32,9 @@ func newColorer(when encoder.ColorMode) *colorer {
 
 func (c colorer) interfaceInfo(host string, stats *tetragon.InterfaceStats) string {
 	source := c.Green.Sprint(host)
+	if stats.Pod != nil {
+		source = c.Green.Sprint(stats.Pod.Namespace, "/", stats.Pod.Name)
+	}
 	interfaceInfo := c.Magenta.Sprint(stats.InterfaceName, "@", stats.InterfaceIfindex)
 	return fmt.Sprintf("%s %s", source, interfaceInfo)
 }
