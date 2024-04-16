@@ -104,7 +104,8 @@ func runTcpIouServer() {
 
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, unix.IPPROTO_TCP)
 	if err != nil {
-		logger.GetLogger().Warn("socket failed")
+		logger.GetLogger().WithError(err).Warn("socket failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 	addr := &unix.SockaddrInet4{
@@ -113,20 +114,23 @@ func runTcpIouServer() {
 	}
 	err = unix.Bind(fd, addr)
 	if err != nil {
-		logger.GetLogger().Warn("bind failed")
+		logger.GetLogger().WithError(err).Warn("bind failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 
 	err = unix.Listen(fd, 1)
 	if err != nil {
-		logger.GetLogger().Warn("listen failed")
+		logger.GetLogger().WithError(err).Warn("listen failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 
 	uring := giouring.NewRing()
 	err = uring.QueueInit(64, 0)
 	if err != nil {
-		logger.GetLogger().Warn("QueueInit failed")
+		logger.GetLogger().WithError(err).Warn("QueueInit failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 
@@ -142,7 +146,7 @@ func runTcpIouServer() {
 	if !kernels.MinKernelVersion("5.5.0") {
 		clientFd, _, err = unix.Accept(fd)
 		if err != nil {
-			logger.GetLogger().Warn("Accept failed")
+			logger.GetLogger().WithError(err).Warn("Accept failed")
 			panic(err)
 		}
 		addReadRequest(clientFd, uring, iovecs, &buffer[0], 1024)
@@ -156,7 +160,7 @@ func runTcpIouServer() {
 	for {
 		cqe, err := uring.WaitCQE()
 		if err != nil {
-			logger.GetLogger().Warn("WaitCQE failed")
+			logger.GetLogger().WithError(err).Warn("WaitCQE failed")
 			panic(err)
 		}
 		uring.CQESeen(cqe)
@@ -185,12 +189,12 @@ func runTcpIouServer() {
 			if !kernels.MinKernelVersion("5.6.0") {
 				err = unix.Close(clientFd)
 				if err != nil {
-					logger.GetLogger().Warn("Close client failed")
+					logger.GetLogger().WithError(err).Warn("Close client failed")
 					panic(err)
 				}
 				err = unix.Close(fd)
 				if err != nil {
-					logger.GetLogger().Warn("Close server failed")
+					logger.GetLogger().WithError(err).Warn("Close server failed")
 					panic(err)
 				}
 				os.Exit(0)
@@ -228,14 +232,14 @@ func runTcpIouClient() {
 
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, unix.IPPROTO_TCP)
 	if err != nil {
-		logger.GetLogger().Warn("socket failed")
+		logger.GetLogger().WithError(err).Warn("socket failed")
 		panic(err)
 	}
 
 	uring := giouring.NewRing()
 	err = uring.QueueInit(64, 0)
 	if err != nil {
-		logger.GetLogger().Warn("QueueInit failed")
+		logger.GetLogger().WithError(err).Warn("QueueInit failed")
 		panic(err)
 	}
 
@@ -253,7 +257,7 @@ func runTcpIouClient() {
 		}
 		err = unix.Connect(fd, &serverAddr)
 		if err != nil {
-			logger.GetLogger().Warn("Connect failed")
+			logger.GetLogger().WithError(err).Warn("Connect failed")
 			panic(err)
 		}
 		addWriteRequest(fd, uring, iovecs, &buffer[0], uint64(len(str)))
@@ -270,7 +274,7 @@ func runTcpIouClient() {
 	for {
 		cqe, err := uring.WaitCQE()
 		if err != nil {
-			logger.GetLogger().Warn("WaitCQE failed")
+			logger.GetLogger().WithError(err).Warn("WaitCQE failed")
 			panic(err)
 		}
 		uring.CQESeen(cqe)
@@ -291,7 +295,7 @@ func runTcpIouClient() {
 			if !kernels.MinKernelVersion("5.6.0") {
 				err = unix.Close(fd)
 				if err != nil {
-					logger.GetLogger().Warn("Close failed")
+					logger.GetLogger().WithError(err).Warn("Close failed")
 					panic(err)
 				}
 				os.Exit(0)
@@ -316,7 +320,8 @@ func runUdpIouServer() {
 
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, 0)
 	if err != nil {
-		logger.GetLogger().Warn("socket failed")
+		logger.GetLogger().WithError(err).Warn("socket failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 	addr := &unix.SockaddrInet4{
@@ -325,14 +330,16 @@ func runUdpIouServer() {
 	}
 	err = unix.Bind(fd, addr)
 	if err != nil {
-		logger.GetLogger().Warn("bind failed")
+		logger.GetLogger().WithError(err).Warn("bind failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 
 	uring := giouring.NewRing()
 	err = uring.QueueInit(64, 0)
 	if err != nil {
-		logger.GetLogger().Warn("QueueInit failed")
+		logger.GetLogger().WithError(err).Warn("QueueInit failed")
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 
@@ -355,7 +362,7 @@ func runUdpIouServer() {
 	for {
 		cqe, err := uring.WaitCQE()
 		if err != nil {
-			logger.GetLogger().Warn("WaitCQE failed")
+			logger.GetLogger().WithError(err).Warn("WaitCQE failed")
 			panic(err)
 		}
 		uring.CQESeen(cqe)

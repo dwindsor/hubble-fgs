@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -798,6 +799,7 @@ func runTcpServer() {
 	signal.Notify(sigs, syscall.SIGTERM)
 	conn, err := net.Listen(tcpProtocol, fmt.Sprintf("%s:%d", tcpHostname, tcpPortno))
 	if err != nil {
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 	go func() {
@@ -1042,6 +1044,10 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
 			panic(fmt.Errorf("received empty line from TCP server"))
+		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("TCP server failed to start")
+			panic(string(line[:]))
 		}
 	}
 
@@ -1787,6 +1793,10 @@ func TestIOUringAcceptEvent(t *testing.T) {
 		if len(line) == 0 {
 			killAndWaitCommand(t, cmdServer)
 			panic(fmt.Errorf("received empty line from TCP server"))
+		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("TCP server failed to start")
+			panic(string(line[:]))
 		}
 	}
 

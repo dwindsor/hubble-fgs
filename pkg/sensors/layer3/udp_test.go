@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -198,6 +199,7 @@ func runUdpServer() {
 
 	conn, err := net.ListenPacket(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
 	if err != nil {
+		fmt.Printf("NotReady: %s", err)
 		panic(err)
 	}
 	buf := make([]byte, 2*UDPBUFSIZE)
@@ -417,6 +419,10 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
 			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
+			panic(string(line[:]))
 		}
 	}
 
@@ -653,6 +659,10 @@ func TestUdpSeqCheck(t *testing.T) {
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
 			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
+			panic(string(line[:]))
 		}
 	}
 
@@ -1673,6 +1683,10 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 			killAndWaitCommand(t, serverCmd)
 			panic(fmt.Errorf("received empty line from UDP server"))
 		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
+			panic(string(line[:]))
+		}
 	}
 
 	serverPid := uint32(serverCmd.Process.Pid)
@@ -2076,6 +2090,10 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 		if len(line) == 0 {
 			killAndWaitCommand(t, cmdServer)
 			panic(fmt.Errorf("received empty line from UDP server"))
+		}
+		if strings.HasPrefix(string(line[:]), "NotReady") {
+			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
+			panic(string(line[:]))
 		}
 	}
 
