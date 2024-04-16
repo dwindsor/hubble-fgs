@@ -12,7 +12,6 @@ package network
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -32,8 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/vishvananda/netlink"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -44,7 +41,6 @@ import (
 
 var (
 	NetworkStatInterval = time.Duration(10 * time.Second)
-	sandboxToContainer  = make(map[string]string)
 	eventTimer          = timer.NewPeriodicTimer("Network Interface Timer", runNetworkCB, true)
 	pollTimer           = timer.NewPeriodicTimer("Network Event Poll", runNetworkBPFGC, true)
 
@@ -359,12 +355,6 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 			ExitNs,
 		}
 		maps = []*program.Map{}
-
-		err := populateSandboxToContainer()
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
-		}
-
 		eventTimer.Start(defaultCBInterval)
 	}
 
@@ -417,44 +407,4 @@ func AddNetwork() {
 	sensors.RegisterProbeType("interface_sensor", net)
 	sensors.RegisterPolicyHandlerAtInit(net.name, net)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_NETNS_EXIT, handleNetNsExit)
-}
-
-func getContainerName(sandboxKey string) string {
-	if sandboxKey == "" {
-		return ""
-	}
-	containerName := sandboxToContainer[sandboxKey]
-	if containerName == "" {
-		err := populateSandboxToContainer()
-		if err != nil {
-			logger.GetLogger().WithError(err).Debug("get container name failed")
-			return ""
-		}
-		return sandboxToContainer[sandboxKey]
-	}
-	return containerName
-}
-
-func populateSandboxToContainer() error {
-	newSandboxToContainer := make(map[string]string)
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, container := range containers {
-		containerDetails, err := cli.ContainerInspect(ctx, container.ID)
-		if err != nil {
-			logger.GetLogger().WithError(err).WithField("container", container.ID).Warn("container details missing")
-		}
-		newSandboxToContainer[containerDetails.NetworkSettings.SandboxKey] = containerDetails.Name
-	}
-	sandboxToContainer = newSandboxToContainer
-	return nil
 }
