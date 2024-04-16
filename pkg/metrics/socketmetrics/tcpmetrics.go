@@ -16,91 +16,84 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	LabelStringTCPSrc = []string{"namespace", "workload", "pod", "binary"}
-	LabelStringTCPDst = []string{"dstnamespace", "dstworkload", "dstpod", "dstdns", "dstip"}
-	LabelStringTCP    = append(LabelStringTCPSrc, LabelStringTCPDst[:]...)
-	LabelStringTCPLe  = append(LabelStringTCP, "le")
-)
-
 // TCP socket metrics
 var (
-	SocketStatsTxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	SocketStatsTxBytes = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bytes statistics",
-	}, LabelStringTCP)
-	SocketStatsTxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsTxSegs = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX segment statistics",
-	}, LabelStringTCP)
-	SocketStatsTxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsTxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bursts statistics",
-	}, LabelStringTCPSrc)
-	SocketStatsTxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsTxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX dips statistics",
-	}, LabelStringTCPSrc)
-	SocketStatsRxBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRxBytes = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bytes statistics",
-	}, LabelStringTCP)
-	SocketStatsRxSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRxSegs = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX segment statistics",
-	}, LabelStringTCP)
-	SocketStatsRxBursts = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bursts statistics",
-	}, LabelStringTCPSrc)
-	SocketStatsRxDips = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX dips statistics",
-	}, LabelStringTCPSrc)
-	SocketStatsRetranBytes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRetranBytes = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitbytes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit bytes statistics",
-	}, LabelStringTCP)
-	SocketStatsRetranSegs = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsRetranSegs = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_retransmitsegs_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket retransmit seg statistics",
-	}, LabelStringTCP)
-	SocketStatsZeroWindow = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsZeroWindow = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_zerowindow_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket zero window events",
-	}, LabelStringTCP)
-	SocketStatsSrtt = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
+	}, nil)
+	SocketStatsSrtt = metrics.MustNewGranularHistogram[SocketLabels](prometheus.HistogramOpts{
 		Name:      "socket_stats_srtt",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket smoothed RTT latency distribution in microseconds.",
 		Buckets:   []float64{50, 100, 250, 500, 750, 1_000, 2_500, 5_000, 7_500, 10_000, 25_000, 50_000, 75_000, 100_000},
-	}, LabelStringTCP)
-	SocketStatsDrops = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	SocketStatsDrops = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_drops_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket socket drops statistics",
-	}, LabelStringTCP)
-	SocketStatsTxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
+	}, nil)
+	SocketStatsTxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX watermarks state",
-	}, LabelStringTCPSrc)
-	SocketStatsRxWatermarksState = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
+	}, nil)
+	SocketStatsRxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_rx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX watermarks state",
-	}, LabelStringTCPSrc)
+	}, nil)
 )
 
 // TCP Latency Histograms
@@ -110,36 +103,36 @@ var (
 //   - a "_count" metric, identical to the highest ("+Inf") bucket metric
 //   - a "_sum" metric, reporting the sum of all observed values
 var (
-	TcpRttBucket = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	TcpRttBucket = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket rtt in microseconds",
-	}, LabelStringTCPLe)
-	TcpRttCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, []string{"le"})
+	TcpRttCount = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket rtt",
-	}, LabelStringTCP)
-	TcpRttSum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	TcpRttSum = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_rtt_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket rtt in microseconds",
-	}, LabelStringTCP)
+	}, nil)
 )
 var (
-	TcpLatencyBucket = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	TcpLatencyBucket = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_bucket",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram bucket for TCP socket latency in microseconds",
-	}, LabelStringTCPLe)
-	TcpLatencyCount = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, []string{"le"})
+	TcpLatencyCount = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_count",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram count for TCP socket latency",
-	}, LabelStringTCP)
-	TcpLatencySum = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	}, nil)
+	TcpLatencySum = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
 		Name:      "tcp_latency_microseconds_sum",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Histogram sum for TCP socket latency in microseconds",
-	}, LabelStringTCP)
+	}, nil)
 )

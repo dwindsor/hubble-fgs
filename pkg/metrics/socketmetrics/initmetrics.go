@@ -11,8 +11,6 @@
 package socketmetrics
 
 import (
-	"slices"
-
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -51,38 +49,44 @@ func InitTCPEventsMetrics(registry *prometheus.Registry) {
 func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitTCPEventsMetrics(registry)
 
-	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleSocketDstLabels)
+	socketLabels := NewSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod,
+		enterpriseMetrics.ExampleDNSNamesLabel, enterpriseMetrics.ExampleIPLabel,
+	)
 
-	SocketStatsTxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsTxSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsRxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsRxSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsRetranBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsRetranSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsZeroWindow.WithLabelValues(labels...).Add(0)
-	SocketStatsDrops.WithLabelValues(labels...).Add(0)
-	SocketStatsSrtt.WithLabelValues(labels...)
+	SocketStatsTxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsTxSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsRxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsRxSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsRetranBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsRetranSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsZeroWindow.WithLabelValues(socketLabels).Add(0)
+	SocketStatsDrops.WithLabelValues(socketLabels).Add(0)
+	SocketStatsSrtt.WithLabelValues(socketLabels)
 
 	// Watermarks
-	SocketStatsTxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsTxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsRxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsRxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsTxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsRxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	srcSocketLabels := NewSrcSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+	)
+	SocketStatsTxBursts.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsTxDips.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsRxBursts.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsRxDips.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsTxWatermarksState.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsRxWatermarksState.WithLabelValues(srcSocketLabels).Add(0)
 
 	// Histograms. They are defined not with Prometheus histogram struct, but as sets of counters.
 	// This means they are rendered differently than "regular" histograms in the metrics docs.
 	// We might consider improving docs for histograms, both Prometheus and Tetragon.
 	for _, b := range enterpriseMetrics.ExampleLatencyBuckets {
-		bucketLabels := append(labels, b)
-		TcpRttBucket.WithLabelValues(bucketLabels...).Add(0)
-		TcpLatencyBucket.WithLabelValues(bucketLabels...).Add(0)
+		TcpRttBucket.WithLabelValues(socketLabels, b).Add(0)
+		TcpLatencyBucket.WithLabelValues(socketLabels, b).Add(0)
 	}
-	TcpRttCount.WithLabelValues(labels...).Add(0)
-	TcpRttSum.WithLabelValues(labels...).Add(0)
-	TcpLatencyCount.WithLabelValues(labels...).Add(0)
-	TcpLatencySum.WithLabelValues(labels...).Add(0)
+	TcpRttCount.WithLabelValues(socketLabels).Add(0)
+	TcpRttSum.WithLabelValues(socketLabels).Add(0)
+	TcpLatencyCount.WithLabelValues(socketLabels).Add(0)
+	TcpLatencySum.WithLabelValues(socketLabels).Add(0)
 }
 
 func InitUDPHealthMetrics(registry *prometheus.Registry) {
@@ -138,49 +142,59 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitUDPEventsMetrics(registry)
 
-	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleSocketDstLabels)
+	socketLabels := NewSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod,
+		enterpriseMetrics.ExampleDNSNamesLabel, enterpriseMetrics.ExampleIPLabel,
+	)
 
-	SocketStatsUDPTxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPTxSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPRxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPRxSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPDrops.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPConsumeMisses.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPStackTxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPStackTxSegs.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPStackRxBytes.WithLabelValues(labels...).Add(0)
-	SocketStatsUDPStackRxSegs.WithLabelValues(labels...).Add(0)
+	SocketStatsUDPTxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPTxSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPRxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPRxSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPDrops.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPConsumeMisses.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPStackTxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPStackTxSegs.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPStackRxBytes.WithLabelValues(socketLabels).Add(0)
+	SocketStatsUDPStackRxSegs.WithLabelValues(socketLabels).Add(0)
 
 	// Watermarks
-	SocketStatsUDPTxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsUDPTxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsUDPRxBursts.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsUDPRxDips.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsUDPTxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	SocketStatsUDPRxWatermarksState.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	srcSocketLabels := NewSrcSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+	)
+	SocketStatsUDPTxBursts.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsUDPTxDips.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsUDPRxBursts.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsUDPRxDips.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsUDPTxWatermarksState.WithLabelValues(srcSocketLabels).Add(0)
+	SocketStatsUDPRxWatermarksState.WithLabelValues(srcSocketLabels).Add(0)
 
 	// Multicast
-	multicastLabels := slices.Concat(consts.ExampleProcessLabels, []string{enterpriseMetrics.ExampleIPLabel}, enterpriseMetrics.ExamplePodLabels, []string{enterpriseMetrics.ExampleIPLabel})
-	SocketStatsUDPMulticastTxBytes.WithLabelValues(multicastLabels...).Add(0)
-	SocketStatsUDPMulticastTxSegs.WithLabelValues(multicastLabels...).Add(0)
-	SocketStatsUDPMulticastRxBytes.WithLabelValues(multicastLabels...).Add(0)
-	SocketStatsUDPMulticastRxSegs.WithLabelValues(multicastLabels...).Add(0)
-	SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels...).Add(0)
-	SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels...).Add(0)
+	multicastLabels := NewMulticastSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		enterpriseMetrics.ExampleIPLabel,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod,
+		enterpriseMetrics.ExampleIPLabel,
+	)
+	SocketStatsUDPMulticastTxBytes.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPMulticastTxSegs.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPMulticastRxBytes.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPMulticastRxSegs.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels).Add(0)
 
 	// Histograms. They are defined not with Prometheus histogram struct, but as sets of counters.
 	// This means they are rendered differently than "regular" histograms in the metrics docs.
 	// We might consider improving docs for histograms, both Prometheus and Tetragon.
 	for _, b := range enterpriseMetrics.ExampleLatencyBuckets {
-		bucketLabels := append(labels, b)
-		UdpLatencyBucket.WithLabelValues(bucketLabels...).Add(0)
-		multicastBucketLabels := append(multicastLabels, b)
-		UdpMulticastLatencyBucket.WithLabelValues(multicastBucketLabels...).Add(0)
+		UdpLatencyBucket.WithLabelValues(socketLabels, b).Add(0)
+		UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, b).Add(0)
 	}
-	UdpLatencyCount.WithLabelValues(labels...).Add(0)
-	UdpLatencySum.WithLabelValues(labels...).Add(0)
-	UdpMulticastLatencyCount.WithLabelValues(multicastLabels...).Add(0)
-	UdpMulticastLatencySum.WithLabelValues(multicastLabels...).Add(0)
+	UdpLatencyCount.WithLabelValues(socketLabels).Add(0)
+	UdpLatencySum.WithLabelValues(socketLabels).Add(0)
+	UdpMulticastLatencyCount.WithLabelValues(multicastLabels).Add(0)
+	UdpMulticastLatencySum.WithLabelValues(multicastLabels).Add(0)
 }
 
 func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
@@ -192,6 +206,10 @@ func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
 func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitRawSocketEventsMetrics(registry)
 
-	RawsockCreateVol.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	RawsockCloseVol.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	srcSocketLabels := NewSrcSocketLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+	)
+
+	RawsockCreateVol.WithLabelValues(srcSocketLabels).Add(0)
+	RawsockCloseVol.WithLabelValues(srcSocketLabels).Add(0)
 }

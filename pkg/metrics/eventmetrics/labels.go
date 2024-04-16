@@ -16,27 +16,12 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-type SocketLabels struct {
-	Ns          string
-	Workload    string
-	Pod         string
-	Binary      string
-	DstNs       string
-	DstWorkload string
-	DstPod      string
-	DstDNS      string
-	DstIp       string
-}
-
-func (s SocketLabels) LabelString() []string {
-	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.DstNs, s.DstWorkload, s.DstPod, s.DstDNS, s.DstIp}
-}
-
-func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
+func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.SocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -71,20 +56,10 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 		dstIp = ""
 	}
 
-	return &SocketLabels{
-		Ns:          ns,
-		Workload:    w,
-		Pod:         p,
-		Binary:      b,
-		DstNs:       dstns,
-		DstWorkload: dstWorkload,
-		DstPod:      dstPodString,
-		DstDNS:      dstDNS,
-		DstIp:       dstIp,
-	}
+	return socketmetrics.NewSocketLabels(ns, w, p, b, dstns, dstWorkload, dstPodString, dstDNS, dstIp)
 }
 
-func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
+func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.SocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -119,32 +94,10 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *SocketLabels {
 		dstIp = ""
 	}
 
-	return &SocketLabels{
-		Ns:          ns,
-		Workload:    w,
-		Pod:         p,
-		Binary:      b,
-		DstNs:       dstns,
-		DstWorkload: dstWorkload,
-		DstPod:      dstPodString,
-		DstDNS:      dstDNS,
-		DstIp:       dstIp,
-	}
+	return socketmetrics.NewSocketLabels(ns, w, p, b, dstns, dstWorkload, dstPodString, dstDNS, dstIp)
 }
 
-type MulticastSocketLabels struct {
-	Ns          string
-	Workload    string
-	Pod         string
-	Binary      string
-	SrcMcast    string
-	DstNs       string
-	DstWorkload string
-	DstPod      string
-	DstMcast    string
-}
-
-func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *MulticastSocketLabels {
+func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.MulticastSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
@@ -179,31 +132,10 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *MulticastSocke
 		dstIP = ""
 	}
 
-	return &MulticastSocketLabels{
-		Ns:          ns,
-		Workload:    w,
-		Pod:         p,
-		Binary:      b,
-		SrcMcast:    sourceIP,
-		DstNs:       dstns,
-		DstWorkload: dstWorkload,
-		DstPod:      dstPodString,
-		DstMcast:    dstIP,
-	}
+	return socketmetrics.NewMulticastSocketLabels(ns, w, p, b, sourceIP, dstns, dstWorkload, dstPodString, dstIP)
 }
 
-func (s MulticastSocketLabels) labelString() []string {
-	return []string{s.Ns, s.Workload, s.Pod, s.Binary, s.SrcMcast, s.DstNs, s.DstWorkload, s.DstPod, s.DstMcast}
-}
-
-type SrcSocketLabels struct {
-	Ns       string
-	Workload string
-	Pod      string
-	Binary   string
-}
-
-func createTCPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
+func createTCPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !tcpconfig.CurrentLabels["ns"] {
@@ -219,21 +151,16 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
 		b = ""
 	}
 
-	return &SrcSocketLabels{
-		Ns:       ns,
-		Workload: w,
-		Pod:      p,
-		Binary:   b,
-	}
+	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
 }
 
-func createUDPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
+func createUDPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !udpconfig.CurrentLabels["ns"] {
 		ns = ""
 	}
-	if !udpconfig.CurrentLabels["Workload"] {
+	if !udpconfig.CurrentLabels["workload"] {
 		w = ""
 	}
 	if !udpconfig.CurrentLabels["pod"] {
@@ -243,27 +170,13 @@ func createUDPSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
 		b = ""
 	}
 
-	return &SrcSocketLabels{
-		Ns:       ns,
-		Workload: w,
-		Pod:      p,
-		Binary:   b,
-	}
+	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
 }
 
-func createSrcSocketLabels(res *tetragon.Process) *SrcSocketLabels {
+func createSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	return &SrcSocketLabels{
-		Ns:       ns,
-		Workload: w,
-		Pod:      p,
-		Binary:   b,
-	}
-}
-
-func (s SrcSocketLabels) labelString() []string {
-	return []string{s.Ns, s.Workload, s.Pod, s.Binary}
+	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
 }
 
 func GetPromBucket(min, max, upperLimitPercent uint32) string {

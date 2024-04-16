@@ -16,21 +16,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	LabelStringRawsockSrc = []string{"namespace", "workload", "pod", "binary"}
-)
-
 // Raw socket metrics
 var (
-	RawsockCreateVol = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	RawsockCreateVol = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "rawsock_create_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "The number of raw sockets created",
-	}, LabelStringRawsockSrc)
+	}, nil)
 
-	RawsockCloseVol = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	RawsockCloseVol = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
 		Name:      "rawsock_close_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "The number of raw sockets closed",
-	}, LabelStringRawsockSrc)
+	}, nil)
 )

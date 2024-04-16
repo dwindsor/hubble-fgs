@@ -17,42 +17,38 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-func postUDPBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
-	labelStrings := l.labelString()
-
+func postUDPBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
 
-func postTCPBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
-	labelStrings := l.labelString()
-
+func postTCPBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsTxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.BurstState == "start" {
-			socketmetrics.SocketStatsRxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
@@ -76,82 +72,74 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postUDPWatermarksBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
-	labelStrings := l.labelString()
-
+func postUDPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
 
-func postUDPWatermarksDipStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
-	labelStrings := l.labelString()
-
+func postUDPWatermarksDipStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(-1)
+			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(-1)
 		} else {
-			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsUDPRxDips.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(-1)
+			socketmetrics.SocketStatsUDPRxDips.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(-1)
 		} else {
-			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsUDPRxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
 
-func postTCPWatermarksBurstStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
-	labelStrings := l.labelString()
-
+func postTCPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsTxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsTxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsRxBursts.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(labelStrings...).Set(1)
+			socketmetrics.SocketStatsRxBursts.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(l).Set(1)
 		} else {
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
 
-func postTCPWatermarksDipStats(l *SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
-	labelStrings := l.labelString()
-
+func postTCPWatermarksDipStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsTxDips.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(-1)
+			socketmetrics.SocketStatsTxDips.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(-1)
 		} else {
-			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsTxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	} else {
 		if s.WatermarksState == "start" {
-			socketmetrics.SocketStatsRxDips.WithLabelValues(labelStrings...).Inc()
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(labelStrings...).Set(-1)
+			socketmetrics.SocketStatsRxDips.WithLabelValues(l).Inc()
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(l).Set(-1)
 		} else {
-			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(labelStrings...).Set(0)
+			socketmetrics.SocketStatsRxWatermarksState.WithLabelValues(l).Set(0)
 		}
 	}
 }
