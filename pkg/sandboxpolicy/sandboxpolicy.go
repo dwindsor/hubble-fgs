@@ -12,6 +12,7 @@ package sandboxpolicy
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/eventhandler"
@@ -21,6 +22,10 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	sandboxGRPC "github.com/isovalent/hubble-fgs/pkg/grpc/sandbox"
+)
+
+const (
+	tpNamePrefix = "tpsp+"
 )
 
 type SandboxTracingPolicy struct {
@@ -71,7 +76,16 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 }
 
 func TracingPolicyName(spName string) string {
-	return fmt.Sprintf("tpsp+%s", spName)
+	return fmt.Sprintf("%s%s", tpNamePrefix, spName)
+}
+
+// NameFromTPName returns the sandbox policy name from the tracing policy name.
+// Returns "" if the tracing policy name does not correspond to a tracing policy
+func NameFromTPName(tpName string) string {
+	if strings.HasPrefix(tpName, tpNamePrefix) {
+		return tpName[len(tpNamePrefix):]
+	}
+	return ""
 }
 
 // sandbox policies are translated into low-level tracing policies
