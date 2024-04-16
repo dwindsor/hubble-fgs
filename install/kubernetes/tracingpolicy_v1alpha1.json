@@ -1550,8 +1550,8 @@
                       "default": true,
                       "type": "boolean"
                     },
-                    "labelFilters": {
-                      "description": "Label Filters mask out labels in the metrics",
+                    "labelFilter": {
+                      "description": "List of enabled metrics labels. It can be used to control the metrics cardinality. Null value means the default label set. Empty list disables all configurable labels. Unknown labels are ignored.",
                       "items": {
                         "type": "string"
                       },
@@ -1779,8 +1779,8 @@
                       "default": true,
                       "type": "boolean"
                     },
-                    "labelFilters": {
-                      "description": "Label Filters mask out labels in the metrics",
+                    "labelFilter": {
+                      "description": "List of enabled metrics labels. It can be used to control the metrics cardinality. Null value means the default label set. Empty list disables all configurable labels. Unknown labels are ignored.",
                       "items": {
                         "type": "string"
                       },
@@ -1962,8 +1962,8 @@
                       "default": true,
                       "type": "boolean"
                     },
-                    "labelFilters": {
-                      "description": "Label Filters mask out labels in the metrics",
+                    "labelFilter": {
+                      "description": "List of enabled metrics labels. It can be used to control the metrics cardinality. Null value means the default label set. Empty list disables all configurable labels. Unknown labels are ignored.",
                       "items": {
                         "type": "string"
                       },
@@ -2212,8 +2212,8 @@
                       "default": true,
                       "type": "boolean"
                     },
-                    "labelFilters": {
-                      "description": "Label Filters mask out labels in the metrics",
+                    "labelFilter": {
+                      "description": "List of enabled metrics labels. It can be used to control the metrics cardinality. Null value means the default label set. Empty list disables all configurable labels. Unknown labels are ignored.",
                       "items": {
                         "type": "string"
                       },

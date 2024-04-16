@@ -442,8 +442,11 @@ type PromMetrics struct {
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
-	// Label Filters mask out labels in the metrics
-	LabelFilters []string `json:"labelFilters"`
+	// List of enabled metrics labels. It can be used to control the metrics cardinality.
+	// Null value means the default label set.
+	// Empty list disables all configurable labels.
+	// Unknown labels are ignored.
+	LabelFilter []string `json:"labelFilter"`
 }
 
 type ParserPolicySpec struct {
