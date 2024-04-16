@@ -19,6 +19,7 @@ import (
 	"time"
 
 	// Fix up OSS configuration defaults.
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 	"github.com/sirupsen/logrus"
 
@@ -104,7 +105,8 @@ func TestSandboxPolicy(t *testing.T) {
 		// NB(kkourt): This is buggy at the moment. We need to fix WaitForTracingPolicy in
 		// OSS for this to work, so skip it for now.
 		Assess("Wait for policy", func(ctx context.Context, _ *testing.T, _ *envconf.Config) context.Context {
-			if err := grpc.WaitForTracingPolicy(ctx, "tpsp-getcpu"); err != nil {
+			tpName := sandboxpolicy.TracingPolicyName("getcpu")
+			if err := grpc.WaitForTracingPolicy(ctx, tpName); err != nil {
 				klog.ErrorS(err, "failed to wait for policy")
 				t.FailNow()
 			}

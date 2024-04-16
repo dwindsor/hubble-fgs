@@ -71,7 +71,7 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 }
 
 func TracingPolicyName(spName string) string {
-	return fmt.Sprintf("tpsp-%s", spName)
+	return fmt.Sprintf("tpsp+%s", spName)
 }
 
 // sandbox policies are translated into low-level tracing policies
