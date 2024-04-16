@@ -20,8 +20,8 @@ func aggregatedLabels(log logr.Logger, cm *corev1.ConfigMap, key string) map[str
 // labelsForManaged returns the generic Tetragon labels plus ManagedBy label.
 func labelsForManaged() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/instance":   daemonSetName,
-		"app.kubernetes.io/name":       daemonSetName,
+		"app.kubernetes.io/instance":   DaemonSetName,
+		"app.kubernetes.io/name":       DaemonSetName,
 		"app.kubernetes.io/managed-by": "tetragon-operator",
 	}
 }

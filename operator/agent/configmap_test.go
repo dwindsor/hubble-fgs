@@ -55,7 +55,7 @@ metrics-server: :2112`,
 
 	for _, tt := range testCases {
 		// function to test
-		actual := valuesAsMap(logr.Log, tt.yamlString)
+		actual := ValuesAsMap(logr.Log, tt.yamlString)
 
 		require.Equal(t, tt.expected, actual)
 	}

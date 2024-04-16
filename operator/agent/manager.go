@@ -36,7 +36,7 @@ func Manage(cfg options.OperatorConfig) error {
 	ctx := context.Background()
 
 	log.Info("checking if the operator ConfigMap already exists")
-	_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Get(ctx, operatorConfigMapName, metav1.GetOptions{})
+	_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get Tetragon operator ConfigMap: %w", err)
@@ -45,7 +45,7 @@ func Manage(cfg options.OperatorConfig) error {
 		// Default settings for the agent DaemonSet and ConfigMap are applied.
 		log.Info("Tetragon operator ConfigMap does not exist, creating an empty one (default configuration)")
 		_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Create(
-			ctx, defaultOperatorConfigMap(cfg.TetragonNamespace, operatorConfigMapName), metav1.CreateOptions{})
+			ctx, DefaultOperatorConfigMap(cfg.TetragonNamespace, OperatorConfigMapName), metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create Tetragon daemon set: %w", err)
 		}

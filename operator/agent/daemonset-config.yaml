@@ -1,0 +1,29 @@
+# Configuration of the agent DaemonSet
+#   labels:
+#     key1: value1
+#   dnsPolicy: Default
+#   serviceAccountName: tetragon
+#   hostNetwork: true
+#   hostProcPath: "/proc"
+#   exportMode: stdout
+#   exportFileNames:
+#   - file1.log
+#   exportDirectory: /var/run/cilium/tetragon
+# # Configure tetragon's init container for setting up tetragon-oci-hook on the host
+#   ociHookSetupEnabled: false
+# # interface specifices how the hook is configured. There is only one avaialble value for now:
+# # oci-hooks (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md).
+#   ociHookSetupInterface: "oci-hooks"
+#   ociHookSetupInstallDir: "/opt/tetragon"
+#   ociHookSetupSecurityContext:
+#     privileged: true
+# # Extra volume mounts to add to the oci-hook-setup init container
+#   ociHookSetupExtraVolumeMounts:
+#   ociHookSetupResources:
+#   metadataEnabled: false
+#   extraHostPathMounts:
+#   imagePullPolicy: IfNotPresent
+#   argsOverride:
+#   - --arg1=value1
+#   grpcEnabled: true
+#   grpcAddress: localhost:64321

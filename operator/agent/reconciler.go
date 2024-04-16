@@ -21,15 +21,15 @@ type Reconciler struct {
 }
 
 const (
-	agentConfigMapName    = "tetragon-config"
-	operatorConfigMapName = "tetragon-operator-config"
-	daemonSetName         = "tetragon"
+	AgentConfigMapName    = "tetragon-config"
+	OperatorConfigMapName = "tetragon-operator-config"
+	DaemonSetName         = "tetragon"
 )
 
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
 // Intent is captured in the Operator ConfigMap.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if req.Name != operatorConfigMapName && req.Name != agentConfigMapName {
+	if req.Name != OperatorConfigMapName && req.Name != AgentConfigMapName {
 		// Skip reconcile request if it's not related to the management of the Tetragon agent.
 		return ctrl.Result{}, nil
 	}
@@ -39,7 +39,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Retrieve the intent.
 	opCMNamespacedName := types.NamespacedName{
 		Namespace: req.NamespacedName.Namespace,
-		Name:      operatorConfigMapName,
+		Name:      OperatorConfigMapName,
 	}
 	opCM := &corev1.ConfigMap{}
 	if err := r.Get(ctx, opCMNamespacedName, opCM); err != nil {
@@ -49,7 +49,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		log.Info("operator ConfigMap not found, creating")
 		// The operator ConfigMap created, contains only default settings and instructions.
-		err = r.Create(ctx, defaultOperatorConfigMap(req.NamespacedName.Namespace, operatorConfigMapName))
+		err = r.Create(ctx, DefaultOperatorConfigMap(req.NamespacedName.Namespace, OperatorConfigMapName))
 		if err == nil {
 			log.Info("operator ConfigMap created")
 			return ctrl.Result{}, nil
@@ -62,7 +62,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent DaemonSet.
-	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, daemonSetName, opCM)
+	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
 	if err != nil {
 		log.Error(err, "unable to generate the desired DaemonSet")
 		return ctrl.Result{}, err
@@ -74,7 +74,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	ds := &appsv1.DaemonSet{}
 	dsNamespacedName := types.NamespacedName{
 		Namespace: req.NamespacedName.Namespace,
-		Name:      daemonSetName,
+		Name:      DaemonSetName,
 	}
 	if err := r.Get(ctx, dsNamespacedName, ds); err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -100,7 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent ConfigMap.
-	desiredCM := agentConfigMap(log, req.NamespacedName.Namespace, agentConfigMapName, opCM)
+	desiredCM := ExtractAgentConfigMap(log, req.NamespacedName.Namespace, AgentConfigMapName, opCM)
 	if err := ctrl.SetControllerReference(opCM, desiredCM, r.Scheme); err != nil {
 		log.Error(err, "unable to set the owner reference to the ConfigMap")
 		return ctrl.Result{}, err
@@ -108,7 +108,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	agentCM := &corev1.ConfigMap{}
 	agentCMNamespacedName := types.NamespacedName{
 		Namespace: req.NamespacedName.Namespace,
-		Name:      agentConfigMapName,
+		Name:      AgentConfigMapName,
 	}
 	if err := r.Get(ctx, agentCMNamespacedName, agentCM); err != nil {
 		if !apierrors.IsNotFound(err) {
