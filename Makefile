@@ -217,7 +217,7 @@ tetragon-fs-scanner:
 
 .PHONY: generate-flags
 generate-flags: tetragon
-	echo "$$(./tetragon --generate-docs)" > docs/tetragon_flags.yaml
+	echo "$$(./tetragon --generate-docs)" > docs/configuration/tetragon_flags.yaml
 
 .PHONY: ksyms
 ksyms:
