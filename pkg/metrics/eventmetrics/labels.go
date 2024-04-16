@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
@@ -135,7 +136,7 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 	return socketmetrics.NewMulticastSocketLabels(ns, w, p, b, sourceIP, dstns, dstWorkload, dstPodString, dstIP)
 }
 
-func createTCPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
+func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !tcpconfig.CurrentLabels["ns"] {
@@ -151,10 +152,10 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLab
 		b = ""
 	}
 
-	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
+	return metrics.NewProcessLabels(ns, w, p, b)
 }
 
-func createUDPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
+func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
 	if !udpconfig.CurrentLabels["ns"] {
@@ -170,13 +171,13 @@ func createUDPSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLab
 		b = ""
 	}
 
-	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
+	return metrics.NewProcessLabels(ns, w, p, b)
 }
 
-func createSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels {
+func createSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
+	return metrics.NewProcessLabels(ns, w, p, b)
 }
 
 func getPromBucket(min, max, upperLimitPercent uint32) string {

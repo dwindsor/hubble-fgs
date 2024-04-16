@@ -28,12 +28,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX segment statistics",
 	}, nil)
-	SocketStatsTxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsTxBursts = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX bursts statistics",
 	}, nil)
-	SocketStatsTxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsTxDips = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX dips statistics",
@@ -48,12 +48,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX segment statistics",
 	}, nil)
-	SocketStatsRxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsRxBursts = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX bursts statistics",
 	}, nil)
-	SocketStatsRxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsRxDips = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX dips statistics",
@@ -84,12 +84,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket socket drops statistics",
 	}, nil)
-	SocketStatsTxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
+	SocketStatsTxWatermarksState = metrics.MustNewGranularGauge[metrics.ProcessLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket TX watermarks state",
 	}, nil)
-	SocketStatsRxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
+	SocketStatsRxWatermarksState = metrics.MustNewGranularGauge[metrics.ProcessLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_rx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TCP socket RX watermarks state",

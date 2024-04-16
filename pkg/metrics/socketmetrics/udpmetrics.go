@@ -30,12 +30,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX segment statistics",
 	}, nil)
-	SocketStatsUDPTxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsUDPTxBursts = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_udp_txbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX bursts statistics",
 	}, nil)
-	SocketStatsUDPTxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsUDPTxDips = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_udp_txdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX dips statistics",
@@ -50,12 +50,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX segment statistics",
 	}, nil)
-	SocketStatsUDPRxBursts = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsUDPRxBursts = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_udp_rxbursts_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX bursts statistics",
 	}, nil)
-	SocketStatsUDPRxDips = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	SocketStatsUDPRxDips = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "socket_stats_udp_rxdips_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX dips statistics",
@@ -90,12 +90,12 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP stack RX segment statistics",
 	}, nil)
-	SocketStatsUDPTxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
+	SocketStatsUDPTxWatermarksState = metrics.MustNewGranularGauge[metrics.ProcessLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_udp_tx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket TX watermarks state",
 	}, nil)
-	SocketStatsUDPRxWatermarksState = metrics.MustNewGranularGauge[SrcSocketLabels](prometheus.GaugeOpts{
+	SocketStatsUDPRxWatermarksState = metrics.MustNewGranularGauge[metrics.ProcessLabels](prometheus.GaugeOpts{
 		Name:      "socket_stats_udp_rx_watermarks_state",
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket RX watermarks state",

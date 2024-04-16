@@ -12,12 +12,13 @@ package eventmetrics
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
-func postUDPBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
+func postUDPBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
 			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(l).Inc()
@@ -35,7 +36,7 @@ func postUDPBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetw
 	}
 }
 
-func postTCPBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkBurst) {
+func postTCPBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		if s.BurstState == "start" {
 			socketmetrics.SocketStatsTxBursts.WithLabelValues(l).Inc()
@@ -72,7 +73,7 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
-func postUDPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
 			socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(l).Inc()
@@ -90,7 +91,7 @@ func postUDPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.P
 	}
 }
 
-func postUDPWatermarksDipStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postUDPWatermarksDipStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
 			socketmetrics.SocketStatsUDPTxDips.WithLabelValues(l).Inc()
@@ -108,7 +109,7 @@ func postUDPWatermarksDipStats(l *socketmetrics.SrcSocketLabels, s *tetragon.Pro
 	}
 }
 
-func postTCPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
 			socketmetrics.SocketStatsTxBursts.WithLabelValues(l).Inc()
@@ -126,7 +127,7 @@ func postTCPWatermarksBurstStats(l *socketmetrics.SrcSocketLabels, s *tetragon.P
 	}
 }
 
-func postTCPWatermarksDipStats(l *socketmetrics.SrcSocketLabels, s *tetragon.ProcessNetworkWatermark) {
+func postTCPWatermarksDipStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkWatermark) {
 	if s.Direction == "egress" {
 		if s.WatermarksState == "start" {
 			socketmetrics.SocketStatsTxDips.WithLabelValues(l).Inc()

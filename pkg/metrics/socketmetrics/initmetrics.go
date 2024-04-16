@@ -11,6 +11,7 @@
 package socketmetrics
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -66,7 +67,7 @@ func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	SocketStatsSrtt.WithLabelValues(socketLabels)
 
 	// Watermarks
-	srcSocketLabels := NewSrcSocketLabels(
+	srcSocketLabels := metrics.NewProcessLabels(
 		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
 	)
 	SocketStatsTxBursts.WithLabelValues(srcSocketLabels).Add(0)
@@ -160,7 +161,7 @@ func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 	SocketStatsUDPStackRxSegs.WithLabelValues(socketLabels).Add(0)
 
 	// Watermarks
-	srcSocketLabels := NewSrcSocketLabels(
+	srcSocketLabels := metrics.NewProcessLabels(
 		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
 	)
 	SocketStatsUDPTxBursts.WithLabelValues(srcSocketLabels).Add(0)
@@ -206,7 +207,7 @@ func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
 func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitRawSocketEventsMetrics(registry)
 
-	srcSocketLabels := NewSrcSocketLabels(
+	srcSocketLabels := metrics.NewProcessLabels(
 		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
 	)
 

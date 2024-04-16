@@ -10,11 +10,10 @@
 
 package socketmetrics
 
+import "github.com/cilium/tetragon/pkg/metrics"
+
 type SocketLabels struct {
-	ns          string
-	workload    string
-	pod         string
-	binary      string
+	metrics.ProcessLabels
 	dstNs       string
 	dstWorkload string
 	dstPod      string
@@ -23,32 +22,26 @@ type SocketLabels struct {
 }
 
 func (s SocketLabels) Keys() []string {
-	return []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "dstip"}
+	return append(s.ProcessLabels.Keys(), "dstnamespace", "dstworkload", "dstpod", "dstdns", "dstip")
 }
 
 func (s SocketLabels) Values() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.dstNs, s.dstWorkload, s.dstPod, s.dstDNS, s.dstIp}
+	return append(s.ProcessLabels.Values(), s.dstNs, s.dstWorkload, s.dstPod, s.dstDNS, s.dstIp)
 }
 
 func NewSocketLabels(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstdns, dstip string) *SocketLabels {
 	return &SocketLabels{
-		ns:          ns,
-		workload:    workload,
-		pod:         pod,
-		binary:      binary,
-		dstNs:       dstns,
-		dstWorkload: dstworkload,
-		dstPod:      dstpod,
-		dstDNS:      dstdns,
-		dstIp:       dstip,
+		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
+		dstNs:         dstns,
+		dstWorkload:   dstworkload,
+		dstPod:        dstpod,
+		dstDNS:        dstdns,
+		dstIp:         dstip,
 	}
 }
 
 type MulticastSocketLabels struct {
-	ns          string
-	workload    string
-	pod         string
-	binary      string
+	metrics.ProcessLabels
 	SrcMcast    string
 	dstNs       string
 	dstWorkload string
@@ -58,46 +51,19 @@ type MulticastSocketLabels struct {
 
 func NewMulticastSocketLabels(ns, workload, pod, binary, srcmcast, dstns, dstworkload, dstpod, dstmcast string) *MulticastSocketLabels {
 	return &MulticastSocketLabels{
-		ns:          ns,
-		workload:    workload,
-		pod:         pod,
-		binary:      binary,
-		SrcMcast:    srcmcast,
-		dstNs:       dstns,
-		dstWorkload: dstworkload,
-		dstPod:      dstpod,
-		DstMcast:    dstmcast,
+		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
+		SrcMcast:      srcmcast,
+		dstNs:         dstns,
+		dstWorkload:   dstworkload,
+		dstPod:        dstpod,
+		DstMcast:      dstmcast,
 	}
 }
 
 func (s MulticastSocketLabels) Keys() []string {
-	return []string{"namespace", "workload", "pod", "binary", "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast"}
+	return append(s.ProcessLabels.Keys(), "srcmcast", "dstnamespace", "dstworkload", "dstpod", "dstmcast")
 }
 
 func (s MulticastSocketLabels) Values() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary, s.SrcMcast, s.dstNs, s.dstWorkload, s.dstPod, s.DstMcast}
-}
-
-type SrcSocketLabels struct {
-	ns       string
-	workload string
-	pod      string
-	binary   string
-}
-
-func NewSrcSocketLabels(ns, workload, pod, binary string) *SrcSocketLabels {
-	return &SrcSocketLabels{
-		ns:       ns,
-		workload: workload,
-		pod:      pod,
-		binary:   binary,
-	}
-}
-
-func (s SrcSocketLabels) Keys() []string {
-	return []string{"namespace", "workload", "pod", "binary"}
-}
-
-func (s SrcSocketLabels) Values() []string {
-	return []string{s.ns, s.workload, s.pod, s.binary}
+	return append(s.ProcessLabels.Values(), s.SrcMcast, s.dstNs, s.dstWorkload, s.dstPod, s.DstMcast)
 }

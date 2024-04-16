@@ -18,13 +18,13 @@ import (
 
 // Raw socket metrics
 var (
-	RawsockCreateVol = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	RawsockCreateVol = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "rawsock_create_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "The number of raw sockets created",
 	}, nil)
 
-	RawsockCloseVol = metrics.MustNewGranularCounter[SrcSocketLabels](prometheus.CounterOpts{
+	RawsockCloseVol = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "rawsock_close_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "The number of raw sockets closed",
