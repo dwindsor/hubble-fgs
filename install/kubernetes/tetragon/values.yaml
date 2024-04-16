@@ -238,7 +238,7 @@ tetragon:
   # Note that the counter for sampling is global, and it is not per socket.
   tcpStatsSampleSegs: 0
   # -- Enable sandboxpolicies.
-  enableSandboxpolicies: false
+  enableSandboxpolicies: true
 # -- Tetragon Operator settings
 tetragonOperator:
   # -- Enables the Tetragon Operator.

@@ -43,7 +43,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
 | tetragon.enableProcessCred | bool | `false` |  |
 | tetragon.enableProcessNs | bool | `false` |  |
-| tetragon.enableSandboxpolicies | bool | `false` | Enable sandboxpolicies. |
+| tetragon.enableSandboxpolicies | bool | `true` | Enable sandboxpolicies. |
 | tetragon.enabled | bool | `true` |  |
 | tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_TLS\"]}"` |  |
 | tetragon.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` |  |

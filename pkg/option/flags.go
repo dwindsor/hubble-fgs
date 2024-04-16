@@ -62,7 +62,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
-	flags.Bool(keyEnableSandboxPolicies, false, "Enable sandboxpolicies (beta)")
+	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
 }
 

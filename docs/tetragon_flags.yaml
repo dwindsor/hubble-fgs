@@ -71,8 +71,8 @@ options:
       usage: |
         Enable namespace information in process_exec and process_kprobe events
     - name: enable-sandboxpolicies
-      default_value: "false"
-      usage: Enable sandboxpolicies (beta)
+      default_value: "true"
+      usage: Enable sandboxpolicies
     - name: event-queue-size
       default_value: "10000"
       usage: Set the size of the internal event queue.
