@@ -179,7 +179,7 @@ func createSrcSocketLabels(res *tetragon.Process) *socketmetrics.SrcSocketLabels
 	return socketmetrics.NewSrcSocketLabels(ns, w, p, b)
 }
 
-func GetPromBucket(min, max, upperLimitPercent uint32) string {
+func getPromBucket(min, max, upperLimitPercent uint32) string {
 	if upperLimitPercent == 100 {
 		return "+Inf"
 	}
@@ -187,7 +187,7 @@ func GetPromBucket(min, max, upperLimitPercent uint32) string {
 }
 
 func getTcpRttPromBucket(upperLimitPercent uint32) string {
-	return GetPromBucket(tcpconfig.RttHistogramMin, tcpconfig.RttHistogramMax, upperLimitPercent)
+	return getPromBucket(tcpconfig.RttHistogramMin, tcpconfig.RttHistogramMax, upperLimitPercent)
 }
 
 func GetDstPodInfo(dstPod *tetragon.Pod) (pod, workload, ns string) {

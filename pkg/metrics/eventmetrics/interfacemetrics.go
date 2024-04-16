@@ -58,5 +58,5 @@ func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
 
 func getIfaceQLenPromBucket(upperLimitPercent uint32) string {
 	// min and max are defined in bpf_dev_queue_xmit.c
-	return GetPromBucket(0, 990, upperLimitPercent)
+	return getPromBucket(0, 990, upperLimitPercent)
 }
