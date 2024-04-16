@@ -51,5 +51,4 @@ for dir in $(printf '%s\n' "${mountpoints[@]}" |LC_ALL=C sort -u); do
     docker_opts+=( --mount "type=bind,src=${dir},dst=${dir}" )
 done
 
-echo docker run "${docker_opts[@]}" "${@}"
-
+docker run "${docker_opts[@]}" "${@}"
