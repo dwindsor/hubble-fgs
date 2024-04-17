@@ -58,7 +58,7 @@ make -C install/kubernetes
 git add install/kubernetes/tetragon
 
 # Generate metrics docs
-make metrics-docs
+make metrics-docs || echo "Metrics docs generation failed. Please fix the enterprise code and run 'make metrics-docs'."
 git add docs/metrics
 
 git commit -s -F $outf
