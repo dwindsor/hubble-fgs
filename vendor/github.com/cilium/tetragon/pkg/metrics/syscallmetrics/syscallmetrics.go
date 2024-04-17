@@ -4,8 +4,6 @@
 package syscallmetrics
 
 import (
-	"slices"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
@@ -14,7 +12,7 @@ import (
 )
 
 var (
-	syscallStats = metrics.MustNewGranularCounter(prometheus.CounterOpts{
+	syscallStats = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Namespace:   consts.MetricsNamespace,
 		Name:        "syscalls_total",
 		Help:        "System calls observed.",
@@ -23,7 +21,7 @@ var (
 )
 
 func InitMetrics(registry *prometheus.Registry) {
-	registry.MustRegister(syscallStats.ToProm())
+	registry.MustRegister(syscallStats)
 
 	// NOTES:
 	// * Delete syscalls_total? It seems to duplicate policy_events_total.
@@ -33,7 +31,8 @@ func InitMetricsForDocs(registry *prometheus.Registry) {
 	InitMetrics(registry)
 
 	// Initialize metrics with example labels
-	syscallStats.WithLabelValues(slices.Concat([]string{consts.ExampleSyscallLabel}, consts.ExampleProcessLabels)...).Inc()
+	processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
+	syscallStats.WithLabelValues(processLabels, consts.ExampleSyscallLabel).Inc()
 }
 
 func Handle(event interface{}) {
@@ -42,7 +41,8 @@ func Handle(event interface{}) {
 		return
 	}
 
-	var syscall, namespace, workload, pod, binary string
+	var syscall string
+	var namespace, workload, pod, binary string
 	if tpEvent := ev.GetProcessTracepoint(); tpEvent != nil {
 		if tpEvent.Subsys == "raw_syscalls" && tpEvent.Event == "sys_enter" {
 			syscall = rawSyscallName(tpEvent)
@@ -58,9 +58,8 @@ func Handle(event interface{}) {
 	}
 
 	if syscall != "" {
-		syscallStats.
-			WithLabelValues(syscall, namespace, workload, pod, binary).
-			Inc()
+		processLabels := metrics.NewProcessLabels(namespace, workload, pod, binary)
+		syscallStats.WithLabelValues(processLabels, syscall).Inc()
 	}
 }
 

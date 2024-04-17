@@ -3,7 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.22.1
 
 require (
-	github.com/cilium/cilium v1.15.3
+	github.com/cilium/cilium v1.15.4
 	github.com/cilium/ebpf v0.14.0
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -204,7 +204,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
-	github.com/prometheus/procfs v0.12.0 // indirect
+	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect

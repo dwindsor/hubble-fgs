@@ -5,7 +5,6 @@ package option
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
@@ -136,7 +135,7 @@ func ReadAndSetFlags() error {
 	Config.DataCacheSize = viper.GetInt(KeyDataCacheSize)
 
 	Config.MetricsServer = viper.GetString(KeyMetricsServer)
-	Config.MetricsLabelFilter = ParseMetricsLabelFilter(viper.GetString(KeyMetricsLabelFilter))
+	Config.MetricsLabelFilter = parseMetricsLabelFilter(viper.GetString(KeyMetricsLabelFilter))
 	Config.ServerAddress = viper.GetString(KeyServerAddress)
 
 	Config.ExportFilename = viper.GetString(KeyExportFilename)
@@ -186,14 +185,6 @@ func ReadAndSetFlags() error {
 	return nil
 }
 
-func ParseMetricsLabelFilter(labels string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for _, label := range strings.Split(labels, ",") {
-		result[label] = nil
-	}
-	return result
-}
-
 func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyConfigDir, "", "Configuration directory that contains a file for each option")
 	flags.BoolP(KeyDebug, "d", false, "Enable debug messages. Equivalent to '--log-level=debug'")
@@ -220,7 +211,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
 	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(KeyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
-	flags.String(KeyMetricsLabelFilter, "", "Comma-separated list of enabled metric labels. (e.g. \"namespace,workload,pod,binary\") By default all labels are enabled.")
+	flags.String(KeyMetricsLabelFilter, "namespace,workload,pod,binary", "Comma-separated list of enabled metrics labels. Unknown labels will be ignored.")
 	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'")
 	flags.String(KeyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
 	flags.Bool(KeyEnableProcessCred, false, "Enable process_cred events")
