@@ -112,7 +112,7 @@ Issues found when validating the release in tetragon-dev might not block the rel
 - [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise.
   Check out a new release branch:
   ```
-  git checkout master && git pull origin master
+  git checkout main && git pull origin main
   git checkout -b pr/document-fgs-$RELEASE
   ```
 - [ ] Add release notes to the docs
@@ -145,6 +145,8 @@ Issues found when validating the release in tetragon-dev might not block the rel
      ## Breaking changes
      * Breaking changes here
      ```
+- [ ] Install [gh cli](https://github.com/cli/cli) locally and run the script
+`scripts/tetragon-update-doc-references.sh` to update helm charts, daemon flags and other references.
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
