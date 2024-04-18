@@ -1,6 +1,6 @@
 # tetragon
 
-![Version: 1.13.0-rc.1](https://img.shields.io/badge/Version-1.13.0--rc.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.13.0-rc.1](https://img.shields.io/badge/AppVersion-1.13.0--rc.1-informational?style=flat-square)
+![Version: 1.13.0-rc.2](https://img.shields.io/badge/Version-1.13.0--rc.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.13.0-rc.2](https://img.shields.io/badge/AppVersion-1.13.0--rc.2-informational?style=flat-square)
 
 Helm chart for Tetragon Enterprise
 
@@ -69,7 +69,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.hostProcPath | string | `"/proc"` | Location of the host proc filesystem in the runtime environment. If the runtime runs in the host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself does not run on the host. |
 | tetragon.image.override | string | `nil` |  |
 | tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
-| tetragon.image.tag | string | `"v1.13.0-rc.1"` |  |
+| tetragon.image.tag | string | `"v1.13.0-rc.2"` |  |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |
 | tetragon.metadata.image.override | string | `nil` |  |
@@ -93,13 +93,13 @@ Helm chart for Tetragon Enterprise
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.tcpStatsSampleSegs | int | `0` | EXPERIMENTAL: This field may be removed in the future without notice.  Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.  Note that the counter for sampling is global, and it is not per socket. |
-| tetragonOperator | object | `{"affinity":{},"annotations":{},"enabled":true,"extraLabels":{},"extraPodLabels":{},"extraVolumeMounts":[],"extraVolumes":[],"forceUpdateCRDs":false,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.13.0-rc.1"},"nodeSelector":{},"podAnnotations":{},"podInfo":{"enabled":true},"podSecurityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}},"priorityClassName":"","prometheus":{"address":"","enabled":true,"port":2113,"serviceMonitor":{"enabled":false,"labelsOverride":{},"scrapeInterval":"10s"}},"resources":{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"64Mi"}},"securityContext":{},"serviceAccount":{"annotations":{},"create":true,"name":""},"skipCRDCreation":false,"strategy":{},"tolerations":[{"operator":"Exists"}],"tracingPolicy":{"enabled":true}}` | Tetragon Operator settings |
+| tetragonOperator | object | `{"affinity":{},"annotations":{},"enabled":true,"extraLabels":{},"extraPodLabels":{},"extraVolumeMounts":[],"extraVolumes":[],"forceUpdateCRDs":false,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.13.0-rc.2"},"nodeSelector":{},"podAnnotations":{},"podInfo":{"enabled":true},"podSecurityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}},"priorityClassName":"","prometheus":{"address":"","enabled":true,"port":2113,"serviceMonitor":{"enabled":false,"labelsOverride":{},"scrapeInterval":"10s"}},"resources":{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"64Mi"}},"securityContext":{},"serviceAccount":{"annotations":{},"create":true,"name":""},"skipCRDCreation":false,"strategy":{},"tolerations":[{"operator":"Exists"}],"tracingPolicy":{"enabled":true}}` | Tetragon Operator settings |
 | tetragonOperator.annotations | object | `{}` | Annotations for the Tetragon Operator Deployment. |
 | tetragonOperator.enabled | bool | `true` | Enables the Tetragon Operator. |
 | tetragonOperator.extraLabels | object | `{}` | Extra labels to be added on the Tetragon Operator Deployment. |
 | tetragonOperator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Operator Deployment Pods. |
 | tetragonOperator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Operator Deployment. |
-| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.13.0-rc.1"}` | tetragon-operator image. |
+| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.13.0-rc.2"}` | tetragon-operator image. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.podInfo.enabled | bool | `true` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
