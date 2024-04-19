@@ -28,15 +28,15 @@ var (
 
 func DefaultLabelFilter() metrics.LabelFilter {
 	return metrics.LabelFilter{
-		"ns":          true,
-		"workload":    true,
-		"pod":         true,
-		"binary":      true,
-		"dstns":       true,
-		"dstworkload": true,
-		"dstpod":      true,
-		"dstdns":      true,
-		"dstip":       false,
+		"namespace":    true,
+		"workload":     true,
+		"pod":          true,
+		"binary":       true,
+		"dstnamespace": true,
+		"dstworkload":  true,
+		"dstpod":       true,
+		"dstdns":       true,
+		"dstip":        false,
 	}
 }
 

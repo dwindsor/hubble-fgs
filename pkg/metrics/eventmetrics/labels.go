@@ -29,7 +29,7 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.Socket
 	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
 	dstIp := res.Socket.DestinationIp
 
-	if !tcpconfig.CurrentLabels["ns"] {
+	if !tcpconfig.CurrentLabels["namespace"] {
 		ns = ""
 	}
 	if !tcpconfig.CurrentLabels["workload"] {
@@ -41,7 +41,7 @@ func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.Socket
 	if !tcpconfig.CurrentLabels["binary"] {
 		b = ""
 	}
-	if !tcpconfig.CurrentLabels["dstns"] {
+	if !tcpconfig.CurrentLabels["dstnamespace"] {
 		dstns = ""
 	}
 	if !tcpconfig.CurrentLabels["dstworkload"] {
@@ -67,7 +67,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.Socket
 	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
 	dstIp := res.Socket.DestinationIp
 
-	if !udpconfig.CurrentLabels["ns"] {
+	if !udpconfig.CurrentLabels["namespace"] {
 		ns = ""
 	}
 	if !udpconfig.CurrentLabels["workload"] {
@@ -79,7 +79,7 @@ func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.Socket
 	if !udpconfig.CurrentLabels["binary"] {
 		b = ""
 	}
-	if !udpconfig.CurrentLabels["dstns"] {
+	if !udpconfig.CurrentLabels["dstnamespace"] {
 		dstns = ""
 	}
 	if !udpconfig.CurrentLabels["dstworkload"] {
@@ -105,7 +105,7 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 	sourceIP := res.Socket.SourceIp
 	dstIP := res.Socket.DestinationIp
 
-	if !udpconfig.CurrentLabels["ns"] {
+	if !udpconfig.CurrentLabels["namespace"] {
 		ns = ""
 	}
 	if !udpconfig.CurrentLabels["workload"] {
@@ -117,7 +117,7 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 	if !udpconfig.CurrentLabels["binary"] {
 		b = ""
 	}
-	if !udpconfig.CurrentLabels["dstns"] {
+	if !udpconfig.CurrentLabels["dstnamespace"] {
 		dstns = ""
 	}
 	if !udpconfig.CurrentLabels["dstworkload"] {
@@ -139,7 +139,7 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	if !tcpconfig.CurrentLabels["ns"] {
+	if !tcpconfig.CurrentLabels["namespace"] {
 		ns = ""
 	}
 	if !tcpconfig.CurrentLabels["workload"] {
@@ -158,7 +158,7 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
-	if !udpconfig.CurrentLabels["ns"] {
+	if !udpconfig.CurrentLabels["namespace"] {
 		ns = ""
 	}
 	if !udpconfig.CurrentLabels["workload"] {
