@@ -11,7 +11,9 @@ api/v1/README.md linguist-generated
 api/v1/tetragon/*.go linguist-generated
 
 # CRDs
-# TODO
+pkg/k8s/apis/cilium.io/client/crds/* linguist-generated
+pkg/k8s/apis/cilium.io/*/zz_generated.*.go linguist-generated
+pkg/k8s/client/* linguist-generated
 
 # Helm chart
 install/kubernetes/tetragon/* linguist-generated
