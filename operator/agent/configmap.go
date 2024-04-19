@@ -57,7 +57,7 @@ func ExtractAgentConfigMap(log logr.Logger, namespace string, name string, opCM 
 		ObjectMeta: k8sv1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels:    aggregatedLabels(log, opCM, "labels"),
+			Labels:    opCM.Labels,
 		},
 		Data: ValuesAsMap(log, opCM.Data[OperatorConfigMapAgentConfigMapKey]),
 	}

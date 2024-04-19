@@ -1,29 +1,91 @@
-# Configuration of the agent DaemonSet
-#   labels:
+# # Configuration of the agent DaemonSet
+#   extraLabels:
 #     key1: value1
+# # Set DNS policy for tetragon pods.
+# #
+# # Recommended DNS policy for tetragon pod depends on whether the export container
+# # needs to resolve external DNS names (e.g. an S3 URL) or internal ones (e.g. a Kubernetes
+# # DNS name for elasticsearch service).
+# #
+# # - For external DNS names, use "Default" so that the export container continues to function
+# #   properly in case there is a connectivity issue between the export container and core-dns.
+# # - For internal DNS names, use "ClusterFirstWithHostNet" so that the export container can
+# #   resolve them.
+# #
+# # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
 #   dnsPolicy: Default
+#   annotations:
 #   serviceAccountName: tetragon
+# # Configures whether Tetragon pods run on the host network.
+# #
+# # IMPORTANT: Tetragon must be on the host network for the process visibility to
+# # function properly. However, S3 export does not work on the host network when used with
+# # kiam to assign a role due to a limitation in how kiam configures iptables rules to
+# # intercept requests to AWS metadata server.
+# #
+# # Set this flag to false if and only if you don't use the process visibility functionality
+# # and you use kiam to assign a role to upload events to S3.
+# #
+# # Reference: https://github.com/uswitch/kiam/issues/119
 #   hostNetwork: true
+# # Location of the host proc filesystem in the runtime environment. If the runtime runs in the
+# # host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself
+# # does not run on the host.
 #   hostProcPath: "/proc"
-#   exportMode: stdout
-#   exportFileNames:
-#   - file1.log
+#   imagePullPolicy: IfNotPresent
+#   imagePullSecrets:
+#   podSecurityContext:
+#   affinity:
+#   tolerations:
+#   updateStrategy:
+#   priorityClassName:
+#   nodeSelector:
+# # exportDirectory specifies directory to put Tetragon JSON export files.
 #   exportDirectory: /var/run/cilium/tetragon
 # # Configure tetragon's init container for setting up tetragon-oci-hook on the host
 #   ociHookSetupEnabled: false
-# # interface specifices how the hook is configured. There is only one avaialble value for now:
+# # ociHookSetupInterface specifies how the hook is configured. There is only one available value for now:
 # # oci-hooks (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md).
 #   ociHookSetupInterface: "oci-hooks"
 #   ociHookSetupInstallDir: "/opt/tetragon"
+# # Security context for oci-hook-setup init container
 #   ociHookSetupSecurityContext:
 #     privileged: true
+# # Resources for the oci-hook-setup init container
+#   ociHookSetupResources:
 # # Extra volume mounts to add to the oci-hook-setup init container
 #   ociHookSetupExtraVolumeMounts:
-#   ociHookSetupResources:
+# # Configure metadata init container
 #   metadataEnabled: false
-#   extraHostPathMounts:
-#   imagePullPolicy: IfNotPresent
+# # Access Cilium API to associate Tetragon events with Cilium DNS cache.
+#   enableCiliumAPI: false
+#   metadataImagePullPolicy: Always
+# # Configure export container
+# # Valid values: "stdout". Disabled by default, populate the value to enable.
+#   exportMode: stdout
+#   exportExtraEnv:
+#   exportResources:
+#   exportSecurityContext:
+# # exportFileNames defines list of files for fluentd to tail and export.
+#   exportFileNames:
+#     - tetragon.log
+# # Configure tetragon container
+#   tetragonEnabled: true
+#   tetragonResources:
+#   tetragonSecurityContext: |
+#     privileged: true
+# # Override the arguments. For advanced users only.
 #   argsOverride:
-#   - --arg1=value1
+#     - --arg1=value1
+#   extraArgs:
+#   extraEnv:
+# # Whether to enable exposing Tetragon gRPC.
 #   grpcEnabled: true
-#   grpcAddress: localhost:64321
+# # The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
+#   grpcAddress: localhost:54321
+# # Override the command. For advanced users only.
+#   commandOverride:
+#   extraVolumeMounts:
+# # Configure extra volumes
+#   extraVolumes:
+#   extraHostPathMounts:

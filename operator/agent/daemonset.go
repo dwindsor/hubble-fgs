@@ -9,29 +9,63 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
 // daemonSet instantiates a Tetragon DaemonSet configuration.
 func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
 	dsTerminationGracePeriodSec := int64(1)
-	dsRevisionHistoryLimit := int32(10)
 
 	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
 	cmFields := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(configYaml), &cmFields)
-	if err != nil {
+	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
 		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
 		return nil, err
+	}
+
+	imagePullSecrets := make([]corev1.LocalObjectReference, 0)
+	imagePullSecretsValue := configValue(log, cmFields, "imagePullSecrets", "")
+	if imagePullSecretsValue != "" {
+		if err := yaml.Unmarshal([]byte(imagePullSecretsValue), &imagePullSecrets); err != nil {
+			log.WithValues("value", imagePullSecretsValue).Error(err, "could not unmarshal the imagePullSecrets, skipped")
+		}
 	}
 
 	securityContext := corev1.PodSecurityContext{}
 	securityContextValue := configValue(log, cmFields, "podSecurityContext", "")
 	if securityContextValue != "" {
 		if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
-			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the pod security context, default value used instead")
+			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the podSecurityContext, default value used instead")
 		}
+	}
+
+	var affinity corev1.Affinity
+	affinityValue := configValue(log, cmFields, "affinity", "")
+	if affinityValue != "" {
+		if err := yaml.Unmarshal([]byte(affinityValue), &affinity); err != nil {
+			log.WithValues("value", affinityValue).Error(err, "could not unmarshal the affinity, affinity not applied")
+		}
+	}
+
+	tolerations := make([]corev1.Toleration, 0)
+	tolerationValues := configValue(log, cmFields, "tolerations", "")
+	if tolerationValues != "" {
+		if err := yaml.Unmarshal([]byte(tolerationValues), &tolerations); err != nil {
+			log.WithValues("value", tolerationValues).Error(err, "could not unmarshal the toleration, toleration not applied")
+		}
+	}
+
+	var updateStrategy appv1.DaemonSetUpdateStrategy
+	updateStrategyValue := configValue(log, cmFields, "updateStrategy", "")
+	if updateStrategyValue != "" {
+		if err := yaml.Unmarshal([]byte(updateStrategyValue), &updateStrategy); err != nil {
+			log.WithValues("value", updateStrategyValue).Error(err, "could not unmarshal the update strategy, update strategy not applied")
+		}
+	}
+
+	labels := labelsForManaged()
+	for k, v := range configMapOfString(log, cmFields, "extraLabels") {
+		labels[k] = v
 	}
 
 	ds := &appv1.DaemonSet{
@@ -43,7 +77,7 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: configMapOfString(log, cmFields, "annotations"),
-			Labels:      aggregatedLabels(log, cm, "labels"),
+			Labels:      labels,
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{
@@ -54,79 +88,50 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					Labels: labelsForManaged(),
 				},
 				Spec: corev1.PodSpec{
+					PriorityClassName:             configValue(log, cmFields, "priorityClassName", ""),
+					ImagePullSecrets:              imagePullSecrets,
+					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", "tetragon"),
+					SecurityContext:               &securityContext,
 					InitContainers:                daemonSetInitContainers(log, cmFields),
 					Containers:                    daemonSetContainers(log, cmFields),
-					Volumes:                       volumes(log, cmFields),
-					RestartPolicy:                 corev1.RestartPolicyAlways,
-					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
-					DNSPolicy:                     dnsPolicy(log, cmFields),
-					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", "tetragon"),
-					HostNetwork:                   configValue(log, cmFields, "hostNetwork", true),
-					SchedulerName:                 "default-scheduler",
 					NodeSelector:                  nodeSelector(log, cmFields, "nodeSelector"),
-					SecurityContext:               &securityContext,
-					Tolerations: []corev1.Toleration{
-						{
-							Operator: "Exists",
-						},
-					},
+					Affinity:                      &affinity,
+					Tolerations:                   tolerations,
+					HostNetwork:                   configValue(log, cmFields, "hostNetwork", true),
+					DNSPolicy:                     dnsPolicy(log, cmFields),
+					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
+					Volumes:                       volumes(log, cmFields),
 					// This is required to avoid diff with actual K8S object
 					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", "tetragon"),
 				},
 			},
-			UpdateStrategy: appv1.DaemonSetUpdateStrategy{
-				Type: appv1.RollingUpdateDaemonSetStrategyType,
-				RollingUpdate: &appv1.RollingUpdateDaemonSet{
-					MaxUnavailable: &intstr.IntOrString{
-						Type:   intstr.Int,
-						IntVal: 1,
-					},
-					MaxSurge: &intstr.IntOrString{
-						Type:   intstr.Int,
-						IntVal: 0,
-					},
-				},
-			},
-			RevisionHistoryLimit: &dsRevisionHistoryLimit,
+			UpdateStrategy: updateStrategy,
 		},
 	}
 	return ds, nil
 }
 
 func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
-	if !configValue(log, cmFields, "ociHookSetupEnabled", false) {
-		return []corev1.Container{}
-	}
-
-	privileged := true
-	securityContext := corev1.SecurityContext{Privileged: &privileged}
-	securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
-	if securityContextValue != "" {
-		if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
-			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the security context, default value used instead")
+	containers := make([]corev1.Container, 0)
+	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
+		privileged := true
+		securityContext := corev1.SecurityContext{Privileged: &privileged}
+		securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
+		if securityContextValue != "" {
+			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
+				log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the security context, default value used instead")
+			}
 		}
-	}
 
-	extraMounts := make([]corev1.VolumeMount, 0)
-	for _, m := range configArray(log, cmFields, "ociHookSetupExtraVolumeMounts", []string{}) {
-		v := corev1.VolumeMount{}
-		if err := yaml.Unmarshal([]byte(m), &v); err != nil {
-			log.WithValues("value", m).Error(err, "could not unmarshal the extra volume mount, mount not applied")
-			continue
+		resources := corev1.ResourceRequirements{}
+		resourcesValue := configValue(log, cmFields, "ociHookSetupResources", "")
+		if resourcesValue != "" {
+			if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
+				log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
+			}
 		}
-		extraMounts = append(extraMounts, v)
-	}
 
-	resources := corev1.ResourceRequirements{}
-	resourcesValue := configValue(log, cmFields, "ociHookSetupResources", "")
-	if resourcesValue != "" {
-		if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
-			log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
-		}
-	}
-
-	return []corev1.Container{
-		{
+		containers = append(containers, corev1.Container{
 			Name:                     "oci-hook-setup",
 			SecurityContext:          &securityContext,
 			Image:                    os.Getenv("TETRAGON_IMAGE"),
@@ -142,7 +147,7 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 				"--oci-hooks.local-dir=/hostHooks",
 			},
 			VolumeMounts: append(
-				extraMounts,
+				volumeMountsFromConfigMap(log, cmFields, "ociHookSetupExtraVolumeMounts"),
 				corev1.VolumeMount{
 					Name:      "oci-hooks-path",
 					MountPath: "/hostHooks",
@@ -153,15 +158,43 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 				},
 			),
 			Resources: resources,
-		},
+		})
 	}
+
+	if configValue(log, cmFields, "metadataEnabled", false) {
+		args := []string{"-c", "|\ncp -r /var/run/tetragon-ee-metadata/* /var/lib/tetragon/metadata"}
+		volumeMounts := []corev1.VolumeMount{
+			{
+				Name:      "metadata-files",
+				MountPath: "/var/lib/tetragon/metadata",
+			},
+		}
+		if configValue(log, cmFields, "enableCiliumAPI", false) {
+			args[1] = fmt.Sprintf("%s\nuntil [ -S /var/run/cilium/cilium.sock -a -S /var/run/cilium/monitor1_2.sock ]; do sleep 3; done", args[1])
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      "cilium-run",
+				MountPath: "/var/run/cilium",
+			})
+		}
+		containers = append(containers, corev1.Container{
+			Name:                     "tetragon",
+			Image:                    os.Getenv("TETRAGON_METADATA_IMAGE"),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "metadataImagePullPolicy", corev1.PullAlways),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Command:                  []string{"sh"},
+			Args:                     args,
+			VolumeMounts:             volumeMounts,
+		})
+	}
+
+	return containers
 }
 
 func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	containers := make([]corev1.Container, 0)
 
-	if cmFields["exportMode"] == "stdout" {
+	if configValue(log, cmFields, "exportMode", "") == "stdout" {
 		env := make([]corev1.EnvVar, 0)
 		envValue := configValue(log, cmFields, "exportExtraEnv", "")
 		if envValue != "" {
@@ -186,162 +219,147 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		}
 
-		exportFilenames := configArray(log, cmFields, "exportFilenames", []string{"tetragon.log"})
-		args := make([]string, 0, len(exportFilenames))
-		for _, f := range exportFilenames {
+		exportFileNames := configArray(log, cmFields, "exportFileNames", []string{"tetragon.log"})
+		args := make([]string, 0, len(exportFileNames))
+		for _, f := range exportFileNames {
 			args = append(args, fmt.Sprintf("%s/%s", configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"), f))
 		}
 		containers = append(containers, corev1.Container{
-			Name:    "export-stdout",
-			Image:   os.Getenv("EXPORT_IMAGE"),
-			Command: []string{"hubble-export-stdout"},
-			Args:    args,
-			Env:     env,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "export-logs",
-					MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
-				},
-			},
-			Resources:                resources,
-			SecurityContext:          &securityContext,
-			TerminationMessagePath:   "/dev/termination-log",
+			Name:                     "export-stdout",
+			Image:                    os.Getenv("EXPORT_IMAGE"),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy", corev1.PullIfNotPresent),
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			ImagePullPolicy:          corev1.PullPolicy(configValue(log, cmFields, "imagePullPolicy", "IfNotPresent")),
+			Env:                      env,
+			SecurityContext:          &securityContext,
+			Resources:                resources,
+			Command:                  []string{"hubble-export-stdout"},
+			Args:                     args,
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "export-logs",
+				MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+			}},
 		})
 	}
 
-	resources := corev1.ResourceRequirements{}
-	resourcesValue := configValue(log, cmFields, "tetragonResources", "")
-	if resourcesValue != "" {
-		if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
-			log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the tetragon container resources, default value used instead")
-		}
-	}
-
-	privileged := true
-	securityContext := corev1.SecurityContext{Privileged: &privileged}
-	securityContextValue := configValue(log, cmFields, "tetragonSecurityContext", "")
-	if securityContextValue != "" {
-		if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
-			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the tetragon container security context, default value used instead")
-		}
-	}
-
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "tetragon-config",
-			ReadOnly:  true,
-			MountPath: "/etc/tetragon/tetragon.conf.d/",
-		},
-		{
-			Name:             "bpf-maps",
-			MountPath:        "/sys/fs/bpf",
-			MountPropagation: &bidirectionalMount,
-		},
-		{
-			Name:      "cilium-run",
-			MountPath: "/var/run/cilium",
-		},
-		{
-			Name:      "export-logs",
-			MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
-		},
-		{
-			Name:      "host-proc",
-			MountPath: "/procRoot",
-		},
-	}
-	for _, v := range configArray(log, cmFields, "extraVolumeMounts", []string{}) {
-		vm := corev1.VolumeMount{}
-		if err := yaml.Unmarshal([]byte(v), &vm); err != nil {
-			log.WithValues("value", v).Error(err, "could not unmarshal the extraVolumeMount, skipped")
-			continue
-		}
-		volumeMounts = append(volumeMounts, vm)
-	}
-	for _, v := range configArray(log, cmFields, "extraHostPathMounts", []string{}) {
-		vm := corev1.VolumeMount{}
-		if err := yaml.Unmarshal([]byte(v), &vm); err != nil {
-			log.WithValues("value", v).Error(err, "could not unmarshal the extraHostPathMount, skipped")
-			continue
-		}
-		volumeMounts = append(volumeMounts, vm)
-	}
-	for _, v := range configArray(log, cmFields, "extraConfigmapMounts", []string{}) {
-		vm := corev1.VolumeMount{}
-		if err := yaml.Unmarshal([]byte(v), &vm); err != nil {
-			log.WithValues("value", v).Error(err, "could not unmarshal the extraConfigmapMount, skipped")
-			continue
-		}
-		volumeMounts = append(volumeMounts, vm)
-	}
-	if configValue(log, cmFields, "metadataEnabled", false) {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "metadata-files",
-			MountPath: "/var/lib/tetragon/metadata",
-		})
-	}
-
-	args := []string{"--config-dir=/etc/tetragon/tetragon.conf.d/"}
-	argsOverride := configArray(log, cmFields, "argsOverride", []string{})
-	if len(argsOverride) > 0 {
-		args = append(args, argsOverride...)
-	} else {
-		for k, v := range configMapOfString(log, cmFields, "extraArgs") {
-			if v != "" {
-				args = append(args, fmt.Sprintf("--%s=%s", k, v))
-				continue
+	if configValue(log, cmFields, "tetragonEnabled", true) {
+		resources := corev1.ResourceRequirements{}
+		resourcesValue := configValue(log, cmFields, "tetragonResources", "")
+		if resourcesValue != "" {
+			if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
+				log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the tetragonResources, default value used instead")
 			}
-			args = append(args, fmt.Sprintf("--%s", k))
 		}
-	}
 
-	tetragon := corev1.Container{
-		Name:    "tetragon",
-		Image:   os.Getenv("TETRAGON_IMAGE"),
-		Args:    args,
-		EnvFrom: nil,
-		Env: []corev1.EnvVar{
+		privileged := true
+		securityContext := corev1.SecurityContext{Privileged: &privileged}
+		securityContextValue := configValue(log, cmFields, "tetragonSecurityContext", "")
+		if securityContextValue != "" {
+			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
+				log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the tetragonSecurityContext, default value used instead")
+			}
+		}
+
+		args := []string{"--config-dir=/etc/tetragon/tetragon.conf.d/"}
+		argsOverride := configArray(log, cmFields, "argsOverride", []string{})
+		if len(argsOverride) > 0 {
+			args = append(args, argsOverride...)
+		} else {
+			for k, v := range configMapOfString(log, cmFields, "extraArgs") {
+				if v != "" {
+					args = append(args, fmt.Sprintf("--%s=%s", k, v))
+				} else {
+					args = append(args, fmt.Sprintf("--%s", k))
+				}
+			}
+		}
+
+		volumeMounts := []corev1.VolumeMount{
 			{
-				Name: "NODE_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						APIVersion: "v1",
-						FieldPath:  "spec.nodeName",
-					},
-				},
+				Name:      "tetragon-config",
+				ReadOnly:  true,
+				MountPath: "/etc/tetragon/tetragon.conf.d/",
 			},
-		},
-		VolumeMounts:             volumeMounts,
-		TerminationMessagePath:   "/dev/termination-log",
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		ImagePullPolicy:          imagePullPolicy(log, cmFields),
-		Resources:                resources,
-		SecurityContext:          &securityContext,
-	}
-	if configValue(log, cmFields, "grpcEnabled", true) {
-		tetragon.LivenessProbe = &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				Exec: &corev1.ExecAction{
-					Command: []string{
-						"tetra",
-						"status",
-						"--server-address",
-						configValue(log, cmFields, "grpcAddress", "localhost:54321"),
-						"--retries",
-						"5",
-					},
-				},
+			{
+				Name:             "bpf-maps",
+				MountPath:        "/sys/fs/bpf",
+				MountPropagation: &bidirectionalMount,
 			},
-			TimeoutSeconds:   int32(60),
-			PeriodSeconds:    int32(10),
-			SuccessThreshold: int32(1),
-			FailureThreshold: int32(3),
+			{
+				Name:      "cilium-run",
+				MountPath: "/var/run/cilium",
+			},
+			{
+				Name:      "export-logs",
+				MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+			},
+			{
+				Name:      "host-proc",
+				MountPath: "/procRoot",
+			},
 		}
+		volumeMounts = append(volumeMounts, volumeMountsFromConfigMap(log, cmFields, "extraVolumeMounts")...)
+		volumeMounts = append(volumeMounts, volumeMountsFromConfigMap(log, cmFields, "extraHostPathMounts")...)
+		volumeMounts = append(volumeMounts, volumeMountsFromConfigMap(log, cmFields, "extraConfigmapMounts")...)
+		if configValue(log, cmFields, "metadataEnabled", false) {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      "metadata-files",
+				MountPath: "/var/lib/tetragon/metadata",
+			})
+		}
+
+		env := []corev1.EnvVar{{
+			Name: "NODE_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "spec.nodeName",
+				},
+			},
+		}}
+		extraEnv := make([]corev1.EnvVar, 0)
+		extraEnvStr := configValue(log, cmFields, "extraEnv", "")
+		if extraEnvStr != "" {
+			if err := yaml.Unmarshal([]byte(extraEnvStr), &extraEnv); err != nil {
+				log.WithValues("value", extraEnvStr).Error(err, "could not unmarshal the extraEnv, skipped")
+			}
+		}
+		env = append(env, extraEnv...)
+
+		var livenessProbe *corev1.Probe
+		if configValue(log, cmFields, "grpcEnabled", true) {
+			livenessProbe = &corev1.Probe{
+				TimeoutSeconds: int32(60),
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"tetra",
+							"status",
+							"--server-address",
+							configValue(log, cmFields, "grpcAddress", "localhost:54321"),
+							"--retries",
+							"5",
+						},
+					},
+				},
+			}
+		}
+
+		containers = append(containers, corev1.Container{
+			Name:                     "tetragon",
+			SecurityContext:          &securityContext,
+			Image:                    os.Getenv("TETRAGON_IMAGE"),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy", corev1.PullIfNotPresent),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Command:                  configArray(log, cmFields, "commandOverride", []string{}),
+			Args:                     args,
+			VolumeMounts:             volumeMounts,
+			Env:                      env,
+			Resources:                resources,
+			LivenessProbe:            livenessProbe,
+		})
 	}
 
-	return append(containers, tetragon)
+	return containers
 }
 
 // nodeSelector returns the selectors configured by the user in the operator ConfigMap
@@ -362,14 +380,14 @@ func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 	return corev1.DNSDefault
 }
 
-func imagePullPolicy(log logr.Logger, config map[string]any) corev1.PullPolicy {
-	policy := corev1.PullPolicy(configValue(log, config, "imagePullPolicy", string(corev1.DNSDefault)))
+func imagePullPolicy(log logr.Logger, config map[string]any, key string, defaultValue corev1.PullPolicy) corev1.PullPolicy {
+	policy := corev1.PullPolicy(configValue(log, config, key, string(corev1.PullIfNotPresent)))
 	switch policy {
 	case corev1.PullAlways, corev1.PullNever, corev1.PullIfNotPresent:
 		return policy
 	}
-	log.WithValues("key", "imagePullPolicy", "value", policy).Error(errors.New("could not resolve imagePullPolicy"), "default value used instead")
-	return corev1.PullIfNotPresent
+	log.WithValues("key", key, "value", policy).Error(errors.New("could not resolve image pull policy"), "default value used instead")
+	return defaultValue
 }
 
 func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
@@ -390,89 +408,101 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 			Name: "export-logs",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/run/cilium/tetragon",
+					Path: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
 					Type: &hostPathDirectoryOrCreateVolumeType,
-				},
-			},
-		},
-		{
-			Name: "tetragon-config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "tetragon-config",
-					},
-					DefaultMode: &dsVolumeDefaultMode,
-				},
-			},
-		},
-		{
-			Name: "bpf-maps",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/sys/fs/bpf",
-					Type: &hostPathDirectoryOrCreateVolumeType,
-				},
-			},
-		},
-		{
-			Name: "host-proc",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "hostProcPath", "/proc"),
-					Type: &hostPathDirectoryVolumeType,
 				},
 			},
 		},
 	}
-	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
+	if configValue(log, cmFields, "tetragonEnabled", true) {
 		volumes = append(volumes,
 			corev1.Volume{
-				Name: "oci-hooks-path",
+				Name: "tetragon-config",
 				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/usr/share/containers/oci/hooks.d/",
-						Type: &hostPathDirectoryVolumeType,
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "tetragon-config",
+						},
+						DefaultMode: &dsVolumeDefaultMode,
 					},
 				},
 			},
 			corev1.Volume{
-				Name: "oci-hooks-install-path",
+				Name: "bpf-maps",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: configValue(log, cmFields, "ociHookSetupInstallDir", "/opt/tetragon"),
+						Path: "/sys/fs/bpf",
 						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 			},
-		)
-	}
-	if configValue(log, cmFields, "metadataEnabled", false) {
-		// TODO: this needs to be mounted
-		volumes = append(volumes,
 			corev1.Volume{
-				Name: "metadata-files",
+				Name: "host-proc",
 				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: configValue(log, cmFields, "hostProcPath", "/proc"),
+						Type: &hostPathDirectoryVolumeType,
+					},
 				},
 			},
 		)
-	}
-	for _, v := range configArray(log, cmFields, "extraVolumes", []string{}) {
-		volume := corev1.Volume{}
-		if err := yaml.Unmarshal([]byte(v), &volume); err != nil {
-			log.WithValues("value", v).Error(err, "could not unmarshal an extraVolume, skipped")
+		if configValue(log, cmFields, "ociHookSetupEnabled", false) {
+			volumes = append(volumes,
+				corev1.Volume{
+					Name: "oci-hooks-path",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/usr/share/containers/oci/hooks.d/",
+							Type: &hostPathDirectoryVolumeType,
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "oci-hooks-install-path",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: configValue(log, cmFields, "ociHookSetupInstallDir", "/opt/tetragon"),
+							Type: &hostPathDirectoryOrCreateVolumeType,
+						},
+					},
+				},
+			)
 		}
-		volumes = append(volumes, volume)
 	}
-	for _, extraHostPathMountStr := range configArray(log, cmFields, "extraHostPathMounts", []string{}) {
-		extraHostPathMount := corev1.Volume{}
-		if err := yaml.Unmarshal([]byte(extraHostPathMountStr), &extraHostPathMount); err != nil {
-			log.WithValues("value", extraHostPathMount).Error(err, "could not unmarshal an extraHostPathMount, skipped")
-		}
-		volumes = append(volumes, extraHostPathMount)
+	volumes = append(volumes, volumesFromConfigMap(log, cmFields, "extraVolumes")...)
+	volumes = append(volumes, volumesFromConfigMap(log, cmFields, "extraHostPathMounts")...)
+	if configValue(log, cmFields, "metadataEnabled", false) {
+		volumes = append(volumes, corev1.Volume{
+			Name: "metadata-files",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
 	}
+	return volumes
+}
 
+func volumeMountsFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.VolumeMount {
+	value := configValue(log, cmFields, key, "")
+	if value == "" {
+		return []corev1.VolumeMount{}
+	}
+	mounts := make([]corev1.VolumeMount, 0)
+	if err := yaml.Unmarshal([]byte(value), &mounts); err != nil {
+		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s volume mount, skipped", key))
+	}
+	return mounts
+}
+
+func volumesFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.Volume {
+	value := configValue(log, cmFields, key, "")
+	if value == "" {
+		return []corev1.Volume{}
+	}
+	volumes := make([]corev1.Volume, 0)
+	if err := yaml.Unmarshal([]byte(value), &volumes); err != nil {
+		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s volume, skipped", key))
+	}
 	return volumes
 }
 
