@@ -11,26 +11,28 @@
 package udpconfig
 
 import (
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
 var (
 	MetricsEnabled = false
 	LatencyConfig  networklatency.ProtocolConfig
+	CurrentLabels  = DefaultLabelFilter()
 )
 
-var defaultLabels = map[string]bool{
-	"ns":          true,
-	"workload":    true,
-	"pod":         true,
-	"binary":      true,
-	"dstns":       true,
-	"dstworkload": true,
-	"dstpod":      true,
-	"dstdns":      true,
-	"srcmcast":    true,
-	"dstmcast":    true,
-	"dstip":       false,
+func DefaultLabelFilter() metrics.LabelFilter {
+	return metrics.LabelFilter{
+		"ns":          true,
+		"workload":    true,
+		"pod":         true,
+		"binary":      true,
+		"dstns":       true,
+		"dstworkload": true,
+		"dstpod":      true,
+		"dstdns":      true,
+		"srcmcast":    true,
+		"dstmcast":    true,
+		"dstip":       false,
+	}
 }
-
-var CurrentLabels = defaultLabels

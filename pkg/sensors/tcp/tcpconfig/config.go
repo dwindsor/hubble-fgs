@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
@@ -22,21 +23,22 @@ var (
 	LatencyConfig   networklatency.ProtocolConfig
 	RttHistogramMax uint32
 	RttHistogramMin uint32
+	CurrentLabels   = DefaultLabelFilter()
 )
 
-var defaultLabels = map[string]bool{
-	"ns":          true,
-	"workload":    true,
-	"pod":         true,
-	"binary":      true,
-	"dstns":       true,
-	"dstworkload": true,
-	"dstpod":      true,
-	"dstdns":      true,
-	"dstip":       false,
+func DefaultLabelFilter() metrics.LabelFilter {
+	return metrics.LabelFilter{
+		"ns":          true,
+		"workload":    true,
+		"pod":         true,
+		"binary":      true,
+		"dstns":       true,
+		"dstworkload": true,
+		"dstpod":      true,
+		"dstdns":      true,
+		"dstip":       false,
+	}
 }
-
-var CurrentLabels = defaultLabels
 
 func zeroLabels(l map[string]bool) {
 	for k := range CurrentLabels {
@@ -54,7 +56,7 @@ func ConfigureLabels(masks []string) error {
 	zeroLabels(CurrentLabels)
 
 	for _, v := range masks {
-		_, ok := defaultLabels[v]
+		_, ok := CurrentLabels[v]
 		if !ok {
 			unknownMasks = append(unknownMasks, v)
 			continue
