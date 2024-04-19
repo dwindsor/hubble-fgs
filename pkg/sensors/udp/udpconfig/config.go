@@ -11,9 +11,6 @@
 package udpconfig
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
@@ -37,32 +34,3 @@ var defaultLabels = map[string]bool{
 }
 
 var CurrentLabels = defaultLabels
-
-func zeroLabels(l map[string]bool) {
-	for k := range CurrentLabels {
-		l[k] = false
-	}
-}
-
-func ConfigureLabels(masks []string) error {
-	var unknownMasks []string
-
-	if len(masks) == 0 {
-		return nil
-	}
-
-	zeroLabels(CurrentLabels)
-
-	for _, v := range masks {
-		_, ok := defaultLabels[v]
-		if !ok {
-			unknownMasks = append(unknownMasks, v)
-			continue
-		}
-		CurrentLabels[v] = true
-	}
-	if len(unknownMasks) > 0 {
-		return fmt.Errorf("Unknown masks: %s", strings.Join(unknownMasks, ","))
-	}
-	return nil
-}
