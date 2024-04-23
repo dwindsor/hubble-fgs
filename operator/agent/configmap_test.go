@@ -8,6 +8,21 @@ import (
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+func TestDefaultOperatorConfigMap(t *testing.T) {
+	expected := map[string]string{
+		"skip-crd-creation":                "false",
+		"skip-pod-info-crd":                "false",
+		"skip-tracing-policy-crd":          "false",
+		"skip-policysandbox-crd":           "false",
+		"force-update-crds":                "false",
+		OperatorConfigMapAgentConfigMapKey: defaultAgentConfig,
+		OperatorConfigMapAgentDaemonSetKey: defaultDSConfig,
+	}
+	actual := DefaultOperatorConfigMap(logr.Log, "kube-system", "test")
+
+	require.Equal(t, expected, actual.Data)
+}
+
 func TestValuesAsMap(t *testing.T) {
 	testCases := []struct {
 		yamlString string

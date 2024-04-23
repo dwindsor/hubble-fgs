@@ -90,19 +90,19 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 				Spec: corev1.PodSpec{
 					PriorityClassName:             configValue(log, cmFields, "priorityClassName", ""),
 					ImagePullSecrets:              imagePullSecrets,
-					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", "tetragon"),
+					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", ""),
 					SecurityContext:               &securityContext,
 					InitContainers:                daemonSetInitContainers(log, cmFields),
 					Containers:                    daemonSetContainers(log, cmFields),
-					NodeSelector:                  nodeSelector(log, cmFields, "nodeSelector"),
+					NodeSelector:                  configMapOfString(log, cmFields, "nodeSelector"),
 					Affinity:                      &affinity,
 					Tolerations:                   tolerations,
-					HostNetwork:                   configValue(log, cmFields, "hostNetwork", true),
+					HostNetwork:                   configValue(log, cmFields, "hostNetwork", false),
 					DNSPolicy:                     dnsPolicy(log, cmFields),
 					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
 					Volumes:                       volumes(log, cmFields),
 					// This is required to avoid diff with actual K8S object
-					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", "tetragon"),
+					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", ""),
 				},
 			},
 			UpdateStrategy: updateStrategy,
@@ -114,8 +114,7 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
 	containers := make([]corev1.Container, 0)
 	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
-		privileged := true
-		securityContext := corev1.SecurityContext{Privileged: &privileged}
+		securityContext := corev1.SecurityContext{}
 		securityContextValue := configValue(log, cmFields, "ociHookSetupSecurityContext", "")
 		if securityContextValue != "" {
 			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
@@ -140,10 +139,10 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 				"tetragon-oci-hook-setup",
 				"install",
 				"--interface",
-				configValue(log, cmFields, "ociHookSetupInterface", "oci-hooks"),
+				configValue(log, cmFields, "ociHookSetupInterface", ""),
 				"--local-install-dir=/hostInstall",
 				"--host-install-dir",
-				configValue(log, cmFields, "ociHookSetupInstallDir", "/opt/tetragon"),
+				configValue(log, cmFields, "ociHookSetupInstallDir", ""),
 				"--oci-hooks.local-dir=/hostHooks",
 			},
 			VolumeMounts: append(
@@ -179,7 +178,7 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 		containers = append(containers, corev1.Container{
 			Name:                     "tetragon",
 			Image:                    os.Getenv("TETRAGON_METADATA_IMAGE"),
-			ImagePullPolicy:          imagePullPolicy(log, cmFields, "metadataImagePullPolicy", corev1.PullAlways),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "metadataImagePullPolicy"),
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			Command:                  []string{"sh"},
 			Args:                     args,
@@ -219,15 +218,15 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		}
 
-		exportFileNames := configArray(log, cmFields, "exportFileNames", []string{"tetragon.log"})
+		exportFileNames := configArray(log, cmFields, "exportFileNames", []string{})
 		args := make([]string, 0, len(exportFileNames))
 		for _, f := range exportFileNames {
-			args = append(args, fmt.Sprintf("%s/%s", configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"), f))
+			args = append(args, fmt.Sprintf("%s/%s", configValue(log, cmFields, "exportDirectory", ""), f))
 		}
 		containers = append(containers, corev1.Container{
 			Name:                     "export-stdout",
 			Image:                    os.Getenv("EXPORT_IMAGE"),
-			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy", corev1.PullIfNotPresent),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy"),
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			Env:                      env,
 			SecurityContext:          &securityContext,
@@ -236,12 +235,12 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			Args:                     args,
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "export-logs",
-				MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+				MountPath: configValue(log, cmFields, "exportDirectory", ""),
 			}},
 		})
 	}
 
-	if configValue(log, cmFields, "tetragonEnabled", true) {
+	if configValue(log, cmFields, "tetragonEnabled", false) {
 		resources := corev1.ResourceRequirements{}
 		resourcesValue := configValue(log, cmFields, "tetragonResources", "")
 		if resourcesValue != "" {
@@ -250,8 +249,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		}
 
-		privileged := true
-		securityContext := corev1.SecurityContext{Privileged: &privileged}
+		securityContext := corev1.SecurityContext{}
 		securityContextValue := configValue(log, cmFields, "tetragonSecurityContext", "")
 		if securityContextValue != "" {
 			if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
@@ -290,7 +288,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			},
 			{
 				Name:      "export-logs",
-				MountPath: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+				MountPath: configValue(log, cmFields, "exportDirectory", ""),
 			},
 			{
 				Name:      "host-proc",
@@ -326,7 +324,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 		env = append(env, extraEnv...)
 
 		var livenessProbe *corev1.Probe
-		if configValue(log, cmFields, "grpcEnabled", true) {
+		if configValue(log, cmFields, "grpcEnabled", false) {
 			livenessProbe = &corev1.Probe{
 				TimeoutSeconds: int32(60),
 				ProbeHandler: corev1.ProbeHandler{
@@ -335,7 +333,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 							"tetra",
 							"status",
 							"--server-address",
-							configValue(log, cmFields, "grpcAddress", "localhost:54321"),
+							configValue(log, cmFields, "grpcAddress", ""),
 							"--retries",
 							"5",
 						},
@@ -348,7 +346,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			Name:                     "tetragon",
 			SecurityContext:          &securityContext,
 			Image:                    os.Getenv("TETRAGON_IMAGE"),
-			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy", corev1.PullIfNotPresent),
+			ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy"),
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			Command:                  configArray(log, cmFields, "commandOverride", []string{}),
 			Args:                     args,
@@ -362,16 +360,8 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 	return containers
 }
 
-// nodeSelector returns the selectors configured by the user in the operator ConfigMap
-// in addition to the ones that always get applied.
-func nodeSelector(log logr.Logger, values map[string]any, key string) map[string]string {
-	selector := configMapOfString(log, values, key)
-	selector["kubernetes.io/os"] = "linux"
-	return selector
-}
-
 func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
-	policy := corev1.DNSPolicy(configValue(log, config, "dnsPolicy", string(corev1.DNSDefault)))
+	policy := corev1.DNSPolicy(configValue(log, config, "dnsPolicy", ""))
 	switch policy {
 	case corev1.DNSClusterFirstWithHostNet, corev1.DNSClusterFirst, corev1.DNSNone, corev1.DNSDefault:
 		return policy
@@ -380,14 +370,14 @@ func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 	return corev1.DNSDefault
 }
 
-func imagePullPolicy(log logr.Logger, config map[string]any, key string, defaultValue corev1.PullPolicy) corev1.PullPolicy {
-	policy := corev1.PullPolicy(configValue(log, config, key, string(corev1.PullIfNotPresent)))
+func imagePullPolicy(log logr.Logger, config map[string]any, key string) corev1.PullPolicy {
+	policy := corev1.PullPolicy(configValue(log, config, key, ""))
 	switch policy {
 	case corev1.PullAlways, corev1.PullNever, corev1.PullIfNotPresent:
 		return policy
 	}
 	log.WithValues("key", key, "value", policy).Error(errors.New("could not resolve image pull policy"), "default value used instead")
-	return defaultValue
+	return corev1.PullIfNotPresent
 }
 
 func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
@@ -408,13 +398,13 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 			Name: "export-logs",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "exportDirectory", "/var/run/cilium/tetragon"),
+					Path: configValue(log, cmFields, "exportDirectory", ""),
 					Type: &hostPathDirectoryOrCreateVolumeType,
 				},
 			},
 		},
 	}
-	if configValue(log, cmFields, "tetragonEnabled", true) {
+	if configValue(log, cmFields, "tetragonEnabled", false) {
 		volumes = append(volumes,
 			corev1.Volume{
 				Name: "tetragon-config",
@@ -440,7 +430,7 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 				Name: "host-proc",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: configValue(log, cmFields, "hostProcPath", "/proc"),
+						Path: configValue(log, cmFields, "hostProcPath", ""),
 						Type: &hostPathDirectoryVolumeType,
 					},
 				},
@@ -461,7 +451,7 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 					Name: "oci-hooks-install-path",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: configValue(log, cmFields, "ociHookSetupInstallDir", "/opt/tetragon"),
+							Path: configValue(log, cmFields, "ociHookSetupInstallDir", ""),
 							Type: &hostPathDirectoryOrCreateVolumeType,
 						},
 					},

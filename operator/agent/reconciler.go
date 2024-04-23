@@ -49,7 +49,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		log.Info("operator ConfigMap not found, creating")
 		// The operator ConfigMap created, contains only default settings and instructions.
-		err = r.Create(ctx, DefaultOperatorConfigMap(req.NamespacedName.Namespace, OperatorConfigMapName))
+		err = r.Create(ctx, DefaultOperatorConfigMap(log, req.NamespacedName.Namespace, OperatorConfigMapName))
 		if err == nil {
 			log.Info("operator ConfigMap created")
 			return ctrl.Result{}, nil

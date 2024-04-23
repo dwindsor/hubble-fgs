@@ -1,25 +1,124 @@
 # Configuration of the agent ConfigMap.
 # The content specified here will be copied into it.
 # Refer to Tetragon documentation for the options.
-enable-k8s-api: "true"
-enable-pod-info: "true"
+procfs: /procRoot
+# Enables Capabilities visibility in exec and kprobe events.
 enable-process-cred: "false"
+# Enables Namespaces visibility in exec and kprobe events.
 enable-process-ns: "false"
+# Tetragon puts processes in an LRU cache. The cache is used to find ancestors
+# for subsequently exec'ed processes.
+process-cache-size: "65536"
+# Specifies directory to put Tetragon JSON export files.
+export-filename: /var/run/cilium/tetragon/tetragon.log
+# JSON export file permissions as a string. Set it to "600" to restrict access to owner.
+export-file-perm: "644"
+# Size in megabytes at which to rotate JSON export files.
+export-file-max-size-mb: "10"
+# Number of rotated files to retain.
+export-file-max-backups: "5"
+# Compress rotated JSON export files.
+export-file-compress: "false"
+# Allowlist for JSON export. For example, to export only process_connect events from
+# the default namespace:
+#
+# export-allowlist: |
+#   {"namespace":["default"],"event_set":["PROCESS_EXEC"]}
 export-allowlist: '{"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_TLS"]}'
+# Denylist for JSON export. For example, to exclude exec events that look similar to
+# Kubernetes health checks and all the events from kube-system namespace and the host:
+#
+# export-denylist: |
+#   {"health_check":true}
+#   {"namespace":["kube-system",""]}
 export-denylist: |-
   {"health_check":true}
   {"namespace":["", "cilium", "kube-system"]}
-export-file-compress: "false"
-export-file-max-backups: "5"
-export-file-max-size-mb: "10"
-export-file-perm: "644"
-export-filename: /var/run/cilium/tetragon/tetragon.log
-export-rate-limit: "-1"
+# Filters to include or exclude fields from Tetragon events. Without any filters, all
+# fields are included by default. The presence of at least one inclusion filter implies
+# default-exclude (i.e. any fields that don't match an inclusion filter will be
+# excluded). Field paths are expressed using dot notation like "a.b.c" and multiple
+# field paths can be separated by commas like "a.b.c,d,e.f". An optional "event_set" may
+# be specified to apply the field filter to a specific set of events.
+#
+# For example, to exclude the "parent" field from all events and include the "process"
+# field in PROCESS_KPROBE events while excluding all others:
+#
+# field-filters: |
+#   {"fields": "parent", "action": "EXCLUDE"}
+#   {"event_set": ["PROCESS_KPROBE"], "fields": "process", "action": "INCLUDE"}
 field-filters: '{}'
-fim-fifo-path: /var/run/cilium/tetragon
-fim-runtime-endpoint: ""
-gops-address: localhost:8118
+# Filters to redact secrets from the args fields in Tetragon events. To perform
+# redactions, redaction filters define regular expressions in the `redact`
+# field. Any capture groups in these regular expressions are redacted and
+# replaced with "*****".
+#
+# For more control, you can select which binary or binaries should have their
+# arguments redacted with the `binary_regex` field.
+#
+# NOTE: When writing regular expressions in JSON, it is important to escape
+# backslash characters. For instance `\Wpasswd\W?` would be written as
+# `{"redact": "\\Wpasswd\\W?"}`.
+#
+# As a concrete example, the following will redact all passwords passed to
+# processes with the "--password" argument:
+#
+#   {"redact": ["--password(?:\\s+|=)(\\S*)"]}
+#
+# Now, an event which contains the string "--password=foo" would have that
+# string replaced with "--password=*****".
+#
+# Suppose we also see some passwords passed via the -p shorthand for a specific binary, foo.
+# We can also redact these as follows:
+#
+#   {"binary_regex": ["(?:^|/)foo$"], "redact": ["-p(?:\\s+|=)(\\S*)"]}
+#
+# With both of the above redaction filters in place, we are now redacting all
+# password arguments.
+redaction-filters: '{}'
+# Rate-limit event export (events per minute), Set to -1 to export all events.
+export-rate-limit: "-1"
+enable-k8s-api: "true"
+# The address and port at which to expose metrics. Set address to "" to expose on all available interfaces.
 metrics-server: :2112
-process-cache-size: "65536"
-procfs: /procRoot
+# Comma-separated list of enabled metrics labels.
+# The configurable labels are: namespace, workload, pod, binary. Unknown labels will be ignored.
+# Removing some labels from the list might help reduce the metrics cardinality if needed.
+metrics-label-filter: "namespace,workload,pod,binary"
+# The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
 server-address: localhost:54321
+# -- EXPERIMENTAL: This field may be removed in the future without notice.
+#
+# Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.
+#
+# Note that the counter for sampling is global, and it is not per socket.
+tcp-stats-sample-segs: "0"
+# The address and port at which to expose gops.
+gops-address: localhost:8118
+# Enable policy filter. This is required for K8s namespace and pod-label filtering.
+enable-policy-filter: "true"
+# Enable policy filter debug messages.
+enable-policy-filter-debug: "false"
+# Enable latency monitoring in message handling
+enable-msg-handling-latency: "false"
+# Enables the PodInfo CRD and the controller that reconciles PodInfo
+# custom resources.
+enable-pod-info: "true"
+# Enables the TracingPolicy and TracingPolicyNamespaced CRD creation.
+enable-tracing-policy-crd: "true"
+# Provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
+fim-runtime-endpoint: ""
+fim-fifo-path: /var/run/cilium/tetragon
+# -- EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports
+# ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON.
+flow-export-filename: ""
+# Size in megabytes at which to rotate flow JSON export files.
+flow-export-file-max-size-mb: "10"
+# Number of rotated flow JSON export files to retain.
+flow-export-file-max-backups: "5"
+# Compress rotated flow JSON export files.
+flow-export-file-compress: "false"
+# Access Cilium API to associate Tetragon events with Cilium DNS cache.
+enable-cilium-api: "false"
+# Enable sandboxpolicies.
+enable-sandboxpolicies: "true"

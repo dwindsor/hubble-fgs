@@ -61,7 +61,7 @@ func TestImagePullPolicy(t *testing.T) {
 
 	for _, tt := range testCases {
 		// function to test
-		actual := imagePullPolicy(logr.Log, tt.configMap, "imagePullPolicy", corev1.PullIfNotPresent)
+		actual := imagePullPolicy(logr.Log, tt.configMap, "imagePullPolicy")
 
 		require.Equal(t, tt.expected, actual)
 	}
@@ -218,6 +218,7 @@ func TestDaemonSet(t *testing.T) {
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	dsVolumeDefaultMode := int32(420)
 	privileged := true
+	unprivileged := false
 
 	testCases := []struct {
 		name      string
@@ -230,7 +231,7 @@ func TestDaemonSet(t *testing.T) {
 			name:      "default values",
 			namespace: "kube-system",
 			dsName:    "tetragon",
-			cm:        &corev1.ConfigMap{},
+			cm:        DefaultOperatorConfigMap(logr.Log, "kube-system", "tetragon"),
 			expected: &appv1.DaemonSet{
 				TypeMeta: v1.TypeMeta{
 					Kind:       "DaemonSet",
@@ -274,7 +275,9 @@ func TestDaemonSet(t *testing.T) {
 							HostNetwork:                   true,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Affinity:                      &corev1.Affinity{},
-							Tolerations:                   []corev1.Toleration{},
+							Tolerations: []corev1.Toleration{
+								{Operator: "Exists"},
+							},
 							Volumes: []corev1.Volume{
 								{
 									Name: "cilium-run",
@@ -326,6 +329,20 @@ func TestDaemonSet(t *testing.T) {
 							},
 							InitContainers: []corev1.Container{},
 							Containers: []corev1.Container{
+								{
+									Name:                     "export-stdout",
+									ImagePullPolicy:          corev1.PullIfNotPresent,
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									Command:                  []string{"hubble-export-stdout"},
+									Args:                     []string{"/var/run/cilium/tetragon/tetragon.log"},
+									Env:                      []corev1.EnvVar{},
+									VolumeMounts: []corev1.VolumeMount{{
+										Name:      "export-logs",
+										MountPath: "/var/run/cilium/tetragon",
+									}},
+									SecurityContext: &corev1.SecurityContext{},
+									Resources:       corev1.ResourceRequirements{},
+								},
 								{
 									Name:    "tetragon",
 									Command: []string{},
@@ -426,6 +443,7 @@ priorityClassName: system-node-critical
 nodeSelector:
   test-selector-key1: test-selector-value1
   test-selector-key2: test-selector-value2
+  kubernetes.io/os: linux
 
 exportExtraEnv: |
   - name: test-extra-env1
@@ -442,11 +460,13 @@ tetragonResources: |
   requests:
     cpu: 2500m
     memory: 2536Mi
+tetragonSecurityContext: |
+  privileged: false
 enableCiliumAPI: true
 
 serviceAccountName: tetragon-test
 hostNetwork: false
-hostProcPath: "/proc-test"
+hostProcPath: /proc-test
 exportMode: stdout
 exportFileNames:
   - tetragon-test1.log
@@ -460,7 +480,7 @@ ociHookSetupEnabled: true
 # oci-hooks (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md).
 ociHookSetupInterface: oci-hooks-test
 ociHookSetupInstallDir: /opt/tetragon-test
-ociHookSetupSecurityContext:
+ociHookSetupSecurityContext: |
  privileged: true
 
 # Extra volume mounts to add to the oci-hook-setup init container
@@ -829,7 +849,7 @@ grpcAddress: test:64321`,
 											},
 										},
 									},
-									SecurityContext: &corev1.SecurityContext{Privileged: &privileged},
+									SecurityContext: &corev1.SecurityContext{Privileged: &unprivileged},
 									Resources: corev1.ResourceRequirements{
 										Requests: map[corev1.ResourceName]resource.Quantity{
 											corev1.ResourceCPU:    resource.MustParse("2500m"),
@@ -866,19 +886,18 @@ func TestDaemonSetInitContainers(t *testing.T) {
 		expected   []corev1.Container
 	}{
 		{
-			name:       "init containers disabled (implicitly)",
-			yamlString: "",
-			expected:   []corev1.Container{},
-		},
-		{
 			name: "init containers disabled (explicitly)",
 			yamlString: `ociHookSetupEnabled: false
 metadataEnabled: false`,
 			expected: []corev1.Container{},
 		},
 		{
-			name:       "oci-hook-setup init container enabled (with default values)",
-			yamlString: "ociHookSetupEnabled: true",
+			name: "oci-hook-setup init container enabled (with default values)",
+			yamlString: `ociHookSetupEnabled: true
+ociHookSetupInterface: oci-hooks
+ociHookSetupInstallDir: /opt/tetragon
+ociHookSetupSecurityContext: |
+  privileged: true`,
 			expected: []corev1.Container{{
 				Name: "oci-hook-setup",
 				Command: []string{
@@ -925,6 +944,10 @@ metadataEnabled: false`,
 		{
 			name: "oci-hook-setup and tetragon init containers enabled (with default values)",
 			yamlString: `ociHookSetupEnabled: true
+ociHookSetupInterface: oci-hooks
+ociHookSetupInstallDir: /opt/tetragon
+ociHookSetupSecurityContext: |
+  privileged: true
 metadataEnabled: true`,
 			expected: []corev1.Container{
 				{
@@ -1070,8 +1093,13 @@ func TestDaemonSetContainers(t *testing.T) {
 		expected   []corev1.Container
 	}{
 		{
-			name:       "tetragon container enabled (with default values)",
-			yamlString: "",
+			name: "tetragon container enabled (with default values)",
+			yamlString: `exportDirectory: /var/run/cilium/tetragon
+tetragonEnabled: true
+tetragonSecurityContext: |
+  privileged: true
+grpcEnabled: true
+grpcAddress: localhost:54321`,
 			expected: []corev1.Container{{
 				Name:                     "tetragon",
 				ImagePullPolicy:          corev1.PullIfNotPresent,
@@ -1131,7 +1159,7 @@ func TestDaemonSetContainers(t *testing.T) {
 		},
 		{
 			name:       "export and tetragon containers enabled (with default values)",
-			yamlString: "exportMode: stdout",
+			yamlString: defaultDSConfig,
 			expected: []corev1.Container{
 				{
 					Name:                     "export-stdout",
@@ -1208,6 +1236,7 @@ func TestDaemonSetContainers(t *testing.T) {
 			name: "export and tetragon containers enabled (with custom values)",
 			yamlString: `imagePullPolicy: Always
 exportDirectory: /test/export
+grpcEnabled: true
 grpcAddress: test.com:123
 metadataEnabled: true
 exportMode: stdout
@@ -1225,6 +1254,7 @@ exportSecurityContext: |
 exportFileNames:
   - export-file1.log
   - export-file2.log
+tetragonEnabled: true
 tetragonResources: |
   requests:
     cpu: 2500m
@@ -1408,8 +1438,10 @@ func TestVolumes(t *testing.T) {
 		expected   []corev1.Volume
 	}{
 		{
-			name:       "default values",
-			yamlString: "",
+			name: "default values",
+			yamlString: `tetragonEnabled: true
+exportDirectory: /var/run/cilium/tetragon
+hostProcPath: /proc`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1461,8 +1493,10 @@ func TestVolumes(t *testing.T) {
 			},
 		},
 		{
-			name:       "tetragon disabled",
-			yamlString: "tetragonEnabled: false",
+			name: "tetragon disabled",
+			yamlString: `tetragonEnabled: false
+exportDirectory: /var/run/cilium/tetragon
+hostProcPath: /proc`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1485,8 +1519,12 @@ func TestVolumes(t *testing.T) {
 			},
 		},
 		{
-			name:       "tetragon and oci-hook enabled",
-			yamlString: "ociHookSetupEnabled: true",
+			name: "tetragon and oci-hook enabled",
+			yamlString: `ociHookSetupEnabled: true
+tetragonEnabled: true
+exportDirectory: /var/run/cilium/tetragon
+hostProcPath: /proc
+ociHookSetupInstallDir: /opt/tetragon`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1558,6 +1596,10 @@ func TestVolumes(t *testing.T) {
 		{
 			name: "tetragon and oci-hook enabled with extra volumes and metadata",
 			yamlString: `ociHookSetupEnabled: true
+tetragonEnabled: true
+exportDirectory: /var/run/cilium/tetragon
+hostProcPath: /proc
+ociHookSetupInstallDir: /opt/tetragon
 extraVolumes: |
   - name: extra-volume1
     hostPath:

@@ -1,0 +1,14 @@
+# Root configuration of the operator ConfigMap.
+# The content specified here will be copied into it.
+# Refer to Tetragon documentation for the options.
+# Skip CRD creation.
+# DEPRECATED. This value will be removed in Tetragon v1.2 release. Use crds.installMethod instead.
+skip-crd-creation: "false"
+# Enables the PodInfo CRD and the controller that reconciles PodInfo
+# custom resources.
+skip-pod-info-crd: "false"
+# Enables the TracingPolicy and TracingPolicyNamespaced CRD creation.
+skip-tracing-policy-crd: "false"
+# Enables sandboxpolicies.
+skip-policysandbox-crd: "false"
+force-update-crds: "false"

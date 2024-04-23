@@ -16,18 +16,26 @@ const (
 	OperatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
 )
 
-//go:embed tetragon-config.yaml
-var defaultAgentConfig string
+var (
+	//go:embed operator-config.yaml
+	defaultOperatorConfig string
 
-//go:embed daemonset-config.yaml
-var defaultDSConfig string
+	//go:embed tetragon-config.yaml
+	defaultAgentConfig string
 
-// DefaultOperatorConfigMap creates an empty ConfigMap.
+	//go:embed daemonset-config.yaml
+	defaultDSConfig string
+)
+
+// DefaultOperatorConfigMap creates a ConfigMap.
 // It matches the mount configuration of the operator.
 // Note: this ConfigMap is not managed by the operator. It is actually driving the operator.
-// An empty ConfigMap is only created for convenience. Users are free
+// A ConfigMap is only created for convenience. Users are free
 // to create it themselves and to update it as they wish.
-func DefaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
+func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *corev1.ConfigMap {
+	data := ValuesAsMap(log, defaultOperatorConfig)
+	data[OperatorConfigMapAgentConfigMapKey] = defaultAgentConfig
+	data[OperatorConfigMapAgentDaemonSetKey] = defaultDSConfig
 	cm := &corev1.ConfigMap{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -39,10 +47,7 @@ func DefaultOperatorConfigMap(namespace string, name string) *corev1.ConfigMap {
 			// No label here. This ConfigMap is not managed by the operator.
 			Labels: map[string]string{},
 		},
-		Data: map[string]string{
-			OperatorConfigMapAgentConfigMapKey: defaultAgentConfig,
-			OperatorConfigMapAgentDaemonSetKey: defaultDSConfig,
-		},
+		Data: data,
 	}
 	return cm
 }
