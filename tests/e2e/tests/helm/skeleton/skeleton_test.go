@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 	//
 	// 3. Register a hook at the start of every test that installs Cilium into the
 	//    cluster with some default options (unless -tetragon.install-cilium=false is set
-	//    on thhe command line).
+	//    on the command line).
 	//
 	// 4. Register a hook at the start of every test that installs Tetragon into the
 	//    cluster with some default options.

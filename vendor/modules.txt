@@ -1052,6 +1052,11 @@ github.com/opencontainers/selinux/pkg/pwalkdir
 github.com/opentracing/opentracing-go
 github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
+# github.com/operator-framework/api v0.23.0
+## explicit; go 1.21
+github.com/operator-framework/api/pkg/lib/version
+github.com/operator-framework/api/pkg/operators
+github.com/operator-framework/api/pkg/operators/v1alpha1
 # github.com/pawelgaczynski/giouring v0.0.0-20230826085535-69588b89acb9
 ## explicit; go 1.20
 github.com/pawelgaczynski/giouring

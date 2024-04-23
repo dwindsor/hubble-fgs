@@ -1,0 +1,9 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: tetragon-catalog
+  namespace: kube-system
+spec:
+  sourceType: grpc
+  # TODO: change the organization to quay.io/isovalent-dev and point by default to latest when available
+  image:  quay.io/isovalent/tetragon-operator-index:v0.0.1

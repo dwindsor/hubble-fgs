@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package sandboxpolicy_test
+package sandboxpolicy
 
 import (
 	"context"
@@ -18,17 +18,15 @@ import (
 	"testing"
 	"time"
 
-	// Fix up OSS configuration defaults.
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
-	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 	"github.com/sirupsen/logrus"
+
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
 	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"
-	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
 
 	"k8s.io/klog/v2"
@@ -36,41 +34,11 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 )
 
-var (
-	testNamespace = "sandboxpolicy"
+const (
+	Namespace = "sandboxpolicy"
 )
 
-// This holds our test environment which we get from calling runners.NewRunner().Setup()
-var runner *runners.Runner
-
-func TestMain(m *testing.M) {
-	runner = runners.
-		NewRunner().
-		NoInstallCilium().
-		WithInstallTetragon(
-			install.WithHelmOptions(map[string]string{
-				"tetragon.exportAllowList":       "",
-				"tetragon.enablePolicyFilter":    "true",
-				"tetragon.enableSandboxpolicies": "true",
-			}),
-		).
-		Init()
-
-	runner.Setup(func(ctx context.Context, c *envconf.Config) (context.Context, error) {
-		// placeholder for future functionaility
-		ctx, _ = helpers.DeleteNamespace(testNamespace, true)(ctx, c)
-		ctx, err := helpers.CreateNamespace(testNamespace, true)(ctx, c)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to create namespace: %w", err)
-		}
-		return ctx, nil
-	})
-
-	// Run the tests using the test runner.
-	runner.Run(m)
-}
-
-func TestSandboxPolicy(t *testing.T) {
+func Test(t *testing.T, runner *runners.Runner, testNamespace string) {
 	runner.SetupExport(t)
 
 	checker := sandboxChecker().WithTimeLimit(5 * time.Minute).WithEventLimit(10)

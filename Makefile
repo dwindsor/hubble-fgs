@@ -335,7 +335,7 @@ endif
 ifeq ($(E2E_COVER),1)
 	E2E_COVER_FLAG ?= -cover
 endif
-E2E_TESTS ?= ./tests/e2e/tests/...
+E2E_TESTS ?= ./tests/e2e/tests/helm/...
 
 ## e2e-test: ## run e2e tests
 ## e2e-test E2E_BUILD_IMAGES=0: ## run e2e tests without (re-)building images

@@ -1,49 +1,43 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
 //
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
-//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
 
-package demoapp_test
+package demoapp
 
 import (
-	// Fix up OSS configuration defaults.
-	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
-
 	"context"
 	_ "embed"
 	"fmt"
 	"testing"
 	"time"
 
-	"sigs.k8s.io/e2e-framework/pkg/env"
-	"sigs.k8s.io/e2e-framework/pkg/envconf"
-	"sigs.k8s.io/e2e-framework/pkg/features"
-	"sigs.k8s.io/e2e-framework/third_party/helm"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/tests/e2e/checker"
+	"github.com/cilium/tetragon/tests/e2e/helpers"
+	"github.com/cilium/tetragon/tests/e2e/runners"
+
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/tests/e2e/checker"
-	"github.com/cilium/tetragon/tests/e2e/helpers"
-	"github.com/cilium/tetragon/tests/e2e/runners"
+	"sigs.k8s.io/e2e-framework/pkg/env"
+	"sigs.k8s.io/e2e-framework/pkg/envconf"
+	"sigs.k8s.io/e2e-framework/pkg/features"
+	"sigs.k8s.io/e2e-framework/third_party/helm"
 )
 
-var runner *runners.Runner
-
 const (
-	namespace = "demo-app"
+	Namespace = "demo-app"
 )
 
 //go:embed demo-app-tracingpolicy.yaml
-var tracingPolicyYaml string
+var TracingPolicyYaml string
 
 func installDemoApp() features.Func {
 	return func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
@@ -60,7 +54,7 @@ func installDemoApp() features.Func {
 			helm.WithName("jobs-app"),
 			helm.WithChart("isovalent/jobs-app"),
 			helm.WithVersion("v0.9.1"),
-			helm.WithNamespace(namespace),
+			helm.WithNamespace(Namespace),
 			helm.WithArgs("--create-namespace"),
 		); err != nil {
 			t.Fatalf("failed to install demo app. run with `-args -v=4` for more context from helm: %s", err)
@@ -70,17 +64,17 @@ func installDemoApp() features.Func {
 	}
 }
 
-func uninstallDemoApp() env.Func {
+func UninstallDemoApp() env.Func {
 	return func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		manager := helm.New(cfg.KubeconfigFile())
 		if err := manager.RunUninstall(
 			helm.WithName("jobs-app"),
-			helm.WithNamespace(namespace),
+			helm.WithNamespace(Namespace),
 		); err != nil {
 			return ctx, fmt.Errorf("failed to uninstall demo app. run with `-args -v=4` for more context from helm: %s", err)
 		}
 
-		ctx, err := helpers.DeleteNamespace(namespace, true)(ctx, cfg)
+		ctx, err := helpers.DeleteNamespace(Namespace, true)(ctx, cfg)
 		if err != nil {
 			return ctx, err
 		}
@@ -89,47 +83,15 @@ func uninstallDemoApp() env.Func {
 	}
 }
 
-func TestMain(m *testing.M) {
-	runner = runners.NewRunner().Init()
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.DeleteNamespace(namespace, true)(ctx, cfg)
-		ctx, err := helpers.CreateNamespace(namespace, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to create demo app namespace: %w", err)
-		}
-
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, err = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(uninstallDemoApp())
-
-	runner.Run(m)
-}
-
-func TestDemoApp(t *testing.T) {
+func Test(t *testing.T, runner *runners.Runner) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
 
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
-	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(10 * time.Minute)
+	demoChecker := checker.NewRPCChecker(Checker(kversion), "demoChecker").WithTimeLimit(10 * time.Minute)
 	testDemoApp := features.New("Test Demo App").
-		Assess("Run Event Checks", demoChecker.CheckInNamespace(30*time.Second, namespace)).
+		Assess("Run Event Checks", demoChecker.CheckInNamespace(30*time.Second, Namespace)).
 		Feature()
 
 	run := features.New("Setup Demo App").
@@ -140,12 +102,12 @@ func TestDemoApp(t *testing.T) {
 	runner.TestInParallel(t, testDemoApp, run)
 }
 
-func DemoAppChecker(_ string) ec.MultiEventChecker {
+func Checker(_ string) ec.MultiEventChecker {
 	jobpostingChecker := ec.NewProcessChecker().
 		WithBinary(sm.Full("/usr/local/bin/node")).
 		WithArguments(sm.Full("server.js")).
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":               *sm.Full("jobposting"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -156,7 +118,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 		WithBinary(sm.Full("/usr/local/bin/node")).
 		WithArguments(sm.Full("server.js")).
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":               *sm.Full("recruiter"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -167,7 +129,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 		WithBinary(sm.Full("/usr/local/bin/node")).
 		WithArguments(sm.Full("server.js")).
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":               *sm.Full("loader"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -176,7 +138,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	kafkaChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app.kubernetes.io/instance":         *sm.Full("jobs-app"),
 				"app.kubernetes.io/managed-by":       *sm.Full("strimzi-cluster-operator"),
@@ -194,7 +156,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	coreapiChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":               *sm.Full("coreapi"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -203,7 +165,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	crawlerChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":               *sm.Full("crawler"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -212,7 +174,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	elasticsearchChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app":                                *sm.Full("elasticsearch-master"),
 				"chart":                              *sm.Full("elasticsearch"),
@@ -224,7 +186,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	zookeeperChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"app.kubernetes.io/instance":         *sm.Full("jobs-app"),
 				"app.kubernetes.io/managed-by":       *sm.Full("strimzi-cluster-operator"),
@@ -242,7 +204,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 
 	strimziChecker := ec.NewProcessChecker().
 		WithPod(ec.NewPodChecker().
-			WithNamespace(sm.Full(namespace)).
+			WithNamespace(sm.Full(Namespace)).
 			WithPodLabels(map[string]sm.StringMatcher{
 				"name":              *sm.Full("strimzi-cluster-operator"),
 				"pod-template-hash": *sm.Regex("[a-f0-9]+"),
@@ -323,7 +285,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 					WithNames(ec.NewStringListMatcher().
 						WithOperator(listmatcher.Ordered).
 						WithValues(
-							sm.Full("jobs-app-kafka-brokers."+namespace+".svc.cluster.local."),
+							sm.Full("jobs-app-kafka-brokers."+Namespace+".svc.cluster.local."),
 						)).
 					WithResponse(true).
 					WithRcode(3)),
@@ -335,7 +297,7 @@ func DemoAppChecker(_ string) ec.MultiEventChecker {
 					WithNames(ec.NewStringListMatcher().
 						WithOperator(listmatcher.Ordered).
 						WithValues(
-							sm.Full("jobs-app-kafka-brokers."+namespace+".svc.cluster.local."),
+							sm.Full("jobs-app-kafka-brokers."+Namespace+".svc.cluster.local."),
 						))),
 		)
 	}

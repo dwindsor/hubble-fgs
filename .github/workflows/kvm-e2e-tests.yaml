@@ -42,6 +42,7 @@ jobs:
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
           echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
           echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmIndexImage=quay.io/isovalent-dev/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
 
       - name: Attempt To Pull Docker Images
         uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3.0.0
@@ -53,12 +54,13 @@ jobs:
             set -e
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
+            docker pull ${{ steps.vars.outputs.olmIndexImage }}
 
   run-tests:
     needs: ensure-image-available
     runs-on:
       - majestic-ketchup-light
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -79,6 +81,11 @@ jobs:
           - "5.4-20240612.090637"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "4.19-20240612.090637"
+        testDir:
+          # Tests run after Tetragon has been deployed with helm
+          - 'helm'
+          # Tests run after Tetragon has been deployed with OLM
+          - 'olm'
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -101,6 +108,16 @@ jobs:
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
           echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
           echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmIndexImage=quay.io/isovalent-dev/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Update OLM catalog index
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          yq_version: 4.44.2
+        run: |
+            set -eux
+            # Point to the newly built CI catalog index tests/e2e/olm/catalogsource.yaml
+            docker run -i --rm -v "${PWD}"/hubble-fgs:/workdir -u "$(id -u)" mikefarah/yq:${yq_version} e -i ".spec.image = \"${{ steps.vars.outputs.olmIndexImage }}\"" /workdir/tests/e2e/olm/catalogsource.yaml
 
       - name: Install Cilium CLI
         run: |
@@ -175,6 +192,7 @@ jobs:
               E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
               E2E_AGENT=${{ steps.vars.outputs.agentImage }}       \
               E2E_OPERATOR=${{ steps.vars.outputs.operatorImage }} \
+              E2E_TESTS="./tests/e2e/tests/${{ matrix.testDir }}/..."  \
               E2E_EXTRA_TEST_FLAGS="-tetragon.cilium-version=${{ env.ciliumVersion }} -tetragon.helm.set tetragon.extraArgs.fim-fifo-path=/tetragonExport -v"
 
       - name: Copy out e2e test logs
@@ -188,6 +206,6 @@ jobs:
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         with:
-          name: tetragon-e2e-${{ matrix.kernel }}
+          name: tetragon-e2e-${{ matrix.kernel }}-${{ matrix.testDir }}
           path: logs/e2e
           retention-days: 5

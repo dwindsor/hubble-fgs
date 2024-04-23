@@ -9,14 +9,9 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package httptls_test
+package httptls
 
 import (
-	// Fix up OSS configuration defaults.
-	"os"
-
-	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
-
 	"context"
 	_ "embed"
 	"fmt"
@@ -24,100 +19,35 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/e2e-framework/klient"
-	"sigs.k8s.io/e2e-framework/pkg/envconf"
-	"sigs.k8s.io/e2e-framework/pkg/features"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
-	e2ehelpers "github.com/cilium/tetragon/tests/e2e/helpers"
-	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
+
+	"github.com/stretchr/testify/assert"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+
+	"sigs.k8s.io/e2e-framework/klient"
+	"sigs.k8s.io/e2e-framework/pkg/envconf"
+	"sigs.k8s.io/e2e-framework/pkg/features"
 )
 
-var runner *runners.Runner
-
 const (
-	namespace = "curl"
+	Namespace = "curl"
 )
 
 //go:embed curl.yaml
-var curlYaml string
+var CURLYAML string
 
 //go:embed http-tls-tracingpolicy.yaml
-var tracingPolicyYaml string
+var TracingPolicyYAML string
 
-func TestMain(m *testing.M) {
-	if os.Getenv("FLAKY_HTTP") != "" {
-		return
-	}
-
-	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
-		"enterprise.exportAllowList": "",
-		"enterprise.enableTLSEvents": "true",
-	})).Init()
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, _ = helpers.DeleteNamespace(namespace, true)(ctx, cfg)
-		ctx, err = helpers.CreateNamespace(namespace, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to create curl namespace: %w", err)
-		}
-		ctx, err = helpers.LoadCRDString(namespace, curlYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to deploy curl pod: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, err = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, err = helpers.UnloadCRDString(namespace, curlYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Run(m)
-}
-
-func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) {
-	r := client.Resources(namespace)
-
-	podList := &corev1.PodList{}
-	r.List(ctx, podList)
-
-	if len(podList.Items) != 1 {
-		return nil, fmt.Errorf("expected exactly 1 curl pod")
-	}
-
-	return &podList.Items[0], nil
-}
-
-func TestHttp(t *testing.T) {
+func TestHTTP(t *testing.T, runner *runners.Runner) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
 
@@ -127,12 +57,12 @@ func TestHttp(t *testing.T) {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
 	}
 
-	httpChecker := checker.NewRPCChecker(HttpChecker(kversion), "httpChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
-	checkHttp := features.New("Check Http Events").
+	httpChecker := checker.NewRPCChecker(HTTPChecker(kversion), "hTTPChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
+	checkHTTP := features.New("Check Http Events").
 		Assess("Run Event Checks", httpChecker.CheckInNamespace(30*time.Second, "curl")).
 		Feature()
 
-	testHttp := features.New("Test Http").
+	testHTTP := features.New("Test Http").
 		Assess("Wait For Checker", httpChecker.Wait(30*time.Second)).
 		Assess("Run Curl Workload", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			client, err := cfg.NewClient()
@@ -143,9 +73,9 @@ func TestHttp(t *testing.T) {
 			if !assert.NoError(t, err, "unable to get curl pod") {
 				return ctx
 			}
-			out, err := e2ehelpers.ExecInPodCombinedOutput(ctx,
+			out, err := helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"curl",
 				strings.Fields("curl -4 http://google.com -m 30"))
@@ -159,10 +89,10 @@ func TestHttp(t *testing.T) {
 		}).
 		Feature()
 
-	runner.TestInParallel(t, checkHttp, testHttp)
+	runner.TestInParallel(t, checkHTTP, testHTTP)
 }
 
-func TestTls(t *testing.T) {
+func TestTLS(t *testing.T, runner *runners.Runner) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
 
@@ -172,12 +102,12 @@ func TestTls(t *testing.T) {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
 	}
 
-	tlsChecker := checker.NewRPCChecker(TlsChecker(kversion), "tlsChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
-	checkTls := features.New("Check Tls Events").
+	tlsChecker := checker.NewRPCChecker(TLSChecker(kversion), "tLSChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
+	checkTls := features.New("Check TLS Events").
 		Assess("Run Event Checks", tlsChecker.CheckInNamespace(30*time.Second, "curl")).
 		Feature()
 
-	testTls := features.New("Test Tls").
+	testTls := features.New("Test TLS").
 		Assess("Wait For Checker", tlsChecker.Wait(30*time.Second)).
 		Assess("Run Curl Workload", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			client, err := cfg.NewClient()
@@ -188,9 +118,9 @@ func TestTls(t *testing.T) {
 			if !assert.NoError(t, err, "unable to get curl pod") {
 				return ctx
 			}
-			out, err := e2ehelpers.ExecInPodCombinedOutput(ctx,
+			out, err := helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"curl",
 				strings.Fields("curl -4 https://google.com -m 30"))
@@ -207,7 +137,7 @@ func TestTls(t *testing.T) {
 	runner.TestInParallel(t, checkTls, testTls)
 }
 
-func TlsChecker(_ string) ec.MultiEventChecker {
+func TLSChecker(_ string) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("curl")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))
@@ -263,7 +193,7 @@ func TlsChecker(_ string) ec.MultiEventChecker {
 	return tlsChecker
 }
 
-func HttpChecker(_ string) ec.MultiEventChecker {
+func HTTPChecker(_ string) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("curl")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))
@@ -303,10 +233,23 @@ func HttpChecker(_ string) ec.MultiEventChecker {
 		ec.NewProcessExecChecker("curlExec").
 			WithProcess(curlChecker).
 			WithParent(shellChecker),
-		ec.NewProcessHttpChecker("curlHttp").
+		ec.NewProcessHttpChecker("curlHTTP").
 			WithProcess(curlChecker).
 			WithHttp(httpEventChecker),
 	)
 
 	return httpChecker
+}
+
+func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) {
+	r := client.Resources(Namespace)
+
+	podList := &corev1.PodList{}
+	r.List(ctx, podList)
+
+	if len(podList.Items) != 1 {
+		return nil, fmt.Errorf("expected exactly 1 curl pod")
+	}
+
+	return &podList.Items[0], nil
 }

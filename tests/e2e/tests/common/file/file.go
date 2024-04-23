@@ -9,25 +9,20 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package file_test
+package file
 
 import (
-	// Fix up OSS configuration defaults.
-
 	"bytes"
-	"os"
-	"strconv"
-
-	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
-
 	"context"
 	_ "embed"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient"
@@ -40,216 +35,35 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
-	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"
-	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
 )
 
-var runner *runners.Runner
-
 const (
-	namespace = "file"
+	Namespace = "file"
 )
 
 //go:embed ubuntu-shared-proc.yaml
-var ubuntulYaml string
+var UbuntulYaml string
 
 //go:embed ubuntu-simple-pod.yaml
-var ubuntulDefaultYaml string
+var UbuntulDefaultYaml string
 
 //go:embed file-tracingpolicy.yaml
-var tracingPolicyYaml string
+var TracingPolicyYaml string
 
 //go:embed file-tracingpolicy-namespaced.yaml
-var tracingPolicyNamespacedYaml string
+var TracingPolicyNamespacedYaml string
 
 //go:embed file-enforcement-tracingpolicy.yaml
-var tracingEnforcePolicyYaml string
+var TracingEnforcePolicyYaml string
 
-var supportEnforcement = false
-
-// This function checks if all tetragon pods support file enforcement.
-// We use that to run file enforcement e2e tests only in supported platforms.
-func testFileEnforcement(ctx context.Context, client klient.Client) (bool, error) {
-	namespace := "kube-system"
-	r := client.Resources(namespace)
-	podList := &corev1.PodList{}
-	r.List(ctx, podList)
-	for _, pod := range podList.Items {
-		if strings.HasPrefix(pod.Name, "tetragon") && !strings.Contains(pod.Name, "operator") {
-			stdout := &bytes.Buffer{}
-			stderr := &bytes.Buffer{}
-			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "tetragon", stdout, stderr, strings.Fields("tetra file-debug support-enforcement"))
-			if err != nil {
-				return false, err
-			}
-			val, err := strconv.ParseInt(stdout.String(), 10, 0)
-			if err != nil {
-				return false, err
-			}
-			if val == 0 {
-				return false, nil
-			}
-		}
-	}
-	return true, nil
-}
-
-func TestMain(m *testing.M) {
-	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragon(install.WithHelmOptions(map[string]string{
-		"tetragon.exportAllowList":    "",
-		"tetragon.enableCiliumAPI":    "false",
-		"tetragon.enablePolicyFilter": "true",
-	})).Init()
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, _ = helpers.DeleteNamespace(namespace, true)(ctx, cfg)
-		ctx, err = helpers.CreateNamespace(namespace, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to create file namespace: %w", err)
-		}
-		pr := os.Getenv("HOST_PROC")
-		if pr == "" {
-			pr = "/proc"
-		}
-		ctx, err = helpers.LoadCRDString(namespace, strings.Replace(ubuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to deploy ubuntu pod: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, err := helpers.LoadCRDString("default", ubuntulDefaultYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to deploy ubuntu pod: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, err := helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to load tracingPolicyYaml: %w", err)
-		}
-		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring"); err != nil {
-			return ctx, err
-		}
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, err := helpers.LoadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to load tracingPolicyNamespacedYaml: %w", err)
-		}
-		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-namespaced"); err != nil {
-			return ctx, err
-		}
-		return ctx, nil
-	})
-
-	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		client, err := cfg.NewClient()
-		if err != nil {
-			klog.Info("Failed to get client")
-			return ctx, nil
-		}
-
-		supportEnforcement, err = testFileEnforcement(ctx, client)
-		if err != nil {
-			klog.Infof("Failed to run testFileEnforcement [%s]", err)
-			return ctx, nil
-		}
-
-		if supportEnforcement {
-			klog.Info("Kernel supports file enforcement")
-			ctx, err := helpers.LoadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
-			if err != nil {
-				return ctx, fmt.Errorf("failed to load tracingEnforcePolicyYaml: %w", err)
-			}
-			if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-enforcement"); err != nil {
-				return ctx, err
-			}
-		} else {
-			klog.Info("Kernel does not support file enforcement")
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		if supportEnforcement {
-			var err error
-			ctx, err = helpers.UnloadCRDString(namespace, tracingEnforcePolicyYaml, true)(ctx, cfg)
-			if err != nil {
-				return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-			}
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		var err error
-		ctx, err = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, err := helpers.UnloadCRDString("default", tracingPolicyNamespacedYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		pr := os.Getenv("HOST_PROC")
-		if pr == "" {
-			pr = "/proc"
-		}
-		var err error
-		ctx, err = helpers.UnloadCRDString(namespace, strings.Replace(ubuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, err := helpers.UnloadCRDString("default", ubuntulDefaultYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
-		}
-		return ctx, nil
-	})
-
-	runner.Run(m)
-}
-
-func getUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1.Pod, error) {
-	r := client.Resources(ns)
-
-	podList := &corev1.PodList{}
-	r.List(ctx, podList)
-
-	if len(podList.Items) != 1 {
-		return nil, fmt.Errorf("expected exactly 1 ubuntu pod")
-	}
-
-	return &podList.Items[0], nil
-}
-
-func TestFile(t *testing.T) {
+func Test(t *testing.T, runner *runners.Runner, supportEnforcement bool) {
 	// Must be called at the beginning of every test
 	runner.SetupExport(t)
 
-	fileChecker := checker.NewRPCChecker(FileChecker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
+	fileChecker := checker.NewRPCChecker(Checker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkFile := features.New("Check File Events").
-		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, []string{namespace, "default"}...)).
+		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, []string{Namespace, "default"}...)).
 		Feature()
 
 	testFile := features.New("Test File").
@@ -259,7 +73,7 @@ func TestFile(t *testing.T) {
 			if !assert.NoError(t, err, "unable to get kube client") {
 				return ctx
 			}
-			pod, err := getUbuntuPod(ctx, client, namespace)
+			pod, err := getUbuntuPod(ctx, client, Namespace)
 			if !assert.NoError(t, err, "unable to get ubuntu pod") {
 				return ctx
 			}
@@ -267,7 +81,7 @@ func TestFile(t *testing.T) {
 			// create a file
 			_, err = helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- dd if=/dev/zero of=/tmp/testfile bs=128 count=1"))
@@ -279,7 +93,7 @@ func TestFile(t *testing.T) {
 			// read the file
 			_, err = helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- cat /tmp/testfile"))
@@ -291,7 +105,7 @@ func TestFile(t *testing.T) {
 			// delete the file
 			_, err = helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- rm -f /tmp/testfile"))
@@ -303,7 +117,7 @@ func TestFile(t *testing.T) {
 			// read the /etc/passwd (in GKE this is over an overlayfs with xino=off)
 			_, err = helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"ubuntu",
 				strings.Fields("nsenter --mount=/procRoot/1/ns/mnt -- cat /etc/passwd"))
@@ -315,7 +129,7 @@ func TestFile(t *testing.T) {
 			// read the /etc/shadow inside the Pod
 			_, err = helpers.ExecInPodCombinedOutput(ctx,
 				client,
-				namespace,
+				Namespace,
 				pod.Name,
 				"ubuntu",
 				strings.Fields("cat /etc/shadow"))
@@ -346,7 +160,7 @@ func TestFile(t *testing.T) {
 			} {
 				_, err = helpers.ExecInPodCombinedOutput(ctx,
 					client,
-					namespace,
+					Namespace,
 					pod.Name,
 					"ubuntu",
 					strings.Fields(cmd))
@@ -370,7 +184,7 @@ func TestFile(t *testing.T) {
 				// try to delete /etc/shadow in order to check enforcement
 				_, err = helpers.ExecInPodCombinedOutput(ctx,
 					client,
-					namespace,
+					Namespace,
 					pod.Name,
 					"ubuntu",
 					strings.Fields("rm -f /etc/shadow"))
@@ -399,7 +213,7 @@ func createOpChecker(val tetragon.FileOperation) *ec.FileOperationListMatcher {
 		)
 }
 
-func FileChecker(enforcement bool) ec.MultiEventChecker {
+func Checker(enforcement bool) ec.MultiEventChecker {
 	containerChecker := ec.NewContainerChecker().
 		WithName(sm.Full("ubuntu")).
 		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/library/ubuntu:22.04")))
@@ -596,4 +410,44 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 		return ec.NewUnorderedEventChecker(obsChecks...)
 	}
 	return ec.NewUnorderedEventChecker(append(obsChecks, enfChecks...)...)
+}
+
+// TestFileEnforcement checks if all tetragon pods support file enforcement.
+// We use that to run file enforcement e2e tests only in supported platforms.
+func TestFileEnforcement(ctx context.Context, client klient.Client) (bool, error) {
+	namespace := "kube-system"
+	r := client.Resources(namespace)
+	podList := &corev1.PodList{}
+	r.List(ctx, podList)
+	for _, pod := range podList.Items {
+		if strings.HasPrefix(pod.Name, "tetragon") && !strings.Contains(pod.Name, "operator") {
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			err := helpers.ExecInPod(ctx, client, namespace, pod.Name, "tetragon", stdout, stderr, strings.Fields("tetra file-debug support-enforcement"))
+			if err != nil {
+				return false, err
+			}
+			val, err := strconv.ParseInt(stdout.String(), 10, 0)
+			if err != nil {
+				return false, err
+			}
+			if val == 0 {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
+func getUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1.Pod, error) {
+	r := client.Resources(ns)
+
+	podList := &corev1.PodList{}
+	r.List(ctx, podList)
+
+	if len(podList.Items) != 1 {
+		return nil, fmt.Errorf("expected exactly 1 ubuntu pod")
+	}
+
+	return &podList.Items[0], nil
 }
