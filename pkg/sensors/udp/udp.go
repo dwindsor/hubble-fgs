@@ -975,8 +975,10 @@ func (udp *udpSensor) PolicyHandler(
 
 	if spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
+		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
 	} else {
 		udpconfig.MetricsEnabled = true
+		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter()
 	}
 
 	/* UDP GC interval tracks UDP stats events and UDP delete events. If
