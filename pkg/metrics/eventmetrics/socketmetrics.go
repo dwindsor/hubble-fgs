@@ -41,7 +41,7 @@ func HandleRawsockCreateEvent(res *tetragon.ProcessRawsockCreate) {
 	if !rawsockconfig.MetricsEnabled {
 		return
 	}
-	l := createSrcSocketLabels(res.Process)
+	l := createRawSocketLabels(res.Process)
 	socketmetrics.RawsockCreateVol.WithLabelValues(l).Inc()
 }
 
@@ -49,6 +49,6 @@ func HandleRawsockCloseEvent(res *tetragon.ProcessRawsockClose) {
 	if !rawsockconfig.MetricsEnabled {
 		return
 	}
-	l := createSrcSocketLabels(res.Process)
+	l := createRawSocketLabels(res.Process)
 	socketmetrics.RawsockCloseVol.WithLabelValues(l).Inc()
 }

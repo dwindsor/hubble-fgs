@@ -209,8 +209,10 @@ func (rawsock *rawsockSensor) PolicyHandler(
 
 	if spec.Parser.Rawsock.Metrics != nil {
 		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
+		rawsockconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
 	} else {
 		rawsockconfig.MetricsEnabled = true
+		rawsockconfig.CurrentLabels = option.DefaultLabelFilter()
 	}
 
 	return EnableRawsockParser(spec.Parser.Rawsock.ReportClose), nil

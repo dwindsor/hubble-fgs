@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
@@ -174,8 +175,21 @@ func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	return metrics.NewProcessLabels(ns, w, p, b)
 }
 
-func createSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
+func createRawSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
+
+	if !rawsockconfig.CurrentLabels["namespace"] {
+		ns = ""
+	}
+	if !rawsockconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !rawsockconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !rawsockconfig.CurrentLabels["binary"] {
+		b = ""
+	}
 
 	return metrics.NewProcessLabels(ns, w, p, b)
 }
