@@ -13,10 +13,49 @@ package eventmetrics
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
+	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
+
+func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
+	b, p, w, ns := oss.GetProcessInfo(res)
+
+	if !tcpconfig.CurrentLabels["namespace"] {
+		ns = ""
+	}
+	if !tcpconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !tcpconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !tcpconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+
+	return metrics.NewProcessLabels(ns, w, p, b)
+}
+
+func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
+	b, p, w, ns := oss.GetProcessInfo(res)
+
+	if !udpconfig.CurrentLabels["namespace"] {
+		ns = ""
+	}
+	if !udpconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !udpconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !udpconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+
+	return metrics.NewProcessLabels(ns, w, p, b)
+}
 
 func postUDPBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {

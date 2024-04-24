@@ -138,44 +138,6 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 	return socketmetrics.NewMulticastSocketLabels(ns, w, p, b, sourceIP, dstns, dstWorkload, dstPodString, dstIP)
 }
 
-func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
-	b, p, w, ns := oss.GetProcessInfo(res)
-
-	if !tcpconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !tcpconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !tcpconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !tcpconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-
-	return metrics.NewProcessLabels(ns, w, p, b)
-}
-
-func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
-	b, p, w, ns := oss.GetProcessInfo(res)
-
-	if !udpconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !udpconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !udpconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !udpconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-
-	return metrics.NewProcessLabels(ns, w, p, b)
-}
-
 func createRawSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 	b, p, w, ns := oss.GetProcessInfo(res)
 
