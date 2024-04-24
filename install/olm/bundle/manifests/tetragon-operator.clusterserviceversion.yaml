@@ -168,6 +168,8 @@ spec:
           - tracingpolicies
           - tracingpoliciesnamespaced
           - podinfo
+          - sandboxpolicies
+          - sandboxpoliciesnamespaced
           verbs:
           - get
           - list
