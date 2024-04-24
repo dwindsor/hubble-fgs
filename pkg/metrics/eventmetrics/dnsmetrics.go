@@ -19,7 +19,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 )
@@ -62,11 +61,11 @@ func (rr dnsRR) String() string {
 }
 
 var (
-	dnsRequestTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	dnsRequestTotal = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "dns_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Dns request/response statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "names", "rcodes", "response"})
+	}, []string{"names", "rcodes", "response"})
 )
 
 func InitMetrics(registry *prometheus.Registry) {
@@ -76,9 +75,12 @@ func InitMetrics(registry *prometheus.Registry) {
 func InitMetricsForDocs(registry *prometheus.Registry) {
 	InitMetrics(registry)
 
-	dnsRequestTotal.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, "", rrRequest.String())...).Add(0)
+	processLabels := metrics.NewProcessLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+	)
+	dnsRequestTotal.WithLabelValues(processLabels, enterpriseMetrics.ExampleDNSNamesLabel, "", rrRequest.String()).Add(0)
 	for _, rcode := range rCodeNames {
-		dnsRequestTotal.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, rcode, rrResponse.String())...).Add(0)
+		dnsRequestTotal.WithLabelValues(processLabels, enterpriseMetrics.ExampleDNSNamesLabel, rcode, rrResponse.String()).Add(0)
 	}
 }
 
@@ -90,8 +92,6 @@ func getRCodeString(rc *wrapperspb.Int32Value) string {
 }
 
 func postDnsMetric(res *tetragon.ProcessDns) {
-	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
 	codes := getRCodeString(dns.GetReturnCode())
@@ -101,7 +101,8 @@ func postDnsMetric(res *tetragon.ProcessDns) {
 		rr = rrResponse
 	}
 
-	dnsRequestTotal.WithLabelValues(ns, workload, pod, binary, names, codes, rr.String()).Inc()
+	processLabels := createDNSLabels(res.Process)
+	dnsRequestTotal.WithLabelValues(processLabels, names, codes, rr.String()).Inc()
 }
 
 func HandleDnsEvent(res *tetragon.ProcessDns) {

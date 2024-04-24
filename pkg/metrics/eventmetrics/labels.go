@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
 
@@ -188,6 +189,25 @@ func createRawSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 		p = ""
 	}
 	if !rawsockconfig.CurrentLabels["binary"] {
+		b = ""
+	}
+
+	return metrics.NewProcessLabels(ns, w, p, b)
+}
+
+func createDNSLabels(res *tetragon.Process) *metrics.ProcessLabels {
+	b, p, w, ns := oss.GetProcessInfo(res)
+
+	if !dnsconfig.CurrentLabels["namespace"] {
+		ns = ""
+	}
+	if !dnsconfig.CurrentLabels["workload"] {
+		w = ""
+	}
+	if !dnsconfig.CurrentLabels["pod"] {
+		p = ""
+	}
+	if !dnsconfig.CurrentLabels["binary"] {
 		b = ""
 	}
 

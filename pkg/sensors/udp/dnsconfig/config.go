@@ -10,6 +10,11 @@
 
 package dnsconfig
 
+import (
+	"github.com/cilium/tetragon/pkg/option"
+)
+
 var (
 	MetricsEnabled = false
+	CurrentLabels  = option.DefaultLabelFilter()
 )
