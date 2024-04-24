@@ -357,9 +357,10 @@ func (tcp *tcpSensor) PolicyHandler(
 
 	if spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
-		tcpconfig.ConfigureLabels(spec.Parser.Tcp.Metrics.LabelFilter)
+		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)
 	} else {
 		tcpconfig.MetricsEnabled = true
+		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter()
 	}
 
 	if fid != policyfilter.NoFilterID {

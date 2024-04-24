@@ -11,9 +11,6 @@
 package tcpconfig
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
@@ -38,33 +35,4 @@ func DefaultLabelFilter() metrics.LabelFilter {
 		"dstdns":       true,
 		"dstip":        false,
 	}
-}
-
-func zeroLabels(l map[string]bool) {
-	for k := range CurrentLabels {
-		l[k] = false
-	}
-}
-
-func ConfigureLabels(masks []string) error {
-	var unknownMasks []string
-
-	if len(masks) == 0 {
-		return nil
-	}
-
-	zeroLabels(CurrentLabels)
-
-	for _, v := range masks {
-		_, ok := CurrentLabels[v]
-		if !ok {
-			unknownMasks = append(unknownMasks, v)
-			continue
-		}
-		CurrentLabels[v] = true
-	}
-	if len(unknownMasks) > 0 {
-		return fmt.Errorf("Unknown masks: %s", strings.Join(unknownMasks, ","))
-	}
-	return nil
 }
