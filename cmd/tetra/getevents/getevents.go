@@ -11,7 +11,6 @@
 package getevents
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -112,7 +111,6 @@ func New() *cobra.Command {
 	ossGetevents.GetEncoder = GetEncoder
 	ossGetevents.GetFilter = GetFilter
 	cmd := ossGetevents.New()
-	cmd.Long = fmt.Sprintf(ossGetevents.DocLong, "hubble-enterprise")
 
 	flags := cmd.Flags()
 	flags.StringSliceVar(&ips, "ip-cidr", nil, "Get ProcessListen events by IP CIDR")
