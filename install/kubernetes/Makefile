@@ -49,7 +49,8 @@ $(EE_CHART)/values.yaml:
 	$(call merge_yamls,$(VALUES_YAML_FILES),$@)
 
 .PHONY: $(EE_CHART)/templates
-$(EE_CHART)/templates:
+$(EE_CHART)/templates: $(CRDS) $(EE_PATCHES)
+	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/baseline-policies/. $(EE_CHART)/baseline-policies
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
