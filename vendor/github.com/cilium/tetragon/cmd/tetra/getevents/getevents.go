@@ -21,22 +21,6 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-// DocLong documents the commands with some examples
-const DocLong = `This command prints and filter events by connecting to the server or via
-redirection of events to the stdin. Examples:
-
-  # Connect, print and filter by process events
-  %[1]s getevents --process netserver
-
-  # Redirect events and filter by namespace from stdin
-  cat events.json | %[1]s getevents -o compact --namespace default
-
-  # Exclude parent field
-  %[1]s getevents -F parent
-
-  # Include only process and parent.pod fields
-  %[1]s getevents -f process,parent.pod`
-
 type Opts struct {
 	Output        string
 	Color         string
@@ -157,7 +141,20 @@ func New() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "getevents",
 		Short: "Print events",
-		Long:  fmt.Sprintf(DocLong, "tetra"),
+		Long: `This command prints and filter events by connecting to the server or via
+redirection of events to the stdin. Examples:
+
+  # Connect, print and filter by process events
+  tetra getevents --process netserver
+
+  # Redirect events and filter by namespace from stdin
+  cat events.json | tetra getevents -o compact --namespace default
+
+  # Exclude parent field
+  tetra getevents -F parent
+
+  # Include only process and parent.pod fields
+  tetra getevents -f process,parent.pod`,
 		PreRunE: func(_ *cobra.Command, _ []string) error {
 			if Options.Output != "json" && Options.Output != "compact" {
 				return fmt.Errorf("invalid value for %q flag: %s", common.KeyOutput, Options.Output)
@@ -178,9 +175,9 @@ func New() *cobra.Command {
 			}
 
 			// merge deprecated to new flags, appending since order does not matter
-			Options.Namespaces = append(Options.Namespaces, Options.Namespace...)
-			Options.Pods = append(Options.Pods, Options.Pod...)
-			Options.Processes = append(Options.Processes, Options.Process...)
+			Options.Namespaces = append(Options.Namespace, Options.Namespaces...)
+			Options.Pods = append(Options.Pod, Options.Pods...)
+			Options.Processes = append(Options.Process, Options.Processes...)
 
 			return nil
 		},
@@ -203,17 +200,17 @@ func New() *cobra.Command {
 	flags.StringSliceVarP(&Options.EventTypes, "event-types", "e", nil, "Include only events of given types")
 	flags.StringSliceVarP(&Options.ExcludeFields, "exclude-fields", "F", nil, "Exclude fields from events")
 
-	flags.StringSliceVarP(&Options.Namespaces, "namespaces", "n", nil, "Get events by Kubernetes namespaces")
-	flags.StringSliceVar(&Options.Namespace, "namespace", nil, "Get events by Kubernetes namespace")
-	flags.MarkDeprecated("namespace", "please use --namespaces instead")
+	flags.StringSliceVarP(&Options.Namespace, "namespace", "n", nil, "Get events by Kubernetes namespace")
+	flags.StringSliceVar(&Options.Namespaces, "namespaces", nil, "Get events by Kubernetes namespaces")
+	flags.MarkHidden("namespaces")
 
-	flags.StringSliceVar(&Options.Processes, "processes", nil, "Get events by processes name regex")
 	flags.StringSliceVar(&Options.Process, "process", nil, "Get events by process name regex")
-	flags.MarkDeprecated("process", "please use --processes instead")
+	flags.StringSliceVar(&Options.Processes, "processes", nil, "Get events by processes name regex")
+	flags.MarkHidden("processes")
 
-	flags.StringSliceVar(&Options.Pods, "pods", nil, "Get events by pods name regex")
 	flags.StringSliceVar(&Options.Pod, "pod", nil, "Get events by pod name regex")
-	flags.MarkDeprecated("pod", "please use --pods instead")
+	flags.StringSliceVar(&Options.Pods, "pods", nil, "Get events by pods name regex")
+	flags.MarkHidden("pods")
 
 	flags.BoolVar(&Options.Host, "host", false, "Get host events")
 	flags.BoolVar(&Options.Timestamps, "timestamps", false, "Include timestamps in compact output")
