@@ -20,12 +20,12 @@ import (
 
 func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
 	if res.Socket.Protocol == tetragon.SocketProtocol_TCP {
-		l := createTCPSocketLabels(res)
+		l := createSocketLabels(tcpconfig.CurrentLabels, res)
 		if tcpconfig.MetricsEnabled {
 			postTCPSocketStats(l, res.Stats)
 		}
 	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
-		l := createUDPSocketLabels(res)
+		l := createSocketLabels(udpconfig.CurrentLabels, res)
 		if udpconfig.MetricsEnabled {
 			postUDPSocketStats(l, res.Stats)
 			postUDPMulticastSocketStats(res)
@@ -41,7 +41,7 @@ func HandleRawsockCreateEvent(res *tetragon.ProcessRawsockCreate) {
 	if !rawsockconfig.MetricsEnabled {
 		return
 	}
-	l := createRawSocketLabels(res.Process)
+	l := createProcessLabels(rawsockconfig.CurrentLabels, res.Process)
 	socketmetrics.RawsockCreateVol.WithLabelValues(l).Inc()
 }
 
@@ -49,6 +49,6 @@ func HandleRawsockCloseEvent(res *tetragon.ProcessRawsockClose) {
 	if !rawsockconfig.MetricsEnabled {
 		return
 	}
-	l := createRawSocketLabels(res.Process)
+	l := createProcessLabels(rawsockconfig.CurrentLabels, res.Process)
 	socketmetrics.RawsockCloseVol.WithLabelValues(l).Inc()
 }

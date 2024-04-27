@@ -18,163 +18,9 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/rawsock/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
-
-func createTCPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.SocketLabels {
-	b, p, w, ns := oss.GetProcessInfo(res.Process)
-	dstPod := res.Socket.GetDestinationPod()
-	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
-	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
-	dstIp := res.Socket.DestinationIp
-
-	if !tcpconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !tcpconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !tcpconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !tcpconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-	if !tcpconfig.CurrentLabels["dstnamespace"] {
-		dstns = ""
-	}
-	if !tcpconfig.CurrentLabels["dstworkload"] {
-		dstWorkload = ""
-	}
-	if !tcpconfig.CurrentLabels["dstpod"] {
-		dstPodString = ""
-	}
-	if !tcpconfig.CurrentLabels["dstdns"] {
-		dstDNS = ""
-	}
-	if !tcpconfig.CurrentLabels["dstip"] {
-		dstIp = ""
-	}
-
-	return socketmetrics.NewSocketLabels(ns, w, p, b, dstns, dstWorkload, dstPodString, dstDNS, dstIp)
-}
-
-func createUDPSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.SocketLabels {
-	b, p, w, ns := oss.GetProcessInfo(res.Process)
-	dstPod := res.Socket.GetDestinationPod()
-	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
-	dstDNS := strings.Join(res.Socket.DestinationNames, ",")
-	dstIp := res.Socket.DestinationIp
-
-	if !udpconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !udpconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !udpconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !udpconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-	if !udpconfig.CurrentLabels["dstnamespace"] {
-		dstns = ""
-	}
-	if !udpconfig.CurrentLabels["dstworkload"] {
-		dstWorkload = ""
-	}
-	if !udpconfig.CurrentLabels["dstpod"] {
-		dstPodString = ""
-	}
-	if !udpconfig.CurrentLabels["dstdns"] {
-		dstDNS = ""
-	}
-	if !udpconfig.CurrentLabels["dstip"] {
-		dstIp = ""
-	}
-
-	return socketmetrics.NewSocketLabels(ns, w, p, b, dstns, dstWorkload, dstPodString, dstDNS, dstIp)
-}
-
-func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.MulticastSocketLabels {
-	b, p, w, ns := oss.GetProcessInfo(res.Process)
-	dstPod := res.Socket.GetDestinationPod()
-	dstPodString, dstWorkload, dstns := GetDstPodInfo(dstPod)
-	sourceIP := res.Socket.SourceIp
-	dstIP := res.Socket.DestinationIp
-
-	if !udpconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !udpconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !udpconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !udpconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-	if !udpconfig.CurrentLabels["dstnamespace"] {
-		dstns = ""
-	}
-	if !udpconfig.CurrentLabels["dstworkload"] {
-		dstWorkload = ""
-	}
-	if !udpconfig.CurrentLabels["dstpod"] {
-		dstPodString = ""
-	}
-	if !udpconfig.CurrentLabels["srcmcast"] {
-		sourceIP = ""
-	}
-	if !udpconfig.CurrentLabels["dstmcast"] {
-		dstIP = ""
-	}
-
-	return socketmetrics.NewMulticastSocketLabels(ns, w, p, b, sourceIP, dstns, dstWorkload, dstPodString, dstIP)
-}
-
-func createRawSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
-	b, p, w, ns := oss.GetProcessInfo(res)
-
-	if !rawsockconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !rawsockconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !rawsockconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !rawsockconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-
-	return metrics.NewProcessLabels(ns, w, p, b)
-}
-
-func createDNSLabels(res *tetragon.Process) *metrics.ProcessLabels {
-	b, p, w, ns := oss.GetProcessInfo(res)
-
-	if !dnsconfig.CurrentLabels["namespace"] {
-		ns = ""
-	}
-	if !dnsconfig.CurrentLabels["workload"] {
-		w = ""
-	}
-	if !dnsconfig.CurrentLabels["pod"] {
-		p = ""
-	}
-	if !dnsconfig.CurrentLabels["binary"] {
-		b = ""
-	}
-
-	return metrics.NewProcessLabels(ns, w, p, b)
-}
 
 func getPromBucket(min, max, upperLimitPercent uint32) string {
 	if upperLimitPercent == 100 {
@@ -187,11 +33,98 @@ func getTcpRttPromBucket(upperLimitPercent uint32) string {
 	return getPromBucket(tcpconfig.RttHistogramMin, tcpconfig.RttHistogramMax, upperLimitPercent)
 }
 
-func GetDstPodInfo(dstPod *tetragon.Pod) (pod, workload, ns string) {
-	if dstPod != nil {
-		ns = dstPod.Namespace
-		workload = dstPod.Workload
-		pod = dstPod.Name
+func getSocketInfo(processLabels *metrics.ProcessLabels, socket *tetragon.SockInfo) *socketmetrics.SocketLabels {
+	var dstns, dstworkload, dstpod, dstDNS, dstip string
+	if socket != nil {
+		dstPod := socket.GetDestinationPod()
+		if dstPod != nil {
+			dstns = dstPod.Namespace
+			dstworkload = dstPod.Workload
+			dstpod = dstPod.Name
+		}
+		dstDNS = strings.Join(socket.DestinationNames, ",")
+		dstip = socket.DestinationIp
 	}
-	return pod, workload, ns
+	return socketmetrics.NewSocketLabels(
+		processLabels.Namespace, processLabels.Workload, processLabels.Pod, processLabels.Binary,
+		dstns, dstworkload, dstpod, dstDNS, dstip,
+	)
+}
+
+func createProcessLabels(labelFilter metrics.LabelFilter, res *tetragon.Process) *metrics.ProcessLabels {
+	binary, pod, workload, ns := oss.GetProcessInfo(res)
+	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
+
+	if !labelFilter["namespace"] {
+		processLabels.Namespace = ""
+	}
+	if !labelFilter["workload"] {
+		processLabels.Workload = ""
+	}
+	if !labelFilter["pod"] {
+		processLabels.Pod = ""
+	}
+	if !labelFilter["binary"] {
+		processLabels.Binary = ""
+	}
+
+	return processLabels
+}
+
+func createSocketLabels(labelFilter metrics.LabelFilter, res *tetragon.ProcessSockStats) *socketmetrics.SocketLabels {
+	processLabels := createProcessLabels(labelFilter, res.Process)
+	socketLabels := getSocketInfo(processLabels, res.Socket)
+
+	// NOTE: Process labels are filtered already in createProcessLabels.
+	if !labelFilter["dstnamespace"] {
+		socketLabels.DstNs = ""
+	}
+	if !labelFilter["dstworkload"] {
+		socketLabels.DstWorkload = ""
+	}
+	if !labelFilter["dstpod"] {
+		socketLabels.DstPod = ""
+	}
+	if !labelFilter["dstdns"] {
+		socketLabels.DstDNS = ""
+	}
+	if !labelFilter["dstip"] {
+		socketLabels.DstIp = ""
+	}
+
+	return socketLabels
+}
+
+func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.MulticastSocketLabels {
+	processLabels := createProcessLabels(udpconfig.CurrentLabels, res.Process)
+	socketLabels := getSocketInfo(processLabels, res.Socket)
+	var ip string
+	if res.Socket != nil {
+		ip = res.Socket.SourceIp
+	}
+	mcastLabels := socketmetrics.NewMulticastSocketLabels(
+		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
+		ip,
+		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
+		socketLabels.DstIp,
+	)
+
+	// NOTE: Process labels are filtered already in createProcessLabels.
+	if !udpconfig.CurrentLabels["dstnamespace"] {
+		mcastLabels.DstNs = ""
+	}
+	if !udpconfig.CurrentLabels["dstworkload"] {
+		mcastLabels.DstWorkload = ""
+	}
+	if !udpconfig.CurrentLabels["dstpod"] {
+		mcastLabels.DstPod = ""
+	}
+	if !udpconfig.CurrentLabels["srcmcast"] {
+		mcastLabels.SrcMcast = ""
+	}
+	if !udpconfig.CurrentLabels["dstmcast"] {
+		mcastLabels.DstMcast = ""
+	}
+
+	return mcastLabels
 }

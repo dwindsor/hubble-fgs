@@ -12,30 +12,43 @@ package eventmetrics
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 )
 
 func postHttpStats(res *tetragon.ProcessHttp) {
 	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	dstPod := res.Socket.GetDestinationPod()
-	dstpod, dstworkload, dstns := GetDstPodInfo(dstPod)
-	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
-
-	http := res.Http
-	code := fmt.Sprintf("%d", http.Response.Code)
-	host := http.Request.Host
+	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
+	socketLabels := getSocketInfo(processLabels, res.Socket)
+	var host, code string
+	var latency float64
+	if res.Http != nil {
+		if res.Http.Response != nil {
+			code = fmt.Sprintf("%d", res.Http.Response.Code)
+		}
+		if res.Http.Request != nil {
+			host = res.Http.Request.Host
+		}
+		if res.Http.Latency != nil {
+			latency = float64(res.Http.Latency.AsDuration().Seconds())
+		}
+	}
 
 	// We may consider adding URI here as well, but without a configuration mechanism
 	// to enable/disable it this could have poor scaling properties. Imagine a user
 	// scanning for URIs behind a host.
-	httpmetrics.HttpResponseTotal.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstLabels, host, code).Inc()
+	httpmetrics.HttpResponseTotal.WithLabelValues(
+		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
+		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
+		socketLabels.DstDNS, host, code).Inc()
 
-	c := float64(http.Latency.AsDuration().Seconds())
-	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstLabels, host).Observe(c)
+	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(
+		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
+		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
+		socketLabels.DstDNS, host).Observe(latency)
 }
 
 func HandleHttpEvent(res *tetragon.ProcessHttp) {

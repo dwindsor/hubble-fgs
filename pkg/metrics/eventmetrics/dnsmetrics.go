@@ -101,7 +101,7 @@ func postDnsMetric(res *tetragon.ProcessDns) {
 		rr = rrResponse
 	}
 
-	processLabels := createDNSLabels(res.Process)
+	processLabels := createProcessLabels(dnsconfig.CurrentLabels, res.Process)
 	dnsRequestTotal.WithLabelValues(processLabels, names, codes, rr.String()).Inc()
 }
 

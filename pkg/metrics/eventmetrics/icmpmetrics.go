@@ -20,11 +20,15 @@ import (
 
 func postIcmpStats(res *tetragon.ProcessIcmp) {
 	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	dstPod := res.DestinationPod
-	dstpod, dstworkload, dstns := GetDstPodInfo(dstPod)
-	dstLabels := strings.Join(res.DestinationNames, ",")
+	var dstpod, dstworkload, dstns string
+	if res.DestinationPod != nil {
+		dstns = res.DestinationPod.Namespace
+		dstworkload = res.DestinationPod.Workload
+		dstpod = res.DestinationPod.Name
+	}
+	dstDNS := strings.Join(res.DestinationNames, ",")
 
-	icmpmetrics.IcmpStatsVol.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstLabels).Inc()
+	icmpmetrics.IcmpStatsVol.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstDNS).Inc()
 }
 
 func HandleIcmpEvent(res *tetragon.ProcessIcmp) {

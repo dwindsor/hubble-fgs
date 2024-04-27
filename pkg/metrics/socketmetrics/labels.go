@@ -14,11 +14,11 @@ import "github.com/cilium/tetragon/pkg/metrics"
 
 type SocketLabels struct {
 	metrics.ProcessLabels
-	dstNs       string
-	dstWorkload string
-	dstPod      string
-	dstDNS      string
-	dstIp       string
+	DstNs       string
+	DstWorkload string
+	DstPod      string
+	DstDNS      string
+	DstIp       string
 }
 
 func (s SocketLabels) Keys() []string {
@@ -26,26 +26,26 @@ func (s SocketLabels) Keys() []string {
 }
 
 func (s SocketLabels) Values() []string {
-	return append(s.ProcessLabels.Values(), s.dstNs, s.dstWorkload, s.dstPod, s.dstDNS, s.dstIp)
+	return append(s.ProcessLabels.Values(), s.DstNs, s.DstWorkload, s.DstPod, s.DstDNS, s.DstIp)
 }
 
 func NewSocketLabels(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstdns, dstip string) *SocketLabels {
 	return &SocketLabels{
 		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
-		dstNs:         dstns,
-		dstWorkload:   dstworkload,
-		dstPod:        dstpod,
-		dstDNS:        dstdns,
-		dstIp:         dstip,
+		DstNs:         dstns,
+		DstWorkload:   dstworkload,
+		DstPod:        dstpod,
+		DstDNS:        dstdns,
+		DstIp:         dstip,
 	}
 }
 
 type MulticastSocketLabels struct {
 	metrics.ProcessLabels
 	SrcMcast    string
-	dstNs       string
-	dstWorkload string
-	dstPod      string
+	DstNs       string
+	DstWorkload string
+	DstPod      string
 	DstMcast    string
 }
 
@@ -53,9 +53,9 @@ func NewMulticastSocketLabels(ns, workload, pod, binary, srcmcast, dstns, dstwor
 	return &MulticastSocketLabels{
 		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
 		SrcMcast:      srcmcast,
-		dstNs:         dstns,
-		dstWorkload:   dstworkload,
-		dstPod:        dstpod,
+		DstNs:         dstns,
+		DstWorkload:   dstworkload,
+		DstPod:        dstpod,
 		DstMcast:      dstmcast,
 	}
 }
@@ -65,5 +65,5 @@ func (s MulticastSocketLabels) Keys() []string {
 }
 
 func (s MulticastSocketLabels) Values() []string {
-	return append(s.ProcessLabels.Values(), s.SrcMcast, s.dstNs, s.dstWorkload, s.dstPod, s.DstMcast)
+	return append(s.ProcessLabels.Values(), s.SrcMcast, s.DstNs, s.DstWorkload, s.DstPod, s.DstMcast)
 }
