@@ -532,6 +532,11 @@ func (in *HttpSpec) DeepCopyInto(out *HttpSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Metrics != nil {
+		in, out := &in.Metrics, &out.Metrics
+		*out = new(PromMetrics)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

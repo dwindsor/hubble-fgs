@@ -399,6 +399,10 @@ type HttpSpec struct {
 	// +kubebuilder:validation:Optional
 	// Enable HTTP2 parser
 	Http2 bool `json:"http2"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, host
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
 type InterfacePolicySpec struct {

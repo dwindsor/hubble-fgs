@@ -1389,6 +1389,23 @@ spec:
                         default: false
                         description: Enable HTTP2 parser
                         type: boolean
+                      metrics:
+                        description: 'Metrics Configuration. Configurable labels:
+                          namespace, workload, pod, binary, dstnamespace, dstworkload,
+                          dstpod, dstdns, host'
+                        properties:
+                          enable:
+                            default: true
+                            type: boolean
+                          labelFilter:
+                            description: List of enabled metrics labels. It can be
+                              used to control the metrics cardinality. Null value
+                              means the default label set. Empty list disables all
+                              configurable labels. Unknown labels are ignored.
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       selectors:
                         description: Selectors to apply TLS parser against. Selectors
                           are ORed.
