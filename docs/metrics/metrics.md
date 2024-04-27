@@ -1613,8 +1613,8 @@ TLS handshake statistics
 | `binary` | `example-binary` |
 | `cipher` | `TLS_EXAMPLE_CIPHER` |
 | `namespace` | `example-namespace` |
-| `pod  ` | `example-workload` |
+| `pod  ` | `example-pod` |
 | `sni_name` | `example.org` |
 | `version` | `TLS1.0, TLS1.1, TLS1.2, TLS1.3` |
-| `workload` | `example-pod` |
+| `workload` | `example-workload` |
 

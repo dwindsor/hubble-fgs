@@ -42,11 +42,11 @@ var (
 		Help:      "Actual number of TLS continuation events. For internal use only.",
 	})
 
-	tlsHandshakeTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	tlsHandshakeTotal = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",
-	}, []string{"namespace", "pod", "workload", "binary", "version", "cipher", "sni_name"})
+	}, []string{"version", "cipher", "sni_name"})
 )
 
 func InitHealthMetrics(registry *prometheus.Registry) {
@@ -70,7 +70,8 @@ func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 	for _, v := range tlsapi.KnownTLSVersions {
 		// We could iterate over all known ciphers here, but that's a lot of ciphers.
 		// Let's initialize only with one example cipher.
-		tlsHandshakeTotal.WithLabelValues(append(consts.ExampleProcessLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain)...).Add(0)
+		processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
+		tlsHandshakeTotal.WithLabelValues(processLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain).Add(0)
 	}
 }
 
@@ -95,8 +96,9 @@ var tlsErrorString = map[int]string{
 
 func TlsHandshakeTotal(res *tetragon.Tls) prometheus.Counter {
 	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
+	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
 	version := getNegotiatedVersion(res)
-	return tlsHandshakeTotal.WithLabelValues(ns, workload, pod, binary, version, res.Cipher, res.SniName)
+	return tlsHandshakeTotal.WithLabelValues(processLabels, version, res.Cipher, res.SniName)
 }
 
 func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {
