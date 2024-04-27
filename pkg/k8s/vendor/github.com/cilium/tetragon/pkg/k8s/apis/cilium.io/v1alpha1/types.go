@@ -367,6 +367,10 @@ type TlsSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
 	Selectors []TlsSelector `json:"selectors,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary
+	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
 type HttpsSelector struct {

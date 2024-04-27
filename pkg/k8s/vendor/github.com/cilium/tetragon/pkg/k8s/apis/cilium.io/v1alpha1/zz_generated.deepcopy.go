@@ -1493,6 +1493,11 @@ func (in *TlsSpec) DeepCopyInto(out *TlsSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Metrics != nil {
+		in, out := &in.Metrics, &out.Metrics
+		*out = new(PromMetrics)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
