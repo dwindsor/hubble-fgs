@@ -36,19 +36,18 @@ func postHttpStats(res *tetragon.ProcessHttp) {
 			latency = float64(res.Http.Latency.AsDuration().Seconds())
 		}
 	}
+	httpLabels := httpmetrics.NewHTTPLabels(
+		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
+		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod, socketLabels.DstDNS,
+		host,
+	)
 
 	// We may consider adding URI here as well, but without a configuration mechanism
 	// to enable/disable it this could have poor scaling properties. Imagine a user
 	// scanning for URIs behind a host.
-	httpmetrics.HttpResponseTotal.WithLabelValues(
-		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
-		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
-		socketLabels.DstDNS, host, code).Inc()
+	httpmetrics.HttpResponseTotal.WithLabelValues(httpLabels, code).Inc()
 
-	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(
-		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
-		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
-		socketLabels.DstDNS, host).Observe(latency)
+	httpmetrics.HttpRequestDurationSeconds.WithLabelValues(httpLabels).Observe(latency)
 }
 
 func HandleHttpEvent(res *tetragon.ProcessHttp) {

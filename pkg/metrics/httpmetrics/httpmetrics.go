@@ -11,7 +11,6 @@
 package httpmetrics
 
 import (
-	"slices"
 	"strconv"
 
 	"github.com/cilium/tetragon/pkg/metrics"
@@ -33,19 +32,19 @@ var (
 		"Number of HTTP parser states",
 		[]string{"state"}, nil,
 	))
-	HttpResponseTotal = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
+	HttpResponseTotal = metrics.MustNewGranularCounter[HTTPLabels](prometheus.CounterOpts{
 		Name:      "http_response_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "HTTP return code statistics",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "host", "code"})
+	}, []string{"code"})
 	// The buckets are defined based on OpenTelemetry semantic conventions for HTTP metrics:
 	// https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/http-metrics/#metric-httpserverduration
-	HttpRequestDurationSeconds = metrics.NewHistogramVecWithPod(prometheus.HistogramOpts{
+	HttpRequestDurationSeconds = metrics.MustNewGranularHistogram[HTTPLabels](prometheus.HistogramOpts{
 		Name:      "http_stats_latency",
 		Namespace: consts.MetricsNamespace,
 		Help:      "Duration of HTTP request processing.",
 		Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10},
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns", "host"})
+	}, nil)
 )
 
 func InitHealthMetrics(registry *prometheus.Registry) {
@@ -68,10 +67,14 @@ func InitEventsMetrics(registry *prometheus.Registry) {
 func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitEventsMetrics(registry)
 
-	labels := slices.Concat(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDstLabels, []string{enterpriseMetrics.ExampleDomain})
+	httpLabels := NewHTTPLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, enterpriseMetrics.ExampleDNSNamesLabel,
+		enterpriseMetrics.ExampleDomain,
+	)
 
 	for _, code := range httpapi.KnownHTTPStatusCodes {
-		HttpResponseTotal.WithLabelValues(append(labels, strconv.Itoa(code))...).Add(0)
+		HttpResponseTotal.WithLabelValues(httpLabels, strconv.Itoa(code)).Add(0)
 	}
-	HttpRequestDurationSeconds.WithLabelValues(labels...)
+	HttpRequestDurationSeconds.WithLabelValues(httpLabels)
 }
