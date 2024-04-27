@@ -17,7 +17,9 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/udp/udpconfig"
 )
@@ -127,4 +129,39 @@ func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.
 	}
 
 	return mcastLabels
+}
+
+func createHTTPLabels(res *tetragon.ProcessHttp) *httpmetrics.HTTPLabels {
+	processLabels := createProcessLabels(httpconfig.MetricsLabelFilter, res.Process)
+	socketLabels := getSocketInfo(processLabels, res.Socket)
+	var host string
+	if res.Http != nil {
+		if res.Http.Request != nil {
+			host = res.Http.Request.Host
+		}
+	}
+	httpLabels := httpmetrics.NewHTTPLabels(
+		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
+		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod, socketLabels.DstDNS,
+		host,
+	)
+
+	// NOTE: Process labels are filtered already in createProcessLabels.
+	if !httpconfig.MetricsLabelFilter["dstnamespace"] {
+		httpLabels.DstNamespace = ""
+	}
+	if !httpconfig.MetricsLabelFilter["dstworkload"] {
+		httpLabels.DstWorkload = ""
+	}
+	if !httpconfig.MetricsLabelFilter["dstpod"] {
+		httpLabels.DstPod = ""
+	}
+	if !httpconfig.MetricsLabelFilter["dstdns"] {
+		httpLabels.DstDNS = ""
+	}
+	if !httpconfig.MetricsLabelFilter["host"] {
+		httpLabels.Host = ""
+	}
+
+	return httpLabels
 }

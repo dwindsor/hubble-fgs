@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
@@ -167,6 +168,12 @@ func (http *httpSensor) PolicyHandler(
 
 	if !kernels.MinKernelVersion("5.10") {
 		return nil, fmt.Errorf("HTTP parser requires kernel version >= 5.10")
+	}
+
+	if httpParser.Metrics != nil {
+		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter().WithEnabledLabels(httpParser.Metrics.LabelFilter)
+	} else {
+		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
 	}
 
 	return EnableHTTPParser(), nil

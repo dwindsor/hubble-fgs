@@ -14,33 +14,21 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/metrics"
-	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 )
 
 func postHttpStats(res *tetragon.ProcessHttp) {
-	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
-	socketLabels := getSocketInfo(processLabels, res.Socket)
-	var host, code string
+	httpLabels := createHTTPLabels(res)
+	var code string
 	var latency float64
 	if res.Http != nil {
 		if res.Http.Response != nil {
 			code = fmt.Sprintf("%d", res.Http.Response.Code)
 		}
-		if res.Http.Request != nil {
-			host = res.Http.Request.Host
-		}
 		if res.Http.Latency != nil {
 			latency = float64(res.Http.Latency.AsDuration().Seconds())
 		}
 	}
-	httpLabels := httpmetrics.NewHTTPLabels(
-		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
-		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod, socketLabels.DstDNS,
-		host,
-	)
 
 	// We may consider adding URI here as well, but without a configuration mechanism
 	// to enable/disable it this could have poor scaling properties. Imagine a user
