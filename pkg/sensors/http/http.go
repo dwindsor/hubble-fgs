@@ -171,8 +171,10 @@ func (http *httpSensor) PolicyHandler(
 	}
 
 	if httpParser.Metrics != nil {
+		httpconfig.MetricsEnabled = httpParser.Metrics.Enable
 		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter().WithEnabledLabels(httpParser.Metrics.LabelFilter)
 	} else {
+		httpconfig.MetricsEnabled = true
 		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
 	}
 

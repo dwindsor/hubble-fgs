@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	MetricsEnabled     bool
 	MetricsLabelFilter = DefaultLabelFilter()
 )
 

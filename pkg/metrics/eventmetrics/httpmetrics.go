@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 )
 
 func postHttpStats(res *tetragon.ProcessHttp) {
@@ -39,5 +40,7 @@ func postHttpStats(res *tetragon.ProcessHttp) {
 }
 
 func HandleHttpEvent(res *tetragon.ProcessHttp) {
-	postHttpStats(res)
+	if httpconfig.MetricsEnabled {
+		postHttpStats(res)
+	}
 }
