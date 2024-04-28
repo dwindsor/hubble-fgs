@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -24,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap/tlsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -291,6 +293,12 @@ func (tls *tlsSensor) PolicyHandler(
 
 	if !kernels.MinKernelVersion("5.10") {
 		return nil, fmt.Errorf("TLS parser requires kernel version >= 5.10")
+	}
+
+	if parser.Tls.Metrics != nil {
+		tlsconfig.MetricsLabelFilter = option.DefaultLabelFilter().WithEnabledLabels(parser.Tls.Metrics.LabelFilter)
+	} else {
+		tlsconfig.MetricsLabelFilter = option.DefaultLabelFilter()
 	}
 
 	return enableTLSParser(enableTLS, enableTLSCG), nil

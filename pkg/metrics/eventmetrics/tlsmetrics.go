@@ -12,14 +12,12 @@ package eventmetrics
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/metrics"
-	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap/tlsconfig"
 )
 
 func HandleTlsEvent(res *tetragon.Tls) {
-	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
+	processLabels := createProcessLabels(tlsconfig.MetricsLabelFilter, res.Process)
 	version := getNegotiatedVersion(res)
 	tlsmetrics.TlsHandshakeTotal.WithLabelValues(processLabels, version, res.Cipher, res.SniName)
 }
