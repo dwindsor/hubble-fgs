@@ -15,5 +15,6 @@ import (
 )
 
 var (
+	MetricsEnabled     bool
 	MetricsLabelFilter = option.DefaultLabelFilter()
 )

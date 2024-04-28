@@ -17,9 +17,11 @@ import (
 )
 
 func HandleTlsEvent(res *tetragon.Tls) {
-	processLabels := createProcessLabels(tlsconfig.MetricsLabelFilter, res.Process)
-	version := getNegotiatedVersion(res)
-	tlsmetrics.TlsHandshakeTotal.WithLabelValues(processLabels, version, res.Cipher, res.SniName)
+	if tlsconfig.MetricsEnabled {
+		processLabels := createProcessLabels(tlsconfig.MetricsLabelFilter, res.Process)
+		version := getNegotiatedVersion(res)
+		tlsmetrics.TlsHandshakeTotal.WithLabelValues(processLabels, version, res.Cipher, res.SniName).Inc()
+	}
 }
 
 func getNegotiatedVersion(tls *tetragon.Tls) string {

@@ -296,8 +296,10 @@ func (tls *tlsSensor) PolicyHandler(
 	}
 
 	if parser.Tls.Metrics != nil {
+		tlsconfig.MetricsEnabled = parser.Tls.Metrics.Enable
 		tlsconfig.MetricsLabelFilter = option.DefaultLabelFilter().WithEnabledLabels(parser.Tls.Metrics.LabelFilter)
 	} else {
+		tlsconfig.MetricsEnabled = true
 		tlsconfig.MetricsLabelFilter = option.DefaultLabelFilter()
 	}
 
