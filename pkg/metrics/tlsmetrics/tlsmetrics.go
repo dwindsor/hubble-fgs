@@ -13,11 +13,9 @@ package tlsmetrics
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -42,7 +40,7 @@ var (
 		Help:      "Actual number of TLS continuation events. For internal use only.",
 	})
 
-	tlsHandshakeTotal = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
+	TlsHandshakeTotal = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Name:      "tls_handshakes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "TLS handshake statistics",
@@ -61,7 +59,7 @@ func InitHealthMetrics(registry *prometheus.Registry) {
 }
 
 func InitEventsMetrics(registry *prometheus.Registry) {
-	registry.MustRegister(tlsHandshakeTotal)
+	registry.MustRegister(TlsHandshakeTotal)
 }
 
 func InitEventsMetricsForDocs(registry *prometheus.Registry) {
@@ -71,7 +69,7 @@ func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 		// We could iterate over all known ciphers here, but that's a lot of ciphers.
 		// Let's initialize only with one example cipher.
 		processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
-		tlsHandshakeTotal.WithLabelValues(processLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain).Add(0)
+		TlsHandshakeTotal.WithLabelValues(processLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain).Add(0)
 	}
 }
 
@@ -94,13 +92,6 @@ var tlsErrorString = map[int]string{
 	0x2000: "unmatched continuation event",
 }
 
-func TlsHandshakeTotal(res *tetragon.Tls) prometheus.Counter {
-	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
-	version := getNegotiatedVersion(res)
-	return tlsHandshakeTotal.WithLabelValues(processLabels, version, res.Cipher, res.SniName)
-}
-
 func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {
 	s, ok := tlsErrorString[err]
 	if !ok {
@@ -116,11 +107,4 @@ func TlsExpectedContinuationTotal() prometheus.Counter {
 
 func TlsActualContinuationTotal() prometheus.Counter {
 	return tlsActualContinuationTotal
-}
-
-func getNegotiatedVersion(tls *tetragon.Tls) string {
-	// NegotiatedVersion field should always be set since for TLS <1.3 we are using
-	// readertls.GetNegotiatedVersion to set the negotiated version field through version
-	// discovery.
-	return tls.NegotiatedVersion
 }
