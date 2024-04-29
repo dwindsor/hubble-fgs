@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 )
@@ -69,6 +70,14 @@ var (
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe",
+	)
+
+	CgroupRmdir = program.Builder(
+		"bpf_cgroup.o",
+		"cgroup/cgroup_rmdir",
+		"raw_tracepoint/cgroup_rmdir",
+		"tg_cgroup_rmdir",
+		"raw_tracepoint",
 	)
 
 	/* Event Ring map */
@@ -176,6 +185,9 @@ func GetDefaultPrograms() []*program.Program {
 		progs = append(progs, ExecveV53)
 	} else {
 		progs = append(progs, Execve)
+	}
+	if option.CgroupRateEnabled() {
+		progs = append(progs, CgroupRmdir)
 	}
 	return progs
 }
