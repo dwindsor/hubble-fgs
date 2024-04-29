@@ -727,12 +727,12 @@ func hubbleFGSExecute() error {
 	obs.LogPinnedBpf(observerDir)
 
 	// Load default base sensors
-	base := base.GetInitialSensor()
-	if err := base.Load(observerDir); err != nil {
+	initialSensor := base.GetInitialSensor()
+	if err := initialSensor.Load(observerDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	defer func() {
-		base.Unload()
+		initialSensor.Unload()
 	}()
 
 	// now that the base sensor was loaded, we can start the sensor manager
