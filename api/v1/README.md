@@ -23,11 +23,13 @@
     - [Filter](#tetragon.Filter)
     - [GetEventsRequest](#tetragon.GetEventsRequest)
     - [GetEventsResponse](#tetragon.GetEventsResponse)
+    - [ProcessThrottle](#tetragon.ProcessThrottle)
     - [RateLimitInfo](#tetragon.RateLimitInfo)
     - [RedactionFilter](#tetragon.RedactionFilter)
   
     - [EventType](#tetragon.EventType)
     - [FieldFilterAction](#tetragon.FieldFilterAction)
+    - [ThrottleType](#tetragon.ThrottleType)
   
 - [tetragon/fgs.proto](#tetragon/fgs.proto)
     - [AttrArg](#tetragon.AttrArg)
@@ -545,6 +547,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_rawsock_create | [ProcessRawsockCreate](#tetragon.ProcessRawsockCreate) |  |  |
 | process_rawsock_close | [ProcessRawsockClose](#tetragon.ProcessRawsockClose) |  |  |
 | process_sandbox_syscall | [ProcessSandboxSyscall](#tetragon.ProcessSandboxSyscall) |  |  |
+| process_throttle | [ProcessThrottle](#tetragon.ProcessThrottle) |  |  |
 | test | [Test](#tetragon.Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon.RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -552,6 +555,22 @@ Note that currently only process_accept and process_connect events are aggregate
 
 For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
 | aggregation_info | [AggregationInfo](#tetragon.AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
+
+
+
+
+
+
+<a name="tetragon.ProcessThrottle"></a>
+
+### ProcessThrottle
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [ThrottleType](#tetragon.ThrottleType) |  | Throttle type |
+| cgroup | [string](#string) |  | Cgroup name |
 
 
 
@@ -630,6 +649,7 @@ GetEventsResponse event oneof.
 | PROCESS_RAWSOCK_CREATE | 24 |  |
 | PROCESS_RAWSOCK_CLOSE | 25 |  |
 | PROCESS_SANDBOX_SYSCALL | 26 |  |
+| PROCESS_THROTTLE | 27 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 
@@ -644,6 +664,19 @@ Determins the behaviour of a field filter
 | ---- | ------ | ----------- |
 | INCLUDE | 0 |  |
 | EXCLUDE | 1 |  |
+
+
+
+<a name="tetragon.ThrottleType"></a>
+
+### ThrottleType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| THROTTLE_UNKNOWN | 0 |  |
+| THROTTLE_START | 1 |  |
+| THROTTLE_STOP | 2 |  |
 
 
  

@@ -72,6 +72,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_RAWSOCK_CLOSE.String(), nil
 	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
 		return tetragon.EventType_PROCESS_SANDBOX_SYSCALL.String(), nil
+	case *tetragon.GetEventsResponse_ProcessThrottle:
+		return tetragon.EventType_PROCESS_THROTTLE.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
