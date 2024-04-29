@@ -1197,6 +1197,8 @@ func execute() error {
 
 	flags.Bool(KeyGenerateDocs, false, "Generate documentation in YAML format to stdout")
 
+	flags.String(keyCgroupRate, "", "Base sensor events cgroup rate <events,interval> disabled by default ('1000/1s' means rate 1000 events per second")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

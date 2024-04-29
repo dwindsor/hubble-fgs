@@ -88,6 +88,8 @@ const (
 	keyEnableMsgHandlingLatency = "enable-msg-handling-latency"
 
 	KeyGenerateDocs = "generate-docs"
+
+	keyCgroupRate = "cgroup-rate"
 )
 
 func readAndSetFlags() {
@@ -163,4 +165,6 @@ func readAndSetFlags() {
 	}
 
 	option.Config.EnableMsgHandlingLatency = viper.GetBool(keyEnableMsgHandlingLatency)
+
+	option.Config.CgroupRate = option.ParseCgroupRate(viper.GetString(keyCgroupRate))
 }
