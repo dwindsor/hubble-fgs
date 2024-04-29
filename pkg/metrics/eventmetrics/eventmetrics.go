@@ -16,9 +16,9 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 )
 
@@ -47,6 +47,6 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	default:
 		eventType = "unknown"
 	}
-	processLabels := metrics.NewProcessLabels(namespace, workload, pod, binary)
+	processLabels := option.CreateProcessLabels(namespace, workload, pod, binary)
 	oss.EventsProcessed.WithLabelValues(processLabels, eventType).Inc()
 }
