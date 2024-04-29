@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
@@ -414,6 +415,9 @@ func hubbleFGSExecute() error {
 
 	log.WithField("version", version.Version).Info("Starting Tetragon Enterprise")
 	log.WithField("config", viper.AllSettings()).Info("config settings")
+
+	// Log early security context in case something fails
+	proc.LogCurrentSecurityContext()
 
 	// Create run dir early
 	os.MkdirAll(defaults.DefaultRunDir, 0755)
