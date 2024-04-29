@@ -21,6 +21,10 @@
 #include "bpf_helpers.h"
 #include "../../networking/bpf_cookie.h"
 
+#define HTTP_REQUEST_MORE 0
+#define HTTP_REQUEST_DONE 1
+#define HTTP_REQUEST_CONT 2
+
 #ifdef SK_MSG
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
@@ -273,8 +277,14 @@ __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 		c = eat_next_char(msg, http);
 		if (!c)
 			break;
+		if (*c == chr_r) {
+			c = eat_next_char(msg, http);
+			if (!c) {
+				break;
+			}
+		}
 		v = *c;
-		if (term == v || chr_r == v)
+		if (term == v || v == chr_n)
 			break;
 		if (v >= 'A' & v <= 'Z')
 			v += 32;
@@ -295,7 +305,7 @@ __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 	if (i + off + 4 < 512) {
 		http->scratch[i + off + 4] = '\0';
 	}
-	DEBUG("read(%d): \"%s\"", *dstsz, http->scratch + 4);
+	DEBUG("scratch(%d): \"%s\"", *dstsz, http->scratch + 4);
 	return *dstsz;
 }
 
@@ -304,7 +314,7 @@ static inline __attribute__((always_inline)) bool is_digit(int c)
 	return (c <= '9' && c >= '0');
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 get_string(ctx_md *msg, struct msg_http_event *event,
 	   struct msg_http *http, char *dst, int ty, __u64 max, char term)
 {
@@ -312,7 +322,7 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	__u32 offset = http->url_offset;
 	__u32 orig = offset;
 	__u32 *dstsz;
-	char *c;
+	char v, *c;
 	__u64 i;
 
 	offset += http->url_continue;
@@ -323,15 +333,29 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
 		http->state = http_more_headers_needed;
 		post_http_event_cont(msg, event);
-		return;
+		return HTTP_REQUEST_MORE;
 	}
 
 	for (i = 0; i < max - 8; i++) {
 		c = eat_next_char(msg, http);
-
-		if (c == 0 || term == c[0])
+		if (!c) {
+			break;
+		}
+		if (*c == chr_r) {
+			c = eat_next_char(msg, http);
+			if (!c) {
+				break;
+			}
+		}
+		v = *c;
+		if (term == v)
 			break;
 		dst[offset + i + 8] = c[0];
+	}
+
+	if (term == chr_n && i <= 1) {
+		DEBUG("request done");
+		return HTTP_REQUEST_DONE;
 	}
 
 	/* If we consumed the buffer and never found the '\r\n' pattern to
@@ -349,7 +373,7 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 		 */
 		asm volatile("%[cont] += 0;\n"
 			     : [cont] "+r"(http->url_continue)::);
-		return;
+		return HTTP_REQUEST_MORE;
 	}
 
 	/* Verifier lost offset bound on older kernels <5.10 presumably because
@@ -362,6 +386,12 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	dstsz = (__u32 *)&dst[offset];
 	dstsz[0] = ty;
 	dstsz[1] = i + http->url_continue;
+
+	/* Null-terminate segment in the url buffer */
+	if (offset + i + 8 < 1024) {
+		http->url[offset + i + 8] = '\0';
+	}
+	DEBUG("buff(%d): \"%s\"", dstsz[1], http->url + offset + 8);
 
 	http->state = http_get_headers;
 	http->url_offset = offset + http->url_continue + i + 8;
@@ -395,6 +425,8 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 		}
 		http->consume_bytes = value;
 	}
+
+	return HTTP_REQUEST_CONT;
 }
 
 __attribute__((noinline)) int method_get_url(ctx_md *msg)
@@ -423,7 +455,7 @@ __attribute__((noinline)) int method_get_protocol(ctx_md *msg)
 	http = &event->request;
 
 	get_string(msg, event, http, http->url, http_request_protocol, 256,
-		   chr_r);
+		   chr_n);
 	return 0;
 }
 
@@ -432,8 +464,7 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 {
 	__u32 *sz;
 
-	/* Extra char [5] because we included \n in the 'eat' char */
-	const u32 skip = 5;
+	const u32 skip = 4;
 	sz = (__u32 *)&http->scratch[0];
 
 	if (!strncmp_truncated(http->scratch + skip, *sz, "host")) {
@@ -454,11 +485,6 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 	if (!strncmp_truncated(http->scratch + skip, *sz, "transfer-encoding")) {
 		DEBUG("header: transfer-encoding");
 		return http_request_transfer_encoding;
-	}
-
-	if (*sz <= 1) {
-		DEBUG("request done");
-		return http_request_done;
 	}
 
 	DEBUG("unknown header: \"%s\" (sz=%d)", http->scratch + skip, *sz);
@@ -487,17 +513,13 @@ __attribute__((noinline)) int continue_header_string(ctx_md *msg)
 	http = &event->request;
 
 	t = map_header_to_type(msg, http);
-	get_string(msg, event, http, http->url, t, 256, chr_r);
+	get_string(msg, event, http, http->url, t, 256, chr_n);
 	if (http->state == http_more_headers_value_needed)
 		return 0;
 	http->scratch[0] = (u32)0;
 	get_more_headers(msg);
 	return 0;
 }
-
-#define HTTP_REQUEST_MORE 0
-#define HTTP_REQUEST_DONE 1
-#define HTTP_REQUEST_CONT 2
 
 __attribute__((noinline)) int get_string_r(ctx_md *msg)
 {
@@ -514,11 +536,7 @@ __attribute__((noinline)) int get_string_r(ctx_md *msg)
 		return HTTP_REQUEST_MORE;
 
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		return HTTP_REQUEST_DONE;
-
-	get_string(msg, event, http, http->url, t, 256, chr_r);
-	return HTTP_REQUEST_CONT;
+	return get_string(msg, event, http, http->url, t, 256, chr_n);
 }
 
 static inline __attribute__((always_inline)) void
@@ -527,7 +545,9 @@ find_host_header(ctx_md *msg, struct msg_http_event *event, struct msg_http *htt
 	int err;
 
 	// 1
-	get_string_scratch(msg, chr_colon);
+	if (get_string_scratch(msg, chr_colon) == 0) {
+		goto out;
+	}
 	err = get_string_r(msg);
 	if (err <= 0)
 		return;
@@ -537,7 +557,9 @@ find_host_header(ctx_md *msg, struct msg_http_event *event, struct msg_http *htt
 	http->scratch[0] = (u32)0;
 
 	// 2
-	get_string_scratch(msg, chr_colon);
+	if (get_string_scratch(msg, chr_colon) == 0) {
+		goto out;
+	}
 	err = get_string_r(msg);
 	if (err <= 0)
 		return;
@@ -639,7 +661,7 @@ __attribute__((noinline)) int response_get_reason(ctx_md *msg)
 		return -1;
 	http = &event->request;
 
-	get_string(msg, event, http, http->url, http_response_reason, 256, chr_r);
+	get_string(msg, event, http, http->url, http_response_reason, 256, chr_n);
 	return 0;
 }
 

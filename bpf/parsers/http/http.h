@@ -58,7 +58,7 @@ enum http_method {
 };
 
 enum http_request_header {
-	http_request_done,
+	http_request__unused,
 	http_request_url,
 	http_request_host,
 	http_request_protocol,
