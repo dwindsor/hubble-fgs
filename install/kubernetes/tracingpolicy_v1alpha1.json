@@ -1544,7 +1544,7 @@
                   "type": "boolean"
                 },
                 "metrics": {
-                  "description": "Metrics Configuration",
+                  "description": "Metrics Configuration. Configurable labels: namespace, workload, pod, binary",
                   "properties": {
                     "enable": {
                       "default": true,
@@ -1773,7 +1773,7 @@
                   "type": "boolean"
                 },
                 "metrics": {
-                  "description": "Metrics Configuration",
+                  "description": "Metrics Configuration. Configurable labels: namespace, workload, pod, binary",
                   "properties": {
                     "enable": {
                       "default": true,
@@ -1956,7 +1956,7 @@
                   "additionalProperties": false
                 },
                 "metrics": {
-                  "description": "Metrics Configuration",
+                  "description": "Metrics Configuration. Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip",
                   "properties": {
                     "enable": {
                       "default": true,
@@ -2206,7 +2206,7 @@
                   "additionalProperties": false
                 },
                 "metrics": {
-                  "description": "Metrics Configuration",
+                  "description": "Metrics Configuration. Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast",
                   "properties": {
                     "enable": {
                       "default": true,

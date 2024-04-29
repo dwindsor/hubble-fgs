@@ -21,6 +21,10 @@ var (
 	CurrentLabels  = DefaultLabelFilter()
 )
 
+// Keys should be kept in sync with:
+// SocketLabels.Keys and MulticastSocketLabels.Keys in pkg/metrics/socketmetrics
+// createSocketLabels and createMulticastSocketLabels in pkg/metrics/eventmetrics
+// UdpPolicySpec.Metrics docs in pkg/k8s (CRD)
 func DefaultLabelFilter() metrics.LabelFilter {
 	return metrics.LabelFilter{
 		"namespace":    true,

@@ -419,7 +419,8 @@ type DnsPolicySpec struct {
 	// A list of DNS ports
 	Ports []uint16 `json:"ports,omitempty"`
 	// +kubebuilder:validation:Optional
-	// Metrics Configuration
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
@@ -523,7 +524,8 @@ type TcpPolicySpec struct {
 	// TCP latency observability policy specification
 	Latency LatencyPolicySpec `json:"latency"`
 	// +kubebuilder:validation:Optional
-	// Metrics Configuration
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Disable TCP events
@@ -575,7 +577,8 @@ type RawsockPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	ReportClose bool `json:"reportClose"`
 	// +kubebuilder:validation:Optional
-	// Metrics Configuration
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
 
@@ -608,7 +611,8 @@ type UdpPolicySpec struct {
 	// UDP sequence check observability policy specification
 	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
 	// +kubebuilder:validation:Optional
-	// Metrics Configuration
+	// Metrics Configuration.
+	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Disable UDP events
