@@ -16,6 +16,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -734,6 +735,9 @@ func hubbleFGSExecute() error {
 	defer func() {
 		initialSensor.Unload()
 	}()
+
+	cgrouprate.NewCgroupRate(ctx, pm, base.CgroupRateMap, &option.Config.CgroupRate)
+	cgrouprate.Config(base.CgroupRateOptionsMap)
 
 	// now that the base sensor was loaded, we can start the sensor manager
 	close(sensorMgWait)

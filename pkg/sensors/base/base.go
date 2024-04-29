@@ -107,6 +107,10 @@ var (
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
+	/* Cgroup rate data, attached to execve sensor */
+	CgroupRateMap        = program.MapBuilder("cgroup_rate_map", Execve)
+	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
+
 	sensor = sensors.Sensor{
 		Name: "__main__",
 	}
@@ -215,6 +219,9 @@ func GetDefaultMaps() []*program.Map {
 			TCPMonMap,
 			TetragonConfMap,
 		)
+	}
+	if option.CgroupRateEnabled() {
+		maps = append(maps, CgroupRateMap, CgroupRateOptionsMap)
 	}
 	return maps
 
