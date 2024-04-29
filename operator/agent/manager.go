@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +37,7 @@ func Manage(cfg options.OperatorConfig) error {
 	ctx := context.Background()
 
 	log.Info("checking if the operator ConfigMap already exists")
-	_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
+	opCM, err := client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Get(ctx, OperatorConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get Tetragon operator ConfigMap: %w", err)
@@ -44,7 +45,7 @@ func Manage(cfg options.OperatorConfig) error {
 		// Creating an empty ConfigMap ensures that the reconciliation is triggered.
 		// Default settings for the agent DaemonSet and ConfigMap are applied.
 		log.Info("Tetragon operator ConfigMap does not exist, creating an empty one (default configuration)")
-		_, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Create(
+		opCM, err = client.CoreV1().ConfigMaps(cfg.TetragonNamespace).Create(
 			ctx, DefaultOperatorConfigMap(log, cfg.TetragonNamespace, OperatorConfigMapName), metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create Tetragon daemon set: %w", err)
@@ -67,6 +68,10 @@ func Manage(cfg options.OperatorConfig) error {
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("failed to create Tetragon daemon set reconciler: %w", err)
+	}
+
+	if err := createServiceMonitors(ctx, log, reconciler.Client, cfg.TetragonNamespace, opCM); err != nil {
+		return fmt.Errorf("failed to create Tetragon ServiceMonitors: %w", err)
 	}
 
 	go func() {
@@ -105,4 +110,5 @@ func getConfig(kubeconfigPath string) (*rest.Config, error) {
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(monitoringv1.AddToScheme(scheme))
 }

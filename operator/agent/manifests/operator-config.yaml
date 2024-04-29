@@ -12,3 +12,15 @@ skip-tracing-policy-crd: "false"
 # Enables sandboxpolicies.
 skip-policysandbox-crd: "false"
 force-update-crds: "false"
+# Whether to create a 'ServiceMonitor' resource targeting the Tetragon operator.
+serviceMonitorEnabled: false
+# The set of labels to place on the operator 'ServiceMonitor' resource.
+#serviceMonitorLabelsOverride: |
+#  key1: value1
+# Interval at which the operator metrics should be scraped. If not specified, Prometheus' global scrape interval is used.
+serviceMonitorScrapeInterval: 10s
+# The port at which the operator exposes metrics.
+serviceMonitorPrometheusPort: "2113"
+# The set of labels to place on the operator service resource.
+#serviceLabelsOverride: |
+#  key1: value1

@@ -358,6 +358,7 @@ func TestDaemonSet(t *testing.T) {
 											},
 										},
 									},
+									Ports:                    []corev1.ContainerPort{},
 									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 									ImagePullPolicy:          corev1.PullIfNotPresent,
 									VolumeMounts: []corev1.VolumeMount{
@@ -415,7 +416,7 @@ func TestDaemonSet(t *testing.T) {
 				Data: map[string]string{
 					OperatorConfigMapAgentDaemonSetKey: `tetragonEnabled: true
 dnsPolicy: ClusterFirst
-extraLabels:
+labelsOverride:
   test-label1: test-value1
   test-label2: test-value2
 annotations:
@@ -516,7 +517,10 @@ argsOverride:
   - --test-arg1=test-value1
   - --test-arg2=test-value2
 grpcEnabled: true
-grpcAddress: test:64321`,
+grpcAddress: test:64321
+serviceMonitorEnabled: true
+agentServiceMonitorPrometheusAddress: localhost
+agentServiceMonitorPrometheusPort: "1234"`,
 				},
 			},
 			expected: &appv1.DaemonSet{
@@ -528,11 +532,8 @@ grpcAddress: test:64321`,
 					Name:      "tetragon",
 					Namespace: "kube-system",
 					Labels: map[string]string{
-						"app.kubernetes.io/instance":   "tetragon",
-						"app.kubernetes.io/name":       "tetragon",
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-						"test-label1":                  "test-value1",
-						"test-label2":                  "test-value2",
+						"test-label1": "test-value1",
+						"test-label2": "test-value2",
 					},
 					Annotations: map[string]string{
 						"test-annotation1": "test-value1",
@@ -782,6 +783,7 @@ grpcAddress: test:64321`,
 									Command: []string{},
 									Args: []string{
 										"--config-dir=/etc/tetragon/tetragon.conf.d/",
+										"--metrics-server=localhost:1234",
 										"--test-arg1=test-value1",
 										"--test-arg2=test-value2",
 									},
@@ -796,6 +798,11 @@ grpcAddress: test:64321`,
 											},
 										},
 									},
+									Ports: []corev1.ContainerPort{{
+										Name:          "metrics",
+										ContainerPort: 1234,
+										Protocol:      "TCP",
+									}},
 									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 									ImagePullPolicy:          corev1.PullNever,
 									VolumeMounts: []corev1.VolumeMount{
@@ -1115,6 +1122,7 @@ grpcAddress: localhost:54321`,
 						},
 					},
 				}},
+				Ports: []corev1.ContainerPort{},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "tetragon-config",
@@ -1189,6 +1197,7 @@ grpcAddress: localhost:54321`,
 							},
 						},
 					}},
+					Ports: []corev1.ContainerPort{},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "tetragon-config",
@@ -1336,6 +1345,7 @@ commandOverride: |
 						{Name: "extra-env1", Value: "extra-value1"},
 						{Name: "extra-env2", Value: "extra-value2"},
 					},
+					Ports: []corev1.ContainerPort{},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "tetragon-config",

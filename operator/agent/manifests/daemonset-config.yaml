@@ -1,5 +1,5 @@
 # Configuration of the agent DaemonSet
-#extraLabels:
+#labelsOverride:
 #   key1: value1
 # Set DNS policy for tetragon pods.
 #
@@ -92,3 +92,17 @@ grpcAddress: localhost:54321
 # Configure extra volumes
 #extraVolumes:
 #extraHostPathMounts:
+# Whether to create a 'ServiceMonitor' resource targeting the Tetragon agent.
+serviceMonitorEnabled: false
+# The set of labels to place on the agent 'ServiceMonitor' resource.
+#serviceMonitorLabelsOverride:
+#  key1: value1
+# Interval at which the agent metrics should be scraped. If not specified, Prometheus' global scrape interval is used.
+serviceMonitorScrapeInterval: 10s
+# The address at which the agent exposes metrics.
+#serviceMonitorPrometheusAddress:
+# The port at which the agent exposes metrics.
+serviceMonitorPrometheusPort: "2112"
+# The set of labels to place on the agent service resource.
+#serviceLabelsOverride:
+#  key1: value1

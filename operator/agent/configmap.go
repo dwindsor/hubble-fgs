@@ -17,13 +17,13 @@ const (
 )
 
 var (
-	//go:embed operator-config.yaml
+	//go:embed manifests/operator-config.yaml
 	defaultOperatorConfig string
 
-	//go:embed tetragon-config.yaml
+	//go:embed manifests/tetragon-config.yaml
 	defaultAgentConfig string
 
-	//go:embed daemonset-config.yaml
+	//go:embed manifests/daemonset-config.yaml
 	defaultDSConfig string
 )
 

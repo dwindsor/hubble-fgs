@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	appv1 "k8s.io/api/apps/v1"
@@ -63,9 +64,9 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 		}
 	}
 
-	labels := labelsForManaged()
-	for k, v := range configMapOfString(log, cmFields, "extraLabels") {
-		labels[k] = v
+	labels := configMapOfString(log, cmFields, "labelsOverride")
+	if len(labels) == 0 {
+		labels = labelsForManaged()
 	}
 
 	ds := &appv1.DaemonSet{
@@ -257,7 +258,22 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		}
 
+		ports := make([]corev1.ContainerPort, 0)
 		args := []string{"--config-dir=/etc/tetragon/tetragon.conf.d/"}
+		if configValue(log, cmFields, "serviceMonitorEnabled", false) {
+			metricAddress := configValue(log, cmFields, "agentServiceMonitorPrometheusAddress", "")
+			port := configValue(log, cmFields, "agentServiceMonitorPrometheusPort", "2112")
+			metricPort, err := strconv.ParseInt(port, 10, 32)
+			if err != nil {
+				log.WithValues("value", port).Error(err, "could not parse the agentServiceMonitorPrometheusPort, default value used instead")
+			}
+			args = append(args, fmt.Sprintf("--metrics-server=%s:%d", metricAddress, metricPort))
+			ports = append(ports, corev1.ContainerPort{
+				Name:          "metrics",
+				ContainerPort: int32(metricPort),
+				Protocol:      "TCP",
+			})
+		}
 		argsOverride := configArray(log, cmFields, "argsOverride", []string{})
 		if len(argsOverride) > 0 {
 			args = append(args, argsOverride...)
@@ -354,6 +370,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			Env:                      env,
 			Resources:                resources,
 			LivenessProbe:            livenessProbe,
+			Ports:                    ports,
 		})
 	}
 

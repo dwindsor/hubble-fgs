@@ -1,19 +1,16 @@
----
-# Source: tetragon/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/name: tetragon
+    app.kubernetes.io/name: tetragon-operator
     app.kubernetes.io/instance: tetragon
-  name: tetragon
+  name: tetragon-operator
 spec:
   ports:
     - name: metrics
-      port: 2112
+      port: 2113
       protocol: TCP
-      targetPort: 2112
   selector:
-    app.kubernetes.io/name: tetragon
+    app.kubernetes.io/name: tetragon-operator
     app.kubernetes.io/instance: tetragon
   type: ClusterIP

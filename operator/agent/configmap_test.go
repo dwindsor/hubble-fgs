@@ -15,6 +15,9 @@ func TestDefaultOperatorConfigMap(t *testing.T) {
 		"skip-tracing-policy-crd":          "false",
 		"skip-policysandbox-crd":           "false",
 		"force-update-crds":                "false",
+		"serviceMonitorEnabled":            "false",
+		"serviceMonitorScrapeInterval":     "10s",
+		"serviceMonitorPrometheusPort":     "2113",
 		OperatorConfigMapAgentConfigMapKey: defaultAgentConfig,
 		OperatorConfigMapAgentDaemonSetKey: defaultDSConfig,
 	}
