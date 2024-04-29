@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/dataapi"
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -209,6 +210,16 @@ func handleClone(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
+func handleThrottleEvent(r *bytes.Reader) ([]observer.Event, error) {
+	m := processapi.MsgThrottleEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	cgrouprate.Check(&m.Kube, m.Common.Ktime)
+	return nil, nil
+}
+
 type execSensor struct {
 	name string
 }
@@ -235,4 +246,5 @@ func AddExec() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_EXECVE, handleExecve)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_EXIT, handleExit)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_CLONE, handleClone)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_THROTTLE, handleThrottleEvent)
 }

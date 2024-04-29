@@ -80,6 +80,8 @@ const (
 	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
 	MSG_OP_NETNS_EXIT = 25
 
+	MSG_OP_THROTTLE = 27
+
 	// just for testing
 	MSG_OP_TEST = 254
 
