@@ -10,3 +10,8 @@
 # Currently OLM has to be manually synced with Helm changes - when we
 # automate the sync then the OpenShift team can be removed from here.
 /install/kubernetes/tetragon @isovalent/tetragon @isovalent/tetragon-openshift
+# Request a review from only Tetragon team on Helm PRs that change only CRDs.
+# CRDs are vendored in the Helm chart, however, OLM doesn't support installing
+# CRDs at the moment, so there is no need to ping the OpenShift team.
+/install/kubernetes/tetragon/crds-yaml @isovalent/tetragon
+/install/kubernetes/tracingpolicy_v1alpha1.json @isovalent/tetragon
