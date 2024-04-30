@@ -70,17 +70,17 @@ var (
 	InterfaceQlenBucket = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_bucket",
 		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram bucket for the number of enqued packets",
+		Help:      "Histogram bucket for the number of enqueued packets",
 	}, []string{"name", "namespace", "workload", "pod", "le"})
 	InterfaceQlenCount = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gcount",
 		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram count for the number of enqued packets",
+		Help:      "Histogram count for the number of enqueued packets",
 	}, []string{"name", "namespace", "workload", "pod"})
 	InterfaceQlenSum = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
 		Name:      "interface_qlen_gsum",
 		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram sum for the number of enqued packets",
+		Help:      "Histogram sum for the number of enqueued packets",
 	}, []string{"name", "namespace", "workload", "pod"})
 )
 

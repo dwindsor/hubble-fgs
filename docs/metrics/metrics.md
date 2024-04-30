@@ -726,7 +726,7 @@ The number of sent/received ICMP datagrams
 
 ### `tetragon_interface_qlen_bucket`
 
-Histogram bucket for the number of enqued packets
+Histogram bucket for the number of enqueued packets
 
 | label | values |
 | ----- | ------ |
@@ -738,7 +738,7 @@ Histogram bucket for the number of enqued packets
 
 ### `tetragon_interface_qlen_gcount`
 
-Histogram count for the number of enqued packets
+Histogram count for the number of enqueued packets
 
 | label | values |
 | ----- | ------ |
@@ -749,7 +749,7 @@ Histogram count for the number of enqued packets
 
 ### `tetragon_interface_qlen_gsum`
 
-Histogram sum for the number of enqued packets
+Histogram sum for the number of enqueued packets
 
 | label | values |
 | ----- | ------ |
