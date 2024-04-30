@@ -20,7 +20,8 @@ jobs:
         run: |
           echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
 
-      - id: conf
+      - name: generate matrix configuration
+        id: conf
         shell: bash
         run: |
           truncate -s 0 /tmp/out
