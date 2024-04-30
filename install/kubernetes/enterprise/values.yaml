@@ -77,10 +77,24 @@ export:
       override: ~
       repository: quay.io/isovalent/hubble-export-stdout
       tag: v1.0.4
+# -- Install tracing policies.
+# These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
+# either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart
+# (see crds.installMethod). This means we have a chicken-and-egg situation here. To avoid races, most users should
+# disable tracing policies when first installing Tetragon Helm chart and enable them after CRDs are created.
 tracingPolicies:
   baseline:
-    # -- Enable the recommended baseline tracing policies.
-    # This option requires the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
-    # the Tetragon operator, which is installed by the same Helm chart. Therefore, most users should disable baseline
-    # policies when first installing Tetragon and enable them after the CRDs are created.
+    # -- Enable all baseline policies.
     enabled: false
+    fim:
+      # -- Enable File Integrity Monitoring (FIM) baseline policy.
+      enabled: false
+    network:
+      # -- Enable Network baseline policy.
+      enabled: false
+    os:
+      # -- Enable Operating System Integrity baseline policy.
+      enabled: false
+    container:
+      # -- Enable Container Sandbox baseline policy.
+      enabled: false

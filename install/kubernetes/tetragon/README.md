@@ -120,7 +120,12 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.strategy | object | `{}` | resources for the Tetragon Operator Deployment update strategy |
 | tetragonOperator.tracingPolicy.enabled | bool | `true` | Enables the TracingPolicy and TracingPolicyNamespaced CRD creation. |
 | tolerations[0].operator | string | `"Exists"` |  |
-| tracingPolicies.baseline.enabled | bool | `false` | Enable the recommended baseline tracing policies. This option requires the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by the Tetragon operator, which is installed by the same Helm chart. Therefore, most users should disable baseline policies when first installing Tetragon and enable them after the CRDs are created. |
+| tracingPolicies | object | `{"baseline":{"container":{"enabled":false},"enabled":false,"fim":{"enabled":false},"network":{"enabled":false},"os":{"enabled":false}}}` | Install tracing policies. These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart (see crds.installMethod). This means we have a chicken-and-egg situation here. To avoid races, most users should disable tracing policies when first installing Tetragon Helm chart and enable them after CRDs are created. |
+| tracingPolicies.baseline.container.enabled | bool | `false` | Enable Container Sandbox baseline policy. |
+| tracingPolicies.baseline.enabled | bool | `false` | Enable all baseline policies. |
+| tracingPolicies.baseline.fim.enabled | bool | `false` | Enable File Integrity Monitoring (FIM) baseline policy. |
+| tracingPolicies.baseline.network.enabled | bool | `false` | Enable Network baseline policy. |
+| tracingPolicies.baseline.os.enabled | bool | `false` | Enable Operating System Integrity baseline policy. |
 | updateStrategy | object | `{}` |  |
 
 ----------------------------------------------

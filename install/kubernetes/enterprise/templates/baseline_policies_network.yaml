@@ -1,0 +1,6 @@
+{{- if or .Values.tracingPolicies.baseline.enabled .Values.tracingPolicies.baseline.network.enabled }}
+{{- range $path, $_ := .Files.Glob "baseline-policies/network/**.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}
+{{- end }}
