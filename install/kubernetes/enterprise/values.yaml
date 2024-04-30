@@ -35,7 +35,7 @@ tetragon:
   # Compress rotated flow JSON export files.
   flowExportFileCompress: false
   exportAllowList: |-
-    {"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_TLS"]}
+    {"event_set":["PROCESS_CONNECT", "PROCESS_EXEC", "PROCESS_FILE", "PROCESS_HTTP", "PROCESS_KPROBE", "PROCESS_LISTEN", "PROCESS_SANDBOX_SYSCALL", "PROCESS_TLS"]}
   # -- Access Cilium API to associate Tetragon events with Cilium DNS cache.
   enableCiliumAPI: false
   # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)

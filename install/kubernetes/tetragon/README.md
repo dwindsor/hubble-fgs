@@ -46,7 +46,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.enableProcessNs | bool | `false` |  |
 | tetragon.enableSandboxpolicies | bool | `true` | Enable sandboxpolicies. |
 | tetragon.enabled | bool | `true` |  |
-| tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_TLS\"]}"` |  |
+| tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_FILE\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_SANDBOX_SYSCALL\", \"PROCESS_TLS\"]}"` |  |
 | tetragon.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` |  |
 | tetragon.exportFileCompress | bool | `false` |  |
 | tetragon.exportFileMaxBackups | int | `5` |  |
