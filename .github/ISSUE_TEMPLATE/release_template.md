@@ -105,7 +105,31 @@ If you create a `X.Y` branch:
 
 Issues found when validating the release in tetragon-dev might not block the release, but should be communicated and documented.
 
+### Update the OLM manifests
+
+- [ ] Update all the image references in `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` with the image digests specific to the release. The references are in relatedImages at the end of the file and in the environment variables passed to the operator.
+- [ ] Update in `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` the `name` of the CSV and the `version` field to reflect the current release. Add or more generally update the `replace` directive (not for the first release) at the end of the manifest so that it points to the name of the previous version. Add or update the skipRange annotation (not for the first release) to allow updates that skip .z releases, e.g.: `olm.skipRange: '>=1.13.0 <1.13.3'` for a 1.13.3 release.
+- [ ] Create a PR against the release branch with the updated `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml`.
+
+### Publish the OLM bundle
+
+This step needs either to be run from a release workflow or to be temporarily run by a user with elevated privileges
+- [ ] Having set the environment variable `DOCKER_IMAGE_TAG` with the version being released run `make bundle-build bundle-push`
+
 **IF YOU ARE DOING A RELEASE CANDIDATE, STOP HERE.**
+
+### Publish the OLM catalog
+
+These steps need either to be run from a release workflow or to be temporarily run by a user with elevated privileges
+- [ ] Checkout the master branch for adding the new bundle to the catalog
+- [ ] Create or more generally update the catalog image:
+  ```bash
+  # if not set in the previous step
+  export DOCKER_IMAGE_TAG=<version>
+  make olm-index-add
+  make olm-index-build olm-index-push
+  ```
+- [ ] Create a PR against the master branch with the udated `install/olm/catalog/index.yaml`
 
 ### Documentation
 
