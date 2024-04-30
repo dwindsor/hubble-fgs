@@ -1,0 +1,318 @@
+# This 'privileges-raise' Tracing Policy monitors processes trying
+# to raise their privileges:
+#
+# 1. Unprivileged creating user namespace to gain new capabilities.
+#    Tetragon version >= 1.12
+#
+# 2. Setting or changing capabilities using the capset system call.
+#    Tetragon version >= 1.13
+#
+# 3. Change their uids/gids to user root.
+#    Tetragon version >= 1.12
+#
+#  __sys_setuid
+#    - __x64_sys_setuid
+#    - __ia32_sys_setuid
+#    - __x64_sys_setuid16
+#    - __ia32_sys_setuid16
+#
+#  __sys_setgid
+#    - __x64_sys_setgid
+#    - __ia32_sys_setgid
+#    - __x64_sys_setgid16
+#    - __ia32_sys_setgid16
+#
+#  __sys_setreuid
+#    - __x64_sys_setreuid
+#    - __ia32_sys_setreuid
+#    - __x64_sys_setreuid16
+#    - __ia32_sys_setreuid16
+#
+#  __sys_setregid
+#    - __x64_sys_setregid
+#    - __ia32_sys_setregid
+#    - __x64_sys_setregid16
+#    - __ia32_sys_setregid16
+#
+# __sys_setresuid
+#    - __x64_sys_setresuid
+#    - __ia32_sys_setresuid
+#    - __x64_sys_setresuid16
+#    - __ia32_sys_setresuid16
+#
+# __sys_setresgid
+#    - __x64_sys_setresgid
+#    - __ia32_sys_setresgid
+#    - __x64_sys_setresgid16
+#    - __ia32_sys_setresgid16
+#
+# __sys_setfsuid
+#    - __x64_sys_setfsuid
+#    - __ia32_sys_setfsuid
+#    - __x64_sys_setfsuid16
+#    - __ia32_sys_setfsuid16
+#
+# __sys_setfsgid
+#    - __x64_sys_setfsgid
+#    - __ia32_sys_setfsgid
+#    - __x64_sys_setfsgid16
+#    - __ia32_sys_setfsgid16
+#
+
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "privileges-raise"
+  annotations:
+    author: "Isovalent"
+    description: "Detects privileges raising operations"
+spec:
+  kprobes:
+#  - call: "security_capset"
+#    # Tetragon version >= 1.13
+#    syscall: false
+#    message: "Process changed its capabilities using capset system call"
+#    args:
+#    - index: 0
+#      type: "nop"
+#    - index: 1
+#      # The new proposed process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
+#      type: "cred"
+#    - index: 2
+#      # The new proposed effective capabilities as a string in hexadecimal format.
+#      type: "cap_effective"
+#    - index: 3
+#      # The new proposed inheritable capabilities as a string in hexadecimal format.
+#      type: "cap_inheritable"
+#    - index: 4
+#      # The new proposed permitted capabilities as a string in hexadecimal format.
+#      type: "cap_permitted"
+#    selectors:
+#    - matchArgs:
+#      - index: 2
+#        operator: "NotEqual"
+#        values:
+#        - "0"
+#      matchActions:
+#      - action: Post
+#        rateLimitScope: "process" # Rate limit by process
+#        rateLimit: "1m"  # Rate limit messages to 1min
+#    - matchArgs:
+#      - index: 3
+#        operator: "NotEqual"
+#        values:
+#        - "0"
+#      matchActions:
+#      - action: Post
+#        rateLimitScope: "process" # Rate limit by process
+#        rateLimit: "1m"  # Rate limit messages to 1min
+#    - matchArgs:
+#      - index: 4
+#        operator: "NotEqual"
+#        values:
+#        - "0"
+#      matchActions:
+#      - action: Post
+#        rateLimitScope: "process" # Rate limit by process
+#        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "create_user_ns"
+    # Tetragon version >= 1.12
+    syscall: false
+    message: "Unprivileged process created a user namespace where it will be privileged"
+    args:
+    - index: 0
+      type: "nop" # No need for argument as this targets unprivileged anyway.
+    selectors:
+    - matchCapabilities:
+      - type: Effective
+        operator: NotIn
+        values:
+        - "CAP_SYS_ADMIN"
+  - call: "__sys_setuid"
+    message: "Privileged operation setuid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed uid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setgid"
+    message: "Privileged operation setgid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed gid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setreuid"
+    message: "Privileged operation setuid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed uid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+    - matchArgs:
+      - index: 1
+        # The new proposed euid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setregid"
+    message: "Privileged operation setgid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed gid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+    - matchArgs:
+      - index: 1
+        # The new proposed egid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setresuid"
+    message: "Privileged operation setuid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 1
+        # The new proposed euid only so we reduce noise.
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+    - matchArgs:
+      - index: 2
+        # The new proposed suid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setresgid"
+    message: "Privileged operation setgid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "int"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 1
+        # The new proposed egid only so we reduce noise.
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+    - matchArgs:
+      - index: 2
+        # The new proposed sgid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setfsuid"
+    message: "Privileged operation setuid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed fsuid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min
+  - call: "__sys_setfsgid"
+    message: "Privileged operation setgid to root"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        # The new proposed fsgid
+        operator: "Equal"
+        values:
+        - "0"
+      matchActions:
+      - action: Post
+        rateLimitScope: "process" # Rate limit by process
+        rateLimit: "1m"  # Rate limit messages to 1min

@@ -98,3 +98,6 @@ tracingPolicies:
     container:
       # -- Enable Container Sandbox baseline policy.
       enabled: false
+    security:
+      # -- Enable Security Sensitive Events baseline policy.
+      enabled: false
