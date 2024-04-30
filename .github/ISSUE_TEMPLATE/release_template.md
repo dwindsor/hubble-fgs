@@ -145,8 +145,14 @@ Issues found when validating the release in tetragon-dev might not block the rel
      ## Breaking changes
      * Breaking changes here
      ```
+
+    You can use `tgt-notes` from
+    [tetragon-github-tools](https://github.com/isovalent/tetragon-github-tools/) to generate a first
+    version of the release notes based on `release-note/` tags and PR messages.
+
 - [ ] Install [gh cli](https://github.com/cli/cli) locally and run the script
 `scripts/tetragon-update-doc-references.sh` to update helm charts, daemon flags and other references.
+
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
