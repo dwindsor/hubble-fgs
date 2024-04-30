@@ -8,9 +8,9 @@
   ],
   "baseBranches": [
     "master",
+    "v1.13",
     "v1.12",
     "v1.11",
-    "v1.10",
   ],
   "cloneSubmodules": true,
   // remove the following is when already set in OSS config
@@ -21,9 +21,9 @@
       "enabled": false,
       "matchPackagePatterns": ["*"],
       "matchBaseBranches": [
+        "v1.13",
         "v1.12",
         "v1.11",
-        "v1.10",
       ]
     },
     {
@@ -31,9 +31,20 @@
       "enabled": true,
       "matchPackageNames": ["docker.io/library/alpine"],
       "matchBaseBranches": [
+        "v1.13",
         "v1.12",
         "v1.11",
-        "v1.10",
+      ]
+    },
+    {
+      "enabled": true,
+      "matchPackageNames": [
+        "docker.io/library/golang",
+        "go"
+      ],
+      "allowedVersions": "/^1\\.22\\.[0-9]+-?(alpine)?$/",
+      "matchBaseBranches": [
+        "v1.13",
       ]
     },
     {
@@ -56,17 +67,6 @@
       "allowedVersions": "/^1\\.20\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
         "v1.11",
-      ]
-    },
-    {
-      "enabled": true,
-      "matchPackageNames": [
-        "docker.io/library/golang",
-        "go"
-      ],
-      "allowedVersions": "/^1\\.19\\.[0-9]+-?(alpine)?$/",
-      "matchBaseBranches": [
-        "v1.10"
       ]
     },
   ]
