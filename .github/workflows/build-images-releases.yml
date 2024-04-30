@@ -10,18 +10,39 @@ permissions:
   contents: write
 
 jobs:
+  conf:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.conf.outputs.matrix }}
+    steps:
+      - name: Getting image tag
+        id: tag
+        run: |
+          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
+      - id: conf
+        shell: bash
+        run: |
+          truncate -s 0 /tmp/out
+          if (echo ${{ steps.tag.outputs.tag }} | grep -q -e '^v1.12\|^v1.11\|^v1.10'); then
+              echo "Build legacy matrix for ${{ steps.tag.outputs.tag }}"
+              echo '{"name": "tetragon", "dockerfile": "./Dockerfile", "legacy-name": "hubble-enterprise"}' >> /tmp/out
+              echo '{"name": "tetragon-operator", "dockerfile": "./Dockerfile.operator", "legacy-name": "hubble-enterprise-operator"}' >> /tmp/out
+          else
+              echo "Build matrix for ${{ steps.tag.outputs.tag }}"
+              echo '{"name": "tetragon", "dockerfile": "./Dockerfile"}' >> /tmp/out
+              echo '{"name": "tetragon-operator", "dockerfile": "./Dockerfile.operator"}' >> /tmp/out
+              # TODO: add OLM builds here
+              # echo '{"name": "tetragon-operator-bundle", "dockerfile": "./olm/bundle.Dockerfile"}' >> /tmp/out
+          fi
+          echo "matrix=$(jq -cs . </tmp/out)" | tee -a $GITHUB_OUTPUT
+
   build-and-push:
+    needs: conf
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        include:
-          - name: tetragon
-            legacy-name: hubble-enterprise
-            dockerfile: ./Dockerfile
-
-          - name: tetragon-operator
-            legacy-name: hubble-enterprise-operator
-            dockerfile: ./Dockerfile.operator
+        include: ${{ fromJSON(needs.conf.outputs.matrix) }}
 
     steps:
       # https://github.com/docker/setup-qemu-action
@@ -53,7 +74,22 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Legacy Release Build ${{ matrix.name }}
+        if: ${{ matrix.legacy-name }} != ""
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        id: docker_build_release
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          target: release
+          tags: |
+            quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
+            quay.io/${{ github.repository_owner }}/${{ matrix.legacy-name }}:${{ steps.tag.outputs.tag }}
+
       - name: Release Build ${{ matrix.name }}
+        if: ${{ matrix.legacy-name }} == ""
         uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
         id: docker_build_release
         with:
