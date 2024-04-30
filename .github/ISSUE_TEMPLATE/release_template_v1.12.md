@@ -1,5 +1,5 @@
 ---
-name: Release a new version of Tetragon Enteprise
+name: Release a new version of Tetragon Enteprise (version v1.12)
 about: Create a checklist for an upcoming release
 title: 'vX.Y.Z release'
 labels: kind/release
@@ -8,50 +8,19 @@ assignees: ''
 
 ## Tetragon Enterprise release checklist
 
-The following is a release checklist that should be followed when cutting a new release of Tetragon Enterprise. Please follow the steps carefully and ask for help in Slack if you have difficulty during the release process.
-
-### Minor Version Bump
-
-If you are doing a minor version bump (i.e. the Y in X.Y.Z), there are a few steps we need to do first before we can work on the Enterprise release.
-
-- [ ] [Cut a new OSS release][oss-release]
-- [ ] **After** checking out your new release branch (see below) but **before** you push the tag, update the `modules/tetragon-oss` to point to your new OSS release branch, and do an OSS sync
-- [ ] Make sure you add the `-rc1` suffix to the version number for release candidates (rc)
-
-Branch `X.Y` may not exist, because we have not branched out yet. This can only happen for
-`X.Y.0-rc.N` or `X.Y.0` releases. In this case:
-
-   * If release is `X.Y.0`:
-       * Create `X.Y` branch
-   * Else: # release is `X.Y.0-rc.N`
-       * If `N == 1`, no need to create a branch
-       * If `N > 1`
-           * do `git log X.Y.0-rc.N-1..master`
-                * If there are non-safe commits that may introduce new bugs:
-                     * Create `X.Y` branch
-                     * Backport safe commits from master to `X.Y`
-
-See [tagging] for more details.
-
-If you create a `X.Y` branch:
- - Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
-    - update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/c6d2699d9d1829a2ea6a6276d410da22fef71629/pkg/k8s/apis/cilium.io/v1alpha1/version.go#L21) to `X.Y+1.0`.
- - Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
-   `vX.Y+1.0-pre.0`.
-
 ### Cutting the Tetragon Enterprise release
 
 - [ ] Check that there are no [release blockers].
 - [ ] Check that there are no Critical or High severity CVEs reported in the latest
       [container vulnerability scan](https://github.com/isovalent/hubble-fgs/actions/workflows/container-scan-twistcli.yaml)
-      for the version you are releasing (X.Y) – look at the 'Output scan results' step for the list of
+      for the version you are releasing (1.12) – look at the 'Output scan results' step for the list of
       relevant CVES. If there are any reported issues, either bump the relevant
       dependency (preferred) or work with [#sig-security](https://isovalent.slack.com/archives/CHAA21WJU)
       to triage the issue and add it to the [Tetragon VEX doc](https://github.com/isovalent/hubble-fgs/blob/master/.github/vex-data.vex.json),
       which will exclude it from the scan results if it is a false positive.
-- [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.9.0`:
+- [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.12.7`:
   ```
-  export RELEASE=v1.9.0
+  export RELEASE=v1.12.6
   ```
 - [ ] Open a pull request to update the Helm chart version:
   ```
@@ -61,9 +30,9 @@ If you create a `X.Y` branch:
   git commit -s -m "Prepare for $RELEASE release"
   git push origin HEAD
   ```
-- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.9.0`:
+- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.12.7`:
   ```
-  export BRANCH=v1.9
+  export BRANCH=v1.12
   ```
 - [ ] Check that there are no open PRs (that need to be urgently merged) targeting `$BRANCH`
   ```
@@ -145,18 +114,90 @@ Issues found when validating the release in tetragon-dev might not block the rel
      ## Breaking changes
      * Breaking changes here
      ```
-
-    You can use `tgt-notes` from
-    [tetragon-github-tools](https://github.com/isovalent/tetragon-github-tools/) to generate a first
-    version of the release notes based on `release-note/` tags and PR messages.
-
 - [ ] Install [gh cli](https://github.com/cli/cli) locally and run the script
 `scripts/tetragon-update-doc-references.sh` to update helm charts, daemon flags and other references.
-
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
 - [ ] Document any breakages in `docs/operations-guide/upgrades/tetragon-version-notes.rst` if applicable
+
+### Updating the hubble-enterprise helm chart
+
+- [ ] Navigate to the [hubble-enterprise chart] repo and file a PR to update the Helm chart version
+  - [ ] Check out a new release branch:
+    ```
+    git checkout master && git pull origin master
+    git checkout -b pr/prepare-fgs-$RELEASE
+    ```
+  - [ ] Update `values.yaml` and change the `hubble-enterprise` and `hubble-enterprise-operator` image `tag` values to the new "main" release tag. Example diff:
+    ```diff
+    diff --git a/values.yaml b/values.yaml
+    index 85166d0..f86ba0e 100644
+    --- a/values.yaml
+    +++ b/values.yaml
+    @@ -61,7 +61,7 @@ enterprise:
+       image:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise
+    -    tag: v1.8.5
+    +    tag: v1.9.0
+       metadataImage:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise-metadata
+    @@ -182,7 +182,7 @@ hubbleEnterpriseOperator:
+       image:
+         override: ~
+         repository: quay.io/isovalent/hubble-enterprise-operator
+    -    tag: v1.8.5
+    +    tag: v1.9.0
+         # hubble-enterprise-operator image-digest
+         suffix: ""
+    ```
+  - [ ] Run `test.sh` to generate new documentation and verify that there are no issues in the Helm templating. Ensure that the script executes without any failures:
+    ```
+    ./test.sh
+    ```
+  - [ ] Add and commit the results and file a pull request on [GitHub][hubble-enterprise chart] (HINT: you can just click the link in the output of the `git push` command):
+    ```
+    git commit -a -m "Prepare for $RELEASE Tetragon Enterprise release" -s && git push origin HEAD
+    ```
+  - [ ] After your PR is merged, tag a [new release][hubble-enterprise chart release] of `hubble-enterprise-chart`.
+    - [ ] Click "generate release notes" and create a new tag with the appropriate version bump
+    - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version, so don't worry if they don't match
+    - [ ] Click "publish release"
+
+### Updating the umbrella chart
+
+- [ ] Navigate to the [umbrella chart] and file a PR to update the hubble-enterprise version
+  - [ ] Check out a new release branch:
+    ```
+    git checkout master && git pull origin master
+    git checkout -b pr/pick-up-latest-hubble-enterprise
+    ```
+  - [ ] Edit `cilium-enterprise/Chart.yaml` to bump the hubble-enterprise version. IMPORTANT NOTE: this should be the version of the `hubble-enterprise-chart` that you released in the previous step, **NOT** the version of Tetragon Enterprise. Example diff:
+    ```diff
+    diff --git a/cilium-enterprise/Chart.yaml b/cilium-enterprise/Chart.yaml
+    index ffcacbe..ee663d9 100644
+    --- a/cilium-enterprise/Chart.yaml
+    +++ b/cilium-enterprise/Chart.yaml
+    @@ -26,7 +26,7 @@ dependencies:
+       repository: "https://helm.isovalent.com"
+       condition: cilium.enabled
+     - name: hubble-enterprise
+    -  version: "1.9.2"
+    +  version: "1.9.3"
+       repository: "https://helm.isovalent.com"
+       condition: hubble-enterprise.enabled
+     - name: hubble-ui
+    ```
+  - [ ] Run `test.sh` to generate new documentation and verify that there are no issues in the Helm templating. Ensure that the script executes without any failures:
+    ```
+    ./test.sh
+    ```
+  - [ ] Add and commit the results and file a pull request on [GitHub][umbrella chart] (HINT: you can just click the link in the output of the `git push` command):
+    ```
+    git commit -a -m "Pick up latest hubble-enterprise" -s && git push origin HEAD
+    ```
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
