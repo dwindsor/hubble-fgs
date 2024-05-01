@@ -104,6 +104,7 @@ all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 -include Makefile.docker
 -include Makefile.cli
 -include Makefile.bundle
+-include Makefile.olmindex
 
 .PHONY: help
 help:
