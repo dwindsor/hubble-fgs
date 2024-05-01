@@ -386,6 +386,32 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			if err := link.RawDetachProgram(opts); err != nil {
 				logger.GetLogger().WithError(err).Warn("RawDetachProgram Sockopt error")
 			}
+		case ebpf.CGroupSock:
+			logger.GetLogger().WithField("map", n).Warn("CGROUP SOCK")
+			if bestEffort {
+				if !strings.Contains(n, "fgs") &&
+					!strings.Contains(n, "tg_udp_bind_dummy") &&
+					!strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSock(tg_") {
+					break
+				}
+			} else if tgTypes {
+				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSock(tg_") {
+					break
+				}
+			}
+			opts := link.RawDetachProgramOptions{
+				Target:  cgrpfd,
+				Program: prog,
+				Attach:  ebpf.AttachCGroupInet4PostBind,
+			}
+			if err := link.RawDetachProgram(opts); err != nil {
+				opts.Attach = ebpf.AttachCGroupInet6PostBind
+				if err := link.RawDetachProgram(opts); err != nil {
+					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSock error")
+				}
+			}
 		}
 	}
 	return nil
