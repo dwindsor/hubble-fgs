@@ -43,7 +43,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	unsigned char old_state;
 	struct sock *skp;
 	u32 zero = 0;
@@ -67,8 +67,8 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (state != TCP_CLOSE && state != TCP_CLOSE_WAIT)
 		return 0;
 
-	process = lookup_socketmap(&cookie);
-	if (!process)
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket)
 		return 0;
 
 	if (state == TCP_CLOSE_WAIT) {
@@ -80,7 +80,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 		* it should be. Mark the socket so that stats calculations can take
 		* this into account.
 		*/
-		process->fin_rx = 1;
+		socket->fin_rx = 1;
 		return 0;
 	}
 
@@ -100,14 +100,14 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	};
 
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
-	val->key.pid = process->key.pid;
-	val->key.ktime = process->key.ktime;
-	val->duration = ktime_get_ns() - process->create_time;
-	val->socket_flags = process->socket_flags;
-	val->tuple = process->tuple;
+	val->key.pid = socket->key.pid;
+	val->key.ktime = socket->key.ktime;
+	val->duration = ktime_get_ns() - socket->create_time;
+	val->socket_flags = socket->socket_flags;
+	val->tuple = socket->tuple;
 
-	get_socket_stats(skp, process, &val->stats);
-	val->stats.bytes_received -= process->fin_rx;
+	get_socket_stats(skp, socket, &val->stats);
+	val->stats.bytes_received -= socket->fin_rx;
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);
@@ -120,14 +120,15 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 					 size);
 	}
 
-	if (!process->tuple.ipv6) {
+	if (!socket->tuple.ipv6) {
+		del_tcpsocketmap(&cookie);
 		del_socketmap(&cookie);
 
 		del_tlsmap(&cookie);
 		map_delete_elem(&tg_http_map, &cookie);
-		map_delete_elem(&tg_http_map, &cookie);
 		bottle_drop(&cookie);
 	} else {
+		del_tcpsocketmap(&cookie);
 		del_socketmap(&cookie);
 	}
 

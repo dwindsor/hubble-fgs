@@ -58,11 +58,12 @@ type tcpValue struct {
 	RetransmitSegs  uint32
 	SkDrops         uint32
 	Srtt            uint32
-	Pad1            uint32
+	Version         uint32
 	RttBuckets      [8]uint64
 	LatencyBuckets  [8]uint64
 	FinRx           uint8
-	Pad2            [7]uint8
+	Protocol        uint8
+	Pad             [6]uint8
 	RttSum          uint64
 	LatencySum      uint64
 	MsgIPTuple      networkapi.MsgIPTuple

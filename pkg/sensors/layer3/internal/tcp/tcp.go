@@ -25,6 +25,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -123,14 +124,16 @@ var (
 		"kprobe")
 
 	// Maps for TCP Sockets
-	SocketMap          = program.MapBuilder("tg_socket_map", Connect)
-	SocketStats        = program.MapBuilder("tg_socket_map_stats", Accept)
-	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", Connect)
-	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", Connect)
-	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", Connect)
+	SocketMap          = program.MapBuilder(base.SocketMap.Name, Connect)
+	SocketStats        = program.MapBuilder(base.SocketStats.Name, Accept)
+	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
+	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
+	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
+	TcpSocketMap    = program.MapBuilder("tg_tcpsocket_map", Connect)
+	TcpSocketStats  = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
@@ -158,11 +161,9 @@ func UnloadSensor() error {
 }
 
 func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
-	var progs []*program.Program
-
 	TimestampEnabled = false
 
-	progs = []*program.Program{
+	progs := []*program.Program{
 		Connect,
 		CloseAndAccept,
 		Listen,
@@ -173,6 +174,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	maps := []*program.Map{
 		SocketStats,
 		SocketMap,
+		TcpSocketMap,
+		TcpSocketStats,
 		AcceptSocketMap,
 		SocketTupleMap,
 		SocketTupleStats,

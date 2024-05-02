@@ -22,6 +22,7 @@
 #include "bpf_tcp_send_check.h"
 #include "lib/address_family.h"
 #include "bpf_tracing.h"
+#include "bpf_tcp_info.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -35,7 +36,7 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 {
 	struct latency_protocol_config *tcp_latency = 0;
 	struct latency_config *latency_config = 0;
-	struct socketmap_value *process = 0;
+	struct tcpsocketmap_value *socket = 0;
 	int zero = 0;
 	s64 latency = 0;
 
@@ -47,10 +48,10 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 	if (cookie) {
 		__u64 c = *cookie;
 
-		process = lookup_socketmap(&c);
+		socket = lookup_tcpsocketmap(&c);
 	}
 
-	if (!process)
+	if (!socket)
 		return SK_PASS;
 
 	latency = calc_latency(latency_config->boot_ns,
@@ -58,7 +59,7 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 			       bpf_ntohl(ts_opt->timestamp_high));
 	tcp_latency = &latency_config->tcp;
 
-	add_latency(tcp_latency, process->latency_buckets, &process->latency_sum, latency);
+	add_latency(tcp_latency, socket->latency_buckets, &socket->latency_sum, latency);
 
 	return SK_PASS;
 }
@@ -77,7 +78,7 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
 	__u64 tcp_bytes_sent, tcp_bytes_received;
 	struct tcp_send_check_sample_cfg *cfg;
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	struct tcp_sock *tcp;
 	struct bpf_sock *skp;
 	struct sock *sk;
@@ -92,8 +93,8 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		return SK_PASS;
 
 	c = *cookie;
-	process = lookup_socketmap(&c);
-	if (unlikely(!process))
+	socket = lookup_tcpsocketmap(&c);
+	if (unlikely(!socket))
 		return SK_PASS;
 
 	skp = skb->sk;
@@ -109,7 +110,7 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 			  _((const void *)&(sk->__sk_common.skc_state)));
 
 	if (state == TCP_FIN_WAIT2) {
-		process->fin_rx = 1;
+		socket->fin_rx = 1;
 		return SK_PASS;
 	}
 	if (state != TCP_ESTABLISHED)
@@ -120,10 +121,14 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 
 	if (!rcv_wnd)
-		process->zero_window++;
+		socket->zero_window++;
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
-	if (cfg && cfg->watermarksEnable && process->key.pid != 0) {
+	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
+		struct socketmap_value process = {
+			.key.ktime = socket->key.ktime,
+			.key.pid = socket->key.pid,
+		};
 		struct process_network_watermarks_config c = {
 			.avg_window_size_ms =
 				cfg->watermarksAvgWindowSize,
@@ -135,22 +140,22 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 				cfg->watermarksDipTriggerMult,
 		};
 
-		if (tcp_bytes_sent > process->sent) {
+		if (tcp_bytes_sent > socket->sent) {
 			process_network_watermarks(
-				skb, process, IPPROTO_TCP,
+				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - process->sent,
+				tcp_bytes_sent - socket->sent,
 				&c);
 		}
-		if (tcp_bytes_received > process->received) {
+		if (tcp_bytes_received > socket->received) {
 			process_network_watermarks(
-				skb, process, IPPROTO_TCP,
+				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - process->received,
+				tcp_bytes_received - socket->received,
 				&c);
 		}
 	}
-	cgrp_tcp_socketmap_stats(sk, process);
+	cgrp_tcp_socketmap_stats(sk, socket);
 	return SK_PASS;
 }
 

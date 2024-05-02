@@ -18,6 +18,7 @@
 #include "tls_map.h"
 #include "tls_parser.h"
 #include "../../networking/bpf_cookie.h"
+#include "../../networking/l3/tcp/bpf_tcp_info.h"
 
 /* HTTP used for KTLS handlers */
 // #include "../http/http_parser.h"
@@ -42,7 +43,7 @@ static inline __attribute__((always_inline)) void
 bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie, int payload_off)
 #endif
 {
-	struct socketmap_value *socket;
+	struct tcpsocketmap_value *socket;
 	struct msg_tls_event *event;
 	struct msg_tls *clienthello;
 	struct msg_tls *state;
@@ -52,7 +53,7 @@ bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie, int payload_off)
 	int payload_off = 0;
 #endif
 
-	socket = lookup_socketmap(cookie);
+	socket = lookup_tcpsocketmap(cookie);
 	if (!socket)
 		return;
 

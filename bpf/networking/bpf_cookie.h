@@ -22,26 +22,9 @@
 struct socketmap_value {
 	struct msg_execve_key key;
 	__u64 create_time;
-	__u32 zero_window;
-	__u32 socket_flags;
-	__u64 last_time;
-	__u64 sent;
-	__u64 received;
-	__u32 segs_out;
-	__u32 segs_in;
-	__u64 retransbytes;
-	__u32 retranssegs;
-	__u32 sk_drops;
-	__u32 srtt;
 	__u32 version;
-	__u64 rtt_buckets[8];
-	__u64 latency_buckets[8];
-	__u8 fin_rx;
 	__u8 protocol;
-	__u8 pad[6];
-	__u64 rtt_sum;
-	__u64 latency_sum;
-	struct msg_ip_tuple tuple;
+	__u8 pad[3];
 };
 
 struct {
@@ -195,7 +178,6 @@ update_socketmap(u64 *cookie, u32 pid)
 
 	process = lookup_socketmap(cookie);
 	if (!process || process->key.pid != pid) {
-		int i;
 		value = execve_map_get_noinit(pid);
 		if (!value)
 			return false;
@@ -206,38 +188,12 @@ update_socketmap(u64 *cookie, u32 pid)
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
-			process->last_time = 0;
-			process->received = 0;
-			process->sent = 0;
-			process->socket_flags = 0;
-			process->zero_window = 0;
-			process->fin_rx = 0;
-#pragma unroll
-			for (i = 0; i < 8; i++) {
-				process->rtt_buckets[i] = 0;
-				process->latency_buckets[i] = 0;
-			}
-			process->rtt_sum = 0;
-			process->latency_sum = 0;
 			process->version = udp_cookie_inc_version();
 			add_socketmap(cookie, process, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
-			process->last_time = 0;
-			process->received = 0;
-			process->sent = 0;
-			process->socket_flags = 0;
-			process->zero_window = 0;
-			process->fin_rx = 0;
-#pragma unroll
-			for (i = 0; i < 8; i++) {
-				process->rtt_buckets[i] = 0;
-				process->latency_buckets[i] = 0;
-			}
-			process->rtt_sum = 0;
-			process->latency_sum = 0;
 			process->version = udp_cookie_inc_version();
 		}
 	}

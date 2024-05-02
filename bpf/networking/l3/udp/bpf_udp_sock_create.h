@@ -61,7 +61,6 @@ __tg_udp_init_sock(struct pt_regs *ctx)
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
-	process.last_time = process.create_time;
 
 	// Update socket version number.
 	process.version = udp_cookie_inc_version();

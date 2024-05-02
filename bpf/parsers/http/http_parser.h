@@ -20,6 +20,7 @@
 #include "http.h"
 #include "bpf_helpers.h"
 #include "../../networking/bpf_cookie.h"
+#include "../../networking/l3/tcp/bpf_tcp_info.h"
 
 #define HTTP_REQUEST_MORE 0
 #define HTTP_REQUEST_DONE 1
@@ -817,23 +818,23 @@ http_reset_state(struct msg_http *http)
 static inline __attribute__((always_inline)) void
 post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 {
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	size_t size;
 	u64 cookie;
 
 	cookie = (u64)msg->sk;
-	process = lookup_socketmap(&cookie);
-	if (!process) {
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket) {
 		http_state_inc(http_state_missing_process_info);
 		return;
 	}
 
-	http->execve.pid = process->key.pid;
+	http->execve.pid = socket->key.pid;
 	http->execve.pad[0] = 0;
 	http->execve.pad[1] = 0;
 	http->execve.pad[2] = 0;
 	http->execve.pad[3] = 0;
-	http->execve.ktime = process->key.ktime;
+	http->execve.ktime = socket->key.ktime;
 
 	if (http->request.method == http_method_response)
 		http->request.recv_cntr++;
@@ -843,7 +844,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
-	http->tuple = process->tuple;
+	http->tuple = socket->tuple;
 
 	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
 	if (size > sizeof(struct msg_http_event))
@@ -863,7 +864,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 
 __attribute__((noinline)) int post_http_event(ctx_md *msg)
 {
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	struct msg_http_event *http;
 	__u32 skip = 0;
 	__u64 cookie;
@@ -874,19 +875,19 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 		return 0;
 
 	cookie = (u64)msg->sk;
-	process = lookup_socketmap(&cookie);
-	if (!process) {
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket) {
 		http_state_inc(http_state_missing_process_info);
 		return 0;
 	}
 
 	http->request.state = http_done;
-	http->execve.pid = process->key.pid;
+	http->execve.pid = socket->key.pid;
 	http->execve.pad[0] = 0;
 	http->execve.pad[1] = 0;
 	http->execve.pad[2] = 0;
 	http->execve.pad[3] = 0;
-	http->execve.ktime = process->key.ktime;
+	http->execve.ktime = socket->key.ktime;
 
 	if (http->request.method == http_method_response)
 		http->request.recv_cntr++;
@@ -897,7 +898,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
-	http->tuple = process->tuple;
+	http->tuple = socket->tuple;
 
 	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
 	if (size > sizeof(struct msg_http_event))

@@ -22,6 +22,7 @@
 #include "bpf_network_helpers.h"
 #include "lib/netns.h"
 #include "bpf_tcp_network_event_config.h"
+#include "bpf_tcp_info.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -50,6 +51,7 @@ __event_tcp_accept(struct pt_regs *ctx)
 static inline __attribute__((always_inline)) int
 __event_tcp_accept_ret(struct pt_regs *ctx)
 {
+	struct tcpsocketmap_value *listen_socket;
 	struct socketmap_value *listen_process;
 	u64 *listen_cookie_p;
 	u64 accept_cookie = PT_REGS_RC(ctx);
@@ -60,14 +62,15 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	if (!listen_cookie_p)
 		return 0;
 	listen_process = lookup_socketmap(listen_cookie_p);
+	listen_socket = lookup_tcpsocketmap(listen_cookie_p);
 	map_delete_elem(&tg_tcp_accept_sock_map, &pid_tgid);
 	if (!accept_cookie)
 		return 0;
 
-	if (!listen_process)
-		return 0;
-
-	add_socketmap(&accept_cookie, listen_process, true);
+	if (listen_process)
+		add_socketmap(&accept_cookie, listen_process, true);
+	if (listen_socket)
+		add_tcpsocketmap(&accept_cookie, listen_socket, true);
 	return 1;
 }
 
@@ -75,7 +78,7 @@ static inline __attribute__((always_inline)) int
 __event_tcp_accept_state(void *ctx, struct sock *skp)
 {
 	struct tcp_event_disable_config *event_cfg;
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	struct msg_ip_event *val;
 	u64 cookie = (u64)skp;
 	size_t size;
@@ -85,7 +88,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	/* In TCP we use the struct sock address as the socket cookie. */
 	if (!cookie)
 		return 0;
-	process = lookup_socketmap(&cookie);
+	socket = lookup_tcpsocketmap(&cookie);
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,
 						     &zero);
@@ -125,9 +128,9 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 				  _(&(skp->__sk_common.skc_v6_daddr)));
 	}
 
-	if (process) {
-		val->key.pid = process->key.pid;
-		val->key.ktime = process->key.ktime;
+	if (socket) {
+		val->key.pid = socket->key.pid;
+		val->key.ktime = socket->key.ktime;
 	} else {
 		val->key.pid = 0;
 		val->key.ktime = 0;
@@ -143,25 +146,26 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPACCEPT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
-	if (!process)
+	if (!socket)
 		return 0;
 
-	process->create_time = val->common.ktime;
-	process->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-	process->last_time = 0;
-	process->received = 0;
-	process->sent = 0;
-	process->zero_window = 0;
-	process->fin_rx = 0;
-	process->tuple.saddr[0] = val->tuple.saddr[0];
-	process->tuple.saddr[1] = val->tuple.saddr[1];
-	process->tuple.daddr[0] = val->tuple.daddr[0];
-	process->tuple.daddr[1] = val->tuple.daddr[1];
-	process->tuple.ipv6 = (family == AF_INET6);
-	process->tuple.dport = val->tuple.dport;
-	process->tuple.sport = val->tuple.sport;
+	socket->create_time = val->common.ktime;
+	socket->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
+	socket->last_time = 0;
+	socket->received = 0;
+	socket->sent = 0;
+	socket->zero_window = 0;
+	socket->fin_rx = 0;
+	socket->tuple.saddr[0] = val->tuple.saddr[0];
+	socket->tuple.saddr[1] = val->tuple.saddr[1];
+	socket->tuple.daddr[0] = val->tuple.daddr[0];
+	socket->tuple.daddr[1] = val->tuple.daddr[1];
+	socket->tuple.ipv6 = (family == AF_INET6);
+	socket->tuple.dport = val->tuple.dport;
+	socket->tuple.sport = val->tuple.sport;
 
-	add_socketmap(&cookie, process, true);
+	add_socket_tuple_map(&cookie);
+
 	return 1;
 }
 

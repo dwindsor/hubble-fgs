@@ -15,6 +15,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "bpf_cookie.h"
+#include "l3/tcp/bpf_tcp_info.h"
 
 #define IP_HEADER_ERROR			     0
 #define IP_ERROR_NO_HEAP		     1
@@ -62,7 +63,7 @@ struct {
 	__uint(max_entries, 1);
 } ip_error_event_heap SEC(".maps");
 
-static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
+static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
 	struct tcp_sock *tcp;
 	struct sock *skp;
@@ -103,7 +104,7 @@ static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct
 }
 
 static inline __attribute__((always_inline)) void
-tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
+tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 
@@ -133,7 +134,7 @@ tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
 
 static inline __attribute__((always_inline)) void
 get_socket_stats(struct sock *sk,
-		 struct socketmap_value *process,
+		 struct tcpsocketmap_value *socket,
 		 struct msg_socket_stats *stats)
 {
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
@@ -143,7 +144,7 @@ get_socket_stats(struct sock *sk,
 	stats->ktime = ktime_get_ns();
 
 	/* Copy the create time so that user space can match up the stats. */
-	stats->create_ktime = process->create_time;
+	stats->create_ktime = socket->create_time;
 
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
@@ -171,14 +172,14 @@ get_socket_stats(struct sock *sk,
 			  _(&(tcp->total_retrans)));
 
 	//stats->tozerowin populated in-band TCP hook watching for zero window
-	stats->tozerowin = process->zero_window;
+	stats->tozerowin = socket->zero_window;
 #pragma unroll
 	for (i = 0; i < 8; i++) {
-		stats->rtt_buckets[i] = process->rtt_buckets[i];
-		stats->latency_buckets[i] = process->latency_buckets[i];
+		stats->rtt_buckets[i] = socket->rtt_buckets[i];
+		stats->latency_buckets[i] = socket->latency_buckets[i];
 	}
-	stats->rtt_sum = process->rtt_sum;
-	stats->latency_sum = process->latency_sum;
+	stats->rtt_sum = socket->rtt_sum;
+	stats->latency_sum = socket->latency_sum;
 }
 
 static inline __attribute__((always_inline)) void

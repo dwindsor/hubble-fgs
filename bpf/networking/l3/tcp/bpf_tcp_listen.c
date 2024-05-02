@@ -20,6 +20,7 @@
 #include "bpf_tracing.h"
 #include "bpf_tcp_network_event_config.h"
 #include "lib/address_family.h"
+#include "bpf_tcp_info.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -101,11 +102,10 @@ tg_event_sys_listen(struct pt_regs *ctx)
 					 sizeof(struct msg_ip_event));
 	}
 
-	struct socketmap_value v = { 0 };
+	struct tcpsocketmap_value v = { 0 };
 
 	v.key.pid = process->key.pid;
 	v.key.ktime = process->key.ktime;
-	v.create_time = val->common.ktime;
 	v.create_time = val->common.ktime;
 	v.zero_window = 0;
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
@@ -119,6 +119,14 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
 
-	add_socketmap(&cookie, &v, true);
+	add_tcpsocketmap(&cookie, &v, true);
+
+	struct socketmap_value sockmap = { 0 };
+	sockmap.create_time = val->common.ktime;
+	sockmap.key = process->key;
+	sockmap.protocol = IPPROTO_TCP;
+	sockmap.version = 0;
+	add_socketmap(&cookie, &sockmap, false);
+
 	return 0;
 }

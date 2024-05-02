@@ -54,7 +54,6 @@ tg_udp_destroy_sock(struct pt_regs *ctx)
 		.key.ktime = process->key.ktime,
 
 		.socket_cookie = cookie,
-		.socket_flags = process->socket_flags,
 		.version = 0,
 	};
 

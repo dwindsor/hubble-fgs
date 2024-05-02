@@ -10,6 +10,7 @@
 
 #include "bpf_tcp_send_check.h"
 #include "bpf_tracing.h"
+#include "bpf_tcp_info.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -36,7 +37,7 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 {
 	struct tcp_sock *skp = (struct tcp_sock *)PT_REGS_PARM1(ctx);
 	struct tcp_send_check_sample_cfg *cfg;
-	struct socketmap_value *process;
+	struct tcpsocketmap_value *socket;
 	struct rcv_rtt_est rtt;
 	int zero = 0;
 	u64 cookie;
@@ -46,8 +47,8 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 	 */
 	cookie = (u64)skp;
 
-	process = lookup_socketmap(&cookie);
-	if (!process) {
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket) {
 		return 0;
 	}
 
@@ -64,23 +65,23 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 
 	if (cfg->bucket00 > rtt_us)
-		process->rtt_buckets[0]++;
+		socket->rtt_buckets[0]++;
 	else if (cfg->bucket01 > rtt_us)
-		process->rtt_buckets[1]++;
+		socket->rtt_buckets[1]++;
 	else if (cfg->bucket10 > rtt_us)
-		process->rtt_buckets[2]++;
+		socket->rtt_buckets[2]++;
 	else if (cfg->bucket25 > rtt_us)
-		process->rtt_buckets[3]++;
+		socket->rtt_buckets[3]++;
 	else if (cfg->bucket50 > rtt_us)
-		process->rtt_buckets[4]++;
+		socket->rtt_buckets[4]++;
 	else if (cfg->bucket75 > rtt_us)
-		process->rtt_buckets[5]++;
+		socket->rtt_buckets[5]++;
 	else if (cfg->bucket90 > rtt_us)
-		process->rtt_buckets[6]++;
+		socket->rtt_buckets[6]++;
 	else
-		process->rtt_buckets[7]++;
+		socket->rtt_buckets[7]++;
 
-	process->rtt_sum += rtt_us;
+	socket->rtt_sum += rtt_us;
 
 	return 0;
 }

@@ -21,6 +21,7 @@
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
 #include "bpf_tcp_network_event_config.h"
+#include "bpf_tcp_info.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -110,7 +111,7 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
-	struct socketmap_value v = { 0 };
+	struct tcpsocketmap_value v = { 0 };
 	v.key.pid = process->key.pid;
 	v.key.ktime = process->key.ktime;
 	v.create_time = val->common.ktime;
@@ -127,6 +128,13 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
 
-	add_socketmap(&cookie, &v, true);
+	add_tcpsocketmap(&cookie, &v, true);
+
+	struct socketmap_value sockproc = { 0 };
+	sockproc.create_time = val->common.ktime;
+	sockproc.key = process->key;
+	sockproc.protocol = IPPROTO_TCP;
+	sockproc.version = 0;
+	add_socketmap(&cookie, &sockproc, false);
 	return 1;
 }

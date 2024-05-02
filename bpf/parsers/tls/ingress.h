@@ -12,6 +12,7 @@
 #define ingress_h_INCLUDED
 
 #include "../../networking/bpf_cookie.h"
+#include "../../networking/l3/tcp/bpf_tcp_info.h"
 /* HTTP used for KTLS handlers */
 // #include "../http/http_parser.h"
 
@@ -210,7 +211,7 @@ fail:
 static inline __attribute__((always_inline)) void
 bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 {
-	struct socketmap_value *execve;
+	struct tcpsocketmap_value *socket;
 	u64 cookie = (u64)skb->sk;
 	struct msg_tls *event;
 	int zero = 0;
@@ -227,8 +228,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		return;
 	}
 
-	execve = lookup_socketmap(&cookie);
-	if (!execve)
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket)
 		return;
 
 	if (is_expected_tls_client_hello(event)) {
@@ -267,8 +268,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		post->execve = execve->key;
-		post->tuple = execve->tuple;
+		post->execve = socket->key;
+		post->tuple = socket->tuple;
 
 		perf_event_output_metric(skb, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 					 sizeof(struct msg_tls_event));
@@ -277,7 +278,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, &execve->tuple,
+			next = bpf_parse_tls_cert(skb, bottle, event, &socket->tuple,
 						  next);
 			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
@@ -306,7 +307,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 			return;
 		}
 
-		err = bpf_parse_tls_cert(skb, bottle, event, &execve->tuple,
+		err = bpf_parse_tls_cert(skb, bottle, event, &socket->tuple,
 					 event->bytes);
 		if (err == TLS_PARSE_OUT_OF_DATA) {
 			tls_inc_ingress_out_of_data();

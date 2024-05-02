@@ -21,6 +21,7 @@
 #include "bpf_process_network_watermarks.h"
 #include "lib/tlsmsg.h"
 #include "bpf_tracing.h"
+#include "bpf_tcp_info.h"
 
 struct tcp_send_check_sample_cfg {
 	__u64 ktime;
@@ -57,6 +58,7 @@ static inline __attribute__((always_inline)) int
 __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 {
 	struct tcp_send_check_sample_cfg *cfg;
+	struct tcpsocketmap_value *socket;
 	struct socketmap_value *process;
 	struct tcp_sock *tcp;
 	__u32 rcv_wnd;
@@ -71,8 +73,8 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 * event will read zero window stats. If sampling we push event
 	 * to user space.
 	 */
-	process = lookup_socketmap(&cookie);
-	if (unlikely(!process))
+	socket = lookup_tcpsocketmap(&cookie);
+	if (unlikely(!socket))
 		return 0;
 
 	/* Get the current socket TCP state. */
@@ -89,7 +91,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 * so that stats calculations can take this into account.
 	 */
 	if (state == TCP_FIN_WAIT2) {
-		process->fin_rx = 1;
+		socket->fin_rx = 1;
 		return 0;
 	}
 
@@ -108,14 +110,15 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 */
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 	if (!rcv_wnd)
-		process->zero_window++;
+		socket->zero_window++;
 
 	u64 tcp_bytes_sent, tcp_bytes_received;
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
-	if (cfg && cfg->watermarksEnable && process->key.pid != 0) {
+	process = lookup_socketmap(&cookie);
+	if (process && cfg && cfg->watermarksEnable && socket->key.pid != 0) {
 		struct process_network_watermarks_config c = {
 			.avg_window_size_ms =
 				cfg->watermarksAvgWindowSize,
@@ -126,22 +129,22 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			.dip_trigger_mult =
 				cfg->watermarksDipTriggerMult,
 		};
-		if (tcp_bytes_sent > process->sent) {
+		if (tcp_bytes_sent > socket->sent) {
 			process_network_watermarks(
 				ctx, process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - process->sent,
+				tcp_bytes_sent - socket->sent,
 				&c);
 		}
-		if (tcp_bytes_received > process->received) {
+		if (tcp_bytes_received > socket->received) {
 			process_network_watermarks(
 				ctx, process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - process->received,
+				tcp_bytes_received - socket->received,
 				&c);
 		}
 	}
-	tcp_socketmap_stats(skp, process);
+	tcp_socketmap_stats(skp, socket);
 	return 1;
 }
 

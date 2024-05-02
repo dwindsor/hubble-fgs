@@ -74,6 +74,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 {
 	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
 	struct socketmap_value sockmap_process = { 0 };
+	struct tcpsocketmap_value tcp_stats = { 0 };
 	struct fd_lookup_config *config;
 	struct execve_map_value *value;
 	u16 required_protocol;
@@ -210,23 +211,21 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	// This is far from perfect, but at least the discovered flag will indicate
 	// how we found this create time in case we want to exclude these.
 	sockmap_process.create_time = ktime_get_ns();
-	sockmap_process.last_time = sockmap_process.create_time;
-	sockmap_process.socket_flags = SOCKFLAGS_TYPE_UNKNOWN;
-	sockmap_process.tuple.saddr[0] = config->saddr[0];
-	sockmap_process.tuple.saddr[1] = config->saddr[1];
-	sockmap_process.tuple.daddr[0] = config->daddr[0];
-	sockmap_process.tuple.daddr[1] = config->daddr[1];
-	sockmap_process.tuple.ipv6 = (family == AF_INET6);
-	sockmap_process.tuple.dport = config->dport;
-	sockmap_process.tuple.sport = config->sport;
-	sockmap_process.tuple.proto = required_protocol;
 	sockmap_process.protocol = required_protocol;
 
-	if (required_protocol == IPPROTO_TCP)
-		tcp_socketmap_stats(sk, &sockmap_process);
+	if (required_protocol == IPPROTO_UDP)
+		sockmap_process.version = udp_cookie_inc_version();
+	else
+		sockmap_process.version = 0;
 
 	/* Store the socket even if family or protocol couldn't be read. */
 	add_socketmap(&cookie, &sockmap_process, true);
+
+	if (required_protocol == IPPROTO_TCP) {
+		tcp_socketmap_stats(sk, &tcp_stats);
+		tcp_stats.key = value->key;
+		add_tcpsocketmap(&cookie, &tcp_stats, false);
+	}
 
 	return 0;
 }
