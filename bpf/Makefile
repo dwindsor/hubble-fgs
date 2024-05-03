@@ -27,6 +27,7 @@ PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 ALIGNCHECKEROSSDIR = $(OSSBPFDIR)/alignchecker/
 NETWORKINGDIR := networking/
+SOCKTRACKDIR := networking/socktrack/
 L2DIR  := networking/l2/
 L3DIR  := networking/l3/
 TCPDIR := networking/l3/tcp/
@@ -47,6 +48,8 @@ TLS = bpf_tls_inet_send.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_v
 NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
 
 NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o
+
+SOCKTRACK = bpf_sk_alloc.o bpf_security_sk_alloc.o
 
 UDP = bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o \
       bpf_udp_inet_lazy_kp.o \
@@ -134,6 +137,7 @@ PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
 TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 NOPOBJ        := $(addprefix $(OBJSDIR),$(NOP))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
+SOCKTRACKOBJ  := $(addprefix $(OBJSDIR),$(SOCKTRACK))
 UDPOBJ	      := $(addprefix $(OBJSDIR),$(UDP))
 TCPOBJ        := $(addprefix $(OBJSDIR),$(TCP))
 L2OBJ	      := $(addprefix $(OBJSDIR),$(L2))
@@ -147,7 +151,7 @@ FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -216,7 +220,14 @@ objs/%.ll: $(NETWORKINGDIR)%.c
 $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-# UDPGDIR
+# SOCKTRACKDIR
+objs/%.ll: $(SOCKTRACKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(SOCKTRACKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+# UDPDIR
 objs/%.ll: $(UDPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 

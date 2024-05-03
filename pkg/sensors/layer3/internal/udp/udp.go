@@ -48,7 +48,6 @@ import (
 
 const (
 	UdpMapName           = "tg_udp_map"
-	UdpVerMapName        = "tg_udp_ver_map"
 	UdpRetprobeMapName   = "tg_udp_retprobe_map"
 	UdpRetprobeStatsName = "tg_udp_retprobe_map_stats"
 	ConfigMapName        = "tg_udp_config_map"
@@ -183,13 +182,13 @@ var (
 	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
 	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
 	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
+	VerMap                 = program.MapBuilder("tg_ver_map", SkUdpAlloc)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpConfigLazyMapKprobe = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
 
 	// UDP maps
-	UdpVerMap               = program.MapBuilder(UdpVerMapName, SkUdpAlloc)
 	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
 	UdpRetprobeStats        = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
 	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
@@ -323,6 +322,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 	}
 
+	dns.LazyDns = false
+	versionStr = "__udp_sensor_probe__"
+
 	if !cgroup {
 		progs = []*program.Program{
 			SkUdpAlloc,
@@ -339,7 +341,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
-			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigLazyMapKprobe,
@@ -347,9 +348,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketCookieMap,
 			SocketCookieStats,
 			LatencyConfigMapLazyKprobe,
+			VerMap,
 		}
 		dns.LazyDns = true
-		versionStr = "__udp_sensor_probe__"
 	} else if !kernels.MinKernelVersion("5.14.0") {
 		progs = []*program.Program{
 			SkUdpAlloc,
@@ -361,7 +362,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			UdpRecv,
 		}
 		maps = []*program.Map{
-			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			SocketCookieMap,
@@ -370,39 +370,12 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleStatsLazy,
 			SocketTupleHintMapLazy,
 			CfgMap,
+			VerMap,
 		}
 
 		if !DisableListenEvents {
 			progs = append(progs, SkUdpBind)
 		}
-		dns.LazyDns = false
-		versionStr = "__udp_sensor_probe__"
-	} else if !kernels.MinKernelVersion("5.15.0") {
-		progs = []*program.Program{
-			SkUdpAlloc,
-			SkUdpDestroy,
-			Udp4Send,
-			Udp4RetSend,
-			Udp6Send,
-			Udp6RetSend,
-			UdpRecv,
-		}
-		if !DisableListenEvents {
-			progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
-		}
-		maps = []*program.Map{
-			UdpVerMap,
-			UdpRetprobeMap,
-			UdpRetprobeStats,
-			SocketCookieMap,
-			SocketCookieStats,
-			SocketTupleMap,
-			SocketTupleStats,
-			SocketTupleHintMap,
-			CfgMap,
-		}
-		dns.LazyDns = false
-		versionStr = "__udp_sensor_probe__"
 	} else {
 		progs = []*program.Program{
 			SkUdpAlloc,
@@ -414,10 +387,13 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			UdpRecv,
 		}
 		if !DisableListenEvents {
-			progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
+			if !kernels.MinKernelVersion("5.15.0") {
+				progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
+			} else {
+				progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
+			}
 		}
 		maps = []*program.Map{
-			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			SocketCookieMap,
@@ -426,9 +402,8 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
+			VerMap,
 		}
-		dns.LazyDns = false
-		versionStr = "__udp_sensor_probe__"
 	}
 
 	if useIPv6InitHook {

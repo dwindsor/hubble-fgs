@@ -8,25 +8,20 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#ifndef __BPF_UDP_SOCK_CREATE_H_
-#define __BPF_UDP_SOCK_CREATE_H_
-
 #include "vmlinux.h"
 
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "bpf_cookie.h"
-#include "bpf_udp_info.h"
-#include "bpf_network_helpers.h"
+#include "../bpf_cookie.h"
+#include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 
 static inline __attribute__((always_inline)) int
-__tg_udp_init_sock(struct pt_regs *ctx)
+store_socket(void *ctx, u64 cookie, u8 protocol)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
 	struct socketmap_value process = { 0 };
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
 	struct execve_map_value *value;
 	bool walked;
 	u32 ppid;
@@ -38,7 +33,7 @@ __tg_udp_init_sock(struct pt_regs *ctx)
 	}
 
 	if (pid < 1) {
-		emit_ip_error_event(ctx, 0, 0, false,
+		emit_ip_error_event(ctx, 0, &cookie, false,
 				    0, 0, 0, IP_ERROR_SOCK_CREATE_PID_0);
 		return 0;
 	}
@@ -56,19 +51,28 @@ __tg_udp_init_sock(struct pt_regs *ctx)
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
 	} else {
-		emit_ip_error_event(ctx, 0, 0, false,
+		emit_ip_error_event(ctx, 0, &cookie, false,
 				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_PROCESS);
 		return 1;
 	}
 	process.create_time = ktime_get_ns();
-
-	// Update socket version number.
+	process.protocol = protocol;
 	process.version = cookie_inc_version();
-
 	// Don't update the tuple map here because the socket hasn't yet
-	// been populated.
+	// been populated, and might be ICMP or raw without a tuple.
 	add_socketmap(&cookie, &process, false);
 	return 0;
 }
 
-#endif
+static inline __attribute__((always_inline)) int
+destroy_socket(void *ctx, u64 cookie)
+{
+	struct socketmap_value *process;
+
+	process = lookup_socketmap(&cookie);
+	if (!process)
+		return 0;
+
+	del_socketmap(&cookie);
+	return 1;
+}

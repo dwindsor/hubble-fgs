@@ -10,6 +10,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 
 	// Import OSS sensor handlers
 	_ "github.com/cilium/tetragon/pkg/sensors/test"

@@ -106,6 +106,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	}
 	process.create_time = ktime_get_ns();
 	process.protocol = protocol;
+	process.version = cookie_inc_version();
 	// Don't update the tuple map because this is a ping/raw socket.
 	add_socketmap(&cookie, &process, false);
 	return 0;

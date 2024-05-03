@@ -82,6 +82,7 @@ var (
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
 	SocketCookieStats = program.MapBuilder(SocketMapStatsName, FdLookup)
+	VerMap            = program.MapBuilder("tg_ver_map", FdLookup)
 )
 
 func (k *FdLookupKey) String() string { return fmt.Sprintf("key=%d", k.Zero) }
@@ -166,7 +167,7 @@ func getFdLookupPrograms() []*program.Program {
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats)
+	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap)
 
 	return maps
 }

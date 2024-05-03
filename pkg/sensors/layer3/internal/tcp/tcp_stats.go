@@ -30,7 +30,7 @@ import (
 
 var (
 	gcTimer    = timer.NewPeriodicTimer("TCP GC Timer", runTcpGC, true)
-	TcpMapName = "tg_socket_map"
+	TcpMapName = "tg_tcpsocket_map"
 )
 
 type tcpBpfKey struct {

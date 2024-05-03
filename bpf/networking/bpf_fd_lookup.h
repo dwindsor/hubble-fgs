@@ -213,10 +213,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	sockmap_process.create_time = ktime_get_ns();
 	sockmap_process.protocol = required_protocol;
 
-	if (required_protocol == IPPROTO_UDP)
-		sockmap_process.version = udp_cookie_inc_version();
-	else
-		sockmap_process.version = 0;
+	sockmap_process.version = cookie_inc_version();
 
 	/* Store the socket even if family or protocol couldn't be read. */
 	add_socketmap(&cookie, &sockmap_process, true);

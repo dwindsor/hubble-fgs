@@ -57,9 +57,9 @@ struct {
 static inline __attribute__((always_inline)) int
 __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 {
+	struct socketmap_value process = { 0 };
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
-	struct socketmap_value *process;
 	struct tcp_sock *tcp;
 	__u32 rcv_wnd;
 	int zero = 0;
@@ -117,8 +117,11 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
-	process = lookup_socketmap(&cookie);
-	if (process && cfg && cfg->watermarksEnable && socket->key.pid != 0) {
+	process.create_time = socket->create_time;
+	process.key = socket->key;
+	process.protocol = socket->protocol;
+	process.version = socket->version;
+	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
 		struct process_network_watermarks_config c = {
 			.avg_window_size_ms =
 				cfg->watermarksAvgWindowSize,
@@ -131,14 +134,14 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		};
 		if (tcp_bytes_sent > socket->sent) {
 			process_network_watermarks(
-				ctx, process, IPPROTO_TCP,
+				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
 				tcp_bytes_sent - socket->sent,
 				&c);
 		}
 		if (tcp_bytes_received > socket->received) {
 			process_network_watermarks(
-				ctx, process, IPPROTO_TCP,
+				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
 				tcp_bytes_received - socket->received,
 				&c);

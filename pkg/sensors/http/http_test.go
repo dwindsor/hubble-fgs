@@ -408,9 +408,6 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	sensorProgs = append(sensorProgs, []tus.SensorProg{
 		tus.SensorProg{Name: "tg_http_sk_msg_fgs", Type: ebpf.SkMsg}, // Index ni
-		tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
-		tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
-		tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
 		tus.SensorProg{Name: "tg_http_sk_msg_fgs_response", Type: ebpf.SkMsg},
 		tus.SensorProg{Name: "tg_http_sk_msg_fgs_request", Type: ebpf.SkMsg},
 		tus.SensorProg{Name: "tg_http_sk_msg_get_more_headers", Type: ebpf.SkMsg},
@@ -420,25 +417,13 @@ func TestLoadHttpSensor(t *testing.T) {
 		tus.SensorProg{Name: "tg_skskb_http_get_more_headers", Type: ebpf.SkSKB},
 		tus.SensorProg{Name: "tg_skskb_http2", Type: ebpf.SkSKB},
 		tus.SensorProg{Name: "tg_skskb_http_verdict", Type: ebpf.SkSKB},
-		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
-
-		// new accept sensor
-		tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
-		tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
+		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps}, //  ni + 10
 	}...)
 
-	// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-	layer3Testutil.AddToMap(sensorMaps, "execve_map", []uint{ni + 1, ni + 3, ni + 16})
 	// all but base and tg_sockmap
-	layer3Testutil.AddToMap(sensorMaps, "tg_socket_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
-		ni + 12, ni + 15})
-	// event_tcp4_connect, event_tcp4_close, event_sys_listen
-	layer3Testutil.AddToMap(sensorMaps, "tg_socket_map_stats", []uint{ni + 1, ni + 2, ni + 3, ni + 15})
+	layer3Testutil.AddToMap(sensorMaps, "tg_tcpsocket_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
 	// all but tg_sockmap
-	layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
-		ni + 12})
-	// accept and accept_ret
-	layer3Testutil.AddToMap(sensorMaps, "tg_tcp_accept_sock_map", []uint{ni + 14, ni + 15})
+	layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

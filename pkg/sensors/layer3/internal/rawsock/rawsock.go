@@ -79,6 +79,7 @@ var (
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, SkRawAllocV4)
 	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4)
+	VerMap            = program.MapBuilder("tg_ver_map", SkRawAllocV4)
 )
 
 const (
@@ -98,15 +99,12 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 }
 
 func EnableRawsock(reportClose bool) ([]*program.Program, []*program.Map) {
-	var progs []*program.Program
-	var maps []*program.Map
-
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
 		return nil, nil
 	}
 
-	progs = []*program.Program{
+	progs := []*program.Program{
 		SkRawAllocV4,
 		SkRawAllocV6,
 	}
@@ -127,9 +125,10 @@ func EnableRawsock(reportClose bool) ([]*program.Program, []*program.Map) {
 	if reportClose {
 		progs = append(progs, PacketRelease)
 	}
-	maps = []*program.Map{
+	maps := []*program.Map{
 		SocketCookieMap,
 		SocketCookieStats,
+		VerMap,
 	}
 	logger.GetLogger().Infof("Enable Raw socket")
 	return progs, maps

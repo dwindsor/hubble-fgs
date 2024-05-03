@@ -48,6 +48,29 @@ struct {
 	__uint(max_entries, 1);
 } tg_socket_map_heap SEC(".maps");
 
+/* Store the latest cookie version number. Each socket receives a
+ * new global version number, unique to each socket.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, u32);
+	__type(value, u32);
+	__uint(max_entries, 1);
+} tg_ver_map SEC(".maps");
+
+static inline __attribute__((always_inline)) u32
+cookie_inc_version()
+{
+	u32 *version;
+	u32 zero = 0;
+
+	version = (u32 *)map_lookup_elem(&tg_ver_map, &zero);
+	if (!version)
+		return 0;
+	__sync_fetch_and_add(version, 1);
+	return *version;
+}
+
 // get socket cookie helper
 static inline __attribute__((always_inline)) u64 get_cookie(struct sock *sk)
 {
@@ -127,11 +150,8 @@ add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 	int zero = 0;
 	__s64 *cntr;
 
-	if (existing) {
-		if (existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime && existing->version == v->version)
-			return;
-		map_delete_elem(&tg_socket_map, cookie);
-	}
+	if (existing && existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime && existing->version == v->version)
+		return;
 
 	err = map_update_elem(&tg_socket_map, cookie, v, 0);
 	if (!err) {
@@ -188,13 +208,13 @@ update_socketmap(u64 *cookie, u32 pid)
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
-			process->version = udp_cookie_inc_version();
+			process->version = cookie_inc_version();
 			add_socketmap(cookie, process, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
-			process->version = udp_cookie_inc_version();
+			process->version = cookie_inc_version();
 		}
 	}
 	return true;

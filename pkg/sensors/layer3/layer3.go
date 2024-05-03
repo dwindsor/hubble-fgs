@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"golang.org/x/sys/unix"
 )
 
@@ -185,8 +186,7 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 	configured = false
 	needDispatcher := false
 
-	var progs []*program.Program
-	var maps []*program.Map
+	progs, maps := socktrack.EnableSocktrack()
 
 	if tcpEnabled {
 		tcpProgs, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
@@ -542,6 +542,14 @@ func SocketMap() *program.Map {
 
 func SocketStats() *program.Map {
 	return tcp.SocketStats
+}
+
+func TcpSocketMap() *program.Map {
+	return tcp.TcpSocketMap
+}
+
+func TcpSocketStats() *program.Map {
+	return tcp.TcpSocketStats
 }
 
 func TLSContext() *program.Map {

@@ -19,6 +19,7 @@ import (
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
@@ -30,6 +31,24 @@ func AddToMap(maps []tus.SensorMap, name string, progs []uint) {
 			return
 		}
 	}
+}
+
+func MergeIntoMap(existing []uint, addon []uint, start uint) []uint {
+	out := make([]uint, len(existing))
+	copy(out, existing)
+	for _, a := range addon {
+		out = append(out, start+a)
+	}
+	return out
+}
+
+func GetMapProgs(maps []tus.SensorMap, name string) []uint {
+	for _, m := range maps {
+		if m.Name == name {
+			return m.Progs
+		}
+	}
+	return nil
 }
 
 func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
@@ -46,16 +65,22 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	// all but accept
 	socketMap := tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 4}}
 
-	// all but base, accept, event_tcp_v4_send_check and event_tcp_v6_send_check
+	// all but accept
 	socketMapStats := tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 4}}
 
-	// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+	// all but accept
+	tcpSocketMap := tus.SensorMap{Name: "tg_tcpsocket_map", Progs: []uint{0, 1, 2, 4}}
+
+	// all but accept
+	tcpSocketMapStats := tus.SensorMap{Name: "tg_tcpsocket_map_stats", Progs: []uint{0, 1, 2, 4}}
+
+	// all but accept
 	socketTupleMap := tus.SensorMap{Name: "tg_socket_tuple_map", Progs: []uint{0, 1, 2, 4}}
 
-	// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+	// all but accept
 	socketTupleMapStats := tus.SensorMap{Name: "tg_socket_tuple_map_stats", Progs: []uint{0, 1, 2, 4}}
 
-	// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
+	// all but accept
 	socketTupleHintMap := tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{0, 1, 2, 4}}
 
 	// all but accept and accept_ret
@@ -64,14 +89,17 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	// all but accept, accept_ret and event_tcp4_close
 	execveMap := tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2}}
 
-	// all but accept, accept_ret and event_tcp4_close
+	// all but accept
 	cfgMap := tus.SensorMap{Name: "tg_cfg_map", Progs: []uint{0, 1, 2, 4}}
+
+	verMap := tus.SensorMap{Name: "tg_ver_map", Progs: []uint{0, 2, 4}}
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
 
 	sensorMaps := []tus.SensorMap{
 		// accept and accept_ret
 		tus.SensorMap{Name: "tg_tcp_accept_sock_map", Progs: []uint{3, 4}},
+		tcpSocketMapStats,
 	}
 
 	spec, err := ossBTF.NewBTF()
@@ -131,8 +159,11 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
 		// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-		socketMap.Progs = append(socketMap.Progs, []uint{5, 6, 7, 9, 11, 12, 13, 14, 15}...)
+		socketMap.Progs = append(socketMap.Progs, []uint{5, 6, 7, 9, 11, 12, 13}...)
 		socketMapStats.Progs = append(socketMapStats.Progs, []uint{5, 6, 9, 11, 12}...)
+
+		// tg_event_tcp_v4_send_check, tg_event_tcp_v6_send_check
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, []uint{14, 15}...)
 
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send_kp, udp4_sendret_lazy_kprobe,
 		// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -142,12 +173,16 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 		cfgMap.Progs = append(cfgMap.Progs, []uint{6, 9, 11, 12}...)
 
+		// udp_init_sock, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+		verMap.Progs = append(verMap.Progs, []uint{5, 9, 11, 12}...)
+
 		if useIPv6InitHook {
-			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 18
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 16
 			execveMap.Progs = append(execveMap.Progs, 16)
 			socketMap.Progs = append(socketMap.Progs, 16)
 			socketMapStats.Progs = append(socketMapStats.Progs, 16)
 			tcpMonMap.Progs = append(tcpMonMap.Progs, 16)
+			verMap.Progs = append(verMap.Progs, 16)
 			ni++
 		}
 	} else if !kernels.MinKernelVersion("5.15.0") { // 5.4 - <5.15
@@ -193,6 +228,9 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		socketMap.Progs = append(socketMap.Progs, []uint{5, 6, 7, 8, 10, 12, 13, 14}...)
 		socketMapStats.Progs = append(socketMapStats.Progs, []uint{5, 6, 10, 12, 13}...)
 
+		// cgroup_egress, cgroup_ingress
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, []uint{7, 8}...)
+
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 		// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{5, 6, 7, 8, 9, 10, 11, 12, 13, 14}...)
@@ -208,17 +246,21 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 				tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe}) // Index 16
 
 			execveMap.Progs = append(execveMap.Progs, []uint{15, 16}...)
-			socketMap.Progs = append(socketMap.Progs, []uint{15, 16}...)
+			tcpSocketMap.Progs = append(tcpSocketMap.Progs, []uint{15, 16}...)
 			tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{15, 16}...)
 			ni = 17
 		}
 
+		// udp_init_sock, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+		verMap.Progs = append(verMap.Progs, []uint{5, 10, 12, 13}...)
+
 		if useIPv6InitHook {
-			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe})
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index ni
 			execveMap.Progs = append(execveMap.Progs, ni)
 			socketMap.Progs = append(socketMap.Progs, ni)
 			socketMapStats.Progs = append(socketMapStats.Progs, ni)
 			tcpMonMap.Progs = append(tcpMonMap.Progs, ni)
+			verMap.Progs = append(verMap.Progs, ni)
 			ni++
 		}
 	} else { // 5.15+
@@ -266,6 +308,9 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		socketMap.Progs = append(socketMap.Progs, []uint{5, 6, 7, 8, 10, 12, 13, 14}...)
 		socketMapStats.Progs = append(socketMapStats.Progs, []uint{5, 6, 10, 12, 13}...)
 
+		// cgroup_egress, cgroup_ingress
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, []uint{7, 8}...)
+
 		// udp_init_sock, udp_destroy_sock, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe,
 		// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{5, 6, 7, 8, 9, 10, 11, 12, 13, 14}...)
@@ -274,12 +319,16 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 		cfgMap.Progs = append(cfgMap.Progs, []uint{6, 7, 8, 10, 12, 13}...)
 
+		// udp_init_sock, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+		verMap.Progs = append(verMap.Progs, []uint{5, 10, 12, 13}...)
+
 		if useIPv6InitHook {
-			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index 19
-			execveMap.Progs = append(execveMap.Progs, 17)
-			socketMap.Progs = append(socketMap.Progs, 17)
-			socketMapStats.Progs = append(socketMapStats.Progs, 17)
-			tcpMonMap.Progs = append(tcpMonMap.Progs, 17)
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_udpv6_init_sock", Type: ebpf.Kprobe}) // Index ni
+			execveMap.Progs = append(execveMap.Progs, ni)
+			socketMap.Progs = append(socketMap.Progs, ni)
+			socketMapStats.Progs = append(socketMapStats.Progs, ni)
+			tcpMonMap.Progs = append(tcpMonMap.Progs, ni)
+			verMap.Progs = append(verMap.Progs, ni)
 			ni++
 		}
 	}
@@ -319,6 +368,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 3, ni + 4, ni + 5}...)
 		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 4}...)
 		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 2, ni + 3, ni + 5}...)
+		verMap.Progs = append(verMap.Progs, []uint{ni, ni + 1, ni + 4}...)
 		ni += 6
 	}
 
@@ -337,7 +387,22 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{ni + 3}...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 3}...)
 		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 3}...)
+		verMap.Progs = append(verMap.Progs, []uint{ni, ni + 1, ni + 2}...)
+		ni += 4
 	}
+
+	sockProgs, sockMaps := socktrack.ProgsAndMaps()
+	sensorProgs = append(sensorProgs, sockProgs...) // starts at index ni
+
+	socketMap.Progs = MergeIntoMap(socketMap.Progs, GetMapProgs(sockMaps, socketMap.Name), ni)
+	socketMapStats.Progs = MergeIntoMap(socketMapStats.Progs, GetMapProgs(sockMaps, socketMapStats.Name), ni)
+	socketTupleMap.Progs = MergeIntoMap(socketTupleMap.Progs, GetMapProgs(sockMaps, socketTupleMap.Name), ni)
+	socketTupleMapStats.Progs = MergeIntoMap(socketTupleMapStats.Progs, GetMapProgs(sockMaps, socketTupleMapStats.Name), ni)
+	socketTupleHintMap.Progs = MergeIntoMap(socketTupleHintMap.Progs, GetMapProgs(sockMaps, socketTupleHintMap.Name), ni)
+	execveMap.Progs = MergeIntoMap(execveMap.Progs, GetMapProgs(sockMaps, execveMap.Name), ni)
+	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
+	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
+	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
@@ -345,10 +410,12 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		socketTupleMap,
 		socketTupleMapStats,
 		socketTupleHintMap,
+		tcpSocketMap,
 		execveMap,
 		tcpMonMap,
 		latencyConfigMap,
 		cfgMap,
+		verMap,
 	}...)
 
 	return sensorProgs, sensorMaps

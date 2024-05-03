@@ -263,7 +263,6 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				logger.GetLogger().WithError(err).Warn("RawDetachProgram Sockopt error")
 			}
 		case ebpf.CGroupSock:
-			logger.GetLogger().WithField("map", n).Warn("CGROUP SOCK")
 			if bestEffort {
 				if !strings.Contains(n, "fgs") &&
 					!strings.Contains(n, "tg_udp_bind_dummy") &&

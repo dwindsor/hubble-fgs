@@ -134,6 +134,7 @@ var (
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
 	TcpSocketMap    = program.MapBuilder("tg_tcpsocket_map", Connect)
 	TcpSocketStats  = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
+	VerMap          = program.MapBuilder("tg_ver_map", Connect)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
@@ -189,6 +190,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		SendCheckSampler,
 		ProcessNetworkWatermarksMap,
 		EventDisableConfig,
+		VerMap,
 	}
 
 	if tcpconfig.RttHistogramMax != 0 {

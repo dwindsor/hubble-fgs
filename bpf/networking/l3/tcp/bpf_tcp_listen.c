@@ -118,6 +118,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.tuple.dport = 0;
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
+	v.version = cookie_inc_version();
 
 	add_tcpsocketmap(&cookie, &v, true);
 
@@ -125,7 +126,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	sockmap.create_time = val->common.ktime;
 	sockmap.key = process->key;
 	sockmap.protocol = IPPROTO_TCP;
-	sockmap.version = 0;
+	sockmap.version = v.version;
 	add_socketmap(&cookie, &sockmap, false);
 
 	return 0;

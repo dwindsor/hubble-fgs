@@ -121,6 +121,7 @@ var (
 	// ICMP runtime maps
 	CfgMap     = program.MapBuilder("tg_cfg_map", IcmpRcv)
 	IcmpCfgMap = program.MapBuilder("tg_icmp_cfg_map", IcmpRcv)
+	VerMap     = program.MapBuilder("tg_ver_map", SkPingAlloc)
 )
 
 type sensorConfigKey struct {
@@ -143,46 +144,27 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
 		return nil, nil
-	} else if !kernels.MinKernelVersion("5.14.0") {
-		progs = []*program.Program{
-			SkRawAllocV4,
-			SkRawAllocV6,
-			SkPingAlloc,
-			// SkRawRelease, // see comment above
-			// SkPingRelease, // see comment above
-			SkSockRelease,
-			IcmpRcv,
-			IcmpRcv6,
-		}
-		maps = []*program.Map{
-			SocketCookieMap,
-			SocketCookieStats,
-			SocketTupleMap,
-			SocketTupleStats,
-			SocketTupleHintMap,
-			CfgMap,
-			IcmpCfgMap,
-		}
-	} else {
-		progs = []*program.Program{
-			SkRawAllocV4,
-			SkRawAllocV6,
-			SkPingAlloc,
-			// SkRawRelease, // see comment above
-			// SkPingRelease, // see comment above
-			SkSockRelease,
-			IcmpRcv,
-			IcmpRcv6,
-		}
-		maps = []*program.Map{
-			SocketCookieMap,
-			SocketCookieStats,
-			SocketTupleMap,
-			SocketTupleStats,
-			SocketTupleHintMap,
-			CfgMap,
-			IcmpCfgMap,
-		}
+	}
+
+	progs = []*program.Program{
+		SkRawAllocV4,
+		SkRawAllocV6,
+		SkPingAlloc,
+		// SkRawRelease, // see comment above
+		// SkPingRelease, // see comment above
+		SkSockRelease,
+		IcmpRcv,
+		IcmpRcv6,
+	}
+	maps = []*program.Map{
+		SocketCookieMap,
+		SocketCookieStats,
+		SocketTupleMap,
+		SocketTupleStats,
+		SocketTupleHintMap,
+		CfgMap,
+		IcmpCfgMap,
+		VerMap,
 	}
 
 	logger.GetLogger().Infof("Enable ICMP")

@@ -115,8 +115,8 @@ var (
 	// Sockops filters
 	HTTPFilterMap = sockops.HttpFilterMap
 	// Socket links
-	SocketMap   = layer3.SocketMap()
-	SocketStats = layer3.SocketStats()
+	TcpSocketMap   = layer3.TcpSocketMap()
+	TcpSocketStats = layer3.TcpSocketStats()
 )
 
 type httpSensor struct {
@@ -265,7 +265,7 @@ func EnableHTTPParser() *sensors.Sensor {
 		sockops.HttpSockMap,
 		sockops.TlsSockMap,
 		sockops.NopSockMap,
-		SocketMap, SocketStats,
+		TcpSocketMap, TcpSocketStats,
 	}
 
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)

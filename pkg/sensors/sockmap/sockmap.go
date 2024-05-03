@@ -94,8 +94,8 @@ var (
 	FilterMap   = sockops.TlsFilterMap
 	ParserStats = program.MapBuilder("tg_tls_parser_stats", sockops.SockopsEstablished)
 	// Socket links
-	SocketMap   = layer3.SocketMap()
-	SocketStats = layer3.SocketStats()
+	TcpSocketMap   = layer3.TcpSocketMap()
+	TcpSocketStats = layer3.TcpSocketStats()
 
 	// HTTP maps
 	HTTPMap       = http.HTTPContext
@@ -216,7 +216,7 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 				Map, MapStats,
 				Bottle, BottleStats,
 				FilterMap, ParserStats,
-				SocketMap, SocketStats,
+				TcpSocketMap, TcpSocketStats,
 				sockops.TlsSockMap,
 				sockops.HttpSockMap,
 				sockops.NopSockMap,
@@ -244,7 +244,7 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 				CGParserStats,
 				CGTailCalls,
 				FilterMap, ParserStats,
-				SocketMap, SocketStats,
+				TcpSocketMap, TcpSocketStats,
 			)
 		} else {
 			logger.GetLogger().Warnf("Cannot Enable TLS CGroup on kernel <5.10")
