@@ -103,6 +103,22 @@ spec:
           - patch
           - update
         - apiGroups:
+          - "apps"
+          resources:
+          - daemonsets/finalizers
+          verbs:
+          - create
+          - delete
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps/finalizers
+          verbs:
+          - create
+          - delete
+          - update
+        - apiGroups:
           - "monitoring.coreos.com"
           resources:
           - servicemonitors
@@ -122,6 +138,14 @@ spec:
           - get
           - list
           - watch
+        - apiGroups:
+          - ""
+          resources:
+          - pods/finalizers
+          verbs:
+          - create
+          - delete
+          - update
         - apiGroups:
           - cilium.io
           resources:
