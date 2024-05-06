@@ -97,18 +97,18 @@ var (
 	)
 
 	IcmpSend = program.Builder(
-		"bpf_icmp.o",
-		"icmp_send",
+		"bpf_cgroup_net.o",
+		"cgroup_egress",
 		"cgroup_skb/egress",
-		"tg_icmp_egress",
+		"tg_cgroup_egress",
 		"cgrp_egress",
 	)
 
 	IcmpRecv = program.Builder(
-		"bpf_icmp.o",
-		"icmp_recv",
+		"bpf_cgroup_net.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_icmp_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
