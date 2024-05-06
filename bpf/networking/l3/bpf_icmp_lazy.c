@@ -9,7 +9,7 @@
 // permission is obtained from Isovalent Inc.
 
 #include "vmlinux.h"
-#include "bpf_icmp.h"
+#include "icmp/bpf_icmp.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION

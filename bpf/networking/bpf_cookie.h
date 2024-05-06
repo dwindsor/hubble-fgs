@@ -16,7 +16,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 #include "../lib/tlsmsg.h"
-#include "l3/bpf_icmp_cookie.h"
+#include "l3/icmp/bpf_icmp_cookie.h"
 #include "udp/bpf_udp_info.h"
 
 struct socketmap_value {

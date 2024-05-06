@@ -31,6 +31,8 @@ UDPDIR := networking/udp/
 TCPDIR := networking/tcp/
 L2DIR  := networking/l2/
 L3DIR  := networking/l3/
+ICMPDIR := networking/l3/icmp/
+PINGDIR := networking/l3/ping/
 RAWSOCKDIR := networking/rawsock/
 TIMESTAMPDIR := networking/timestamp/
 ISOPROCESS := process/
@@ -57,7 +59,9 @@ TCP = bpf_tcp_accept.o bpf_tcp_close_and_accept.o bpf_tcp_connect.o bpf_tcp_list
 
 L2 = bpf_dev_queue_xmit.o
 
-L3 = bpf_icmp.o bpf_icmp_lazy.o bpf_icmp_rcv.o bpf_pingsock_create.o bpf_pingsock_release.o
+ICMP = bpf_icmp_rcv.o
+PING = bpf_pingsock_create.o bpf_pingsock_release.o
+L3 = bpf_icmp.o bpf_icmp_lazy.o
 
 RAWSOCK = bpf_rawsock_create.o bpf_rawsock_release.o
 
@@ -133,6 +137,8 @@ UDPOBJ	      := $(addprefix $(OBJSDIR),$(UDP))
 TCPOBJ        := $(addprefix $(OBJSDIR),$(TCP))
 L2OBJ	      := $(addprefix $(OBJSDIR),$(L2))
 L3OBJ	      := $(addprefix $(OBJSDIR),$(L3))
+PINGOBJ	      := $(addprefix $(OBJSDIR),$(PING))
+ICMPOBJ	      := $(addprefix $(OBJSDIR),$(ICMP))
 RAWSOCKOBJ    := $(addprefix $(OBJSDIR),$(RAWSOCK))
 TIMESTAMPOBJ  := $(addprefix $(OBJSDIR),$(TIMESTAMP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
@@ -140,7 +146,7 @@ FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -235,6 +241,20 @@ objs/%.ll: $(L3DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(L3DIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+#PING
+objs/%.ll: $(PINGDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(PINGDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+#ICMP
+objs/%.ll: $(ICMPDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(ICMPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # RAWSOCKDIR
