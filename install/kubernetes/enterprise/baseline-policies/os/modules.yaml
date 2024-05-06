@@ -9,6 +9,9 @@ metadata:
   name: "monitor-kernel-modules"
 spec:
   kprobes:
+  - call: "sys_init_module"
+    # Loading modules using old system call init_module() that should be deprecated
+    syscall: true
   - call: "security_kernel_module_request"
     # Automatic module loading detection
     syscall: false
