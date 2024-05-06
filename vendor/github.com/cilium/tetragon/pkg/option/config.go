@@ -86,6 +86,8 @@ type config struct {
 	EnableTracingPolicyCRD bool
 
 	ExposeStackAddresses bool
+
+	CgroupRate CgroupRate
 }
 
 var (
@@ -105,6 +107,10 @@ var (
 		MetricsLabelFilter: DefaultLabelFilter(),
 	}
 )
+
+func CgroupRateEnabled() bool {
+	return Config.CgroupRate.Events != 0 && Config.CgroupRate.Interval != 0
+}
 
 // ReadDirConfig reads the given directory and returns a map that maps the
 // filename to the contents of that file.

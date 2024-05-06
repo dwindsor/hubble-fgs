@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 )
@@ -135,18 +136,19 @@ func mergeInBaseSensorMaps(t *testing.T, sensorMaps []SensorMap, sensorProgs []S
 		2: SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		3: SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
 		4: SensorProg{Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
+		5: SensorProg{Name: "execve_rate", Type: ebpf.TracePoint},
 	}
 
 	var baseMaps = []SensorMap{
 		// all programs
 		SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4}},
-		SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3}},
+		SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 5}},
 
 		// all but event_execve
 		SensorMap{Name: "execve_map_stats", Progs: []uint{1, 2}},
 
 		// event_execve
-		SensorMap{Name: "tg_conf_map", Progs: []uint{0}},
+		SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2}},
 
 		// event_wake_up_new_task
 		SensorMap{Name: "execve_val", Progs: []uint{2}},
@@ -154,6 +156,14 @@ func mergeInBaseSensorMaps(t *testing.T, sensorMaps []SensorMap, sensorProgs []S
 		// event_execve and tg_kp_bprm_committing_creds
 		SensorMap{Name: "tg_execve_joined_info_map", Progs: []uint{0, 4}},
 		SensorMap{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 4}},
+	}
+
+	if option.CgroupRateEnabled() {
+		/* 6: tg_cgroup_rmdir */
+		sensorProgs = append(sensorProgs, SensorProg{Name: "tg_cgroup_rmdir", Type: ebpf.RawTracepoint})
+
+		/* cgroup_rate_map */
+		baseMaps = append(baseMaps, SensorMap{Name: "cgroup_rate_map", Progs: []uint{1, 2, 5, 6}})
 	}
 
 	return mergeSensorMaps(t, sensorMaps, baseMaps, sensorProgs, baseProgs)
