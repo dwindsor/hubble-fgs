@@ -40,11 +40,3 @@ spec:
         operator: "Equal"
         values:
         - "2"  # READING_MODULE
-  - call: "find_module_sections"
-    # On some kernels find_module_sections is inlined, if so this kprobe will fail.
-    syscall: false
-    args:
-    - index: 0
-      type: "nop"
-    - index: 1
-      type: "load_info"
