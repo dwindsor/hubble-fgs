@@ -162,40 +162,24 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 				 sizeof(struct msg_icmp_event));
 }
 
-static inline __attribute__((always_inline)) void
-icmp_handler_lazy(struct __sk_buff *skb, bool send)
+#ifdef SKB_LOAD_BYTES
+int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	u8 icmp_data[ICMP_HDR_LEN * 2];
 	struct msg_icmp_event *val;
-	struct icmp_config *cfg;
-	struct ipv6hdr rep_ip6;
 	struct iphdr rep_ip4;
-	struct ipv6hdr ip6;
 	struct tcphdr tcp;
-	struct iphdr ip;
-	u16 payload_off;
 	int zero = 0;
-	u8 protocol;
-	u64 *cookie;
-
-	cookie = (u64 *)map_lookup_elem(&icmp_cookie_heap, &zero);
-	if (!cookie)
-		return;
-	write_cookie(cookie, (u64)skb->sk);
-
-	if (!*cookie) {
-		emit_ip_error_event(skb, 0, cookie, false, 0, send + 1, 0, IP_ERROR_INET_NO_COOKIE);
-		return;
-	}
-
-	if (skb_load_bytes(skb, 0, &ip, sizeof(struct iphdr)) < 0) {
-		emit_ip_error_event(skb, 0, cookie, false, 0, send + 1, 0, IP_ERROR_INET_READ_VER);
-		return;
-	}
 
 	val = (struct msg_icmp_event *)map_lookup_elem(&icmp_event_heap, &zero);
 	if (!val)
-		return;
+		return SK_PASS;
+
+	if (unlikely(!ip))
+		return SK_PASS;
+
+	if (unlikely(!cookie))
+		return SK_PASS;
 
 	val->tuple.send = send;
 	val->icmp_ip_port = 0;
@@ -205,134 +189,58 @@ icmp_handler_lazy(struct __sk_buff *skb, bool send)
 	val->icmp_gateway[0] = 0;
 	val->icmp_gateway[1] = 0;
 
-	switch (ip.version) {
-	case 4:
-		if (ip.protocol != IPPROTO_ICMP)
-			return;
-
-		if (skb_load_bytes(skb, ip.ihl * sizeof(u32), icmp_data, sizeof(icmp_data)) < 0) {
-			emit_ip_error_event(skb, &ip, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
-			return;
-		}
-
-		val->icmp_type = icmp_data[0];
-		val->icmp_code = icmp_data[1];
-		val->common.op = ISO_MSG_OP_ICMP;
-		val->icmp_len = bpf_ntohs(ip.tot_len) - (ip.ihl * sizeof(u32)) - ICMP_HDR_LEN - sizeof(u32); // total len - IP header - ICMP header
-		*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
-
-		if (send) {
-			val->tuple.saddr[0] = ip.saddr;
-			val->tuple.daddr[0] = ip.daddr;
-		} else {
-			val->tuple.saddr[0] = ip.daddr;
-			val->tuple.daddr[0] = ip.saddr;
-		}
-		val->tuple.saddr[1] = 0;
-		val->tuple.daddr[1] = 0;
-		val->tuple.ipv6 = 0;
-		val->tuple.proto = IPPROTO_ICMP;
-
-		if (skb_load_bytes(skb, (ip.ihl * sizeof(u32)) + sizeof(icmp_data), &rep_ip4, sizeof(rep_ip4)) == 0) {
-			val->icmp_ip_proto = rep_ip4.protocol;
-			switch (val->icmp_type) {
-			case ICMP_DEST_UNREACH:
-			case ICMP_TIME_EXCEEDED:
-			case ICMP_PARAMETERPROB:
-			case ICMP_SOURCE_QUENCH:
-			case ICMP_REDIRECT:
-				val->icmp_ip_ttl = rep_ip4.ttl;
-
-				switch (val->icmp_ip_proto) {
-				case IPPROTO_TCP:
-				case IPPROTO_UDP: // Note ports are in the same location in TCP and UDP headers
-					if (skb_load_bytes(skb, (ip.ihl * sizeof(u32)) + sizeof(icmp_data) + sizeof(rep_ip4), &tcp, sizeof(tcp)) == 0)
-						val->icmp_ip_port = bpf_ntohs(tcp.dest);
-					break;
-				}
-				break;
-			}
-		}
-		if (val->icmp_type == ICMP_PARAMETERPROB)
-			val->icmp_ip_pointer = val->icmp_data[0];
-		if (val->icmp_type == ICMP_REDIRECT)
-			val->icmp_gateway[0] = *(__u32 *)(val->icmp_data);
-
-		send_icmp_event(skb, val, cookie, 0, 0, 0);
-		break;
-	case 6:
-		if (skb_load_bytes(skb, 0, &ip6, sizeof(struct ipv6hdr)) < 0) {
-			emit_ip_error_event(skb, 0, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
-		}
-		protocol = get_ip6_proto(&payload_off, &ip6, 0, skb, 0, true, false, 0);
-		if (protocol == IP_HEADER_ERROR) {
-			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
-		} else if (protocol != IPPROTO_ICMP6) {
-			return;
-		}
-		if (!payload_off) {
-			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
-			return;
-		}
-
-		if (skb_load_bytes(skb, payload_off, icmp_data, sizeof(icmp_data)) < 0) {
-			emit_ip_error_event(skb, &ip6, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
-			return;
-		}
-
-		val->icmp_type = icmp_data[0];
-		val->icmp_code = icmp_data[1];
-
-		cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
-		if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
-			return;
-
-		val->common.op = ISO_MSG_OP_ICMP;
-		val->icmp_len = skb->len - payload_off - ICMP_HDR_LEN - sizeof(u32); // total len - payload offset - ICMP header
-		*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
-
-		if (send) {
-			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6.saddr);
-			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6.daddr);
-		} else {
-			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6.daddr);
-			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6.saddr);
-		}
-		val->tuple.ipv6 = 1;
-		val->tuple.proto = IPPROTO_ICMP6;
-
-		switch (val->icmp_type) {
-		case ICMPV6_DEST_UNREACH:
-		case ICMPV6_PKT_TOOBIG:
-		case ICMPV6_TIME_EXCEED:
-		case ICMPV6_PARAMPROB:
-			if (skb_load_bytes(skb, payload_off + sizeof(icmp_data), &rep_ip6, sizeof(rep_ip6)) == 0) {
-				val->icmp_ip_ttl = rep_ip6.hop_limit;
-
-				switch (rep_ip6.nexthdr) {
-				case IPPROTO_TCP:
-				case IPPROTO_UDP:
-					if (skb_load_bytes(skb, payload_off + sizeof(icmp_data) + sizeof(rep_ip6), &tcp, sizeof(tcp)) == 0)
-						val->icmp_ip_port = bpf_ntohs(tcp.dest);
-					val->icmp_ip_proto = IPPROTO_TCP;
-					break;
-				}
-				break;
-			}
-		}
-		if (val->icmp_type == ICMPV6_PARAMPROB)
-			val->icmp_ip_pointer = *(u32 *)val->icmp_data;
-
-		send_icmp_event(skb, val, cookie, 0, 0, 0);
-		break;
-	default:
-		emit_ip_error_event(skb, 0, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
+	if (skb_load_bytes(skb, ip->ihl * sizeof(u32), icmp_data, sizeof(icmp_data)) < 0) {
+		emit_ip_error_event(skb, ip, cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		return SK_PASS;
 	}
-}
 
+	val->icmp_type = icmp_data[0];
+	val->icmp_code = icmp_data[1];
+	val->common.op = ISO_MSG_OP_ICMP;
+	val->icmp_len = bpf_ntohs(ip->tot_len) - (ip->ihl * sizeof(u32)) - ICMP_HDR_LEN - sizeof(u32); // total len - IP header - ICMP header
+	*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
+
+	if (send) {
+		val->tuple.saddr[0] = ip->saddr;
+		val->tuple.daddr[0] = ip->daddr;
+	} else {
+		val->tuple.saddr[0] = ip->daddr;
+		val->tuple.daddr[0] = ip->saddr;
+	}
+	val->tuple.saddr[1] = 0;
+	val->tuple.daddr[1] = 0;
+	val->tuple.ipv6 = 0;
+	val->tuple.proto = IPPROTO_ICMP;
+
+	if (skb_load_bytes(skb, (ip->ihl * sizeof(u32)) + sizeof(icmp_data), &rep_ip4, sizeof(rep_ip4)) == 0) {
+		val->icmp_ip_proto = rep_ip4.protocol;
+		switch (val->icmp_type) {
+		case ICMP_DEST_UNREACH:
+		case ICMP_TIME_EXCEEDED:
+		case ICMP_PARAMETERPROB:
+		case ICMP_SOURCE_QUENCH:
+		case ICMP_REDIRECT:
+			val->icmp_ip_ttl = rep_ip4.ttl;
+
+			switch (val->icmp_ip_proto) {
+			case IPPROTO_TCP:
+			case IPPROTO_UDP: // Note ports are in the same location in TCP and UDP headers
+				if (skb_load_bytes(skb, (ip->ihl * sizeof(u32)) + sizeof(icmp_data) + sizeof(rep_ip4), &tcp, sizeof(tcp)) == 0)
+					val->icmp_ip_port = bpf_ntohs(tcp.dest);
+				break;
+			}
+			break;
+		}
+	}
+	if (val->icmp_type == ICMP_PARAMETERPROB)
+		val->icmp_ip_pointer = val->icmp_data[0];
+	if (val->icmp_type == ICMP_REDIRECT)
+		val->icmp_gateway[0] = *(__u32 *)(val->icmp_data);
+
+	send_icmp_event(skb, val, cookie, 0, 0, 0);
+	return SK_PASS;
+}
+#else
 int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
@@ -419,7 +327,94 @@ int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int s
 	send_icmp_event(skb, val, cookie, 0, 0, 0);
 	return SK_PASS;
 }
+#endif // SKB_LOAD_BYTES
 
+#ifdef SKB_LOAD_BYTES
+int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+{
+	u8 icmp_data[ICMP_HDR_LEN * 2];
+	struct msg_icmp_event *val;
+	struct icmp_config *cfg;
+	struct ipv6hdr rep_ip6;
+	struct tcphdr tcp;
+	struct iphdr ip;
+	int zero = 0;
+
+	if (unlikely(!ip6))
+		return SK_PASS;
+
+	if (unlikely(!cookie))
+		return SK_PASS;
+
+	if (!off) {
+		emit_ip_error_event(skb, ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+		return SK_PASS;
+	}
+
+	if (skb_load_bytes(skb, off, icmp_data, sizeof(icmp_data)) < 0) {
+		emit_ip_error_event(skb, ip6, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		return SK_PASS;
+	}
+
+	val = (struct msg_icmp_event *)map_lookup_elem(&icmp_event_heap, &zero);
+	if (!val)
+		return SK_PASS;
+
+	val->tuple.send = send;
+	val->icmp_ip_port = 0;
+	val->icmp_ip_proto = 0;
+	val->icmp_ip_ttl = 0;
+	val->icmp_ip_pointer = 0;
+	val->icmp_gateway[0] = 0;
+	val->icmp_gateway[1] = 0;
+
+	val->icmp_type = icmp_data[0];
+	val->icmp_code = icmp_data[1];
+
+	cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
+	if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
+		return SK_PASS;
+
+	val->common.op = ISO_MSG_OP_ICMP;
+	val->icmp_len = skb->len - off - ICMP_HDR_LEN - sizeof(u32); // total len - payload offset - ICMP header
+	*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
+
+	if (send) {
+		copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->saddr);
+		copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->daddr);
+	} else {
+		copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->daddr);
+		copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->saddr);
+	}
+	val->tuple.ipv6 = 1;
+	val->tuple.proto = IPPROTO_ICMP6;
+
+	switch (val->icmp_type) {
+	case ICMPV6_DEST_UNREACH:
+	case ICMPV6_PKT_TOOBIG:
+	case ICMPV6_TIME_EXCEED:
+	case ICMPV6_PARAMPROB:
+		if (skb_load_bytes(skb, off + sizeof(icmp_data), &rep_ip6, sizeof(rep_ip6)) == 0) {
+			val->icmp_ip_ttl = rep_ip6.hop_limit;
+
+			switch (rep_ip6.nexthdr) {
+			case IPPROTO_TCP:
+			case IPPROTO_UDP:
+				if (skb_load_bytes(skb, off + sizeof(icmp_data) + sizeof(rep_ip6), &tcp, sizeof(tcp)) == 0)
+					val->icmp_ip_port = bpf_ntohs(tcp.dest);
+				val->icmp_ip_proto = IPPROTO_TCP;
+				break;
+			}
+			break;
+		}
+	}
+	if (val->icmp_type == ICMPV6_PARAMPROB)
+		val->icmp_ip_pointer = *(u32 *)val->icmp_data;
+
+	send_icmp_event(skb, val, cookie, 0, 0, 0);
+	return SK_PASS;
+}
+#else
 int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
@@ -521,4 +516,6 @@ int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u1
 	send_icmp_event(skb, val, cookie, 0, 0, 0);
 	return SK_PASS;
 }
+#endif // SKB_LOAD_BYTES
+
 #endif //__BPF_ICMP_H_

@@ -113,18 +113,18 @@ var (
 	)
 
 	IcmpSendLazy = program.Builder(
-		"bpf_icmp_lazy.o",
-		"icmp_lazy_send",
+		"bpf_cgroup_net_load.o",
+		"cgroup_egress",
 		"cgroup_skb/egress",
-		"tg_icmp_egress",
+		"tg_cgroup_egress",
 		"cgrp_egress",
 	)
 
 	IcmpRecvLazy = program.Builder(
-		"bpf_icmp_lazy.o",
-		"icmp_lazy_recv",
+		"bpf_cgroup_net_load.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_icmp_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
