@@ -8,6 +8,8 @@ on:
 permissions:
   # For softprops/action-gh-release draft release creation and artifact upload
   contents: write
+  # For creating a PR to update the OLM catalog
+  pull-requests: write
 
 jobs:
   conf:
@@ -33,8 +35,6 @@ jobs:
               echo "Build matrix for ${{ steps.tag.outputs.tag }}"
               echo '{"name": "tetragon", "dockerfile": "./Dockerfile"}' >> /tmp/out
               echo '{"name": "tetragon-operator", "dockerfile": "./Dockerfile.operator"}' >> /tmp/out
-              # TODO: add OLM builds here
-              # echo '{"name": "tetragon-operator-bundle", "dockerfile": "./olm/bundle.Dockerfile"}' >> /tmp/out
           fi
           echo "matrix=$(jq -cs . </tmp/out)" | tee -a $GITHUB_OUTPUT
 
@@ -140,13 +140,137 @@ jobs:
           path: image-digest
           retention-days: 1
 
+  # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
+  # produced during these builds.
+  # The bundle is just a bunch of manifests, no binary, there is no need for a multi-arch build. It is already platform independent.
+  # The context needs to be passed to the build.
+  # => hence a separate job
+  bundle-build-and-push:
+    needs: build-and-push
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Getting image tag
+        id: tag
+        run: |
+          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+          echo "minor=$(echo ${GITHUB_REF##*/} | cut -d. -f-2)" >> $GITHUB_OUTPUT
+
+      - name: Legacy check
+        id: legacy
+        shell: bash
+        run: |
+          if (echo ${{ steps.tag.outputs.tag }} | grep -q -e '^v1.12\|^v1.11\|^v1.10'); then
+            echo "is=true" >> $GITHUB_OUTPUT
+          else
+            echo "is=false" >> $GITHUB_OUTPUT
+          fi
+        
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20 # v3.2.0
+
+      - name: Login to quay.io
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_TOKEN }}
+
+      # Checking out the release branch
+      - name: Checkout Source Code
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: false
+
+      - name: Prepare download of image digests
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        shell: bash
+        run: |
+          mkdir -p image-digest/
+
+      - name: Download digests of all images built
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          path: image-digest/
+      
+      - name: Update ClusterServiceVersion
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        run: |
+          lower_tag="${{ steps.tag.outputs.tag }}"
+          lower_tag="${lower_tag,,}"
+          git checkout ${{ steps.tag.outputs.minor }}
+          git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
+          tetragon_img="$(cat image-digest/image-digest\ tetragon/tetragon.txt | grep isovalent)"
+          tetragon_img="${tetragon_img//\`}"
+          echo "tetragon image: ${tetragon_img}"
+          tetragon_operator_img="$(cat image-digest/image-digest\ tetragon-operator/tetragon-operator.txt | grep isovalent)"
+          tetragon_operator_img="${tetragon_operator_img//\`}"
+          echo "tetragon-operator image: ${tetragon_operator_img}"
+          hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
+          # sed commands seem fragile. Templating or yq may be better.
+          sed -i "s/quay.io\/isovalent\/tetragon[:@].*\"$/${tetragon_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/tetragon[:@].*[^\"]$/${tetragon_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*\"$/${tetragon_operator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*[^\"]$/${tetragon_operator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*\"$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*[^\"]$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          # TODO: the value in the olm.skipRange annotation may need to be replaced when the annotation has been added.
+          # TODO: after the first release the population of the replace field could get automated (not a must).
+          version="${lower_tag:1}"
+          sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${lower_tag}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/^[ ]*version: .*$/  version: ${version}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          git add ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          git config --global user.email "isovalent-bot@isovalent.com"
+          git config --global user.name "isovalent-bot"
+          git remote set-url origin https://isovalent-bot:${GITHUB_TOKEN}@github.com/isovalent/hubble-fgs.git
+          git commit -m "chore: Update CSV images to ${{ steps.tag.outputs.tag }}"
+          git push --set-upstream origin pr/release-wf/${{ steps.tag.outputs.tag }}
+          # Create a PR with the updated ClusterServiceVersion against the release branch
+          gh pr create -B ${{ steps.tag.outputs.minor }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bundle build 
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        id: bundle_build
+        with:
+          context: ./install/olm
+          file: ./install/olm/bundle.Dockerfile
+          push: true
+          tags: |
+            quay.io/${{ github.repository_owner }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
+      
+      - name: Catalog update PR
+        if: ${{ steps.legacy.outputs.is == 'false' }}
+        run: |
+          git checkout master
+          git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
+          export DOCKER_IMAGE_TAG=${{ steps.tag.outputs.tag }}
+          make olm-index-add
+          git add install/olm/catalog/index.yaml
+          git commit -m "chore: Update the OLM catalog with the latest bundle: ${{ steps.tag.outputs.tag }}"
+          git push --set-upstream origin pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
+          # Create a PR with the updated ClusterServiceVersion against the release branch
+          body="Created by GitHub action: Image CI Releases.
+            DON'T MERGE RELEASE CANDIDATES INTO THE CATALOG!"
+          gh pr create -B master --title "chore: Add bundle ${{ steps.tag.outputs.tag }} to the OLM catalog" --body "${body}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   image-digests:
     if: ${{ github.repository == 'isovalent/hubble-fgs' }}
     name: Display Digests
     runs-on: ubuntu-22.04
     needs: build-and-push
     steps:
-      - name: Downloading Image Digests
+      - name: Prepare download of image digests
         shell: bash
         run: |
           mkdir -p image-digest/
