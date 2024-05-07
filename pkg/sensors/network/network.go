@@ -242,7 +242,8 @@ func runNetworkCB() {
 		nsFileName := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
 		netns, err := ns.GetNS(nsFileName)
 		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("GetNS from path failed")
+			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Debugf("GetNS from path failed")
+			nscache.DelNetNs(v.Netns)
 			continue
 		}
 		defer netns.Close()
