@@ -61,7 +61,7 @@ L2 = bpf_dev_queue_xmit.o
 
 ICMP = bpf_icmp_rcv.o
 PING = bpf_pingsock_create.o bpf_pingsock_release.o
-L3 = bpf_icmp.o bpf_icmp_lazy.o bpf_cgroup_net.o
+L3 = bpf_icmp_lazy.o bpf_cgroup_net.o
 
 RAWSOCK = bpf_rawsock_create.o bpf_rawsock_release.o
 
