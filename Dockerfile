@@ -79,7 +79,7 @@ RUN curl -L https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_TAG}/b
 # Almost final step runs on target platform (might need emulation) and
 # retrieves (cross-)compiled binaries from builders
 FROM docker.io/library/alpine:3.19.1@sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b as base-build
-RUN apk add iproute2
+RUN apk add --no-cache iproute2
 RUN addgroup hubble	       && \
     mkdir /var/lib/tetragon/ && \
     mkdir /var/run/tetragon/ && \
@@ -87,6 +87,7 @@ RUN addgroup hubble	       && \
     mkdir -p /etc/tetragon/tetragon.conf.d/ && \
     mkdir -p /etc/tetragon/tetragon.tp.d/ && \
     apk add --no-cache --update bash
+RUN apk upgrade --no-cache
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetra /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
