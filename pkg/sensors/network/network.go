@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -238,7 +239,7 @@ func runNetworkCB() {
 			logger.GetLogger().WithError(err).Warn("Unable to convert Pid to string")
 			continue
 		}
-		nsFileName := filepath.Join("procRoot", pidStr, "ns", "net")
+		nsFileName := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
 		netns, err := ns.GetNS(nsFileName)
 		if err != nil {
 			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("GetNS from path failed")
