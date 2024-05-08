@@ -51,7 +51,7 @@ $(EE_CHART)/values.yaml:
 .PHONY: $(EE_CHART)/templates
 $(EE_CHART)/templates: $(CRDS) $(EE_PATCHES)
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
-	cp -rf $(EE_PATCHES)/baseline-policies/. $(EE_CHART)/baseline-policies
+	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
 .PHONY: $(EE_CHART)/README.md
@@ -63,7 +63,7 @@ $(EE_CHART)/README.md:
 openapi2jsonschema.py:
 	curl -sSfLO https://raw.githubusercontent.com/yannh/kubeconform/$(KUBECONFORM_VERSION)/scripts/$@
 
-# To validate (using kubeconform) baseline policies included in the Helm chart, we need to pass the
+# To validate (using kubeconform) default Ruleset policies included in the Helm chart, we need to pass the
 # JSON schema of the TracingPolicy CRD. This target generates such schema.
 .PHONY: tracingpolicy_v1alpha1.json
 tracingpolicy_v1alpha1.json: $(TRACINGPOLICY_CRD)

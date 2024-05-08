@@ -353,21 +353,21 @@ crds:
 # (see crds.installMethod). This means we have a chicken-and-egg situation here. To avoid races, most users should
 # disable tracing policies when first installing Tetragon Helm chart and enable them after CRDs are created.
 tracingPolicies:
-  baseline:
-    # -- Enable all baseline policies.
+  default:
+    # -- Enable all default ruleset policies.
     enabled: false
     fim:
-      # -- Enable File Integrity Monitoring (FIM) baseline policy.
+      # -- Enable File Integrity Monitoring (FIM) default policy.
       enabled: false
     network:
-      # -- Enable Network baseline policy.
+      # -- Enable Network default policy.
       enabled: false
     os:
-      # -- Enable Operating System Integrity baseline policy.
+      # -- Enable Operating System Integrity default policy.
       enabled: false
     container:
-      # -- Enable Container Sandbox baseline policy.
+      # -- Enable Container Sandbox default policy.
       enabled: false
     security:
-      # -- Enable Security Sensitive Events baseline policy.
+      # -- Enable Security Sensitive Events default policy.
       enabled: false

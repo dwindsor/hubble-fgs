@@ -1,6 +1,0 @@
-{{- if or .Values.tracingPolicies.baseline.enabled .Values.tracingPolicies.baseline.security.enabled }}
-{{- range $path, $_ := .Files.Glob "baseline-policies/security/**.yaml" }}
----
-{{ $.Files.Get $path }}
-{{- end }}
-{{- end }}
