@@ -287,8 +287,8 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
 				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_send_lazy", Type: ebpf.CGroupSKB},
-				tus.SensorProg{Name: "tg_icmp_recv_lazy", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_cgroup_egress", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_cgroup_ingress", Type: ebpf.CGroupSKB},
 				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 7
@@ -298,8 +298,8 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
 				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_send", Type: ebpf.CGroupSKB},
-				tus.SensorProg{Name: "tg_icmp_recv", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_cgroup_egress", Type: ebpf.CGroupSKB},
+				tus.SensorProg{Name: "tg_cgroup_ingress", Type: ebpf.CGroupSKB},
 				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
 				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 7
