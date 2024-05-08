@@ -53,13 +53,6 @@
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, u64);
-	__uint(max_entries, 1);
-} icmp_cookie_heap SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
 	__type(value, struct msg_icmp_event);
 	__uint(max_entries, 1);
 } icmp_event_heap SEC(".maps");
@@ -132,8 +125,10 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 	u64 *new_cookie;
 	int dif, sdif;
 
-	if (*cookie)
-		process = lookup_socketmap(cookie);
+	if (*cookie) {
+		__u64 c = *cookie;
+		process = lookup_socketmap(&c);
+	}
 	if (!process && icmp_tracking_enabled() && skb && protocol && sport) {
 		key = make_tuple_key_from_skb(skb, val, protocol, sport);
 		if (key) {
@@ -190,7 +185,9 @@ int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int s
 	val->icmp_gateway[1] = 0;
 
 	if (skb_load_bytes(skb, ip->ihl * sizeof(u32), icmp_data, sizeof(icmp_data)) < 0) {
-		emit_ip_error_event(skb, ip, cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		// TBD: JF Fix the compiler please.
+		u64 c = *cookie; // compiler + verifier oddity to coerce this into a correct verifier type
+		emit_ip_error_event(skb, ip, &c, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 		return SK_PASS;
 	}
 
@@ -269,7 +266,9 @@ int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int s
 	val->icmp_gateway[1] = 0;
 
 	if (data + (ip->ihl * sizeof(u32)) + ICMP_HDR_LEN + sizeof(u32) > data_end) {
-		emit_ip_error_event(skb, ip, cookie, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		// TBD: JF Fix the compiler please.
+		u64 c = *cookie; // compiler + verifier oddity to coerce this into a correct verifier type
+		emit_ip_error_event(skb, ip, &c, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 		return SK_PASS;
 	}
 
@@ -337,7 +336,6 @@ int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u1
 	struct icmp_config *cfg;
 	struct ipv6hdr rep_ip6;
 	struct tcphdr tcp;
-	struct iphdr ip;
 	int zero = 0;
 
 	if (unlikely(!ip6))
@@ -347,12 +345,12 @@ int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u1
 		return SK_PASS;
 
 	if (!off) {
-		emit_ip_error_event(skb, ip6, cookie, true, ip.version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+		emit_ip_error_event(skb, ip6, cookie, true, 6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
 		return SK_PASS;
 	}
 
 	if (skb_load_bytes(skb, off, icmp_data, sizeof(icmp_data)) < 0) {
-		emit_ip_error_event(skb, ip6, cookie, false, ip.version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		emit_ip_error_event(skb, ip6, cookie, false, 6, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 		return SK_PASS;
 	}
 
@@ -457,7 +455,9 @@ int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u1
 	 */
 	asm volatile("%[off] &= 0x7fff;\n" :[off] "+r"(off):);
 	if (data + off + ICMP_HDR_LEN + sizeof(u32) > data_end) {
-		emit_ip_error_event(skb, ip6, cookie, false, 6, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+		// TBD: JF Fix the compiler please.
+		u64 c = *cookie; // compiler + verifier oddity to coerce this into a correct verifier type
+		emit_ip_error_event(skb, ip6, &c, false, 6, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 		return SK_PASS;
 	}
 	icmp_data = (u8 *)data + off;
