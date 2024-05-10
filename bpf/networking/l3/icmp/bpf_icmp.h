@@ -453,7 +453,9 @@ int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u1
 	 * a verifier error trying to access past the end of the 65k payload.
 	 * We artificially limit to 0x7fffB offset into payload.
 	 */
-	asm volatile("%[off] &= 0x7fff;\n" :[off] "+r"(off):);
+	asm volatile("%[off] &= 0x7fff;\n"
+		     : [off] "+r"(off)
+		     :);
 	if (data + off + ICMP_HDR_LEN + sizeof(u32) > data_end) {
 		// TBD: JF Fix the compiler please.
 		u64 c = *cookie; // compiler + verifier oddity to coerce this into a correct verifier type
