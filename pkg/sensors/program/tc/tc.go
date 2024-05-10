@@ -212,7 +212,7 @@ func LoadTC(
 
 			netns, err := ns.GetNS(nsFileName)
 			if err != nil {
-				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("GetNS from path failed")
+				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("LoadTC GetNS from path failed")
 				continue
 			}
 
