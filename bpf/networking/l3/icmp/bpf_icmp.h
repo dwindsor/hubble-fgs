@@ -158,7 +158,8 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 }
 
 #ifdef SKB_LOAD_BYTES
-int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+static inline __attribute__((always_inline)) int
+icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	u8 icmp_data[ICMP_HDR_LEN * 2];
 	struct msg_icmp_event *val;
@@ -329,7 +330,8 @@ int icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int s
 #endif // SKB_LOAD_BYTES
 
 #ifdef SKB_LOAD_BYTES
-int icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+static inline __attribute__((always_inline)) int
+icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
 {
 	u8 icmp_data[ICMP_HDR_LEN * 2];
 	struct msg_icmp_event *val;

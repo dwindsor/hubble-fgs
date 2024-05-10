@@ -181,7 +181,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
 		return nil, nil
-	} else if !kernels.MinKernelVersion("5.10.0") {
+	} else if !kernels.MinKernelVersion("5.14.0") {
 		progs = []*program.Program{
 			SkRawAllocV4,
 			SkRawAllocV6,
