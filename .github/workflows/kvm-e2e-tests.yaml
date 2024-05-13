@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
         with:
           path: hubble-fgs
           submodules: true
@@ -81,7 +81,7 @@ jobs:
           - "4.19-20240327.122820"
     steps:
       - name: Checkout Git Repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
         with:
           path: hubble-fgs
           submodules: true
@@ -112,7 +112,7 @@ jobs:
           rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@9d758b756305e83718a51b792a5aeabd022a39ec # v0.0.16
+        uses: cilium/little-vm-helper@a4311c6d054de3008bdf9195b0fabf6ee60d8bdd # v0.0.17
         with:
           install-dependencies: true
           test-name: tetragon-e2e
@@ -158,7 +158,7 @@ jobs:
           docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@9d758b756305e83718a51b792a5aeabd022a39ec # v0.0.16
+        uses: cilium/little-vm-helper@a4311c6d054de3008bdf9195b0fabf6ee60d8bdd # v0.0.17
         with:
           provision: "false"
           cmd: |
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload end-to-end test logs
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: tetragon-e2e-${{ matrix.kernel }}
           path: logs/e2e

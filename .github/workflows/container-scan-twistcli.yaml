@@ -38,11 +38,11 @@ jobs:
           pcc_pass: ${{ secrets.TWISTCLI_PASSWORD }}
           image_name: quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
       - name: Install vexctl
         run: go install github.com/openvex/vexctl@latest
       - name: Checkout latest VEX data
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
         with:
           sparse-checkout: |
             .github/vex-data.vex.json
@@ -51,7 +51,7 @@ jobs:
       - name: Filter false positives
         run: vexctl filter ${{ steps.scan-image.outputs.sarif_file }} isovalent-tetragon-vex/.github/vex-data.vex.json > filtered-results.json
       - name: Upload SARIF scan results
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: ${{ matrix.image }}-${{ matrix.branch }}.sarif.json
           path: filtered-results.json
