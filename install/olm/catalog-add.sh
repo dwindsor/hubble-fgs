@@ -8,14 +8,15 @@ bundle_major=$(echo "$DOCKER_IMAGE_TAG" | cut -d \. -f 1)
 bundle_major=${bundle_major#v}
 bundle_minor=$(echo "$DOCKER_IMAGE_TAG" | cut -d \. -f 2)
 bundle_zversion=$(echo "$DOCKER_IMAGE_TAG" | cut -d \. -f 3-)
+bundle_zversion="${bundle_zversion,,}"
 index_file=install/olm/catalog/index.yaml
 
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
 
-bundle=$(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} ".name | select(. == \"tetragon-operator.${DOCKER_IMAGE_TAG}\")" /workdir/${index_file})
+bundle=$(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} ".name | select(. == \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\")" /workdir/${index_file})
 if [ -n "$bundle" ]
 then
-  echo "bundle tetragon-operator.v${DOCKER_IMAGE_TAG} already present in catalog index"
+  echo "bundle tetragon-operator.${DOCKER_IMAGE_TAG,,} already present in catalog index"
   exit 1
 fi
 
@@ -61,7 +62,7 @@ retrieve_maxz maxz_for_current maxz_for_current_name exist_z_for_current_minor $
 if [[ "$exist_z_for_current_minor" == "true" ]]
 then
    echo "highest .z for the current minor version ${maxz_for_current}"
-   docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG}\", \"replaces\": \"${maxz_for_current_name}\", \"skipRange\": \">=${bundle_major}.${bundle_minor}.0 <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
+   docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\", \"replaces\": \"${maxz_for_current_name}\", \"skipRange\": \">=${bundle_major}.${bundle_minor}.0 <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
 else
     echo "no existing bundle for the current minor version, searching the previous one"
     maxz_for_previous=0
@@ -75,7 +76,7 @@ else
        exit 1
     fi
     echo "highest .z for the previous minor version $maxz_for_previous"
-    docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG}\", \"replaces\": \"${maxz_for_previous_name}\", \"skipRange\": \">=${bundle_major}.${previous_minor}.${maxz_for_previous} <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
+    docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\", \"replaces\": \"${maxz_for_previous_name}\", \"skipRange\": \">=${bundle_major}.${previous_minor}.${maxz_for_previous} <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
 fi
 
 docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:latest validate /workdir/install/olm/catalog
