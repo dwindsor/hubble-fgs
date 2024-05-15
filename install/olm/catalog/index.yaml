@@ -140,8 +140,8 @@ relatedImages:
   name: metadata
 - image: quay.io/isovalent/hubble-export-stdout@sha256:af2ae61427a88c4c97d2aa39e0f14243d599cd3aa393599b08fb44a645957726
   name: hubble-export-stdout
-- image: quay.io/isovalent/tetragon-operator@sha256:669986ca4257b5513ce37717736c637807c83aa7b6e475aec249fe51be1c251d
+- image: quay.io/isovalent/tetragon-operator@sha256:6f8847cfaf9cc1e249f8a0f9e3a3cfbf35104075e107651de7ca70e8380f10f7
   name: tetragon-operator
-- image: quay.io/isovalent/tetragon@sha256:41c0b086ca4ae0ac867aecd1d1d8ae023a09486e9d7571e460efef28f4edde5d
+- image: quay.io/isovalent/tetragon@sha256:9f91716b03808009d2a791cec8445b97ae5b916e75230ca0d743d06145407e1a
   name: tetragon
 schema: olm.bundle
