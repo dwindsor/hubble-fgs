@@ -16,15 +16,21 @@ spec:
     syscall: false
     args:
     - index: 0
+      # The current process_credentials, no need to print it as we are interested in
+      # capabilities, and current capabilities are printed outside of process_credentials.
       type: "nop"
     - index: 1
+      # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
       type: "cred"
     - index: 2
-      type: "uint64"
+      # The new effective capabilities to be applied as a string in hexadecimal format.
+      type: "cap_effective"
     - index: 3
-      type: "uint64"
+      # The new inheritable capabilities to be applied as a string in hexadecimal format.
+      type: "cap_inheritable"
     - index: 4
-      type: "uint64"
+      # The new permitted capabilities to be applied as a string in hexadecimal format.
+      type: "cap_permitted"
   - call: "sys_setns"
     syscall: true
     args:
