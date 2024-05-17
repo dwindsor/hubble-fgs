@@ -74,7 +74,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	struct udp_info_key key;
 	struct udp_info *info;
 	u32 cookie_ver = 0;
-	int zero = 0;
 
 	if (process)
 		cookie_ver = process->version;
@@ -98,6 +97,8 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	}
 
 	if (!value) {
+		int zero = 0;
+
 		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
 		if (!value)
 			return 0;
@@ -210,7 +211,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-udp_watermarks(void *ctx, u64 *cookie, struct udp_packet_details *packet, u64 send)
+udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ipv6, u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_watermarks_config *c;
@@ -237,123 +238,17 @@ udp_watermarks(void *ctx, u64 *cookie, struct udp_packet_details *packet, u64 se
 	 * the socket cookie by __udp_send() already.
 	 */
 	if (!process) {
-		emit_ip_error_event(ctx, &packet->ip, cookie, packet->ipv6,
-				    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_WATERMARK_NO_PROCESS);
+		emit_ip_error_event(ctx, ip, cookie, ipv6,
+				    ip->version, send + 1, 0, IP_ERROR_INET_WATERMARK_NO_PROCESS);
 		return;
 	}
 	if (!process->key.pid) {
-		emit_ip_error_event(ctx, &packet->ip, cookie, packet->ipv6,
-				    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_WATERMARK_NO_PID);
+		emit_ip_error_event(ctx, ip, cookie, ipv6,
+				    ip->version, send + 1, 0, IP_ERROR_INET_WATERMARK_NO_PID);
 		return;
 	}
 
-	process_network_watermarks(ctx, process, IPPROTO_UDP, send, packet->payload_sz, c);
-}
-
-static inline __attribute__((always_inline)) void
-inet_handler_lazy(struct __sk_buff *skb, u64 send)
-{
-	struct udp_packet_details *packet;
-	u64 *cookie;
-	int zero = 0;
-	u8 proto;
-	unsigned long int err = 0;
-	struct timestamp_option *ts_opt = 0;
-	u16 ethertype = bpf_ntohs((u16)skb->protocol);
-
-	/* Only handle IPv4 and IPv6 here. */
-	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
-		return;
-
-	cookie = (u64 *)map_lookup_elem(&tg_udp_cookie_heap, &zero);
-	if (!cookie)
-		return;
-	write_cookie(cookie, (u64)skb->sk);
-	if (!*cookie) {
-		emit_ip_error_event(skb, 0, cookie, false,
-				    0, send + 1, 0, IP_ERROR_INET_NO_COOKIE);
-		return;
-	}
-
-	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
-	if (!packet)
-		return;
-
-	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0) {
-		emit_ip_error_event(skb, 0, cookie, false,
-				    0, send + 1, 0, IP_ERROR_INET_READ_VER);
-		return;
-	}
-
-	switch (packet->ip.ip4.version) {
-	case 4:
-		if (packet->ip.ip4.protocol != IPPROTO_UDP)
-			return;
-		packet->ipv6 = false;
-		packet->udp_off = ip_payload_off(&packet->ip.ip4);
-		if (packet->ip.ip4.ihl >=
-		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
-		     sizeof(u32))) {
-			/* Packet has at least enough space for the Timestamp IP Option,
-			 * so check if the first option is the Timestamp option that we
-			 * add to detect UDP latency.
-			 */
-			if (skb_load_bytes(
-				    skb, sizeof(struct iphdr), &packet->ipopt,
-				    sizeof(struct timestamp_option)) < 0) {
-				emit_ip_error_event(
-					skb, &packet->ip, cookie, false,
-					packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			} else {
-				if (packet->ipopt.type == IPO_TYPE &&
-				    packet->ipopt.magic ==
-					    bpf_ntohl(IPO_MAGIC_W) &&
-				    packet->ipopt.magic ==
-					    packet->ipopt.magic2) {
-					ts_opt = &packet->ipopt;
-				}
-			}
-		}
-		break;
-	case 6:
-		if (skb_load_bytes(skb, 0, &packet->ip,
-				   sizeof(struct ipv6hdr)) < 0) {
-			emit_ip_error_event(skb, 0, cookie, true,
-					    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
-		}
-		packet->ipv6 = true;
-		proto = get_ip6_proto(&packet->udp_off, &packet->ip.ip6, 0, skb,
-				      0, true, false, &err);
-		if (proto == IP_HEADER_ERROR) {
-			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
-					    packet->ip.ip4.version, send + 1, 0, err);
-			return;
-		} else if (proto != IPPROTO_UDP) {
-			return;
-		}
-		if (!packet->udp_off) {
-			emit_ip_error_event(skb, &packet->ip, cookie, true,
-					    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
-			return;
-		}
-		break;
-	default:
-		emit_ip_error_event(skb, 0, cookie, false,
-				    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
-	}
-	if (skb_load_bytes(skb, packet->udp_off, &packet->udp,
-			   sizeof(struct udphdr)) < 0) {
-		emit_ip_error_event(skb, &packet->ip, cookie, packet->ipv6,
-				    packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-		return;
-	}
-	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-	packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, ts_opt, &packet->udp,
-		 cookie, packet->payload_off, packet->payload_sz, send);
-	udp_watermarks(skb, cookie, packet, send);
+	process_network_watermarks(ctx, process, IPPROTO_UDP, send, payload_sz, c);
 }
 
 static inline __attribute__((always_inline)) void
@@ -479,130 +374,204 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz, send);
-	udp_watermarks(ctx, &cookie, packet, send);
+	udp_watermarks(ctx, &cookie, &packet->ip.ip4, packet->payload_sz, packet->ipv6, send);
 	return;
 
 inet_handler_lazy_kp_emit_error:
 	emit_ip_error_event(ctx, ip, &cookie, ipv6, packetver, send + 1, 0, err);
 }
 
-static inline __attribute__((always_inline)) void
-inet_handler(struct __sk_buff *skb, u64 send)
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline)) int
+udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+{
+	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	size_t ipopts_b = ipopts / sizeof(u32);
+	struct timestamp_option *ts_opt = 0;
+	int payload_off, payload_sz;
+	struct udphdr udp;
+	u8 udp_off;
+
+	if (!skb)
+		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
+	if (!cookie)
+		return SK_PASS;
+
+	if (ip->ihl >= ipopts_b) {
+		struct timestamp_option ipopt;
+		int err;
+
+		/* Packet has at least enough space for the Timestamp IP Option,
+		 * so check if the first option is the Timestamp option that we
+		 * add to detect UDP latency.
+		 */
+		err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
+		if (err < 0) {
+			emit_ip_error_event(
+				skb, &ip, cookie, false,
+				false, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+		} else {
+			if (ipopt.type == IPO_TYPE &&
+			    ipopt.magic == bpf_ntohl(IPO_MAGIC_W) &&
+			    ipopt.magic == ipopt.magic2) {
+				ts_opt = &ipopt;
+			}
+		}
+	}
+
+	udp_off = ip_payload_off(ip);
+	if (skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr)) < 0) {
+		emit_ip_error_event(skb, ip, cookie, false,
+				    false, send + 1, 0, IP_ERROR_INET_READ_UDP);
+		return SK_PASS;
+	}
+
+	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+	payload_off = udp_off + sizeof(struct udphdr);
+	udp_send(skb, 0, ip, false, ts_opt, &udp, cookie, payload_off, payload_sz, send);
+	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
+	return SK_PASS;
+}
+#else
+int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
-	struct iphdr *ip;
-	struct udphdr *udp;
-	struct udp_packet_details *packet;
-	int zero = 0;
-	u64 cookie;
-	u8 proto;
-	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
-	u16 ethertype = bpf_ntohs((u16)skb->protocol);
 
-	/* Only handle IPv4 and IPv6 here. */
-	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
-		return;
+	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	size_t ipopts_b = ipopts / sizeof(u32);
 
-	write_cookie(&cookie, (u64)skb->sk);
-	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
-	if (!packet)
-		return;
+	int payload_sz, payload_off;
+	struct udphdr *udp;
+	u8 udp_off;
 
-	if (data + 1 > data_end) {
-		emit_ip_error_event(skb, 0, &cookie, false,
-				    0, send + 1, 0, IP_ERROR_INET_READ_VER);
-		return;
-	}
+	if (!skb)
+		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
+	if (!cookie)
+		return SK_PASS;
 
-	ip = (struct iphdr *)data;
-
-	switch (ip->version) {
-	case 4:
-		if (data + sizeof(struct iphdr) > data_end) {
-			emit_ip_error_event(skb, 0, &cookie, false,
-					    ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
-		}
-		if (ip->protocol != IPPROTO_UDP)
-			return;
-		if (ip->ihl >=
-		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
-		     sizeof(u32))) {
-			/* Packet has at least enough space for the Timestamp IP Option,
-			 * so check if the first option is the Timestamp option that we
-			 * add to detect UDP latency.
-			 */
-			if (data + sizeof(struct iphdr) +
-				    sizeof(struct timestamp_option) >
-			    data_end) {
-				emit_ip_error_event(
-					skb, ip, &cookie, false,
-					ip->version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			} else {
-				ts_opt = (struct timestamp_option
-						  *)(data +
-						     sizeof(struct iphdr));
-				if (ts_opt->type != IPO_TYPE ||
-				    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
-				    ts_opt->magic != ts_opt->magic2) {
-					ts_opt = 0;
-				}
+	if (ip->ihl >= ipopts_b) {
+		/* Packet has at least enough space for the Timestamp IP Option,
+		 * so check if the first option is the Timestamp option that we
+		 * add to detect UDP latency.
+		 */
+		if (data + ipopts > data_end) {
+			emit_ip_error_event(
+				skb, ip, cookie, false,
+				ip->version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+		} else {
+			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
+			if (ts_opt->type != IPO_TYPE ||
+			    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
+			    ts_opt->magic != ts_opt->magic2) {
+				ts_opt = 0;
 			}
 		}
-		packet->udp_off = ip_payload_off(ip);
-		udp = (struct udphdr *)(data + packet->udp_off);
-		if (data + packet->udp_off + sizeof(struct udphdr) > data_end) {
-			emit_ip_error_event(skb, ip, &cookie, false,
-					    ip->version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-			return;
-		}
-		packet->payload_sz =
-			bpf_ntohs(udp->len) - sizeof(struct udphdr);
-		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-		udp_send(skb, 0, ip, false, ts_opt, udp, &cookie,
-			 packet->payload_off, packet->payload_sz, send);
-		break;
-	case 6:
-		if (data + sizeof(struct ipv6hdr) > data_end) {
-			emit_ip_error_event(skb, 0, &cookie, true,
-					    ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
-			return;
-		}
-		proto = get_ip6_proto(&packet->udp_off, (struct ipv6hdr *)ip, 0,
-				      data, data_end, false, false, &err);
-		if (proto == IP_HEADER_ERROR) {
-			emit_ip_error_event(skb, (struct ipv6hdr *)ip, &cookie,
-					    true, ip->version, send + 1, 0, err);
-			return;
-		} else if (proto != IPPROTO_UDP) {
-			return;
-		}
-		if (!packet->udp_off) {
-			emit_ip_error_event(skb, ip, &cookie, true,
-					    ip->version, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
-			return;
-		}
-		udp = (struct udphdr *)(data + packet->udp_off);
-		if (data + packet->udp_off + sizeof(struct udphdr) > data_end) {
-			emit_ip_error_event(skb, ip, &cookie, true,
-					    ip->version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-			return;
-		}
-		packet->payload_sz =
-			bpf_ntohs(udp->len) - sizeof(struct udphdr);
-		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-		udp_send(skb, 0, ip, true, 0, udp, &cookie, packet->payload_off,
-			 packet->payload_sz, send);
-		break;
-	default:
-		emit_ip_error_event(skb, 0, &cookie, false,
-				    ip->version, send + 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
+	}
+	udp_off = ip_payload_off(ip);
+	asm volatile("%[udp_off] &= 0xff;\n"
+		     : [udp_off] "+r"(udp_off)
+		     :);
+	udp = (struct udphdr *)(data + udp_off);
+	if (data + udp_off + sizeof(struct udphdr) > data_end) {
+		emit_ip_error_event(skb, ip, cookie, false,
+				    ip->version, send + 1, 0, IP_ERROR_INET_READ_UDP);
+		return SK_PASS;
+	}
+	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
+	payload_off = udp_off + sizeof(struct udphdr);
+	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
+		 payload_off,
+		 payload_sz, send);
+	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
+	return SK_PASS;
+}
+#endif // SKB_LOAD_BYTES
+
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline)) int
+udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+{
+	int payload_off, payload_sz;
+	unsigned long err;
+	struct udphdr udp;
+	int ver_ip6 = 6;
+	u16 udp_off;
+
+	if (!skb)
+		return SK_PASS;
+	if (!ip6)
+		return SK_PASS;
+	if (!cookie)
+		return SK_PASS;
+
+	get_ip6_proto(&udp_off, ip6, 0, skb, 0, true, false, &err);
+	if (!udp_off) {
+		emit_ip_error_event(skb, ip6, cookie, true,
+				    ver_ip6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+		return SK_PASS;
 	}
 
-	udp_watermarks(skb, &cookie, packet, send);
-}
+	if (skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr)) < 0) {
+		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, ver_ip6,
+				    6, send + 1, 0, IP_ERROR_INET_READ_UDP);
+		return SK_PASS;
+	}
+	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+	payload_off = udp_off + sizeof(struct udphdr);
+	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, &udp,
+		 cookie, payload_off, payload_sz, send);
+	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
 
+	return SK_PASS;
+}
+#else
+int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+{
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (long *)(long)skb->data;
+	int payload_sz, payload_off;
+	struct udphdr *udp, cpy;
+	unsigned long err;
+	u16 udp_off;
+
+	if (!skb)
+		return SK_PASS;
+	if (!ip6)
+		return SK_PASS;
+	if (!cookie)
+		return SK_PASS;
+
+	get_ip6_proto(&udp_off, ip6, 0, skb, 0, true, false, &err);
+	if (!udp_off) {
+		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, true,
+				    6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+		return SK_PASS;
+	}
+	asm volatile("%[udp_off] &= 0xfff;\n"
+		     : [udp_off] "+r"(udp_off)
+		     :);
+	udp = (struct udphdr *)(data + udp_off);
+	if (udp + sizeof(struct udphdr) > data_end) {
+		if (skb_load_bytes(skb, udp_off, &cpy, sizeof(struct udphdr)) < 0) {
+			emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, 6,
+					    6, send + 1, 0, IP_ERROR_INET_READ_UDP);
+			return SK_PASS;
+		}
+		udp = &cpy;
+	}
+	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
+	payload_off = udp_off + sizeof(struct udphdr);
+	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, cookie,
+		 payload_off,
+		 payload_sz, send);
+	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
+	return SK_PASS;
+}
+#endif // SKB_LOAD_BYTES
 #endif //__BPF_INET_H_

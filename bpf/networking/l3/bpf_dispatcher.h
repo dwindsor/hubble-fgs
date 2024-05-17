@@ -1,6 +1,7 @@
 #ifndef __BPF_DISPATCHER__
 #define __BPF_DISPATCHER__
 #include "./icmp/bpf_icmp.h"
+#include "./udp/bpf_udp_inet.h"
 
 struct cgroup_dispatch_cfg {
 	uint32_t icmp4;
@@ -55,6 +56,8 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 
 	switch (ip.version) {
 	case 4:
+		if (ip.protocol == IPPROTO_UDP)
+			ret = udp_handler_ip4(skb, &ip, cookie, send);
 		if (ip.protocol == IPPROTO_ICMP && cfg->icmp4)
 			ret = icmp_handler_ip4(skb, &ip, cookie, send);
 
@@ -70,6 +73,8 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 			return SK_PASS;
 		}
 
+		if (protocol == IPPROTO_UDP)
+			udp_handler_ip6(skb, &ip6, cookie, payload_off, send);
 		if (protocol == IPPROTO_ICMP6 && cfg->icmp6)
 			icmp_handler_ip6(skb, &ip6, cookie, payload_off, send);
 	}
