@@ -6,7 +6,7 @@
 #include "parsers/http/http.h"
 #include "generic.h"
 #include "lib/file.h"
-#include "networking/udp/bpf_udp_event.h"
+#include "networking/l3/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
 
 // Layer 3

@@ -17,7 +17,7 @@
 #include "../lib/networkmsg.h"
 #include "../lib/tlsmsg.h"
 #include "l3/icmp/bpf_icmp_cookie.h"
-#include "udp/bpf_udp_info.h"
+#include "l3/udp/bpf_udp_info.h"
 
 struct socketmap_value {
 	struct msg_execve_key key;
