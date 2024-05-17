@@ -2,6 +2,18 @@
 #define __BPF_DISPATCHER__
 #include "./icmp/bpf_icmp.h"
 
+struct cgroup_dispatch_cfg {
+	uint32_t icmp4;
+	uint32_t icmp6;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct cgroup_dispatch_cfg);
+	__uint(max_entries, 1);
+} tg_cgroup_protocol_cfg_map SEC(".maps");
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
@@ -13,6 +25,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
+	struct cgroup_dispatch_cfg *cfg;
 	struct ipv6hdr ip6;
 	int ret = SK_PASS;
 	struct iphdr ip;
@@ -36,9 +49,13 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		return SK_PASS;
 	}
 
+	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_cgroup_protocol_cfg_map, &zero);
+	if (!cfg)
+		return SK_PASS;
+
 	switch (ip.version) {
 	case 4:
-		if (ip.protocol == IPPROTO_ICMP)
+		if (ip.protocol == IPPROTO_ICMP && cfg->icmp4)
 			ret = icmp_handler_ip4(skb, &ip, cookie, send);
 
 	case 6:
@@ -53,7 +70,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 			return SK_PASS;
 		}
 
-		if (protocol == IPPROTO_ICMP6)
+		if (protocol == IPPROTO_ICMP6 && cfg->icmp6)
 			icmp_handler_ip6(skb, &ip6, cookie, payload_off, send);
 	}
 

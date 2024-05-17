@@ -145,13 +145,17 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap        = program.MapBuilder(SocketMapName, IcmpSend)
-	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", IcmpSend)
-	SocketCookieMapLazy    = program.MapBuilder(SocketMapName, IcmpSendLazy)
-	SocketCookieStatsLazy  = program.MapBuilder("tg_socket_map_stats", IcmpSendLazy)
-	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", IcmpSend)
-	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSend)
-	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSend)
+	SocketCookieMap       = program.MapBuilder(SocketMapName, IcmpSend)
+	SocketCookieStats     = program.MapBuilder("tg_socket_map_stats", IcmpSend)
+	SocketCookieMapLazy   = program.MapBuilder(SocketMapName, IcmpSendLazy)
+	SocketCookieStatsLazy = program.MapBuilder("tg_socket_map_stats", IcmpSendLazy)
+	SocketTupleMap        = program.MapBuilder("tg_socket_tuple_map", IcmpSend)
+	SocketTupleStats      = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSend)
+	SocketTupleHintMap    = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSend)
+	// Shared layer3 infrastructure
+	IcmpCgroupCfgMap     = program.MapBuilder("tg_cgroup_protocol_cfg_map", IcmpSend)
+	IcmpCgroupCfgMapLazy = program.MapBuilder("tg_cgroup_protocol_cfg_map", IcmpSendLazy)
+	// ICMP runtime maps
 	CfgMap                 = program.MapBuilder("tg_cfg_map", IcmpSend)
 	IcmpCfgMap             = program.MapBuilder("tg_icmp_cfg_map", IcmpSend)
 	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", IcmpSendLazy)
@@ -200,6 +204,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			SocketTupleMapLazy,
 			SocketTupleStatsLazy,
 			SocketTupleHintMapLazy,
+			IcmpCgroupCfgMapLazy,
 			CfgMapLazy,
 			IcmpCfgMapLazy,
 		}
@@ -222,6 +227,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			SocketTupleMap,
 			SocketTupleStats,
 			SocketTupleHintMap,
+			IcmpCgroupCfgMap,
 			CfgMap,
 			IcmpCfgMap,
 		}

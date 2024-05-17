@@ -12,8 +12,13 @@ package layer3
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"time"
+	"unsafe"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
@@ -39,6 +44,10 @@ var (
 	dnsEnabled  = false
 	icmpEnabled = false
 	rawEnabled  = false
+)
+
+var (
+	CgroupProtocolConfigMapName = "tg_cgroup_protocol_cfg_map"
 )
 
 func unloadLayer3Sensor() error {
@@ -72,6 +81,11 @@ func unloadLayer3Sensor() error {
 		}
 		rawEnabled = false
 	}
+
+	mapDir := bpf.MapPrefixPath()
+	cfgMapName := path.Join(path.Dir(mapDir), CgroupProtocolConfigMapName)
+	os.Remove(cfgMapName)
+
 	return nil
 }
 
@@ -81,12 +95,12 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 
 	var progs []*program.Program
 	var maps []*program.Map
+
 	if tcpEnabled {
 		tcpProgs, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
 		progs = append(progs, tcpProgs...)
 		maps = append(maps, tcpMaps...)
 	}
-
 	if udpEnabled {
 		udpProgs, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
 		progs = append(progs, udpProgs...)
@@ -185,8 +199,61 @@ func (l3 *l3Sensor) PolicyHandler(
 		udpCgroup, udpTimestampEnable, udpInterval, reportRawClose), nil
 }
 
+type CgroupProtocolConfigValue struct {
+	icmp4Enabled uint32
+	icmp6Enabled uint32
+}
+
+func (v *CgroupProtocolConfigValue) String() string {
+	return fmt.Sprintf("CgroupProtocolConfigValue: "+
+		"icmp4Enabled: %d, "+
+		"icmp6Enabled: %d",
+		v.icmp4Enabled,
+		v.icmp6Enabled,
+	)
+}
+
+type CgroupProtocolConfigKey struct {
+	Zero uint32
+}
+
+func (k *CgroupProtocolConfigKey) String() string {
+	return fmt.Sprintf("Zero: %d", k.Zero)
+}
+
+func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) error {
+	zero := CgroupProtocolConfigKey{
+		Zero: 0,
+	}
+	c := &ebpf.MapSpec{
+		Name:       CgroupProtocolConfigMapName,
+		Type:       bpf.BPF_MAP_TYPE_ARRAY,
+		KeySize:    uint32(unsafe.Sizeof(CgroupProtocolConfigKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(CgroupProtocolConfigValue{})),
+		MaxEntries: 1,
+		Pinning:    ebpf.PinByName,
+	}
+	opts := ebpf.MapOptions{
+		PinPath: bpf.MapPrefixPath(),
+	}
+
+	cfgMap, err := ebpf.NewMapWithOptions(c, opts)
+	if err != nil {
+		return fmt.Errorf("failed `tg_cgroup_protocol_cfg_map` ebpf.NewMapWithOptions: %w", err)
+	}
+	defer cfgMap.Close()
+
+	if err := cfgMap.Update(zero, l3cfg, ebpf.UpdateAny); err != nil {
+		return fmt.Errorf("failed cgroup_protocol_cfg_map Update: %w", err)
+	}
+
+	return nil
+}
+
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
+		l3cfg := CgroupProtocolConfigValue{}
+
 		if tcpEnabled {
 			tcp.GetRunningSockets(true, true)
 		}
@@ -195,9 +262,17 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 		if icmpEnabled {
 			ip.LoadSockets(icmp.FdCallback, unix.IPPROTO_ICMP)
+			l3cfg.icmp4Enabled = 1
+			l3cfg.icmp6Enabled = 1
 		}
 		if rawEnabled {
 			ip.LoadSockets(rawsock.FdCallback, unix.IPPROTO_RAW)
+		}
+
+		if icmpEnabled {
+			if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
+				return err
+			}
 		}
 	}
 
