@@ -127,34 +127,34 @@ var (
 	)
 
 	InetSend = program.Builder(
-		"bpf_udp_inet.o",
-		"inet_send",
+		"bpf_cgroup_net.o",
+		"cgroup_egress",
 		"cgroup_skb/egress",
-		"tg_skb_egress",
+		"tg_cgroup_egress",
 		"cgrp_egress",
 	)
 
 	InetRecv = program.Builder(
-		"bpf_udp_inet.o",
-		"inet_recv",
+		"bpf_cgroup_net.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_skb_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
 	InetSendLazy = program.Builder(
-		"bpf_udp_inet_lazy.o",
-		"inet_lazy_send",
+		"bpf_cgroup_net_load.o",
+		"cgroup_egress",
 		"cgroup_skb/egress",
-		"tg_skb_egress",
+		"tg_cgroup_egress",
 		"cgrp_egress",
 	)
 
 	InetRecvLazy = program.Builder(
-		"bpf_udp_inet_lazy.o",
-		"inet_lazy_recv",
+		"bpf_cgroup_net_load.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_skb_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
