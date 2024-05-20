@@ -172,7 +172,9 @@ func getFdLookupMaps() []*program.Map {
 }
 
 func getOnlyFdLookupMaps() []*program.Map {
-	var maps []*program.Map
+	maps := []*program.Map{
+		FdLookupConfigMap,
+	}
 
 	return maps
 }
