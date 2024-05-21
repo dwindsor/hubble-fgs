@@ -251,18 +251,18 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Target:  cgrpfd,
 				Program: prog,
 			}
-			if strings.Contains(n, "recv") {
+			if strings.Contains(n, "recv") || strings.Contains(n, "ingre") {
 				opts.Attach = ebpf.AttachCGroupInetIngress
 				if err := link.RawDetachProgram(opts); err != nil {
 					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSKB Ingress error")
 				}
-			} else if strings.Contains(n, "send") {
+			} else if strings.Contains(n, "send") || strings.Contains(n, "egres") {
 				opts.Attach = ebpf.AttachCGroupInetEgress
 				if err := link.RawDetachProgram(opts); err != nil {
 					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSKB Egress error")
 				}
 			} else {
-				logger.GetLogger().Warn("unknown tg_ CgroupSkb Programm")
+				logger.GetLogger().WithField("name", n).Warn("unknown tg_ CgroupSkb Programm")
 			}
 		case ebpf.SkMsg:
 			if bestEffort {
