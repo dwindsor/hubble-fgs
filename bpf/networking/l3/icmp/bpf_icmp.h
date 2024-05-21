@@ -134,7 +134,7 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 		if (key) {
 			probe_read_kernel(&dev, sizeof(dev), _(&(skb->dev)));
 			probe_read_kernel(&dif, sizeof(dif), _(&(dev->ifindex))); // might need additional checks for IPv6
-			if (val->tuple.ipv6)
+			if (!val->tuple.ipv6)
 				sdif = inet_sdif(skb);
 			else
 				sdif = inet6_sdif(skb);
