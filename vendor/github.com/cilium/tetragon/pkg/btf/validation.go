@@ -163,6 +163,24 @@ func getKernelType(arg btf.Type) string {
 		return "union " + union.Name + suffix
 	}
 
+	enum, ok := arg.(*btf.Enum)
+	if ok {
+		prefix := "u"
+		if enum.Signed {
+			prefix = "s"
+		}
+		switch enum.Size {
+		case 1:
+		case 2:
+		case 4:
+		case 8:
+		default:
+			// Not sure what to do here, so just dump the type name
+			return arg.TypeName() + suffix
+		}
+		return fmt.Sprintf("%s%d%s", prefix, 8*enum.Size, suffix)
+	}
+
 	cnst, ok := arg.(*btf.Const)
 	if ok {
 		// NB: ignore const
@@ -182,6 +200,9 @@ func getKernelType(arg btf.Type) string {
 
 func typesCompatible(specTy string, kernelTy string) bool {
 	switch specTy {
+	case "nop":
+		return true
+
 	case "uint64":
 		switch kernelTy {
 		case "u64", "void *", "long unsigned int":
@@ -190,6 +211,11 @@ func typesCompatible(specTy string, kernelTy string) bool {
 	case "int64":
 		switch kernelTy {
 		case "s64":
+			return true
+		}
+	case "int32":
+		switch kernelTy {
+		case "s32", "int":
 			return true
 		}
 	case "int16":
@@ -222,9 +248,14 @@ func typesCompatible(specTy string, kernelTy string) bool {
 		case "const struct iovec *", "struct iovec *":
 			return true
 		}
-	case "int", "fd":
+	case "fd":
 		switch kernelTy {
 		case "unsigned int", "int", "unsigned long", "long":
+			return true
+		}
+	case "int":
+		switch kernelTy {
+		case "unsigned int", "int", "unsigned long", "long", "uid_t", "gid_t", "u32", "s32":
 			return true
 		}
 	case "filename":
