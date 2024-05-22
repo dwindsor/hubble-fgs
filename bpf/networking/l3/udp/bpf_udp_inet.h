@@ -194,7 +194,13 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		}
 	}
 
-	process = lookup_socketmap(cookie);
+	if (*cookie) {
+		__u64 c = *cookie;
+		process = lookup_socketmap(&c);
+	} else {
+		process = 0;
+	}
+
 	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process);
 	if (!value)
 		return 1;
@@ -217,6 +223,7 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 	struct process_network_watermarks_config *c;
 	struct socketmap_value *process;
 	int zero = 0;
+	u64 __cookie;
 
 	config = get_udp_config();
 	if (!config || !config->watermarks_enable)
@@ -230,7 +237,8 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 	c->burst_trigger_mult = config->watermarks_burst_trigger_percent;
 	c->dip_trigger_mult = config->watermarks_dip_trigger_percent;
 
-	process = lookup_socketmap(cookie);
+	__cookie = *cookie;
+	process = lookup_socketmap(&__cookie);
 	/* If we don't have a process then we can't assign the watermarks information
 	 * to it, and there is little else we can do.
 	 * Additionally, if the sk address had previously been mapped to the

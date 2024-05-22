@@ -299,7 +299,12 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 	if (val)
 		delete_tuple_hint(key);
 
-	err = map_update_elem(&tg_socket_tuple_map, key, cookie, 0);
+	if (1) {
+		__u64 c = *cookie;
+
+		err = map_update_elem(&tg_socket_tuple_map, key, &c, 0);
+	}
+
 	if (!err) {
 		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
 			*cntr = *cntr + 1;

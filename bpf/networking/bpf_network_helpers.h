@@ -412,7 +412,9 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		return;
 
 	if (cookie) {
-		process = lookup_socketmap(cookie);
+		u64 c = *cookie;
+
+		process = lookup_socketmap(&c);
 	}
 
 	val->common.op = ISO_MSG_OP_IP_ERROR;
