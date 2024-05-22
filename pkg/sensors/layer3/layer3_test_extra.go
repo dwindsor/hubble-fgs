@@ -152,7 +152,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 			tcpMonMap.Progs = append(tcpMonMap.Progs, 16)
 			ni++
 		}
-	} else if !kernels.MinKernelVersion("5.10.0") { // 5.4 - <5.10
+	} else if !kernels.MinKernelVersion("5.15.0") { // 5.4 - <5.15
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			tus.SensorProg{Name: "tg_udp_init_sock", Type: ebpf.Kprobe}, // Index 7
 			tus.SensorProg{Name: "tg_udp_destroy_sock", Type: ebpf.Kprobe},

@@ -391,7 +391,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
-	} else if !kernels.MinKernelVersion("5.10.0") {
+	} else if !kernels.MinKernelVersion("5.14.0") {
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
