@@ -242,7 +242,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		}
 	}
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name)
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(executedEvents), len(capturedEvents), "Got a different number of events compared to what expected")
