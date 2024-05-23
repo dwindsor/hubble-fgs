@@ -102,9 +102,9 @@ var (
 	SocketTupleHintMap          = program.MapBuilder(socktrack.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrack.SocketCfgMapName, Exit)
 
-	ExecveTailCallsMap    = program.MapBuilderPin("execve_calls", "execve_calls", Execve)
-	ExecveTailCallsMapV53 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV53)
-	ExecveTailCallsMapV61 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV61)
+	ExecveTailCallsMap    = program.MapBuilder("execve_calls", Execve)
+	ExecveTailCallsMapV53 = program.MapBuilder("execve_calls", ExecveV53)
+	ExecveTailCallsMapV61 = program.MapBuilder("execve_calls", ExecveV61)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
