@@ -229,7 +229,7 @@ func processModelMapsEnable() {
 	EndpointIdIngressMap.PinState.RefInc()
 }
 
-func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
+func EnableLayer3(policy string, tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
@@ -288,7 +288,7 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
-	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)
+	l3Sensor := sensors.SensorBuilder(policy, "layer3_sensors", progs, maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
 }
@@ -368,7 +368,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return EnableLayer3(tcpTimestampEnable,
+	return EnableLayer3(policy.TpName(), tcpTimestampEnable,
 		udpCgroup, udpTimestampEnable, udpInterval, reportRawClose), nil
 }
 

@@ -179,7 +179,7 @@ func (http *httpSensor) PolicyHandler(
 		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
 	}
 
-	return EnableHTTPParser(), nil
+	return EnableHTTPParser(policy.TpName()), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -248,7 +248,7 @@ func init() {
 }
 
 /* Add sensor from CRD */
-func EnableHTTPParser() *sensors.Sensor {
+func EnableHTTPParser(policy string) *sensors.Sensor {
 	logger.GetLogger().Infof("Enable HTTP")
 
 	progs := []*program.Program{
@@ -272,7 +272,7 @@ func EnableHTTPParser() *sensors.Sensor {
 		TcpSocketMap, TcpSocketStats,
 	}
 
-	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
+	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
 }
 
 // ParseHTTPSpec parses the input yaml/crd and outputs the kernel selectors

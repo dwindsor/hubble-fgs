@@ -98,7 +98,7 @@ func (nop *sensor) PolicyHandler(
 		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
 	}
 
-	return EnableNopParser(), nil
+	return EnableNopParser(policy.TpName()), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -144,7 +144,7 @@ func AddNop() {
 }
 
 /* Add sensor from CRD */
-func EnableNopParser() *sensors.Sensor {
+func EnableNopParser(policy string) *sensors.Sensor {
 	logger.GetLogger().Infof("Enable NOP")
 
 	progs := []*program.Program{
@@ -160,7 +160,7 @@ func EnableNopParser() *sensors.Sensor {
 		sockops.NopSockMap,
 	}
 
-	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
+	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
 }
 
 // ParseNopSpec parses the input yaml/crd and outputs the kernel selectors

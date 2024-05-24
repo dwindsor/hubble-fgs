@@ -60,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(_ string) (*sensors.Sensor, error) {
+func builder(policy, name string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -71,7 +71,7 @@ func builder(_ string) (*sensors.Sensor, error) {
 			HttpSockMap, TlsSockMap, NopSockMap,
 			HttpFilterMap, TlsFilterMap, NopFilterMap, layer3.SocketMap())
 
-		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
+		return sensors.SensorBuilder(policy, name, progs, maps), nil
 	}
 	return nil, nil
 }
@@ -98,7 +98,7 @@ func (*sockopsSensor) PolicyHandler(
 			return nil, fmt.Errorf("sockops sensor does not implement policy filtering")
 		}
 
-		return builder("__sockops__sensors__")
+		return builder(policy.TpName(), "__sockops_sensors__")
 	}
 	return nil, nil
 }
