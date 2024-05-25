@@ -128,6 +128,22 @@ var (
 		"cgrp_ingress",
 	)
 
+	IcmpSendLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	IcmpRecvLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
 	IcmpRcv = program.Builder(
 		"bpf_icmp_rcv.o",
 		"icmp_rcv",
@@ -193,8 +209,6 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			// SkRawRelease, // see comment above
 			// SkPingRelease, // see comment above
 			SkSockRelease,
-			IcmpSendLazy,
-			IcmpRecvLazy,
 			IcmpRcv,
 			IcmpRcv6,
 		}
@@ -207,6 +221,14 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			IcmpCgroupCfgMapLazy,
 			CfgMapLazy,
 			IcmpCfgMapLazy,
+		}
+
+		if !kernels.MinKernelVersion("5.5.0") {
+			progs = append(progs, IcmpSendLazy54)
+			progs = append(progs, IcmpRecvLazy54)
+		} else {
+			progs = append(progs, IcmpSendLazy)
+			progs = append(progs, IcmpRecvLazy)
 		}
 	} else {
 		progs = []*program.Program{

@@ -158,6 +158,22 @@ var (
 		"cgrp_ingress",
 	)
 
+	InetSendLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	InetRecvLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
 	InetSendRecvLazy = program.Builder(
 		"bpf_udp_inet_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
@@ -395,13 +411,19 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			InetSendLazy,
-			InetRecvLazy,
 			Udp4Send,
 			Udp4RetSend,
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+		}
+
+		if !kernels.MinKernelVersion("5.5.0") {
+			progs = append(progs, InetSendLazy54)
+			progs = append(progs, InetRecvLazy54)
+		} else {
+			progs = append(progs, InetSendLazy)
+			progs = append(progs, InetRecvLazy)
 		}
 		if !DisableListenEvents {
 			progs = append(progs, SkUdpBind)
