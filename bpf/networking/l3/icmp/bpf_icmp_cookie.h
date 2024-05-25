@@ -204,9 +204,9 @@ make_tuple_key_from_cgroup_skb(struct __sk_buff *skb, u16 protocol)
 		key->daddr[1] = *(u64 *)&skb->remote_ip6[2];
 	} else {
 		key->saddr[0] = skb->local_ip4;
-		key->saddr[0] = 0;
+		key->saddr[1] = 0;
 		key->daddr[0] = skb->remote_ip4;
-		key->daddr[0] = 0;
+		key->daddr[1] = 0;
 	}
 
 	key->bound_dev_if = skb->ifindex;
