@@ -58,9 +58,8 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	case 4:
 		if (ip.protocol == IPPROTO_UDP)
 			ret = udp_handler_ip4(skb, &ip, cookie, send);
-		if (ip.protocol == IPPROTO_ICMP && cfg->icmp4)
+		else if (ip.protocol == IPPROTO_ICMP && cfg->icmp4)
 			ret = icmp_handler_ip4(skb, &ip, cookie, send);
-
 	case 6:
 		if (skb_load_bytes(skb, 0, &ip6, sizeof(struct ipv6hdr)) < 0) {
 			emit_ip_error_event(skb, 0, cookie, true, ip.version, 1, 0, IP_ERROR_INET_READ_IP);
@@ -71,12 +70,11 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		if (protocol == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
-		}
-
-		if (protocol == IPPROTO_UDP)
+		} else if (protocol == IPPROTO_UDP) {
 			udp_handler_ip6(skb, &ip6, cookie, payload_off, send);
-		if (protocol == IPPROTO_ICMP6 && cfg->icmp6)
+		} else if (protocol == IPPROTO_ICMP6 && cfg->icmp6) {
 			icmp_handler_ip6(skb, &ip6, cookie, payload_off, send);
+		}
 	}
 
 	return ret;
