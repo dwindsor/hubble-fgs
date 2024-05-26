@@ -15,11 +15,11 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "../bpf_latency.h"
-#include "../bpf_process_network_watermarks.h"
-#include "../bpf_cookie.h"
-#include "../bpf_network_helpers.h"
-#include "../../lib/address_family.h"
+#include "bpf_latency.h"
+#include "bpf_process_network_watermarks.h"
+#include "bpf_cookie.h"
+#include "bpf_network_helpers.h"
+#include "lib/address_family.h"
 #include "bpf_tracing.h"
 
 struct {

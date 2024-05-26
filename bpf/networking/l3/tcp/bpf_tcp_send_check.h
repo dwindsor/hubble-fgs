@@ -16,10 +16,10 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "../bpf_cookie.h"
-#include "../bpf_network_helpers.h"
-#include "../bpf_process_network_watermarks.h"
-#include "../../lib/tlsmsg.h"
+#include "bpf_cookie.h"
+#include "bpf_network_helpers.h"
+#include "bpf_process_network_watermarks.h"
+#include "lib/tlsmsg.h"
 #include "bpf_tracing.h"
 
 struct tcp_send_check_sample_cfg {

@@ -13,13 +13,13 @@
 #include "api.h"
 #include "iso_msg_types.h"
 #include "bpf_task.h"
-#include "../bpf_cookie.h"
-#include "../../lib/netns.h"
-#include "../../lib/tlsmsg.h"
-#include "../bpf_fd_to_sk.h"
+#include "bpf_cookie.h"
+#include "lib/netns.h"
+#include "lib/tlsmsg.h"
+#include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
 #include "bpf_tcp_network_event_config.h"
-#include "../../lib/address_family.h"
+#include "lib/address_family.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION

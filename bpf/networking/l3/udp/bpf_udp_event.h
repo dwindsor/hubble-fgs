@@ -11,10 +11,10 @@
 #ifndef __BPF_UDP_EVENT_H__
 #define __BPF_UDP_EVENT_H__
 
-#include "../lib/iso_msg_types.h"
-#include "../lib/networkmsg.h"
-#include "../bpf_network_helpers.h"
-#include "../bpf_latency.h"
+#include "lib/iso_msg_types.h"
+#include "lib/networkmsg.h"
+#include "bpf_network_helpers.h"
+#include "bpf_latency.h"
 #include "bpf_tracing.h"
 #include "bpf_udp_info.h"
 

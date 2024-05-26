@@ -13,7 +13,7 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "../bpf_cookie.h"
+#include "bpf_cookie.h"
 #include "bpf_tracing.h"
 
 #define IPPROTO_ICMPFORIPV6 58

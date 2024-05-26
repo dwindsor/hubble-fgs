@@ -17,10 +17,10 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_tracing.h"
-#include "../bpf_cookie.h"
+#include "bpf_cookie.h"
 #include "address_family.h"
-#include "../bpf_network_helpers.h"
-#include "../../lib/netns.h"
+#include "bpf_network_helpers.h"
+#include "lib/netns.h"
 #include "bpf_tcp_network_event_config.h"
 
 struct {

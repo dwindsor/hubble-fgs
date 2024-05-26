@@ -12,10 +12,10 @@
 #define __BPF_UDP_SEQ_ERROR_H__
 
 #include "vmlinux.h"
-#include "../lib/bpf_helpers.h"
-#include "../lib/networkmsg.h"
-#include "../lib/iso_msg_types.h"
-#include "../bpf_cookie.h"
+#include "lib/bpf_helpers.h"
+#include "lib/networkmsg.h"
+#include "lib/iso_msg_types.h"
+#include "bpf_cookie.h"
 #include "bpf_tracing.h"
 
 struct {
