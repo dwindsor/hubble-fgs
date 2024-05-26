@@ -58,113 +58,81 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 	return 1;
 }
 
-static inline __attribute__((always_inline)) void
-tcp_handler_lazy(struct __sk_buff *skb)
+static inline __attribute__((always_inline)) int
+tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
 {
-	struct iphdr ip;
-	u64 *cookie;
-	int zero = 0;
-	struct timestamp_option ts_opt;
-	u16 ethertype = bpf_ntohs((u16)skb->protocol);
-
-	/* Only handle IPv4 and IPv6 here. */
-	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
-		return;
-
-	cookie = (u64 *)map_lookup_elem(&tcp_cookie_heap, &zero);
-	if (!cookie)
-		return;
-	write_cookie(cookie, (u64)skb->sk);
-	if (!*cookie) {
-		emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_NO_COOKIE);
-		return;
-	}
-
-	if (skb_load_bytes(skb, 0, &ip, sizeof(struct iphdr)) < 0) {
-		emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
-		return;
-	}
-
-	switch (ip.version) {
-	case 4:
-		if (ip.protocol != IPPROTO_TCP)
-			return;
-		if (ip.ihl >= ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) / sizeof(u32))) {
-			/* Packet has at least enough space for the Timestamp IP Option,
-			 * so check if the first option is the Timestamp option that we
-			 * add to detect TCP latency.
-			 */
-			if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
-				emit_ip_error_event(skb, &ip, cookie, false, ip.version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-				return;
-			}
-			if (ts_opt.type != IPO_TYPE && ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) && ts_opt.magic != ts_opt.magic2) {
-				return;
-			}
-			check_timestamp(&ts_opt, cookie);
-		}
-		break;
-	case 6:
-		break;
-	default:
-		emit_ip_error_event(skb, 0, cookie, false, ip.version, 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
-	}
+	return SK_PASS;
 }
 
-static inline __attribute__((always_inline)) void
-tcp_handler(struct __sk_buff *skb)
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline)) int
+tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+{
+	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+
+	if (send)
+		return SK_PASS;
+
+	if (!cookie)
+		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
+
+	/* Packet has at least enough space for the Timestamp IP Option,
+	 * so check if the first option is the Timestamp option that we
+	 * add to detect TCP latency.
+	 */
+	if (ip->ihl >= ts_size / sizeof(u32)) {
+		struct timestamp_option ts_opt;
+
+		if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
+			emit_ip_error_event(skb, &ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			return SK_PASS;
+		}
+		if (ts_opt.type != IPO_TYPE &&
+		    ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) &&
+		    ts_opt.magic != ts_opt.magic2) {
+			return SK_PASS;
+		}
+		check_timestamp(&ts_opt, cookie);
+	}
+	return SK_PASS;
+}
+#else
+int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
-	struct iphdr *ip;
-	u64 cookie;
-	struct timestamp_option *ts_opt = 0;
-	u16 ethertype = bpf_ntohs((u16)skb->protocol);
+	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 
-	/* Only handle IPv4 and IPv6 here. */
-	if (ethertype != ETH_P_IP && ethertype != ETH_P_IPV6)
-		return;
+	if (send)
+		return SK_PASS;
 
-	write_cookie(&cookie, (u64)skb->sk);
+	if (!cookie)
+		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
 
-	if (data + 1 > data_end) {
-		emit_ip_error_event(skb, 0, &cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
-		return;
-	}
+	/* Packet has at least enough space for the Timestamp IP Option,
+	 * so check if the first option is the Timestamp option that we
+	 * add to detect TCP latency.
+	 */
+	if (ip->ihl >= ts_size / sizeof(u32)) {
+		struct timestamp_option *ts_opt;
 
-	ip = (struct iphdr *)data;
-
-	switch (ip->version) {
-	case 4:
-		if (data + sizeof(struct iphdr) > data_end) {
-			emit_ip_error_event(skb, 0, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP);
-			return;
+		if (data + ts_size > data_end) {
+			emit_ip_error_event(skb, ip, cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			return SK_PASS;
 		}
-		if (ip->protocol != IPPROTO_TCP)
-			return;
-		if (ip->ihl >= ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) / sizeof(u32))) {
-			/* Packet has at least enough space for the Timestamp IP Option,
-			 * so check if the first option is the Timestamp option that we
-			 * add to detect TCP latency.
-			 */
-			if (data + sizeof(struct iphdr) + sizeof(struct timestamp_option) > data_end) {
-				emit_ip_error_event(skb, ip, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-				return;
-			}
-			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
-			if (ts_opt->type != IPO_TYPE || ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) || ts_opt->magic != ts_opt->magic2) {
-				return;
-			}
-			check_timestamp(ts_opt, &cookie);
+		ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
+		if (ts_opt->type != IPO_TYPE ||
+		    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
+		    ts_opt->magic != ts_opt->magic2) {
+			return SK_PASS;
 		}
-		break;
-	case 6:
-		break;
-	default:
-		emit_ip_error_event(skb, 0, &cookie, false, ip->version, 1, 0, IP_ERROR_INET_NO_VERSION);
-		return;
+		check_timestamp(ts_opt, cookie);
 	}
+	return SK_PASS;
 }
-
+#endif // SKB_LOAD_BYTES
 #endif //__BPF_TCP_RECV_H_

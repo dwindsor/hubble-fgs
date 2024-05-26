@@ -125,18 +125,18 @@ var (
 	// Latency uses TC egress to add timestamp and cgroup skb ingress to calculate
 	// datagram latency.
 	Latency = program.Builder(
-		"bpf_tcp_recv.o",
-		"tcp_recv",
+		"bpf_cgroup_net.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_skb_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
 	LatencyLazy = program.Builder(
-		"bpf_tcp_recv_lazy.o",
-		"tcp_recv",
+		"bpf_cgroup_net_load.o",
+		"cgroup_ingress",
 		"cgroup_skb/ingress",
-		"tg_skb_ingress",
+		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
@@ -224,7 +224,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		} else {
 			logger.GetLogger().Warn("TCP unsupported by network latency")
 		}
-		if !kernels.MinKernelVersion("5.10.0") {
+		if !kernels.MinKernelVersion("5.14.0") {
 			progs = append(progs, LatencyLazy)
 			maps = append(maps, LatencyConfigMapLazy)
 		} else {
