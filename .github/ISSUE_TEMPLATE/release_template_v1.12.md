@@ -18,7 +18,7 @@ assignees: ''
       dependency (preferred) or work with [#sig-security](https://isovalent.slack.com/archives/CHAA21WJU)
       to triage the issue and add it to the [Tetragon VEX doc](https://github.com/isovalent/hubble-fgs/blob/master/.github/vex-data.vex.json),
       which will exclude it from the scan results if it is a false positive.
-- [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.12.7`:
+- [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.12.6`:
   ```
   export RELEASE=v1.12.6
   ```
