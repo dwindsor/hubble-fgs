@@ -446,5 +446,5 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadAll()
+	sensors.UnloadSensors(sens)
 }
