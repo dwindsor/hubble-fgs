@@ -166,44 +166,11 @@ Issues found when validating the release in tetragon-dev might not block the rel
     - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version, so don't worry if they don't match
     - [ ] Click "publish release"
 
-### Updating the umbrella chart
-
-- [ ] Navigate to the [umbrella chart] and file a PR to update the hubble-enterprise version
-  - [ ] Check out a new release branch:
-    ```
-    git checkout master && git pull origin master
-    git checkout -b pr/pick-up-latest-hubble-enterprise
-    ```
-  - [ ] Edit `cilium-enterprise/Chart.yaml` to bump the hubble-enterprise version. IMPORTANT NOTE: this should be the version of the `hubble-enterprise-chart` that you released in the previous step, **NOT** the version of Tetragon Enterprise. Example diff:
-    ```diff
-    diff --git a/cilium-enterprise/Chart.yaml b/cilium-enterprise/Chart.yaml
-    index ffcacbe..ee663d9 100644
-    --- a/cilium-enterprise/Chart.yaml
-    +++ b/cilium-enterprise/Chart.yaml
-    @@ -26,7 +26,7 @@ dependencies:
-       repository: "https://helm.isovalent.com"
-       condition: cilium.enabled
-     - name: hubble-enterprise
-    -  version: "1.9.2"
-    +  version: "1.9.3"
-       repository: "https://helm.isovalent.com"
-       condition: hubble-enterprise.enabled
-     - name: hubble-ui
-    ```
-  - [ ] Run `test.sh` to generate new documentation and verify that there are no issues in the Helm templating. Ensure that the script executes without any failures:
-    ```
-    ./test.sh
-    ```
-  - [ ] Add and commit the results and file a pull request on [GitHub][umbrella chart] (HINT: you can just click the link in the output of the `git push` command):
-    ```
-    git commit -a -m "Pick up latest hubble-enterprise" -s && git push origin HEAD
-    ```
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
 [hubble-enterprise chart]: https://github.com/isovalent/hubble-enterprise-chart
 [hubble-enterprise chart release]: https://github.com/isovalent/hubble-enterprise-chart/releases/new
-[umbrella chart]: https://github.com/isovalent/helm-charts
 [cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
 [cilium-enterprise-dogfooding]: https://github.com/isovalent/cilium-enterprise-dogfooding
 [oss-release]: https://github.com/cilium/tetragon/issues/new?assignees=&labels=kind%2Frelease&template=release_template.md&title=vX.Y.Z+release
