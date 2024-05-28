@@ -140,14 +140,27 @@ var (
 		"cgrp_ingress",
 	)
 
+	LatencyLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
 	// Maps for TCP Sockets
 	SocketMap          = program.MapBuilder("tg_socket_map", Connect)
 	SocketStats        = program.MapBuilder("tg_socket_map_stats", Accept)
 	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", Connect)
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", Connect)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", Connect)
-	CfgMap             = program.MapBuilder("tg_cfg_map", Connect)
-	AcceptSocketMap    = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
+	// Shared Layer3 infrastructure
+	TcpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", Latency)
+	TcpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", LatencyLazy)
+	TcpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", LatencyLazy54)
+	// TCP Runtime maps
+	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
+	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
@@ -224,12 +237,19 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		} else {
 			logger.GetLogger().Warn("TCP unsupported by network latency")
 		}
-		if !kernels.MinKernelVersion("5.14.0") {
+
+		if !kernels.MinKernelVersion("5.5.0") {
+			progs = append(progs, LatencyLazy54)
+			maps = append(maps, LatencyConfigMapLazy)
+			maps = append(maps, TcpCgroupCfgMapLazy54)
+		} else if !kernels.MinKernelVersion("5.14.0") {
 			progs = append(progs, LatencyLazy)
 			maps = append(maps, LatencyConfigMapLazy)
+			maps = append(maps, TcpCgroupCfgMapLazy)
 		} else {
 			progs = append(progs, Latency)
 			maps = append(maps, LatencyConfigMap)
+			maps = append(maps, TcpCgroupCfgMap)
 		}
 	}
 

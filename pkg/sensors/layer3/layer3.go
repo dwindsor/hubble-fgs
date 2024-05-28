@@ -202,14 +202,20 @@ func (l3 *l3Sensor) PolicyHandler(
 type CgroupProtocolConfigValue struct {
 	icmp4Enabled uint32
 	icmp6Enabled uint32
+	tcp4Enabled  uint32
+	tcp6Enabled  uint32
 }
 
 func (v *CgroupProtocolConfigValue) String() string {
 	return fmt.Sprintf("CgroupProtocolConfigValue: "+
 		"icmp4Enabled: %d, "+
-		"icmp6Enabled: %d",
+		"icmp6Enabled: %d"+
+		"tcp4Enabled: %d, "+
+		"tcp6Enabled: %d",
 		v.icmp4Enabled,
 		v.icmp6Enabled,
+		v.tcp4Enabled,
+		v.tcp6Enabled,
 	)
 }
 
@@ -256,6 +262,8 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 		if tcpEnabled {
 			tcp.GetRunningSockets(true, true)
+			l3cfg.tcp4Enabled = 1
+			l3cfg.tcp6Enabled = 1
 		}
 		if udpEnabled {
 			ip.LoadSockets(udp.FdCallback, unix.IPPROTO_UDP)
@@ -269,7 +277,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			ip.LoadSockets(rawsock.FdCallback, unix.IPPROTO_RAW)
 		}
 
-		if icmpEnabled {
+		if icmpEnabled || tcpEnabled {
 			if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
 				return err
 			}
