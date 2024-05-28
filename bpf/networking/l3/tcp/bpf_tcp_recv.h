@@ -19,6 +19,7 @@
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tcp_send_check.h"
 #include "lib/address_family.h"
 #include "bpf_tracing.h"
 
@@ -103,17 +104,93 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	return SK_PASS;
 }
 #else
-int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+int tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
-	void *data_end = (void *)(long)skb->data_end;
-	void *data = (long *)(long)skb->data;
-	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
-
-	if (send)
-		return SK_PASS;
+	__u64 tcp_bytes_sent, tcp_bytes_received;
+	struct tcp_send_check_sample_cfg *cfg;
+	struct socketmap_value *process;
+	struct tcp_sock *tcp;
+	struct bpf_sock *skp;
+	struct sock *sk;
+	__u32 rcv_wnd;
+	int zero = 0;
+	__u8 state;
+	__u64 c;
 
 	if (!cookie)
 		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
+
+	c = *cookie;
+	process = lookup_socketmap(&c);
+	if (unlikely(!process))
+		return SK_PASS;
+
+	skp = skb->sk;
+	if (!skp)
+		return SK_PASS;
+
+	tcp = (struct tcp_sock *)skc_to_tcp_sock(skp);
+	sk = (struct sock *)tcp;
+	if (!sk || !tcp)
+		return SK_PASS;
+
+	probe_read_kernel(&state, sizeof(state),
+			  _((const void *)&(sk->__sk_common.skc_state)));
+
+	if (state == TCP_FIN_WAIT2) {
+		process->fin_rx = 1;
+		return SK_PASS;
+	}
+	if (state != TCP_ESTABLISHED)
+		return SK_PASS;
+
+	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
+
+	if (!rcv_wnd)
+		process->zero_window++;
+
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
+	if (cfg && cfg->watermarksEnable && process->key.pid != 0) {
+		struct process_network_watermarks_config c = {
+			.avg_window_size_ms =
+				cfg->watermarksAvgWindowSize,
+			.window_size =
+				cfg->watermarksWindowSizeNs,
+			.burst_trigger_mult =
+				cfg->watermarksBurstTriggerMult,
+			.dip_trigger_mult =
+				cfg->watermarksDipTriggerMult,
+		};
+
+		if (tcp_bytes_sent > process->sent) {
+			process_network_watermarks(
+				skb, process, IPPROTO_TCP,
+				WATERMARKS_KEY_SEND_EGRESS,
+				tcp_bytes_sent - process->sent,
+				&c);
+		}
+		if (tcp_bytes_received > process->received) {
+			process_network_watermarks(
+				skb, process, IPPROTO_TCP,
+				WATERMARKS_KEY_SEND_INGRESS,
+				tcp_bytes_received - process->received,
+				&c);
+		}
+	}
+	cgrp_tcp_socketmap_stats(sk, process);
+	return SK_PASS;
+}
+
+int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
+{
+	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (long *)(long)skb->data;
+
 	if (!ip)
 		return SK_PASS;
 
@@ -125,6 +202,8 @@ int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 		struct timestamp_option *ts_opt;
 
 		if (data + ts_size > data_end) {
+			if (!cookie)
+				return SK_PASS;
 			emit_ip_error_event(skb, ip, cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			return SK_PASS;
 		}
@@ -137,6 +216,14 @@ int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 		check_timestamp(ts_opt, cookie);
 	}
 	return SK_PASS;
+}
+
+int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+{
+	if (send)
+		return tcp_handler_ip4_send(skb, ip, cookie);
+
+	return tcp_handler_ip4_recv(skb, ip, cookie);
 }
 #endif // SKB_LOAD_BYTES
 #endif //__BPF_TCP_RECV_H_

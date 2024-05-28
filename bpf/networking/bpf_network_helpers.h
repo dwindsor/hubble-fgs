@@ -62,6 +62,46 @@ struct {
 	__uint(max_entries, 1);
 } ip_error_event_heap SEC(".maps");
 
+static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
+{
+	struct tcp_sock *tcp;
+	struct sock *skp;
+
+	if (!sk)
+		return SK_PASS;
+	if (!v)
+		return SK_PASS;
+
+	tcp = skc_to_tcp_sock(sk);
+	if (!tcp)
+		return SK_PASS;
+	skp = (struct sock *)tcp;
+
+	v->last_time = ktime_get_ns();
+
+	if (bpf_core_field_exists(tcp->bytes_sent))
+		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+	if (bpf_core_field_exists(tcp->bytes_sent))
+		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+	if (bpf_core_field_exists(tcp->segs_out))
+		probe_read_kernel(&v->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
+	if (bpf_core_field_exists(tcp->bytes_retrans))
+		probe_read_kernel(&v->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
+
+	if (bpf_core_field_exists(skp->sk_drops))
+		probe_read_kernel(&v->sk_drops, sizeof(__u32), _(&(skp->sk_drops)));
+
+	/* These statistics are known to exist back to 4.12 kernels.
+	 */
+	probe_read_kernel(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
+	probe_read_kernel(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	v->srtt = v->srtt / 8; // SRTT is reported <<3 in us.
+	probe_read_kernel(&v->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
+
+	return SK_PASS;
+}
+
 static inline __attribute__((always_inline)) void
 tcp_socketmap_stats(struct sock *sk, struct socketmap_value *v)
 {

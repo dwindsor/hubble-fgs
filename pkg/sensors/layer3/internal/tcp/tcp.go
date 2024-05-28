@@ -63,7 +63,7 @@ var (
 		"tcp_connect",
 		"kprobe/tcp_connect",
 		"tg_tcp_connect",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	CloseAndAccept = program.Builder(
@@ -202,12 +202,15 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		Listen,
 		Accept,
 		AcceptRet,
-		SendCheck4,
-		SendCheck6,
 	}
 
 	if tcpconfig.RttHistogramMax != 0 {
 		progs = append(progs, RttTracer)
+	}
+
+	if !kernels.MinKernelVersion("5.14.0") {
+		progs = append(progs, SendCheck4)
+		progs = append(progs, SendCheck6)
 	}
 
 	maps := []*program.Map{
