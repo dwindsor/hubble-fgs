@@ -18,7 +18,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -52,30 +51,6 @@ var (
 		"kprobe",
 	)
 
-	PacketCreateV1 = program.Builder(
-		"bpf_rawsock_create.o",
-		"__register_prot_hook.part.0",
-		"kprobe/__register_prot_hook",
-		"tg_raw_packet_reg_prot_hook",
-		"kprobe",
-	)
-
-	PacketCreateV2 = program.Builder(
-		"bpf_rawsock_create.o",
-		"__register_prot_hook",
-		"kprobe/__register_prot_hook",
-		"tg_raw_packet_reg_prot_hook",
-		"kprobe",
-	)
-
-	PacketRelease = program.Builder(
-		"bpf_rawsock_release.o",
-		"__sk_free",
-		"kprobe/__sk_free",
-		"tg_rawsock_sk_free",
-		"layer3_sensor",
-	)
-
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, SkRawAllocV4)
 	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4)
@@ -98,7 +73,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	return spec.Parser.Rawsock.ReportClose, nil
 }
 
-func EnableRawsock(reportClose bool) ([]*program.Program, []*program.Map) {
+func EnableRawsock() ([]*program.Program, []*program.Map) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
 		return nil, nil
@@ -107,23 +82,6 @@ func EnableRawsock(reportClose bool) ([]*program.Program, []*program.Map) {
 	progs := []*program.Program{
 		SkRawAllocV4,
 		SkRawAllocV6,
-	}
-	ks, err := ksyms.KernelSymbols()
-	if err != nil {
-		logger.GetLogger().Warn("Raw socket sensor cannot access kallsyms")
-		return nil, nil
-	}
-	if ks.IsAvailable("__register_prot_hook.part.0") {
-		progs = append(progs, PacketCreateV1)
-	} else if ks.IsAvailable("__register_prot_hook") {
-		progs = append(progs, PacketCreateV2)
-	} else {
-		logger.GetLogger().Warn("Raw socket sensor cannot locate __register_prot_hook")
-		return nil, nil
-	}
-
-	if reportClose {
-		progs = append(progs, PacketRelease)
 	}
 	maps := []*program.Map{
 		SocketCookieMap,

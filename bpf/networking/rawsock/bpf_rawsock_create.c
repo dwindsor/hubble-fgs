@@ -16,7 +16,7 @@
 #include "../bpf_cookie.h"
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
-#include "bpf_rawsock.h"
+#include "../socktrack/bpf_sk_alloc.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -53,64 +53,5 @@ tg_rawsockv6_init_sk(struct pt_regs *ctx)
 	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
 	if (skc_num != IPPROTO_ICMP6)
 		return store_socket(ctx, cookie, IPPROTO_RAW);
-	return 0;
-}
-
-__attribute__((section("kprobe/__register_prot_hook"), used)) int
-tg_raw_packet_reg_prot_hook(struct pt_regs *ctx)
-{
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
-
-	return store_socket(ctx, cookie, IPPROTO_RAW);
-}
-
-static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie, u8 protocol)
-{
-	u64 pid = get_current_pid_tgid() >> 32;
-	struct socketmap_value process = { 0 };
-	struct execve_map_value *value;
-	bool walked;
-	u32 ppid;
-
-	if (!cookie) {
-		emit_ip_error_event(ctx, 0, 0, false,
-				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_COOKIE);
-		return 0;
-	}
-
-	if (pid < 1) {
-		emit_ip_error_event(ctx, 0, &cookie, false,
-				    0, 0, 0, IP_ERROR_SOCK_CREATE_PID_0);
-		return 0;
-	}
-
-	struct sock *sk = (struct sock *)cookie;
-	u16 skc_num;
-	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
-
-	/* Ideally we would be able to bind the socket to create early,
-	 * but its possible that we don't have an entry for the thread
-	 * if its a child thread, etc. Perhaps we should always have
-	 * entries, but we don't at the moment. So to ensure we don't
-	 * mislead the next layer to process this we not only need to
-	 * check if the entry exists but also that ktime!=0 which would
-	 * indicate its a stale entry that we are preparing to GC.
-	 */
-	value = event_find_curr(&ppid, &walked);
-	if (value && value->key.ktime) {
-		process.key.pid = value->key.pid;
-		process.key.ktime = value->key.ktime;
-	} else {
-		emit_ip_error_event(ctx, 0, &cookie, false,
-				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_PROCESS);
-		return 1;
-	}
-	process.create_time = ktime_get_ns();
-	process.protocol = protocol;
-	process.version = cookie_inc_version();
-	// Don't update the tuple map because this is a ping/raw socket.
-	add_socketmap(&cookie, &process, false);
-	emit_rawsock_event(ctx, &process, cookie, ISO_MSG_OP_RAWSOCK_CREATE);
 	return 0;
 }

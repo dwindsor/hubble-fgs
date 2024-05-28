@@ -208,7 +208,7 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 		needDispatcher = true
 	}
 	if rawEnabled {
-		rawProgs, rawMaps := rawsock.EnableRawsock(reportRawClose)
+		rawProgs, rawMaps := rawsock.EnableRawsock()
 		progs = append(progs, rawProgs...)
 		maps = append(maps, rawMaps...)
 		needDispatcher = true

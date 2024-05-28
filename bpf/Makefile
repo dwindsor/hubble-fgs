@@ -65,7 +65,7 @@ ICMP = bpf_icmp_rcv.o
 PING = bpf_pingsock_create.o bpf_pingsock_release.o
 L3 = bpf_cgroup_net_load_5-4.o bpf_cgroup_net_load.o bpf_cgroup_net.o
 
-RAWSOCK = bpf_rawsock_create.o bpf_rawsock_release.o
+RAWSOCK = bpf_rawsock_create.o
 
 TIMESTAMP =  bpf_timestamp.o
 

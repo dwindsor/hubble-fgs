@@ -374,21 +374,16 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 	if withRaw && kernels.MinKernelVersion("5.4.0") {
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_rawsock_sk_init", Type: ebpf.Kprobe}, // index ni
-			tus.SensorProg{Name: "tg_rawsockv6_init_sk", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_raw_packet_reg_prot_hook", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_rawsock_sk_free", Type: ebpf.Kprobe}, // index ni + 3
+			tus.SensorProg{Name: "tg_rawsock_sk_init", Type: ebpf.Kprobe},   // index ni
+			tus.SensorProg{Name: "tg_rawsockv6_init_sk", Type: ebpf.Kprobe}, // ni + 1
 		}...)
-		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
-		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
-		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3}...)
-		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 2}...)
-		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{ni + 3}...)
-		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{ni + 3}...)
-		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 3}...)
-		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 3}...)
-		verMap.Progs = append(verMap.Progs, []uint{ni, ni + 1, ni + 2}...)
-		ni += 4
+		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1}...)
+		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni, ni + 1}...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1}...)
+		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1}...)
+		cfgMap.Progs = append(cfgMap.Progs, []uint{ni, ni + 1}...)
+		verMap.Progs = append(verMap.Progs, []uint{ni, ni + 1}...)
+		ni += 2
 	}
 
 	sockProgs, sockMaps := socktrack.ProgsAndMaps()
