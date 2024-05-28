@@ -32,21 +32,25 @@ struct {
 static inline __attribute__((always_inline)) int
 check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 {
-	struct latency_config *latency_config = 0;
 	struct latency_protocol_config *tcp_latency = 0;
-	struct socketmap_value *process;
+	struct latency_config *latency_config = 0;
+	struct socketmap_value *process = 0;
 	int zero = 0;
 	s64 latency = 0;
 
 	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 	if (!latency_config) {
-		return 1;
+		return SK_PASS;
 	}
 
-	process = lookup_socketmap(cookie);
-	if (!process) {
-		return 1;
+	if (cookie) {
+		__u64 c = *cookie;
+
+		process = lookup_socketmap(&c);
 	}
+
+	if (!process)
+		return SK_PASS;
 
 	latency = calc_latency(latency_config->boot_ns,
 			       bpf_ntohl(ts_opt->timestamp_low),
@@ -55,7 +59,7 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 
 	add_latency(tcp_latency, process->latency_buckets, &process->latency_sum, latency);
 
-	return 1;
+	return SK_PASS;
 }
 
 static inline __attribute__((always_inline)) int
