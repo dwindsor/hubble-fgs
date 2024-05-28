@@ -234,6 +234,11 @@ var (
 	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", InetSendLazy)
 	CfgMapLazy             = program.MapBuilder("tg_cfg_map", InetSendLazy)
 
+	// Shared Layer3 infrastructure
+	UdpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSend)
+	UdpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy)
+	UdpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy54)
+
 	// UDP maps
 	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)
 	UdpMapLazy                 = program.MapBuilder(UdpMapName, InetSendLazy)
@@ -417,17 +422,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			Udp6RetSend,
 			UdpRecv,
 		}
-
-		if !kernels.MinKernelVersion("5.5.0") {
-			progs = append(progs, InetSendLazy54)
-			progs = append(progs, InetRecvLazy54)
-		} else {
-			progs = append(progs, InetSendLazy)
-			progs = append(progs, InetRecvLazy)
-		}
-		if !DisableListenEvents {
-			progs = append(progs, SkUdpBind)
-		}
 		maps = []*program.Map{
 			UdpMapLazy,
 			UdpVerMapLazy,
@@ -442,6 +436,19 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleHintMapLazy,
 			CfgMapLazy,
 			LatencyConfigMapLazy,
+		}
+
+		if !kernels.MinKernelVersion("5.5.0") {
+			progs = append(progs, InetSendLazy54)
+			progs = append(progs, InetRecvLazy54)
+			maps = append(maps, UdpCgroupCfgMapLazy54)
+		} else {
+			progs = append(progs, InetSendLazy)
+			progs = append(progs, InetRecvLazy)
+			maps = append(maps, UdpCgroupCfgMapLazy)
+		}
+		if !DisableListenEvents {
+			progs = append(progs, SkUdpBind)
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
@@ -474,6 +481,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleHintMap,
 			CfgMap,
 			LatencyConfigMap,
+			UdpCgroupCfgMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
@@ -506,6 +514,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleHintMap,
 			CfgMap,
 			LatencyConfigMap,
+			UdpCgroupCfgMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
