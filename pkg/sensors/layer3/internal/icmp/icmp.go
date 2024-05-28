@@ -38,61 +38,11 @@ var (
 )
 
 var (
-	SkRawAllocV4 = program.Builder(
-		"bpf_pingsock_create.o",
-		"raw_sk_init",
-		"kprobe/raw_sk_init",
-		"tg_icmp_raw_sk_init",
-		"kprobe",
-	)
-
-	SkRawAllocV6 = program.Builder(
-		"bpf_pingsock_create.o",
-		"rawv6_init_sk",
-		"kprobe/rawv6_init_sk",
-		"tg_icmp_rawv6_init_sk",
-		"kprobe",
-	)
-
 	SkPingAlloc = program.Builder(
 		"bpf_pingsock_create.o",
 		"ping_init_sock",
 		"kprobe/ping_init_sock",
 		"tg_ping_init_sock",
-		"kprobe",
-	)
-
-	// Some environments init ping sockets, send ping over ping sockets,
-	// and then close ping sockets. Other environments, however, init ping
-	// sockets, init a raw socket, sends ping over the raw socket, and then
-	// closes the raw socket, but doesn't close the ping sockets.
-	// As such, we choose to solely use __sk_free to catch the sockets being
-	// discarded. The original raw_close and ping_close programs are retained
-	// (in comments) in case we decide to revert.
-
-	/*
-		SkRawRelease = program.Builder(
-			"bpf_pingsock_release.o",
-			"raw_close",
-			"kprobe/raw_close",
-			"tg_raw_close",
-			"kprobe",
-		)
-
-		SkPingRelease = program.Builder(
-			"bpf_pingsock_release.o",
-			"ping_close",
-			"kprobe/ping_close",
-			"tg_ping_close",
-			"kprobe",
-		)
-	*/
-
-	SkSockRelease = program.Builder(
-		"bpf_pingsock_release.o",
-		"__sk_free",
-		"kprobe/__sk_free",
-		"tg_icmp_sk_free",
 		"kprobe",
 	)
 
@@ -147,12 +97,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 	}
 
 	progs = []*program.Program{
-		SkRawAllocV4,
-		SkRawAllocV6,
 		SkPingAlloc,
-		// SkRawRelease, // see comment above
-		// SkPingRelease, // see comment above
-		SkSockRelease,
 		IcmpRcv,
 		IcmpRcv6,
 	}

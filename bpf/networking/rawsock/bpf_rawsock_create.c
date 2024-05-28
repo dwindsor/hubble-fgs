@@ -36,9 +36,9 @@ tg_rawsock_sk_init(struct pt_regs *ctx)
 
 	sk = (struct sock *)cookie;
 	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
-	if (skc_num != IPPROTO_ICMP)
-		return store_socket(ctx, cookie, IPPROTO_RAW);
-	return 0;
+	if (skc_num == IPPROTO_ICMP)
+		return store_socket(ctx, cookie, IPPROTO_ICMP);
+	return store_socket(ctx, cookie, IPPROTO_RAW);
 }
 
 // IPv6 version
@@ -51,7 +51,7 @@ tg_rawsockv6_init_sk(struct pt_regs *ctx)
 
 	sk = (struct sock *)cookie;
 	probe_read_kernel(&skc_num, sizeof(skc_num), _(&(sk->__sk_common.skc_num)));
-	if (skc_num != IPPROTO_ICMP6)
-		return store_socket(ctx, cookie, IPPROTO_RAW);
-	return 0;
+	if (skc_num == IPPROTO_ICMP6)
+		return store_socket(ctx, cookie, IPPROTO_ICMP);
+	return store_socket(ctx, cookie, IPPROTO_RAW);
 }

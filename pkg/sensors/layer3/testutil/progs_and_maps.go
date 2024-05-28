@@ -341,35 +341,20 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	}
 
 	if withIcmp && kernels.MinKernelVersion("5.4.0") {
-		if !kernels.MinKernelVersion("5.10.0") { // 5.4 - 5.9
-			sensorProgs = append(sensorProgs, []tus.SensorProg{
-				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
-				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 5
-			}...)
-		} else { // 5.10 -
-			sensorProgs = append(sensorProgs, []tus.SensorProg{
-				tus.SensorProg{Name: "tg_icmp_raw_sk_init", Type: ebpf.Kprobe}, // index ni
-				tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_sk_free", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmp_rawv6_init_sk", Type: ebpf.Kprobe},
-				tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 5
-			}...)
-		}
-		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5}...)
-		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni, ni + 1, ni + 2, ni + 4}...)
-		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{ni + 2, ni + 3, ni + 5}...)
-		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, []uint{ni + 2}...)
-		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 2, ni + 3, ni + 5}...)
-		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 3, ni + 4, ni + 5}...)
-		execveMap.Progs = append(execveMap.Progs, []uint{ni, ni + 1, ni + 4}...)
-		cfgMap.Progs = append(cfgMap.Progs, []uint{ni + 2, ni + 3, ni + 5}...)
-		verMap.Progs = append(verMap.Progs, []uint{ni, ni + 1, ni + 4}...)
-		ni += 6
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe}, // index ni
+			tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
+			tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe}, // index ni + 2
+		}...)
+		socketMap.Progs = append(socketMap.Progs, []uint{ni, ni + 1, ni + 2}...)
+		socketMapStats.Progs = append(socketMapStats.Progs, []uint{ni}...)
+		socketTupleMap.Progs = append(socketTupleMap.Progs, []uint{ni + 1, ni + 2}...)
+		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, []uint{ni + 1, ni + 2}...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, []uint{ni, ni + 1, ni + 2}...)
+		execveMap.Progs = append(execveMap.Progs, []uint{ni}...)
+		cfgMap.Progs = append(cfgMap.Progs, []uint{ni, ni + 1, ni + 2}...)
+		verMap.Progs = append(verMap.Progs, []uint{ni}...)
+		ni += 3
 	}
 
 	if withRaw && kernels.MinKernelVersion("5.4.0") {

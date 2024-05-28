@@ -301,6 +301,8 @@ func (l3 *l3Sensor) PolicyHandler(
 		if err != nil {
 			return nil, fmt.Errorf("icmp.PolicyHandler error: %w", err)
 		}
+		// ICMP partially relies on raw socket tracking.
+		rawEnabled = true
 	}
 
 	reportRawClose := false
