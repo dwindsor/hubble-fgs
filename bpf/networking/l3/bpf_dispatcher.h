@@ -9,6 +9,8 @@ struct cgroup_dispatch_cfg {
 	uint32_t icmp6;
 	uint32_t tcp4;
 	uint32_t tcp6;
+	uint32_t udp4;
+	uint32_t udp6;
 };
 
 struct {
@@ -59,7 +61,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 
 	switch (ip.version) {
 	case 4:
-		if (ip.protocol == IPPROTO_UDP)
+		if (ip.protocol == IPPROTO_UDP && cfg->udp4)
 			ret = udp_handler_ip4(skb, &ip, cookie, send);
 		else if (ip.protocol == IPPROTO_ICMP && cfg->icmp4)
 			ret = icmp_handler_ip4(skb, &ip, cookie, send);
@@ -75,7 +77,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		if (protocol == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
-		} else if (protocol == IPPROTO_UDP) {
+		} else if (protocol == IPPROTO_UDP && cfg->udp6) {
 			udp_handler_ip6(skb, &ip6, cookie, payload_off, send);
 		} else if (protocol == IPPROTO_TCP && cfg->tcp6) {
 			tcp_handler_ip6(skb, &ip6, cookie, payload_off, send);

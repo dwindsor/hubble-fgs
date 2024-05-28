@@ -204,18 +204,24 @@ type CgroupProtocolConfigValue struct {
 	icmp6Enabled uint32
 	tcp4Enabled  uint32
 	tcp6Enabled  uint32
+	udp4Enabled  uint32
+	udp6Enabled  uint32
 }
 
 func (v *CgroupProtocolConfigValue) String() string {
 	return fmt.Sprintf("CgroupProtocolConfigValue: "+
 		"icmp4Enabled: %d, "+
-		"icmp6Enabled: %d"+
+		"icmp6Enabled: %d, "+
 		"tcp4Enabled: %d, "+
-		"tcp6Enabled: %d",
+		"tcp6Enabled: %d, "+
+		"udp4Enabled: %d, "+
+		"udp6Enabled: %d",
 		v.icmp4Enabled,
 		v.icmp6Enabled,
 		v.tcp4Enabled,
 		v.tcp6Enabled,
+		v.udp4Enabled,
+		v.udp6Enabled,
 	)
 }
 
@@ -267,6 +273,8 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 		if udpEnabled {
 			ip.LoadSockets(udp.FdCallback, unix.IPPROTO_UDP)
+			l3cfg.udp4Enabled = 1
+			l3cfg.udp6Enabled = 1
 		}
 		if icmpEnabled {
 			ip.LoadSockets(icmp.FdCallback, unix.IPPROTO_ICMP)
@@ -277,7 +285,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			ip.LoadSockets(rawsock.FdCallback, unix.IPPROTO_RAW)
 		}
 
-		if icmpEnabled || tcpEnabled {
+		if icmpEnabled || tcpEnabled || udpEnabled {
 			if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
 				return err
 			}
