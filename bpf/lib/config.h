@@ -17,7 +17,10 @@
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
 	__u8 icmp_net_match;
-	__u8 pad[6];
+	__u8 raw_enabled;
+	__u8 raw_report_close;
+	__u8 udp_report_close;
+	__u8 pad[3];
 };
 
 struct {

@@ -256,30 +256,35 @@ spec:
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
+	// If we base all indices into the progs map from "ni" then we can add extra programs
+	// in front of these and just set ni to the number of programs. This supports the option
+	// to make socktrack enabled by default, but doesn't require it.
+	ni := uint(0) // next index
+
 	var sensorProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps},
-		1: tus.SensorProg{Name: "tg_setsockopt", Type: ebpf.CGroupSockopt},
-		2: tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
-		3: tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB},
+		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps}, // index ni
+		tus.SensorProg{Name: "tg_setsockopt", Type: ebpf.CGroupSockopt},
+		tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
+		tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB}, // index ni + 3
 	}
 
 	var sensorMaps = []tus.SensorMap{
 		// all but base and tg_sockmap
-		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{1, 2, 3}},
+		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{ni + 1, ni + 2, ni + 3}},
 
 		// all but base and bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{ni, ni + 1}},
 
 		// tg_sockmap
-		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{0}},
+		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{ni}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tg_bottles", Progs: []uint{2, 3}},
-		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{2, 3}},
-		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tg_bottles", Progs: []uint{ni + 2, ni + 3}},
+		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{ni + 2, ni + 3}},
+		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni + 2, ni + 3}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni + 2, ni + 3}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
@@ -325,25 +330,30 @@ spec:
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
+	// If we base all indices into the progs map from "ni" then we can add extra programs
+	// in front of these and just set ni to the number of programs. This supports the option
+	// to make socktrack enabled by default, but doesn't require it.
+	ni := uint(0) // next index
+
 	var sensorProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "tls_inet_send", Type: ebpf.CGroupSKB},
-		1: tus.SensorProg{Name: "tls_inet_recv", Type: ebpf.CGroupSKB},
+		tus.SensorProg{Name: "tls_inet_send", Type: ebpf.CGroupSKB}, // index ni
+		tus.SensorProg{Name: "tls_inet_recv", Type: ebpf.CGroupSKB}, // index ni + 1
 	}
 
 	var sensorMaps = []tus.SensorMap{
 		// send and recv
-		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{ni, ni + 1}},
 
 		// send only
-		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{ni, ni + 1}},
 
 		// send and recv
-		tus.SensorMap{Name: "tg_bottles", Progs: []uint{0, 1}},
-		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{0, 1}},
-		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_bottles", Progs: []uint{ni, ni + 1}},
+		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{ni, ni + 1}},
+		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni, ni + 1}},
 
 		// send and recv
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni, ni + 1}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

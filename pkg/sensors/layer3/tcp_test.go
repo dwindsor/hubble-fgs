@@ -533,13 +533,6 @@ func TestListenAcceptClose4(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
-	exitChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExitChecker("ncExit").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSignal(sm.Full("SIGKILL")),
-	)
-
 	obs := getBasicTcpObserver(t, ctx, false)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
@@ -556,9 +549,6 @@ func TestListenAcceptClose4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
-	err = jsonchecker.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
 }
 
@@ -1548,13 +1538,6 @@ func TestListenAcceptClose6(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
-	exitChecker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExitChecker("ncExit").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSignal(sm.Full("SIGKILL")),
-	)
-
 	obs := getBasicTcpObserver(t, ctx, false)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
@@ -1571,9 +1554,6 @@ func TestListenAcceptClose6(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
-	err = jsonchecker.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
 }
 

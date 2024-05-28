@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	exec "github.com/isovalent/hubble-fgs/pkg/sensors/exec/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -229,6 +230,8 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
 		}
 	}
+	// If UDP is enabled then we need close events reported to maintain our maps.
+	exec.ConfigureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
