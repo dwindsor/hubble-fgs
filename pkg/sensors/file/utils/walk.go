@@ -34,11 +34,10 @@ type InodeStore interface {
 
 type FimMaps struct {
 	Inode *ebpf.Map
-	Lpm   *ebpf.Map
 }
 
 func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
-	var inodeHandle, lpmHandle *ebpf.Map
+	var inodeHandle *ebpf.Map
 	var err error
 
 	inodeHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, InodeMapName)), nil)
@@ -46,20 +45,12 @@ func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
 		return FimMaps{}, func() {}, err
 	}
 
-	lpmHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, LpmMapName)), nil)
-	if err != nil {
-		inodeHandle.Close()
-		return FimMaps{}, func() {}, err
-	}
-
 	cleanupFn := func() {
 		inodeHandle.Close()
-		lpmHandle.Close()
 	}
 
 	maps := FimMaps{
 		Inode: inodeHandle,
-		Lpm:   lpmHandle,
 	}
 
 	return maps, cleanupFn, nil

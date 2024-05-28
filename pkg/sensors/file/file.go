@@ -27,7 +27,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -65,8 +64,6 @@ import (
 )
 
 const (
-	maxLPMpaths = 4096
-
 	overlayModName = "overlay"
 	btfPath        = "/sys/kernel/btf/"
 )
@@ -826,7 +823,6 @@ type FimLoaderData struct {
 func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
-	var err error
 
 	config.TpId = atomic.AddUint32(&pol.SensorCounter, 1)
 	name := fmt.Sprintf("fim_sensor_%d", config.TpId)
@@ -845,104 +841,15 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	pol.FileMonitoringTable.AddFIM(config.TpId, e)
 
 	l := logger.GetLogger()
-	mapDir := bpf.MapPrefixPath()
-	os.Mkdir(mapDir, os.ModeDir)
-
-	ms := &ebpf.MapSpec{
-		Name:       "lpm_trie_map_alloc",
-		Type:       bpf.BPF_MAP_TYPE_LPM_TRIE,
-		KeySize:    uint32(unsafe.Sizeof(fileapi.LPMMapKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.LPMMapValue{})),
-		MaxEntries: maxLPMpaths,
-		Flags:      bpf.BPF_F_NO_PREALLOC,
-	}
-
-	lpmMap, err := ebpf.NewMapWithOptions(ms, ebpf.MapOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
-	}
-	defer lpmMap.Close()
-
-	lpmPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "lpm_trie_map_alloc"))
-	// remove the map if already exists, otheriwse Pin() will fail
-	if _, err := os.Stat(lpmPinPath); err == nil {
-		os.Remove(lpmPinPath)
-	}
-	if err := lpmMap.Pin(lpmPinPath); err != nil {
-		return nil, fmt.Errorf("failed lpmMap.Pin: %w", err)
-	}
-
-	for _, str := range kprobes.PathsExclude {
-		if err := addFilters(lpmMap, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
-			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
-		}
-	}
-
-	mm := &ebpf.MapSpec{
-		Name:       "patterns_map_alloc",
-		Type:       bpf.BPF_MAP_TYPE_ARRAY,
-		KeySize:    uint32(4), // int
-		ValueSize:  uint32(unsafe.Sizeof(fileapi.PatternValue{})),
-		MaxEntries: fileapi.PatternMapSize,
-	}
-
-	patternMap, err := ebpf.NewMapWithOptions(mm, ebpf.MapOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
-	}
-	defer patternMap.Close()
-
-	patternPinPath := path.Join(mapDir, sensors.PathJoin(e.PinPathPrefix, "patterns_map_alloc"))
-	// remove the map if already exists, otheriwse Pin() will fail
-	if _, err := os.Stat(patternPinPath); err == nil {
-		os.Remove(patternPinPath)
-	}
-	if err := patternMap.Pin(patternPinPath); err != nil {
-		return nil, fmt.Errorf("failed patternMap.Pin: %w", err)
-	}
 
 	exactFilePathMatch := make(map[string]uint32)
 	config.NumPatterns = uint32(len(kprobes.PathsPatterns))
 	for i, p := range kprobes.PathsPatterns {
-		if p.Type == "FilePrefixSuffix" {
-			key := uint32(i)
-			val := fileapi.PatternValue{
-				PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
-				SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
-				Action:    fm.FilterMatch,
-				Rule:      uint32(i),
-			}
-
-			if val.PrefixLen > 256 || val.SuffixLen > 128 {
-				return nil, fmt.Errorf("max prefix size is 256 characters and max suffix size is 128 characters: prefix:[%s], suffix:[%s]", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
-			}
-
-			copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
-			copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
-
-			if err := patternMap.Update(&key, &val, ebpf.UpdateAny); err != nil {
-				return nil, fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
-			}
-
-			if err := addFilters(lpmMap, p.FilePrefixSuffix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
-				return nil, fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
-			}
-		} else if p.Type == "PathPrefix" {
-			if err := addFilters(lpmMap, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
-				return nil, fmt.Errorf("failed to add WatchPath: %w", err)
-			}
-		} else if p.Type == "FileExactMatch" {
+		if p.Type == "FileExactMatch" {
 			if strings.HasSuffix(p.FileExactMatch.Path, "/") {
 				return nil, fmt.Errorf("file path for exact match cannot end with /: [%s]", p.FileExactMatch.Path)
 			}
-
 			exactFilePathMatch[p.FileExactMatch.Path] = uint32(i)
-
-			if err := addFilters(lpmMap, filepath.Dir(p.FileExactMatch.Path), fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
-				return nil, fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("unknown pattern type: [%s]", p.Type)
 		}
 	}
 
@@ -1054,6 +961,64 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{
+			{
+				Index: 0,
+				Name:  "lpm_trie_map_alloc",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					for _, str := range kprobes.PathsExclude {
+						if err := addFilters(m, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
+							return fmt.Errorf("failed to add ExcludePath: %w", err)
+						}
+					}
+					for i, p := range kprobes.PathsPatterns {
+						if p.Type == "FilePrefixSuffix" {
+							if err := addFilters(m, p.FilePrefixSuffix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
+							}
+						} else if p.Type == "PathPrefix" {
+							if err := addFilters(m, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add WatchPath: %w", err)
+							}
+						} else if p.Type == "FileExactMatch" {
+							if err := addFilters(m, filepath.Dir(p.FileExactMatch.Path), fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
+							}
+						} else {
+							return fmt.Errorf("unknown pattern type: [%s]", p.Type)
+						}
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
+				Name:  "patterns_map_alloc",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					for i, p := range kprobes.PathsPatterns {
+						if p.Type == "FilePrefixSuffix" {
+							key := uint32(i)
+							val := fileapi.PatternValue{
+								PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
+								SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
+								Action:    fm.FilterMatch,
+								Rule:      uint32(i),
+							}
+
+							if val.PrefixLen > 256 || val.SuffixLen > 128 {
+								return fmt.Errorf("max prefix size is 256 characters and max suffix size is 128 characters: prefix:[%s], suffix:[%s]", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
+							}
+
+							copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
+							copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
+
+							if err := m.Update(&key, &val, ebpf.UpdateAny); err != nil {
+								return fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
+							}
+						}
+					}
+					return nil
+				},
+			},
 			{
 				Index: 0,
 				Name:  "hash_map_inode_alloc",
