@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
+	"github.com/cilium/tetragon/pkg/health"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
@@ -715,6 +716,10 @@ func hubbleFGSExecute() error {
 		}
 	}
 
+	if option.Config.HealthServerAddress != "" {
+		health.StartHealthServer(ctx, option.Config.HealthServerAddress, option.Config.HealthServerInterval)
+	}
+
 	log.WithField("enabled", option.Config.ExportFilename != "").WithField("fileName", option.Config.ExportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
@@ -1202,6 +1207,9 @@ func execute() error {
 	flags.Bool(KeyGenerateDocs, false, "Generate documentation in YAML format to stdout")
 
 	flags.String(keyCgroupRate, "", "Base sensor events cgroup rate <events,interval> disabled by default ('1000/1s' means rate 1000 events per second")
+
+	flags.String(KeyHealthServerAddress, ":6789", "Health server address (e.g. ':6789')(use '' to disabled it)")
+	flags.Int(KeyHealthTimeInterval, 10, "Health server interval in seconds")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

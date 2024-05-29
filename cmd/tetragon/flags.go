@@ -90,6 +90,9 @@ const (
 	KeyGenerateDocs = "generate-docs"
 
 	keyCgroupRate = "cgroup-rate"
+
+	KeyHealthServerAddress = "health-server-address"
+	KeyHealthTimeInterval  = "health-server-interval"
 )
 
 func readAndSetFlags() {
@@ -167,4 +170,7 @@ func readAndSetFlags() {
 	option.Config.EnableMsgHandlingLatency = viper.GetBool(keyEnableMsgHandlingLatency)
 
 	option.Config.CgroupRate = option.ParseCgroupRate(viper.GetString(keyCgroupRate))
+
+	option.Config.HealthServerAddress = viper.GetString(KeyHealthServerAddress)
+	option.Config.HealthServerInterval = viper.GetInt(KeyHealthTimeInterval)
 }
