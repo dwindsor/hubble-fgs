@@ -1012,10 +1012,6 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		panic(err)
 	}
 	serverCmd.Stderr = os.Stderr
-	if err != nil {
-		fmt.Printf("ERROR Could not connect to server input pipe\n")
-		panic(err)
-	}
 
 	err = serverCmd.Start()
 	if err != nil {
