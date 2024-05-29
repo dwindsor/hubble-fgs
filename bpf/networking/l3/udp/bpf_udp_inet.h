@@ -146,6 +146,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (process) {
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
+		process->protocol = IPPROTO_UDP;
 		emit_udp_connect_event(skb, cookie, cookie_ver, value);
 #ifndef IS_KPROBE
 #ifdef TRACK_ICMP_FROM_SKB

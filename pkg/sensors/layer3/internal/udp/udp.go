@@ -19,7 +19,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -35,7 +34,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
@@ -67,29 +65,6 @@ var (
 )
 
 var (
-	SkUdpAlloc = program.Builder(
-		"bpf_udp_sock_create.o",
-		"udp_init_sock",
-		"kprobe/udp_init_sock",
-		"tg_udp_init_sock",
-		"kprobe",
-	)
-
-	SkUdpAlloc6 = program.Builder(
-		"bpf_udp_sock_create.o",
-		"udpv6_init_sock",
-		"kprobe/udpv6_init_sock",
-		"tg_udpv6_init_sock",
-		"kprobe",
-	)
-
-	SkUdpDestroy = program.Builder(
-		"bpf_udp_sock_release.o",
-		"udp_destroy_sock",
-		"kprobe/udp_destroy_sock",
-		"tg_udp_destroy_sock",
-		"kprobe")
-
 	SkUdpBind = program.Builder(
 		"bpf_udp_bind.o",
 		"__cgroup_bpf_run_filter_sk",
@@ -173,16 +148,13 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap        = program.MapBuilder(SocketMapName, Udp4Send)
-	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", Udp4Send)
-	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
-	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
-	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
-	CfgMap                 = program.MapBuilder("tg_cfg_map", SkUdpBind)
-	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
-	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
-	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
-	VerMap                 = program.MapBuilder("tg_ver_map", SkUdpAlloc)
+	SocketCookieMap    = program.MapBuilder(SocketMapName, Udp4Send)
+	SocketCookieStats  = program.MapBuilder("tg_socket_map_stats", Udp4Send)
+	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
+	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
+	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
+	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBind)
+	VerMap             = program.MapBuilder("tg_ver_map", Udp4Send)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
@@ -307,28 +279,11 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		cgroup = false
 	}
 
-	spec, err := ossBTF.NewBTF()
-	useIPv6InitHook := false
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("GetCachedBTF failed")
-	} else {
-		if spec == nil {
-			logger.GetLogger().Warn("GetCachedBTF returned nil")
-		} else {
-			_, err := fgsBTF.GetFuncProto(spec, SkUdpAlloc6.Attach, false)
-			if err == nil {
-				useIPv6InitHook = true
-			}
-		}
-	}
-
 	dns.LazyDns = false
 	versionStr = "__udp_sensor_probe__"
 
 	if !cgroup {
 		progs = []*program.Program{
-			SkUdpAlloc,
-			SkUdpDestroy,
 			InetSendRecvLazy,
 			Udp4Send,
 			Udp4RetSend,
@@ -351,35 +306,8 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			VerMap,
 		}
 		dns.LazyDns = true
-	} else if !kernels.MinKernelVersion("5.14.0") {
-		progs = []*program.Program{
-			SkUdpAlloc,
-			SkUdpDestroy,
-			Udp4Send,
-			Udp4RetSend,
-			Udp6Send,
-			Udp6RetSend,
-			UdpRecv,
-		}
-		maps = []*program.Map{
-			UdpRetprobeMap,
-			UdpRetprobeStats,
-			SocketCookieMap,
-			SocketCookieStats,
-			SocketTupleMapLazy,
-			SocketTupleStatsLazy,
-			SocketTupleHintMapLazy,
-			CfgMap,
-			VerMap,
-		}
-
-		if !DisableListenEvents {
-			progs = append(progs, SkUdpBind)
-		}
 	} else {
 		progs = []*program.Program{
-			SkUdpAlloc,
-			SkUdpDestroy,
 			Udp4Send,
 			Udp4RetSend,
 			Udp6Send,
@@ -387,7 +315,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			UdpRecv,
 		}
 		if !DisableListenEvents {
-			if !kernels.MinKernelVersion("5.15.0") {
+			if !kernels.MinKernelVersion("5.14.0") {
+				progs = append(progs, SkUdpBind)
+			} else if !kernels.MinKernelVersion("5.15.0") {
 				progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
 			} else {
 				progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
@@ -404,10 +334,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			CfgMap,
 			VerMap,
 		}
-	}
-
-	if useIPv6InitHook {
-		progs = append(progs, SkUdpAlloc6)
 	}
 
 	if timestampEnable {

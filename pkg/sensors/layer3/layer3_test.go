@@ -191,10 +191,6 @@ func TestLoadLayer3Sensor(t *testing.T) {
 
 	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true)
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))

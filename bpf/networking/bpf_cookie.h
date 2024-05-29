@@ -187,7 +187,7 @@ lookup_socketmap(u64 *cookie)
  * mapping from cookie to process(pid).
  */
 static inline __attribute__((always_inline)) bool
-update_socketmap(u64 *cookie, u32 pid)
+update_socketmap(u64 *cookie, u32 pid, u16 protocol)
 {
 	struct execve_map_value *value;
 	struct socketmap_value *process;
@@ -209,13 +209,17 @@ update_socketmap(u64 *cookie, u32 pid)
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
 			process->version = cookie_inc_version();
+			process->protocol = protocol;
 			add_socketmap(cookie, process, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
 			process->create_time = ktime_get_ns();
 			process->version = cookie_inc_version();
+			process->protocol = protocol;
 		}
+	} else {
+		process->protocol = protocol;
 	}
 	return true;
 }
