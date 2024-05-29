@@ -41,6 +41,8 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
+	struct socketmap_value *socket = 0;
+	struct msg_execve_key *key;
 	struct msg_ip_event *val;
 	__u32 ppid = 0, zero = 0;
 	struct sock *skp;
@@ -49,9 +51,20 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	uint64_t size;
 	u64 cookie;
 
-	process = event_find_curr(&ppid, &walker);
-	if (!process)
-		return 0;
+	skp = (struct sock *)PT_REGS_PARM1(ctx);
+	/* In TCP we use the struct sock address as the socket cookie. */
+	cookie = (u64)skp;
+
+	socket = lookup_socketmap(&cookie);
+	if (socket) {
+		key = &socket->key;
+	} else {
+		/* We shouldn't need this fall back. */
+		process = event_find_curr(&ppid, &walker);
+		if (!process)
+			return 0;
+		key = &process->key;
+	}
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
 						     &zero);
@@ -59,17 +72,12 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 		return 0;
 	}
 
-	skp = (struct sock *)PT_REGS_PARM1(ctx);
-	/* In TCP we use the struct sock address as the socket cookie.
-	 */
-	cookie = (u64)skp;
-
 	*val = (struct msg_ip_event){
 		.common.op = ISO_MSG_OP_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ip_event),
-		.key.pid = process->key.pid,
-		.key.ktime = process->key.ktime,
+		.key.pid = key->pid,
+		.key.ktime = key->ktime,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.version = 0,
@@ -112,8 +120,8 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	}
 
 	struct tcpsocketmap_value v = { 0 };
-	v.key.pid = process->key.pid;
-	v.key.ktime = process->key.ktime;
+	v.key.pid = key->pid;
+	v.key.ktime = key->ktime;
 	v.create_time = val->common.ktime;
 	v.last_time = v.create_time;
 	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
@@ -130,12 +138,5 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.version = cookie_inc_version();
 
 	add_tcpsocketmap(&cookie, &v, true);
-
-	struct socketmap_value sockproc = { 0 };
-	sockproc.create_time = val->common.ktime;
-	sockproc.key = process->key;
-	sockproc.protocol = IPPROTO_TCP;
-	sockproc.version = v.version;
-	add_socketmap(&cookie, &sockproc, false);
 	return 1;
 }

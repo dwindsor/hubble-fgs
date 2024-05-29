@@ -40,6 +40,8 @@ tg_event_sys_listen(struct pt_regs *ctx)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
+	struct socketmap_value *socket = 0;
+	struct msg_execve_key *key = 0;
 	__u32 pid, ppid = 0, zero = 0;
 	struct msg_ip_event *val;
 	struct sock *skp;
@@ -48,20 +50,26 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	u64 cookie;
 
 	pid = (get_current_pid_tgid() >> 32);
-	process = event_find_curr(&ppid, &walker);
-	if (!process)
-		return 0;
+	skp = (struct sock *)PT_REGS_PARM1(ctx);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 */
+	cookie = (u64)skp;
+
+	socket = lookup_socketmap(&cookie);
+	if (socket) {
+		key = &socket->key;
+	} else {
+		process = event_find_curr(&ppid, &walker);
+		if (!process)
+			return 0;
+		key = &process->key;
+	}
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_listen_event_map,
 						     &zero);
 	if (!val) {
 		return 0;
 	}
-
-	skp = (struct sock *)PT_REGS_PARM1(ctx);
-	/* In TCP we use the struct sock address as the socket cookie.
-	 */
-	cookie = (u64)skp;
 
 	*val = (struct msg_ip_event){
 		.tuple.daddr[0] = 0,
@@ -71,7 +79,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ip_event),
 		.key.pid = pid,
-		.key.ktime = process->key.ktime,
+		.key.ktime = key->ktime,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.version = 0,
@@ -104,8 +112,8 @@ tg_event_sys_listen(struct pt_regs *ctx)
 
 	struct tcpsocketmap_value v = { 0 };
 
-	v.key.pid = process->key.pid;
-	v.key.ktime = process->key.ktime;
+	v.key.pid = key->pid;
+	v.key.ktime = key->ktime;
 	v.create_time = val->common.ktime;
 	v.zero_window = 0;
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
@@ -121,13 +129,6 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.version = cookie_inc_version();
 
 	add_tcpsocketmap(&cookie, &v, true);
-
-	struct socketmap_value sockmap = { 0 };
-	sockmap.create_time = val->common.ktime;
-	sockmap.key = process->key;
-	sockmap.protocol = IPPROTO_TCP;
-	sockmap.version = v.version;
-	add_socketmap(&cookie, &sockmap, false);
 
 	return 0;
 }

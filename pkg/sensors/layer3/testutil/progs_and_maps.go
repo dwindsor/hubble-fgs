@@ -62,11 +62,11 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		4: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
 	}
 
-	// all but accept
-	socketMap := tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 1, 2, 4}}
+	// all but close and accept
+	socketMap := tus.SensorMap{Name: "tg_socket_map", Progs: []uint{0, 2, 4}}
 
-	// all but accept
-	socketMapStats := tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{0, 1, 2, 4}}
+	// just accept_ret
+	socketMapStats := tus.SensorMap{Name: "tg_socket_map_stats", Progs: []uint{4}}
 
 	// all but accept
 	tcpSocketMap := tus.SensorMap{Name: "tg_tcpsocket_map", Progs: []uint{0, 1, 2, 4}}

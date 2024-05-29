@@ -122,14 +122,11 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 
 	if (!socket->tuple.ipv6) {
 		del_tcpsocketmap(&cookie);
-		del_socketmap(&cookie);
-
 		del_tlsmap(&cookie);
 		map_delete_elem(&tg_http_map, &cookie);
 		bottle_drop(&cookie);
 	} else {
 		del_tcpsocketmap(&cookie);
-		del_socketmap(&cookie);
 	}
 
 	return 1;
