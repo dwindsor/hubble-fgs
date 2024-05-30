@@ -204,15 +204,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		AcceptRet,
 	}
 
-	if tcpconfig.RttHistogramMax != 0 {
-		progs = append(progs, RttTracer)
-	}
-
-	if !kernels.MinKernelVersion("5.14.0") {
-		progs = append(progs, SendCheck4)
-		progs = append(progs, SendCheck6)
-	}
-
 	maps := []*program.Map{
 		SocketStats,
 		SocketMap,
@@ -231,14 +222,25 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		EventDisableConfig,
 	}
 
-	if timestampEnable && kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Info("Enabling TCP latency")
-		TimestampEnabled = true
-		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
-		if err == nil {
-			progs = append(progs, timestampProg)
-		} else {
-			logger.GetLogger().Warn("TCP unsupported by network latency")
+	if tcpconfig.RttHistogramMax != 0 {
+		progs = append(progs, RttTracer)
+	}
+
+	if !kernels.MinKernelVersion("5.3.0") {
+		progs = append(progs, SendCheck4)
+		progs = append(progs, SendCheck6)
+	}
+
+	if kernels.MinKernelVersion("5.4.0") {
+		if timestampEnable {
+			logger.GetLogger().Info("Enabling TCP latency")
+			TimestampEnabled = true
+			timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
+			if err == nil {
+				progs = append(progs, timestampProg)
+			} else {
+				logger.GetLogger().Warn("TCP unsupported by network latency")
+			}
 		}
 
 		if !kernels.MinKernelVersion("5.5.0") {
