@@ -42,6 +42,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 
@@ -3101,7 +3102,7 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 		t.Fatalf("failed to run /bin/cat %s: err %s", filePasswd, err)
 	}
 
-	inodeMapPath := filepath.Join(bpf.MapPrefixPath(), "fim_sensor_1-hash_map_inode_alloc")
+	inodeMapPath := program.PolicyMapPath(bpf.MapPrefixPath(), "file-monitoring", "hash_map_inode_alloc")
 	inodeHandle, err := ebpf.LoadPinnedMap(inodeMapPath, nil)
 	if err != nil {
 		t.Fatalf("cannot open pinned map %s", inodeMapPath)
