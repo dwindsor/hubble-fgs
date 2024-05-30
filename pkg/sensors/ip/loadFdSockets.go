@@ -76,6 +76,9 @@ var (
 		"kprobe",
 	)
 
+	// All the FdLookup sensor maps below are accessed from other sensors,
+	// so they need to stay global as is expected by its users.
+
 	// Socket lookup config map
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 
@@ -184,9 +187,10 @@ func getOnlyFdLookupMaps() []*program.Map {
 // initialization time.
 func getFdLookupSensor() *sensors.Sensor {
 	return &sensors.Sensor{
-		Name:  "FdLookup",
-		Progs: getFdLookupPrograms(),
-		Maps:  getFdLookupMaps(),
+		Name:   "FdLookup",
+		Progs:  getFdLookupPrograms(),
+		Maps:   getFdLookupMaps(),
+		Policy: "__ip__",
 	}
 }
 
@@ -243,11 +247,11 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 func openConfigMap() *ebpf.Map {
 	mapDir := bpf.MapPrefixPath()
 
-	fdLookupMap := FdLookupConfigMap
+	fdLookupMapPath := filepath.Join(mapDir, FdLookupConfigMap.PinPath)
 
-	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, fdLookupMap.Name), nil)
+	m, err := ebpf.LoadPinnedMap(fdLookupMapPath, nil)
 	for i := 0; err != nil; i++ {
-		m, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, fdLookupMap.Name), nil)
+		m, err = ebpf.LoadPinnedMap(fdLookupMapPath, nil)
 		if err != nil {
 			time.Sleep(mapRetryDelay * time.Second)
 		}
