@@ -10,6 +10,7 @@
 
 #define SKB_LOAD_BYTES
 #define TRACK_ICMP_FROM_SKB
+#define NO_SK_TO_TCP
 
 #include "vmlinux.h"
 #include "icmp/bpf_icmp.h"

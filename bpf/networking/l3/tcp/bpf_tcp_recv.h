@@ -70,41 +70,10 @@ tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off
 }
 
 #ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline)) int
-tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
-{
-	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
-
-	if (send)
-		return SK_PASS;
-
-	if (!cookie)
-		return SK_PASS;
-	if (!ip)
-		return SK_PASS;
-
-	/* Packet has at least enough space for the Timestamp IP Option,
-	 * so check if the first option is the Timestamp option that we
-	 * add to detect TCP latency.
-	 */
-	if (ip->ihl >= ts_size / sizeof(u32)) {
-		struct timestamp_option ts_opt;
-
-		if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
-			emit_ip_error_event(skb, &ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			return SK_PASS;
-		}
-		if (ts_opt.type != IPO_TYPE &&
-		    ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) &&
-		    ts_opt.magic != ts_opt.magic2) {
-			return SK_PASS;
-		}
-		check_timestamp(&ts_opt, cookie);
-	}
-	return SK_PASS;
-}
-#else
-int tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
+static inline __attribute__((always_inline))
+#endif
+int
+tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
 	__u64 tcp_bytes_sent, tcp_bytes_received;
 	struct tcp_send_check_sample_cfg *cfg;
@@ -185,6 +154,45 @@ int tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	return SK_PASS;
 }
 
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline)) int
+tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+{
+	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+
+	if (send)
+#ifndef NO_SK_TO_TCP
+		return tcp_handler_ip4_send(skb, ip, cookie);
+#else
+		return SK_PASS;
+#endif
+
+	if (!cookie)
+		return SK_PASS;
+	if (!ip)
+		return SK_PASS;
+
+	/* Packet has at least enough space for the Timestamp IP Option,
+	 * so check if the first option is the Timestamp option that we
+	 * add to detect TCP latency.
+	 */
+	if (ip->ihl >= ts_size / sizeof(u32)) {
+		struct timestamp_option ts_opt;
+
+		if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
+			emit_ip_error_event(skb, &ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			return SK_PASS;
+		}
+		if (ts_opt.type != IPO_TYPE &&
+		    ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) &&
+		    ts_opt.magic != ts_opt.magic2) {
+			return SK_PASS;
+		}
+		check_timestamp(&ts_opt, cookie);
+	}
+	return SK_PASS;
+}
+#else
 int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
