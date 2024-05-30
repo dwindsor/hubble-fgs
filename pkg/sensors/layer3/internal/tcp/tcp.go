@@ -122,9 +122,8 @@ var (
 		"tg_tcp_ack_snd_check",
 		"kprobe")
 
-	// Latency uses TC egress to add timestamp and cgroup skb ingress to calculate
-	// datagram latency.
-	Latency = program.Builder(
+	// Inet hooks for latency and statistics
+	InetRecv = program.Builder(
 		"bpf_cgroup_net.o",
 		"cgroup_ingress",
 		"cgroup_skb/ingress",
@@ -132,7 +131,15 @@ var (
 		"cgrp_ingress",
 	)
 
-	LatencyLazy = program.Builder(
+	InetSend = program.Builder(
+		"bpf_cgroup_net.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	InetRecvLazy = program.Builder(
 		"bpf_cgroup_net_load.o",
 		"cgroup_ingress",
 		"cgroup_skb/ingress",
@@ -140,12 +147,28 @@ var (
 		"cgrp_ingress",
 	)
 
-	LatencyLazy54 = program.Builder(
+	InetSendLazy = program.Builder(
+		"bpf_cgroup_net_load.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	InetRecvLazy54 = program.Builder(
 		"bpf_cgroup_net_load_5-4.o",
 		"cgroup_ingress",
 		"cgroup_skb/ingress",
 		"tg_cgroup_ingress",
 		"cgrp_ingress",
+	)
+
+	InetSendLazy54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
 	)
 
 	// Maps for TCP Sockets
@@ -155,9 +178,9 @@ var (
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", Connect)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", Connect)
 	// Shared Layer3 infrastructure
-	TcpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", Latency)
-	TcpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", LatencyLazy)
-	TcpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", LatencyLazy54)
+	TcpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSend)
+	TcpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy)
+	TcpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy54)
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
@@ -174,8 +197,8 @@ var (
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 
 	// Map for latency
-	LatencyConfigMap     = program.MapBuilder(networklatency.ConfigMapName, Latency)
-	LatencyConfigMapLazy = program.MapBuilder(networklatency.ConfigMapName, LatencyLazy)
+	LatencyConfigMap     = program.MapBuilder(networklatency.ConfigMapName, InetSend)
+	LatencyConfigMapLazy = program.MapBuilder(networklatency.ConfigMapName, InetSendLazy)
 
 	// Map for disabling events
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
@@ -244,15 +267,15 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		}
 
 		if !kernels.MinKernelVersion("5.5.0") {
-			progs = append(progs, LatencyLazy54)
+			progs = append(progs, InetSendLazy54)
 			maps = append(maps, LatencyConfigMapLazy)
 			maps = append(maps, TcpCgroupCfgMapLazy54)
 		} else if !kernels.MinKernelVersion("5.14.0") {
-			progs = append(progs, LatencyLazy)
+			progs = append(progs, InetSendLazy)
 			maps = append(maps, LatencyConfigMapLazy)
 			maps = append(maps, TcpCgroupCfgMapLazy)
 		} else {
-			progs = append(progs, Latency)
+			progs = append(progs, InetSend)
 			maps = append(maps, LatencyConfigMap)
 			maps = append(maps, TcpCgroupCfgMap)
 		}
