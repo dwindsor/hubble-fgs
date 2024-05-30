@@ -28,7 +28,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
@@ -191,7 +191,7 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 	if reply == nil {
 		var err error
 		var cleanup func()
-		maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, args.PinPath)
+		maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, args.PolicyName)
 		if err != nil {
 			return err
 		}
@@ -234,7 +234,7 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 }
 
 func renameDir(args *fm.FsScannerRename) error {
-	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
+	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PolicyName)
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 		var err error
 		if reply == nil {
 			var cleanup func()
-			maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, tp.PinPath)
+			maps, cleanup, err = fm.OpenFIMMaps(args.MapDir, tp.PolicyName)
 			if err != nil {
 				return fmt.Errorf("OpenFIMMaps(%s, %s): %w", args.MapDir, tp.PinPath, err)
 			}
@@ -376,7 +376,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 	for _, tp := range args.Tp {
-		handle, err := ebpf.LoadPinnedMap(filepath.Join(args.MapDir, sensors.PathJoin(tp.PinPath, fm.InodeMapName)), nil)
+		handle, err := ebpf.LoadPinnedMap(program.PolicyMapPath(args.MapDir, tp.PolicyName, fm.InodeMapName), nil)
 		if err != nil {
 			return err
 		}

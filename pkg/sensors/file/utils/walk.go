@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 
@@ -36,11 +35,15 @@ type FimMaps struct {
 	Inode *ebpf.Map
 }
 
-func OpenFIMMaps(mapDir string, pinPath string) (FimMaps, func(), error) {
+func policyMapPath(mapDir, policy, name string) string {
+	return filepath.Join(mapDir, policy, name)
+}
+
+func OpenFIMMaps(mapDir string, policy string) (FimMaps, func(), error) {
 	var inodeHandle *ebpf.Map
 	var err error
 
-	inodeHandle, err = ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, InodeMapName)), nil)
+	inodeHandle, err = ebpf.LoadPinnedMap(policyMapPath(mapDir, policy, InodeMapName), nil)
 	if err != nil {
 		return FimMaps{}, func() {}, err
 	}
