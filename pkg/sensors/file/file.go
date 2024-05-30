@@ -1030,7 +1030,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			sensors.PathJoin(e.PinPathPrefix, fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name)),
+			h.name,
 			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
@@ -1073,7 +1073,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "lpm_trie_map_alloc",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for _, str := range kprobes.PathsExclude {
 						if err := addFilters(m, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
 							return fmt.Errorf("failed to add ExcludePath: %w", err)
@@ -1100,7 +1100,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "patterns_map_alloc",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FilePrefixSuffix" {
 							key := uint32(i)
@@ -1129,7 +1129,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_system_type_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FileSystemType" {
 							for _, fsName := range p.FileSystemType.Names {
@@ -1150,7 +1150,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "hash_map_inode_alloc",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for k, v := range allInodes {
 						if err := m.Update(k, v, 0); err != nil {
 							return err
@@ -1162,7 +1162,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "exact_match_map_alloc",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for k, v := range exactFilePathMatch {
 						key := fileapi.FullPath{}
 						copy(key.Path[:], []byte(k))
@@ -1176,22 +1176,22 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "tg_mb_sel_opts",
-				Load: func(outerMap *ebpf.Map, _ uint32) error {
+				Load: func(outerMap *ebpf.Map, _ string, _ uint32) error {
 					return fm.PopulateMatchBinariesMaps(sel, outerMap)
 				},
 			},
 			{
 				Index: 0,
 				Name:  "tg_mb_paths",
-				Load: func(outerMap *ebpf.Map, _ uint32) error {
-					return fm.PopulateMatchBinariesPathsMaps(sel, e.PinPathPrefix, outerMap)
+				Load: func(outerMap *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					return fm.PopulateMatchBinariesPathsMaps(sel, pinPathPrefix, outerMap)
 				},
 			},
 			{
 				Index: 0,
 				Name:  "file_ops_maps",
-				Load: func(m *ebpf.Map, _ uint32) error {
-					if err := fm.GenerateFileOpsMap(m, sel, e.PinPathPrefix); err != nil {
+				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileOpsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
 					}
 					return nil
@@ -1200,8 +1200,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_digests_maps",
-				Load: func(m *ebpf.Map, _ uint32) error {
-					if err := fm.GenerateFileDigestsMap(m, sel, e.PinPathPrefix); err != nil {
+				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileDigestsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_digests_maps: %w", err)
 					}
 					return nil
@@ -1210,7 +1210,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_namespaces_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileNamespacesMap(m, sel); err != nil {
 						return fmt.Errorf("file_namespaces_map: %w", err)
 					}
@@ -1220,7 +1220,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_capabilities_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileCapabilitiesMap(m, sel); err != nil {
 						return fmt.Errorf("file_capabilities_map: %w", err)
 					}
@@ -1230,7 +1230,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_rename_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
 						return fmt.Errorf("file_rename_map: %w", err)
 					}
@@ -1240,8 +1240,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_open_flags_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
-					if err := fm.GenerateFileOpenFlagsMap(m, sel, e.PinPathPrefix); err != nil {
+				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileOpenFlagsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_open_flags_map: %w", err)
 					}
 					return nil
@@ -1250,7 +1250,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_actions_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileActionsMap(m, sel); err != nil {
 						return fmt.Errorf("file_actions_map: %w", err)
 					}
@@ -1260,7 +1260,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			{
 				Index: 0,
 				Name:  "file_config_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					return m.Update(uint32(0), config, ebpf.UpdateAny)
 				},
 			},
@@ -1270,7 +1270,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			load.MapLoad = append(load.MapLoad, &program.MapLoad{
 				Index: 0,
 				Name:  "glob_patterns_map",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GeneratePatternsMap(m, sel, e.PinPathPrefix); err != nil {
 						return fmt.Errorf("glob_patterns_map: %w", err)
 					}
@@ -1281,7 +1281,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			load.MapLoad = append(load.MapLoad, &program.MapLoad{
 				Index: 0,
 				Name:  "glob_temp_maps",
-				Load: func(m *ebpf.Map, _ uint32) error {
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
 					for i := range 2 * bpf.GetNumPossibleCPUs() {
 						innerName := fmt.Sprintf("glob_inner_%d", i)
 						innerSpec := &ebpf.MapSpec{
@@ -1314,7 +1314,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "exec_retprobe_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
@@ -1323,7 +1323,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "io_uring_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
@@ -1332,7 +1332,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "io_uring_retprobe_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
@@ -1341,7 +1341,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "fsnotify_created_files_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
@@ -1350,7 +1350,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "patterns_map_alloc"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
@@ -1359,25 +1359,25 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := "file_rename_map"
 			maps = append(
 				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+				program.MapBuilderPolicy(m, load),
 			)
 		}
 
 		if isPathBased {
 			mapName := "glob_patterns_map"
-			m := program.MapBuilderPin(mapName, sensors.PathJoin(e.PinPathPrefix, mapName), load)
+			m := program.MapBuilderPolicy(mapName, load)
 			m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
 			maps = append(maps, m)
 
 			mapName = "glob_temp_maps"
-			m = program.MapBuilderPin(mapName, sensors.PathJoin(e.PinPathPrefix, mapName), load)
+			m = program.MapBuilderPolicy(mapName, load)
 			m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
 			m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
 			maps = append(maps, m)
 		}
 
 		for _, m := range SharedMaps {
-			m := program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load)
+			m := program.MapBuilderPolicy(m, load)
 			// custom max entries setup
 			switch {
 			case m.Name == "tg_mb_paths":
@@ -1406,9 +1406,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	return &sensors.Sensor{
-		Name:  name,
-		Progs: progs,
-		Maps:  maps,
+		Name:   name,
+		Progs:  progs,
+		Maps:   maps,
+		Policy: policy.TpName(),
 		PreUnloadHook: func() error {
 			pol.FileMonitoringTable.RmFIM(config.TpId)
 			return nil
