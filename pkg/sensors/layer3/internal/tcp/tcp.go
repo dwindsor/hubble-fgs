@@ -249,7 +249,11 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		progs = append(progs, RttTracer)
 	}
 
-	if !kernels.MinKernelVersion("5.3.0") {
+	/* Kernels <=5.4 do not have support for sk_to_tcp() which means
+	 * we can not support reading stats off the TCP socket easily so
+	 * for these kernels fall back to extra kprobe hook.
+	 */
+	if !kernels.MinKernelVersion("5.5.0") {
 		progs = append(progs, SendCheck4)
 		progs = append(progs, SendCheck6)
 	}
@@ -266,16 +270,25 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			}
 		}
 
+		/* The receive inet hooks are not necessary in all cases, but
+		 * most users will have DNS enabled at least anyways so the
+		 * cost is already there anyways. And its just easier to load
+		 * instead of doing a feature/option matchup. Anyways we likely
+		 * will move RX stats here shortly.
+		 */
 		if !kernels.MinKernelVersion("5.5.0") {
 			progs = append(progs, InetSendLazy54)
+			progs = append(progs, InetRecvLazy54)
 			maps = append(maps, LatencyConfigMapLazy)
 			maps = append(maps, TcpCgroupCfgMapLazy54)
 		} else if !kernels.MinKernelVersion("5.14.0") {
 			progs = append(progs, InetSendLazy)
+			progs = append(progs, InetRecvLazy)
 			maps = append(maps, LatencyConfigMapLazy)
 			maps = append(maps, TcpCgroupCfgMapLazy)
 		} else {
 			progs = append(progs, InetSend)
+			progs = append(progs, InetRecv)
 			maps = append(maps, LatencyConfigMap)
 			maps = append(maps, TcpCgroupCfgMap)
 		}
