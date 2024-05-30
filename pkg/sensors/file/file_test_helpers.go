@@ -157,7 +157,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 
 	if spec.MonitorHostFiles {
 		if _, err := TracingPolicyInitFsScanner("test-policy", *spec, mapDir, tc.PinPathPrefix, true); err != nil {
-			return err
+			return fmt.Errorf("failed TracingPolicyInitFsScanner: %w", err)
 		}
 	}
 

@@ -389,13 +389,13 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
 	if err != nil {
 		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitHost)
-		return nil, err
+		return nil, fmt.Errorf("failed filemetrics.FileTotalErrorsInc: %w", err)
 	}
 	defer client.Close()
 
 	reply := make(map[fileapi.InodeKey]fileapi.InodeVal)
 	if err := client.Call("FsScannerRpc.TracingPolicyInit", &f, &reply); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed FsScannerRpc.TracingPolicyInit: %w", err)
 	}
 	return reply, nil
 }
