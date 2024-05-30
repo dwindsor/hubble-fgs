@@ -12,14 +12,12 @@ package file
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/selectors"
-
-	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
@@ -27,9 +25,7 @@ import (
 )
 
 // remove all entries of a map
-func cleanupMap[K any, V any](pinPathPrefix string, mapName string) error {
-	mapDir := bpf.MapPrefixPath()
-	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
+func cleanupMap[K any, V any](mapPath string) error {
 	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
@@ -55,9 +51,7 @@ func cleanupMap[K any, V any](pinPathPrefix string, mapName string) error {
 	return nil
 }
 
-func cleanupArrayMapMbPaths(pinPathPrefix string, mapName string) error {
-	mapDir := bpf.MapPrefixPath()
-	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
+func cleanupArrayMapMbPaths(mapPath string) error {
 	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
@@ -76,9 +70,7 @@ func cleanupArrayMapMbPaths(pinPathPrefix string, mapName string) error {
 	return nil
 }
 
-func cleanupArrayMapSelOpts(pinPathPrefix string, mapName string) error {
-	mapDir := bpf.MapPrefixPath()
-	mapPath := filepath.Join(mapDir, sensors.PathJoin(pinPathPrefix, mapName))
+func cleanupArrayMapSelOpts(mapPath string) error {
 	handle, err := ebpf.LoadPinnedMap(mapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
@@ -102,25 +94,27 @@ func cleanupArrayMapSelOpts(pinPathPrefix string, mapName string) error {
 // only for testing
 // remove all entries of all FIM maps
 func cleanupFIMMaps(tc *pol.FileMonitoring) error {
-	if err := cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](tc.PinPathPrefix, "lpm_trie_map_alloc"); err != nil {
+	mapDir := bpf.MapPrefixPath()
+
+	if err := cleanupMap[fileapi.LPMMapKey, fileapi.LPMMapValue](program.PolicyMapPath(mapDir, tc.TpName, "lpm_trie_map_alloc")); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.InodeKey, fileapi.InodeVal](tc.PinPathPrefix, "hash_map_inode_alloc"); err != nil {
+	if err := cleanupMap[fileapi.InodeKey, fileapi.InodeVal](program.PolicyMapPath(mapDir, tc.TpName, "hash_map_inode_alloc")); err != nil {
 		return err
 	}
-	if err := cleanupArrayMapSelOpts(tc.PinPathPrefix, "tg_mb_sel_opts"); err != nil {
+	if err := cleanupArrayMapSelOpts(program.PolicyMapPath(mapDir, tc.TpName, "tg_mb_sel_opts")); err != nil {
 		return err
 	}
-	if err := cleanupArrayMapMbPaths(tc.PinPathPrefix, "tg_mb_paths"); err != nil {
+	if err := cleanupArrayMapMbPaths(program.PolicyMapPath(mapDir, tc.TpName, "tg_mb_paths")); err != nil {
 		return err
 	}
-	if err := cleanupMap[uint32, uint32](tc.PinPathPrefix, "file_ops_maps"); err != nil {
+	if err := cleanupMap[uint32, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_ops_maps")); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.DigestKey, uint32](tc.PinPathPrefix, "file_digests_maps"); err != nil {
+	if err := cleanupMap[fileapi.DigestKey, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_digests_maps")); err != nil {
 		return err
 	}
-	if err := cleanupMap[uint32, uint32](tc.PinPathPrefix, "file_actions_map"); err != nil {
+	if err := cleanupMap[uint32, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_actions_map")); err != nil {
 		return err
 	}
 
@@ -132,7 +126,7 @@ func cleanupFIMMaps(tc *pol.FileMonitoring) error {
 func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 	tc.Spec = spec
 	mapDir := bpf.MapPrefixPath()
-	mapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "lpm_trie_map_alloc"))
+	mapPath := program.PolicyMapPath(mapDir, tc.TpName, "lpm_trie_map_alloc")
 	lpmMap, err := ebpf.LoadPinnedMap(mapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mapPath)
@@ -156,7 +150,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 	}
 
 	if spec.MonitorHostFiles {
-		if _, err := TracingPolicyInitFsScanner("test-policy", *spec, mapDir, tc.PinPathPrefix, true); err != nil {
+		if _, err := TracingPolicyInitFsScanner(tc.TpName, *spec, mapDir, tc.TpName, true); err != nil {
 			return fmt.Errorf("failed TracingPolicyInitFsScanner: %w", err)
 		}
 	}
@@ -166,7 +160,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to initialize kernel selector state: %w", err)
 	}
 
-	configMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_config_map"))
+	configMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_config_map")
 	configMap, err := ebpf.LoadPinnedMap(configMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", configMapPath)
@@ -178,7 +172,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to insert %v: %w", sel, err)
 	}
 
-	mbSelOptsPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "tg_mb_sel_opts"))
+	mbSelOptsPath := program.PolicyMapPath(mapDir, tc.TpName, "tg_mb_sel_opts")
 	mbSelOpts, err := ebpf.LoadPinnedMap(mbSelOptsPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mbSelOptsPath)
@@ -189,7 +183,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to populate tg_mb_sel_opts: %w", err)
 	}
 
-	mbPathsPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "tg_mb_paths"))
+	mbPathsPath := program.PolicyMapPath(mapDir, tc.TpName, "tg_mb_paths")
 	mbPaths, err := ebpf.LoadPinnedMap(mbPathsPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", mbPathsPath)
@@ -200,7 +194,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to populate tg_mb_paths: %w", err)
 	}
 
-	selOpsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_ops_maps"))
+	selOpsMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_ops_maps")
 	selOpsHandle, err := ebpf.LoadPinnedMap(selOpsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
@@ -211,7 +205,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to populate file_ops_maps: %w", err)
 	}
 
-	selDigestsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_digests_maps"))
+	selDigestsMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_digests_maps")
 	selDigestsHandle, err := ebpf.LoadPinnedMap(selDigestsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
@@ -222,7 +216,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		return fmt.Errorf("failed to populate file_digests_maps: %w", err)
 	}
 
-	selActionsMapPath := filepath.Join(mapDir, sensors.PathJoin(tc.PinPathPrefix, "file_actions_map"))
+	selActionsMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_actions_map")
 	selActionsHandle, err := ebpf.LoadPinnedMap(selActionsMapPath, nil)
 	if err != nil {
 		return fmt.Errorf("cannot open pinned map %s", selActionsMapPath)
