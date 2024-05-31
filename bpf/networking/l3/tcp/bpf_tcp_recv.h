@@ -37,8 +37,8 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 	struct latency_protocol_config *tcp_latency = 0;
 	struct latency_config *latency_config = 0;
 	struct tcpsocketmap_value *socket = 0;
-	int zero = 0;
 	s64 latency = 0;
+	int zero = 0;
 
 	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 	if (!latency_config) {

@@ -58,6 +58,7 @@ static inline __attribute__((always_inline)) bool
 check_subnet4(u32 addr, u8 prefix_len, u32 daddr)
 {
 	u32 mask = 0xffffffff >> (32 - prefix_len);
+
 	if ((addr & mask) == (daddr & mask)) {
 		return true;
 	}
@@ -107,22 +108,22 @@ static inline __attribute__((always_inline)) bool
 egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 		  struct ethhdr *eth, struct iphdr *iph)
 {
-	void *buffer;
-	u32 len;
-	struct timestamp_option *opt;
-	struct latency_config *latency_config;
 	struct latency_protocol_config *config;
+	struct latency_config *latency_config;
+	struct timestamp_option *opt;
 	struct iphdr *newiph;
-	u16 source = 0;
-	u16 dest = 0;
 	struct udphdr *udph;
 	struct tcphdr *tcph;
-	u16 tot_len;
-	int zero = 0;
-	long ret;
-	u32 ip_csum;
 	u16 *pkt_words;
+	u16 source = 0;
 	u64 timestamp;
+	u16 dest = 0;
+	int zero = 0;
+	void *buffer;
+	u16 tot_len;
+	u32 ip_csum;
+	long ret;
+	u32 len;
 
 	if (iph->protocol != IPPROTO_UDP && iph->protocol != IPPROTO_TCP)
 		return true;

@@ -47,8 +47,8 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	__u32 ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
-	u16 family;
 	uint64_t size;
+	u16 family;
 	u64 cookie;
 
 	skp = (struct sock *)PT_REGS_PARM1(ctx);

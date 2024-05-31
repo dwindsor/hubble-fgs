@@ -75,6 +75,7 @@ cookie_inc_version()
 static inline __attribute__((always_inline)) u64 get_cookie(struct sock *sk)
 {
 	u64 cookie = 0;
+
 	probe_read_kernel(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));
 	return cookie;
 }
@@ -83,6 +84,7 @@ static inline __attribute__((always_inline)) u64
 get_cookie_or_sk(struct sock *sk)
 {
 	u64 cookie = get_cookie(sk);
+
 	if (cookie) {
 		return cookie;
 	} else {
@@ -96,6 +98,7 @@ get_cookie_or_sk_from_msg(ctx_md *msg)
 {
 	struct sock *sk = (struct sock *)msg->sk;
 	u64 cookie = get_socket_cookie(msg);
+
 	if (cookie) {
 		return cookie;
 	} else {
@@ -107,6 +110,7 @@ static inline __attribute__((always_inline)) u64
 get_cookie_or_sk_from_msg(struct __sk_buff *skb)
 {
 	u64 cookie = get_socket_cookie(skb);
+
 	if (cookie) {
 		return cookie;
 	} else {
@@ -146,9 +150,9 @@ static inline __attribute__((always_inline)) void
 add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 {
 	struct socketmap_value *existing = (struct socketmap_value *)map_lookup_elem(&tg_socket_map, cookie);
-	int err;
 	int zero = 0;
 	__s64 *cntr;
+	int err;
 
 	if (existing && existing->key.pid == v->key.pid && existing->key.ktime == v->key.ktime && existing->version == v->version)
 		return;
@@ -189,8 +193,8 @@ lookup_socketmap(u64 *cookie)
 static inline __attribute__((always_inline)) bool
 update_socketmap(u64 *cookie, u32 pid, u16 protocol)
 {
-	struct execve_map_value *value;
 	struct socketmap_value *process;
+	struct execve_map_value *value;
 	int zero = 0;
 
 	if (!pid || !cookie || !*cookie)

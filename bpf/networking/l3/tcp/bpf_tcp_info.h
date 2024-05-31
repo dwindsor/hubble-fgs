@@ -77,9 +77,9 @@ static inline __attribute__((always_inline)) void
 add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, bool update_tuple_map)
 {
 	struct tcpsocketmap_value *existing = (struct tcpsocketmap_value *)map_lookup_elem(&tg_tcpsocket_map, cookie);
-	int err;
 	int zero = 0;
 	__s64 *cntr;
+	int err;
 
 	err = map_update_elem(&tg_tcpsocket_map, cookie, v, 0);
 	if (!err) {

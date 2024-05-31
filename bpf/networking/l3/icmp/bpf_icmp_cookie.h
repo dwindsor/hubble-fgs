@@ -387,8 +387,8 @@ static inline __attribute__((always_inline)) __u64 *
 lookup_socket_tuple_map(struct socket_tuple_key *key, int dif, int sdif)
 {
 	uint max_saddr = 1, max_daddr = 1, max_if = 2;
-	struct socket_tuple_hint_value *val;
 	struct socket_tuple_key lookup_key = {};
+	struct socket_tuple_hint_value *val;
 	uint saddr_cnt, daddr_cnt, if_cnt;
 	__u64 *cookie;
 

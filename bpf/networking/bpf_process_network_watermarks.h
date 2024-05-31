@@ -11,9 +11,9 @@
 #ifndef __BPF_PROCESS_NETWORK_WATERMARKS_H__
 #define __BPF_PROCESS_NETWORK_WATERMARKS_H__
 
-#include "../lib/bpf_helpers.h"
-#include "../lib/networkmsg.h"
-#include "../lib/iso_msg_types.h"
+#include "lib/bpf_helpers.h"
+#include "lib/networkmsg.h"
+#include "lib/iso_msg_types.h"
 #include "bpf_cookie.h"
 
 #define MAX_UDP_PROCESSES 32768
@@ -135,10 +135,10 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 static inline __attribute__((always_inline)) void
 process_watermarks_map_delete(void *ctx, __u32 tgid)
 {
-	int zero = 0;
-	__u64 *cntr;
 	struct msg_process_network_watermarks_event *val;
 	struct execve_map_value *process;
+	int zero = 0;
+	__u64 *cntr;
 
 	process = execve_map_get_noinit(tgid);
 	val = map_lookup_elem(&tg_pn_watermarks_event_heap, &zero);
@@ -229,8 +229,8 @@ static inline __attribute__((always_inline)) void
 process_network_watermarks(void *ctx, struct socketmap_value *process, u64 protocol,
 			   u64 send, u64 vol, struct process_network_watermarks_config *c)
 {
-	u64 watermarks_key;
 	struct process_network_watermarks_log *watermarks_log;
+	u64 watermarks_key;
 
 	u64 current_time_ns = ktime_get_ns();
 

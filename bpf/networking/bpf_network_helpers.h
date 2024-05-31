@@ -11,9 +11,9 @@
 #ifndef __BPF_NETWORK_HELPERS_H__
 #define __BPF_NETWORK_HELPERS_H__
 
-#include "../lib/bpf_helpers.h"
-#include "../lib/iso_msg_types.h"
-#include "../lib/networkmsg.h"
+#include "lib/bpf_helpers.h"
+#include "lib/iso_msg_types.h"
+#include "lib/networkmsg.h"
 #include "bpf_cookie.h"
 #include "l3/tcp/bpf_tcp_info.h"
 
@@ -203,8 +203,8 @@ static inline __attribute__((always_inline)) __u8
 get_ip_version(u16 *network_header_offset, void **skbh, struct sk_buff *skb)
 {
 	u16 network_header_off;
-	void *skb_head;
 	struct ip_ver ver;
+	void *skb_head;
 
 	if (probe_read_kernel(&network_header_off, sizeof(u16),
 			      _(&skb->network_header)) < 0)
@@ -323,8 +323,8 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 	      unsigned long int *err)
 {
 	struct ipv6ext *e;
-	int zero = 0;
 	u8 header_count;
+	int zero = 0;
 
 	e = map_lookup_elem(&ipv6ext_heap, &zero);
 	if (!e) {
@@ -444,8 +444,8 @@ static inline __attribute__((always_inline)) void
 emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		    u8 packetver, u8 send, u64 data, unsigned long int err)
 {
-	struct msg_ip_event *val;
 	struct socketmap_value *process = 0;
+	struct msg_ip_event *val;
 	int zero = 0;
 
 	val = map_lookup_elem(&ip_error_event_heap, &zero);

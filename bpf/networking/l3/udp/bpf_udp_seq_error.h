@@ -55,19 +55,19 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		      struct udp_info_value *v, struct udp_sensor_config *config)
 {
 #error "DO NOT COMPILE IF THIS IS ENABLED"
-	u8 flags;
-	u8 line_id_sz;
-	u8 seq_num_sz;
-	u32 line_id = 0;
-	u32 seq_num = 0;
-	u16 temp_line_id = 0;
-	u32 temp_seq_num = 0;
-	u32 expected_seq_num = 0;
-	u32 next_seq_num = 0;
-	u32 *seq_nums;
-	int zero = 0;
 	struct msg_udp_seq_error_event *e;
 	u32 max_seq_num = (1 << 16) - 1;
+	u32 expected_seq_num = 0;
+	u16 temp_line_id = 0;
+	u32 temp_seq_num = 0;
+	u32 next_seq_num = 0;
+	u32 line_id = 0;
+	u32 seq_num = 0;
+	u8 line_id_sz;
+	u8 seq_num_sz;
+	u32 *seq_nums;
+	int zero = 0;
+	u8 flags;
 
 	if (payload_sz < 6)
 		return;
@@ -203,6 +203,7 @@ static inline __attribute__((always_inline)) bool
 match_seq_check_ports(u16 *ports, uint16_t port1, uint16_t port2)
 {
 	int i;
+
 #pragma unroll
 	for (i = 0; i < 8; i++) {
 		if (!ports[i])

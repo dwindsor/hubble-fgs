@@ -99,6 +99,7 @@ calc_latency(u64 bootns, u64 ts_low, u64 ts_high)
 	u64 curr_time = (ktime_get_ns() + bootns + 500) / 1000;
 	/* Clear bit 31 on both timestamps. High needs shifting by 31 bits */
 	u64 ts = (ts_low & 0x7fffffff) | ((ts_high & 0x7fffffff) << 31);
+
 	return curr_time - ts;
 }
 

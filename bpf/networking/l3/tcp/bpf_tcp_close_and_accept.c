@@ -48,8 +48,8 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	struct sock *skp;
 	u32 zero = 0;
 	size_t size;
-	int state;
 	u64 cookie;
+	int state;
 
 	state = PT_REGS_PARM2(ctx);
 	skp = (struct sock *)PT_REGS_PARM1(ctx);

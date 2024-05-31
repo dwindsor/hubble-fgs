@@ -18,8 +18,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 __attribute__((section("classifier/egress_timestamp"), used)) int
 tg_egress_timestamp(struct __sk_buff *skb)
 {
-	void *data = (void *)(long)skb->data;
 	void *data_end = (void *)(long)skb->data_end;
+	void *data = (void *)(long)skb->data;
 	struct ethhdr *eth = data;
 	struct iphdr *iph;
 

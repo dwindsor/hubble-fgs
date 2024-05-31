@@ -220,8 +220,8 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) void
 udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ipv6, u64 send)
 {
-	struct udp_sensor_config *config;
 	struct process_network_watermarks_config *c;
+	struct udp_sensor_config *config;
 	struct socketmap_value *process;
 	int zero = 0;
 	u64 __cookie;
@@ -263,15 +263,15 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 static inline __attribute__((always_inline)) void
 inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 {
-	struct udp_packet_details *packet;
-	int zero = 0;
-	u64 cookie;
-	u8 proto, packetver = 0;
-	unsigned long int err = 0;
 	struct timestamp_option *ts_opt = 0;
-	u16 ethertype;
+	struct udp_packet_details *packet;
+	unsigned long int err = 0;
+	u8 proto, packetver = 0;
 	bool ipv6 = false;
+	u16 ethertype;
+	int zero = 0;
 	void *ip = 0;
+	u64 cookie;
 
 	if (probe_read_kernel(&ethertype, sizeof(ethertype), _(&(skb->protocol))) < 0)
 		return;

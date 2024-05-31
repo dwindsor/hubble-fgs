@@ -53,10 +53,10 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 {
 	struct tcpsocketmap_value *listen_socket;
 	struct socketmap_value *listen_process;
-	u64 *listen_cookie_p;
-	u64 accept_cookie = PT_REGS_RC(ctx);
 	u64 pid_tgid = get_current_pid_tgid();
+	u64 accept_cookie = PT_REGS_RC(ctx);
 	u32 cookie_version = 0;
+	u64 *listen_cookie_p;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	listen_cookie_p = map_lookup_elem(&tg_tcp_accept_sock_map, &pid_tgid);
@@ -87,9 +87,9 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	struct tcpsocketmap_value *socket;
 	struct msg_ip_event *val;
 	u64 cookie = (u64)skp;
-	size_t size;
 	u16 family = 0;
 	u32 zero = 0;
+	size_t size;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	if (!cookie)

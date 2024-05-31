@@ -21,6 +21,7 @@ __attribute__((section("kprobe/tcp_v4_send_check"), used)) int
 tg_event_tcp_v4_send_check(struct pt_regs *ctx)
 {
 	struct sock *skp = (struct sock *)PT_REGS_PARM1(ctx);
+
 	return __event_tcp_send_check(ctx, skp, false);
 }
 
@@ -28,5 +29,6 @@ __attribute__((section("kprobe/inet6_csk_xmit"), used)) int
 tg_event_tcp_v6_send_check(struct pt_regs *ctx)
 {
 	struct sock *skp = (struct sock *)PT_REGS_PARM1(ctx);
+
 	return __event_tcp_send_check(ctx, skp, true);
 }
