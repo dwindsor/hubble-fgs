@@ -176,7 +176,6 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	}
 
 	<-ctx.Done()
-	obs.RemovePrograms()
 }
 
 type benchmarkListener struct {

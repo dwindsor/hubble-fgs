@@ -278,7 +278,6 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	}
 
 	<-ctx.Done()
-	obs.RemovePrograms()
 }
 
 func raceTCPLoad(ctx context.Context) {

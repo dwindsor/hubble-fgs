@@ -578,13 +578,6 @@ func hubbleFGSExecute() error {
 		log.Warnf("faied to clean %s. Consider removing it manually", oldBpfDir)
 	}
 
-	/* Remove any stale programs, otherwise feature set change can cause
-	 * old programs to linger resulting in undefined behavior. And because
-	 * we recapture current running state from proc and/or have cache of
-	 * events no state should be lost/missed.
-	 */
-	obs.RemovePrograms()
-
 	err = btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
