@@ -38,12 +38,14 @@ import (
 )
 
 var (
-	configured  = false
-	tcpEnabled  = false
-	udpEnabled  = false
-	dnsEnabled  = false
-	icmpEnabled = false
-	rawEnabled  = false
+	cgrp_ingress_configured = false
+	cgrp_egress_configured  = false
+	configured              = false
+	tcpEnabled              = false
+	udpEnabled              = false
+	dnsEnabled              = false
+	icmpEnabled             = false
+	rawEnabled              = false
 )
 
 var (
@@ -52,6 +54,8 @@ var (
 
 func unloadLayer3Sensor() error {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	cgrp_ingress_configured = false
+	cgrp_egress_configured = false
 	configured = false
 	if tcpEnabled {
 		err := tcp.UnloadSensor()
@@ -91,6 +95,8 @@ func unloadLayer3Sensor() error {
 
 func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	cgrp_ingress_configured = false
+	cgrp_egress_configured = false
 	configured = false
 
 	var progs []*program.Program
@@ -293,7 +299,27 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	switch args.Load.Type {
-	case "cgrp_ingress", "cgrp_egress", "cgrp_inet4_bind", "cgrp_inet6_bind":
+	case "cgrp_ingress":
+		if cgrp_ingress_configured {
+			break
+		}
+		cgrp_ingress_configured = true
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("CGRP")
+			return err
+		}
+	case "cgrp_egress":
+		if cgrp_egress_configured {
+			break
+		}
+		cgrp_egress_configured = true
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("CGRP")
+			return err
+		}
+	case "cgrp_inet4_bind", "cgrp_inet6_bind":
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("CGRP")
