@@ -348,7 +348,7 @@ func TestExistingListenEvent4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
+		WithArguments(sm.Full("-nvlp 8082 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -361,12 +361,12 @@ func TestExistingListenEvent4(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8082).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
+	cmdServer := exec.Command(server, "-nvlp", "8082", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -394,7 +394,7 @@ func TestExistingAcceptEvent4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
+		WithArguments(sm.Full("-nvlp 8083 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -407,18 +407,18 @@ func TestExistingAcceptEvent4(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8083).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8083).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
+	cmdServer := exec.Command(server, "-nvlp", "8083", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
@@ -428,7 +428,7 @@ func TestExistingAcceptEvent4(t *testing.T) {
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "127.0.0.1", "8083")
 	assert.NoError(t, cmdClient.Start())
 	time.Sleep(1000 * time.Millisecond)
 
@@ -447,7 +447,7 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
+		WithArguments(sm.Full("-nvlp 8094 -s 0.0.0.0")).
 		WithCwd(sm.Full("/"))
 
 	checker := ec.NewUnorderedEventChecker(
@@ -461,7 +461,7 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8094).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
@@ -472,7 +472,7 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 
 	/* Start server in '/' before creating observer */
 	os.Chdir("/")
-	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
+	cmdServer := exec.Command(server, "-nvlp", "8094", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 	os.Chdir(path)
 
@@ -499,7 +499,7 @@ func TestListenAcceptClose4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081"))
+		WithArguments(sm.Full("-nvlp 8085"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -512,19 +512,19 @@ func TestListenAcceptClose4(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker("ncClose").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
-			WithSourcePort(8081).
+			WithSourcePort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		// TODO: it would be good if we could also check the close event on
@@ -537,10 +537,10 @@ func TestListenAcceptClose4(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8085")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "127.0.0.1", "8085")
 	assert.NoError(t, cmdClient.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -566,14 +566,14 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081"))
+		WithArguments(sm.Full("-nvlp 8086"))
 
 	listenChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8086).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 	acceptChecker := ec.NewUnorderedEventChecker(
@@ -581,7 +581,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8086).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 	closeChecker := ec.NewUnorderedEventChecker(
@@ -589,7 +589,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
-			WithSourcePort(8081).
+			WithSourcePort(8086).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 	)
@@ -598,10 +598,10 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8086")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "127.0.0.1", "8086")
 	assert.NoError(t, cmdClient.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -639,8 +639,8 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
-	observertesthelper.WaitForProcess("nc -nvlp 8081 -s 0.0.0.0")
+	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
+	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
@@ -661,7 +661,7 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("busybox")).
-		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
+		WithArguments(sm.Full("-nvlp 8087 -s 0.0.0.0")).
 		WithCwd(sm.Full("/")).
 		WithUid(0)
 
@@ -674,7 +674,7 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8087).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
@@ -697,9 +697,9 @@ func TestDockerListenConnect4(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "0.0.0.0")
+	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -711,14 +711,14 @@ func TestDockerListenConnect4(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
+		WithArguments(sm.Full("-nvlp 8088 -s 0.0.0.0")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsServerID)
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-p 9876 fgs-test-server 8081")).
+		WithArguments(sm.Full("-p 9876 fgs-test-server 8088")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsClientID)
@@ -732,24 +732,24 @@ func TestDockerListenConnect4(t *testing.T) {
 		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8088).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker),
 		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
-			WithDestinationPort(8081).
+			WithDestinationPort(8088).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker("serverClose").
 			WithProcess(ncSrvChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
-			WithSourcePort(8081).
+			WithSourcePort(8088).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		ec.NewProcessCloseChecker("clientClose").
 			WithProcess(ncCliChecker).
-			WithDestinationPort(8081).
+			WithDestinationPort(8088).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("connect")),
@@ -1353,7 +1353,7 @@ func TestExistingListenEvent6(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
+		WithArguments(sm.Full("-6nvlp 8082 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1366,12 +1366,12 @@ func TestExistingListenEvent6(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8082).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	cmdServer := exec.Command(server, "-6nvlp", "8082", "-s", "::")
 	assert.NoError(t, cmdServer.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -1399,7 +1399,7 @@ func TestExistingAcceptEvent6(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
+		WithArguments(sm.Full("-6nvlp 8083 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1412,18 +1412,18 @@ func TestExistingAcceptEvent6(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8083).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
-			WithSourcePort(8081).
+			WithSourcePort(8083).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	cmdServer := exec.Command(server, "-6nvlp", "8083", "-s", "::")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
@@ -1433,7 +1433,7 @@ func TestExistingAcceptEvent6(t *testing.T) {
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	cmdClient := exec.Command(client, "-6", "::1", "8083")
 	assert.NoError(t, cmdClient.Start())
 	time.Sleep(1000 * time.Millisecond)
 
@@ -1452,7 +1452,7 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8081 -s ::")).
+		WithArguments(sm.Full("-6nvlp 8094 -s ::")).
 		WithCwd(sm.Full("/"))
 
 	checker := ec.NewUnorderedEventChecker(
@@ -1466,7 +1466,7 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8094).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
@@ -1477,7 +1477,7 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 
 	/* Start server in '/' before creating observer */
 	os.Chdir("/")
-	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	cmdServer := exec.Command(server, "-6nvlp", "8094", "-s", "::")
 	assert.NoError(t, cmdServer.Start())
 	os.Chdir(path)
 
@@ -1504,7 +1504,7 @@ func TestListenAcceptClose6(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8081"))
+		WithArguments(sm.Full("-6nvlp 8085"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1517,19 +1517,19 @@ func TestListenAcceptClose6(t *testing.T) {
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker("ncAccept").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
-			WithSourcePort(8081).
+			WithSourcePort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker("ncClose").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::")).
-			WithSourcePort(8081).
+			WithSourcePort(8085).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		// TODO: it would be good if we could also check the close event on
@@ -1542,10 +1542,10 @@ func TestListenAcceptClose6(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6nvlp", "8081")
+	cmdServer := exec.Command(server, "-6nvlp", "8085")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	cmdClient := exec.Command(client, "-6", "::1", "8085")
 	assert.NoError(t, cmdClient.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -1569,8 +1569,8 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
-	observertesthelper.WaitForProcess("nc -nvlp 8081 -s [::]")
+	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
+	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
@@ -1591,7 +1591,7 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("busybox")).
-		WithArguments(sm.Full("-nvlp 8081 -s [::]")).
+		WithArguments(sm.Full("-nvlp 8086 -s [::]")).
 		WithCwd(sm.Full("/")).
 		WithUid(0)
 
@@ -1604,7 +1604,7 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 		ec.NewProcessListenChecker("ncListen").
 			WithProcess(ncChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8086).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
@@ -1627,9 +1627,9 @@ func TestDockerListenConnect6(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8081", "-s", "[::]")
+	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8081")
+	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8087")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1641,14 +1641,14 @@ func TestDockerListenConnect6(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-nvlp 8081 -s [::]")).
+		WithArguments(sm.Full("-nvlp 8087 -s [::]")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsServerID)
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-p 9876 fgs-test-server 8081")).
+		WithArguments(sm.Full("-p 9876 fgs-test-server 8087")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsClientID)
@@ -1662,24 +1662,24 @@ func TestDockerListenConnect6(t *testing.T) {
 		ec.NewProcessListenChecker("serverListen").
 			WithProcess(ncSrvChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8087).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessExecChecker("clientExec").
 			WithProcess(ncCliChecker),
 		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(ncCliChecker).
-			WithDestinationPort(8081).
+			WithDestinationPort(8087).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker("serverClose").
 			WithProcess(ncSrvChecker).
 			WithSourceIp(sm.Full("::")).
-			WithSourcePort(8081).
+			WithSourcePort(8087).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		ec.NewProcessCloseChecker("clientClose").
 			WithProcess(ncCliChecker).
-			WithDestinationPort(8081).
+			WithDestinationPort(8087).
 			WithSourcePort(9876).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("connect")),
