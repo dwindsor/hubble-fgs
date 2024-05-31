@@ -1,0 +1,179 @@
+INGRESSPORT 8888
+
+# Connection has been established and we should see:
+# listen, accept and connect sockets.
+
+EGRESS
+	"GET / HTTP/1.1\n"
+	"Host: foobar.baz\n"
+	"\n"
+END
+
+# Event from the client socket.
+EVENT http
+  $ 10 00 00 00 # op + pad
+  h4 156        # size
+  NZ 8          # ktime
+
+  ## tuple
+  TUPLE CLI SRV
+
+  ## process
+  NZ 4          # pid should be set.
+  $ 00 00 00 00 # pad
+  $ ef be ad de 04 03 02 01 # ktime
+
+  ## http
+  h4 3          # method=GET
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 00 00 00 00 00 00 00 00 # recv
+  h8 44			    # length
+
+  ## payload
+  h4 1 # type: request_url
+  h4 1 # length
+  "/"
+
+  h4 3 # type: request_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 2  # type: request_host
+  h4 11 # length
+  " foobar.baz"
+END
+
+# Event from the server socket.
+EVENT http
+  $ 10 00 00 00 # op + pad
+  h4 156        # size
+  NZ 8          # ktime
+
+  ## tuple
+  TUPLE SRV CLI
+
+  ## process
+  NZ 4          # pid should be set.
+  $ 00 00 00 00 # pad
+  $ ef be ad de 04 03 02 01 # ktime
+
+  ## http
+  h4 3          # method=GET
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 00 00 00 00 00 00 00 00 # recv
+  h8 44			    # length
+
+  ## payload
+  h4 1 # type: request_url
+  h4 1 # length
+  "/"
+
+  h4 3 # type: request_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 2  # type: request_host
+  h4 11 # length
+  " foobar.baz"
+END
+
+INGRESS
+	"HTTP/1.1 200 OK\n"
+	"Location: http://foobar.baz\n"
+	"Content-Length: 5\n"
+	"\n"
+	"hello"
+END
+
+EVENT http
+  $ 10 00 00 00 # op + pad
+  h4 185        # size
+  NZ 8          # ktime
+
+  ## tuple
+  TUPLE SRV CLI
+
+  ## process
+  NZ 4          # pid should be set.
+  $ 00 00 00 00 # pad
+  $ ef be ad de 04 03 02 01 # ktime
+
+  ## http
+  h4 11         # method=GET
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # recv
+  h8 73			    # length
+
+  ## payload
+  h4 8 # type: response_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 9 # type: response_code
+  h4 3 # length
+  "200"
+
+  h4 10 # type: response_reason
+  h4 2  # length
+  "OK"
+
+  h4 7  # type: request_unknown
+  h4 18 # length
+  " http://foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 2 # length
+  " 5"
+
+  $ 00 00 00 # mystery bytes
+END
+
+EVENT http
+  $ 10 00 00 00 # op + pad
+  h4 185        # size
+  NZ 8          # ktime
+
+  ## tuple
+  TUPLE CLI SRV
+
+  ## process
+  NZ 4          # pid should be set.
+  $ 00 00 00 00 # pad
+  $ ef be ad de 04 03 02 01 # ktime
+
+  ## http
+  h4 11         # method=GET
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # recv
+  h8 73			    # length
+
+  ## payload
+  h4 8 # type: response_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 9 # type: response_code
+  h4 3 # length
+  "200"
+
+  h4 10 # type: response_reason
+  h4 2  # length
+  "OK"
+
+  h4 7  # type: request_unknown
+  h4 18 # length
+  " http://foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 2 # length
+  " 5"
+
+  $ 00 00 00 # mystery bytes
+END
+
+# Close both sockets.
+CLOSE
