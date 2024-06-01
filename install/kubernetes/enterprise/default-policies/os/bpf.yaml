@@ -4,19 +4,21 @@ metadata:
   name: "bpf-load"
   annotations:
     author: "Isovalent"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
- kprobes:
- # Bpf verifier check during program loads
- # int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
- - call: "bpf_check"
-   syscall: false
-   args:
-   - index: 1
-     type: "bpf_attr"
- # Called during bpf map create
- # int security_bpf_map_alloc(struct bpf_map *map)
- - call: "security_bpf_map_alloc"
-   syscall: false
-   args:
-   - index: 0
-     type: "bpf_map"
+  kprobes:
+    # Bpf verifier check during program loads
+    # int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
+    - call: "bpf_check"
+      syscall: false
+      args:
+        - index: 1
+          type: "bpf_attr"
+    # Called during bpf map create
+    # int security_bpf_map_alloc(struct bpf_map *map)
+    - call: "security_bpf_map_alloc"
+      syscall: false
+      args:
+        - index: 0
+          type: "bpf_map"

@@ -10,48 +10,50 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "creds-caps-and-namespaces"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   kprobes:
-  - call: "security_capset"
-    syscall: false
-    args:
-    - index: 0
-      # The current process_credentials, no need to print it as we are interested in
-      # capabilities, and current capabilities are printed outside of process_credentials.
-      type: "nop"
-    - index: 1
-      # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
-      type: "cred"
-    - index: 2
-      # The new effective capabilities to be applied as a string in hexadecimal format.
-      type: "cap_effective"
-    - index: 3
-      # The new inheritable capabilities to be applied as a string in hexadecimal format.
-      type: "cap_inheritable"
-    - index: 4
-      # The new permitted capabilities to be applied as a string in hexadecimal format.
-      type: "cap_permitted"
-  - call: "sys_setns"
-    syscall: true
-    args:
-    - index: 0
-      type: "int"
-    - index: 1
-      type: "int"
-  - call: "sys_unshare"
-    syscall: true
-    args:
-    - index: 0
-      type: "int"
-  - call: "sys_chroot"
-    syscall: true
-    args:
-    - index: 0
-      type: "string"
-  - call: "sys_pivot_root"
-    syscall: true
-    args:
-    - index: 0
-      type: "string"
-    - index: 1
-      type: "string"
+    - call: "security_capset"
+      syscall: false
+      args:
+        - index: 0
+          # The current process_credentials, no need to print it as we are interested in
+          # capabilities, and current capabilities are printed outside of process_credentials.
+          type: "nop"
+        - index: 1
+          # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
+          type: "cred"
+        - index: 2
+          # The new effective capabilities to be applied as a string in hexadecimal format.
+          type: "cap_effective"
+        - index: 3
+          # The new inheritable capabilities to be applied as a string in hexadecimal format.
+          type: "cap_inheritable"
+        - index: 4
+          # The new permitted capabilities to be applied as a string in hexadecimal format.
+          type: "cap_permitted"
+    - call: "sys_setns"
+      syscall: true
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    - call: "sys_unshare"
+      syscall: true
+      args:
+        - index: 0
+          type: "int"
+    - call: "sys_chroot"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+    - call: "sys_pivot_root"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+        - index: 1
+          type: "string"

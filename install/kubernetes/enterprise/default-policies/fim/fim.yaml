@@ -4,247 +4,257 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "file-monitoring-exec-write-create"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   file:
     file_config:
-      watchedInodeMapSizePolicy: "auto"  # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/tmp/"
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/etc/"
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/boot/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/tmp/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/etc/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/boot/"
     monitorHostFiles: true
     podSelector: {}
     selectors:
-    - matchOperations:
-      - operator: "In"
-        values:
-        - "FILE_EXEC"
-        - "FILE_WRITE"
-        - "FILE_CREATE"
-        - "FILE_RENAME"
+      - matchOperations:
+          - operator: "In"
+            values:
+              - "FILE_EXEC"
+              - "FILE_WRITE"
+              - "FILE_CREATE"
+              - "FILE_RENAME"
 ---
 # report all write/create/rename operations on well known binary directories
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "file-monitoring-write-create"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   file:
     file_config:
-      watchedInodeMapSizePolicy: "auto"  # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/usr/bin/"
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/usr/local/bin/"
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/bin/"
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/sbin/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/usr/bin/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/usr/local/bin/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/bin/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/sbin/"
     monitorHostFiles: true
     podSelector: {}
     selectors:
-    - matchOperations:
-      - operator: "In"
-        values:
-        - "FILE_WRITE"
-        - "FILE_CREATE"
-        - "FILE_RENAME"
+      - matchOperations:
+          - operator: "In"
+            values:
+              - "FILE_WRITE"
+              - "FILE_CREATE"
+              - "FILE_RENAME"
 ---
 # report any read/write/rename/delete/create operations on files inside .ssh from non-ssh binaries
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "ssh-file-from-non-ssh-binaries"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   file:
     file_config:
-      watchedInodeMapSizePolicy: "auto"  # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/authorized_keys"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/id_rsa"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/id_rsa.pub"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/known_hosts"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/google_compute_engine"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/google_compute_engine.pub"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.ssh/google_compute_known_hosts"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/root/.ssh/"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/etc/ssh/"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/authorized_keys"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/id_rsa"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/id_rsa.pub"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/known_hosts"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/google_compute_engine"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/google_compute_engine.pub"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.ssh/google_compute_known_hosts"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/root/.ssh/"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/etc/ssh/"
     monitorHostFiles: true
     podSelector: {}
     selectors:
-    - matchBinaries:
-      - operator: "NotIn"
-        values:
-        - "/usr/sbin/sshd"
-        - "/usr/bin/ssh-agent"
-        - "/usr/bin/ssh"
-        - "/usr/bin/scp"
-        - "/usr/bin/sftp"
-        - "/usr/bin/ssh-keygen"
-        - "/usr/bin/ssh-keysign"
-        - "/usr/bin/ssh-keyscan"
-        - "/usr/bin/ssh-add"
-      matchOperations:
-      - operator: "In"
-        values:
-        - "FILE_READ"
-        - "FILE_WRITE"
-        - "FILE_RENAME"
-        - "FILE_CREATE"
-        - "FILE_DELETE"
+      - matchBinaries:
+          - operator: "NotIn"
+            values:
+              - "/usr/sbin/sshd"
+              - "/usr/bin/ssh-agent"
+              - "/usr/bin/ssh"
+              - "/usr/bin/scp"
+              - "/usr/bin/sftp"
+              - "/usr/bin/ssh-keygen"
+              - "/usr/bin/ssh-keysign"
+              - "/usr/bin/ssh-keyscan"
+              - "/usr/bin/ssh-add"
+        matchOperations:
+          - operator: "In"
+            values:
+              - "FILE_READ"
+              - "FILE_WRITE"
+              - "FILE_RENAME"
+              - "FILE_CREATE"
+              - "FILE_DELETE"
 ---
 # report any read/write operations on shell config files inside from non-shell binaries
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "shell-file-from-non-shell-binaries"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   file:
     file_config:
-      watchedInodeMapSizePolicy: "auto"  # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.bashrc"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.bash_profile"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.bash_history"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.inputrc"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.profile"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.cshrc"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.history"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.tcshrc"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.zshenv"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.zprofile"
-    - type: FilePrefixSuffix
-      file_prefix_suffix:
-        prefix: "/home/"
-        suffix: "/.zshrc"
-    - type: FileExactMatch
-      file_exact_match:
-        path: "/etc/profile"
-    - type: FileExactMatch
-      file_exact_match:
-        path: "/etc/bashrc"
-    - type: FileExactMatch
-      file_exact_match:
-        path: "/etc/csh.cshrc"
-    - type: FileExactMatch
-      file_exact_match:
-        path: "/etc/zsh"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.bashrc"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.bash_profile"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.bash_history"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.inputrc"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.profile"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.cshrc"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.history"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.tcshrc"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.zshenv"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.zprofile"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.zshrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/etc/profile"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/etc/bashrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/etc/csh.cshrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/etc/zsh"
     monitorHostFiles: true
     podSelector: {}
     selectors:
-    - matchBinaries:
-      - operator: "NotIn"
-        values:
-        - "/usr/bin/ash"
-        - "/usr/bin/bash"
-        - "/usr/bin/csh"
-        - "/usr/bin/ksh"
-        - "/usr/bin/sh"
-        - "/usr/bin/tcsh"
-        - "/usr/bin/zsh"
-        - "/usr/bin/dash"
-      matchOperations:
-      - operator: "In"
-        values:
-        - "FILE_READ"
-        - "FILE_WRITE"
+      - matchBinaries:
+          - operator: "NotIn"
+            values:
+              - "/usr/bin/ash"
+              - "/usr/bin/bash"
+              - "/usr/bin/csh"
+              - "/usr/bin/ksh"
+              - "/usr/bin/sh"
+              - "/usr/bin/tcsh"
+              - "/usr/bin/zsh"
+              - "/usr/bin/dash"
+        matchOperations:
+          - operator: "In"
+            values:
+              - "FILE_READ"
+              - "FILE_WRITE"
 ---
 # report all file operations on /root/ from non host or non root binaries
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "root-dir-access-from-non-root-processes"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   file:
     file_config:
-      watchedInodeMapSizePolicy: "auto"  # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-    - type: PathPrefix
-      path_prefix:
-        prefix: "/root/"
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/root/"
     monitorHostFiles: true
     selectors:
-    - matchLinuxNamespaces: # is not in the host pid namespace
-      - namespace: Pid
-        filter: NoHost
-    - matchLinuxCapabilities: # does not have CAP_SYS_ADMIN
-      - type: Effective
-        operator: NotIn
-        values:
-        - "CAP_SYS_ADMIN"
+      - matchLinuxNamespaces: # is not in the host pid namespace
+          - namespace: Pid
+            filter: NoHost
+      - matchLinuxCapabilities: # does not have CAP_SYS_ADMIN
+          - type: Effective
+            operator: NotIn
+            values:
+              - "CAP_SYS_ADMIN"

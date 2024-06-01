@@ -2,33 +2,35 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "monitor-mounts"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   kprobes:
-  # int security_move_mount(const struct path *from_path, const struct path *to_path)
-  - call: "security_move_mount"
-    syscall: false
-    return: true
-    args:
-    - index: 0 # from_path
-      type: "path"
-    - index: 1 # to_path
-      type: "path"
-    returnArg:
-      type: "int"
-  # int security_sb_mount(const char *dev_name, const struct path *path, const char *type, unsigned long flags, void *data);
-  - call: "security_sb_mount"
-    syscall: false
-    return: true
-    args:
-    - index: 0 # dev_name
-      type: "string"
-    - index: 1 # path
-      type: "path"
-    - index: 2 # type
-      type: "string"
-    - index: 3 # flags
-      type: "uint64"
-    - index: 4 # data
-      type: "uint64"
-    returnArg:
-      type: "int"
+    # int security_move_mount(const struct path *from_path, const struct path *to_path)
+    - call: "security_move_mount"
+      syscall: false
+      return: true
+      args:
+        - index: 0 # from_path
+          type: "path"
+        - index: 1 # to_path
+          type: "path"
+      returnArg:
+        type: "int"
+    # int security_sb_mount(const char *dev_name, const struct path *path, const char *type, unsigned long flags, void *data);
+    - call: "security_sb_mount"
+      syscall: false
+      return: true
+      args:
+        - index: 0 # dev_name
+          type: "string"
+        - index: 1 # path
+          type: "path"
+        - index: 2 # type
+          type: "string"
+        - index: 3 # flags
+          type: "uint64"
+        - index: 4 # data
+          type: "uint64"
+      returnArg:
+        type: "int"

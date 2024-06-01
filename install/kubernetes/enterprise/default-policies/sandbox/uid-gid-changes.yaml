@@ -58,57 +58,59 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "privileges-setuid-root"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   kprobes:
-  - call: "__sys_setuid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-  - call: "__sys_setgid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-  - call: "__sys_setreuid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-    - index: 1
-      type: "int"
-  - call: "__sys_setregid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-    - index: 1
-      type: "int"
-  - call: "__sys_setresuid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-    - index: 1
-      type: "int"
-    - index: 2
-      type: "int"
-  - call: "__sys_setresgid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-    - index: 1
-      type: "int"
-    - index: 2
-      type: "int"
-  - call: "__sys_setfsuid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
-  - call: "__sys_setfsgid"
-    syscall: false
-    args:
-    - index: 0
-      type: "int"
+    - call: "__sys_setuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setreuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    - call: "__sys_setregid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    - call: "__sys_setresuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+        - index: 2
+          type: "int"
+    - call: "__sys_setresgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+        - index: 2
+          type: "int"
+    - call: "__sys_setfsuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setfsgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
