@@ -1812,3 +1812,39 @@ func TestVolumesFromConfigMap(t *testing.T) {
 		require.Equal(t, tt.expected, actual)
 	}
 }
+
+func TestConfigValueInt(t *testing.T) {
+	key := "test"
+	testCases := []struct {
+		configMap    map[string]any
+		defaultValue int
+		expected     int
+	}{
+		{
+			configMap:    map[string]any{},
+			defaultValue: 1,
+			expected:     1,
+		},
+		{
+			configMap: map[string]any{
+				key: "123",
+			},
+			defaultValue: 1,
+			expected:     123,
+		},
+		{
+			configMap: map[string]any{
+				key: "abc",
+			},
+			defaultValue: 1,
+			expected:     1,
+		},
+	}
+
+	for _, tt := range testCases {
+		// function to test
+		actual := configValueInt(logr.Log, tt.configMap, key, 32, tt.defaultValue)
+
+		require.Equal(t, tt.expected, actual)
+	}
+}

@@ -262,11 +262,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 		args := []string{"--config-dir=/etc/tetragon/tetragon.conf.d/"}
 		if configValue(log, cmFields, "serviceMonitorEnabled", false) {
 			metricAddress := configValue(log, cmFields, "agentServiceMonitorPrometheusAddress", "")
-			port := configValue(log, cmFields, "agentServiceMonitorPrometheusPort", "2112")
-			metricPort, err := strconv.ParseInt(port, 10, 32)
-			if err != nil {
-				log.WithValues("value", port).Error(err, "could not parse the agentServiceMonitorPrometheusPort, default value used instead")
-			}
+			metricPort := configValueInt(log, cmFields, "agentServiceMonitorPrometheusPort", 32, 2112)
 			args = append(args, fmt.Sprintf("--metrics-server=%s:%d", metricAddress, metricPort))
 			ports = append(ports, corev1.ContainerPort{
 				Name:          "metrics",
@@ -346,21 +342,13 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 				log.WithValues("value", livenessProbeStr).Error(err, "could not unmarshal the tetragonLivenessProbe, skipped")
 			}
 		} else if configValue(log, cmFields, "tetragonHealthGrpcEnabled", false) {
-			healthGrpcPort := int32(6789)
-			if healthGrpcPortStr := configValue(log, cmFields, "tetragonHealthGrpcPort", ""); healthGrpcPortStr != "" {
-				port, err := strconv.ParseInt(healthGrpcPortStr, 10, 32)
-				if err != nil {
-					log.WithValues("value", healthGrpcPortStr).Error(err, "could not parse the tetragonHealthGrpcPort, default value used instead")
-				} else {
-					healthGrpcPort = int32(port)
-				}
-			}
+			healthGrpcPort := configValueInt(log, cmFields, "tetragonHealthGrpcPort", 32, 6789)
 			livenessProbeService := "liveness"
 			livenessProbe = &corev1.Probe{
 				TimeoutSeconds: int32(60),
 				ProbeHandler: corev1.ProbeHandler{
 					GRPC: &corev1.GRPCAction{
-						Port:    healthGrpcPort,
+						Port:    int32(healthGrpcPort),
 						Service: &livenessProbeService,
 					},
 				},
@@ -559,4 +547,17 @@ func configMapOfString(log logr.Logger, m map[string]any, key string) map[string
 		}
 	}
 	return stringValues
+}
+
+func configValueInt(log logr.Logger, config map[string]any, key string, bitSize int, defaultValue int) int {
+	value := configValue(log, config, key, "")
+	if value == "" {
+		return defaultValue
+	}
+	valueInt, err := strconv.ParseInt(value, 10, bitSize)
+	if err != nil {
+		log.WithValues("value", value).Error(err, fmt.Sprintf("could not parse the %s, default int value used instead", key))
+		return defaultValue
+	}
+	return int(valueInt)
 }
