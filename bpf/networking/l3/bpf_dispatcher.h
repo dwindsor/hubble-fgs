@@ -30,7 +30,9 @@ struct {
 int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
+#ifndef SKB_LOAD_BYTES
 	void *data = (long *)(long)skb->data;
+#endif
 	struct cgroup_dispatch_cfg *cfg;
 	struct ipv6hdr ip6;
 	int ret = SK_PASS;
@@ -72,8 +74,11 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 			emit_ip_error_event(skb, 0, cookie, true, ip.version, 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		}
-
+#ifdef SKB_LOAD_BYTES
+		protocol = get_ip6_proto(&payload_off, &ip6, 0, skb, data_end, 1, false, 0);
+#else
 		protocol = get_ip6_proto(&payload_off, &ip6, 0, data, data_end, 0, false, 0);
+#endif
 		if (protocol == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &ip6, cookie, true, ip.version, 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
