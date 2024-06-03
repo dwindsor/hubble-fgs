@@ -219,6 +219,7 @@ func TestDaemonSet(t *testing.T) {
 	dsVolumeDefaultMode := int32(420)
 	privileged := true
 	unprivileged := false
+	livenessProbeService := "liveness"
 
 	testCases := []struct {
 		name      string
@@ -388,15 +389,9 @@ func TestDaemonSet(t *testing.T) {
 									LivenessProbe: &corev1.Probe{
 										TimeoutSeconds: int32(60),
 										ProbeHandler: corev1.ProbeHandler{
-											Exec: &corev1.ExecAction{
-												Command: []string{
-													"tetra",
-													"status",
-													"--server-address",
-													"localhost:54321",
-													"--retries",
-													"5",
-												},
+											GRPC: &corev1.GRPCAction{
+												Port:    6789,
+												Service: &livenessProbeService,
 											},
 										},
 									},
@@ -516,8 +511,8 @@ imagePullPolicy: Never
 argsOverride:
   - --test-arg1=test-value1
   - --test-arg2=test-value2
-grpcEnabled: true
-grpcAddress: test:64321
+tetragonHealthGrpcEnabled: true
+tetragonHealthGrpcPort: "1234"
 serviceMonitorEnabled: true
 agentServiceMonitorPrometheusAddress: localhost
 agentServiceMonitorPrometheusPort: "1234"`,
@@ -844,15 +839,9 @@ agentServiceMonitorPrometheusPort: "1234"`,
 									LivenessProbe: &corev1.Probe{
 										TimeoutSeconds: int32(60),
 										ProbeHandler: corev1.ProbeHandler{
-											Exec: &corev1.ExecAction{
-												Command: []string{
-													"tetra",
-													"status",
-													"--server-address",
-													"test:64321",
-													"--retries",
-													"5",
-												},
+											GRPC: &corev1.GRPCAction{
+												Port:    1234,
+												Service: &livenessProbeService,
 											},
 										},
 									},
@@ -1093,6 +1082,7 @@ func TestDaemonSetContainers(t *testing.T) {
 	privileged := true
 	unprivileged := false
 	bidirectionalMount := corev1.MountPropagationBidirectional
+	livenessProbeService := "liveness"
 
 	testCases := []struct {
 		name       string
@@ -1105,8 +1095,8 @@ func TestDaemonSetContainers(t *testing.T) {
 tetragonEnabled: true
 tetragonSecurityContext: |
   privileged: true
-grpcEnabled: true
-grpcAddress: localhost:54321`,
+tetragonHealthGrpcEnabled: true
+tetragonHealthGrpcPort: 6789`,
 			expected: []corev1.Container{{
 				Name:                     "tetragon",
 				ImagePullPolicy:          corev1.PullIfNotPresent,
@@ -1151,15 +1141,9 @@ grpcAddress: localhost:54321`,
 				LivenessProbe: &corev1.Probe{
 					TimeoutSeconds: int32(60),
 					ProbeHandler: corev1.ProbeHandler{
-						Exec: &corev1.ExecAction{
-							Command: []string{
-								"tetra",
-								"status",
-								"--server-address",
-								"localhost:54321",
-								"--retries",
-								"5",
-							},
+						GRPC: &corev1.GRPCAction{
+							Port:    6789,
+							Service: &livenessProbeService,
 						},
 					},
 				},
@@ -1226,15 +1210,9 @@ grpcAddress: localhost:54321`,
 					LivenessProbe: &corev1.Probe{
 						TimeoutSeconds: int32(60),
 						ProbeHandler: corev1.ProbeHandler{
-							Exec: &corev1.ExecAction{
-								Command: []string{
-									"tetra",
-									"status",
-									"--server-address",
-									"localhost:54321",
-									"--retries",
-									"5",
-								},
+							GRPC: &corev1.GRPCAction{
+								Port:    6789,
+								Service: &livenessProbeService,
 							},
 						},
 					},
@@ -1245,8 +1223,8 @@ grpcAddress: localhost:54321`,
 			name: "export and tetragon containers enabled (with custom values)",
 			yamlString: `imagePullPolicy: Always
 exportDirectory: /test/export
-grpcEnabled: true
-grpcAddress: test.com:123
+tetragonHealthGrpcEnabled: true
+tetragonHealthGrpcPort: "1234"
 metadataEnabled: true
 exportMode: stdout
 exportExtraEnv: |
@@ -1408,15 +1386,9 @@ commandOverride: |
 					LivenessProbe: &corev1.Probe{
 						TimeoutSeconds: int32(60),
 						ProbeHandler: corev1.ProbeHandler{
-							Exec: &corev1.ExecAction{
-								Command: []string{
-									"tetra",
-									"status",
-									"--server-address",
-									"test.com:123",
-									"--retries",
-									"5",
-								},
+							GRPC: &corev1.GRPCAction{
+								Port:    1234,
+								Service: &livenessProbeService,
 							},
 						},
 					},

@@ -91,6 +91,8 @@ metrics-server: :2112
 metrics-label-filter: "namespace,workload,pod,binary"
 # The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
 server-address: localhost:54321
+health-server-address: :6789
+health-server-interval: "10"
 # -- EXPERIMENTAL: This field may be removed in the future without notice.
 #
 # Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.

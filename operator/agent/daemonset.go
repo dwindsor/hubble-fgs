@@ -340,19 +340,28 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 		env = append(env, extraEnv...)
 
 		var livenessProbe *corev1.Probe
-		if configValue(log, cmFields, "grpcEnabled", false) {
+		livenessProbeStr := configValue(log, cmFields, "tetragonLivenessProbe", "")
+		if livenessProbeStr != "" {
+			if err := yaml.Unmarshal([]byte(livenessProbeStr), &livenessProbe); err != nil {
+				log.WithValues("value", livenessProbeStr).Error(err, "could not unmarshal the tetragonLivenessProbe, skipped")
+			}
+		} else if configValue(log, cmFields, "tetragonHealthGrpcEnabled", false) {
+			healthGrpcPort := int32(6789)
+			if healthGrpcPortStr := configValue(log, cmFields, "tetragonHealthGrpcPort", ""); healthGrpcPortStr != "" {
+				port, err := strconv.ParseInt(healthGrpcPortStr, 10, 32)
+				if err != nil {
+					log.WithValues("value", healthGrpcPortStr).Error(err, "could not parse the tetragonHealthGrpcPort, default value used instead")
+				} else {
+					healthGrpcPort = int32(port)
+				}
+			}
+			livenessProbeService := "liveness"
 			livenessProbe = &corev1.Probe{
 				TimeoutSeconds: int32(60),
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"tetra",
-							"status",
-							"--server-address",
-							configValue(log, cmFields, "grpcAddress", ""),
-							"--retries",
-							"5",
-						},
+					GRPC: &corev1.GRPCAction{
+						Port:    healthGrpcPort,
+						Service: &livenessProbeService,
 					},
 				},
 			}

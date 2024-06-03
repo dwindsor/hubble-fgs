@@ -77,15 +77,19 @@ tetragonEnabled: true
 #tetragonResources:
 tetragonSecurityContext: |
   privileged: true
+# Overrides the default livenessProbe for the tetragon container.
+#tetragonLivenessProbe: |
+#  grpc:
+#    port: 54321
+# Whether to enable health gRPC server.
+tetragonHealthGrpcEnabled: true
+# The port at which to expose health gRPC.
+tetragonHealthGrpcPort: "6789"
 # Override the arguments. For advanced users only.
 #argsOverride:
 #  - --arg1=value1
 #extraArgs:
 #extraEnv:
-# Whether to enable exposing Tetragon gRPC.
-grpcEnabled: true
-# The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock
-grpcAddress: localhost:54321
 # Override the command. For advanced users only.
 #commandOverride:
 #extraVolumeMounts:
