@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 
 func init() {
@@ -31,8 +32,10 @@ func TetragonBpfPath() string {
 }
 
 // TestSensorsRun runs a sensor test. Call this from inside the TestMain() of a sensor
-// test. It returns an exit code.
+// test. It returns an exit code. Additionally will release any Cgroup programs
+// that are left because we do not have Cgroup links yet or on all kernels.
 func TestSensorsRun(m *testing.M, sensorName string) int {
+	defer cgroup.DetachTetragonCgroups(true, false)
 	return sensors.TestSensorsRun(m, sensorName)
 }
 
