@@ -1,0 +1,173 @@
+# This 'privileges-change' Tracing Policy monitors changing:
+# - Privileges: credentials and capabilities.
+# - Namespaces: changing process namespaces.
+#
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "privileges-change"
+  annotations:
+    author: "Isovalent"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
+spec:
+  kprobes:
+    # Monitor changing capabilities of current process.
+    # int security_capset(struct cred *new, const struct cred *old,
+    #                     const kernel_cap_t *effective,
+    #                     const kernel_cap_t *inheritable,
+    #                     const kernel_cap_t *permitted)
+    - call: "security_capset"
+      syscall: false
+      args:
+        - index: 0
+          # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
+          type: "cred"
+        - index: 1
+          # The current process_credentials, no need to print it as we are interested in
+          # capabilities, and current capabilities are printed outside of process_credentials.
+          type: "nop"
+        - index: 2
+          # The new effective capabilities to be applied as a string in hexadecimal format.
+          type: "cap_effective"
+        - index: 3
+          # The new inheritable capabilities to be applied as a string in hexadecimal format.
+          type: "cap_inheritable"
+        - index: 4
+          # The new permitted capabilities to be applied as a string in hexadecimal format.
+          type: "cap_permitted"
+    # Monitor changing namespaces
+    # int sys_setns(int fd, int flags)
+    - call: "sys_setns"
+      syscall: true
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    # Monitor changing namespaces
+    # int sys_unshare(unsigned long unshare_flags)
+    - call: "sys_unshare"
+      syscall: true
+      args:
+        - index: 0
+          type: "int"
+    - call: "sys_chroot"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+    - call: "sys_pivot_root"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+        - index: 1
+          type: "string"
+#
+# The following monitor processes trying to change their uids/gids.
+# If we want to reduce the noise we could match args to only post events
+# that return without errors or only post events that try to set git/uid root.
+# However we judge its interesting to know if failed attempts are done and/or
+# if processes are changing uid/gid even if not to root.
+#
+#  __sys_setuid
+#    - __x64_sys_setuid
+#    - __ia32_sys_setuid
+#    - __x64_sys_setuid16
+#    - __ia32_sys_setuid16
+#
+#  __sys_setgid
+#    - __x64_sys_setgid
+#    - __ia32_sys_setgid
+#    - __x64_sys_setgid16
+#    - __ia32_sys_setgid16
+#
+#  __sys_setreuid
+#    - __x64_sys_setreuid
+#    - __ia32_sys_setreuid
+#    - __x64_sys_setreuid16
+#    - __ia32_sys_setreuid16
+#
+#  __sys_setregid
+#    - __x64_sys_setregid
+#    - __ia32_sys_setregid
+#    - __x64_sys_setregid16
+#    - __ia32_sys_setregid16
+#
+# __sys_setresuid
+#    - __x64_sys_setresuid
+#    - __ia32_sys_setresuid
+#    - __x64_sys_setresuid16
+#    - __ia32_sys_setresuid16
+#
+# __sys_setresgid
+#    - __x64_sys_setresgid
+#    - __ia32_sys_setresgid
+#    - __x64_sys_setresgid16
+#    - __ia32_sys_setresgid16
+#
+# __sys_setfsuid
+#    - __x64_sys_setfsuid
+#    - __ia32_sys_setfsuid
+#    - __x64_sys_setfsuid16
+#    - __ia32_sys_setfsuid16
+#
+# __sys_setfsgid
+#    - __x64_sys_setfsgid
+#    - __ia32_sys_setfsgid
+#    - __x64_sys_setfsgid16
+#    - __ia32_sys_setfsgid16
+#
+    - call: "__sys_setuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setreuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    - call: "__sys_setregid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+    - call: "__sys_setresuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+        - index: 2
+          type: "int"
+    - call: "__sys_setresgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "int"
+        - index: 2
+          type: "int"
+    - call: "__sys_setfsuid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+    - call: "__sys_setfsgid"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
