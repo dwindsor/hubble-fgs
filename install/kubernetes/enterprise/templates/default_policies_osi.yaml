@@ -1,0 +1,6 @@
+{{- if or .Values.tracingPolicies.default.enabled .Values.tracingPolicies.default.osi.enabled }}
+{{- range $path, $_ := .Files.Glob "default-policies/osi/**.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}
+{{- end }}

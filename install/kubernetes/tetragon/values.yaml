@@ -374,7 +374,7 @@ tracingPolicies:
     network:
       # -- Enable Network default policy.
       enabled: false
-    os:
+    osi:
       # -- Enable Operating System Integrity default policy.
       enabled: false
     privileges:
