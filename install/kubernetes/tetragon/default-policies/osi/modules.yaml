@@ -7,15 +7,15 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "monitor-kernel-modules"
+  annotations:
+    author: "Isovalent"
   labels:
     app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   kprobes:
-    - call: "sys_init_module"
-      # Loading modules using old system call init_module() that should be deprecated
-      syscall: true
+    # Automatic module loading detection
+    # int security_kernel_module_request(char *kmod_name)
     - call: "security_kernel_module_request"
-      # Automatic module loading detection
       syscall: false
       return: true
       args:
@@ -39,6 +39,23 @@ spec:
       selectors:
         - matchArgs:
             - index: 1
+              operator: "Equal"
+              values:
+                - "2" # READING_MODULE
+    # Explicit module loading using old deprecated init_module system call
+    # int security_kernel_load_data(enum kernel_load_data_id id, bool contents)
+    - call: "security_kernel_load_data"
+      syscall: false
+      return: true
+      args:
+        - index: 0
+          type: "int"
+      returnArg:
+        index: 0
+        type: "int"
+      selectors:
+        - matchArgs:
+            - index: 0
               operator: "Equal"
               values:
                 - "2" # READING_MODULE
