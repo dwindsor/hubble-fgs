@@ -14,16 +14,21 @@ metadata:
     app.kubernetes.io/version: 1.14.0-pre.0
 spec:
   kprobes:
+    # Monitor changing capabilities of current process.
+    # int security_capset(struct cred *new, const struct cred *old,
+    #                     const kernel_cap_t *effective,
+    #                     const kernel_cap_t *inheritable,
+    #                     const kernel_cap_t *permitted)
     - call: "security_capset"
       syscall: false
       args:
         - index: 0
+          # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
+          type: "cred"
+        - index: 1
           # The current process_credentials, no need to print it as we are interested in
           # capabilities, and current capabilities are printed outside of process_credentials.
           type: "nop"
-        - index: 1
-          # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
-          type: "cred"
         - index: 2
           # The new effective capabilities to be applied as a string in hexadecimal format.
           type: "cap_effective"

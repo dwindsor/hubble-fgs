@@ -377,8 +377,8 @@ tracingPolicies:
     os:
       # -- Enable Operating System Integrity default policy.
       enabled: false
-    container:
-      # -- Enable Container Sandbox default policy.
+    privileges:
+      # -- Enable Privileges monitoring default policy.
       enabled: false
     security:
       # -- Enable Security Sensitive Events default policy.
