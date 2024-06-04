@@ -92,8 +92,11 @@ tracingPolicies:
     network:
       # -- Enable Network default policy.
       enabled: false
+    mount:
+      # -- Enable Changing Mounts and root filesystem default policy.
+      enabled: false
     osi:
-      # -- Enable Operating System Integrity default policy.
+      # -- Enable Operating System Integrity (OSI) default policy.
       enabled: false
     privileges:
       # -- Enable Privileges monitoring default policy.

@@ -52,18 +52,6 @@ spec:
       args:
         - index: 0
           type: "int"
-    - call: "sys_chroot"
-      syscall: true
-      args:
-        - index: 0
-          type: "string"
-    - call: "sys_pivot_root"
-      syscall: true
-      args:
-        - index: 0
-          type: "string"
-        - index: 1
-          type: "string"
 #
 # The following monitor processes trying to change their uids/gids.
 # If we want to reduce the noise we could match args to only post events

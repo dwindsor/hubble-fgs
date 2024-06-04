@@ -1,0 +1,70 @@
+# This 'mount-changes' Tracing Policy monitors:
+# - chroot: change root directory
+# - pivot_root: change the root filesystem
+# - move_mount: move a mount point to a new location
+# - mount: mounting a filesystem
+#
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "monitor-mounts"
+  annotations:
+    author: "Isovalent"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
+spec:
+  kprobes:
+    # Monitor changing root directory
+    # int security_path_chroot(const struct path *path)
+    - call: "security_path_chroot"
+      syscall: false
+      args:
+        - index: 0
+          type: "path" # Target directory (struct path *) used for getting the path
+      returnArg:
+        index: 0
+        type: "int"
+    # Monitor pivoting root file system
+    # int security_sb_pivotroot(const struct path *old_path, const struct path *new_path)
+    - call: "security_sb_pivotroot"
+      syscall: false
+      args:
+        - index: 0
+          type: "path" # Old root directory (struct path *) of file system.
+        - index: 1
+          type: "path" # New root file system (struct path *).
+      returnArg:
+        index: 0
+        type: "int"
+    # Monitor moving a mount point to a new location
+    # int security_move_mount(const struct path *from_path, const struct path *to_path)
+    - call: "security_move_mount"
+      syscall: false
+      return: true
+      args:
+        - index: 0 # from_path
+          type: "path"
+        - index: 1 # to_path
+          type: "path"
+      returnArg:
+        index: 0
+        type: "int"
+    # Monitor mounting a new file system
+    # int security_sb_mount(const char *dev_name, const struct path *path, const char *type, unsigned long flags, void *data);
+    - call: "security_sb_mount"
+      syscall: false
+      return: true
+      args:
+        - index: 0 # dev_name
+          type: "string"
+        - index: 1 # path
+          type: "path"
+        - index: 2 # type
+          type: "string"
+        - index: 3 # flags
+          type: "uint64"
+        - index: 4 # data
+          type: "uint64"
+      returnArg:
+        index: 0
+        type: "int"
