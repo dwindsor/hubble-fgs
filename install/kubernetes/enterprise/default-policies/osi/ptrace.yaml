@@ -1,10 +1,15 @@
-# This 'ptrace' Tracing Policy monitors any ptrace attempts and
-# posts and event.
+# This 'monitor-ptrace' Tracing Policy monitors any ptrace attempts and
+# posts events.
+#
+# We consider ptrace as part of Operating System Integrity since
+# if a process ptraces PID 1 it can panic the machine.
 #
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
-  name: "ptrace"
+  name: "monitor-ptrace"
+  annotations:
+    author: "Isovalent"
   labels:
     app.kubernetes.io/version: 1.14.0-pre.0
 spec:
