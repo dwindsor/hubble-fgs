@@ -101,6 +101,3 @@ tracingPolicies:
     privileges:
       # -- Enable Privileges monitoring default policy.
       enabled: false
-    security:
-      # -- Enable Security Sensitive Events default policy.
-      enabled: false

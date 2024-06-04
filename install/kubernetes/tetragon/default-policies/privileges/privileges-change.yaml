@@ -1,5 +1,7 @@
 # This 'privileges-change' Tracing Policy monitors changing:
 # - Privileges: credentials and capabilities.
+# - Privileges: unprivileged created a user namespace where it will
+#               be privileged.
 # - Namespaces: changing process namespaces.
 #
 apiVersion: cilium.io/v1alpha1
@@ -52,6 +54,19 @@ spec:
       args:
         - index: 0
           type: "int"
+    # Monitor creating of user namespaces to gain privileges
+    # int create_user_ns(struct cred *new)
+    - call: "create_user_ns"
+      syscall: false
+      args:
+        - index: 0
+          type: "nop" # No need for argument as this targets unprivileged anyway.
+      selectors:
+        - matchCapabilities:
+            - type: Effective
+              operator: NotIn
+              values:
+                - "CAP_SYS_ADMIN"
 #
 # The following monitor processes trying to change their uids/gids.
 # If we want to reduce the noise we could match args to only post events
