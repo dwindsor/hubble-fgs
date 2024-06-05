@@ -10,7 +10,6 @@ import (
 
 func TestDefaultOperatorConfigMap(t *testing.T) {
 	expected := map[string]string{
-		"skip-crd-creation":                "false",
 		"skip-pod-info-crd":                "false",
 		"skip-tracing-policy-crd":          "false",
 		"skip-policysandbox-crd":           "false",
