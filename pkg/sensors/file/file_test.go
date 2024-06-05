@@ -899,6 +899,7 @@ func TestLoadFileSensor(t *testing.T) {
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
 		16: tus.SensorProg{Name: fmt.Sprintf("security_inode_setattr_%s", attrVerSuffix), Type: ebpf.Kprobe},
 		17: tus.SensorProg{Name: "security_bprm_check", Type: ebpf.Kprobe},
+		18: tus.SensorProg{Name: "security_inode_link", Type: ebpf.Kprobe},
 	}
 
 	if fm.SupportIoUring() {
@@ -917,17 +918,17 @@ func TestLoadFileSensor(t *testing.T) {
 
 	sensorMaps := []tus.SensorMap{
 		// all programs that generate events
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17}},
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16, 17, 18}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
 
 		// shared maps
-		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14}},
-		tus.SensorMap{Name: "hash_map_inode_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14, 18}},
+		tus.SensorMap{Name: "hash_map_inode_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18}},
 
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
-		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
-		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17}},
+		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
+		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -952,6 +953,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{15}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{16}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{17}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{18}},
 
 		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10}},
 
@@ -965,8 +967,8 @@ func TestLoadFileSensor(t *testing.T) {
 
 	if fm.SupportIoUring() {
 		ioUringMaps := []tus.SensorMap{
-			{Name: "io_uring_map", Progs: []uint{4, 18, 19, 20, 21}},
-			{Name: "io_uring_retprobe_map", Progs: []uint{18, 19, 20, 21}},
+			{Name: "io_uring_map", Progs: []uint{4, 19, 20, 21, 22}},
+			{Name: "io_uring_retprobe_map", Progs: []uint{19, 20, 21, 22}},
 		}
 		sensorMaps = append(sensorMaps, ioUringMaps...)
 	} else {

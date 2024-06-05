@@ -2840,6 +2840,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_READDIR | 8 |  |
 | FILE_CHATTR | 9 |  |
 | FILE_EXEC | 10 |  |
+| FILE_LINK | 11 |  |
 
 
 

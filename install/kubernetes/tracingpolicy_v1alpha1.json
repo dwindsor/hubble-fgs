@@ -642,7 +642,8 @@
                               "FILE_RENAME",
                               "FILE_READDIR",
                               "FILE_CHATTR",
-                              "FILE_EXEC"
+                              "FILE_EXEC",
+                              "FILE_LINK"
                             ],
                             "type": "string"
                           },

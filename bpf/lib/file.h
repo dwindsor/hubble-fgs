@@ -44,6 +44,7 @@ enum {
 	action_readdir = 8,
 	action_chattr = 9,
 	action_exec = 10,
+	action_link = 11,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -76,7 +77,8 @@ enum {
 	hook_io_write = 25,
 	hook_io_issue_sqe = 26,
 	hook_fsnotify = 27,
-	hook_max = 28,
+	hook_security_inode_link = 28,
+	hook_max = 29,
 };
 
 #define KRETPROBE_KEY 0

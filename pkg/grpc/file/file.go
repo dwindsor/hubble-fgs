@@ -66,6 +66,8 @@ var (
 		24: "hook_io_read",
 		25: "hook_io_write",
 		26: "hook_io_issue_sqe",
+		27: "hook_fsnotify",
+		28: "hook_security_inode_link",
 	}
 
 	renameFlagsString = map[uint32]string{

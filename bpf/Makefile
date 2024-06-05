@@ -99,7 +99,8 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_fmod_v60.o bpf_security_inode_setattr_enforce_fmod_v63.o \
 	  bpf_security_bprm_check.o bpf_security_bprm_check_v419.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
-	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o
+	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o \
+	  bpf_security_inode_link.o bpf_security_inode_link_v419.o bpf_security_inode_link_enforce_lsm.o bpf_security_inode_link_enforce_fmod.o
 
 
 BPFTEST = bpf_lseek.o
@@ -373,6 +374,7 @@ objs/bpf_vfs_mkdir_v419.ll: $(FILEDIR)/bpf_vfs_mkdir.c
 objs/bpf_iterate_dir_v419.ll: $(FILEDIR)/bpf_iterate_dir.c
 objs/bpf_security_bprm_check_v419.ll: $(FILEDIR)/bpf_security_bprm_check.c
 objs/bpf_security_path_rename_v419.ll: $(FILEDIR)/bpf_security_path_rename.c
+objs/bpf_security_inode_link_v419.ll: $(FILEDIR)/bpf_security_inode_link.c
 
 objs/bpf_multi_kprobe_v53.ll objs/bpf_multi_retkprobe_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__MULTI_KPROBE -c $< -o $@
@@ -439,6 +441,9 @@ deps/bpf_security_inode_setattr_enforce_fmod_v63.d: $(FILEDIR)/bpf_security_inod
 deps/bpf_security_bprm_check_enforce_lsm.d: $(FILEDIR)/bpf_security_bprm_check.c
 deps/bpf_security_bprm_check_enforce_fmod.d: $(FILEDIR)/bpf_security_bprm_check.c
 deps/bpf_security_bprm_check_enforce_lsm_digest.d: $(FILEDIR)/bpf_security_bprm_check.c
+deps/bpf_security_inode_link_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_link.c
+deps/bpf_security_inode_link_enforce_fmod.d: $(FILEDIR)/bpf_security_inode_link.c
+deps/bpf_security_inode_link_v419.d: $(FILEDIR)/bpf_security_inode_link.c
 
 $(DEPSDIR)%_v419.d:
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
