@@ -93,11 +93,97 @@ func unloadLayer3Sensor() error {
 	return nil
 }
 
+var (
+	EgressDispatcher = program.Builder(
+		"bpf_cgroup_net.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	EgressDispatcherSkbLoad = program.Builder(
+		"bpf_cgroup_net_load.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	EgressDispatcherSkbLoad54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
+	IngressDispatcher = program.Builder(
+		"bpf_cgroup_net.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
+	IngressDispatcherSkbLoad = program.Builder(
+		"bpf_cgroup_net_load.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
+	IngressDispatcherSkbLoad54 = program.Builder(
+		"bpf_cgroup_net_load_5-4.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
+	dispatcherProgs          = []*program.Program{EgressDispatcher, IngressDispatcher}
+	dispatcherSkbLoadProgs   = []*program.Program{EgressDispatcherSkbLoad, IngressDispatcherSkbLoad}
+	dispatcherSkbLoad54Progs = []*program.Program{EgressDispatcherSkbLoad54, IngressDispatcherSkbLoad54}
+
+	// Dispatcher protocol configuration map
+	protoCfgMap          = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcher)
+	protoCfgSkbLoadMap   = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcherSkbLoad)
+	protoCfgSkbLoad54Map = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcherSkbLoad54)
+
+	// Dispatcher Latency maps
+	latencyConfigMap        = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher)
+	latencyConfigSkbLoadMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherSkbLoad54)
+
+	// Dispatcher UDP maps
+	udpMap          = program.MapBuilder(udp.UdpMapName, EgressDispatcher)
+	udpMapSkbLoad   = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad)
+	udpMapSkbLoad54 = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad54)
+
+	udpConfigMap          = program.MapBuilder(udp.ConfigMapName, EgressDispatcher)
+	udpConfigSkbLoadMap   = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad)
+	udpConfigSkbLoad54Map = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad54)
+
+	udpPayloadMap          = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher)
+	udpPayloadSkbLoadMap   = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad)
+	udpPayloadSkbLoad54Map = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad54)
+
+	udpMaps          = []*program.Map{udpMap, udpConfigMap, udpPayloadMap, latencyConfigMap}
+	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
+	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
+
+	// Dispatcher all maps
+	dispatcherMaps          = append(udpMaps, protoCfgMap)
+	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
+	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
+)
+
 func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
 	configured = false
+	needDispatcher := false
 
 	var progs []*program.Program
 	var maps []*program.Map
@@ -106,21 +192,42 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 		tcpProgs, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
 		progs = append(progs, tcpProgs...)
 		maps = append(maps, tcpMaps...)
+		needDispatcher = true
 	}
 	if udpEnabled {
 		udpProgs, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
 		progs = append(progs, udpProgs...)
 		maps = append(maps, udpMaps...)
+		needDispatcher = true
 	}
 	if icmpEnabled {
 		icmpProgs, icmpMaps := icmp.EnableIcmp()
 		progs = append(progs, icmpProgs...)
 		maps = append(maps, icmpMaps...)
+		needDispatcher = true
 	}
 	if rawEnabled {
 		rawProgs, rawMaps := rawsock.EnableRawsock(reportRawClose)
 		progs = append(progs, rawProgs...)
 		maps = append(maps, rawMaps...)
+		needDispatcher = true
+	}
+
+	if needDispatcher == true {
+		if kernels.MinKernelVersion("5.4.0") {
+			if !kernels.MinKernelVersion("5.5.0") {
+				progs = append(progs, dispatcherSkbLoad54Progs...)
+				maps = append(maps, dispatcherSkbLoad54Maps...)
+			} else if !kernels.MinKernelVersion("5.14.0") {
+				progs = append(progs, dispatcherSkbLoadProgs...)
+				maps = append(maps, dispatcherSkbLoadMaps...)
+			} else {
+				progs = append(progs, dispatcherProgs...)
+				maps = append(maps, dispatcherMaps...)
+			}
+		} else {
+			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
+		}
 	}
 
 	l3Sensor := sensors.SensorBuilder("layer3_sensors", progs, maps)

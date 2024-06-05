@@ -125,54 +125,6 @@ var (
 		"cgrp_inet6_bind",
 	)
 
-	InetSend = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	InetRecv = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	InetSendLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	InetRecvLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	InetSendLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	InetRecvLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
 	InetSendRecvLazy = program.Builder(
 		"bpf_udp_inet_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
@@ -224,37 +176,24 @@ var (
 	// Shared socket cookie infrastructure
 	SocketCookieMap        = program.MapBuilder(SocketMapName, Udp4Send)
 	SocketCookieStats      = program.MapBuilder("tg_socket_map_stats", Udp4Send)
-	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", InetSend)
-	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", InetSend)
-	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", InetSend)
-	CfgMap                 = program.MapBuilder("tg_cfg_map", InetSend)
-	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", InetSendLazy)
-	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", InetSendLazy)
-	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", InetSendLazy)
-	CfgMapLazy             = program.MapBuilder("tg_cfg_map", InetSendLazy)
-
-	// Shared Layer3 infrastructure
-	UdpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSend)
-	UdpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy)
-	UdpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy54)
+	SocketTupleMap         = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
+	SocketTupleStats       = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
+	SocketTupleHintMap     = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
+	CfgMap                 = program.MapBuilder("tg_cfg_map", SkUdpBind)
+	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
+	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
+	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
 
 	// UDP maps
-	UdpMap                     = program.MapBuilder(UdpMapName, InetSend)
-	UdpMapLazy                 = program.MapBuilder(UdpMapName, InetSendLazy)
-	UdpMapLazyKprobe           = program.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpVerMap                  = program.MapBuilder(UdpVerMapName, InetSend)
-	UdpVerMapLazy              = program.MapBuilder(UdpVerMapName, InetSendLazy)
-	UdpVerMapLazyKprobe        = program.MapBuilder(UdpVerMapName, InetSendRecvLazy)
-	UdpRetprobeMap             = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
-	UdpRetprobeStats           = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
-	UdpConfigMap               = program.MapBuilder(ConfigMapName, InetSend)
-	UdpConfigLazyMap           = program.MapBuilder(ConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe     = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
-	UdpPayloadMap              = program.MapBuilder(UdpPayloadMapName, InetSend)
-	UdpPayloadLazyMap          = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
-	UdpPayloadLazyMapKprobe    = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	LatencyConfigMap           = program.MapBuilder(networklatency.ConfigMapName, InetRecv)
-	LatencyConfigMapLazy       = program.MapBuilder(networklatency.ConfigMapName, InetRecvLazy)
+	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpConfigLazyMapKprobe = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
+
+	// UDP maps
+	UdpVerMap               = program.MapBuilder(UdpVerMapName, SkUdpAlloc)
+	UdpRetprobeMap          = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
+	UdpRetprobeStats        = program.MapBuilder(UdpRetprobeStatsName, Udp4Send)
+	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
+
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
 
@@ -400,7 +339,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
-			UdpVerMapLazyKprobe,
+			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
 			UdpConfigLazyMapKprobe,
@@ -422,30 +361,17 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			UdpRecv,
 		}
 		maps = []*program.Map{
-			UdpMapLazy,
-			UdpVerMapLazy,
+			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
-			UdpConfigLazyMap,
-			UdpPayloadLazyMap,
 			SocketCookieMap,
 			SocketCookieStats,
 			SocketTupleMapLazy,
 			SocketTupleStatsLazy,
 			SocketTupleHintMapLazy,
-			CfgMapLazy,
-			LatencyConfigMapLazy,
+			CfgMap,
 		}
 
-		if !kernels.MinKernelVersion("5.5.0") {
-			progs = append(progs, InetSendLazy54)
-			progs = append(progs, InetRecvLazy54)
-			maps = append(maps, UdpCgroupCfgMapLazy54)
-		} else {
-			progs = append(progs, InetSendLazy)
-			progs = append(progs, InetRecvLazy)
-			maps = append(maps, UdpCgroupCfgMapLazy)
-		}
 		if !DisableListenEvents {
 			progs = append(progs, SkUdpBind)
 		}
@@ -455,8 +381,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			InetSend,
-			InetRecv,
 			Udp4Send,
 			Udp4RetSend,
 			Udp6Send,
@@ -467,20 +391,15 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
-			UdpMap,
 			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
-			UdpConfigMap,
-			UdpPayloadMap,
 			SocketCookieMap,
 			SocketCookieStats,
 			SocketTupleMap,
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
-			LatencyConfigMap,
-			UdpCgroupCfgMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"
@@ -488,8 +407,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		progs = []*program.Program{
 			SkUdpAlloc,
 			SkUdpDestroy,
-			InetSend,
-			InetRecv,
 			Udp4Send,
 			Udp4RetSend,
 			Udp6Send,
@@ -500,20 +417,15 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
-			UdpMap,
 			UdpVerMap,
 			UdpRetprobeMap,
 			UdpRetprobeStats,
-			UdpConfigMap,
-			UdpPayloadMap,
 			SocketCookieMap,
 			SocketCookieStats,
 			SocketTupleMap,
 			SocketTupleStats,
 			SocketTupleHintMap,
 			CfgMap,
-			LatencyConfigMap,
-			UdpCgroupCfgMap,
 		}
 		dns.LazyDns = false
 		versionStr = "__udp_sensor_probe__"

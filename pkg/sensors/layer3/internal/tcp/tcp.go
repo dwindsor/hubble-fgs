@@ -122,65 +122,12 @@ var (
 		"tg_tcp_ack_snd_check",
 		"kprobe")
 
-	// Inet hooks for latency and statistics
-	InetRecv = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	InetSend = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	InetRecvLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	InetSendLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	InetRecvLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	InetSendLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
 	// Maps for TCP Sockets
 	SocketMap          = program.MapBuilder("tg_socket_map", Connect)
 	SocketStats        = program.MapBuilder("tg_socket_map_stats", Accept)
 	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", Connect)
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", Connect)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", Connect)
-	// Shared Layer3 infrastructure
-	TcpCgroupCfgMap       = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSend)
-	TcpCgroupCfgMapLazy   = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy)
-	TcpCgroupCfgMapLazy54 = program.MapBuilder("tg_cgroup_protocol_cfg_map", InetSendLazy54)
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
@@ -195,10 +142,6 @@ var (
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
-
-	// Map for latency
-	LatencyConfigMap     = program.MapBuilder(networklatency.ConfigMapName, InetSend)
-	LatencyConfigMapLazy = program.MapBuilder(networklatency.ConfigMapName, InetSendLazy)
 
 	// Map for disabling events
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
@@ -268,29 +211,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			} else {
 				logger.GetLogger().Warn("TCP unsupported by network latency")
 			}
-		}
-
-		/* The receive inet hooks are not necessary in all cases, but
-		 * most users will have DNS enabled at least anyways so the
-		 * cost is already there anyways. And its just easier to load
-		 * instead of doing a feature/option matchup. Anyways we likely
-		 * will move RX stats here shortly.
-		 */
-		if !kernels.MinKernelVersion("5.5.0") {
-			progs = append(progs, InetSendLazy54)
-			progs = append(progs, InetRecvLazy54)
-			maps = append(maps, LatencyConfigMapLazy)
-			maps = append(maps, TcpCgroupCfgMapLazy54)
-		} else if !kernels.MinKernelVersion("5.14.0") {
-			progs = append(progs, InetSendLazy)
-			progs = append(progs, InetRecvLazy)
-			maps = append(maps, LatencyConfigMapLazy)
-			maps = append(maps, TcpCgroupCfgMapLazy)
-		} else {
-			progs = append(progs, InetSend)
-			progs = append(progs, InetRecv)
-			maps = append(maps, LatencyConfigMap)
-			maps = append(maps, TcpCgroupCfgMap)
 		}
 	}
 

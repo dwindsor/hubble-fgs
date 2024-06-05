@@ -96,54 +96,6 @@ var (
 		"kprobe",
 	)
 
-	IcmpSend = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	IcmpRecv = program.Builder(
-		"bpf_cgroup_net.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	IcmpSendLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	IcmpRecvLazy = program.Builder(
-		"bpf_cgroup_net_load.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
-	IcmpSendLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
-	IcmpRecvLazy54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
 	IcmpRcv = program.Builder(
 		"bpf_icmp_rcv.o",
 		"icmp_rcv",
@@ -161,24 +113,14 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap       = program.MapBuilder(SocketMapName, IcmpSend)
-	SocketCookieStats     = program.MapBuilder("tg_socket_map_stats", IcmpSend)
-	SocketCookieMapLazy   = program.MapBuilder(SocketMapName, IcmpSendLazy)
-	SocketCookieStatsLazy = program.MapBuilder("tg_socket_map_stats", IcmpSendLazy)
-	SocketTupleMap        = program.MapBuilder("tg_socket_tuple_map", IcmpSend)
-	SocketTupleStats      = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSend)
-	SocketTupleHintMap    = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSend)
-	// Shared layer3 infrastructure
-	IcmpCgroupCfgMap     = program.MapBuilder("tg_cgroup_protocol_cfg_map", IcmpSend)
-	IcmpCgroupCfgMapLazy = program.MapBuilder("tg_cgroup_protocol_cfg_map", IcmpSendLazy)
+	SocketCookieMap    = program.MapBuilder(SocketMapName, IcmpRcv)
+	SocketCookieStats  = program.MapBuilder("tg_socket_map_stats", IcmpRcv)
+	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", IcmpRcv)
+	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcv)
+	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcv)
 	// ICMP runtime maps
-	CfgMap                 = program.MapBuilder("tg_cfg_map", IcmpSend)
-	IcmpCfgMap             = program.MapBuilder("tg_icmp_cfg_map", IcmpSend)
-	SocketTupleMapLazy     = program.MapBuilder("tg_socket_tuple_map", IcmpSendLazy)
-	SocketTupleStatsLazy   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpSendLazy)
-	SocketTupleHintMapLazy = program.MapBuilder("tg_socket_tuple_hint_map", IcmpSendLazy)
-	CfgMapLazy             = program.MapBuilder("tg_cfg_map", IcmpSendLazy)
-	IcmpCfgMapLazy         = program.MapBuilder("tg_icmp_cfg_map", IcmpSendLazy)
+	CfgMap     = program.MapBuilder("tg_cfg_map", IcmpRcv)
+	IcmpCfgMap = program.MapBuilder("tg_icmp_cfg_map", IcmpRcv)
 )
 
 type sensorConfigKey struct {
@@ -213,22 +155,13 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			IcmpRcv6,
 		}
 		maps = []*program.Map{
-			SocketCookieMapLazy,
-			SocketCookieStatsLazy,
-			SocketTupleMapLazy,
-			SocketTupleStatsLazy,
-			SocketTupleHintMapLazy,
-			IcmpCgroupCfgMapLazy,
-			CfgMapLazy,
-			IcmpCfgMapLazy,
-		}
-
-		if !kernels.MinKernelVersion("5.5.0") {
-			progs = append(progs, IcmpSendLazy54)
-			progs = append(progs, IcmpRecvLazy54)
-		} else {
-			progs = append(progs, IcmpSendLazy)
-			progs = append(progs, IcmpRecvLazy)
+			SocketCookieMap,
+			SocketCookieStats,
+			SocketTupleMap,
+			SocketTupleStats,
+			SocketTupleHintMap,
+			CfgMap,
+			IcmpCfgMap,
 		}
 	} else {
 		progs = []*program.Program{
@@ -238,8 +171,6 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			// SkRawRelease, // see comment above
 			// SkPingRelease, // see comment above
 			SkSockRelease,
-			IcmpSend,
-			IcmpRecv,
 			IcmpRcv,
 			IcmpRcv6,
 		}
@@ -249,7 +180,6 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 			SocketTupleMap,
 			SocketTupleStats,
 			SocketTupleHintMap,
-			IcmpCgroupCfgMap,
 			CfgMap,
 			IcmpCfgMap,
 		}

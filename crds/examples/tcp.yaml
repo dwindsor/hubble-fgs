@@ -60,3 +60,5 @@ spec:
       interval: 3
       udpPort: 6399
       tcpPort: 6399
+    icmp:
+      enable: true
