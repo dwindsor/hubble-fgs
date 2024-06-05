@@ -111,6 +111,7 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitTLSHealthMetricsForDocs(reg)
 	case "events":
 		metricsconfig.InitEventsMetricsForDocs(reg)
+		enterpriseMetricsConfig.InitSandboxMetricsForDocs(reg)
 	case "dns":
 		enterpriseMetricsConfig.InitDNSEventsMetricsForDocs(reg)
 	case "file":
@@ -129,8 +130,6 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitRawSocketEventsMetricsForDocs(reg)
 	case "tls":
 		enterpriseMetricsConfig.InitTLSEventsMetricsForDocs(reg)
-	case "sandbox":
-		enterpriseMetricsConfig.InitSandboxMetricsForDocs(reg)
 	}
 	return nil
 }

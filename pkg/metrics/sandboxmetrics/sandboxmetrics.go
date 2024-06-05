@@ -23,7 +23,7 @@ var (
 	eventsSyscalls = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
 		Namespace:   consts.MetricsNamespace,
 		Name:        "sandboxpolicy_syscalls_total",
-		Help:        "Sadnboxoplicy syscall events observed.",
+		Help:        "Sandboxpolicy syscall events observed.",
 		ConstLabels: nil,
 	}, []string{"policy", "syscall"})
 )

@@ -611,6 +611,19 @@ Policy events calls observed.
 | `policy` | `example-tracingpolicy` |
 | `workload` | `example-workload` |
 
+### `tetragon_sandboxpolicy_syscalls_total`
+
+Sandboxpolicy syscall events observed.
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `policy` | `example-sandboxpolicy` |
+| `syscall` | `example_syscall` |
+| `workload` | `example-workload` |
+
 ### `tetragon_syscalls_total`
 
 System calls observed.
