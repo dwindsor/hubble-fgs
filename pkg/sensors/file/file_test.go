@@ -44,6 +44,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
@@ -3112,6 +3113,110 @@ func TestFileRenameDirSuffix(t *testing.T) {
 		renameRenameChecker(t, outSrc, fmt.Sprintf("%s/b", outDst), "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS"),
 		renameReadChecker(t, filepath.Join(outRead, files[0])),
 		renameReadChecker(t, filepath.Join(outRead, files[1])),
+	}
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+// This test represents the issue reported by Cure53 in https://github.com/isovalent/hubble-fgs/issues/3289
+func TestFileLinkOnTmpFile(t *testing.T) {
+	outTest := filepath.Join(workingDir, t.Name())
+	createTestDir(t, outTest)
+
+	outDst := filepath.Join(outTest, "a")
+	createTestDir(t, outDst)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	base := base.GetInitialSensor()
+
+	specFile := newSpecFile(t, fmt.Sprintf("%s/", outDst), "file_monitoring_config.yaml.tmpl")
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		pol.ResetFIMTracingPolicies()
+	})
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	// create a temporary file in a directory that we don't monitor
+	fd, err := unix.Open(outTest, unix.O_TMPFILE|unix.O_RDWR, unix.S_IRUSR|unix.S_IWUSR)
+	if err != nil {
+		t.Errorf("unix.Open failed (%s)", err)
+	}
+
+	// get the inode number of the temporary file
+	var stat unix.Stat_t
+	err = unix.Fstat(fd, &stat)
+	if err != nil {
+		t.Errorf("unix.Fstat failed (%s)", err)
+	}
+
+	// create a link to the temporary file in a directory that we monitor
+	path := fmt.Sprintf("/proc/self/fd/%d", fd)
+	linkPath := filepath.Join(outDst, "tmp_link.txt")
+	err = unix.Linkat(unix.AT_FDCWD, path, unix.AT_FDCWD, linkPath, unix.AT_SYMLINK_FOLLOW)
+	if err != nil {
+		t.Errorf("unix.Linkat failed (%s)", err)
+	}
+
+	err = unix.Close(fd)
+	if err != nil {
+		t.Errorf("unix.Close failed (%s)", err)
+	}
+
+	file, err := os.OpenFile(linkPath, os.O_RDWR, 0)
+	if err != nil {
+		t.Errorf("os.OpenFile failed (%s)", err)
+	}
+	defer file.Close()
+
+	// write to link
+	if _, err := file.WriteString("some random test data here"); err != nil {
+		t.Errorf("failed run file.WriteString(%s): %s", linkPath, err)
+	}
+
+	ino, dev := getInodeInfo(t, linkPath)
+
+	// the link inode number should be the same as the temporary file
+	assert.Equal(t, stat.Ino, ino)
+
+	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
+	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
+	f := ec.NewFileDetailsChecker().WithStr(sm.Full(linkPath)).WithInode(i)
+	c := ec.NewGenericFileArgChecker().WithFile(f)
+
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
+	linkChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_LINK).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("hook_security_inode_link"))
+
+	writeChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_WRITE).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
+		WithHook(sm.Full("security_file_permission"))
+
+	fileCheckers := []ec.EventChecker{
+		linkChecker,
+		writeChecker,
 	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
