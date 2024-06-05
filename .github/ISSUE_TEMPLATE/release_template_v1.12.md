@@ -22,11 +22,18 @@ assignees: ''
   ```
   export RELEASE=v1.12.6
   ```
-- [ ] Open a pull request to update the Helm chart version:
+- [ ] Open a pull request to update the Helm chart and docs:
   ```
   git checkout -b pr/prepare-$RELEASE
+
+  # update Helm chart
   ./contrib/update-helm-chart.sh $RELEASE
   git add install/kubernetes/
+
+  # update upgrade notes
+  bash modules/tetragon-oss/contrib/update-upgrade-notes.sh $RELEASE
+  git add contrib/upgrade-notes/
+
   git commit -s -m "Prepare for $RELEASE release"
   git push origin HEAD
   ```
@@ -47,10 +54,20 @@ assignees: ''
   git push origin "api/$RELEASE"
   ```
 - [ ] Only for major/minor release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
-- [ ] Generate [release notes][hubble-fgs release] for the new release
-  - [ ] Find the "main" release tag you generated
-  - [ ] Click "generate release notes"
-  - [ ] Click "publish release"
+- When a tag is pushed, a GitHub Action job takes care of creating a new GitHub
+  draft release, building artifacts and attaching them to the draft release. Once
+  the draft is available in the [releases page]:
+  - [ ] Use `tgt-notes` from [tetragon-github-tools](https://github.com/isovalent/tetragon-github-tools/)
+        to generate a first version of the release notes based on `release-note/` tags and PR messages.
+  - [ ] Copy upgrade notes from `contrib/upgrade-notes/vX.Y.Z.md` file into the release notes.
+        - Skip if there are no upgrade notes - it's quite likely for patch releases.
+        - Review upgrade notes from the corresponding OSS release. Copy them to release notes too if relevant for
+          features supported in Tetragon Enterprise.
+  - [ ] Review the release notes and update them as needed.
+  - [ ] Make sure the "Set as a pre-release" and "Set as the latest release" checkboxes are set correctly.
+        Every `-pre.N` or `-rc.N` release should be marked as a pre-release, and a stable release with the highest
+        version should be marked as latest.
+  - [ ] Click on "Publish Release" at the bottom.
 
 ### Deploy the new release to tetragon-dev
 
@@ -84,14 +101,14 @@ Issues found when validating the release in tetragon-dev might not block the rel
   git checkout main && git pull origin main
   git checkout -b pr/document-tetragon-$RELEASE
   ```
-- [ ] Add release notes to the docs
-  - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:
+- Add release notes to the docs
+  - [ ] Edit `docs/operations-guide/releases/release-notes/tetragon/index.rst` to add a new entry for the new version of Tetragon Enterprise. Example diff:
     ```diff
-    diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+    diff --git a/docs/operations-guide/releases/release-notes/tetragon/index.rst b/docs/operations-guide/releases/release-notes/tetragon/index.rst
     index 98284b7..92a1d34 100644
-    --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-    +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
-    @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
+    --- a/docs/operations-guide/releases/release-notes/tetragon/index.rst
+    +++ b/docs/operations-guide/releases/release-notes/tetragon/index.rst
+    @@ -4,6 +4,7 @@ Release Notes - Tetragon Enterprise
      .. toctree::
        :maxdepth: 1
 
@@ -100,26 +117,24 @@ Issues found when validating the release in tetragon-dev might not block the rel
        v1.9.1
        v1.9.0
     ```
-   - [ ] Create a new file `docs/operations-guide/releases/release-notes/hubble-enterprise/$RELEASE.md`. Use the release notes you generated for the `hubble-enterprise` chart as a basis for what goes into the file. You can use the following as a template:
+   - [ ] Create a new file `docs/operations-guide/releases/release-notes/tetragon/$RELEASE.md`. Use the release notes you generated for the GitHub release as a basis for what goes into the file. You can use the following as a template:
      ```markdown
      # vX.Y.Z
 
+     ## Upgrade notes
+     * Upgrade notes here
+
      ## Features
-     * Features here
+     * Major changes here
 
      ## Enhancements
-     * Update to hubble-fgs vX.Y.Z
-     * Other enhancements here
-
-     ## Breaking changes
-     * Breaking changes here
+     * Minor changes here
      ```
 - [ ] Install [gh cli](https://github.com/cli/cli) locally and run the script
 `scripts/tetragon-update-doc-references.sh` to update helm charts, daemon flags and other references.
 - [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
   - [ ] See `docs/operations-guide/features/status.rst`
 - [ ] Ping feature owners to add documentation for undocumented new features
-- [ ] Document any breakages in `docs/operations-guide/upgrades/tetragon-version-notes.rst` if applicable
 
 ### Updating the hubble-enterprise helm chart
 
@@ -168,7 +183,7 @@ Issues found when validating the release in tetragon-dev might not block the rel
 
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
-[hubble-fgs release]: https://github.com/isovalent/hubble-fgs/releases/new
+[releases page]: https://github.com/isovalent/hubble-fgs/releases
 [hubble-enterprise chart]: https://github.com/isovalent/hubble-enterprise-chart
 [hubble-enterprise chart release]: https://github.com/isovalent/hubble-enterprise-chart/releases/new
 [cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
