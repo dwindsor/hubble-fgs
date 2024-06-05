@@ -532,7 +532,7 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 		ec.NewProcessFileChecker("truncate").
 			WithAction(tetragon.FileAction_FILE_WRITE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/test_dir/d")))).
-			WithHook(sm.Full("hook_security_inode_setattr")).
+			WithHook(sm.Full("security_inode_setattr")).
 			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("ls").
 			WithAction(tetragon.FileAction_FILE_READDIR).
@@ -552,12 +552,12 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 		ec.NewProcessFileChecker("chmod").
 			WithAction(tetragon.FileAction_FILE_CHATTR).
 			WithArgs(ec.NewFileArgumentChecker().WithAttrArg(ec.NewAttrArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("hook_security_inode_setattr")).
+			WithHook(sm.Full("security_inode_setattr")).
 			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("chown").
 			WithAction(tetragon.FileAction_FILE_CHATTR).
 			WithArgs(ec.NewFileArgumentChecker().WithAttrArg(ec.NewAttrArgChecker().WithFile(createChecker("/etc/test_dir/e")))).
-			WithHook(sm.Full("hook_security_inode_setattr")).
+			WithHook(sm.Full("security_inode_setattr")).
 			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_POST)),
 		ec.NewProcessFileChecker("rm1").
 			WithAction(tetragon.FileAction_FILE_DELETE).
@@ -588,7 +588,7 @@ func FileChecker(enforcement bool) ec.MultiEventChecker {
 		ec.NewProcessFileChecker("rm-enforce").
 			WithAction(tetragon.FileAction_FILE_DELETE).
 			WithArgs(ec.NewFileArgumentChecker().WithGenericArg(ec.NewGenericFileArgChecker().WithFile(createChecker("/etc/shadow")))).
-			WithHook(sm.Full("hook_security_inode_unlink")).
+			WithHook(sm.Full("security_inode_unlink")).
 			WithOperation(createOpChecker(tetragon.FileOperation_FILE_OP_BLOCK)),
 	}
 

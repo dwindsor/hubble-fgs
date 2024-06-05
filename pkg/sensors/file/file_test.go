@@ -1058,7 +1058,7 @@ func TestFileEnforceCreate(t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_inode_create")).
+		WithHook(sm.Full("security_inode_create")).
 		WithOperation(o)
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
@@ -1181,7 +1181,7 @@ func TestFileEnforceExec(t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_EXEC).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_bprm_check")).
+		WithHook(sm.Full("security_bprm_check")).
 		WithOperation(o)
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
@@ -2124,7 +2124,7 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_inode_setattr"))
+		WithHook(sm.Full("security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -2407,7 +2407,7 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
-		WithHook(sm.Full("hook_security_inode_setattr"))
+		WithHook(sm.Full("security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -2464,7 +2464,7 @@ func testFileChown(gt *testing.T, t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_CHATTR).
 		WithArgs(ec.NewFileArgumentChecker().WithAttrArg(c)).
-		WithHook(sm.Full("hook_security_inode_setattr"))
+		WithHook(sm.Full("security_inode_setattr"))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -2566,7 +2566,7 @@ func getExecChecker(t *testing.T, path string) *ec.ProcessFileChecker {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_EXEC).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_bprm_check"))
+		WithHook(sm.Full("security_bprm_check"))
 }
 
 func testFileExec(gt *testing.T, t *testing.T) {
@@ -3206,7 +3206,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_LINK).
 		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(c)).
-		WithHook(sm.Full("hook_security_inode_link"))
+		WithHook(sm.Full("security_inode_link"))
 
 	writeChecker := ec.NewProcessFileChecker("").
 		WithProcess(binChecker).
