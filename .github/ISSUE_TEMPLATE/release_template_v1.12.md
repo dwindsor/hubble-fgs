@@ -1,7 +1,7 @@
 ---
 name: Release a new version of Tetragon Enteprise (version v1.12)
 about: Create a checklist for an upcoming release
-title: 'vX.Y.Z release'
+title: 'v1.12.Z release'
 labels: kind/release
 assignees: ''
 ---
@@ -46,7 +46,7 @@ assignees: ''
   git push origin "$RELEASE"
   git push origin "api/$RELEASE"
   ```
-- [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
+- [ ] Only for major/minor release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"
@@ -82,7 +82,7 @@ Issues found when validating the release in tetragon-dev might not block the rel
   Check out a new release branch:
   ```
   git checkout main && git pull origin main
-  git checkout -b pr/document-fgs-$RELEASE
+  git checkout -b pr/document-tetragon-$RELEASE
   ```
 - [ ] Add release notes to the docs
   - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:

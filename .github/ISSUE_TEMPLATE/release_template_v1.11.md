@@ -1,7 +1,7 @@
 ---
 name: Release a new patch version of Tetragon Enteprise (versions <= v1.11)
 about: Create a checklist for an upcoming release
-title: 'v1.X.Z release'
+title: 'v1.11.Z release'
 labels: kind/release
 assignees: ''
 ---
@@ -40,7 +40,7 @@ The following is a release checklist that should be followed when cutting a new 
   git push origin "$RELEASE"
   git push origin "api/$RELEASE"
   ```
-- [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
+- [ ] Only for major/minor release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"
@@ -102,8 +102,8 @@ The following is a release checklist that should be followed when cutting a new 
 - [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise.
   Check out a new release branch:
   ```
-  git checkout master && git pull origin master
-  git checkout -b pr/document-fgs-$RELEASE
+  git checkout main && git pull origin main
+  git checkout -b pr/document-tetragon-$RELEASE
   ```
 - [ ] Add release notes to the docs
   - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:

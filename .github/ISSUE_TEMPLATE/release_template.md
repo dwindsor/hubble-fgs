@@ -16,7 +16,7 @@ If you are doing a minor version bump (i.e. the Y in X.Y.Z), there are a few ste
 
 - [ ] [Cut a new OSS release][oss-release]
 - [ ] **After** checking out your new release branch (see below) but **before** you push the tag, update the `modules/tetragon-oss` to point to your new OSS release branch, and do an OSS sync
-- [ ] Make sure you add the `-rc1` suffix to the version number for release candidates (rc)
+- [ ] Make sure you add the `-rc.N` suffix to the version number for release candidates (rc)
 
 Branch `X.Y` may not exist, because we have not branched out yet. This can only happen for
 `X.Y.0-rc.N` or `X.Y.0` releases. In this case:
@@ -77,7 +77,7 @@ If you create a `X.Y` branch:
   git push origin "$RELEASE"
   git push origin "api/$RELEASE"
   ```
-- [ ] Only for major release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
+- [ ] Only for major/minor release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
 - [ ] Generate [release notes][hubble-fgs release] for the new release
   - [ ] Find the "main" release tag you generated
   - [ ] Click "generate release notes"
@@ -137,7 +137,7 @@ These steps need either to be run from a release workflow or to be temporarily r
   Check out a new release branch:
   ```
   git checkout main && git pull origin main
-  git checkout -b pr/document-fgs-$RELEASE
+  git checkout -b pr/document-tetragon-$RELEASE
   ```
 - [ ] Add release notes to the docs
   - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of `hubble-enterprise`. NOTE: as before, this is the version of the Helm chart, **NOT** the Tetragon Enterprise version. Example diff:
