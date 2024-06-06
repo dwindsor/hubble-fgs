@@ -1198,6 +1198,8 @@ func execute() error {
 	flags.String(KeyHealthServerAddress, ":6789", "Health server address (e.g. ':6789')(use '' to disabled it)")
 	flags.Int(KeyHealthTimeInterval, 10, "Health server interval in seconds")
 
+	flags.Int(keyRBQueueSize, 65535, "Set size of channel between ring buffer and sensor go routines (default 65k)")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

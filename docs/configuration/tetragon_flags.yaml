@@ -182,6 +182,10 @@ options:
     - name: protocol-shift
       default_value: auto
       usage: (deprecated)
+    - name: rb-queue-size
+      default_value: "65535"
+      usage: |
+        Set size of channel between ring buffer and sensor go routines (default 65k)
     - name: rb-size
       default_value: "0"
       usage: Set perf ring buffer size for single cpu (default 65k)
