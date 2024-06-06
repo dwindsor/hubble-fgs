@@ -19,10 +19,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -92,13 +92,13 @@ func InitInterfaceEventsMetricsForDocs(registry *prometheus.Registry) {
 
 func initAllNetworkHealthMetrics(registry *prometheus.Registry) {
 	iperrormetrics.InitMetrics(registry)
-	lrumetrics.InitMetrics(registry)
+	layer3.InitUDPHealthMetrics(registry)
 	socketmetrics.InitUDPHealthMetrics(registry)
 }
 
 func InitNetworkHealthMetricsForDocs(registry *prometheus.Registry) {
 	iperrormetrics.InitMetrics(registry)
-	lrumetrics.InitMetrics(registry)
+	layer3.InitUDPHealthMetrics(registry)
 	socketmetrics.InitUDPHealthMetrics(registry)
 }
 

@@ -39,7 +39,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
@@ -683,7 +682,6 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Lock()
 		delete(pseudoSockets, pseudoKey)
 		pseudoSocketsUpdate.Unlock()
-		lrumetrics.LruMapSizeSet("lru_udp_stats_map", udpStatsCacheSize, float64(stats.Len()))
 		return closeEvents, nil
 	}
 	return []observer.Event{msgUnix}, nil

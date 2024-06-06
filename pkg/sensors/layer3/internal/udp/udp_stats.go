@@ -30,7 +30,6 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 )
 
@@ -422,5 +421,4 @@ func runUdpGC() {
 	for iter.Next(&key, &val) {
 		udpGcCb(m, &key, &val)
 	}
-	lrumetrics.LruMapSizeSet("lru_udp_stats_map", udpStatsCacheSize, float64(stats.Len()))
 }
