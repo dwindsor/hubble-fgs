@@ -6,7 +6,7 @@ BUILDER_IMAGE=quay.io/cilium/cilium-builder@sha256:a2036a3f6420647e6702695dabd2f
 GO ?= go
 
 .PHONY: all
-all: proto doc
+all: proto
 
 .PHONY: proto
 proto: v1
@@ -32,15 +32,6 @@ v1: copy_oss_files
 		--user "$(shell id -u):$(shell id -g)" \
 		$(BUILDER_IMAGE) \
 		make -C /src/api/v1 -f Makefile.protoc
-
-.PHONY: doc
-doc: copy_oss_files
-	docker container run --rm \
-		--volume $(CURDIR)/v1:/out \
-		--volume $(CURDIR)/v1/:/protos \
-		pseudomuto/protoc-gen-doc:1.5.0 \
-		--doc_opt=markdown,README.md \
-		$(patsubst $(CURDIR)/v1/%,%,$(wildcard $(CURDIR)/v1/tetragon/*.proto))
 
 .PHONY: vendor
 vendor:
