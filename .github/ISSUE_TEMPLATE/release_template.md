@@ -23,6 +23,7 @@ Branch `X.Y` may not exist, because we have not branched out yet. This can only 
 
    * If release is `X.Y.0`:
        * Create `X.Y` branch
+       * Copy the file `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` from the previous release branch, e.g. from `1.3` if creating release `1.4.0`.
    * Else: # release is `X.Y.0-rc.N`
        * If `N == 1`, no need to create a branch
        * If `N > 1`
@@ -122,31 +123,13 @@ If you create a `X.Y` branch:
 
 Issues found when validating the release in tetragon-dev might not block the release, but should be communicated and documented.
 
-### Update the OLM manifests
+### Update of the OLM manifests and publication of the OLM bundle and catalog index
 
-- [ ] Update all the image references in `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` with the image digests specific to the release. The references are in relatedImages at the end of the file and in the environment variables passed to the operator.
-- [ ] Update in `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` the `name` of the CSV and the `version` field to reflect the current release. Add or more generally update the `replace` directive (not for the first release) at the end of the manifest so that it points to the name of the previous version. Add or update the skipRange annotation (not for the first release) to allow updates that skip .z releases, e.g.: `olm.skipRange: '>=1.13.0 <1.13.3'` for a 1.13.3 release.
-- [ ] Create a PR against the release branch with the updated `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml`.
-
-### Publish the OLM bundle
-
-This step needs either to be run from a release workflow or to be temporarily run by a user with elevated privileges
-- [ ] Having set the environment variable `DOCKER_IMAGE_TAG` with the version being released run `make bundle-build bundle-push`
+- [ ] The push of the release tag, triggers the creation of a pull request against the release branch with title "chore: Update CSV image to $RELEASE". Review the PR: the image digests, the `name`, `version` and `replaces` fields are updates with the release specific values. Merge the PR if it looks alright and if it is not for a release candidate. Close it otherwise.
+- [ ] Another pull request gets created against the master branch for the addition of the new release to the OLM catalog index. Its title is "chore: Add bundle $RELEASE to the OLM catalog". Review the PR and merge it if it looks alright and if it is not for a release candidate. The merge of the PR triggers the publication of the new version of the OLM catalog index.
+- [ ] Validate the publication of the bundle and catalog images under `https://quay.io/repository/isovalent/tetragon-operator-bundle` and `https://quay.io/repository/isovalent/tetragon-operator-index`.
 
 **IF YOU ARE DOING A RELEASE CANDIDATE, STOP HERE.**
-
-### Publish the OLM catalog
-
-These steps need either to be run from a release workflow or to be temporarily run by a user with elevated privileges
-- [ ] Checkout the master branch for adding the new bundle to the catalog
-- [ ] Create or more generally update the catalog image:
-  ```bash
-  # if not set in the previous step
-  export DOCKER_IMAGE_TAG=<version>
-  make olm-index-add
-  make olm-index-build olm-index-push
-  ```
-- [ ] Create a PR against the master branch with the udated `install/olm/catalog/index.yaml`
 
 ### Documentation
 
