@@ -11,13 +11,13 @@
 package eventmetrics
 
 import (
+	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
-	v1 "github.com/cilium/tetragon/pkg/oldhubble/api/v1"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 )
