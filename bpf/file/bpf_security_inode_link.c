@@ -36,6 +36,14 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 
 	get_ino_fs(msg, old_inode, old_dentry);
 
+	// In the case we already have this inode number in our maps
+	// this means that we already monitor that file. In those
+	// cases we do not change its name during a link operation
+	// and we keep reporting it's original name.
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, msg->ino, msg->fs.dev);
+	if (file_val)
+		return 0;
+
 	// get parent inode and fs info
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
