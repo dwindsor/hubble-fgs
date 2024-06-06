@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package layer3
+package layer3_test
 
 import (
 	"flag"
@@ -22,12 +22,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
-
-	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
 var (
@@ -190,7 +189,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := ProgsAndMaps(true, true, true)
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true)
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)

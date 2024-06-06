@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package layer3
+package layer3_test
 
 import (
 	"context"

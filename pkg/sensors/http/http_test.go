@@ -36,7 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	layer3Testutil "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -403,7 +403,7 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := layer3.ProgsAndMaps(false, false, false)
+	sensorProgs, sensorMaps := layer3Testutil.ProgsAndMaps(false, false, false)
 	ni := uint(len(sensorProgs)) // next index
 
 	sensorProgs = append(sensorProgs, []tus.SensorProg{
@@ -432,17 +432,17 @@ func TestLoadHttpSensor(t *testing.T) {
 	}...)
 
 	// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-	layer3.AddToMap(sensorMaps, "execve_map", []uint{ni + 1, ni + 3, ni + 4, ni + 17})
+	layer3Testutil.AddToMap(sensorMaps, "execve_map", []uint{ni + 1, ni + 3, ni + 4, ni + 17})
 	// all but base and tg_sockmap
-	layer3.AddToMap(sensorMaps, "tg_socket_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
+	layer3Testutil.AddToMap(sensorMaps, "tg_socket_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
 		ni + 12, ni + 13, ni + 16, ni + 17})
 	// event_tcp4_connect, event_tcp4_close, event_sys_listen
-	layer3.AddToMap(sensorMaps, "tg_socket_map_stats", []uint{ni + 1, ni + 2, ni + 3, ni + 16})
+	layer3Testutil.AddToMap(sensorMaps, "tg_socket_map_stats", []uint{ni + 1, ni + 2, ni + 3, ni + 16})
 	// all but tg_sockmap
-	layer3.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
+	layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9, ni + 10, ni + 11,
 		ni + 12, ni + 13, ni + 17})
 	// accept and accept_ret
-	layer3.AddToMap(sensorMaps, "tg_tcp_accept_sock_map", []uint{ni + 15, ni + 16})
+	layer3Testutil.AddToMap(sensorMaps, "tg_tcp_accept_sock_map", []uint{ni + 15, ni + 16})
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

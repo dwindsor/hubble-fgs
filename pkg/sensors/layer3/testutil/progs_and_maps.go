@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package layer3
+package testutil
 
 import (
 	"github.com/cilium/ebpf"
