@@ -38,6 +38,7 @@
     },
     {
       "enabled": true,
+      "groupName": "Go",
       "matchPackageNames": [
         "docker.io/library/golang",
         "go"
@@ -49,6 +50,7 @@
     },
     {
       "enabled": true,
+      "groupName": "Go",
       "matchPackageNames": [
         "docker.io/library/golang",
         "go"
@@ -60,6 +62,7 @@
     },
     {
       "enabled": true,
+      "groupName": "Go",
       "matchPackageNames": [
         "docker.io/library/golang",
         "go"
