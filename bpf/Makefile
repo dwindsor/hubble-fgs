@@ -102,7 +102,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o
 
 
-BPFTEST = bpf_lseek.o bpf_globals.o
+BPFTEST = bpf_lseek.o
 
 LDIR = ./lib
 OSSIDIR = $(OSSBPFDIR)/include/
