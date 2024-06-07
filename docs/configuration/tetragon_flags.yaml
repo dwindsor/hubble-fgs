@@ -185,14 +185,15 @@ options:
     - name: rb-queue-size
       default_value: "65535"
       usage: |
-        Set size of channel between ring buffer and sensor go routines (default 65k)
+        Set size of channel between ring buffer and sensor go routines (default 65k, allows K/M/G suffix)
     - name: rb-size
       default_value: "0"
-      usage: Set perf ring buffer size for single cpu (default 65k)
+      usage: |
+        Set perf ring buffer size for single cpu (default 65k, allows K/M/G suffix)
     - name: rb-size-total
       default_value: "0"
       usage: |
-        Set perf ring buffer size in total for all cpus (default 65k per cpu)
+        Set perf ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)
     - name: redaction-filters
       usage: Redaction filters for events
     - name: release-pinned-bpf

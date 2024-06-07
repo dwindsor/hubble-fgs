@@ -1064,7 +1064,10 @@ func execute() error {
 				}
 				return
 			}
-			readAndSetFlags()
+			if err := readAndSetFlags(); err != nil {
+				log.WithError(err).Fatal("Failed to read config options")
+			}
+
 			enterpriseOption.ReadAndSetEnterpriseFlags()
 
 			// Unfortunately, due to an over-reliance on init() throughout the codebase,
@@ -1174,8 +1177,8 @@ func execute() error {
 	flags.Bool(keyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
 
 	// Allow to specify perf ring buffer size
-	flags.Int(keyRBSizeTotal, 0, "Set perf ring buffer size in total for all cpus (default 65k per cpu)")
-	flags.Int(keyRBSize, 0, "Set perf ring buffer size for single cpu (default 65k)")
+	flags.String(keyRBSizeTotal, "0", "Set perf ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)")
+	flags.String(keyRBSize, "0", "Set perf ring buffer size for single cpu (default 65k, allows K/M/G suffix)")
 
 	// Provide option to enable policy filtering. Because the code is new,
 	// this is set to false by default.
@@ -1198,7 +1201,7 @@ func execute() error {
 	flags.String(KeyHealthServerAddress, ":6789", "Health server address (e.g. ':6789')(use '' to disabled it)")
 	flags.Int(KeyHealthTimeInterval, 10, "Health server interval in seconds")
 
-	flags.Int(keyRBQueueSize, 65535, "Set size of channel between ring buffer and sensor go routines (default 65k)")
+	flags.String(option.KeyRBQueueSize, "65535", "Set size of channel between ring buffer and sensor go routines (default 65k, allows K/M/G suffix)")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

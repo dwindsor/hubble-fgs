@@ -11,8 +11,11 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/strutils"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/spf13/viper"
 )
@@ -96,7 +99,7 @@ const (
 	KeyHealthTimeInterval  = "health-server-interval"
 )
 
-func readAndSetFlags() {
+func readAndSetFlags() error {
 	option.Config.HubbleLib = viper.GetString(option.KeyHubbleLib)
 	option.Config.BTF = viper.GetString(keyBTF)
 	option.Config.ProcFS = viper.GetString(keyProcFS)
@@ -140,9 +143,16 @@ func readAndSetFlags() {
 
 	option.Config.DisableKprobeMulti = viper.GetBool(keyDisableKprobeMulti)
 
-	option.Config.RBSize = viper.GetInt(keyRBSize)
-	option.Config.RBSizeTotal = viper.GetInt(keyRBSizeTotal)
-	option.Config.RBQueueSize = viper.GetInt(keyRBQueueSize)
+	var err error
+	if option.Config.RBSize, err = strutils.ParseSize(viper.GetString(keyRBSize)); err != nil {
+		return fmt.Errorf("failed to parse rb-size value: %s", err)
+	}
+	if option.Config.RBSizeTotal, err = strutils.ParseSize(viper.GetString(keyRBSizeTotal)); err != nil {
+		return fmt.Errorf("failed to parse rb-size-total value: %s", err)
+	}
+	if option.Config.RBQueueSize, err = strutils.ParseSize(viper.GetString(keyRBQueueSize)); err != nil {
+		return fmt.Errorf("failed to parse rb-queue-size value: %s", err)
+	}
 
 	option.Config.EnablePolicyFilter = viper.GetBool(keyEnablePolicyFilter)
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(keyEnablePolicyFilterDebug)
@@ -175,4 +185,5 @@ func readAndSetFlags() {
 
 	option.Config.HealthServerAddress = viper.GetString(KeyHealthServerAddress)
 	option.Config.HealthServerInterval = viper.GetInt(KeyHealthTimeInterval)
+	return nil
 }
