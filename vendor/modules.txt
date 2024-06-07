@@ -494,7 +494,7 @@ github.com/cncf/xds/go/xds/type/v3
 # github.com/containerd/cgroups/v3 v3.0.2
 ## explicit; go 1.18
 github.com/containerd/cgroups/v3/cgroup1/stats
-# github.com/containerd/containerd v1.7.17
+# github.com/containerd/containerd v1.7.18
 ## explicit; go 1.21
 github.com/containerd/containerd
 github.com/containerd/containerd/api/runtime/sandbox/v1
@@ -527,7 +527,6 @@ github.com/containerd/containerd/contrib/seccomp/kernelversion
 github.com/containerd/containerd/defaults
 github.com/containerd/containerd/diff
 github.com/containerd/containerd/diff/proxy
-github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/events
 github.com/containerd/containerd/events/exchange
 github.com/containerd/containerd/filters
@@ -537,7 +536,6 @@ github.com/containerd/containerd/images/archive
 github.com/containerd/containerd/labels
 github.com/containerd/containerd/leases
 github.com/containerd/containerd/leases/proxy
-github.com/containerd/containerd/log
 github.com/containerd/containerd/mount
 github.com/containerd/containerd/namespaces
 github.com/containerd/containerd/oci
