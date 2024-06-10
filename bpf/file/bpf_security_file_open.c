@@ -115,6 +115,7 @@ generate_message:
 	msg->rule_id = rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
+	msg->open_flags = BPF_CORE_READ(file, f_flags);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

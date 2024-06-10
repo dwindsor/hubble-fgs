@@ -2074,6 +2074,7 @@ Determins the behaviour of a field filter
 | inode | [Inode](#tetragon-Inode) |  |  |
 | parent_inode | [Inode](#tetragon-Inode) |  |  |
 | location | [FileLocation](#tetragon-FileLocation) |  |  |
+| open_flags | [string](#string) | repeated |  |
 
 
 

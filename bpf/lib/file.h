@@ -223,6 +223,8 @@ struct msg_file_ops {
 	__u32 rule_id;
 	__u32 tid;
 	struct digest_key digest;
+	__u32 open_flags;
+	__u32 pad;
 };
 
 struct vfs_mkdir_info {

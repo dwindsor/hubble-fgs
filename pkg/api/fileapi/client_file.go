@@ -130,6 +130,8 @@ type MsgFileEvent struct {
 	RuleID     uint32                  `align:"rule_id"`
 	Tid        uint32                  `align:"tid"`
 	Digest     DigestKey               `align:"digest"`
+	OpenFlags  uint32                  `align:"open_flags"`
+	Pad        uint32                  `align:"pad"`
 }
 
 type MsgFileSplitPath struct {

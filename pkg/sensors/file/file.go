@@ -660,6 +660,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:      pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:      pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		Digest:      digest,
+		OpenFlags:   m.OpenFlags,
 	}
 
 	return []observer.Event{unix}, nil

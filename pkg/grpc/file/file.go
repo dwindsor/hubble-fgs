@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -93,6 +94,25 @@ var (
 		18: "DST_SOCKET",
 		19: "DST_INVALID",
 	}
+
+	openFlagsString = map[uint32]string{
+		unix.O_APPEND:    "O_APPEND",
+		unix.O_ASYNC:     "O_ASYNC",
+		unix.O_CLOEXEC:   "O_CLOEXEC",
+		unix.O_CREAT:     "O_CREAT",
+		unix.O_DIRECT:    "O_DIRECT",
+		unix.O_DIRECTORY: "O_DIRECTORY",
+		unix.O_TMPFILE:   "O_TMPFILE",
+		unix.O_DSYNC:     "O_DSYNC",
+		unix.O_EXCL:      "O_EXCL",
+		unix.O_NOATIME:   "O_NOATIME",
+		unix.O_NOCTTY:    "O_NOCTTY",
+		unix.O_NOFOLLOW:  "O_NOFOLLOW",
+		unix.O_NONBLOCK:  "O_NONBLOCK", // or O_NDELAY
+		unix.O_PATH:      "O_PATH",
+		unix.O_SYNC:      "O_SYNC", // or O_FSYNC
+		unix.O_TRUNC:     "O_TRUNC",
+	}
 )
 
 func getDevMajor(dev uint32) uint32 {
@@ -103,6 +123,27 @@ func getDevMinor(dev uint32) uint32 {
 	one := uint32(1)
 	mask := ((one << 20) - 1)
 	return dev & mask
+}
+
+func getOpenFlags(flags uint32) []string {
+	var f []string
+
+	// first check the access modes
+	if flags&unix.O_ACCMODE == unix.O_RDONLY {
+		f = append(f, "O_RDONLY")
+	} else if flags&unix.O_ACCMODE == unix.O_RDWR {
+		f = append(f, "O_RDWR")
+	} else if flags&unix.O_ACCMODE == unix.O_WRONLY {
+		f = append(f, "O_WRONLY")
+	}
+
+	for k, v := range openFlagsString {
+		if (k & flags) == k {
+			f = append(f, v)
+		}
+	}
+
+	return f
 }
 
 func createFileSystem(fs MsgFsInfoUnix, sDev uint32) *tetragon.FileSystem {
@@ -140,6 +181,9 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
 		Location: &tetragon.FileLocation{},
+	}
+	if tetragon.FileAction(event.Msg.Action) == tetragon.FileAction_FILE_OPEN {
+		fileDetails.OpenFlags = getOpenFlags(event.OpenFlags)
 	}
 	args := &tetragon.GenericFileArg{
 		File:  fileDetails,
@@ -489,6 +533,7 @@ type MsgFileEventUnix struct {
 	TpName      string
 	TpRule      string
 	Digest      MsgDigest
+	OpenFlags   uint32
 }
 
 func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {

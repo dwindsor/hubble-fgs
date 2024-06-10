@@ -11160,6 +11160,7 @@ type FileDetailsChecker struct {
 	Inode       *InodeChecker                `json:"inode,omitempty"`
 	ParentInode *InodeChecker                `json:"parentInode,omitempty"`
 	Location    *FileLocationChecker         `json:"location,omitempty"`
+	OpenFlags   *StringListMatcher           `json:"openFlags,omitempty"`
 }
 
 // NewFileDetailsChecker creates a new FileDetailsChecker
@@ -11204,6 +11205,11 @@ func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
 				return fmt.Errorf("Location check failed: %w", err)
 			}
 		}
+		if checker.OpenFlags != nil {
+			if err := checker.OpenFlags.Check(event.OpenFlags); err != nil {
+				return fmt.Errorf("OpenFlags check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -11236,6 +11242,12 @@ func (checker *FileDetailsChecker) WithLocation(check *FileLocationChecker) *Fil
 	return checker
 }
 
+// WithOpenFlags adds a OpenFlags check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithOpenFlags(check *StringListMatcher) *FileDetailsChecker {
+	checker.OpenFlags = check
+	return checker
+}
+
 //FromFileDetails populates the FileDetailsChecker using data from a FileDetails field
 func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) *FileDetailsChecker {
 	if event == nil {
@@ -11253,6 +11265,17 @@ func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) 
 	}
 	if event.Location != nil {
 		checker.Location = NewFileLocationChecker().FromFileLocation(event.Location)
+	}
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.OpenFlags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.OpenFlags = lm
 	}
 	return checker
 }

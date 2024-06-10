@@ -236,6 +236,7 @@ message FileDetails {
     Inode inode = 2;
     Inode parent_inode = 3;
     FileLocation location = 4;
+    repeated string open_flags = 5;
 }
 
 message FileIO {
