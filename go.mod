@@ -3,7 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.22.2
 
 require (
-	github.com/cilium/cilium v1.15.5
+	github.com/cilium/cilium v1.15.6
 	github.com/cilium/ebpf v0.15.0
 	github.com/cilium/lumberjack/v2 v2.3.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -34,7 +34,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
-	github.com/vishvananda/netlink v1.2.1-beta.2.0.20231206185938-4287122432b2
+	github.com/vishvananda/netlink v1.2.1-beta.2.0.20240524165444-4d4ba1473f21
 	github.com/vishvananda/netns v0.0.4
 	github.com/yalue/native_endian v1.0.2
 	golang.org/x/net v0.26.0
