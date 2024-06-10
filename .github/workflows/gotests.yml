@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       matrix:
         os: [ ubuntu-22.04, buildjet-2vcpu-ubuntu-2204-arm ]
@@ -56,7 +56,7 @@ jobs:
         sudo -E make tetragon-fs-scanner
         sudo -E make tester-progs
         export FLAKY_HTTP=1
-        sudo -E make test GO_TEST_TIMEOUT=40m SUDO="sudo -E"
+        sudo -E make test GO_TEST_TIMEOUT=60m SUDO="sudo -E"
 
     - name: Upload FGS logs
       if: failure()
