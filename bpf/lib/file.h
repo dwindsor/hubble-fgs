@@ -180,6 +180,11 @@ struct file_sel_rename {
 	__u32 matchMask;
 };
 
+struct onflags {
+	__u32 op; // 0 Empty, 1 In, 2 NotIn
+	__u32 mask;
+};
+
 struct ns_filter {
 	union {
 		struct {

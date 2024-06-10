@@ -1118,6 +1118,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			},
 			{
 				Index: 0,
+				Name:  "file_open_flags_map",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					if err := fm.GenerateFileOpenFlagsMap(m, sel, e.PinPathPrefix); err != nil {
+						return fmt.Errorf("file_open_flags_map: %w", err)
+					}
+					return nil
+				},
+			},
+			{
+				Index: 0,
 				Name:  "file_actions_map",
 				Load: func(m *ebpf.Map, _ uint32) error {
 					if err := fm.GenerateFileActionsMap(m, sel); err != nil {

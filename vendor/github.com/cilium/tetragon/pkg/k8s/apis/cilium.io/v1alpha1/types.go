@@ -187,6 +187,17 @@ type FileRenameTypeSelector struct {
 	Values []RenameTypeSelectorValue `json:"values,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=O_APPEND;O_ASYNC;O_CLOEXEC;O_CREAT;O_DIRECT;O_DIRECTORY;O_DSYNC;O_EXCL;O_NOATIME;O_NOCTTY;O_NOFOLLOW;O_NONBLOCK;O_PATH;O_SYNC;O_TMPFILE;O_TRUNC;O_RDONLY;O_RDWR;O_WRONLY
+type OpenFlagSelectorValue = string
+
+type FileOpenFlagsTypeSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []OpenFlagSelectorValue `json:"values,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -207,6 +218,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of file rename type filters.
 	MatchRenameSrcType []FileRenameTypeSelector `json:"matchRenameSrcType,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of file open flags filters.
+	MatchOpenFlags []FileOpenFlagsTypeSelector `json:"matchOpenFlags,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

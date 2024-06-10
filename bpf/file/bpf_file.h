@@ -317,6 +317,33 @@ struct {
 	__type(value, struct file_sel_rename);
 } file_rename_map SEC(".maps");
 
+#define MAX_SELECTOR_OPEN_FLAGS 8
+
+// Need to declare the value of the inner map here otherwise we get the
+// following error:
+// time="2024-06-11T07:24:35Z" level=fatal msg="Failed to start tetragon"
+// error="failed to get sensors from parser policy: sensor fim_sensor_1
+// from collection file-monitoring failed to load: tetragon, aborting
+// could not load sensor BPF maps: failed to open collection
+// 'bpf/objs/bpf_vfs_fallocate.o': file bpf/objs/bpf_vfs_fallocate.o:
+// load BTF maps: map file_open_flags_map: can't parse BTF map definition
+// of inner map: can't get size of BTF value: type *btf.Fwd: type is
+// unsized"
+__attribute__((unused)) struct onflags _onflags;
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__type(key, __u32); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_ARRAY);
+			__uint(max_entries, MAX_SELECTOR_OPEN_FLAGS);
+			__type(key, __u32);
+			__type(value, struct onflags);
+		});
+} file_open_flags_map SEC(".maps");
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
@@ -613,6 +640,41 @@ static inline __attribute__((always_inline)) int check_match_rename(__u32 sel_id
 }
 
 // returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_open_flags(__u32 sel_idx, __u32 action, __u32 flags)
+{
+	void *inner_open_flags_map;
+	struct onflags *of;
+	int i = 0;
+
+	// only applicable to open events
+	if (action != action_open)
+		return 1;
+
+	inner_open_flags_map = map_lookup_elem(&file_open_flags_map, &sel_idx);
+	if (!inner_open_flags_map) // no matchOpenFlags for this selector
+		return 1;
+
+	for (i = 0; i < MAX_SELECTOR_OPEN_FLAGS; ++i) {
+		__u32 k = i;
+		of = map_lookup_elem(inner_open_flags_map, &k);
+		if (of) {
+			if (of->op == op_filter_in) {
+				if (flags & of->mask)
+					return 1;
+			} else if (of->op == op_filter_notin) {
+				if (!(flags & of->mask))
+					return 1;
+			} else { // this will cover op == 0 as well
+				return 0;
+			}
+		}
+	}
+
+	// nothing matches here
+	return 0;
+}
+
+// returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
 	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
@@ -622,7 +684,7 @@ static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, __u32 rename_flags, struct digest_key *digest, struct execve_map_value *execve)
+__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve)
 {
 	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
@@ -635,8 +697,10 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 rename_flags, struct digest_
 		goto nopost;
 	if (!check_match_capabilities(sel_idx))
 		goto nopost;
+	if (!check_match_open_flags(sel_idx, action, flags))
+		goto nopost;
 #endif
-	if (!check_match_rename(sel_idx, action, rename_flags))
+	if (!check_match_rename(sel_idx, action, flags))
 		goto nopost;
 	if (!check_enforcement(sel_idx))
 		goto post;
@@ -649,7 +713,7 @@ nopost:
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action, __u32 rename_flags, struct digest_key *digest)
+eval_selectors(__u32 action, __u32 flags, struct digest_key *digest)
 {
 	__u32 ppid, i, val = 0, zero = 0;
 	struct file_config_map_value *conf;
@@ -683,7 +747,7 @@ eval_selectors(__u32 action, __u32 rename_flags, struct digest_key *digest)
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, rename_flags, digest, execve);
+		val = __eval_selectors(i, action, flags, digest, execve);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}

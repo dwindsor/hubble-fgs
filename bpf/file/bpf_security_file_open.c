@@ -23,6 +23,7 @@ file_open(void *ctx, struct file *file)
 	struct file_config_map_value *conf;
 	struct inode *inode;
 	struct dentry *dentry;
+	__u32 open_flags;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -50,12 +51,14 @@ file_open(void *ctx, struct file *file)
 
 	get_parent_ino_fs(msg, parent_dentry);
 
+	open_flags = BPF_CORE_READ(file, f_flags);
+
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_open, 0, 0);
+	operation = eval_selectors(action_open, open_flags, 0);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
@@ -115,7 +118,7 @@ generate_message:
 	msg->rule_id = rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
-	msg->open_flags = BPF_CORE_READ(file, f_flags);
+	msg->open_flags = open_flags;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

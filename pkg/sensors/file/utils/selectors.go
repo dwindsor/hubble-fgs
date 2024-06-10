@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -73,6 +74,32 @@ var namespaceTypeTable = map[string]uint32{
 	"user":            namespaceTypeUser,
 }
 
+const maxOpenFlagMaskPerOp = 8
+
+var openFlagsString = map[string]uint32{
+	"O_APPEND":    unix.O_APPEND,
+	"O_ASYNC":     unix.O_ASYNC,
+	"O_CLOEXEC":   unix.O_CLOEXEC,
+	"O_CREAT":     unix.O_CREAT,
+	"O_DIRECT":    unix.O_DIRECT,
+	"O_DIRECTORY": unix.O_DIRECTORY,
+	"O_DSYNC":     unix.O_DSYNC,
+	"O_EXCL":      unix.O_EXCL,
+	"O_NOATIME":   unix.O_NOATIME,
+	"O_NOCTTY":    unix.O_NOCTTY,
+	"O_NOFOLLOW":  unix.O_NOFOLLOW,
+	"O_NONBLOCK":  unix.O_NONBLOCK,
+	"O_NDELAY":    unix.O_NONBLOCK,
+	"O_PATH":      unix.O_PATH,
+	"O_SYNC":      unix.O_SYNC,
+	"O_FSYNC":     unix.O_SYNC,
+	"O_TMPFILE":   unix.O_TMPFILE,
+	"O_TRUNC":     unix.O_TRUNC,
+	"O_RDONLY":    unix.O_RDONLY,
+	"O_RDWR":      unix.O_RDWR,
+	"O_WRONLY":    unix.O_WRONLY,
+}
+
 const (
 	namespaceFilterAll    = 0
 	namespaceFilterHost   = 1
@@ -100,6 +127,15 @@ type RenameOps struct {
 	opsMatchMask uint32
 }
 
+type OpenFlagsPair struct {
+	Op   uint32
+	Mask uint32
+}
+
+type OpenFlagsOps struct {
+	flags [maxOpenFlagMaskPerOp]OpenFlagsPair
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -118,6 +154,9 @@ type KernelSelectorState struct {
 	// matchRenameSrcType
 	rename map[uint32]*RenameOps
 
+	// matchOpenFlags
+	oflags map[uint32]*OpenFlagsOps
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -133,6 +172,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		capabilities:        map[uint32]*fileapi.SelCaps{},
 		namespaces:          map[uint32]*fileapi.SelNs{},
 		rename:              map[uint32]*RenameOps{},
+		oflags:              map[uint32]*OpenFlagsOps{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -158,6 +198,20 @@ func (k *KernelSelectorState) InitOrGetNamespaces(selIdx uint32) *fileapi.SelNs 
 	}
 	inner := &fileapi.SelNs{}
 	k.namespaces[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) InitOrGetOpenFlags(selIdx uint32) *OpenFlagsOps {
+	val, ok := k.oflags[selIdx]
+	if ok {
+		return val
+	}
+	inner := &OpenFlagsOps{}
+	for i := 0; i < maxOpenFlagMaskPerOp; i++ {
+		inner.flags[i].Op = 0
+		inner.flags[i].Mask = 0
+	}
+	k.oflags[selIdx] = inner
 	return inner
 }
 
@@ -463,6 +517,43 @@ func GenerateFileRenameMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	return nil
 }
 
+func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	for innerID, entries := range sel.oflags {
+		innerName := fmt.Sprintf("file_open_flags_map_%d", innerID)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Array,
+			KeySize:    4, // uint32
+			ValueSize:  uint32(unsafe.Sizeof(OpenFlagsPair{})),
+			MaxEntries: maxOpenFlagMaskPerOp,
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
+
+		innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+		for i, f := range entries.flags {
+			if err := innerMap.Update(uint32(i), OpenFlagsPair{
+				Op:   f.Op,
+				Mask: f.Mask,
+			}, ebpf.UpdateAny); err != nil {
+				return fmt.Errorf("entries: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
+		}
+	}
+
+	return nil
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -750,6 +841,45 @@ func ParseRenameSrcTypes(k *KernelSelectorState, mv []v1alpha1.FileRenameTypeSel
 	return nil
 }
 
+func ParseOpenFlag(k *KernelSelectorState, op v1alpha1.FileOpenFlagsTypeSelector, opIdx int, selIdx int) error {
+	val := k.InitOrGetOpenFlags(uint32(selIdx))
+	var err error
+
+	// operator
+	val.flags[opIdx].Op, err = selectors.SelectorOp(op.Operator)
+	if err != nil {
+		return fmt.Errorf("matchOpenFlags error: %w", err)
+	}
+	if val.flags[opIdx].Op != selectors.SelectorOpIn && val.flags[opIdx].Op != selectors.SelectorOpNotIn {
+		return fmt.Errorf("matchOpenFlags supports only In and NotIn operator")
+	}
+
+	// values
+	val.flags[opIdx].Mask = 0
+	for _, v := range op.Values {
+		valStr := strings.ToUpper(v)
+		valNum, ok := openFlagsString[valStr]
+		if !ok {
+			return fmt.Errorf("matchOpenFlags: value %s unknown", valStr)
+		}
+		val.flags[opIdx].Mask |= valNum
+	}
+
+	return nil
+}
+
+func ParseOpenFlags(k *KernelSelectorState, op []v1alpha1.FileOpenFlagsTypeSelector, selIdx int) error {
+	if len(op) > maxOpenFlagMaskPerOp {
+		return fmt.Errorf("only support up to %d open flags masks inside a single selector", maxOpenFlagMaskPerOp)
+	}
+	for opIdx, m := range op {
+		if err := ParseOpenFlag(k, m, opIdx, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > MaxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -773,6 +903,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 		}
 		if err := ParseRenameSrcTypes(kernelSelectors, s.MatchRenameSrcType, i); err != nil {
 			return nil, fmt.Errorf("parseRenameSrcType error: %w", err)
+		}
+		if err := ParseOpenFlags(kernelSelectors, s.MatchOpenFlags, i); err != nil {
+			return nil, fmt.Errorf("parseOpenFlags error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)
