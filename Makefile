@@ -428,7 +428,7 @@ protogen: protoc-gen-go-tetragon
 	$(MAKE) vendor
 
 # renovate: datasource=docker
-GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.57.2@sha256:8f3a60a00a83bb7d599d2e028ac0c3573dc2b9ec0842590f1c2e59781c821da7
+GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.59.1@sha256:b5f8712114561f1e2fbe74d04ed07ddfd992768705033a6251f3c7b848eac38e
 GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
