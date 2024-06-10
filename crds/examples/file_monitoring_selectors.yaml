@@ -88,6 +88,14 @@ spec:
         values:
         - "File"
         - "Directory"
+      matchOpenFlags:
+      - operator: "In" # different operators are *ORed*
+        values:
+        - "O_RDWR" # values are *ANDed#
+        - "O_DIRECT"
+      - operator: "In"
+        values:
+        - "O_TMPFILE"
       matchOperations:
       - operator: "In"
         values:
