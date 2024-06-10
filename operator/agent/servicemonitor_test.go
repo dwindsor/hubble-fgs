@@ -145,6 +145,7 @@ func TestOperatorMonitorCfg(t *testing.T) {
 }
 
 func TestServiceMonitor(t *testing.T) {
+	replStr := "${1}"
 	testCases := []struct {
 		name      string
 		namespace string
@@ -178,11 +179,11 @@ func TestServiceMonitor(t *testing.T) {
 							Port:        "metrics",
 							Path:        "/metrics",
 							Interval:    monitoringv1.Duration("10s"),
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__meta_kubernetes_pod_node_name"},
 									TargetLabel:  "node",
-									Replacement:  "${1}",
+									Replacement:  &replStr,
 								},
 							},
 						},
@@ -234,11 +235,11 @@ func TestServiceMonitor(t *testing.T) {
 							Port:        "metrics",
 							Path:        "/metrics",
 							Interval:    monitoringv1.Duration("123s"),
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__meta_kubernetes_pod_node_name"},
 									TargetLabel:  "node",
-									Replacement:  "${1}",
+									Replacement:  &replStr,
 								},
 							},
 						},
@@ -282,11 +283,11 @@ func TestServiceMonitor(t *testing.T) {
 							Port:        "metrics",
 							Path:        "/metrics",
 							Interval:    monitoringv1.Duration("10s"),
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__meta_kubernetes_pod_node_name"},
 									TargetLabel:  "node",
-									Replacement:  "${1}",
+									Replacement:  &replStr,
 								},
 							},
 						},
@@ -338,11 +339,11 @@ func TestServiceMonitor(t *testing.T) {
 							Port:        "metrics",
 							Path:        "/metrics",
 							Interval:    monitoringv1.Duration("123s"),
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									SourceLabels: []monitoringv1.LabelName{"__meta_kubernetes_pod_node_name"},
 									TargetLabel:  "node",
-									Replacement:  "${1}",
+									Replacement:  &replStr,
 								},
 							},
 						},
