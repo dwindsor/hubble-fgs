@@ -1622,6 +1622,8 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | TP_STATE_DISABLED | 2 | loaded but disabled |
 | TP_STATE_LOAD_ERROR | 3 | failed to load |
 | TP_STATE_ERROR | 4 | failed during lifetime |
+| TP_STATE_LOADING | 5 | in the process of loading |
+| TP_STATE_UNLOADING | 6 | in the process of unloading |
 
 
  

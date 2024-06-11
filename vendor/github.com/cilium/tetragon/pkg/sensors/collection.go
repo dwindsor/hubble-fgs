@@ -5,6 +5,7 @@ package sensors
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -19,6 +20,8 @@ const (
 	DisabledState
 	LoadErrorState
 	ErrorState
+	LoadingState
+	UnloadingState
 )
 
 func (s TracingPolicyState) ToTetragonState() tetragon.TracingPolicyState {
@@ -31,6 +34,10 @@ func (s TracingPolicyState) ToTetragonState() tetragon.TracingPolicyState {
 		return tetragon.TracingPolicyState_TP_STATE_LOAD_ERROR
 	case ErrorState:
 		return tetragon.TracingPolicyState_TP_STATE_ERROR
+	case LoadingState:
+		return tetragon.TracingPolicyState_TP_STATE_LOADING
+	case UnloadingState:
+		return tetragon.TracingPolicyState_TP_STATE_UNLOADING
 	default:
 		return tetragon.TracingPolicyState_TP_STATE_UNKNOWN
 	}
@@ -53,7 +60,7 @@ func (ck *collectionKey) String() string {
 // This can either be creating from a tracing policy, or by loading sensors indepenently for sensors
 // that are not loaded via a tracing policy (e.g., base sensor) and testing.
 type collection struct {
-	sensors []*Sensor
+	sensors []SensorIface
 	name    string
 	err     error
 	// fields below are only set for tracing policies
@@ -63,6 +70,18 @@ type collection struct {
 	policyfilterID uint64
 	// state indicates the state of the collection
 	state TracingPolicyState
+}
+
+type collectionMap struct {
+	// map of sensor collections: name, namespace -> collection
+	c  map[collectionKey]*collection
+	mu sync.RWMutex
+}
+
+func newCollectionMap() *collectionMap {
+	return &collectionMap{
+		c: map[collectionKey]*collection{},
+	}
 }
 
 func (c *collection) info() string {
@@ -78,13 +97,13 @@ func (c *collection) load(bpfDir string) error {
 
 	var err error
 	for _, sensor := range c.sensors {
-		if sensor.Loaded {
+		if sensor.IsLoaded() {
 			// NB: For now, we don't treat a sensor already loaded as an error
 			// because that would complicate things.
 			continue
 		}
 		if err = sensor.Load(bpfDir); err != nil {
-			err = fmt.Errorf("sensor %s from collection %s failed to load: %s", sensor.Name, c.name, err)
+			err = fmt.Errorf("sensor %s from collection %s failed to load: %s", sensor.GetName(), c.name, err)
 			break
 		}
 	}
@@ -92,7 +111,7 @@ func (c *collection) load(bpfDir string) error {
 	// if there was an error, try to unload all the sensors
 	if err != nil {
 		// NB: we could try to unload sensors going back from the one that failed, but since
-		// unload() checks s.Loaded, is easier to just to use unload().
+		// unload() checks s.IsLoaded, is easier to just to use unload().
 		if unloadErr := c.unload(); unloadErr != nil {
 			err = multierr.Append(err, fmt.Errorf("unloading after loading failure failed: %w", unloadErr))
 		}
@@ -105,7 +124,7 @@ func (c *collection) load(bpfDir string) error {
 func (c *collection) unload() error {
 	var err error
 	for _, s := range c.sensors {
-		if !s.Loaded {
+		if !s.IsLoaded() {
 			continue
 		}
 		unloadErr := s.Unload()
@@ -123,4 +142,42 @@ func (c *collection) destroy() {
 	for _, s := range c.sensors {
 		s.Destroy()
 	}
+}
+
+func (cm *collectionMap) listPolicies() []*tetragon.TracingPolicyStatus {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	collections := cm.c
+
+	ret := make([]*tetragon.TracingPolicyStatus, 0, len(collections))
+	for ck, col := range collections {
+		if col.tracingpolicy == nil {
+			continue
+		}
+
+		pol := tetragon.TracingPolicyStatus{
+			Id:       col.tracingpolicyID,
+			Name:     ck.name,
+			Enabled:  col.state == EnabledState,
+			FilterId: col.policyfilterID,
+			State:    col.state.ToTetragonState(),
+		}
+
+		if col.err != nil {
+			pol.Error = col.err.Error()
+		}
+
+		pol.Namespace = ""
+		if tpNs, ok := col.tracingpolicy.(tracingpolicy.TracingPolicyNamespaced); ok {
+			pol.Namespace = tpNs.TpNamespace()
+		}
+
+		for _, sens := range col.sensors {
+			pol.Sensors = append(pol.Sensors, sens.GetName())
+		}
+
+		ret = append(ret, &pol)
+	}
+
+	return ret
 }
