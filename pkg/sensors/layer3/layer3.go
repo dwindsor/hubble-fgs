@@ -129,7 +129,7 @@ type l3Sensor struct {
 func (l3 *l3Sensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable && !spec.Parser.Rawsock.Enable {
 		return nil, nil

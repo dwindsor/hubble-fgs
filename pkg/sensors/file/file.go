@@ -1490,7 +1490,7 @@ func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptio
 func (k *observerFileSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 
 	newFileSpec := spec.FileMonitoring.DeepCopy()

@@ -88,7 +88,7 @@ func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 func (*sockopsSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	parser := policy.TpSpec().Parser
 	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
 		parser.Http.Enable ||

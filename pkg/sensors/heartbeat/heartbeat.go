@@ -192,7 +192,7 @@ type heartbeatSensor struct {
 func (hb *heartbeatSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 

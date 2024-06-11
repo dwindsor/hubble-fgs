@@ -145,7 +145,7 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 func (http *httpSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 	httpParser := &spec.Parser.Http
 	if !httpParser.Enable {

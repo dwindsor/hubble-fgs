@@ -218,9 +218,13 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		Metadata: v1.ObjectMeta{Name: "name"},
 		Spec:     v1alpha1.TracingPolicySpec{Parser: spec},
 	}
-	parserSensors, err := sensors.SensorsFromPolicy(&tp, policyfilter.PolicyID(0))
+	sis, err := sensors.SensorsFromPolicy(&tp, policyfilter.PolicyID(0))
 	if err != nil {
 		t.Fatalf("GetSensorsFromParserPolicy: %s", err)
+	}
+	parserSensors := make([]*sensors.Sensor, 0, len(sis))
+	for _, s := range sis {
+		parserSensors = append(parserSensors, s.(*sensors.Sensor))
 	}
 	parserSensor := sensors.SensorCombine("parser", parserSensors...)
 

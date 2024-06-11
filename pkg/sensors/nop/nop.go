@@ -82,7 +82,7 @@ func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 func (nop *sensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 	nopParser := &spec.Parser.Nop
 	if !nopParser.Enable {

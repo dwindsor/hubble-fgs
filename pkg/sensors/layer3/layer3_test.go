@@ -197,5 +197,9 @@ func TestLoadLayer3Sensor(t *testing.T) {
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
-	sensors.UnloadSensors(sens)
+	sensi := make([]sensors.SensorIface, 0, len(sens))
+	for _, s := range sens {
+		sensi = append(sensi, s)
+	}
+	sensors.UnloadSensors(sensi)
 }

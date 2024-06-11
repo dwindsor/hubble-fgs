@@ -43,7 +43,7 @@ func init() {
 func (k *observerFileExecSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	if !policy.TpSpec().FileExecMonitoring.Enable {
 		return nil, nil
 	}

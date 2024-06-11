@@ -257,7 +257,7 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 func (tls *tlsSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	parser := policy.TpSpec().Parser
 
 	enableTLS := false

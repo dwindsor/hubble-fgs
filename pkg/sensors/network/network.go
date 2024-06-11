@@ -369,7 +369,7 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 func (net *networkSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
-) (*sensors.Sensor, error) {
+) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 	if !spec.Parser.Interface.Enable {
 		return nil, nil
