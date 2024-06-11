@@ -60,8 +60,11 @@ func TestNopSensorSmoke(t *testing.T) {
 	require.NoError(t, err)
 	sens, err := sensors.SensorsFromPolicy(policy, policyfilter.NoFilterID)
 	require.NoError(t, err)
-	for _, s := range sens {
-		tus.LoadSensor(t, s)
+	for _, si := range sens {
+		s := si.(*sensors.Sensor)
+		if s != nil {
+			tus.LoadSensor(t, s)
+		}
 	}
 }
 
@@ -75,9 +78,12 @@ func TestLoadNopSensor(t *testing.T) {
 	require.NoError(t, err)
 	sens := make([]*sensors.Sensor, 0, len(sensorsi))
 	sens = append(sens, base)
-	for _, s := range sensorsi {
-		tus.LoadSensor(t, s)
-		sens = append(sens, s.(*sensors.Sensor))
+	for _, si := range sensorsi {
+		s := si.(*sensors.Sensor)
+		if s != nil {
+			tus.LoadSensor(t, s)
+			sens = append(sens, s)
+		}
 	}
 
 	var sensorProgs []tus.SensorProg
