@@ -48,5 +48,6 @@ func StartPodDeleteHandler() {
 			return
 		}
 		DeleteMetricsForPod(pod.(*corev1.Pod))
+		queue.Done(pod)
 	}
 }
