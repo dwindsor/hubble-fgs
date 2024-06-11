@@ -12,27 +12,23 @@
 package nop_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-)
-
-const (
-	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
 func TestMain(m *testing.M) {
@@ -57,23 +53,31 @@ spec:
 }
 
 func TestNopSensorSmoke(t *testing.T) {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
 	base := base.GetInitialSensor()
-	_, err := enterpriseoth.GetDefaultObserverWithBase(t, context.Background(), base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	assert.NoError(t, err, "nop sensor should load")
+	tus.LoadSensor(t, base)
+	yaml := nopConfig(1337)
+	policy, err := tracingpolicy.FromYAML(yaml)
+	require.NoError(t, err)
+	sens, err := sensors.SensorsFromPolicy(policy, policyfilter.NoFilterID)
+	require.NoError(t, err)
+	for _, s := range sens {
+		tus.LoadSensor(t, s)
+	}
 }
 
 func TestLoadNopSensor(t *testing.T) {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, nopConfig(int(1337))); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	base := base.GetInitialSensor()
+	tus.LoadSensor(t, base)
+	yaml := nopConfig(1337)
+	policy, err := tracingpolicy.FromYAML(yaml)
+	require.NoError(t, err)
+	sensorsi, err := sensors.SensorsFromPolicy(policy, policyfilter.NoFilterID)
+	require.NoError(t, err)
+	sens := make([]*sensors.Sensor, 0, len(sensorsi))
+	sens = append(sens, base)
+	for _, s := range sensorsi {
+		tus.LoadSensor(t, s)
+		sens = append(sens, s.(*sensors.Sensor))
 	}
 
 	var sensorProgs []tus.SensorProg
@@ -109,10 +113,4 @@ func TestLoadNopSensor(t *testing.T) {
 	assert.NoError(t, err, "nop sensor should load")
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
-
-	sensi := make([]sensors.SensorIface, 0, len(sens))
-	for _, s := range sens {
-		sensi = append(sensi, s)
-	}
-	sensors.UnloadSensors(sensi)
 }
