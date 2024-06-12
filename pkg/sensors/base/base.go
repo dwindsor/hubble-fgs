@@ -102,9 +102,7 @@ var (
 	SocketTupleHintMap          = program.MapBuilder(socktrack.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrack.SocketCfgMapName, Exit)
 
-	ExecveTailCallsMap    = program.MapBuilder("execve_calls", Execve)
-	ExecveTailCallsMapV53 = program.MapBuilder("execve_calls", ExecveV53)
-	ExecveTailCallsMapV61 = program.MapBuilder("execve_calls", ExecveV61)
+	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV61)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
@@ -163,8 +161,8 @@ var (
 func setupPrograms() {
 	// execve program tail calls details
 	Execve.SetTailCall("tracepoint", ExecveTailCallsMap)
-	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMapV53)
-	ExecveV61.SetTailCall("tracepoint", ExecveTailCallsMapV61)
+	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMap)
+	ExecveV61.SetTailCall("tracepoint", ExecveTailCallsMap)
 
 	ks, err := ksyms.KernelSymbols()
 	if err == nil {
@@ -252,7 +250,7 @@ func GetDefaultMaps() []*program.Map {
 		maps = append(maps,
 			ExecveMapV61,
 			ExecveStatsV61,
-			ExecveTailCallsMapV61,
+			ExecveTailCallsMap,
 			TCPMonMapV61,
 			TetragonConfMapV61,
 			EndpointIdMapV61,
@@ -266,7 +264,7 @@ func GetDefaultMaps() []*program.Map {
 		maps = append(maps,
 			ExecveMapV53,
 			ExecveStatsV53,
-			ExecveTailCallsMapV53,
+			ExecveTailCallsMap,
 			TCPMonMapV53,
 			TetragonConfMapV53,
 			EndpointIdMapV53,
