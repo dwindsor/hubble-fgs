@@ -124,6 +124,9 @@ func (b *tpBuilder) addSyscallSpec(
 	haveBlock := actionsHaveBlock(spec.Actions)
 	haveSignal := actionsHaveSignal(spec.Actions)
 	if haveBlock || haveSignal {
+		if spec.Op == "NotIn" {
+			return fmt.Errorf("NotIn operator is currently not supported with enforcement")
+		}
 		notifyEnforcer := v1alpha1.ActionSelector{
 			Action: "NotifyEnforcer",
 		}
