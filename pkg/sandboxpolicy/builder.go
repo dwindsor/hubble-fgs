@@ -29,7 +29,7 @@ type tpBuilder struct {
 	name   string
 	tpSpec v1alpha1.TracingPolicySpec
 
-	enforcerLists map[string]struct{}
+	enforcerEntries [][]string
 }
 
 // newTpBuilder creates a new tracing policy builder
@@ -42,21 +42,6 @@ func newTpBuilder(
 		tpSpec: v1alpha1.TracingPolicySpec{
 			PodSelector: podSelector,
 		},
-		enforcerLists: map[string]struct{}{},
-	}
-}
-
-func syscallList(name string, l []v1alpha1.SandboxSyscallItem) v1alpha1.ListSpec {
-	var values []string
-	for _, s := range l {
-		values = append(values, s.Name)
-	}
-
-	return v1alpha1.ListSpec{
-		Name:      name,
-		Values:    values,
-		Type:      "syscalls",
-		Validated: false,
 	}
 }
 
@@ -85,20 +70,19 @@ func actionsHaveSignal(actions []v1alpha1.SandboxAction) bool {
 // NB: there can only be a single enforcer spec in a policy
 func (b *tpBuilder) enforcers() []v1alpha1.EnforcerSpec {
 
-	if len(b.enforcerLists) == 0 {
+	if len(b.enforcerEntries) == 0 {
 		return nil
 	}
 
 	ret := v1alpha1.EnforcerSpec{}
-	for l := range b.enforcerLists {
-		ret.Calls = append(ret.Calls, l)
+	for _, l := range b.enforcerEntries {
+		ret.Calls = append(ret.Calls, l...)
 	}
 	return []v1alpha1.EnforcerSpec{ret}
 }
 
 // addSyscallSpec adds a syscall spec to the tracing policy
 func (b *tpBuilder) addSyscallSpec(
-	name string,
 	spec *v1alpha1.SandboxSyscallsSpec,
 ) error {
 
@@ -112,13 +96,16 @@ func (b *tpBuilder) addSyscallSpec(
 		return fmt.Errorf("unknown op: '%s'", spec.Op)
 	}
 
-	listName := fmt.Sprintf("list:%s", name)
-
 	var matchActions []v1alpha1.ActionSelector
 	if !actionsHavePost(spec.Actions) {
 		matchActions = append(matchActions, v1alpha1.ActionSelector{
 			Action: "NoPost",
 		})
+	}
+
+	entries, ids, err := generateSyscalls(spec.List)
+	if err != nil {
+		return err
 	}
 
 	haveBlock := actionsHaveBlock(spec.Actions)
@@ -138,10 +125,14 @@ func (b *tpBuilder) addSyscallSpec(
 		}
 
 		matchActions = append(matchActions, notifyEnforcer)
-		b.enforcerLists[listName] = struct{}{}
+		b.enforcerEntries = append(b.enforcerEntries, entries)
 	}
 
-	b.tpSpec.Lists = append(b.tpSpec.Lists, syscallList(name, spec.List))
+	idStrings := make([]string, 0, len(ids))
+	for _, xid := range ids {
+		idStrings = append(idStrings, fmt.Sprintf("%d", xid))
+	}
+
 	b.tpSpec.Tracepoints = append(b.tpSpec.Tracepoints,
 		v1alpha1.TracepointSpec{
 			Subsystem: "raw_syscalls",
@@ -154,7 +145,7 @@ func (b *tpBuilder) addSyscallSpec(
 				MatchArgs: []v1alpha1.ArgSelector{{
 					Index:    0,
 					Operator: op,
-					Values:   []string{listName},
+					Values:   idStrings,
 				}},
 				MatchActions: matchActions,
 			}},

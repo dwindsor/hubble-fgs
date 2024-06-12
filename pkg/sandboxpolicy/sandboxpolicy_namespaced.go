@@ -44,9 +44,8 @@ func toTracingPolicyNamespaced(namespace string, name string, spec *v1alpha1.San
 	}
 
 	tpBuilder := newTpBuilder(name, spec.PodSelector)
-	for i, s := range spec.Syscalls {
-		listName := fmt.Sprintf("%s-syscalls-%d", name, i)
-		if err := tpBuilder.addSyscallSpec(listName, &s); err != nil {
+	for _, s := range spec.Syscalls {
+		if err := tpBuilder.addSyscallSpec(&s); err != nil {
 			return nil, err
 		}
 	}

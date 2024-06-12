@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/metrics"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/syscallentries"
 	"github.com/spf13/cobra"
 )
 
@@ -32,4 +33,5 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(probe.New())
 	rootCmd.AddCommand(sandboxpolicy.New())
 	rootCmd.AddCommand(metrics.New())
+	rootCmd.AddCommand(syscallentries.New())
 }
