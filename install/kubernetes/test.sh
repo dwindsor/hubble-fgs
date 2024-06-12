@@ -7,7 +7,7 @@ shopt -s expand_aliases
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 TETRAGON_CHART="$SCRIPT_DIR/tetragon"
 
-alias helm='docker run --rm -v $TETRAGON_CHART:/apps alpine/helm:3.3.4'
+alias helm='docker run --rm -v $TETRAGON_CHART:/apps alpine/helm:3.15.1'
 alias kubeconform='docker run --rm -i -v tracingpolicy_v1alpha1.json:/tracingpolicy_v1alpha1.json \
 	ghcr.io/yannh/kubeconform:v0.6.4-alpine@sha256:e68a0b638c6e9b76f1b7d58b4ec94340ef3b6601db25b2e40b29e3ac2d68e4bf'
 helm dependency update .
