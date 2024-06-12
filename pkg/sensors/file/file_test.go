@@ -41,8 +41,6 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 
@@ -2133,36 +2131,6 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
-// this function returns the root filesystem of a container
-func dockerIdToRootFs(cid string) (string, error) {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-	defer cli.Close()
-
-	cnts, err := cli.ContainerList(ctx, container.ListOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	for _, c := range cnts {
-		if c.ID == cid {
-			if j, err := cli.ContainerInspect(ctx, c.ID); err == nil {
-				if j.GraphDriver.Name == "overlay2" {
-					mergeDir, ok := j.GraphDriver.Data["MergedDir"]
-					if ok {
-						return mergeDir, nil
-					}
-				}
-				return fmt.Sprintf("/proc/%d/root/", j.State.Pid), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("cannot find container with ID %s", cid)
-}
-
 // this test check accessing files inside a container
 func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 	// create a new container
@@ -2188,7 +2156,7 @@ func testFileReadContainerFile(gt *testing.T, t *testing.T) {
 		t.Fatalf("ReGenerateFimMaps failed with %s", err)
 	}
 
-	rootDir, err := dockerIdToRootFs(containerId)
+	rootDir, err := fm.DockerIdToRootFs(containerId)
 	if err != nil {
 		t.Fatalf("failed to spawn docker container: %s", err)
 	}
