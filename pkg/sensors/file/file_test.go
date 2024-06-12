@@ -255,11 +255,15 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
 
 	ino, dev := getInodeInfo(t, test_file)
+	openChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	fileChecker := ec.NewProcessFileChecker("").
 		WithProcess(binChecker).
 		WithAction(act).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
-	checker := ec.NewUnorderedEventChecker(fileChecker)
+	checker := ec.NewUnorderedEventChecker(openChecker, fileChecker)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -361,17 +365,27 @@ func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
 
 	in_ino, in_dev := getInodeInfo(t, in_file)
+	inOpenChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(genericArgFilenameChecker(in_file, in_ino, in_dev))
 	inFileChecker := ec.NewProcessFileChecker("inFile").
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(in_file, in_ino, in_dev))
 	out_ino, out_dev := getInodeInfo(t, out_file)
+	outOpenChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(genericArgFilenameChecker(out_file, out_ino, out_dev))
 	outFileChecker := ec.NewProcessFileChecker("outFile").
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(out_file, out_ino, out_dev))
 	checker := ec.NewUnorderedEventChecker(
+		inOpenChecker,
 		inFileChecker,
+		outOpenChecker,
 		outFileChecker,
 	)
 
@@ -420,6 +434,10 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(exec_path))
 
 	ino, dev := getInodeInfo(t, test_file)
+	openChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	fileCheckerRead := ec.NewProcessFileChecker("readChecker").
 		WithProcess(binChecker).
 		WithAction(tetragon.FileAction_FILE_READ).
@@ -429,11 +447,12 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(test_file, ino, dev))
 	checker := ec.NewUnorderedEventChecker(
+		openChecker,
 		fileCheckerRead,
 		fileCheckerWrite,
 	)
 	if act == tetragon.FileAction_FILE_READ {
-		checker = ec.NewUnorderedEventChecker(fileCheckerRead)
+		checker = ec.NewUnorderedEventChecker(openChecker, fileCheckerRead)
 	}
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
@@ -1245,6 +1264,26 @@ func renameReadChecker(t *testing.T, f string) *ec.ProcessFileChecker {
 		WithArgs(a)
 }
 
+func renameOpenChecker(t *testing.T, f string) *ec.ProcessFileChecker {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %s", err)
+	}
+	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
+	l := ec.NewFileLocationChecker().WithType(tetragon.FileScope_HOST_FILE)
+	fl := ec.NewStringListMatcher().WithOperator(lm.Unordered).WithValues(sm.Full("O_RDONLY"))
+	d := ec.NewFileDetailsChecker().WithStr(sm.Full(f)).WithLocation(l).WithOpenFlags(fl)
+	g := ec.NewGenericFileArgChecker().WithFile(d)
+	a := ec.NewFileArgumentChecker().WithGenericArg(g)
+
+	return ec.NewProcessFileChecker(fmt.Sprintf("renameOpen(%s)", f)).
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(a).
+		WithHook(sm.Full("security_file_open"))
+}
+
 func renameRenameChecker(t *testing.T, file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
 	execPath, err := os.Executable()
 	if err != nil {
@@ -1310,10 +1349,12 @@ func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	fileRead(t, out_file)
 	fileRemove(t, out_file)
 
-	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(t, out_file)
-	fileCheckers[2] = renameDeleteChecker(t, out_file)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, out_file),
+		renameReadChecker(t, out_file),
+		renameDeleteChecker(t, out_file),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1346,10 +1387,12 @@ func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	fileRead(t, out_file)
 	fileRemove(t, out_file)
 
-	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(t, out_file)
-	fileCheckers[2] = renameDeleteChecker(t, out_file)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE"),
+		renameOpenChecker(t, out_file),
+		renameReadChecker(t, out_file),
+		renameDeleteChecker(t, out_file),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1384,10 +1427,12 @@ func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	fileRead(t, in_file)
 	fileRemove(t, in_file)
 
-	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(t, in_file)
-	fileCheckers[2] = renameDeleteChecker(t, in_file)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, in_file),
+		renameReadChecker(t, in_file),
+		renameDeleteChecker(t, in_file),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1423,10 +1468,12 @@ func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	fileRead(t, in_file)
 	fileRemove(t, in_file)
 
-	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(t, in_file)
-	fileCheckers[2] = renameDeleteChecker(t, in_file)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE"),
+		renameOpenChecker(t, in_file),
+		renameReadChecker(t, in_file),
+		renameDeleteChecker(t, in_file),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1556,12 +1603,15 @@ func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(t, iFile1)
-	fileCheckers[2] = renameReadChecker(t, iFile2)
-	fileCheckers[3] = renameDeleteChecker(t, iFile1)
-	fileCheckers[4] = renameDeleteChecker(t, iFile2)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, iFile1),
+		renameReadChecker(t, iFile1),
+		renameOpenChecker(t, iFile2),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1610,12 +1660,15 @@ func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
-	fileCheckers[1] = renameReadChecker(t, iFile1)
-	fileCheckers[2] = renameReadChecker(t, iFile2)
-	fileCheckers[3] = renameDeleteChecker(t, iFile1)
-	fileCheckers[4] = renameDeleteChecker(t, iFile2)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_DIRECTORY"),
+		renameOpenChecker(t, iFile1),
+		renameReadChecker(t, iFile1),
+		renameOpenChecker(t, iFile2),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1665,11 +1718,12 @@ func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUT
 
 	noErrorFileCheckers := renameRenameChecker(t, out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
 
-	errorFileCheckers := make([]ec.EventChecker, 4)
-	errorFileCheckers[0] = renameReadChecker(t, iFile1)
-	errorFileCheckers[1] = renameReadChecker(t, iFile2)
-	errorFileCheckers[2] = renameDeleteChecker(t, iFile1)
-	errorFileCheckers[3] = renameDeleteChecker(t, iFile2)
+	errorFileCheckers := []ec.EventChecker{
+		renameReadChecker(t, iFile1),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker1)
@@ -1724,11 +1778,12 @@ func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OU
 
 	noErrorFileCheckers := renameRenameChecker(t, out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
 
-	errorFileCheckers := make([]ec.EventChecker, 4)
-	errorFileCheckers[0] = renameReadChecker(t, iFile1)
-	errorFileCheckers[1] = renameReadChecker(t, iFile2)
-	errorFileCheckers[2] = renameDeleteChecker(t, iFile1)
-	errorFileCheckers[3] = renameDeleteChecker(t, iFile2)
+	errorFileCheckers := []ec.EventChecker{
+		renameReadChecker(t, iFile1),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
 	err := jsonchecker.JsonTestCheck(gt, checker1)
@@ -1777,12 +1832,15 @@ func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameReadChecker(t, iFile1)
-	fileCheckers[2] = renameReadChecker(t, iFile2)
-	fileCheckers[3] = renameDeleteChecker(t, iFile1)
-	fileCheckers[4] = renameDeleteChecker(t, iFile2)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, iFile1),
+		renameReadChecker(t, iFile1),
+		renameOpenChecker(t, iFile2),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1828,12 +1886,15 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	fileRemove(t, iFile1)
 	fileRemove(t, iFile2)
 
-	fileCheckers := make([]ec.EventChecker, 5)
-	fileCheckers[0] = renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_DIRECTORY")
-	fileCheckers[1] = renameReadChecker(t, iFile1)
-	fileCheckers[2] = renameReadChecker(t, iFile2)
-	fileCheckers[3] = renameDeleteChecker(t, iFile1)
-	fileCheckers[4] = renameDeleteChecker(t, iFile2)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_DIRECTORY"),
+		renameOpenChecker(t, iFile1),
+		renameReadChecker(t, iFile1),
+		renameOpenChecker(t, iFile2),
+		renameReadChecker(t, iFile2),
+		renameDeleteChecker(t, iFile1),
+		renameDeleteChecker(t, iFile2),
+	}
 
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -1884,19 +1945,22 @@ func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	fileRead(t, inFile2)
 
 	// we should see these events
-	fileCheckers := make([]ec.EventChecker, 3)
-	fileCheckers[0] = renameRenameChecker(t, inFile1, outFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[1] = renameRenameChecker(t, outFile1, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
-	fileCheckers[2] = renameReadChecker(t, inFile1)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, inFile1, outFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS"),
+		renameRenameChecker(t, outFile1, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, inFile1),
+		renameReadChecker(t, inFile1),
+	}
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	// we should *NOT* see these events
-	fileCheckersFail := make([]ec.EventChecker, 3)
-	fileCheckersFail[0] = renameRenameCheckerNoFlags(inFile2, outFile2)
-	fileCheckersFail[1] = renameRenameCheckerNoFlags(outFile2, inFile2)
-	fileCheckersFail[2] = renameReadChecker(t, inFile2)
+	fileCheckersFail := []ec.EventChecker{
+		renameRenameCheckerNoFlags(inFile2, outFile2),
+		renameRenameCheckerNoFlags(outFile2, inFile2),
+		renameReadChecker(t, inFile2),
+	}
 	checkerFail := ec.NewUnorderedEventChecker(fileCheckersFail...)
 	err = jsonchecker.JsonTestCheck(gt, checkerFail)
 	assert.Error(t, err)
@@ -1928,9 +1992,11 @@ func testFileRename14(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	}
 	fileRead(t, inFile1)
 
-	fileCheckers := make([]ec.EventChecker, 2)
-	fileCheckers[0] = renameRenameChecker(t, inFile2, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
-	fileCheckers[1] = renameReadChecker(t, inFile1)
+	fileCheckers := []ec.EventChecker{
+		renameRenameChecker(t, inFile2, inFile1, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE"),
+		renameOpenChecker(t, inFile1),
+		renameReadChecker(t, inFile1),
+	}
 	checker := ec.NewUnorderedEventChecker(fileCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -2077,10 +2143,11 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 		t.Fatalf("os.Open failed (%s)", err)
 	}
 
-	dirCheckers := make([]ec.EventChecker, 3)
-	dirCheckers[0] = readdirChecker(t, in1)
-	dirCheckers[1] = readdirChecker(t, in2)
-	dirCheckers[2] = readdirChecker(t, in3)
+	dirCheckers := []ec.EventChecker{
+		readdirChecker(t, in1),
+		readdirChecker(t, in2),
+		readdirChecker(t, in3),
+	}
 
 	checker := ec.NewUnorderedEventChecker(dirCheckers...)
 	err := jsonchecker.JsonTestCheck(gt, checker)
@@ -3081,7 +3148,9 @@ func TestFileRenameDirSuffix(t *testing.T) {
 
 	fileCheckers := []ec.EventChecker{
 		renameRenameChecker(t, outSrc, fmt.Sprintf("%s/b", outDst), "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS"),
+		renameOpenChecker(t, filepath.Join(outRead, files[0])),
 		renameReadChecker(t, filepath.Join(outRead, files[0])),
+		renameOpenChecker(t, filepath.Join(outRead, files[1])),
 		renameReadChecker(t, filepath.Join(outRead, files[1])),
 	}
 
@@ -3166,11 +3235,25 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(linkPath)).WithInode(i)
 	c := ec.NewGenericFileArgChecker().WithFile(f)
 
+	fl := ec.NewStringListMatcher().
+		WithOperator(lm.Unordered).
+		WithValues(
+			sm.Full("O_RDWR"),
+		)
+	of := ec.NewFileDetailsChecker().WithStr(sm.Full(linkPath)).WithInode(i).WithOpenFlags(fl)
+	oc := ec.NewGenericFileArgChecker().WithFile(of)
+
 	execPath, err := os.Executable()
 	if err != nil {
 		t.Fatalf("Failed to get executable name: %s", err)
 	}
 	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix(execPath))
+
+	openChecker := ec.NewProcessFileChecker("").
+		WithProcess(binChecker).
+		WithAction(tetragon.FileAction_FILE_OPEN).
+		WithArgs(ec.NewFileArgumentChecker().WithGenericArg(oc)).
+		WithHook(sm.Full("security_file_open"))
 
 	linkChecker := ec.NewProcessFileChecker("").
 		WithProcess(binChecker).
@@ -3185,6 +3268,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 		WithHook(sm.Full("security_file_permission"))
 
 	fileCheckers := []ec.EventChecker{
+		openChecker,
 		linkChecker,
 		writeChecker,
 	}
