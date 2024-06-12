@@ -52,6 +52,7 @@ var (
 		fileapi.FileHookIoIssueSqe:             "io_issue_sqe",
 		fileapi.FileHookFsNotify:               "fsnotify",
 		fileapi.FileHookSecurityInodeLink:      "security_inode_link",
+		fileapi.FileHookSecurityFileOpen:       "security_file_open",
 	}
 
 	fileErrorReasonMap = map[int]string{

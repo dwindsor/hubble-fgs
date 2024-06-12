@@ -68,6 +68,7 @@ var (
 		26: "io_issue_sqe",
 		27: "fsnotify",
 		28: "security_inode_link",
+		29: "security_file_open",
 	}
 
 	renameFlagsString = map[uint32]string{

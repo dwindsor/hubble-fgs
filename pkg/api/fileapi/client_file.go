@@ -279,7 +279,8 @@ const (
 	FileHookIoIssueSqe             = 26
 	FileHookFsNotify               = 27
 	FileHookSecurityInodeLink      = 28
-	FileHookMax                    = 29
+	FileHookSecurityFileOpen       = 29
+	FileHookMax                    = 30
 )
 
 type FileErrors struct {

@@ -127,6 +127,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		path := filepath.Join(testDir, "a.txt")
 		pid := execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 
 		path = filepath.Join(testDir, "a.go")
 		execFn("/usr/bin/touch", path) // no event for that
@@ -134,6 +135,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		path = filepath.Join(testDir, "a.sh")
 		pid = execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 
 		path = filepath.Join(testDir, "dada")
 		execFn("/usr/bin/touch", path) // no event for that
@@ -144,6 +146,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		path = filepath.Join(testDir, "a", "a.txt")
 		pid = execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 
 		path = filepath.Join(testDir, "a", "a.go")
 		execFn("/usr/bin/touch", path) // no event for that
@@ -151,9 +154,11 @@ func TestFileSuffixPattern(t *testing.T) {
 		path = filepath.Join(testDir, "a", "a.sh")
 		pid = execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 
 		path = filepath.Join(testDir, "a.txt")
 		pid = execFn("/usr/bin/cat", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_READ", path))
 
 		path = filepath.Join(testDir, "a.go")
@@ -161,6 +166,7 @@ func TestFileSuffixPattern(t *testing.T) {
 
 		path = filepath.Join(testDir, "a.sh")
 		pid = execFn("/usr/bin/cat", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_READ", path))
 
 		srcPath := filepath.Join(testDir, "a.sh")
@@ -178,10 +184,11 @@ func TestFileSuffixPattern(t *testing.T) {
 
 		path = filepath.Join(testDir, "a.sh")
 		pid = execFn("/usr/bin/cat", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_READ", path))
 
 		path = filepath.Join(testDir, "a")
-		pid = execFn("/usr/bin/rm", "-r", path)
+		pid = execFn("/usr/bin/rm", filepath.Join(path, "a.sh"), filepath.Join(path, "a.txt"))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_DELETE", filepath.Join(path, "a.sh")))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_DELETE", filepath.Join(path, "a.txt")))
 
@@ -203,6 +210,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		path = filepath.Join(testDir, "aaa")
 		pid = execFn("/usr/bin/touch", path)
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_CREATE", path))
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 
 		path = filepath.Join(testDir, "aa")
 		execFn("/usr/bin/touch", path) // no event for that
@@ -212,6 +220,7 @@ func TestFileSuffixPattern(t *testing.T) {
 
 		path = filepath.Join(testDir, "aaa")
 		pid = execFn("/usr/bin/cat", path)
+		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_OPEN", path))
 		executedEvents = append(executedEvents, fmt.Sprintf("[%d|%s|%s]", pid, "FILE_READ", path))
 
 		path = filepath.Join(testDir, "aa")

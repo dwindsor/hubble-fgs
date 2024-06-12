@@ -643,7 +643,8 @@
                               "FILE_READDIR",
                               "FILE_CHATTR",
                               "FILE_EXEC",
-                              "FILE_LINK"
+                              "FILE_LINK",
+                              "FILE_OPEN"
                             ],
                             "type": "string"
                           },

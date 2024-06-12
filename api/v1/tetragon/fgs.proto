@@ -201,6 +201,7 @@ enum FileAction {
     FILE_CHATTR = 9;
     FILE_EXEC = 10;
     FILE_LINK = 11;
+    FILE_OPEN = 12;
 }
 
 message FileSystem {
