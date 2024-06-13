@@ -416,13 +416,15 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
-		Process:   tetragonProcess,
-		Parent:    tetragonParent,
-		Action:    action,
-		Args:      args,
-		Time:      ktime.ToProto(event.Msg.Timestamp),
-		Hook:      fileHookMap[event.Msg.Hook],
-		Operation: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		Process:       tetragonProcess,
+		Parent:        tetragonParent,
+		Action:        action,
+		Args:          args,
+		Time:          ktime.ToProto(event.Msg.Timestamp),
+		Hook:          fileHookMap[event.Msg.Hook],
+		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		TracingPolicy: event.TpName,
+		RuleMatched:   event.TpRule,
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
@@ -726,13 +728,15 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
-		Process:   tetragonProcess,
-		Parent:    tetragonParent,
-		Action:    action,
-		Args:      args,
-		Time:      ktime.ToProto(event.Msg.Timestamp),
-		Hook:      fileHookMap[event.Msg.Hook],
-		Operation: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		Process:       tetragonProcess,
+		Parent:        tetragonParent,
+		Action:        action,
+		Args:          args,
+		Time:          ktime.ToProto(event.Msg.Timestamp),
+		Hook:          fileHookMap[event.Msg.Hook],
+		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		TracingPolicy: event.TpName,
+		RuleMatched:   event.TpRule,
 	}
 
 	filemetrics.FileTotalEventsInc()

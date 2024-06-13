@@ -2416,6 +2416,8 @@ HTTP PARSER
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | hook | [string](#string) |  |  |
 | operation | [FileOperation](#tetragon-FileOperation) | repeated |  |
+| tracing_policy | [string](#string) |  |  |
+| rule_matched | [string](#string) |  |  |
 
 
 

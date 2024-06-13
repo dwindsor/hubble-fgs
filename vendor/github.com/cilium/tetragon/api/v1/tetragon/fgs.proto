@@ -337,6 +337,8 @@ message ProcessFile {
     google.protobuf.Timestamp time = 8;
     string hook = 9;
     repeated FileOperation operation = 10;
+    string tracing_policy = 11;
+    string rule_matched = 12;
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.

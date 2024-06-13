@@ -3921,17 +3921,19 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.Process
 
 // ProcessFileChecker implements a checker struct to check a ProcessFile event
 type ProcessFileChecker struct {
-	CheckerName string                             `json:"checkerName"`
-	Process     *ProcessChecker                    `json:"process,omitempty"`
-	Parent      *ProcessChecker                    `json:"parent,omitempty"`
-	Action      *FileActionChecker                 `json:"action,omitempty"`
-	Args        *FileArgumentChecker               `json:"args,omitempty"`
-	Permissions *stringmatcher.StringMatcher       `json:"permissions,omitempty"`
-	Uid         *stringmatcher.StringMatcher       `json:"uid,omitempty"`
-	Gid         *stringmatcher.StringMatcher       `json:"gid,omitempty"`
-	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
-	Hook        *stringmatcher.StringMatcher       `json:"hook,omitempty"`
-	Operation   *FileOperationListMatcher          `json:"operation,omitempty"`
+	CheckerName   string                             `json:"checkerName"`
+	Process       *ProcessChecker                    `json:"process,omitempty"`
+	Parent        *ProcessChecker                    `json:"parent,omitempty"`
+	Action        *FileActionChecker                 `json:"action,omitempty"`
+	Args          *FileArgumentChecker               `json:"args,omitempty"`
+	Permissions   *stringmatcher.StringMatcher       `json:"permissions,omitempty"`
+	Uid           *stringmatcher.StringMatcher       `json:"uid,omitempty"`
+	Gid           *stringmatcher.StringMatcher       `json:"gid,omitempty"`
+	Time          *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
+	Hook          *stringmatcher.StringMatcher       `json:"hook,omitempty"`
+	Operation     *FileOperationListMatcher          `json:"operation,omitempty"`
+	TracingPolicy *stringmatcher.StringMatcher       `json:"tracingPolicy,omitempty"`
+	RuleMatched   *stringmatcher.StringMatcher       `json:"ruleMatched,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -4023,6 +4025,16 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 				return fmt.Errorf("Operation check failed: %w", err)
 			}
 		}
+		if checker.TracingPolicy != nil {
+			if err := checker.TracingPolicy.Match(event.TracingPolicy); err != nil {
+				return fmt.Errorf("TracingPolicy check failed: %w", err)
+			}
+		}
+		if checker.RuleMatched != nil {
+			if err := checker.RuleMatched.Match(event.RuleMatched); err != nil {
+				return fmt.Errorf("RuleMatched check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -4092,6 +4104,18 @@ func (checker *ProcessFileChecker) WithOperation(check *FileOperationListMatcher
 	return checker
 }
 
+// WithTracingPolicy adds a TracingPolicy check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithTracingPolicy(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.TracingPolicy = check
+	return checker
+}
+
+// WithRuleMatched adds a RuleMatched check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithRuleMatched(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.RuleMatched = check
+	return checker
+}
+
 //FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
@@ -4124,6 +4148,8 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 			WithValues(checks...)
 		checker.Operation = lm
 	}
+	checker.TracingPolicy = stringmatcher.Full(event.TracingPolicy)
+	checker.RuleMatched = stringmatcher.Full(event.RuleMatched)
 	return checker
 }
 
