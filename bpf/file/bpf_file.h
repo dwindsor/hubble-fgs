@@ -865,9 +865,9 @@ get_fs_info(struct msg_fs_info *msg, __u64 *ino, struct inode *inode, struct den
 
 	msg->dev = BPF_CORE_READ(sb, s_dev);
 	msg->pad = 0;
-	probe_read(msg->id, 8 * sizeof(char), _(&(sb->s_id[0])));
-	probe_read_str(msg->name, 8 * sizeof(char), BPF_CORE_READ(sb, s_type, name));
-	probe_read(msg->uuid, 16 * sizeof(char), _(&sb->s_uuid));
+	probe_read(msg->id, MSG_FS_INFO_ID_LEN * sizeof(char), _(&(sb->s_id[0])));
+	probe_read_str(msg->name, MSG_FS_INFO_NAME_LEN * sizeof(char), BPF_CORE_READ(sb, s_type, name));
+	probe_read(msg->uuid, MSG_FS_INFO_UUID_LEN * sizeof(char), _(&sb->s_uuid));
 
 #ifdef __LARGE_BPF_PROG
 	if (bpf_core_type_exists(struct ovl_entry))

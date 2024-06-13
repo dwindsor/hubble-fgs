@@ -75,8 +75,8 @@ type MsgFilePath struct {
 type MsgFsInfo struct {
 	SDev  uint32   `align:"dev"`
 	Pad   uint32   `align:"pad"`
-	SName [8]byte  `align:"name"`
-	SId   [8]byte  `align:"id"`
+	SName [16]byte `align:"name"`
+	SId   [16]byte `align:"id"`
 	SUuid [16]byte `align:"uuid"`
 }
 

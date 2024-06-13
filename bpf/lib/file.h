@@ -140,12 +140,25 @@ struct msg_file_path {
 	char container_id[CONTAINER_ID_LEN];
 };
 
+// The file system name is a pointer to char (i.e. https://elixir.bootlin.com/linux/v6.8/source/include/linux/fs.h#L2445).
+// Inside linux-6.9.3 kernel we run the following command to get the maximum size of file system size.
+// $ grep "static struct file_system_type" fs/ -r -A 10 | grep "\.name" | awk '{ print $4}' | sed 's/.$//' | sed 's/\"//g' | awk '{print length}' | sort -rn | head -n 1
+// 13
+// So we choose to use 16 bytes for this field.
+#define MSG_FS_INFO_NAME_LEN 16
+// This is 32 in the kernel structures (https://elixir.bootlin.com/linux/v6.8/source/include/linux/fs.h#L1260)
+// but 16 should be enough for all devices (i.e. sda1, nvme0n1p2, md0, etc.)
+// Using 32 here will increase the size of all meesages by 32 bytes which seems to be useless now.
+#define MSG_FS_INFO_ID_LEN 16
+// All UUIDs are 16 bytes (i.e. https://elixir.bootlin.com/linux/v6.8/source/include/linux/uuid.h#L13).
+#define MSG_FS_INFO_UUID_LEN 16
+
 struct msg_fs_info {
 	__u32 dev;
 	__u32 pad;
-	char name[8]; // should be enough for all file system names
-	char id[8];
-	__u8 uuid[16];
+	char name[MSG_FS_INFO_NAME_LEN];
+	char id[MSG_FS_INFO_ID_LEN];
+	__u8 uuid[MSG_FS_INFO_UUID_LEN];
 };
 
 struct digest_key {
