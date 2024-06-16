@@ -101,10 +101,6 @@ func (k *observerFileExecSensor) PolicyHandler(
 			s:  selState,
 			tp: h.tp,
 		})
-		load.MaxEntriesInnerMap = map[string]uint32{
-			"tg_mb_paths":       uint32(selState.MatchBinariesPathsMaxEntries()),
-			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(selState),
-		}
 
 		progs = append(progs, load)
 
@@ -183,7 +179,16 @@ func (k *observerFileExecSensor) PolicyHandler(
 			"file_actions_map",
 			"file_exec_stats_map",
 		} {
-			maps = append(maps, program.MapBuilderPin(m, sensors.PathJoin(name, m), load))
+			m := program.MapBuilderPin(m, sensors.PathJoin(name, m), load)
+
+			// custom max entries setup
+			switch {
+			case m.Name == "tg_mb_paths":
+				m.SetInnerMaxEntries(selState.MatchBinariesPathsMaxEntries())
+			case m.Name == "file_digests_maps":
+				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(selState)))
+			}
+			maps = append(maps, m)
 		}
 	}
 

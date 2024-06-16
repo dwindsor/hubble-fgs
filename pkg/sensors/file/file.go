@@ -956,15 +956,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			s:  sel,
 			tp: h.tp,
 		})
-		load.MaxEntriesInnerMap = map[string]uint32{
-			"tg_mb_paths":       uint32(sel.MatchBinariesPathsMaxEntries()),
-			"file_ops_maps":     fm.GetMaxInnerEntriesOpsMap(sel),
-			"file_digests_maps": fm.GetMaxInnerEntriesDigestsMap(sel),
-		}
-		load.MaxEntriesMap = map[string]uint32{
-			"hash_map_inode_alloc":  config.MaxWatchedInodes,
-			"exact_match_map_alloc": exactFilePathMatchSize,
-		}
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{
@@ -1201,10 +1192,21 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 
 		for _, m := range SharedMaps {
-			maps = append(
-				maps,
-				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
-			)
+			m := program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load)
+			// custom max entries setup
+			switch {
+			case m.Name == "tg_mb_paths":
+				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
+			case m.Name == "file_ops_maps":
+				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
+			case m.Name == "file_digests_maps":
+				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(sel)))
+			case m.Name == "hash_map_inode_alloc":
+				m.SetMaxEntries(int(config.MaxWatchedInodes))
+			case m.Name == "exact_match_map_alloc":
+				m.SetMaxEntries(int(exactFilePathMatchSize))
+			}
+			maps = append(maps, m)
 		}
 	}
 
