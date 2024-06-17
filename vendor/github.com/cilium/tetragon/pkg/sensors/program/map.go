@@ -13,29 +13,49 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type MaxEntries struct {
+	Val uint32
+	Set bool
+}
+
 // Map represents BPF maps.
 type Map struct {
-	Name      string
-	PinName   string
-	Prog      *Program
-	PinState  State
-	MapHandle *ebpf.Map
+	Name         string
+	PinName      string
+	Prog         *Program
+	PinState     State
+	MapHandle    *ebpf.Map
+	Entries      MaxEntries
+	InnerEntries MaxEntries
 }
 
-func MapBuilder(name string, ld *Program) *Map {
-	return &Map{name, name, ld, Idle(), nil}
-}
-
-func MapBuilderPinManyProgs(name, pin string, lds ...*Program) *Map {
+// Map holds pointer to Program object as a source of its ebpf object
+// file. We assume all the programs sharing the map have same map
+// definition, so it's ok to use the first program if there's more.
+//
+//	m.prog -> lds[0]
+//
+// Every program has PinMap map that links map name woth the map object,
+// so the loader has all program's map object available.
+//
+//	p.PinMap["map1"] = &map1
+//	p.PinMap["map2"] = &map2
+//	...
+//	p.PinMap["mapX"] = &mapX
+func mapBuilder(name, pin string, lds ...*Program) *Map {
+	m := &Map{name, pin, lds[0], Idle(), nil, MaxEntries{0, false}, MaxEntries{0, false}}
 	for _, ld := range lds {
-		ld.PinMap[name] = pin
+		ld.PinMap[name] = m
 	}
-	return &Map{name, pin, lds[0], Idle(), nil}
+	return m
 }
 
-func MapBuilderPin(name, pin string, ld *Program) *Map {
-	ld.PinMap[name] = pin
-	return &Map{name, pin, ld, Idle(), nil}
+func MapBuilder(name string, lds ...*Program) *Map {
+	return mapBuilder(name, name, lds...)
+}
+
+func MapBuilderPin(name, pin string, lds ...*Program) *Map {
+	return mapBuilder(name, pin, lds...)
 }
 
 func (m *Map) Unload() error {
@@ -179,9 +199,17 @@ func LoadOrCreatePinnedMap(pinPath string, mapSpec *ebpf.MapSpec) (*ebpf.Map, er
 }
 
 func (m *Map) SetMaxEntries(max int) {
-	m.Prog.MaxEntriesMap[m.Name] = uint32(max)
+	m.Entries = MaxEntries{uint32(max), true}
 }
 
 func (m *Map) SetInnerMaxEntries(max int) {
-	m.Prog.MaxEntriesInnerMap[m.Name] = uint32(max)
+	m.InnerEntries = MaxEntries{uint32(max), true}
+}
+
+func (m *Map) GetMaxEntries() (uint32, bool) {
+	return m.Entries.Val, m.Entries.Set
+}
+
+func (m *Map) GetMaxInnerEntries() (uint32, bool) {
+	return m.InnerEntries.Val, m.InnerEntries.Set
 }
