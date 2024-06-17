@@ -41,10 +41,6 @@ func TestIDs(t *testing.T) {
 				t.Logf("oss syscallinfo seems to be missing for ia32/%s", name)
 				continue
 			}
-			if name == "oldstat" {
-				// fixed in https://github.com/cilium/tetragon/pull/2550
-				continue
-			}
 			require.Equal(t, ossid32, id32, name)
 		}
 	}
