@@ -232,11 +232,10 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	dataCacheSize := 1024
 	option.Config.EnableProcessCred = false
 	option.Config.EnableProcessNs = false
-	option.Config.EnableCilium = false
 	option.Config.EnableK8s = false
 	//todo; enableProcessAncestors := true
 
-	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, false); err != nil {
 		return err
 	}
 

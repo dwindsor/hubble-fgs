@@ -23,6 +23,7 @@ type config struct {
 
 	EnableSandboxPolicies bool
 	SandboxPolicies       []string
+	EnableCilium          bool
 }
 
 var (
@@ -36,5 +37,6 @@ var (
 		FimRuntimeEndpoint:     "",
 		EnableDnsDebug:         false,
 		EnableIcmpTracking:     false,
+		EnableCilium:           false,
 	}
 )

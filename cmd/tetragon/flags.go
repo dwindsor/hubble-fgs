@@ -111,7 +111,7 @@ func readAndSetFlags() error {
 	option.Config.EnableProcessCred = viper.GetBool(keyEnableProcessCred)
 	option.Config.EnableProcessNs = viper.GetBool(keyEnableProcessNs)
 	option.Config.EnableK8s = viper.GetBool(keyEnableK8sAPI)
-	option.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
+	enterpriseOption.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
 
 	option.Config.GopsAddr = viper.GetString(keyGopsAddr)
 

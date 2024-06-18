@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/watcher"
 	coreV1 "k8s.io/api/core/v1"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
@@ -30,7 +31,7 @@ func getExecCommand(probe *coreV1.Probe) []string {
 func GetPodInfoOfIp(ip net.IP) *tetragon.Pod {
 	if option.Config.EnablePodInfo {
 		return getPodInfoOfIpFromPodInfo(ip)
-	} else if option.Config.EnableCilium {
+	} else if enterpriseOption.Config.EnableCilium {
 		return getPodInfoOfIpFromCilium(ip)
 	}
 	return nil

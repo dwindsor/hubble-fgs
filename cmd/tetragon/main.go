@@ -654,7 +654,7 @@ func hubbleFGSExecute() error {
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
 	k8sWatcher.Start()
-	_, err = cilium.InitCiliumState(ctx, option.Config.EnableCilium)
+	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}

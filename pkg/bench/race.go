@@ -141,10 +141,9 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	dataCacheSize := 1024
 	option.Config.EnableProcessCred = false
 	option.Config.EnableProcessNs = false
-	option.Config.EnableCilium = false
 	// todo enableProcessAncestors := false
 
-	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, false); err != nil {
 		return err
 	}
 
