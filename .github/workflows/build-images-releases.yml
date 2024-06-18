@@ -200,6 +200,9 @@ jobs:
           path: image-digest/
       
       - name: Update ClusterServiceVersion
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          yq_version: 4.31.1
         if: ${{ steps.legacy.outputs.is == 'false' }}
         run: |
           lower_tag="${{ steps.tag.outputs.tag }}"
@@ -221,8 +224,6 @@ jobs:
           sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*\"$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*[^\"]$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           # TODO: the value in the olm.skipRange annotation may need to be replaced when the annotation has been added.
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          yq_version=4.31.1
           name_of_previous_csv=$(docker run -i --rm -v "${PWD}":/workdir mikefarah/yq:${yq_version} '.metadata.name' /workdir/install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml)
           docker run -i --rm -v "${PWD}":/workdir mikefarah/yq:${yq_version} e -i ".spec.replaces = \"${name_of_previous_csv}\"" /workdir/install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           version="${lower_tag:1}"
