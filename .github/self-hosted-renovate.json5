@@ -30,6 +30,7 @@
     "^make vendor$",
     "^install/kubernetes/test.sh$",
     "^go mod vendor$",
-    "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$"
+    "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$",
+    "^make -C install/kubernetes$"
   ],
 }
