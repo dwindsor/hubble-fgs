@@ -4,11 +4,11 @@ import (
 	"net"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/watcher"
 	coreV1 "k8s.io/api/core/v1"
 
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )

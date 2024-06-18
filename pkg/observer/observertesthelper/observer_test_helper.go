@@ -21,16 +21,18 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	oss "github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 )
 
 var (
-	metricsOnce sync.Once
+	enterpriseOnce sync.Once
 )
 
-func registerEEMetrics() {
-	metricsOnce.Do(func() {
+func enterpriseInit() {
+	enterpriseOnce.Do(func() {
 		metricsconfig.InitAllEEMetrics(metrics.GetRegistry())
+		cilium.InitCiliumState(context.Background(), false)
 	})
 }
 
@@ -39,7 +41,7 @@ func GetDefaultObserver(tb testing.TB, ctx context.Context, lib string, opts ...
 	if err != nil {
 		return nil, err
 	}
-	registerEEMetrics()
+	enterpriseInit()
 	return obs, nil
 }
 
@@ -48,7 +50,7 @@ func GetDefaultObserverWithWatchers(tb testing.TB, ctx context.Context, base *se
 	if err != nil {
 		return nil, err
 	}
-	registerEEMetrics()
+	enterpriseInit()
 	return obs, nil
 }
 
@@ -57,7 +59,7 @@ func GetDefaultObserverWithBase(tb testing.TB, ctx context.Context, b *sensors.S
 	if err != nil {
 		return nil, err
 	}
-	registerEEMetrics()
+	enterpriseInit()
 	return obs, nil
 }
 
@@ -66,7 +68,7 @@ func GetDefaultObserverWithFile(tb testing.TB, ctx context.Context, file, lib st
 	if err != nil {
 		return nil, err
 	}
-	registerEEMetrics()
+	enterpriseInit()
 	return obs, nil
 }
 
@@ -75,6 +77,6 @@ func GetDefaultObserverWithConfig(tb testing.TB, ctx context.Context, config, li
 	if err != nil {
 		return nil, err
 	}
-	registerEEMetrics()
+	enterpriseInit()
 	return obs, nil
 }

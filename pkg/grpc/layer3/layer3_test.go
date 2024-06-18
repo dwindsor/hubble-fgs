@@ -15,7 +15,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	tetragonAPI "github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -25,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/stretchr/testify/assert"
 )

@@ -28,7 +28,6 @@ import (
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
-	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -41,6 +40,7 @@ import (
 	"github.com/cilium/tetragon/pkg/watcher"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
