@@ -33,21 +33,62 @@ schema: olm.channel
 package: tetragon-operator
 name: alpha
 entries:
-- name: tetragon-operator.v1.13.0
+  - name: tetragon-operator.v1.13.0
+  - name: tetragon-operator.v1.13.1
+    replaces: tetragon-operator.v1.13.0
+    skipRange: '>=1.13.0 <1.13.1'
 ---
 image: quay.io/isovalent/tetragon-operator-bundle:v1.13.0
 name: tetragon-operator.v1.13.0
 package: tetragon-operator
 properties:
-- type: olm.package
-  value:
-    packageName: tetragon-operator
-    version: 1.13.0
-- type: olm.csv.metadata
-  value:
-    annotations:
-      capabilities: Seamless Upgrades
-      categories: Networking,Security
+  - type: olm.package
+    value:
+      packageName: tetragon-operator
+      version: 1.13.0
+  - type: olm.csv.metadata
+    value:
+      annotations:
+        capabilities: Seamless Upgrades
+        categories: Networking,Security
+        description: |-
+          The Tetragon Operator manages the deployment of the Tetragon components and the replication
+          of pod information for efficient consumption by agents.
+
+          # Tetragon
+
+          Tetragon enables powerful real-time, eBPF-based Security Observability and Runtime Enforcement.
+
+          Tetragon detects and is able to react to security-significant events, such as
+
+            * Process execution events
+            * System call activity
+            * I/O activity including network & file access
+
+          Tetragon is Kubernetes-aware - that is, it understands Kubernetes identities such as namespaces, pods and so on - so that security event detection can be configured in relation to individual workloads.
+
+          # Start using Tetragon
+
+            * Overview at [isovalent.com/projects/tetragon](https://isovalent.com/projects/tetragon/)
+            * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
+            * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
+            * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
+        features.operators.openshift.io/cni: "false"
+        features.operators.openshift.io/disconnected: "true"
+        features.operators.openshift.io/fips-compliant: "false"
+        features.operators.openshift.io/proxy-aware: "true"
+        features.operators.openshift.io/tls-profiles: "false"
+        features.operators.openshift.io/token-auth-aws: "false"
+        features.operators.openshift.io/token-auth-azure: "false"
+        features.operators.openshift.io/token-auth-gcp: "false"
+        operatorframework.io/suggested-namespace: tetragon
+        operators.openshift.io/infrastructure-features: '["disconnected"]'
+        operators.operatorframework.io/builder: operator-sdk-v1.33.0
+        operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+        repository: https://github.com/cilium/tetragon
+        support: support@isovalent.com
+      apiServiceDefinitions: {}
+      crdDescriptions: {}
       description: |-
         The Tetragon Operator manages the deployment of the Tetragon components and the replication
         of pod information for efficient consumption by agents.
@@ -70,78 +111,151 @@ properties:
           * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
           * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
           * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
-      features.operators.openshift.io/cni: "false"
-      features.operators.openshift.io/disconnected: "true"
-      features.operators.openshift.io/fips-compliant: "false"
-      features.operators.openshift.io/proxy-aware: "true"
-      features.operators.openshift.io/tls-profiles: "false"
-      features.operators.openshift.io/token-auth-aws: "false"
-      features.operators.openshift.io/token-auth-azure: "false"
-      features.operators.openshift.io/token-auth-gcp: "false"
-      operatorframework.io/suggested-namespace: tetragon
-      operators.openshift.io/infrastructure-features: '["disconnected"]'
-      operators.operatorframework.io/builder: operator-sdk-v1.33.0
-      operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
-      repository: https://github.com/cilium/tetragon
-      support: support@isovalent.com
-    apiServiceDefinitions: {}
-    crdDescriptions: {}
-    description: |-
-      The Tetragon Operator manages the deployment of the Tetragon components and the replication
-      of pod information for efficient consumption by agents.
-
-      # Tetragon
-
-      Tetragon enables powerful real-time, eBPF-based Security Observability and Runtime Enforcement.
-
-      Tetragon detects and is able to react to security-significant events, such as
-
-        * Process execution events
-        * System call activity
-        * I/O activity including network & file access
-
-      Tetragon is Kubernetes-aware - that is, it understands Kubernetes identities such as namespaces, pods and so on - so that security event detection can be configured in relation to individual workloads.
-
-      # Start using Tetragon
-
-        * Overview at [isovalent.com/projects/tetragon](https://isovalent.com/projects/tetragon/)
-        * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
-        * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
-        * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
-    displayName: Tetragon Operator
-    installModes:
-    - supported: false
-      type: OwnNamespace
-    - supported: false
-      type: SingleNamespace
-    - supported: false
-      type: MultiNamespace
-    - supported: true
-      type: AllNamespaces
-    keywords:
-    - Tetragon
-    - eBPF
-    - Security
-    - Observability
-    links:
-    - name: Tetragon
-      url: https://isovalent.com/projects/tetragon
-    maintainers:
-    - email: maintainer@isovalent.com
-      name: Isovalent
-    maturity: alpha
-    provider:
-      name: Isovalent
-      url: https://isovalent.com
+      displayName: Tetragon Operator
+      installModes:
+        - supported: false
+          type: OwnNamespace
+        - supported: false
+          type: SingleNamespace
+        - supported: false
+          type: MultiNamespace
+        - supported: true
+          type: AllNamespaces
+      keywords:
+        - Tetragon
+        - eBPF
+        - Security
+        - Observability
+      links:
+        - name: Tetragon
+          url: https://isovalent.com/projects/tetragon
+      maintainers:
+        - email: maintainer@isovalent.com
+          name: Isovalent
+      maturity: alpha
+      provider:
+        name: Isovalent
+        url: https://isovalent.com
 relatedImages:
-- image: quay.io/isovalent/tetragon-operator-bundle:v1.13.0
-  name: ""
-- image: quay.io/isovalent/hubble-enterprise-metadata@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7
-  name: metadata
-- image: quay.io/isovalent/hubble-export-stdout@sha256:af2ae61427a88c4c97d2aa39e0f14243d599cd3aa393599b08fb44a645957726
-  name: hubble-export-stdout
-- image: quay.io/isovalent/tetragon-operator@sha256:6f8847cfaf9cc1e249f8a0f9e3a3cfbf35104075e107651de7ca70e8380f10f7
-  name: tetragon-operator
-- image: quay.io/isovalent/tetragon@sha256:9f91716b03808009d2a791cec8445b97ae5b916e75230ca0d743d06145407e1a
-  name: tetragon
+  - image: quay.io/isovalent/tetragon-operator-bundle:v1.13.0
+    name: ""
+  - image: quay.io/isovalent/hubble-enterprise-metadata@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7
+    name: metadata
+  - image: quay.io/isovalent/hubble-export-stdout@sha256:af2ae61427a88c4c97d2aa39e0f14243d599cd3aa393599b08fb44a645957726
+    name: hubble-export-stdout
+  - image: quay.io/isovalent/tetragon-operator@sha256:6f8847cfaf9cc1e249f8a0f9e3a3cfbf35104075e107651de7ca70e8380f10f7
+    name: tetragon-operator
+  - image: quay.io/isovalent/tetragon@sha256:9f91716b03808009d2a791cec8445b97ae5b916e75230ca0d743d06145407e1a
+    name: tetragon
+schema: olm.bundle
+---
+image: quay.io/isovalent/tetragon-operator-bundle:v1.13.1
+name: tetragon-operator.v1.13.1
+package: tetragon-operator
+properties:
+  - type: olm.package
+    value:
+      packageName: tetragon-operator
+      version: 1.13.1
+  - type: olm.csv.metadata
+    value:
+      annotations:
+        capabilities: Seamless Upgrades
+        categories: Networking,Security
+        description: |-
+          The Tetragon Operator manages the deployment of the Tetragon components and the replication
+          of pod information for efficient consumption by agents.
+
+          # Tetragon
+
+          Tetragon enables powerful real-time, eBPF-based Security Observability and Runtime Enforcement.
+
+          Tetragon detects and is able to react to security-significant events, such as
+
+            * Process execution events
+            * System call activity
+            * I/O activity including network & file access
+
+          Tetragon is Kubernetes-aware - that is, it understands Kubernetes identities such as namespaces, pods and so on - so that security event detection can be configured in relation to individual workloads.
+
+          # Start using Tetragon
+
+            * Overview at [isovalent.com/projects/tetragon](https://isovalent.com/projects/tetragon/)
+            * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
+            * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
+            * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
+        features.operators.openshift.io/cni: "false"
+        features.operators.openshift.io/disconnected: "true"
+        features.operators.openshift.io/fips-compliant: "false"
+        features.operators.openshift.io/proxy-aware: "true"
+        features.operators.openshift.io/tls-profiles: "false"
+        features.operators.openshift.io/token-auth-aws: "false"
+        features.operators.openshift.io/token-auth-azure: "false"
+        features.operators.openshift.io/token-auth-gcp: "false"
+        operatorframework.io/suggested-namespace: tetragon
+        operators.openshift.io/infrastructure-features: '["disconnected"]'
+        operators.operatorframework.io/builder: operator-sdk-v1.33.0
+        operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+        repository: https://github.com/cilium/tetragon
+        support: support@isovalent.com
+      apiServiceDefinitions: {}
+      crdDescriptions: {}
+      description: |-
+        The Tetragon Operator manages the deployment of the Tetragon components and the replication
+        of pod information for efficient consumption by agents.
+
+        # Tetragon
+
+        Tetragon enables powerful real-time, eBPF-based Security Observability and Runtime Enforcement.
+
+        Tetragon detects and is able to react to security-significant events, such as
+
+          * Process execution events
+          * System call activity
+          * I/O activity including network & file access
+
+        Tetragon is Kubernetes-aware - that is, it understands Kubernetes identities such as namespaces, pods and so on - so that security event detection can be configured in relation to individual workloads.
+
+        # Start using Tetragon
+
+          * Overview at [isovalent.com/projects/tetragon](https://isovalent.com/projects/tetragon/)
+          * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
+          * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
+          * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
+      displayName: Tetragon Operator
+      installModes:
+        - supported: false
+          type: OwnNamespace
+        - supported: false
+          type: SingleNamespace
+        - supported: false
+          type: MultiNamespace
+        - supported: true
+          type: AllNamespaces
+      keywords:
+        - Tetragon
+        - eBPF
+        - Security
+        - Observability
+      links:
+        - name: Tetragon
+          url: https://isovalent.com/projects/tetragon
+      maintainers:
+        - email: maintainer@isovalent.com
+          name: Isovalent
+      maturity: alpha
+      provider:
+        name: Isovalent
+        url: https://isovalent.com
+relatedImages:
+  - image: quay.io/isovalent/hubble-enterprise-metadata@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7
+    name: metadata
+  - image: quay.io/isovalent/hubble-export-stdout@sha256:af2ae61427a88c4c97d2aa39e0f14243d599cd3aa393599b08fb44a645957726
+    name: hubble-export-stdout
+  - image: quay.io/isovalent/tetragon-operator-bundle:v1.13.1
+    name: ""
+  - image: quay.io/isovalent/tetragon-operator@sha256:f3b07ddf100e9259bbd6c2521282b46bd2ada2a4487a11471d042106d777c78d
+    name: tetragon-operator
+  - image: quay.io/isovalent/tetragon@sha256:a358e4381c1233227a602355b4ddfc115f754d884b2604e02827264121ed8b6b
+    name: tetragon
 schema: olm.bundle
