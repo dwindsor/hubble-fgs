@@ -312,6 +312,10 @@ func createGenericTracepoint(
 	policyName string,
 	customHandler eventhandler.Handler,
 ) (*genericTracepoint, error) {
+	if conf == nil {
+		return nil, errors.New("failed creating generic tracepoint, conf is nil")
+	}
+
 	tp := tracepoint.Tracepoint{
 		Subsys: conf.Subsystem,
 		Event:  conf.Event,
@@ -405,6 +409,9 @@ func createGenericTracepointSensor(
 		progs = append(progs, prog0)
 
 		fdinstall := program.MapBuilderPin("fdinstall_map", sensors.PathJoin(pinPath, "fdinstall_map"), prog0)
+		if selectorsHaveFDInstall(tp.Spec.Selectors) {
+			fdinstall.SetMaxEntries(fdInstallMapMaxEntries)
+		}
 		maps = append(maps, fdinstall)
 
 		tailCalls := program.MapBuilderPin("tp_calls", sensors.PathJoin(pinPath, "tp_calls"), prog0)
