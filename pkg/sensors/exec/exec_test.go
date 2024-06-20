@@ -12,9 +12,15 @@ import (
 	"github.com/cilium/ebpf"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	api "github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 
@@ -326,6 +332,53 @@ func TestExecProcessCredentialsSuid(t *testing.T) {
 	}
 
 	checker := ec.NewUnorderedEventChecker(execNormalChecker, execGidChecker, execSuidChecker, execSuid2Checker, exitSuid1Checker, exitSuid2Checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestEventExecveUsername(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	option.Config.UsernameMetadata = int(option.USERNAME_METADATA_UNIX)
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	err := confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	require.NoError(t, err)
+
+	mode := cgroups.GetDeploymentMode()
+	ns := namespace.GetCurrentNamespace()
+	if (mode != cgroups.DEPLOY_SD_SERVICE && mode != cgroups.DEPLOY_SD_USER) ||
+		!ns.Mnt.IsHost || !ns.User.IsHost {
+		t.Skip()
+	}
+
+	obs, err := observertesthelper.GetDefaultObserver(t, ctx, tus.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("Failed to run observer: %s", err)
+	}
+
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	testNop := testutils.RepoRootPath("contrib/tester-progs/nop")
+
+	userRecord := ec.NewUserRecordChecker().
+		WithName(sm.Full("root"))
+	procChecker := ec.NewProcessChecker().
+		WithBinary(sm.Full(testNop)).
+		WithUser(userRecord)
+
+	if err := exec.Command(testNop).Run(); err != nil {
+		t.Fatalf("Failed to execute 'nop' test binary: %s\n", err)
+	}
+
+	execChecker := ec.NewProcessExecChecker("exec").WithProcess(procChecker)
+	exitChecker := ec.NewProcessExitChecker("exit").WithProcess(procChecker)
+	checker := ec.NewUnorderedEventChecker(execChecker, exitChecker)
+
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
