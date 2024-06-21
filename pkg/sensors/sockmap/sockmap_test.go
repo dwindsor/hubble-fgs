@@ -189,7 +189,9 @@ func TestTLS12(t *testing.T) {
 			WithOperator(lm.Unordered).
 			WithValues(
 				sm.Full("CN=www.google.com"),
-				sm.Full("CN=GTS CA 1C3,O=Google Trust Services LLC,C=US"),
+				// Something changed on Google's end and we now see one of two
+				// possible certificates here, so match either one
+				sm.Regex("(CN=WR2,O=Google Trust Services|CN=GTS CA 1C3,O=Google Trust Services LLC),C=US"),
 				sm.Full("CN=GTS Root R1,O=Google Trust Services LLC,C=US"),
 			))
 
@@ -456,7 +458,7 @@ func TestCGTLS12(t *testing.T) {
 			WithOperator(lm.Unordered).
 			WithValues(
 				sm.Full("CN=www.google.com"),
-				sm.Full("CN=GTS CA 1C3,O=Google Trust Services LLC,C=US"),
+				sm.Full("CN=WR2,O=Google Trust Services,C=US"),
 				sm.Full("CN=GTS Root R1,O=Google Trust Services LLC,C=US"),
 			))
 
