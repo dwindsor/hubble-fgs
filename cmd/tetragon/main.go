@@ -806,7 +806,7 @@ func execute() error {
 				return
 			}
 			if err := readAndSetFlags(); err != nil {
-				log.WithError(err).Fatal("Failed to read config options")
+				log.WithError(err).Fatal("Failed to parse command line flags")
 			}
 
 			enterpriseOption.ReadAndSetEnterpriseFlags()
@@ -938,6 +938,8 @@ func execute() error {
 	flags.Bool(KeyGenerateDocs, false, "Generate documentation in YAML format to stdout")
 
 	flags.String(keyCgroupRate, "", "Base sensor events cgroup rate <events,interval> disabled by default ('1000/1s' means rate 1000 events per second")
+
+	flags.String(option.KeyUsernameMetadata, "disabled", "Resolve UIDs to user names for processes running in host namespace")
 
 	flags.String(KeyHealthServerAddress, ":6789", "Health server address (e.g. ':6789')(use '' to disabled it)")
 	flags.Int(KeyHealthTimeInterval, 10, "Health server interval in seconds")

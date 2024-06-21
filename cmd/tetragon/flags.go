@@ -179,6 +179,15 @@ func readAndSetFlags() error {
 		option.Config.TracingPolicy = viper.GetString(keyTracingPolicy)
 	}
 
+	switch o := viper.GetString(option.KeyUsernameMetadata); o {
+	case "unix":
+		option.Config.UsernameMetadata = int(option.USERNAME_METADATA_UNIX)
+	case "disabled":
+		option.Config.UsernameMetadata = int(option.USERNAME_METADATA_DISABLED)
+	default:
+		return fmt.Errorf("unknown option for %s: %q", option.KeyUsernameMetadata, o)
+	}
+
 	option.Config.EnableMsgHandlingLatency = viper.GetBool(keyEnableMsgHandlingLatency)
 
 	option.Config.CgroupRate = option.ParseCgroupRate(viper.GetString(keyCgroupRate))
