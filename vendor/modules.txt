@@ -414,6 +414,7 @@ github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/notify
 github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
+github.com/cilium/tetragon/pkg/reader/userdb
 github.com/cilium/tetragon/pkg/rthooks
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
