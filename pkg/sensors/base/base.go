@@ -121,6 +121,11 @@ var (
 	CgroupRateMap        = program.MapBuilder("cgroup_rate_map", Execve)
 	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
 
+	/* In BPF memory aggregated data */
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve)
+
 	sensor = sensors.Sensor{
 		Name: "__main__",
 	}
@@ -206,6 +211,9 @@ func GetDefaultMaps() []*program.Map {
 		ExecveJoinMap,
 		ExecveJoinMapStats,
 		StatsMap,
+		ProcessTreeMap,
+		ProcessTreeBinaryUUIDMap,
+		ProcessTreeUUIDBinaryMap,
 	}
 
 	if kernels.EnableV61Progs() {

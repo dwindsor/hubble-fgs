@@ -12,15 +12,17 @@
 #include "bpf_rate.h"
 
 #include "policy_filter.h"
+#include "process_tree.h"
 
 int oss_execve_send(void *ctx);
 
-#define execve_send                   \
-	execve_send(void *ctx)        \
-	{                             \
-		oss_execve_send(ctx); \
-		return 0;             \
-	}                             \
+#define execve_send                    \
+	execve_send(void *ctx)         \
+	{                              \
+		oss_execve_send(ctx);  \
+		insert_process_tree(); \
+		return 0;              \
+	}                              \
 	__attribute__((always_inline)) int oss_execve_send
 
 #include "bpf_execve_event.c"
