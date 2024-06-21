@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/cilium/api/v1/flow"
 	"github.com/cilium/cilium/api/v1/observer"
+	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
@@ -71,8 +72,8 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 			Flow: &flow.Flow{
 				Verdict:          flow.Verdict_TRACED,
 				IP:               nil,
-				Source:           &flow.Endpoint{},
-				Destination:      &flow.Endpoint{},
+				Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
+				Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 				IsReply:          &wrappers.BoolValue{Value: false},
 				NodeName:         "my-node",
 				Time:             &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
@@ -127,8 +128,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow := &flow.Flow{
 		Verdict:          flow.Verdict_TRACED,
 		IP:               nil,
-		Source:           &flow.Endpoint{},
-		Destination:      &flow.Endpoint{},
+		Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
+		Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 		Type:             observer.FlowType_L3_L4,
 		TrafficDirection: flow.TrafficDirection_EGRESS,
 		IsReply:          &wrappers.BoolValue{Value: false},
@@ -164,7 +165,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				},
 			},
 		},
-		Source: &flow.Endpoint{},
+		Source: &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 		Destination: &flow.Endpoint{
 			Namespace: "ns-2",
 		},

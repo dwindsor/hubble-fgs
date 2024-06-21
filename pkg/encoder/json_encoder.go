@@ -123,6 +123,8 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		if sourcePod.Workload != "" && sourcePod.WorkloadKind != "" {
 			source.Workloads = []*flow.Workload{{Name: sourcePod.Workload, Kind: sourcePod.WorkloadKind}}
 		}
+	} else {
+		source.Labels = labels.LabelWorld.GetModel()
 	}
 	destinationPod := pc.GetDestinationPod()
 	var destinationService *flow.Service
@@ -143,6 +145,8 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 				Name:      k8sDestinationServices[0].Name,
 				Namespace: k8sDestinationServices[0].Namespace,
 			}
+		} else {
+			destination.Labels = labels.LabelWorld.GetModel()
 		}
 	}
 	return &flow.Flow{
