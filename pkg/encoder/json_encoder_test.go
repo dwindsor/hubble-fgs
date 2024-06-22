@@ -35,7 +35,7 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
 	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
 	k8sWatcher.Start()
-	e := NewJSONEncoder(&b, nil, k8sWatcher, false)
+	e := NewJSONEncoder(&b, nil, k8sWatcher, false, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -58,7 +58,7 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
 	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
 	k8sWatcher.Start()
-	e := NewJSONEncoder(&b, &flowBuffer, k8sWatcher, true)
+	e := NewJSONEncoder(&b, &flowBuffer, k8sWatcher, true, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
 		NodeName: "my-node",
@@ -116,7 +116,11 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		})
 	k8sWatcher := enterpriseWatcher.NewK8sWatcher(client, 0)
 	k8sWatcher.Start()
-	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true)
+	nodeIPs := map[string]struct{}{
+		"10.0.0.1": {},
+		"10.0.0.2": {},
+	}
+	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true, nodeIPs)
 
 	// Empty connect event
 	event := tetragon.GetEventsResponse{
@@ -416,6 +420,44 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
 		},
 		DestinationNames: []string{"isovalent.com"},
+		Type:             observer.FlowType_L3_L4,
+		TrafficDirection: flow.TrafficDirection_EGRESS,
+		IsReply:          &wrappers.BoolValue{Value: false},
+		SocketCookie:     12345,
+	}
+	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
+	assert.Equal(t, expectedFlow, actualFlow)
+
+	// With node IPs
+	event = tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{
+				SourceIp:        "10.0.0.1",
+				SourcePort:      &wrappers.UInt32Value{Value: 54321},
+				DestinationIp:   "10.0.0.2",
+				DestinationPort: &wrappers.UInt32Value{Value: 80},
+				SockCookie:      12345,
+				Protocol:        tetragon.SocketProtocol_TCP,
+			},
+		},
+	}
+	expectedFlow = &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
+		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
+			Source:      "10.0.0.1",
+			Destination: "10.0.0.2",
+		},
+		L4: &flow.Layer4{
+			Protocol: &flow.Layer4_TCP{
+				TCP: &flow.TCP{
+					SourcePort:      54321,
+					DestinationPort: 80,
+				},
+			},
+		},
+		Source:           &flow.Endpoint{Labels: labels.LabelHost.GetModel()},
+		Destination:      &flow.Endpoint{Labels: labels.LabelHost.GetModel()},
 		Type:             observer.FlowType_L3_L4,
 		TrafficDirection: flow.TrafficDirection_EGRESS,
 		IsReply:          &wrappers.BoolValue{Value: false},

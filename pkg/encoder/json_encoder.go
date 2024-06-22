@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/netip"
 	"sort"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
@@ -39,12 +41,14 @@ type JSONEncoder struct {
 	protoJSONEncoder *jsonEncoder.ProtojsonEncoder
 	watcher          watcher.K8sResourceWatcher
 	enableFlowExport bool
+	nodeIPs          map[string]struct{}
 }
 
-func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, watcher watcher.K8sResourceWatcher, enableFlowExport bool) *JSONEncoder {
+func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, watcher watcher.K8sResourceWatcher, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
 	encoder := JSONEncoder{
 		protoJSONEncoder: jsonEncoder.NewProtojsonEncoder(writer),
 		watcher:          watcher,
+		nodeIPs:          nodeIPs,
 	}
 	if enableFlowExport {
 		encoder.enableFlowExport = true
@@ -123,6 +127,8 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		if sourcePod.Workload != "" && sourcePod.WorkloadKind != "" {
 			source.Workloads = []*flow.Workload{{Name: sourcePod.Workload, Kind: sourcePod.WorkloadKind}}
 		}
+	} else if _, ok := h.nodeIPs[pc.GetSourceIp()]; ok {
+		source.Labels = labels.LabelHost.GetModel()
 	} else {
 		source.Labels = labels.LabelWorld.GetModel()
 	}
@@ -145,6 +151,8 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 				Name:      k8sDestinationServices[0].Name,
 				Namespace: k8sDestinationServices[0].Namespace,
 			}
+		} else if _, ok := h.nodeIPs[pc.GetDestinationIp()]; ok {
+			destination.Labels = labels.LabelHost.GetModel()
 		} else {
 			destination.Labels = labels.LabelWorld.GetModel()
 		}
@@ -162,4 +170,19 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		IsReply:            &wrappers.BoolValue{Value: false},
 		SocketCookie:       pc.GetSockCookie(),
 	}
+}
+
+func GetNodeIPs() map[string]struct{} {
+	nodeIPs := make(map[string]struct{})
+	nodeName := node.GetNodeNameForExport()
+	ips, err := net.LookupIP(nodeName)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("hostname", nodeName).
+			Warn("Failed to get host IP. Hubble flows to/from the host will be classified as 'reserved:world' instead of 'reserved:host'")
+		return nodeIPs
+	}
+	for _, ip := range ips {
+		nodeIPs[ip.String()] = struct{}{}
+	}
+	return nodeIPs
 }
