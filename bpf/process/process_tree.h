@@ -11,6 +11,22 @@
 #include "policy_filter.h"
 
 #define PROCESS_TREE_SIZE 500000
+#define PROCESS_ENDPOINTS 500000
+
+struct endpoint_id_key {
+	uint64_t addr[2];
+};
+
+struct endpoint_id_value {
+	uint64_t id;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, PROCESS_ENDPOINTS);
+	__uint(key_size, sizeof(struct endpoint_id_key));
+	__uint(value_size, sizeof(struct endpoint_id_value));
+} tg_endpoint_id_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);

@@ -16,6 +16,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/logutils"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
@@ -119,6 +120,10 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	c := dns.Get()
 	if c != nil {
 		c.AddIp(fgsDns)
+	}
+	e := endpoint.Get()
+	if e != nil {
+		e.AddIp(fgsDns)
 	}
 
 	fgsEvent := &tetragon.ProcessDns{
