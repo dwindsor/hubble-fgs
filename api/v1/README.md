@@ -168,6 +168,14 @@
 - [tetragon/sandbox.proto](#tetragon_sandbox-proto)
     - [ProcessSandboxSyscall](#tetragon-ProcessSandboxSyscall)
   
+- [tetragon/model.proto](#tetragon_model-proto)
+    - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
+    - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
+    - [ProcessModel](#tetragon-ProcessModel)
+    - [Workload](#tetragon-Workload)
+  
+    - [ProcessModelService](#tetragon-ProcessModelService)
+  
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -3041,6 +3049,91 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
  
 
  
+
+ 
+
+
+
+<a name="tetragon_model-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/model.proto
+
+
+
+<a name="tetragon-GetProcessModelRequest"></a>
+
+### GetProcessModelRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetProcessModelResponse"></a>
+
+### GetProcessModelResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processes | [ProcessModel](#tetragon-ProcessModel) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessModel"></a>
+
+### ProcessModel
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| binary | [string](#string) |  |  |
+| parent | [string](#string) |  |  |
+| namespace | [string](#string) |  |  |
+| workload | [Workload](#tetragon-Workload) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Workload"></a>
+
+### Workload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| kind | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-ProcessModelService"></a>
+
+### ProcessModelService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
 
  
 
