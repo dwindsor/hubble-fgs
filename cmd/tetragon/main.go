@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -428,6 +429,8 @@ func hubbleFGSExecute() error {
 		return err
 	}
 
+	modelServer := model.NewServer()
+
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
@@ -436,7 +439,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if option.Config.ExportFilename != "" {
@@ -731,9 +734,10 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 	return nil
 }
 
-func Serve(ctx context.Context, listenAddr string, srv *server.Server) error {
+func Serve(ctx context.Context, listenAddr string, srv *server.Server, model *model.Server) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
+	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to parse listen address: %w", err)
