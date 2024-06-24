@@ -89,6 +89,8 @@ message Filter {
     repeated string policy_names = 10;
     // Filter events by Linux process capability
     CapFilter capabilities = 11;
+    // Filter parent process' binary using RE2 regular expression syntax.
+    repeated string parent_binary_regex = 12;
     // Filter by source_ip field using an address range specified using CIDR notation.
     //
     // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
