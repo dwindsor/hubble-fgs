@@ -317,12 +317,12 @@ func TestExecProcessCredentialsSuid(t *testing.T) {
 	procExitSuid2Checker := ec.NewProcessChecker().WithUid(uint32(0)).
 		WithBinary(sm.Full(testSuid)).WithProcessCredentials(suidCreds2).WithBinaryProperties(nil)
 
-	execNormalChecker := ec.NewProcessExecChecker("exec").WithProcess(procExecNormalChecker)
-	execGidChecker := ec.NewProcessExecChecker("exec").WithProcess(procExecGidChecker)
-	execSuidChecker := ec.NewProcessExecChecker("exec").WithProcess(procExecSuidChecker)
-	execSuid2Checker := ec.NewProcessExecChecker("exec").WithProcess(procExecSuid2Checker)
-	exitSuid1Checker := ec.NewProcessExitChecker("exit").WithProcess(procExitSuid1Checker)
-	exitSuid2Checker := ec.NewProcessExitChecker("exit").WithProcess(procExitSuid2Checker)
+	execNormalChecker := ec.NewProcessExecChecker("exec normal").WithProcess(procExecNormalChecker)
+	execGidChecker := ec.NewProcessExecChecker("exec gid").WithProcess(procExecGidChecker)
+	execSuidChecker := ec.NewProcessExecChecker("exec suid").WithProcess(procExecSuidChecker)
+	execSuid2Checker := ec.NewProcessExecChecker("exec suid2").WithProcess(procExecSuid2Checker)
+	exitSuid1Checker := ec.NewProcessExitChecker("exit suid").WithProcess(procExitSuid1Checker)
+	exitSuid2Checker := ec.NewProcessExitChecker("exit suid2").WithProcess(procExitSuid2Checker)
 
 	if err = syscall.Setuid(0); err != nil {
 		t.Fatalf("Failed to restore uid to 0 :  %s\n", err)
