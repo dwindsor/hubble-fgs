@@ -126,6 +126,7 @@ var (
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve)
 	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve)
 	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve)
 
 	sensor = sensors.Sensor{
 		Name: "__main__",
@@ -216,6 +217,7 @@ func GetDefaultMaps() []*program.Map {
 		ProcessTreeBinaryUUIDMap,
 		ProcessTreeUUIDBinaryMap,
 		EndpointIdMap,
+		DestinationEndpointMap,
 	}
 
 	if kernels.EnableV61Progs() {

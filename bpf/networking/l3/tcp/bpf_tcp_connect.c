@@ -23,6 +23,8 @@
 #include "bpf_tcp_network_event_config.h"
 #include "bpf_tcp_info.h"
 
+#include "process/process_tree.h"
+
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
@@ -138,5 +140,6 @@ tg_event_tcp_connect(struct pt_regs *ctx)
 	v.version = cookie_inc_version();
 
 	add_tcpsocketmap(&cookie, &v, true);
+	process_socketmap_add(&v);
 	return 1;
 }
