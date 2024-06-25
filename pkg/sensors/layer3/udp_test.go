@@ -224,7 +224,7 @@ func udpSendData(socket net.Conn, buf []byte) {
 
 func runUdpWatermarksClient() {
 	baselineRate := 5
-	burstRate := 10
+	burstRate := 20
 	baselineDuration := 1
 	burstDuration := 1
 	numBursts := 5
