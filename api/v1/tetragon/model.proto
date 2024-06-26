@@ -25,11 +25,17 @@ message Workload {
 	string kind = 2;
 }
 
+message Destination {
+	repeated string destination_names = 1;
+	tetragon.Pod destination_pod = 2;
+}
+
 message ProcessModel {
 	string binary = 1;
 	string parent = 2;
 	string namespace = 3;
 	Workload workload = 4;
+	repeated Destination dest = 5;
 }
 
 message GetProcessModelResponse {

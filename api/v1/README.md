@@ -169,6 +169,7 @@
     - [ProcessSandboxSyscall](#tetragon-ProcessSandboxSyscall)
   
 - [tetragon/model.proto](#tetragon_model-proto)
+    - [Destination](#tetragon-Destination)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
     - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
     - [ProcessModel](#tetragon-ProcessModel)
@@ -3061,6 +3062,22 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-Destination"></a>
+
+### Destination
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+
+
+
+
+
+
 <a name="tetragon-GetProcessModelRequest"></a>
 
 ### GetProcessModelRequest
@@ -3098,6 +3115,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | parent | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
 | workload | [Workload](#tetragon-Workload) |  |  |
+| dest | [Destination](#tetragon-Destination) | repeated |  |
 
 
 
