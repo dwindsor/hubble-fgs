@@ -302,6 +302,7 @@ var (
 		"file_actions_map",
 		"file_config_map",
 		"file_errors_map",
+		"exact_match_map_alloc",
 	}
 )
 
@@ -1174,12 +1175,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 
 		// only for hooks that add files into maps
 		if h.name == "finish_open" || h.name == "vfs_open" || h.name == "security_inode_create" || h.name == "vfs_rename" {
-			for _, m := range []string{"patterns_map_alloc", "exact_match_map_alloc"} {
-				maps = append(
-					maps,
-					program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
-				)
-			}
+			m := "patterns_map_alloc"
+			maps = append(
+				maps,
+				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
+			)
 		}
 
 		// only for rename hooks
