@@ -7,18 +7,21 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 const (
-	processTreeMap     = "process_tree_map"
-	processTreeUUIDMap = "process_tree_uid_binary_map"
+	processTreeMap         = "process_tree_map"
+	processTreeUUIDMap     = "process_tree_uid_binary_map"
+	destinationEndpointMap = "destination_endpoint_map"
 )
 
 type binary struct {
@@ -43,17 +46,75 @@ type processTreeValue struct {
 	Parent         processTreeKey
 }
 
+type destinationEndpointKey struct {
+	ProcessId     processTreeKey
+	DestinationId uint64
+}
+
+type destinationEndpointValue struct {
+	KtimeCreate uint64
+}
+
 type Server struct {
 }
 
 func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
 	model := make([]*tetragon.ProcessModel, 0)
-	file := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
+	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
+	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 
-	m, err := ebpf.LoadPinnedMap(file, nil)
+	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open process tree map")
+		logger.GetLogger().WithError(err).WithField("file", endptMap).Warn("Could not open destination endpoint map")
+		return nil, err
+	}
+	defer endpt.Close()
+
+	var (
+		dstKey destinationEndpointKey
+		dstVal destinationEndpointValue
+	)
+
+	dstList := make(map[processTreeKey][]*tetragon.Destination)
+	c := endpoint.Get()
+
+	iter := endpt.Iterate()
+	for iter.Next(&dstKey, &dstVal) {
+		var d *tetragon.Destination
+
+		ep, ok := c.LookupID(dstKey.DestinationId)
+		if !ok {
+			continue
+		}
+
+		switch ep.Type {
+		case endpoint.DnsType:
+			d = &tetragon.Destination{
+				DestinationNames: strings.Split(ep.Dns, ","),
+			}
+		case endpoint.PodType:
+			d = &tetragon.Destination{
+				DestinationPod: &tetragon.Pod{
+					Namespace:    ep.Namespace,
+					Workload:     ep.Name,
+					WorkloadKind: ep.Kind,
+				},
+			}
+		}
+
+		l, ok := dstList[dstKey.ProcessId]
+		if !ok {
+			dstList[dstKey.ProcessId] = []*tetragon.Destination{d}
+		} else {
+			l = append(l, d)
+			dstList[dstKey.ProcessId] = l
+		}
+	}
+
+	m, err := ebpf.LoadPinnedMap(treeMap, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", treeMap).Warn("Could not open process tree map")
 		return nil, err
 	}
 
@@ -80,7 +141,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 		return nil, err
 	}
 
-	iter := m.Iterate()
+	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
 
@@ -108,6 +169,9 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			parentPath = fmt.Sprintf("%s", uidValue.Path)
 		}
 
+		var dest []*tetragon.Destination
+		dest = dstList[key]
+
 		model = append(model, &tetragon.ProcessModel{
 			Binary:    selfStr,
 			Parent:    parentPath,
@@ -116,6 +180,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 				Name: wl,
 				Kind: kind,
 			},
+			Dest: dest,
 		})
 	}
 	return &tetragon.GetProcessModelResponse{
