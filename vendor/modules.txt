@@ -316,6 +316,7 @@ github.com/cilium/tetragon/cmd/tetra/status
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy/generate
 github.com/cilium/tetragon/cmd/tetra/version
+github.com/cilium/tetragon/cmd/tetragon-metrics-docs/metricsmd
 github.com/cilium/tetragon/operator/cmd
 github.com/cilium/tetragon/operator/cmd/common
 github.com/cilium/tetragon/operator/cmd/serve
