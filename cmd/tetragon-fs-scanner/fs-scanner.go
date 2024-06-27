@@ -200,7 +200,7 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		maps = fm.InitFimHashMap(*reply)
 	}
 
-	logger.GetLogger().Info("fim: Adding host files")
+	logger.GetLogger().Debug("fim: Adding host files")
 
 	locFn := func(v *fileapi.InodeVal) {
 		v.LocationFlags = fileapi.HOST_FILE
@@ -213,9 +213,9 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		}
 
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
-			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories failed")
+			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding host files/directories failed")
 		} else {
-			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added host files/directories")
 		}
 	}
 
@@ -224,9 +224,9 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 			Prefix: p,
 		}
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
-			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Excluding files/directories failed")
+			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Excluding host files/directories failed")
 		} else {
-			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
+			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded host files/directories")
 		}
 	}
 
@@ -305,7 +305,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			continue
 		}
 
-		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Info("fim: Adding container files")
+		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Debug("fim: Adding container files")
 
 		var maps fm.InodeStore
 		var err error
@@ -347,9 +347,9 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			}
 
 			if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
-				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding files/directories failed")
+				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
 			} else {
-				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
 			}
 		}
 
@@ -358,9 +358,9 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 				Prefix: p,
 			}
 			if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
-				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding files/directories failed")
+				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding container files/directories failed")
 			} else {
-				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
+				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded container files/directories")
 			}
 		}
 

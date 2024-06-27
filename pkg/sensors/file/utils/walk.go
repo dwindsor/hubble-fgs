@@ -216,7 +216,7 @@ func RemoveContainerEntries(handle *ebpf.Map, containerID string) error {
 
 	num, err := rmEntries(handle, containerID)
 	if num != 0 {
-		logger.GetLogger().Infof("Deleted %d inodes for container %s", num, containerID)
+		logger.GetLogger().WithField("num", num).WithField("cid", containerID).Debug("Deleted inodes for container")
 	}
 	return err
 }
