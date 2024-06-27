@@ -8,10 +8,12 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package metrics
+package main
 
 import (
+	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/isovalent/metricstool/pkg/metricsmd"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,6 +23,13 @@ import (
 
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 )
+
+func main() {
+	if err := New().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
 
 func New() *cobra.Command {
 	targets := map[string]string{
