@@ -338,7 +338,6 @@ github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cgrouprate
 github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
-github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/cmdref
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
@@ -376,7 +375,6 @@ github.com/cilium/tetragon/pkg/metrics/eventcachemetrics
 github.com/cilium/tetragon/pkg/metrics/eventmetrics
 github.com/cilium/tetragon/pkg/metrics/kprobemetrics
 github.com/cilium/tetragon/pkg/metrics/mapmetrics
-github.com/cilium/tetragon/pkg/metrics/metricsconfig
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
 github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics
 github.com/cilium/tetragon/pkg/metrics/policystatemetrics
@@ -385,17 +383,11 @@ github.com/cilium/tetragon/pkg/metrics/ringbufmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufqueuemetrics
 github.com/cilium/tetragon/pkg/metrics/syscallmetrics
 github.com/cilium/tetragon/pkg/metrics/watchermetrics
+github.com/cilium/tetragon/pkg/metricsconfig
 github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/multiplexer
 github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/observer/observertesthelper
-github.com/cilium/tetragon/pkg/oldhubble/api/v1
-github.com/cilium/tetragon/pkg/oldhubble/cilium
-github.com/cilium/tetragon/pkg/oldhubble/cilium/client
-github.com/cilium/tetragon/pkg/oldhubble/fqdncache
-github.com/cilium/tetragon/pkg/oldhubble/ipcache
-github.com/cilium/tetragon/pkg/oldhubble/parser/endpoint
-github.com/cilium/tetragon/pkg/oldhubble/parser/getters
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/pidfile
 github.com/cilium/tetragon/pkg/podhooks

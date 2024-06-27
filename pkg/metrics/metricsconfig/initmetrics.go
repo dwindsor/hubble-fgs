@@ -11,7 +11,7 @@
 package metricsconfig
 
 import (
-	oss "github.com/cilium/tetragon/pkg/metrics/metricsconfig"
+	oss "github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"

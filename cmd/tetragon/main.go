@@ -26,7 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -49,6 +49,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
+	"github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/pidfile"
@@ -323,8 +324,8 @@ func hubbleFGSExecute() error {
 	}
 
 	if option.Config.MetricsServer != "" {
-		go metrics.EnableMetrics(option.Config.MetricsServer)
-		metricsconfig.InitAllMetrics(metrics.GetRegistry())
+		go metricsconfig.EnableMetrics(option.Config.MetricsServer)
+		enterpriseMetricsConfig.InitAllMetrics(metricsconfig.GetRegistry())
 		go enterpriseMetrics.StartPodDeleteHandler()
 		// Handler must be registered before the watcher is started
 		metrics.RegisterPodDeleteHandler()

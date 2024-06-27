@@ -17,12 +17,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/metrics"
+	"github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/cilium/tetragon/pkg/observer"
 	oss "github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
-	"github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 
 func enterpriseInit() {
 	enterpriseOnce.Do(func() {
-		metricsconfig.InitAllEEMetrics(metrics.GetRegistry())
+		enterpriseMetricsConfig.InitAllEEMetrics(metricsconfig.GetRegistry())
 		cilium.InitCiliumState(context.Background(), false)
 	})
 }
