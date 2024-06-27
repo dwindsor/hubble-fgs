@@ -911,7 +911,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}).Infof("Completed path scanning for %s.", e.TpName)
 
 	if tpConf.watchedInodeMapSizePolicy == "auto" {
-		config.MaxWatchedInodes = uint32(float32(len(allInodes)) * tpConf.watchedInodeMapSizeMultiplier)
+		config.MaxWatchedInodes = uint32(float32(len(allInodes))*tpConf.watchedInodeMapSizeMultiplier) + tpConf.watchedInodeMapSizeConstant
 		logger.GetLogger().WithFields(logrus.Fields{
 			"max-inode-map-size":      config.MaxWatchedInodes,
 			"user-defined-multiplier": tpConf.watchedInodeMapSizeMultiplier,
