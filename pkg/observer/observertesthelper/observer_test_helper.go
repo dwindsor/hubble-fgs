@@ -22,7 +22,7 @@ import (
 	oss "github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
-	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 )
 
 var (

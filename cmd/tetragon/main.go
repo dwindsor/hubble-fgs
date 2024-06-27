@@ -26,7 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
-	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"

@@ -19,7 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/metricsconfig"
 
-	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metrics/metricsconfig"
+	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 )
 
 func New() *cobra.Command {
