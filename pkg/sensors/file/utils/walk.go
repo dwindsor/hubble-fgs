@@ -486,7 +486,21 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 
 		flInfo, statErr := os.Lstat(path)
 		if statErr != nil {
-			l.Debugf("%s", statErr.Error())
+			if os.IsNotExist(statErr) {
+				// In this case, the current path component does not exist
+				// so we need to move to the next path component.
+				//
+				// As an example, let's assume that we want to add the path
+				// "/a/b" but "/a/b" and "/a/" do not exist at the time that
+				// we apply the tracing policy.
+				//
+				// In that case, we need to add only "/". "/a/b" is handled
+				// in the previous calls of filepath.Walk(). "/a/" does not
+				// exist and we end up here. Now, we have to continue to the
+				// next path component and check (and add) "/" directory.
+				continue
+			}
+			// on other os.Lstat types of error we just return that
 			return 0, 0, statErr
 		}
 
