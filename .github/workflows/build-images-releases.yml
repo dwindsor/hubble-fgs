@@ -203,6 +203,7 @@ jobs:
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
           yq_version: 4.44.2
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ steps.legacy.outputs.is == 'false' }}
         run: |
           lower_tag="${{ steps.tag.outputs.tag }}"
@@ -237,8 +238,6 @@ jobs:
           git push --set-upstream origin pr/release-wf/${{ steps.tag.outputs.tag }}
           # Create a PR with the updated ClusterServiceVersion against the release branch
           gh pr create -B ${{ steps.tag.outputs.minor }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bundle build 
         if: ${{ steps.legacy.outputs.is == 'false' }}
