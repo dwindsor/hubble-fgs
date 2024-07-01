@@ -127,13 +127,13 @@ icmp_rcv(struct pt_regs *ctx)
 		break;
 	case 6:
 		if (!get_ip6_header(&ip6, network_header_off, skb_head)) {
-			emit_ip_error_event(ctx, 0, &cookie, false,
+			emit_ip_error_event(ctx, 0, &cookie, true,
 					    version, 1, 0, IP_ERROR_INET_READ_IP);
 			return 0;
 		}
 		protocol = get_ip6_proto(&payload_off, &ip6, network_header_off, skb_head, 0, true, true, &err);
 		if (protocol == IP_HEADER_ERROR) {
-			emit_ip_error_event(ctx, &ip6, &cookie, true, ip6.version, 1, 0, IP_ERROR_INET_READ_IP);
+			emit_ip_error_event(ctx, &ip6, &cookie, true, version, 1, 0, IP_ERROR_INET_READ_IP);
 			return 0;
 		}
 		if (protocol != IPPROTO_ICMP6)
