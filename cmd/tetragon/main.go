@@ -709,7 +709,9 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 	}
 
 	nodeIPs := encoder.GetNodeIPs()
-	encoder := encoder.NewJSONEncoder(writer, flowWriter, watcher, enableFlowExport, nodeIPs)
+	// Track how many bytes are written to the event export location
+	encoderWriter := exporter.NewExportedBytesTotalWriter(writer)
+	encoder := encoder.NewJSONEncoder(encoderWriter, flowWriter, watcher, enableFlowExport, nodeIPs)
 	var rateLimiter *ratelimit.RateLimiter
 	if option.Config.ExportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, option.Config.ExportRateLimit, encoder)
