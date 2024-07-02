@@ -476,7 +476,8 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 			}
 
 			var socket FdLookupValue
-			if v.Protocol == 0 {
+			if int16(v.Protocol) == -1 {
+				// This indicates a read error in BPF, so reread via /proc.
 				var err error
 				socket, err = GetAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {

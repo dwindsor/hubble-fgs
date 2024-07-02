@@ -114,26 +114,33 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		case FD_TO_SK_SUCCESS:
 			break;
 		case FD_TO_SK_INVALID_PTRS:
-			/* This should never happen. */
+			/* This should never happen. Mark it as an error. */
+			config->protocol = -1;
 			return 0;
 		case FD_TO_SK_READ_ERROR_OTHER:
 		case FD_TO_SK_READ_ERROR_FILE:
 		case FD_TO_SK_READ_ERROR_INODE: {
 			u64 reason = sk_err;
 			emit_ip_error_event(ctx, 0, &reason, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_READ_ERROR);
+			/* Mark this as an error. */
+			config->protocol = -1;
 			return 0;
 		}
 		case FD_TO_SK_WRONG_FAMILY:
 		case FD_TO_SK_WRONG_PROTO:
 			/* An incorrect family or protocol does not mean a failure, but just
-			 * that the socket didn't meet our expectations.
+			 * that the socket didn't meet our expectations. Leave protocol as 0.
 			 */
 			return 0;
 		case FD_TO_SK_NO_SK:
+			/* Mark this as an error. */
+			config->protocol = -1;
 			emit_ip_error_event(ctx, 0, 0, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
 			return 0;
 		}
 		if (!sk) {
+			/* Mark this an an error. */
+			config->protocol = -1;
 			emit_ip_error_event(ctx, 0, 0, 0, 0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_SK);
 			return 0;
 		}
@@ -149,14 +156,21 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	if (!value) {
 		emit_ip_error_event(ctx, 0, &cookie, 0,
 				    0, 0, 0, IP_ERROR_SOCKET_DISCOVERY_NO_PROCESS);
+		/* This isn't a look up error, but a missing process error,
+		 * so let userspace worry about this.
+		 */
+		config->protocol = -1;
 		return 0;
 	}
 
 	/* If we can't read the address family or protocol, then we can't
 	 * report the socket.
 	 */
-	if (!read_ok)
+	if (!read_ok) {
+		/* This is a read error, so let userspace work it out. */
+		config->protocol = -1;
 		return 0;
+	}
 
 	/* Pass the details of the socket back via the config map so that an 
 	 * appropriate event can be generated. We don't use the usual ring
