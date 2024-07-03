@@ -31,6 +31,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -187,7 +189,14 @@ func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer
 }
 
 func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
-	unix := createCloseEvent(k, v, v.Ktime)
+	currentTime := unix.Timespec{}
+	closeTimeNs := uint64(0)
+	err := unix.ClockGettime(int32(unix.CLOCK_MONOTONIC), &currentTime)
+	if err == nil {
+		closeTimeNs = uint64(currentTime.Nano())
+	}
+
+	unix := createCloseEvent(k, v, closeTimeNs)
 
 	observer.AllListeners(unix)
 }
