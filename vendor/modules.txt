@@ -1,3 +1,6 @@
+# cel.dev/expr v0.15.0
+## explicit; go 1.18
+cel.dev/expr
 # cloud.google.com/go/auth v0.6.1
 ## explicit; go 1.20
 cloud.google.com/go/auth
@@ -478,7 +481,7 @@ github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalint
 github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/crdutils
 github.com/cilium/tetragon/pkg/k8s/version
-# github.com/cncf/xds/go v0.0.0-20240318125728-8a4994d93e50
+# github.com/cncf/xds/go v0.0.0-20240423153145-555b57ec207b
 ## explicit; go 1.19
 github.com/cncf/xds/go/udpa/annotations
 github.com/cncf/xds/go/xds/annotations/v3
@@ -760,8 +763,6 @@ github.com/golang/groupcache/lru
 # github.com/golang/protobuf v1.5.4
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
-github.com/golang/protobuf/ptypes/any
-github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/wrappers
 # github.com/google/cel-go v0.17.8
 ## explicit; go 1.18
@@ -1445,14 +1446,15 @@ google.golang.org/genproto/googleapis/api/expr/v1alpha1
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.64.0
-## explicit; go 1.19
+# google.golang.org/grpc v1.65.0
+## explicit; go 1.21
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/base
 google.golang.org/grpc/balancer/grpclb/state
+google.golang.org/grpc/balancer/pickfirst
 google.golang.org/grpc/balancer/roundrobin
 google.golang.org/grpc/binarylog/grpc_binarylog_v1
 google.golang.org/grpc/channelz
@@ -1475,7 +1477,6 @@ google.golang.org/grpc/internal/channelz
 google.golang.org/grpc/internal/credentials
 google.golang.org/grpc/internal/envconfig
 google.golang.org/grpc/internal/grpclog
-google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/grpcutil
 google.golang.org/grpc/internal/idle
