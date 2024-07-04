@@ -130,6 +130,19 @@
 
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
 
+#define OLDVAL 0
+#define NEWVAL 1
+
+static inline uid_t __kuid_val(kuid_t uid)
+{
+	return uid.val;
+}
+
+static inline gid_t __kgid_val(kgid_t gid)
+{
+	return gid.val;
+}
+
 static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 

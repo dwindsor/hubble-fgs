@@ -86,7 +86,10 @@ enum {
 	hook_security_path_mkdir = 32,
 	hook_security_path_rmdir = 33,
 	hook_security_path_unlink = 34,
-	hook_max = 35,
+	hook_security_path_chmod = 35,
+	hook_security_path_chown = 36,
+	hook_security_path_truncate = 37,
+	hook_max = 38,
 };
 
 #define KRETPROBE_KEY 0

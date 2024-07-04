@@ -1,18 +1,6 @@
 #include "bpf_file.h"
 
-#define OLDVAL 0
-#define NEWVAL 1
-
 char _license[] __attribute__((section("license"), used)) = "GPL";
-
-static inline uid_t __kuid_val(kuid_t uid)
-{
-	return uid.val;
-}
-static inline gid_t __kgid_val(kgid_t gid)
-{
-	return gid.val;
-}
 
 static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr(struct dentry *dentry, int *err)
 {
