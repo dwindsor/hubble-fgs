@@ -1272,3 +1272,31 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 
 	return operation;
 }
+
+static inline __attribute__((always_inline)) void generate_path_mixed(struct msg_file_ops *msg, struct path *dir, struct dentry *new_dentry)
+{
+	__u64 path_size;
+	long ret;
+	struct qstr d_name;
+	__u64 dlen_size = 0;
+
+	// first copy the dir path
+	path_size = 0;
+	ret = d_path((struct path *)dir, msg->path.str, sizeof(msg->path.str));
+	if (ret > 0)
+		path_size = ret - 1;
+
+	// now write a "/" after the dentry name
+	path_size &= 0xff;
+	msg->path.str[path_size] = '/';
+	path_size++;
+
+	// at the end write the dentry name
+	probe_read(&d_name, sizeof(d_name), _(&new_dentry->d_name));
+	dlen_size = d_name.len &= 0x3f;
+	probe_read(msg->path.str + path_size, dlen_size, (const char *)d_name.name);
+	path_size += dlen_size;
+
+	msg->path.size = path_size;
+	msg->path.flags = PATH_BASED_FILE;
+}

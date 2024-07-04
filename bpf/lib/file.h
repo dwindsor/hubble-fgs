@@ -83,7 +83,9 @@ enum {
 	hook_security_file_open = 29,
 	hook_security_kernel_read_file = 30,
 	hook_security_path_link = 31,
-	hook_max = 32,
+	hook_security_path_mkdir = 32,
+	hook_security_path_rmdir = 33,
+	hook_max = 34,
 };
 
 #define KRETPROBE_KEY 0

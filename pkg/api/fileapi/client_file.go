@@ -285,7 +285,9 @@ const (
 	FileHookSecurityFileOpen       = 29
 	FileHookSecurityKernelReadFile = 30
 	FileHookSecurityLink           = 31
-	FileHookMax                    = 32
+	FileHookSecurityMkdir          = 32
+	FileHookSecurityRmdir          = 33
+	FileHookMax                    = 34
 )
 
 type FileErrors struct {
