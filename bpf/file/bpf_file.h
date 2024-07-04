@@ -1313,3 +1313,94 @@ static inline __attribute__((always_inline)) void generate_path_mixed(struct msg
 	msg->path.size = path_size;
 	msg->path.flags = PATH_BASED_FILE;
 }
+
+static inline __attribute__((always_inline)) void
+rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
+{
+	struct qstr d_name;
+	__u32 dlen_size = 0;
+
+	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	dlen_size = d_name.len;
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
+		     :);
+	probe_read(pth->path.name, dlen_size, (const char *)d_name.name);
+	pth->path.name_size = dlen_size;
+}
+
+static inline __attribute__((always_inline)) void
+init_rename_msg(struct msg_file_rename_ops *msg)
+{
+	struct execve_map_value *enter;
+	bool walker = 0;
+	__u32 ppid;
+
+	msg->common.op = ISO_MSG_OP_FILE_RENAME;
+	msg->common.flags = 0;
+	msg->common.pad[0] = 0;
+	msg->common.pad[1] = 0;
+	msg->common.size = sizeof(struct msg_file_rename_ops);
+	msg->common.ktime = ktime_get_ns();
+
+	enter = event_find_curr(&ppid, &walker);
+	if (enter) {
+		msg->current.pid = enter->key.pid;
+		msg->current.ktime = enter->key.ktime;
+	}
+	msg->current.pad[0] = 0;
+	msg->current.pad[1] = 0;
+	msg->current.pad[2] = 0;
+	msg->current.pad[3] = 0;
+
+	msg->flags = 0;
+}
+
+static inline __attribute__((always_inline)) __u32
+get_rename_src_flags(umode_t i_mode)
+{
+	__u32 flags = 0;
+
+	if (S_ISREG(i_mode))
+		flags |= SRC_REG_FILE;
+	else if (S_ISDIR(i_mode))
+		flags |= SRC_DIRECTORY;
+	else if (S_ISCHR(i_mode))
+		flags |= SRC_CHAR_DEV;
+	else if (S_ISBLK(i_mode))
+		flags |= SRC_BLOCK_DEV;
+	else if (S_ISFIFO(i_mode))
+		flags |= SRC_NAMED_PIPE;
+	else if (S_ISLNK(i_mode))
+		flags |= SRC_SYMLINK;
+	else if (S_ISSOCK(i_mode))
+		flags |= SRC_SOCKET;
+	else
+		flags |= SRC_INVALID;
+
+	return flags;
+}
+
+static inline __attribute__((always_inline)) __u32
+get_rename_dst_flags(umode_t i_mode)
+{
+	__u32 flags = 0;
+
+	if (S_ISREG(i_mode))
+		flags |= DST_REG_FILE;
+	else if (S_ISDIR(i_mode))
+		flags |= DST_DIRECTORY;
+	else if (S_ISCHR(i_mode))
+		flags |= DST_CHAR_DEV;
+	else if (S_ISBLK(i_mode))
+		flags |= DST_BLOCK_DEV;
+	else if (S_ISFIFO(i_mode))
+		flags |= DST_NAMED_PIPE;
+	else if (S_ISLNK(i_mode))
+		flags |= DST_SYMLINK;
+	else if (S_ISSOCK(i_mode))
+		flags |= DST_SOCKET;
+	else
+		flags |= DST_INVALID;
+
+	return flags;
+}

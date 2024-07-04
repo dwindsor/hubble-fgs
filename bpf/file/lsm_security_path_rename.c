@@ -1,0 +1,114 @@
+#include "bpf_file.h"
+
+char _license[] __attribute__((section("license"), used)) = "GPL";
+
+static inline __attribute__((always_inline)) __u32
+path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
+{
+	struct inode *old_dir_inode, *new_dir_inode;
+	__u32 s_magic, *rule_id, operation;
+	struct msg_file_rename_ops *msg;
+	struct inode *d_inode;
+	int zero = 0;
+	umode_t i_mode;
+	long ret;
+
+	msg = map_lookup_elem(&file_rename_heap_map, &zero);
+	if (!msg)
+		return 0;
+
+	init_rename_msg(msg);
+
+	// get current inode and fs info for src (old)
+	d_inode = BPF_CORE_READ(old_dentry, d_inode);
+	msg->src.ino = BPF_CORE_READ(d_inode, i_ino);
+	get_fs_info(&(msg->src.fs), &(msg->src.ino), d_inode, old_dentry);
+
+	i_mode = BPF_CORE_READ(d_inode, i_mode);
+	msg->flags |= get_rename_src_flags(i_mode);
+
+	// get parent inode and fs info for src (old)
+	old_dir_inode = BPF_CORE_READ(old_dir, dentry, d_inode);
+	msg->src.parent_ino = BPF_CORE_READ(old_dir_inode, i_ino);
+	get_fs_info(&(msg->src.parent_fs), &(msg->src.parent_ino), old_dir_inode, old_dentry);
+
+	// get current inode and fs info for dst (new)
+	d_inode = BPF_CORE_READ(new_dentry, d_inode);
+	if (d_inode == 0) {
+		msg->dst.ino = 0;
+		msg->flags |= DST_NOT_EXISTS;
+	} else {
+		msg->dst.ino = BPF_CORE_READ(d_inode, i_ino);
+		get_fs_info(&(msg->dst.fs), &(msg->dst.ino), d_inode, new_dentry);
+
+		i_mode = BPF_CORE_READ(d_inode, i_mode);
+		msg->flags |= get_rename_dst_flags(i_mode);
+	}
+
+	// get parent inode and fs info for dst (new)
+	new_dir_inode = BPF_CORE_READ(new_dir, dentry, d_inode);
+	msg->dst.parent_ino = BPF_CORE_READ(new_dir_inode, i_ino);
+	get_fs_info(&(msg->dst.parent_fs), &(msg->dst.parent_ino), new_dir_inode, new_dentry);
+
+	// check if we care about this file system
+	// both inodes should be on the same file system
+	// otherwise it is not a rename operation
+	s_magic = BPF_CORE_READ(old_dir_inode, i_sb, s_magic);
+	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
+	if (!rule_id)
+		return 0;
+
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// In these events we also have to update any internal maps,
+	// which is already done here.
+	operation = eval_selectors(action_rename, msg->flags, 0);
+	if (!(operation & FILE_OP_POST))
+		return 0;
+
+	// get source dir path
+	ret = d_path((struct path *)old_dir, msg->src.path.dir, sizeof(msg->src.path.dir));
+	if (ret > 0)
+		msg->src.path.dir_size = ret - 1;
+	msg->src.path.flags = PATH_BASED_FILE;
+
+	// get the dentry name for the source
+	rename_copy_dname(old_dentry, &msg->src);
+
+	// get destination dir path
+	ret = d_path((struct path *)new_dir, msg->dst.path.dir, sizeof(msg->dst.path.dir));
+	if (ret > 0)
+		msg->dst.path.dir_size = ret - 1;
+	msg->dst.path.flags = PATH_BASED_FILE;
+
+	// get the dentry name for the destination
+	rename_copy_dname(new_dentry, &msg->dst);
+
+	msg->action = action_rename;
+	msg->hook = hook_security_path_rename;
+	msg->ktime = ktime_get_ns();
+	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
+	msg->tp_id = get_tp_id();
+	msg->rule_id = *rule_id;
+	msg->tid = (__u32)get_current_pid_tgid();
+
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_rename_ops));
+
+	return 0;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(lsm_security_path_rename, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+	int err;
+
+	err = path_rename(ctx, old_dir, old_dentry, new_dir, new_dentry);
+	if (err < 0) {
+		inc_error(hook_security_path_rename, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
+}

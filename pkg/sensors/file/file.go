@@ -113,6 +113,7 @@ var (
 		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_setattr.o", "path_truncate"}}},
 		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_setattr.o", "path_chmod"}}},
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_setattr.o", "path_chown"}}},
+		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename"}}},
 	}
 
 	FimHooksObserve = [...]FimHook{

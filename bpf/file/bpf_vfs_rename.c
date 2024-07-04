@@ -3,20 +3,6 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) void
-rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
-{
-	struct qstr d_name;
-	__u32 dlen_size = 0;
-
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
-	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
-		     :);
-	probe_read(pth->path.name, dlen_size, (const char *)d_name.name);
-	pth->path.name_size = dlen_size;
-}
-
-static inline __attribute__((always_inline)) void
 resolve_missed_paths(struct vfs_rename_info *val, struct file_config_map_value *conf)
 {
 	const struct path *res_path = 0;
@@ -79,10 +65,8 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	};
 	__u64 lv = (__u64)old_dentry;
 	struct inode *d_inode;
-	bool walker = 0;
-	struct execve_map_value *enter;
 	struct file_config_map_value *conf;
-	__u32 ppid, zero = 0;
+	__u32 zero = 0;
 	umode_t i_mode;
 
 	conf = map_lookup_elem(&file_config_map, &zero);
@@ -117,24 +101,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	if (map_update_elem(&vr_retprobe_map, &lk, &lv, 0) < 0)
 		return -FILE_ERR_UPDATE_VR_RETPROBE_MAP;
 
-	v->msg.common.op = ISO_MSG_OP_FILE_RENAME;
-	v->msg.common.flags = 0;
-	v->msg.common.pad[0] = 0;
-	v->msg.common.pad[1] = 0;
-	v->msg.common.size = sizeof(struct msg_file_rename_ops);
-	v->msg.common.ktime = ktime_get_ns();
-
-	enter = event_find_curr(&ppid, &walker);
-	if (enter) {
-		v->msg.current.pid = enter->key.pid;
-		v->msg.current.ktime = enter->key.ktime;
-	}
-	v->msg.current.pad[0] = 0;
-	v->msg.current.pad[1] = 0;
-	v->msg.current.pad[2] = 0;
-	v->msg.current.pad[3] = 0;
-
-	v->msg.flags = 0;
+	init_rename_msg(&v->msg);
 
 	// get current inode and fs info for src (old)
 	probe_read(&d_inode, sizeof(d_inode), _(&old_dentry->d_inode));
@@ -142,23 +109,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		   _(&d_inode->i_ino));
 	probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
 	get_fs_info(&(v->msg.src.fs), &(v->msg.src.ino), d_inode, old_dentry);
-
-	if (S_ISREG(i_mode))
-		v->msg.flags |= SRC_REG_FILE;
-	else if (S_ISDIR(i_mode))
-		v->msg.flags |= SRC_DIRECTORY;
-	else if (S_ISCHR(i_mode))
-		v->msg.flags |= SRC_CHAR_DEV;
-	else if (S_ISBLK(i_mode))
-		v->msg.flags |= SRC_BLOCK_DEV;
-	else if (S_ISFIFO(i_mode))
-		v->msg.flags |= SRC_NAMED_PIPE;
-	else if (S_ISLNK(i_mode))
-		v->msg.flags |= SRC_SYMLINK;
-	else if (S_ISSOCK(i_mode))
-		v->msg.flags |= SRC_SOCKET;
-	else
-		v->msg.flags |= SRC_INVALID;
+	v->msg.flags |= get_rename_src_flags(i_mode);
 
 	// get parent inode and fs info for src (old)
 	probe_read(&(v->msg.src.parent_ino), sizeof(v->msg.src.parent_ino),
@@ -175,23 +126,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 			   _(&d_inode->i_ino));
 		probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
 		get_fs_info(&(v->msg.dst.fs), &(v->msg.dst.ino), d_inode, new_dentry);
-
-		if (S_ISREG(i_mode))
-			v->msg.flags |= DST_REG_FILE;
-		else if (S_ISDIR(i_mode))
-			v->msg.flags |= DST_DIRECTORY;
-		else if (S_ISCHR(i_mode))
-			v->msg.flags |= DST_CHAR_DEV;
-		else if (S_ISBLK(i_mode))
-			v->msg.flags |= DST_BLOCK_DEV;
-		else if (S_ISFIFO(i_mode))
-			v->msg.flags |= DST_NAMED_PIPE;
-		else if (S_ISLNK(i_mode))
-			v->msg.flags |= DST_SYMLINK;
-		else if (S_ISSOCK(i_mode))
-			v->msg.flags |= DST_SOCKET;
-		else
-			v->msg.flags |= DST_INVALID;
+		v->msg.flags |= get_rename_dst_flags(i_mode);
 	}
 
 	// get parent inode and fs info for dst (new)
