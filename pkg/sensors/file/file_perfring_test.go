@@ -277,3 +277,117 @@ func TestFileSuffixPattern(t *testing.T) {
 		}
 	}
 }
+
+func TestFileFsTypeMatch(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	if !kernels.MinKernelVersion("6.8.0") {
+		// This is because https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe
+		// which allows bpf_d_path helper into security_path_* functions.
+		// TODO: use our internal d_path helper to provide support for
+		// older kernels as well.
+		t.Skip("File monitoring patterns with FileSystemType type requires 6.8.0 kernel version")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tus.GetTestSensorManager(ctx, t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-fs-type",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "FileSystemType",
+						FileSystemType: &v1alpha1.FileSystemTypePattern{
+							Names: []string{
+								"proc",
+								"sysfs",
+							},
+						},
+					},
+				},
+				MonitorHostFiles: true,
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	execFn := func(bin string, args ...string) {
+		cmd := exec.Command(bin, args...)
+		assert.NoError(t, cmd.Run())
+	}
+
+	ops := func() {
+		a := filepath.Join(testDir, "a.txt")
+		b := filepath.Join(testDir, "b.txt")
+
+		// local file system (possibly ext4, xfs, or btrfs)
+		execFn("/usr/bin/touch", a)
+		execFn("/usr/bin/cat", a)
+		execFn("/usr/bin/mv", a, b)
+		execFn("/usr/bin/rm", b)
+
+		// proc file system
+		execFn("/usr/bin/cat", "/proc/sys/vm/oom_dump_tasks")
+		execFn("/usr/bin/ls", "/proc/")
+
+		// tmpfs
+		execFn("/usr/bin/touch", "/tmp/data.txt")
+
+		// sysfs
+		execFn("/usr/bin/ls", "/sys/")
+	}
+
+	events := perfring.RunTestEvents(t, ctx, ops)
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	// make sure that all events are from "proc" and "sysfs" file systems
+	procEvents := 0
+	sysfsEvents := 0
+	for _, ev := range events {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if file.Fs.SName != "proc" && file.Fs.SName != "sysfs" {
+				assert.NoError(t, fmt.Errorf("file operation to %s which is in %s file system", file.Path, file.Fs.SName))
+			}
+			if file.Fs.SName == "proc" {
+				procEvents++
+			}
+			if file.Fs.SName == "sysfs" {
+				sysfsEvents++
+			}
+		} else if file, ok := ev.(*grpc.MsgFileRenameEventUnix); ok {
+			if (file.Src.Fs.SName != "proc" && file.Dst.Fs.SName != "proc") && (file.Src.Fs.SName != "sysfs" && file.Dst.Fs.SName != "sysfs") {
+				assert.NoError(t, fmt.Errorf("file operation (rename) from %s which is in %s file system to %s which is in %s file system", file.Src.Path, file.Src.Fs.SName, file.Dst.Path, file.Dst.Fs.SName))
+			}
+		}
+	}
+
+	// make sure that we also get some events from proc and sysfs
+	assert.Greater(t, procEvents, 0, "we expect to have at least one event from proc")
+	assert.Greater(t, sysfsEvents, 0, "we expect to have at least one event from sysfs")
+}
