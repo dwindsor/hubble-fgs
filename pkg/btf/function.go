@@ -21,46 +21,42 @@ import (
 func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kretprobe bool) {
 	switch t := myType.(type) {
 	case *btf.Pointer:
-		arg := myType.(*btf.Pointer)
-		switch arg.Target.(type) {
+		switch t.Target.(type) {
 		case *btf.FuncProto:
-			getTypeInternal(sb, arg.Target, "(*p)", true)
+			getTypeInternal(sb, t.Target, "(*p)", true)
 		default:
-			getTypeInternal(sb, arg.Target, "", true)
+			getTypeInternal(sb, t.Target, "", true)
 			sb.WriteString("*")
 		}
 	case *btf.Int:
 		sb.WriteString("int")
 	case *btf.Const:
 		sb.WriteString("const ")
-		arg := myType.(*btf.Const)
-		getTypeInternal(sb, arg.Type, "", true)
+		getTypeInternal(sb, t.Type, "", true)
 	case *btf.Typedef:
-		arg := myType.(*btf.Typedef)
-		sb.WriteString(arg.Name)
+		sb.WriteString(t.Name)
 	case *btf.Void:
 		sb.WriteString("void")
 	case *btf.FuncProto:
-		arg := myType.(*btf.FuncProto)
 		if kretprobe {
-			getTypeInternal(sb, arg.Return, "", true)
+			getTypeInternal(sb, t.Return, "", true)
 			sb.WriteString(" ")
 		}
 		sb.WriteString(fnName)
 		sb.WriteString("(")
-		for i := 0; i < len(arg.Params); i++ {
-			getTypeInternal(sb, arg.Params[i].Type, "", true)
-			if i != len(arg.Params)-1 {
+		for i := 0; i < len(t.Params); i++ {
+			getTypeInternal(sb, t.Params[i].Type, "", true)
+			if i != len(t.Params)-1 {
 				sb.WriteString(", ")
 			}
 		}
 		sb.WriteString(")")
 	case *btf.Struct:
-		arg := myType.(*btf.Struct)
-		sb.WriteString(fmt.Sprintf("struct %s", arg.Name))
+		sb.WriteString(fmt.Sprintf("struct %s", t.Name))
 	case *btf.Fwd:
-		arg := myType.(*btf.Fwd)
-		sb.WriteString(fmt.Sprintf("struct %s", arg.Name))
+		sb.WriteString(fmt.Sprintf("struct %s", t.Name))
+	case *btf.Enum:
+		sb.WriteString(fmt.Sprintf("enum %s", t.Name))
 	default:
 		logger.GetLogger().Warnf("Unknown type %s", t)
 	}
