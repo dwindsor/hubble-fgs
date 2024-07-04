@@ -57,6 +57,7 @@ var (
 		fileapi.FileHookSecurityLink:           "security_path_link",
 		fileapi.FileHookSecurityMkdir:          "security_path_mkdir",
 		fileapi.FileHookSecurityRmdir:          "security_path_rmdir",
+		fileapi.FileHookSecurityUnlink:         "security_path_unlink",
 	}
 
 	fileErrorReasonMap = map[int]string{

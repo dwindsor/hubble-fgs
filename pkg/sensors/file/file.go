@@ -108,6 +108,7 @@ var (
 		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link"}}},
 		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir"}}},
 		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir"}}},
+		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink"}}},
 	}
 
 	FimHooksObserve = [...]FimHook{

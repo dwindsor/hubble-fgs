@@ -74,6 +74,7 @@ var (
 		31: "security_path_link",
 		32: "security_path_mkdir",
 		33: "security_path_rmdir",
+		34: "security_path_unlink",
 	}
 
 	renameFlagsString = map[uint32]string{
