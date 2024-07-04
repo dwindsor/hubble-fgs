@@ -54,6 +54,7 @@ var (
 		fileapi.FileHookSecurityInodeLink:      "security_inode_link",
 		fileapi.FileHookSecurityFileOpen:       "security_file_open",
 		fileapi.FileHookSecurityKernelReadFile: "security_kernel_read_file",
+		fileapi.FileHookSecurityLink:           "security_path_link",
 	}
 
 	fileErrorReasonMap = map[int]string{

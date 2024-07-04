@@ -1,0 +1,79 @@
+#include "bpf_file.h"
+
+char _license[] __attribute__((section("license"), used)) = "GPL";
+
+static inline __attribute__((always_inline)) __u32 path_link(void *ctx, const struct path *dir, struct dentry *new_dentry)
+{
+	struct dentry *parent_dentry;
+	__u32 operation, *rule_id, s_magic;
+	__u64 path_size, dlen_size = 0;
+	struct msg_file_ops *msg;
+	struct qstr d_name;
+	long ret;
+
+	msg = get_msg_init();
+	if (!msg)
+		return -FILE_ERR_GET_MSG_HEAP;
+
+	// get parent inode and fs info
+	parent_dentry = BPF_CORE_READ(dir, dentry);
+	if (!parent_dentry)
+		return -FILE_ERR_PARENT_FROM_DENTRY;
+
+	get_parent_ino_fs(msg, parent_dentry);
+
+	// check if we care about this file system
+	s_magic = BPF_CORE_READ(dir, dentry, d_inode, i_sb, s_magic);
+	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
+	if (!rule_id)
+		return 0;
+
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// In these events we also have to update any internal maps,
+	// which is already done here.
+	operation = eval_selectors(action_link, 0, 0);
+	if (!(operation & FILE_OP_POST))
+		return 0;
+
+	// first copy the dir path
+	path_size = 0;
+	ret = d_path((struct path *)dir, msg->path.str, sizeof(msg->path.str));
+	if (ret > 0)
+		path_size = ret - 1;
+
+	// now write a "/" after the dentry name
+	path_size &= 0xff;
+	msg->path.str[path_size] = '/';
+	path_size++;
+
+	// at the end write the dentry name
+	probe_read(&d_name, sizeof(d_name), _(&new_dentry->d_name));
+	dlen_size = d_name.len &= 0x3f;
+	probe_read(msg->path.str + path_size, dlen_size, (const char *)d_name.name);
+	path_size += dlen_size;
+
+	msg->path.size = path_size;
+	msg->path.flags = PATH_BASED_FILE;
+
+	complete_msg(msg, action_link, hook_security_path_link, operation, *rule_id, 0);
+
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+	return operation;
+}
+
+SEC("lsm/path_link")
+int BPF_PROG(lsm_security_path_link, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
+{
+	int err;
+
+	err = path_link(ctx, new_dir, new_dentry);
+	if (err < 0) {
+		inc_error(hook_security_path_link, -err);
+		return 0;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
+}

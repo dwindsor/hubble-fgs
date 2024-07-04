@@ -71,6 +71,7 @@ var (
 		28: "security_inode_link",
 		29: "security_file_open",
 		30: "security_kernel_read_file",
+		31: "security_path_link",
 	}
 
 	renameFlagsString = map[uint32]string{
