@@ -70,6 +70,7 @@ var (
 		27: "fsnotify",
 		28: "security_inode_link",
 		29: "security_file_open",
+		30: "security_kernel_read_file",
 	}
 
 	renameFlagsString = map[uint32]string{
@@ -180,7 +181,6 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Number: event.Msg.ParentIno,
 			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
-		Location: &tetragon.FileLocation{},
 	}
 	if tetragon.FileAction(event.Msg.Action) == tetragon.FileAction_FILE_OPEN {
 		fileDetails.OpenFlags = getOpenFlags(event.OpenFlags)
@@ -210,7 +210,6 @@ func createReadDirArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Number: event.Msg.ParentIno,
 			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
-		Location: &tetragon.FileLocation{},
 	}
 	args := &tetragon.ReadDirArg{
 		File:  fileDetails,
@@ -231,7 +230,6 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Number: event.Msg.ParentIno,
 			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
 		},
-		Location: &tetragon.FileLocation{},
 	}
 
 	var perm *tetragon.AttrChange
@@ -275,25 +273,27 @@ func createAttrArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_AttrArg{AttrArg: args}}
 }
 
-func populateFileLocation(event *MsgFileEventUnix, tetragonProcess *tetragon.Process, fileLocation *tetragon.FileLocation) {
-	if event.ContainerID == "" {
-		fileLocation.Type = tetragon.FileScope_HOST_FILE
+func fileLocation(tetragonProcess *tetragon.Process, containerID string) *tetragon.FileLocation {
+	l := &tetragon.FileLocation{}
+	if containerID == "" {
+		l.Type = tetragon.FileScope_HOST_FILE
 	} else {
 		// We may truncate tetragonProcess.Docker in some places to fix
 		// some kernel buffers. event.ContainerID is user provided and
 		// can be the full container ID length. Thus we use HasPrefix
 		// to cover where they have different length.
-		if strings.HasPrefix(event.ContainerID, tetragonProcess.Docker) {
-			fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
+		if strings.HasPrefix(containerID, tetragonProcess.Docker) {
+			l.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
 		} else {
-			fileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
+			l.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
 			if option.Config.EnableK8s {
-				podInfo := process.GetPodInfo(event.ContainerID, "", "", 0)
-				fileLocation.Pod = podInfo
+				podInfo := process.GetPodInfo(containerID, "", "", 0)
+				l.Pod = podInfo
 			}
 		}
-		fileLocation.ContainerId = event.ContainerID
+		l.ContainerId = containerID
 	}
+	return l
 }
 
 func normalizeOp(op uint32) tetragon.FileOperation {
@@ -403,16 +403,22 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var args *tetragon.FileArgument
 	if action == tetragon.FileAction_FILE_READDIR {
 		args = createReadDirArgs(event)
-		fileLocation := args.GetReaddirArg().GetFile().GetLocation()
-		populateFileLocation(event, tetragonProcess, fileLocation)
+		// generate file location only to inode-based events
+		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
+			args.GetReaddirArg().GetFile().Location = fileLocation(tetragonProcess, event.ContainerID)
+		}
 	} else if action == tetragon.FileAction_FILE_CHATTR {
 		args = createAttrArgs(event)
-		fileLocation := args.GetAttrArg().GetFile().GetLocation()
-		populateFileLocation(event, tetragonProcess, fileLocation)
+		// generate file location only to inode-based events
+		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
+			args.GetAttrArg().GetFile().Location = fileLocation(tetragonProcess, event.ContainerID)
+		}
 	} else {
 		args = createGenericArgs(event)
-		fileLocation := args.GetGenericArg().GetFile().GetLocation()
-		populateFileLocation(event, tetragonProcess, fileLocation)
+		// generate file location only to inode-based events
+		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
+			args.GetGenericArg().GetFile().Location = fileLocation(tetragonProcess, event.ContainerID)
+		}
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{
@@ -624,7 +630,6 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 			Number: event.Msg.Src.ParentIno,
 			Fs:     createFileSystem(event.Src.ParentFs, event.Msg.Src.ParentFs.SDev),
 		},
-		Location: &tetragon.FileLocation{},
 	}
 	dst := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Dst.Path},
@@ -636,7 +641,6 @@ func createRenameArgs(event *MsgFileRenameEventUnix) *tetragon.FileArgument {
 			Number: event.Msg.Dst.ParentIno,
 			Fs:     createFileSystem(event.Dst.ParentFs, event.Msg.Dst.ParentFs.SDev),
 		},
-		Location: &tetragon.FileLocation{},
 	}
 	if dst.Inode.Number == 0 { // the destination name does not exist -- will create new
 		dst.Inode.Fs = nil
@@ -686,45 +690,15 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	args = createRenameArgs(event)
 
 	// setup src file location
-	srcFileLocation := args.GetRenameArg().GetSrc().GetLocation()
-	if event.Src.ContainerID == "" {
-		srcFileLocation.Type = tetragon.FileScope_HOST_FILE
-	} else {
-		// We may truncate tetragonProcess.Docker in some places to fix
-		// some kernel buffers. event.ContainerID is user provided and
-		// can be the full container ID length. Thus we use HasPrefix
-		// to cover where they have different length.
-		if strings.HasPrefix(event.Src.ContainerID, tetragonProcess.Docker) {
-			srcFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
-		} else {
-			srcFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
-			if option.Config.EnableK8s {
-				podInfo := process.GetPodInfo(event.Src.ContainerID, "", "", 0)
-				srcFileLocation.Pod = podInfo
-			}
-		}
-		srcFileLocation.ContainerId = event.Src.ContainerID
+	if event.Msg.Src.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
+		// generate file location only to inode-based events
+		args.GetRenameArg().GetSrc().Location = fileLocation(tetragonProcess, event.Src.ContainerID)
 	}
 
 	// setup dst file location
-	dstFileLocation := args.GetRenameArg().GetDst().GetLocation()
-	if event.Dst.ContainerID == "" {
-		dstFileLocation.Type = tetragon.FileScope_HOST_FILE
-	} else {
-		// We may truncate tetragonProcess.Docker in some places to fix
-		// some kernel buffers. event.ContainerID is user provided and
-		// can be the full container ID length. Thus we use HasPrefix
-		// to cover where they have different length.
-		if strings.HasPrefix(event.Dst.ContainerID, tetragonProcess.Docker) {
-			dstFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_LOCAL
-		} else {
-			dstFileLocation.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
-			if option.Config.EnableK8s {
-				podInfo := process.GetPodInfo(event.Dst.ContainerID, "", "", 0)
-				dstFileLocation.Pod = podInfo
-			}
-		}
-		dstFileLocation.ContainerId = event.Dst.ContainerID
+	if event.Msg.Dst.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
+		// generate file location only to inode-based events
+		args.GetRenameArg().GetDst().Location = fileLocation(tetragonProcess, event.Dst.ContainerID)
 	}
 
 	tetragonEvent := &tetragon.ProcessFile{

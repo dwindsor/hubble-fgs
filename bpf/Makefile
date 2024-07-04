@@ -104,7 +104,8 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_security_bprm_check.o bpf_security_bprm_check_v419.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
 	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o \
 	  bpf_security_inode_link.o bpf_security_inode_link_v419.o bpf_security_inode_link_enforce_lsm.o bpf_security_inode_link_enforce_fmod.o \
-	  bpf_security_file_open.o bpf_security_file_open_v419.o bpf_security_file_open_enforce_lsm.o bpf_security_file_open_enforce_fmod.o
+	  bpf_security_file_open.o bpf_security_file_open_v419.o bpf_security_file_open_enforce_lsm.o bpf_security_file_open_enforce_fmod.o \
+	  fmod_security_file_permission.o lsm_security_kernel_read_file.o
 
 
 BPFTEST = bpf_lseek.o

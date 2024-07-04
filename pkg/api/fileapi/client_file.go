@@ -45,8 +45,9 @@ type InodeKey struct {
 }
 
 const (
-	HOST_FILE      = (1 << 0)
-	CONTAINER_FILE = (1 << 1)
+	HOST_FILE       = (1 << 0)
+	CONTAINER_FILE  = (1 << 1)
+	PATH_BASED_FILE = (1 << 2)
 )
 
 const (
@@ -282,7 +283,8 @@ const (
 	FileHookFsNotify               = 27
 	FileHookSecurityInodeLink      = 28
 	FileHookSecurityFileOpen       = 29
-	FileHookMax                    = 30
+	FileHookSecurityKernelReadFile = 30
+	FileHookMax                    = 31
 )
 
 type FileErrors struct {

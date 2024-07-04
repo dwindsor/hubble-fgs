@@ -558,6 +558,8 @@ func PathPatternToString(p v1alpha1.FilePathPattern) string {
 		return fmt.Sprintf("PathPrefix{Prefix:[%s]}", p.PathPrefix.Prefix)
 	} else if p.Type == "FileExactMatch" {
 		return fmt.Sprintf("FileExactMatch{Path:[%s]}", p.FileExactMatch.Path)
+	} else if p.Type == "FileSystemType" {
+		return fmt.Sprintf("FileSystemType{Names:%s}", p.FileSystemType.Names)
 	}
 	return fmt.Sprintf("<unknown type: %s>", p.Type)
 }

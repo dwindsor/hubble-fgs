@@ -20,8 +20,9 @@
 #define MAX_COMPONENT_SIZE (MAX_FILEPATH_SIZE / 2)
 #define MAX_NAME_SIZE	   128
 
-#define HOST_FILE      (1 << 0)
-#define CONTAINER_FILE (1 << 1)
+#define HOST_FILE	(1 << 0)
+#define CONTAINER_FILE	(1 << 1)
+#define PATH_BASED_FILE (1 << 2)
 
 #define FILE_OP_POST  (1 << 0) // 0x1
 #define FILE_OP_BLOCK (1 << 1) // 0x2
@@ -80,7 +81,8 @@ enum {
 	hook_fsnotify = 27,
 	hook_security_inode_link = 28,
 	hook_security_file_open = 29,
-	hook_max = 30,
+	hook_security_kernel_read_file = 30,
+	hook_max = 31,
 };
 
 #define KRETPROBE_KEY 0

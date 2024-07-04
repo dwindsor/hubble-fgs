@@ -230,6 +230,13 @@ struct {
 } exact_match_map_alloc SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u32);
+	__uint(max_entries, 1); /* the user will setup this */
+} file_system_type_map SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
 	__type(key, struct lpm_key);
 	__type(value, struct lpm_val);
@@ -1160,4 +1167,108 @@ static inline __attribute__((always_inline)) int generate_new_file_path(struct d
 	msg->path.flags |= file_val->location_flags;
 
 	return 0;
+}
+
+static inline __attribute__((always_inline)) void
+complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation, __u32 rule_id, __u32 open_flags)
+{
+	msg->action = action;
+	msg->hook = hook;
+	msg->ktime = ktime_get_ns();
+	get_mnt_ns(&msg->mnt_ns);
+	msg->operation = operation;
+	msg->tp_id = get_tp_id();
+	msg->rule_id = rule_id;
+	msg->tid = (__u32)get_current_pid_tgid();
+	msg->open_flags = open_flags;
+}
+
+static inline __attribute__((always_inline)) int
+generate_inode_metadata(struct msg_file_ops *msg, struct dentry *dentry)
+{
+	struct dentry *parent_dentry;
+	struct inode *inode;
+
+	if (!dentry)
+		return -FILE_ERR_DENTRY_FROM_FILE;
+
+	// get current inode and fs info
+	inode = BPF_CORE_READ(dentry, d_inode);
+	if (!inode)
+		return -FILE_ERR_INODE_FROM_FILE;
+
+	get_ino_fs(msg, inode, dentry);
+
+	// get parent inode and fs info
+	parent_dentry = BPF_CORE_READ(dentry, d_parent);
+	if (!parent_dentry)
+		return -FILE_ERR_PARENT_FROM_DENTRY;
+
+	get_parent_ino_fs(msg, parent_dentry);
+
+	return 0;
+}
+
+static inline __attribute__((always_inline)) int
+path_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
+{
+	__u32 s_magic, operation, *rule_id;
+	struct io_uring_op_key key = {
+		.file_ptr = (__u64)file,
+		.pid_tgid = get_current_pid_tgid(),
+	};
+	struct io_uring_op_val *val;
+	struct msg_file_ops *msg;
+	struct dentry *dentry;
+	long ret;
+	int err;
+
+	if (!file)
+		return -FILE_ERR_FILE_ARG;
+
+	msg = get_msg_init();
+	if (!msg)
+		return -FILE_ERR_GET_MSG_HEAP;
+
+	val = map_lookup_elem(&io_uring_map, &key);
+	if (val) { // we are in the middle of io_uring operation
+		struct execve_map_value *enter = event_find_curr_task(val->user_task);
+		if (enter) {
+			msg->current.pid = enter->key.pid;
+			msg->current.ktime = enter->key.ktime;
+		}
+	}
+
+	dentry = BPF_CORE_READ(file, f_path.dentry);
+	if (!dentry)
+		return -FILE_ERR_DENTRY_FROM_FILE;
+
+	err = generate_inode_metadata(msg, dentry);
+	if (err < 0)
+		return err;
+
+	// check if we care about this file system
+	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
+	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
+	if (!rule_id)
+		return 0;
+
+	// At this point we know that we care about this access.
+	// Now we can check for the selectors, if they do not match
+	// we can avoid creating the message.
+	// At these events we don't need to update any internal maps.
+	operation = eval_selectors(action, 0, 0);
+	if (!(operation & FILE_OP_POST))
+		return 0;
+
+	ret = d_path(_(&file->f_path), msg->path.str, sizeof(msg->path.str));
+	if (ret > 0)
+		msg->path.size = ret - 1;
+	msg->path.flags = PATH_BASED_FILE;
+
+	complete_msg(msg, action, hook_type, operation, *rule_id, 0);
+
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+	return operation;
 }
