@@ -256,13 +256,21 @@ type FileExactMatchPattern struct {
 	Path string `json:"path,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix) && !has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'PathPrefix' && !has(self.file_prefix_suffix) && has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'FileExactMatch' && !has(self.file_prefix_suffix) && !has(self.path_prefix) && has(self.file_exact_match))",message="Type should match the argument type."
+// +kubebuilder:validation:Enum=sysfs;proc;debugfs;securityfs;overlayfs;tracefs;bpffs;fuse;ext4;ext3;ext2;xfs;ramfs;tmpfs;ceph;btrfs;smb;smb2;cifs;cgroup;cgroup2;binfmt_misc;nfs;pstore;autofs;nsfs;devpts
+type FileSystemName = string
+
+type FileSystemTypePattern struct {
+	Names []FileSystemName `json:"names,omitempty"`
+}
+
+// +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type))",message="Type should match the argument type."
 type FilePathPattern struct {
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch
+	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch;FileSystemType
 	// FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
 	// PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
 	// FileExactMatch can be used to match only files that have a specific name.
+	// FileSystemType can be used to specify operation only on a specific type.
 	Type string `json:"type"`
 	// +kubebuilder:validation:Optional
 	// Should be defined in the case of type=FilePrefixSuffix.
@@ -273,6 +281,9 @@ type FilePathPattern struct {
 	// +kubebuilder:validation:Optional
 	// Should be defined in the case of type=FileExactMatch.
 	FileExactMatch *FileExactMatchPattern `json:"file_exact_match,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Should be defined in the case of type=FileSystemType.
+	FileSystemType *FileSystemTypePattern `json:"file_system_type,omitempty"`
 }
 
 // +kubebuilder:validation:XValidation:rule="(has(self.file_paths_patterns) && (size(self.file_paths_patterns.filter(c, c.type == 'FilePrefixSuffix')) <= 32)) || (!has(self.file_paths_patterns))",message="We support up to 32 entries with type FilePrefixSuffix under file_paths_patterns."

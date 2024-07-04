@@ -354,6 +354,48 @@
                     "type": "object",
                     "additionalProperties": false
                   },
+                  "file_system_type": {
+                    "description": "Should be defined in the case of type=FileSystemType.",
+                    "properties": {
+                      "names": {
+                        "items": {
+                          "enum": [
+                            "sysfs",
+                            "proc",
+                            "debugfs",
+                            "securityfs",
+                            "overlayfs",
+                            "tracefs",
+                            "bpffs",
+                            "fuse",
+                            "ext4",
+                            "ext3",
+                            "ext2",
+                            "xfs",
+                            "ramfs",
+                            "tmpfs",
+                            "ceph",
+                            "btrfs",
+                            "smb",
+                            "smb2",
+                            "cifs",
+                            "cgroup",
+                            "cgroup2",
+                            "binfmt_misc",
+                            "nfs",
+                            "pstore",
+                            "autofs",
+                            "nsfs",
+                            "devpts"
+                          ],
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
                   "path_prefix": {
                     "description": "Should be defined in the case of type=PathPrefix.",
                     "properties": {
@@ -369,11 +411,12 @@
                     "additionalProperties": false
                   },
                   "type": {
-                    "description": "FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix. PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix. FileExactMatch can be used to match only files that have a specific name.",
+                    "description": "FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix. PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix. FileExactMatch can be used to match only files that have a specific name. FileSystemType can be used to specify operation only on a specific type.",
                     "enum": [
                       "FilePrefixSuffix",
                       "PathPrefix",
-                      "FileExactMatch"
+                      "FileExactMatch",
+                      "FileSystemType"
                     ],
                     "type": "string"
                   }
@@ -385,7 +428,7 @@
                 "x-kubernetes-validations": [
                   {
                     "message": "Type should match the argument type.",
-                    "rule": "(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix) && !has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'PathPrefix' && !has(self.file_prefix_suffix) && has(self.path_prefix) && !has(self.file_exact_match)) || (self.type == 'FileExactMatch' && !has(self.file_prefix_suffix) && !has(self.path_prefix) && has(self.file_exact_match))"
+                    "rule": "(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type))"
                   }
                 ],
                 "additionalProperties": false
