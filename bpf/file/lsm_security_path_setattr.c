@@ -7,7 +7,6 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	__u32 s_magic, operation, *rule_id;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
-	long ret;
 	int err;
 
 	msg = get_msg_init();
@@ -34,10 +33,7 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
-	ret = d_path((struct path *)path, msg->path.str, sizeof(msg->path.str));
-	if (ret > 0)
-		msg->path.size = ret - 1;
-	msg->path.flags = PATH_BASED_FILE;
+	generate_path(msg, (struct path *)path);
 
 	set_attr(msg, dentry, mode, uid, gid);
 

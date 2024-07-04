@@ -9,9 +9,8 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	__u32 s_magic, *rule_id, operation;
 	struct msg_file_rename_ops *msg;
 	struct inode *d_inode;
-	int zero = 0;
 	umode_t i_mode;
-	long ret;
+	int zero = 0;
 
 	msg = map_lookup_elem(&file_rename_heap_map, &zero);
 	if (!msg)
@@ -68,19 +67,13 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 		return 0;
 
 	// get source dir path
-	ret = d_path((struct path *)old_dir, msg->src.path.dir, sizeof(msg->src.path.dir));
-	if (ret > 0)
-		msg->src.path.dir_size = ret - 1;
-	msg->src.path.flags = PATH_BASED_FILE;
+	generate_path_rename(&msg->src, (struct path *)old_dir);
 
 	// get the dentry name for the source
 	rename_copy_dname(old_dentry, &msg->src);
 
 	// get destination dir path
-	ret = d_path((struct path *)new_dir, msg->dst.path.dir, sizeof(msg->dst.path.dir));
-	if (ret > 0)
-		msg->dst.path.dir_size = ret - 1;
-	msg->dst.path.flags = PATH_BASED_FILE;
+	generate_path_rename(&msg->dst, (struct path *)new_dir);
 
 	// get the dentry name for the destination
 	rename_copy_dname(new_dentry, &msg->dst);

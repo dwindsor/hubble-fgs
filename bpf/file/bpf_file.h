@@ -146,6 +146,9 @@ static inline gid_t __kgid_val(kgid_t gid)
 static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
+// re-write this in user-space to enable bpf_d_path helper
+volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
+
 struct mnt_idmap {
 	struct user_namespace *owner;
 	refcount_t count;
@@ -1183,6 +1186,41 @@ static inline __attribute__((always_inline)) int generate_new_file_path(struct d
 }
 
 static inline __attribute__((always_inline)) void
+__generate_path(struct path *path, char *buf, __u32 bufsz, __u32 *sz, __u32 *flags)
+{
+	int error = 0, buflen = 0;
+	long ret;
+	char *p;
+
+	if (USE_BPF_D_PATH_HELPER) {
+		ret = d_path(path, buf, bufsz);
+		if (ret > 0)
+			*sz = ret - 1;
+	} else {
+		p = d_path_local(path, &buflen, &error);
+		if (!error) {
+			asm volatile("%[buflen] &= 0xff;\n" ::[buflen] "+r"(buflen)
+				     :);
+			probe_read(buf, buflen, p);
+			*sz = buflen;
+		}
+	}
+	*flags = PATH_BASED_FILE;
+}
+
+static inline __attribute__((always_inline)) void
+generate_path(struct msg_file_ops *msg, struct path *path)
+{
+	__generate_path(path, msg->path.str, sizeof(msg->path.str), &msg->path.size, &msg->path.flags);
+}
+
+static inline __attribute__((always_inline)) void
+generate_path_rename(struct msg_rename_elem *msg, struct path *path)
+{
+	__generate_path(path, msg->path.dir, sizeof(msg->path.dir), &msg->path.dir_size, &msg->path.flags);
+}
+
+static inline __attribute__((always_inline)) void
 complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation, __u32 rule_id, __u32 open_flags)
 {
 	msg->action = action;
@@ -1233,7 +1271,6 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	struct io_uring_op_val *val;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
-	long ret;
 	int err;
 
 	if (!file)
@@ -1274,10 +1311,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
-	ret = d_path(_(&file->f_path), msg->path.str, sizeof(msg->path.str));
-	if (ret > 0)
-		msg->path.size = ret - 1;
-	msg->path.flags = PATH_BASED_FILE;
+	generate_path(msg, _(&file->f_path));
 
 	complete_msg(msg, action, hook_type, operation, *rule_id, 0);
 
@@ -1288,16 +1322,12 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 
 static inline __attribute__((always_inline)) void generate_path_mixed(struct msg_file_ops *msg, struct path *dir, struct dentry *new_dentry)
 {
-	__u64 path_size;
-	long ret;
+	__u64 path_size, dlen_size = 0;
 	struct qstr d_name;
-	__u64 dlen_size = 0;
 
 	// first copy the dir path
-	path_size = 0;
-	ret = d_path((struct path *)dir, msg->path.str, sizeof(msg->path.str));
-	if (ret > 0)
-		path_size = ret - 1;
+	generate_path(msg, dir);
+	path_size = msg->path.size;
 
 	// now write a "/" after the dentry name
 	path_size &= 0xff;

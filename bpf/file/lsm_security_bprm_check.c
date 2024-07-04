@@ -7,7 +7,6 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	__u32 s_magic, operation, *rule_id;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
-	long ret;
 	int err;
 
 	msg = get_msg_init();
@@ -32,10 +31,7 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
-	ret = d_path(_(&file->f_path), msg->path.str, sizeof(msg->path.str));
-	if (ret > 0)
-		msg->path.size = ret - 1;
-	msg->path.flags = PATH_BASED_FILE;
+	generate_path(msg, _(&file->f_path));
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, *rule_id, 0);
 
