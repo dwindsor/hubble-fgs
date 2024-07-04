@@ -103,6 +103,7 @@ var (
 	FimPathBasedHooks = [...]FimHook{
 		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission"}}},
 		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file"}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open"}}},
 	}
 
 	FimHooksObserve = [...]FimHook{
