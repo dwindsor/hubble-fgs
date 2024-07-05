@@ -360,13 +360,14 @@ func createGenericTracepoint(
 
 // createGenericTracepointSensor will create a sensor that can be loaded based on a generic tracepoint configuration
 func createGenericTracepointSensor(
+	spec *v1alpha1.TracingPolicySpec,
 	name string,
-	confs []v1alpha1.TracepointSpec,
 	policyID policyfilter.PolicyID,
 	policyName string,
-	lists []v1alpha1.ListSpec,
 	customHandler eventhandler.Handler,
 ) (*sensors.Sensor, error) {
+	confs := spec.Tracepoints
+	lists := spec.Lists
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for i := range confs {
@@ -384,6 +385,10 @@ func createGenericTracepointSensor(
 		progName = "bpf_generic_tracepoint_v511.o"
 	} else if kernels.EnableLargeProgs() {
 		progName = "bpf_generic_tracepoint_v53.o"
+	}
+
+	has := hasMaps{
+		enforcer: len(spec.Enforcers) != 0,
 	}
 
 	maps := []*program.Map{}
@@ -405,11 +410,13 @@ func createGenericTracepointSensor(
 			return nil, fmt.Errorf("failed to initialize tracepoint kernel selectors: %w", err)
 		}
 
+		has.fdInstall = selectorsHaveFDInstall(tp.Spec.Selectors)
+
 		prog0.LoaderData = tp.tableIdx
 		progs = append(progs, prog0)
 
 		fdinstall := program.MapBuilderPin("fdinstall_map", sensors.PathJoin(pinPath, "fdinstall_map"), prog0)
-		if selectorsHaveFDInstall(tp.Spec.Selectors) {
+		if has.fdInstall {
 			fdinstall.SetMaxEntries(fdInstallMapMaxEntries)
 		}
 		maps = append(maps, fdinstall)
@@ -490,6 +497,9 @@ func createGenericTracepointSensor(
 		maps = append(maps, matchBinariesPaths)
 
 		enforcerDataMap := enforcerMap(policyName, prog0)
+		if has.enforcer {
+			enforcerDataMap.SetMaxEntries(enforcerMapMaxEntries)
+		}
 		maps = append(maps, enforcerDataMap)
 
 		selMatchBinariesMap := program.MapBuilderPin("tg_mb_sel_opts", sensors.PathJoin(pinPath, "tg_mb_sel_opts"), prog0)

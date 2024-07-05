@@ -491,15 +491,19 @@ hubble-bpf: tetragon-bpf
 hubble-bpf-verify: tetragon-bpf-verify
 
 
-GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/rthooks/tetragon-oci-hook build $(GO_BUILD_FLAGS)
+GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)
 
 .PHONY: tetragon-oci-hook
 tetragon-oci-hook:
-	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/hook
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/oci-hook
 
 .PHONY: tetragon-oci-hook-setup
 tetragon-oci-hook-setup:
 	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/setup
+
+.PHONY: tetragon-nri-hook
+tetragon-nri-hook:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/nri-hook
 
 METRICS_DOCS_PATH := docs/metrics/metrics.md
 
