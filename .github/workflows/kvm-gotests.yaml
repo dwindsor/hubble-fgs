@@ -77,7 +77,10 @@ jobs:
 
             # install test deps
             apt update -y
-            DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd libc6-dev-i386
+            DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd libc6-dev-i386
+
+            # restart ssh server
+            service ssh restart
 
       - name: Run Tests
         uses: cilium/little-vm-helper@3c748d6fc9d6c44a433de85a66f70e8f7043be04 # v0.0.18
