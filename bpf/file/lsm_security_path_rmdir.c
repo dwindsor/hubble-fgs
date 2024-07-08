@@ -1,3 +1,4 @@
+#define __V61_BPF_PROG
 #include "bpf_file.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

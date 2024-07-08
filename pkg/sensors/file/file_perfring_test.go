@@ -281,12 +281,8 @@ func TestFileSuffixPattern(t *testing.T) {
 func TestFileFsTypeMatch(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
 
-	if !kernels.MinKernelVersion("6.8.0") {
-		// This is because https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe
-		// which allows bpf_d_path helper into security_path_* functions.
-		// TODO: use our internal d_path helper to provide support for
-		// older kernels as well.
-		t.Skip("File monitoring patterns with FileSystemType type requires 6.8.0 kernel version")
+	if (probeTracingModifyReturn() != nil) || (probeLSM() != nil) || (probeBpfLoop() != nil) {
+		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)

@@ -34,6 +34,31 @@ var probeLSM = sync.OnceValue(_probeLSM)
 var probeTracingModifyReturn = sync.OnceValue(_probeTracingModifyReturn)
 var probeImaFileHashHelper = sync.OnceValue(_probeImaFileHashHelper)
 var probeOverlayModule = sync.OnceValue(_probeOverlayModule)
+var probeDpathSecurityFilePermission = sync.OnceValue(func() error {
+	return _probeProg("probe_security_file_permission.o", "fmod_security_file_permission", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachTracing(link.TracingOptions{Program: prog})
+	})
+})
+var probeDpathSecurityPathTruncate = sync.OnceValue(func() error {
+	return _probeProg("probe_security_path_truncate.o", "lsm_security_path_truncate", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
+var probeDpathSecurityFileOpen = sync.OnceValue(func() error {
+	return _probeProg("probe_security_file_open.o", "lsm_security_file_open", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
+var probeDpathSecurityKernelReadFile = sync.OnceValue(func() error {
+	return _probeProg("probe_security_kernel_read_file.o", "lsm_security_kernel_read_file", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
+var probeBpfLoop = sync.OnceValue(func() error {
+	return _probeProg("probe_bpf_loop.o", "lsm_security_file_open", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
 
 // This function checks if the kernel supports LSM programs and has them enabled.
 //
@@ -262,4 +287,31 @@ func _probeOverlayModule() *btf.Spec {
 
 	logger.GetLogger().Info("btf: Successfully loaded symbols from overlay kmod")
 	return mergedSpec
+}
+
+func _probeProg(objFile, progName string, lnkFn func(prog *ebpf.Program) (link.Link, error)) error {
+	objPath := path.Join(option.Config.HubbleLib, objFile)
+	spec, err := ebpf.LoadCollectionSpec(objPath)
+	if err != nil {
+		return err
+	}
+
+	col, err := ebpf.NewCollectionWithOptions(spec, ebpf.CollectionOptions{})
+	if err != nil {
+		return err
+	}
+	defer col.Close()
+
+	prog, ok := col.Programs[progName]
+	if !ok {
+		return fmt.Errorf("%s not in collection", progName)
+	}
+
+	link, err := lnkFn(prog)
+	if err != nil {
+		return err
+	}
+	defer link.Close()
+
+	return nil
 }

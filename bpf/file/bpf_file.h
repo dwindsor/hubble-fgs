@@ -147,6 +147,8 @@ static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
 // re-write this in user-space to enable bpf_d_path helper
+// This is because https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe
+// which allows bpf_d_path helper into security_path_* functions.
 volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
 
 struct mnt_idmap {

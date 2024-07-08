@@ -100,16 +100,30 @@ type FimProg struct {
 }
 
 var (
+	// These programs are based on bpf_d_path helper to get the file path. bpf_d_path is introduced in kernel 5.10 (https://github.com/torvalds/linux/commit/6e22ab9da79343532cd3cde39df25e5a5478c692).
+	// On the other hand, support for bpf_d_path helper is not introduced in 5.10 for all the following programs. We try to use bpf_d_path when it is available otherwise, we use our d_path_local helper.
+	// For now we only support path-based hooks in kernels >= 5.17 (where bpf_loop helper is available https://github.com/torvalds/linux/commit/e6f2dd0f80674e9d5960337b3e9c2a242441b326) as in older kernels
+	// there are complexity issues.
 	FimPathBasedHooks = [...]FimHook{
+		// security_file_permission is not part of sleepable_lsm_hooks (https://elixir.bootlin.com/linux/v6.9.8/source/kernel/bpf/bpf_lsm.c#L260) at the time of writing.
+		// This means that this is the only program where bpf_d_path helper is not supported in lsm. For this reason we use fmod_ret progs (and not fentry to provide enforcement).
+		// security_file_permission is part of the btf_allowlist_d_path since kernel 5.10 (https://github.com/torvalds/linux/commit/a8a717963fe5ecfd274eb93dd1285ee9428ffca7).
+		// Use probeDpathSecurityFilePermission to check support for that.
 		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission"}}},
+		// security_kernel_read_file is part of sleepable_lsm_hooks since kernel 5.18 (https://github.com/torvalds/linux/commit/df6b3039fa112e17555776213cab7f07c0a8d98d).
+		// Use probeDpathSecurityKernelReadFile to check support for that.
 		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file"}}},
+		// security_file_open, security_mmap_file, and security_bprm_check are part of sleepable_lsm_hooks since kernel 5.11 (https://github.com/torvalds/linux/commit/423f16108c9d832bd96059d5c882c8ef6d76eb96).
+		// Use probeDpathSecurityFileOpen to check support for that.
 		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open"}}},
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file"}}},
+		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security"}}},
+		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
+		// Use probeDpathSecurityPathTruncate to check support for that.
 		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link"}}},
 		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir"}}},
 		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir"}}},
 		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink"}}},
-		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security"}}},
 		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_setattr.o", "path_truncate"}}},
 		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_setattr.o", "path_chmod"}}},
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_setattr.o", "path_chown"}}},
@@ -1014,6 +1028,27 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		if ovlSpec := probeOverlayModule(); ovlSpec != nil {
 			load.KernelTypes = ovlSpec
 		}
+
+		var checkReWrite func() error
+		if h.progName == "fmod_security_file_permission.o" {
+			checkReWrite = probeDpathSecurityFilePermission
+		} else if h.progName == "lsm_security_kernel_read_file.o" {
+			checkReWrite = probeDpathSecurityKernelReadFile
+		} else if h.progName == "lsm_security_file_open.o" || h.progName == "lsm_security_mmap_file.o" || h.progName == "lsm_security_bprm_check.o" {
+			checkReWrite = probeDpathSecurityFileOpen
+		} else if h.progName == "lsm_security_path_link.o" || h.progName == "lsm_security_path_mkdir.o" || h.progName == "lsm_security_path_rmdir.o" || h.progName == "lsm_security_path_unlink.o" || h.progName == "lsm_security_path_setattr.o" || h.progName == "lsm_security_path_rename.o" {
+			checkReWrite = probeDpathSecurityPathTruncate
+		}
+		if checkReWrite != nil {
+			val := uint32(0)
+			if checkReWrite() == nil {
+				val = 1
+			}
+			load.RewriteConstants = map[string]interface{}{
+				"USE_BPF_D_PATH_HELPER": uint32(val),
+			}
+		}
+
 		progs = append(progs, load)
 
 		load.MapLoad = []*program.MapLoad{
@@ -1493,10 +1528,20 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
 	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
+	supportBpfLoop := (probeBpfLoop() == nil)
+	logger.GetLogger().Infof("probeBpfLoop() = %t", supportBpfLoop)
+
+	logger.GetLogger().WithFields(logrus.Fields{
+		"security_file_permission":  (probeDpathSecurityFilePermission() == nil),
+		"security_path_truncate":    (probeDpathSecurityPathTruncate() == nil),
+		"security_file_open":        (probeDpathSecurityFileOpen() == nil),
+		"security_kernel_read_file": (probeDpathSecurityKernelReadFile() == nil),
+	}).Infof("probe bpf_d_path support")
+
 	digestSupport := supportLSM && supportImaFileHash
 
 	if h == PathBasedTpMode {
-		if supportTracing && supportLSM {
+		if supportTracing && supportLSM && supportBpfLoop {
 			return PathBased, digestSupport
 		}
 		return PathBasedNotSupported, digestSupport
