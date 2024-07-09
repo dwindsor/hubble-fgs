@@ -24,7 +24,10 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/fake"
 	"github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions"
+	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/watcher"
+
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 )
 
 const (
@@ -82,6 +85,29 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 
 	podInfoInformerFactory := externalversions.NewSharedInformerFactory(tetragonClient, stateSyncIntervalSec)
 	podInfoInformer := podInfoInformerFactory.Cilium().V1alpha1().PodInfo().Informer()
+	podInfoInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			switch t := obj.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Add Pod: %v", t)
+				c := endpoint.Get()
+				c.AddIpPodMap(t)
+			}
+		},
+		UpdateFunc: func(old interface{}, _ interface{}) {
+			switch t := old.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Update Pod: %v", t)
+			}
+		},
+		DeleteFunc: func(old interface{}) {
+			switch t := old.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Delete Pod: %v", t)
+			}
+		},
+	})
+
 	k8sWatcher.AddInformers(podInfoInformerFactory, &oss.InternalInformer{
 		Name:     podInfoInformerName,
 		Informer: podInfoInformer,
