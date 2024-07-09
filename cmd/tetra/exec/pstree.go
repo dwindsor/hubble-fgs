@@ -139,7 +139,10 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			wlTree := nsTree.AddBranch(wlStr)
 
 			for _, p := range wlProcesses {
-				wlTree.AddBranch(p.Binary)
+				binaryBranch := wlTree.AddBranch(p.Binary)
+				for _, d := range p.Dest {
+					binaryBranch.AddBranch(d)
+				}
 			}
 		}
 	}
