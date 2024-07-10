@@ -31,6 +31,7 @@ spec:
               - "FILE_EXEC"
               - "FILE_WRITE"
               - "FILE_CREATE"
+              - "FILE_DELETE"
               - "FILE_RENAME"
 ---
 # report all write/create/rename operations on well known binary directories
