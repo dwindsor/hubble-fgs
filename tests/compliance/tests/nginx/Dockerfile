@@ -1,6 +1,6 @@
 ## Helper to clone nginx-tests
 
-FROM alpine/git:2.36.3 as nginx-tests-clone
+FROM alpine/git:2.36.3 AS nginx-tests-clone
 
 WORKDIR /nginx-tests
 RUN git clone https://github.com/nginx/nginx-tests .
