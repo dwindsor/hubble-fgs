@@ -378,6 +378,12 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
+	// merge base sensor extensions specific for EE
+	sensorProgs = append(sensorProgs, []tus.SensorProg{
+		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
+	}...)
+	confMap := tus.SensorMap{Name: "tg_conf_map", Progs: []uint{ni}}
+
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
 		socketMapStats,
@@ -390,6 +396,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		latencyConfigMap,
 		cfgMap,
 		verMap,
+		confMap,
 	}...)
 
 	return sensorProgs, sensorMaps
