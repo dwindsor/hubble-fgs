@@ -11,7 +11,9 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Helm Values
 
-* TBD
+* `tetragon.exportFilePerm` now defaults to "600" instead of "644", meaning that the events log is not readable by users other than the owner.
+  If you have some agent reading this file, for example to export events to external storage, you'll likely need to set this value to "640"/"644".
+  The default value was changed to improve the Tetragon security posture.
 
 ### TracingPolicy (k8s CRD)
 

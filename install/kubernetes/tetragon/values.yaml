@@ -74,7 +74,7 @@ tetragon:
   exportFilename: tetragon.log
   # -- JSON export file permissions as a string. Typically it's either "600" (to restrict access to
   # owner) or "640"/"644" (to allow read access by logs collector or another agent).
-  exportFilePerm: "644"
+  exportFilePerm: "600"
   # -- Size in megabytes at which to rotate JSON export files.
   exportFileMaxSizeMB: 10
   # -- Number of rotated files to retain.
