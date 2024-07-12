@@ -2239,17 +2239,18 @@ func (checker *InterfaceStatsChecker) FromInterfaceStats(event *tetragon.Interfa
 
 // ProcessConnectChecker implements a checker struct to check a ProcessConnect event
 type ProcessConnectChecker struct {
-	CheckerName      string                       `json:"checkerName"`
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
-	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
-	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
-	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
-	DestinationPort  *uint32                      `json:"destinationPort,omitempty"`
-	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
-	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
-	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
+	CheckerName        string                       `json:"checkerName"`
+	Process            *ProcessChecker              `json:"process,omitempty"`
+	Parent             *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp           *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	SourcePort         *uint32                      `json:"sourcePort,omitempty"`
+	DestinationIp      *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	DestinationPort    *uint32                      `json:"destinationPort,omitempty"`
+	DestinationNames   *StringListMatcher           `json:"destinationNames,omitempty"`
+	SockCookie         *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod     *PodChecker                  `json:"destinationPod,omitempty"`
+	Protocol           *SocketProtocolChecker       `json:"protocol,omitempty"`
+	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2347,6 +2348,11 @@ func (checker *ProcessConnectChecker) Check(event *tetragon.ProcessConnect) erro
 				return fmt.Errorf("Protocol check failed: %w", err)
 			}
 		}
+		if checker.DestinationService != nil {
+			if err := checker.DestinationService.Check(event.DestinationService); err != nil {
+				return fmt.Errorf("DestinationService check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2416,6 +2422,12 @@ func (checker *ProcessConnectChecker) WithProtocol(check tetragon.SocketProtocol
 	return checker
 }
 
+// WithDestinationService adds a DestinationService check to the ProcessConnectChecker
+func (checker *ProcessConnectChecker) WithDestinationService(check *ServiceChecker) *ProcessConnectChecker {
+	checker.DestinationService = check
+	return checker
+}
+
 //FromProcessConnect populates the ProcessConnectChecker using data from a ProcessConnect event
 func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.ProcessConnect) *ProcessConnectChecker {
 	if event == nil {
@@ -2456,25 +2468,29 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.Process
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	if event.DestinationService != nil {
+		checker.DestinationService = NewServiceChecker().FromService(event.DestinationService)
+	}
 	return checker
 }
 
 // ProcessCloseChecker implements a checker struct to check a ProcessClose event
 type ProcessCloseChecker struct {
-	CheckerName      string                           `json:"checkerName"`
-	Process          *ProcessChecker                  `json:"process,omitempty"`
-	Parent           *ProcessChecker                  `json:"parent,omitempty"`
-	SourceIp         *stringmatcher.StringMatcher     `json:"sourceIp,omitempty"`
-	SourcePort       *uint32                          `json:"sourcePort,omitempty"`
-	DestinationIp    *stringmatcher.StringMatcher     `json:"destinationIp,omitempty"`
-	DestinationPort  *uint32                          `json:"destinationPort,omitempty"`
-	DestinationNames *StringListMatcher               `json:"destinationNames,omitempty"`
-	SockCookie       *uint64                          `json:"sockCookie,omitempty"`
-	Stats            *SocketStatsChecker              `json:"stats,omitempty"`
-	DestinationPod   *PodChecker                      `json:"destinationPod,omitempty"`
-	Protocol         *SocketProtocolChecker           `json:"protocol,omitempty"`
-	SocketType       *stringmatcher.StringMatcher     `json:"socketType,omitempty"`
-	Duration         *durationmatcher.DurationMatcher `json:"duration,omitempty"`
+	CheckerName        string                           `json:"checkerName"`
+	Process            *ProcessChecker                  `json:"process,omitempty"`
+	Parent             *ProcessChecker                  `json:"parent,omitempty"`
+	SourceIp           *stringmatcher.StringMatcher     `json:"sourceIp,omitempty"`
+	SourcePort         *uint32                          `json:"sourcePort,omitempty"`
+	DestinationIp      *stringmatcher.StringMatcher     `json:"destinationIp,omitempty"`
+	DestinationPort    *uint32                          `json:"destinationPort,omitempty"`
+	DestinationNames   *StringListMatcher               `json:"destinationNames,omitempty"`
+	SockCookie         *uint64                          `json:"sockCookie,omitempty"`
+	Stats              *SocketStatsChecker              `json:"stats,omitempty"`
+	DestinationPod     *PodChecker                      `json:"destinationPod,omitempty"`
+	Protocol           *SocketProtocolChecker           `json:"protocol,omitempty"`
+	SocketType         *stringmatcher.StringMatcher     `json:"socketType,omitempty"`
+	Duration           *durationmatcher.DurationMatcher `json:"duration,omitempty"`
+	DestinationService *ServiceChecker                  `json:"destinationService,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2587,6 +2603,11 @@ func (checker *ProcessCloseChecker) Check(event *tetragon.ProcessClose) error {
 				return fmt.Errorf("Duration check failed: %w", err)
 			}
 		}
+		if checker.DestinationService != nil {
+			if err := checker.DestinationService.Check(event.DestinationService); err != nil {
+				return fmt.Errorf("DestinationService check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2674,6 +2695,12 @@ func (checker *ProcessCloseChecker) WithDuration(check *durationmatcher.Duration
 	return checker
 }
 
+// WithDestinationService adds a DestinationService check to the ProcessCloseChecker
+func (checker *ProcessCloseChecker) WithDestinationService(check *ServiceChecker) *ProcessCloseChecker {
+	checker.DestinationService = check
+	return checker
+}
+
 //FromProcessClose populates the ProcessCloseChecker using data from a ProcessClose event
 func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClose) *ProcessCloseChecker {
 	if event == nil {
@@ -2720,6 +2747,9 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClos
 	checker.SocketType = stringmatcher.Full(event.SocketType)
 	// NB: We don't want to match durations for now
 	checker.Duration = nil
+	if event.DestinationService != nil {
+		checker.DestinationService = NewServiceChecker().FromService(event.DestinationService)
+	}
 	return checker
 }
 
@@ -2877,17 +2907,18 @@ func (checker *ProcessListenChecker) FromProcessListen(event *tetragon.ProcessLi
 
 // ProcessAcceptChecker implements a checker struct to check a ProcessAccept event
 type ProcessAcceptChecker struct {
-	CheckerName      string                       `json:"checkerName"`
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
-	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
-	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
-	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
-	DestinationPort  *uint32                      `json:"destinationPort,omitempty"`
-	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
-	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
-	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
+	CheckerName        string                       `json:"checkerName"`
+	Process            *ProcessChecker              `json:"process,omitempty"`
+	Parent             *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp           *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	SourcePort         *uint32                      `json:"sourcePort,omitempty"`
+	DestinationIp      *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	DestinationPort    *uint32                      `json:"destinationPort,omitempty"`
+	DestinationNames   *StringListMatcher           `json:"destinationNames,omitempty"`
+	SockCookie         *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod     *PodChecker                  `json:"destinationPod,omitempty"`
+	Protocol           *SocketProtocolChecker       `json:"protocol,omitempty"`
+	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2985,6 +3016,11 @@ func (checker *ProcessAcceptChecker) Check(event *tetragon.ProcessAccept) error 
 				return fmt.Errorf("Protocol check failed: %w", err)
 			}
 		}
+		if checker.DestinationService != nil {
+			if err := checker.DestinationService.Check(event.DestinationService); err != nil {
+				return fmt.Errorf("DestinationService check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3054,6 +3090,12 @@ func (checker *ProcessAcceptChecker) WithProtocol(check tetragon.SocketProtocol)
 	return checker
 }
 
+// WithDestinationService adds a DestinationService check to the ProcessAcceptChecker
+func (checker *ProcessAcceptChecker) WithDestinationService(check *ServiceChecker) *ProcessAcceptChecker {
+	checker.DestinationService = check
+	return checker
+}
+
 //FromProcessAccept populates the ProcessAcceptChecker using data from a ProcessAccept event
 func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAccept) *ProcessAcceptChecker {
 	if event == nil {
@@ -3094,6 +3136,9 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAc
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	if event.DestinationService != nil {
+		checker.DestinationService = NewServiceChecker().FromService(event.DestinationService)
+	}
 	return checker
 }
 
@@ -3325,28 +3370,29 @@ func (checker *ProcessRawsockCloseChecker) FromProcessRawsockClose(event *tetrag
 
 // ProcessIcmpChecker implements a checker struct to check a ProcessIcmp event
 type ProcessIcmpChecker struct {
-	CheckerName      string                       `json:"checkerName"`
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
-	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
-	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
-	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
-	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
-	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
-	IcmpType         *stringmatcher.StringMatcher `json:"icmpType,omitempty"`
-	IcmpCode         *stringmatcher.StringMatcher `json:"icmpCode,omitempty"`
-	IcmpTypeValue    *uint32                      `json:"icmpTypeValue,omitempty"`
-	IcmpCodeValue    *uint32                      `json:"icmpCodeValue,omitempty"`
-	Identifier       *uint32                      `json:"identifier,omitempty"`
-	SequenceNumber   *uint32                      `json:"sequenceNumber,omitempty"`
-	IcmpDataLen      *uint32                      `json:"icmpDataLen,omitempty"`
-	Direction        *stringmatcher.StringMatcher `json:"direction,omitempty"`
-	IcmpIpProtocol   *SocketProtocolChecker       `json:"icmpIpProtocol,omitempty"`
-	IcmpIpPort       *uint32                      `json:"icmpIpPort,omitempty"`
-	IcmpIpTtl        *uint32                      `json:"icmpIpTtl,omitempty"`
-	IcmpIpPointer    *uint32                      `json:"icmpIpPointer,omitempty"`
-	IcmpIpGateway    *stringmatcher.StringMatcher `json:"icmpIpGateway,omitempty"`
+	CheckerName        string                       `json:"checkerName"`
+	Process            *ProcessChecker              `json:"process,omitempty"`
+	Parent             *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp           *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	DestinationIp      *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	DestinationNames   *StringListMatcher           `json:"destinationNames,omitempty"`
+	SockCookie         *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod     *PodChecker                  `json:"destinationPod,omitempty"`
+	Protocol           *SocketProtocolChecker       `json:"protocol,omitempty"`
+	IcmpType           *stringmatcher.StringMatcher `json:"icmpType,omitempty"`
+	IcmpCode           *stringmatcher.StringMatcher `json:"icmpCode,omitempty"`
+	IcmpTypeValue      *uint32                      `json:"icmpTypeValue,omitempty"`
+	IcmpCodeValue      *uint32                      `json:"icmpCodeValue,omitempty"`
+	Identifier         *uint32                      `json:"identifier,omitempty"`
+	SequenceNumber     *uint32                      `json:"sequenceNumber,omitempty"`
+	IcmpDataLen        *uint32                      `json:"icmpDataLen,omitempty"`
+	Direction          *stringmatcher.StringMatcher `json:"direction,omitempty"`
+	IcmpIpProtocol     *SocketProtocolChecker       `json:"icmpIpProtocol,omitempty"`
+	IcmpIpPort         *uint32                      `json:"icmpIpPort,omitempty"`
+	IcmpIpTtl          *uint32                      `json:"icmpIpTtl,omitempty"`
+	IcmpIpPointer      *uint32                      `json:"icmpIpPointer,omitempty"`
+	IcmpIpGateway      *stringmatcher.StringMatcher `json:"icmpIpGateway,omitempty"`
+	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3493,6 +3539,11 @@ func (checker *ProcessIcmpChecker) Check(event *tetragon.ProcessIcmp) error {
 				return fmt.Errorf("IcmpIpGateway check failed: %w", err)
 			}
 		}
+		if checker.DestinationService != nil {
+			if err := checker.DestinationService.Check(event.DestinationService); err != nil {
+				return fmt.Errorf("DestinationService check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3629,6 +3680,12 @@ func (checker *ProcessIcmpChecker) WithIcmpIpGateway(check *stringmatcher.String
 	return checker
 }
 
+// WithDestinationService adds a DestinationService check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) WithDestinationService(check *ServiceChecker) *ProcessIcmpChecker {
+	checker.DestinationService = check
+	return checker
+}
+
 //FromProcessIcmp populates the ProcessIcmpChecker using data from a ProcessIcmp event
 func (checker *ProcessIcmpChecker) FromProcessIcmp(event *tetragon.ProcessIcmp) *ProcessIcmpChecker {
 	if event == nil {
@@ -3698,23 +3755,27 @@ func (checker *ProcessIcmpChecker) FromProcessIcmp(event *tetragon.ProcessIcmp) 
 		checker.IcmpIpPointer = &val
 	}
 	checker.IcmpIpGateway = stringmatcher.Full(event.IcmpIpGateway)
+	if event.DestinationService != nil {
+		checker.DestinationService = NewServiceChecker().FromService(event.DestinationService)
+	}
 	return checker
 }
 
 // ProcessIpErrorChecker implements a checker struct to check a ProcessIpError event
 type ProcessIpErrorChecker struct {
-	CheckerName    string                       `json:"checkerName"`
-	Process        *ProcessChecker              `json:"process,omitempty"`
-	Parent         *ProcessChecker              `json:"parent,omitempty"`
-	SourceIp       *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
-	DestinationIp  *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
-	Version        *stringmatcher.StringMatcher `json:"version,omitempty"`
-	SockCookie     *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod *PodChecker                  `json:"destinationPod,omitempty"`
-	Details        *stringmatcher.StringMatcher `json:"details,omitempty"`
-	Send           *stringmatcher.StringMatcher `json:"send,omitempty"`
-	VersionByte    *uint64                      `json:"versionByte,omitempty"`
-	Data           *uint64                      `json:"data,omitempty"`
+	CheckerName        string                       `json:"checkerName"`
+	Process            *ProcessChecker              `json:"process,omitempty"`
+	Parent             *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp           *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	DestinationIp      *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	Version            *stringmatcher.StringMatcher `json:"version,omitempty"`
+	SockCookie         *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod     *PodChecker                  `json:"destinationPod,omitempty"`
+	Details            *stringmatcher.StringMatcher `json:"details,omitempty"`
+	Send               *stringmatcher.StringMatcher `json:"send,omitempty"`
+	VersionByte        *uint64                      `json:"versionByte,omitempty"`
+	Data               *uint64                      `json:"data,omitempty"`
+	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3811,6 +3872,11 @@ func (checker *ProcessIpErrorChecker) Check(event *tetragon.ProcessIpError) erro
 				return fmt.Errorf("Data has value %d which does not match expected value %d", event.Data, *checker.Data)
 			}
 		}
+		if checker.DestinationService != nil {
+			if err := checker.DestinationService.Check(event.DestinationService); err != nil {
+				return fmt.Errorf("DestinationService check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3885,6 +3951,12 @@ func (checker *ProcessIpErrorChecker) WithData(check uint64) *ProcessIpErrorChec
 	return checker
 }
 
+// WithDestinationService adds a DestinationService check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithDestinationService(check *ServiceChecker) *ProcessIpErrorChecker {
+	checker.DestinationService = check
+	return checker
+}
+
 //FromProcessIpError populates the ProcessIpErrorChecker using data from a ProcessIpError event
 func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.ProcessIpError) *ProcessIpErrorChecker {
 	if event == nil {
@@ -3915,6 +3987,9 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.Process
 	{
 		val := event.Data
 		checker.Data = &val
+	}
+	if event.DestinationService != nil {
+		checker.DestinationService = NewServiceChecker().FromService(event.DestinationService)
 	}
 	return checker
 }
@@ -10941,6 +11016,69 @@ func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) 
 	if event.Latency != nil {
 		checker.Latency = NewHistogramChecker().FromHistogram(event.Latency)
 	}
+	return checker
+}
+
+// ServiceChecker implements a checker struct to check a Service field
+type ServiceChecker struct {
+	Name      *stringmatcher.StringMatcher `json:"Name,omitempty"`
+	Namespace *stringmatcher.StringMatcher `json:"Namespace,omitempty"`
+}
+
+// NewServiceChecker creates a new ServiceChecker
+func NewServiceChecker() *ServiceChecker {
+	return &ServiceChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *ServiceChecker) GetCheckerType() string {
+	return "ServiceChecker"
+}
+
+// Check checks a Service field
+func (checker *ServiceChecker) Check(event *tetragon.Service) error {
+	if event == nil {
+		return fmt.Errorf("%s: Service field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Name != nil {
+			if err := checker.Name.Match(event.Name); err != nil {
+				return fmt.Errorf("Name check failed: %w", err)
+			}
+		}
+		if checker.Namespace != nil {
+			if err := checker.Namespace.Match(event.Namespace); err != nil {
+				return fmt.Errorf("Namespace check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithName adds a Name check to the ServiceChecker
+func (checker *ServiceChecker) WithName(check *stringmatcher.StringMatcher) *ServiceChecker {
+	checker.Name = check
+	return checker
+}
+
+// WithNamespace adds a Namespace check to the ServiceChecker
+func (checker *ServiceChecker) WithNamespace(check *stringmatcher.StringMatcher) *ServiceChecker {
+	checker.Namespace = check
+	return checker
+}
+
+//FromService populates the ServiceChecker using data from a Service field
+func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Name = stringmatcher.Full(event.Name)
+	checker.Namespace = stringmatcher.Full(event.Namespace)
 	return checker
 }
 

@@ -148,6 +148,7 @@
     - [ProcessUdpSeqCheckError](#tetragon-ProcessUdpSeqCheckError)
     - [ReadDirArg](#tetragon-ReadDirArg)
     - [RenameFileArg](#tetragon-RenameFileArg)
+    - [Service](#tetragon-Service)
     - [SockInfo](#tetragon-SockInfo)
     - [SocketStats](#tetragon-SocketStats)
     - [Tls](#tetragon-Tls)
@@ -2351,6 +2352,7 @@ HTTP PARSER
 | sock_cookie | [uint64](#uint64) |  |  |
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+| destination_service | [Service](#tetragon-Service) |  |  |
 
 
 
@@ -2378,6 +2380,7 @@ HTTP PARSER
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
 | socket_type | [string](#string) |  |  |
 | duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+| destination_service | [Service](#tetragon-Service) |  |  |
 
 
 
@@ -2402,6 +2405,7 @@ HTTP PARSER
 | sock_cookie | [uint64](#uint64) |  |  |
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+| destination_service | [Service](#tetragon-Service) |  |  |
 
 
 
@@ -2503,6 +2507,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | icmp_ip_ttl | [uint32](#uint32) |  |  |
 | icmp_ip_pointer | [uint32](#uint32) |  |  |
 | icmp_ip_gateway | [string](#string) |  |  |
+| destination_service | [Service](#tetragon-Service) |  |  |
 
 
 
@@ -2528,6 +2533,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | send | [string](#string) |  |  |
 | version_byte | [uint64](#uint64) |  |  |
 | data | [uint64](#uint64) |  |  |
+| destination_service | [Service](#tetragon-Service) |  |  |
 
 
 
@@ -2704,6 +2710,22 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | dst | [FileDetails](#tetragon-FileDetails) |  |  |
 | mnt_ns | [Namespace](#tetragon-Namespace) |  |  |
 | flags | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-Service"></a>
+
+### Service
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| Name | [string](#string) |  |  |
+| Namespace | [string](#string) |  |  |
 
 
 

@@ -86,6 +86,11 @@ enum SocketProtocol {
     ICMPV6 = 58;
 }
 
+message Service {
+	string Name = 1;
+	string Namespace = 2;
+}
+
 message ProcessConnect {
     tetragon.Process process = 1;
     tetragon.Process parent = 2;
@@ -97,6 +102,7 @@ message ProcessConnect {
     uint64 sock_cookie = 8;
     tetragon.Pod destination_pod = 9;
     SocketProtocol protocol = 10;
+    Service destination_service = 11;
 }
 
 message ProcessClose {
@@ -113,6 +119,7 @@ message ProcessClose {
     SocketProtocol protocol = 11;
     string socket_type = 12;
     google.protobuf.Duration duration = 13;
+    Service destination_service = 14;
 }
 
 message ProcessListen {
@@ -135,6 +142,7 @@ message ProcessAccept {
     uint64 sock_cookie = 8;
     tetragon.Pod destination_pod = 9;
     SocketProtocol protocol = 10;
+    Service destination_service = 11;
 }
 
 message ProcessRawsockCreate {
@@ -172,6 +180,7 @@ message ProcessIcmp {
     uint32 icmp_ip_ttl = 19;
     uint32 icmp_ip_pointer = 20;
     string icmp_ip_gateway = 21;
+    Service destination_service = 22;
 }
 
 message ProcessIpError {
@@ -186,6 +195,7 @@ message ProcessIpError {
     string send = 9;
     uint64 version_byte = 10;
     uint64 data = 11;
+    Service destination_service = 12;
 }
 
 enum FileAction {
