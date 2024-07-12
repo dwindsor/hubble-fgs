@@ -13,14 +13,19 @@ package file
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
+	ossBTF "github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"golang.org/x/sys/unix"
 )
@@ -28,6 +33,7 @@ import (
 var probeLSM = sync.OnceValue(_probeLSM)
 var probeTracingModifyReturn = sync.OnceValue(_probeTracingModifyReturn)
 var probeImaFileHashHelper = sync.OnceValue(_probeImaFileHashHelper)
+var probeOverlayModule = sync.OnceValue(_probeOverlayModule)
 
 // This function checks if the kernel supports LSM programs and has them enabled.
 //
@@ -198,4 +204,62 @@ func SupportDigests() bool {
 	// 1. The kernel supports LSM programs and has them enabled.
 	// 2. The kernel supports the IMA file hash helper
 	return (probeLSM() == nil) && (probeImaFileHashHelper() == nil)
+}
+
+func _probeOverlayModule() *btf.Spec {
+	spec, err := ossBTF.NewBTF()
+	if err != nil {
+		return nil
+	}
+
+	// We check for struct ovl_entry in the BTF and set this variable.
+	var fnType *btf.Struct
+	hasOverlaySymbols := (spec.TypeByName("ovl_entry", &fnType) == nil)
+	if hasOverlaySymbols {
+		logger.GetLogger().Info("btf: Already contains symbols from overlay kmod")
+		return nil
+	}
+
+	allTypes := []btf.Type{}
+
+	iter := spec.Iterate()
+	for iter.Next() {
+		allTypes = append(allTypes, iter.Type)
+	}
+
+	ovlSpec, err := btf.LoadKernelModuleSpec("overlay")
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			logger.GetLogger().Info("btf: Overlay kmod does not exist. Skipping")
+		} else {
+			logger.GetLogger().WithError(err).WithField("func", "btf.LoadKernelModuleSpec").Warn("btf: Failed to load symbols from overlay kmod")
+		}
+		return nil
+	}
+
+	iter = ovlSpec.Iterate()
+	for iter.Next() {
+		allTypes = append(allTypes, iter.Type)
+	}
+
+	b, err := btf.NewBuilder(allTypes)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("func", "btf.NewBuilder").Warn("btf: Failed to load symbols from overlay kmod")
+		return nil
+	}
+
+	raw, err := b.Marshal(nil, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("func", "b.Marshal").Warn("btf: Failed to load symbols from overlay kmod")
+		return nil
+	}
+
+	mergedSpec, err := btf.LoadSpecFromReader(bytes.NewReader(raw))
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("func", "btf.LoadSpecFromReader").Warn("btf: Failed to load symbols from overlay kmod")
+		return nil
+	}
+
+	logger.GetLogger().Info("btf: Successfully loaded symbols from overlay kmod")
+	return mergedSpec
 }
