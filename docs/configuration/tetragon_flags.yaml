@@ -76,6 +76,10 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
+    - name: endpoint-cache-size
+      default_value: "1024"
+      usage: |
+        Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: event-queue-size
       default_value: "10000"
       usage: Set the size of the internal event queue.
