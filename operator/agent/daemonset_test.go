@@ -501,12 +501,8 @@ extraVolumes: |
 extraHostPathMounts: |
   - name: test-extra-host-volume1
     mountPath: test-extra-host-path1
-    hostPath:
-      path: test-extra-host-path1
   - name: test-extra-host-volume2
     mountPath: test-extra-host-path2
-    hostPath:
-      path: test-extra-host-path2
 imagePullPolicy: Never
 argsOverride:
   - --test-arg1=test-value1
@@ -1593,13 +1589,9 @@ extraVolumes: |
       type: DirectoryOrCreate
 extraHostPathMounts: |
   - name: host-volume1
-    hostPath:
-      path: /host/test1
-      type: DirectoryOrCreate
+    mountPath: /host/test1
   - name: host-volume2
-    hostPath:
-      path: /host/test2
-      type: DirectoryOrCreate
+    mountPath: /host/test2
 metadataEnabled: true
 `,
 			expected: []corev1.Volume{
@@ -1691,7 +1683,6 @@ metadataEnabled: true
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: "/host/test1",
-							Type: &hostPathDirectoryOrCreateVolumeType,
 						},
 					},
 				},
@@ -1700,7 +1691,6 @@ metadataEnabled: true
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: "/host/test2",
-							Type: &hostPathDirectoryOrCreateVolumeType,
 						},
 					},
 				},

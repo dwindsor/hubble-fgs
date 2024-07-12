@@ -474,7 +474,7 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 		}
 	}
 	volumes = append(volumes, volumesFromConfigMap(log, cmFields, "extraVolumes")...)
-	volumes = append(volumes, volumesFromConfigMap(log, cmFields, "extraHostPathMounts")...)
+	volumes = append(volumes, hostPathVolumesFromConfigMap(log, cmFields, "extraHostPathMounts")...)
 	if configValue(log, cmFields, "metadataEnabled", false) {
 		volumes = append(volumes, corev1.Volume{
 			Name: "metadata-files",
@@ -506,6 +506,31 @@ func volumesFromConfigMap(log logr.Logger, cmFields map[string]any, key string) 
 	volumes := make([]corev1.Volume, 0)
 	if err := yaml.Unmarshal([]byte(value), &volumes); err != nil {
 		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s volume, skipped", key))
+	}
+	return volumes
+}
+
+func hostPathVolumesFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.Volume {
+	value := configValue(log, cmFields, key, "")
+	if value == "" {
+		return []corev1.Volume{}
+	}
+	// For extra hostpath volumes the volume definition in helm is induced from the volumeMount specification
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	if err := yaml.Unmarshal([]byte(value), &volumeMounts); err != nil {
+		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s hostpath volume, skipped", key))
+	}
+	volumes := make([]corev1.Volume, 0)
+	for _, volumeMount := range volumeMounts {
+		volume := corev1.Volume{
+			Name: volumeMount.Name,
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: volumeMount.MountPath,
+				},
+			},
+		}
+		volumes = append(volumes, volume)
 	}
 	return volumes
 }
