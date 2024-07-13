@@ -32,6 +32,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/svcinfo"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
@@ -406,6 +407,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 	podinfo.SetK8sResourceWatcher(k8sWatcher)
+	svcinfo.SetK8sResourceWatcher(k8sWatcher)
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
 	// due to a signal). This is needed, for example, so that the exported writes full
