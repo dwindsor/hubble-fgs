@@ -11,8 +11,9 @@ enable-process-ns: "false"
 process-cache-size: "65536"
 # Specifies directory to put Tetragon JSON export files.
 export-filename: /var/run/cilium/tetragon/tetragon.log
-# JSON export file permissions as a string. Set it to "600" to restrict access to owner.
-export-file-perm: "644"
+# -- JSON export file permissions as a string. Typically it's either "600" (to restrict access to
+# owner) or "640"/"644" (to allow read access by logs collector or another agent).
+export-file-perm: "600"
 # Size in megabytes at which to rotate JSON export files.
 export-file-max-size-mb: "10"
 # Number of rotated files to retain.
