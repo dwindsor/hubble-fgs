@@ -5,7 +5,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const struct path *path, __u32 action, __u32 hook, umode_t mode, uid_t uid, gid_t gid, void (*set_attr)(struct msg_file_ops *, struct dentry *, umode_t, uid_t, gid_t))
 {
-	__u32 s_magic, operation, *rule_id;
+	__u32 s_magic, operation, rule_id;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
@@ -19,10 +19,9 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	if (err < 0)
 		return err;
 
-	// check if we care about this file system
 	s_magic = BPF_CORE_READ(path, dentry, d_inode, i_sb, s_magic);
-	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
-	if (!rule_id)
+	rule_id = run_matcher(s_magic);
+	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
 	// At this point we know that we care about this access.
@@ -38,7 +37,7 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 
 	set_attr(msg, dentry, mode, uid, gid);
 
-	complete_msg(msg, action, hook, operation, *rule_id, 0);
+	complete_msg(msg, action, hook, operation, rule_id, 0);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

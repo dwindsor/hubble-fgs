@@ -266,7 +266,7 @@ type FileSystemTypePattern struct {
 // +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type))",message="Type should match the argument type."
 type FilePathPattern struct {
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch;FileSystemType
+	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch;FileSystemType;AllFileOps
 	// FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
 	// PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
 	// FileExactMatch can be used to match only files that have a specific name.

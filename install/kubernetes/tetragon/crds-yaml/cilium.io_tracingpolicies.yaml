@@ -369,6 +369,7 @@ spec:
                           - PathPrefix
                           - FileExactMatch
                           - FileSystemType
+                          - AllFileOps
                           type: string
                       required:
                       - type

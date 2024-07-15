@@ -416,7 +416,8 @@
                       "FilePrefixSuffix",
                       "PathPrefix",
                       "FileExactMatch",
-                      "FileSystemType"
+                      "FileSystemType",
+                      "AllFileOps"
                     ],
                     "type": "string"
                   }

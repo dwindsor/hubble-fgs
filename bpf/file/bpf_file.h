@@ -151,6 +151,14 @@ static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 // which allows bpf_d_path helper into security_path_* functions.
 volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
 
+#define INVALID_MATCHER 0
+#define MATCH_ALL	1
+#define FS_TYPE_MATCHER 2
+
+volatile const __u32 PATH_BASED_MATCHER = 0;
+
+#define INVALID_RULE_ID 0xffffffff // UINT32_MAX
+
 struct mnt_idmap {
 	struct user_namespace *owner;
 	refcount_t count;
@@ -1262,10 +1270,33 @@ generate_inode_metadata(struct msg_file_ops *msg, struct dentry *dentry)
 	return 0;
 }
 
+static inline __attribute__((always_inline))
+__u32
+run_matcher(__u32 s_magic)
+{
+	__u32 *r;
+
+	if (PATH_BASED_MATCHER == FS_TYPE_MATCHER) {
+		// check if we care about this file system
+		r = map_lookup_elem(&file_system_type_map, &s_magic);
+		if (!r)
+			return INVALID_RULE_ID;
+		return *r;
+	} else if (PATH_BASED_MATCHER == MATCH_ALL) {
+		return 0;
+	}
+
+	// make sure that the PATH_BASED_MATCHER is correctly set
+	// otherwise the verifier will fail
+	while (1) {
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int
 path_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
 {
-	__u32 s_magic, operation, *rule_id;
+	__u32 s_magic, operation, rule_id;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,
 		.pid_tgid = get_current_pid_tgid(),
@@ -1299,10 +1330,9 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (err < 0)
 		return err;
 
-	// check if we care about this file system
 	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
-	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
-	if (!rule_id)
+	rule_id = run_matcher(s_magic);
+	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
 	// At this point we know that we care about this access.
@@ -1315,7 +1345,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 
 	generate_path(msg, _(&file->f_path));
 
-	complete_msg(msg, action, hook_type, operation, *rule_id, 0);
+	complete_msg(msg, action, hook_type, operation, rule_id, 0);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

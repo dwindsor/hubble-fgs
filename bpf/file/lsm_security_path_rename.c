@@ -7,7 +7,7 @@ static inline __attribute__((always_inline)) __u32
 path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
 {
 	struct inode *old_dir_inode, *new_dir_inode;
-	__u32 s_magic, *rule_id, operation;
+	__u32 s_magic, rule_id, operation;
 	struct msg_file_rename_ops *msg;
 	struct inode *d_inode;
 	umode_t i_mode;
@@ -50,12 +50,9 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	msg->dst.parent_ino = BPF_CORE_READ(new_dir_inode, i_ino);
 	get_fs_info(&(msg->dst.parent_fs), &(msg->dst.parent_ino), new_dir_inode, new_dentry);
 
-	// check if we care about this file system
-	// both inodes should be on the same file system
-	// otherwise it is not a rename operation
 	s_magic = BPF_CORE_READ(old_dir_inode, i_sb, s_magic);
-	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
-	if (!rule_id)
+	rule_id = run_matcher(s_magic);
+	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
 	// At this point we know that we care about this access.
@@ -85,7 +82,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	get_mnt_ns(&msg->mnt_ns);
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
-	msg->rule_id = *rule_id;
+	msg->rule_id = rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_rename_ops));

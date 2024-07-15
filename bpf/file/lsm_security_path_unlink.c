@@ -5,7 +5,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const struct path *dir, struct dentry *new_dentry)
 {
-	__u32 s_magic, operation, *rule_id;
+	__u32 s_magic, operation, rule_id;
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct inode *inode;
@@ -28,10 +28,9 @@ static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const 
 
 	get_parent_ino_fs(msg, parent_dentry);
 
-	// check if we care about this file system
 	s_magic = BPF_CORE_READ(new_dentry, d_inode, i_sb, s_magic);
-	rule_id = map_lookup_elem(&file_system_type_map, &s_magic);
-	if (!rule_id)
+	rule_id = run_matcher(s_magic);
+	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
 	// At this point we know that we care about this access.
@@ -45,7 +44,7 @@ static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const 
 
 	generate_path_mixed(msg, (struct path *)dir, new_dentry);
 
-	complete_msg(msg, action_delete, hook_security_path_unlink, operation, *rule_id, 0);
+	complete_msg(msg, action_delete, hook_security_path_unlink, operation, rule_id, 0);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

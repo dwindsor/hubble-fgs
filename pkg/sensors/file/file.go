@@ -83,6 +83,14 @@ const (
 	MixedTpMode      = InodeBasedTpMode | PathBasedTpMode // This requires both inode and path based hooks. For now this is not supported.
 )
 
+type PathBasedMatcher uint32
+
+const (
+	InvalidMatcher PathBasedMatcher = iota
+	MatchAll
+	FsTypeMatcher
+)
+
 var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
@@ -366,7 +374,7 @@ func TerminateFsScanner() error {
 
 func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pin string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
 	// no need to send a message to fs-scanner for path-based policies
-	if m, err := GetTpMode(&s); err == nil && m != InodeBasedTpMode {
+	if m, _, err := GetTpMode(&s); err == nil && m != InodeBasedTpMode {
 		return make(map[fileapi.InodeKey]fileapi.InodeVal), nil
 	}
 
@@ -394,7 +402,7 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 
 func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.FileSpec, flags uint32) error {
 	// no need to send a message to fs-scanner for path-based policies
-	if m, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
+	if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
 		return nil
 	}
 
@@ -421,7 +429,7 @@ func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.F
 func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
 	if len(specPath) == 0 {
 		for _, s := range pol.FileMonitoringTable.GetValuesFIM() {
-			if m, err := GetTpMode(&s.Spec); err == nil && m == InodeBasedTpMode {
+			if m, _, err := GetTpMode(&s.Spec); err == nil && m == InodeBasedTpMode {
 				specPath = append(specPath, s)
 			}
 		}
@@ -873,7 +881,7 @@ type FimLoaderData struct {
 	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
 }
 
-func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -935,7 +943,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
 		// no need to send a message to fs-scanner for path-based policies
-		if m, err := GetTpMode(&kprobes); err == nil && m != InodeBasedTpMode {
+		if m, _, err := GetTpMode(&kprobes); err == nil && m != InodeBasedTpMode {
 			continue
 		}
 		s := fm.SpecPinPath{
@@ -1047,6 +1055,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			}
 			load.RewriteConstants = map[string]interface{}{
 				"USE_BPF_D_PATH_HELPER": uint32(val),
+				// this applies to all path-based programs
+				// so, we don't need to use a separate section for that
+				"PATH_BASED_MATCHER": uint32(pathMatcher),
 			}
 		}
 
@@ -1630,8 +1641,9 @@ func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptio
 	return &conf, nil
 }
 
-func GetTpMode(s *v1alpha1.FileSpec) (TpMode, error) {
+func GetTpMode(s *v1alpha1.FileSpec) (TpMode, PathBasedMatcher, error) {
 	modeNum := TpMode(0)
+	pathMatcher := InvalidMatcher
 	for _, p := range s.PathsPatterns {
 		switch tp := p.Type; tp {
 		case "FilePrefixSuffix":
@@ -1642,11 +1654,21 @@ func GetTpMode(s *v1alpha1.FileSpec) (TpMode, error) {
 			modeNum |= InodeBasedTpMode
 		case "FileSystemType":
 			modeNum |= PathBasedTpMode
+			if pathMatcher != InvalidMatcher {
+				return 0, InvalidMatcher, fmt.Errorf("FileSystemType cannot be combined with other path-based modes")
+			}
+			pathMatcher = FsTypeMatcher
+		case "AllFileOps":
+			modeNum |= PathBasedTpMode
+			if pathMatcher != InvalidMatcher {
+				return 0, InvalidMatcher, fmt.Errorf("AllFileOps cannot be combined with other path-based modes")
+			}
+			pathMatcher = MatchAll
 		default:
-			return 0, fmt.Errorf("getHooksType unknown pattern type: %s", p.Type)
+			return 0, InvalidMatcher, fmt.Errorf("getHooksType unknown pattern type: %s", p.Type)
 		}
 	}
-	return modeNum, nil
+	return modeNum, pathMatcher, nil
 }
 
 func (k *observerFileSensor) PolicyHandler(
@@ -1688,7 +1710,7 @@ func (k *observerFileSensor) PolicyHandler(
 		logger.GetLogger().Warnf("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
 	}
 
-	mode, err := GetTpMode(newFileSpec)
+	mode, pathMatcher, err := GetTpMode(newFileSpec)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to get mode type: %w", err)
 	}
@@ -1728,7 +1750,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf)
+	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf, pathMatcher)
 }
 
 func loadProbe(args sensors.LoadProbeArgs) error {
