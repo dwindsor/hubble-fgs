@@ -48,20 +48,8 @@ emit_sk_event(void *ctx, struct socketmap_value *process, u64 cookie, u8 op)
 	e->tuple.daddr[1] = 0;
 	e->tuple.sport = 0;
 	e->tuple.dport = 0;
-	e->duration = 0;
-
-	switch (op) {
-	case ISO_MSG_OP_UDPCLOSE:
-		/* Fill in the current time as a place-holder for the duration. We will
-                * calculate the actual duration when we walk all the pseudo-sockets
-                * associated with this socket.
-                */
-		e->duration = e->common.ktime;
-		break;
-	case ISO_MSG_OP_RAWSOCK_CLOSE:
-		e->duration = e->common.ktime - process->create_time;
-		break;
-	}
+	e->create_time = process->create_time;
+	e->close_time = e->common.ktime; // ignored on create messages.
 
 	perf_event_output_metric(ctx, op, &tcpmon_map, BPF_F_CURRENT_CPU, e,
 				 sizeof(struct msg_ip_event));

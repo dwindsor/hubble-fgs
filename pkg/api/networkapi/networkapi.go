@@ -134,7 +134,8 @@ type MsgIPEvent struct {
 	SockCookie  uint64                  `align:"socket_cookie"`
 	SocketFlags uint32                  `align:"socket_flags"`
 	Version     uint32                  `align:"version"`
-	Duration    uint64                  `align:"duration"`
+	CreateTime  uint64                  `align:"create_time"`
+	CloseTime   uint64                  `align:"close_time"`
 }
 
 type MsgIPWithStatsEvent struct {

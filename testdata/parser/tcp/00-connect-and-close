@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 112        # size
+  h4 120        # size
   ? 8           # ktime
 
   ## tuple
@@ -36,7 +36,9 @@ EVENT TCPACCEPT
   ## pad
   $ 00 00 00 00
 
-  ## duration
+  ## create time
+  $ 00 00 00 00 00 00 00 00
+  ## close time
   $ 00 00 00 00 00 00 00 00
 
   h4 0x00 # pad
@@ -46,7 +48,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 112        # size
+  h4 120        # size
   ? 8           # ktime
 
   ## tuple
@@ -67,7 +69,9 @@ EVENT TCPCONNECTRET
   ## pad
   $ 00 00 00 00
 
-  ## duration
+  ## create time
+  $ 00 00 00 00 00 00 00 00
+  ## close time
   $ 00 00 00 00 00 00 00 00
 
   $ 00 00 00 00
@@ -79,7 +83,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 352        # size
+  h4 360        # size
   ? 8           # ktime
 
   ## tuple
@@ -100,7 +104,9 @@ EVENT TCPCLOSE
   ## pad
   $ 00 00 00 00
 
-  ## duration
+  ## create time
+  ? 8
+  ## close time
   ? 8
 
   ## socket stats
@@ -149,7 +155,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 352        # size
+  h4 360        # size
   ? 8           # ktime
 
   ## tuple
@@ -170,7 +176,9 @@ EVENT TCPCLOSE
   ## pad
   $ 00 00 00 00
 
-  ## duration
+  ## create time
+  ? 8
+  ## close time
   ? 8
 
   ## socket stats
@@ -218,7 +226,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 352        # size
+  h4 360        # size
   ? 8           # ktime
 
   ## tuple
@@ -239,7 +247,9 @@ EVENT TCPCLOSE
   ## pad
   $ 00 00 00 00
 
-  ## duration
+  ## create time
+  ? 8
+  ## close time
   ? 8
 
   ## socket stats

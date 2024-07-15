@@ -468,9 +468,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
 					}
 				}
-				// Send close event – Duration actually indicates close time
 				if !DisableCloseEvents {
-					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.CloseTime))
 				}
 				stats.Remove(udpKey)
 			} else {
@@ -481,9 +480,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				} else {
 					closeEvents = append(closeEvents, statsEvent)
 				}
-				// Send close event – Duration actually indicates close time
 				if !DisableCloseEvents {
-					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.Duration))
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.CloseTime))
 				}
 			}
 			err = udpMap.Delete(udpKey)

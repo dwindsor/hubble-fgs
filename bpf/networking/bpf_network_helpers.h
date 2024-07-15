@@ -494,7 +494,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	val->tuple.version_byte = packetver;
 	val->ret = err;
 	val->version = 0;
-	val->duration = data;
+	val->create_time = data;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_IP_ERROR, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 				 sizeof(struct msg_ip_event));

@@ -83,7 +83,8 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.version = 0,
-		.duration = 0,
+		.create_time = 0,
+		.close_time = 0,
 	};
 
 	probe_read_kernel(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));

@@ -102,7 +102,8 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
 	val->key.pid = socket->key.pid;
 	val->key.ktime = socket->key.ktime;
-	val->duration = ktime_get_ns() - socket->create_time;
+	val->create_time = socket->create_time;
+	val->close_time = ktime_get_ns();
 	val->socket_flags = socket->socket_flags;
 	val->tuple = socket->tuple;
 

@@ -770,7 +770,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		Details:       details,
 		Send:          send,
 		VersionByte:   uint64(event.Msg.Tuple.VersionByte),
-		Data:          event.Msg.Duration, // We use the Duration field to pass error data
+		Data:          event.Msg.CreateTime, // We use the CreateTime field to pass error data
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data

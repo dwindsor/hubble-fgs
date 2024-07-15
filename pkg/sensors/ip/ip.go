@@ -38,7 +38,7 @@ func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
 	unix := &layer3.MsgIPEventUnix{}
 
 	unix.Msg = m
-	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
+	unix.Duration = time.Duration((m.CloseTime - m.CreateTime) * uint64(time.Nanosecond))
 	if enableDns {
 		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
 	}
@@ -50,7 +50,7 @@ func MsgToIPWithStatsUnix(m *api.MsgIPWithStatsEvent) *layer3.MsgIPWithStatsEven
 	unix := &layer3.MsgIPWithStatsEventUnix{}
 
 	unix.Msg = m
-	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
+	unix.Duration = time.Duration((m.CloseTime - m.CreateTime) * uint64(time.Nanosecond))
 	if enableDns {
 		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
 	}
