@@ -24,18 +24,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
-
-	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
 func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
-	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
-	k8sWatcher.Start()
-	e := NewJSONEncoder(&b, nil, k8sWatcher, false, make(map[string]struct{}))
+	e := NewJSONEncoder(&b, nil, false, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -56,9 +49,7 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 
 func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
-	k8sWatcher := enterpriseWatcher.NewK8sWatcher(fake.NewSimpleClientset(), 0)
-	k8sWatcher.Start()
-	e := NewJSONEncoder(&b, &flowBuffer, k8sWatcher, true, make(map[string]struct{}))
+	e := NewJSONEncoder(&b, &flowBuffer, true, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
 		NodeName: "my-node",
@@ -101,26 +92,11 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 }
 
 func TestJSONEncoder_processConnectToFlow(t *testing.T) {
-	client := fake.NewSimpleClientset(
-		&corev1.Service{
-			ObjectMeta: v1.ObjectMeta{Name: "svc-1", Namespace: "ns-1"},
-			Spec: corev1.ServiceSpec{
-				ClusterIPs: []string{"1.1.1.1"},
-			},
-		},
-		&corev1.Service{
-			ObjectMeta: v1.ObjectMeta{Name: "svc-2", Namespace: "ns-2"},
-			Spec: corev1.ServiceSpec{
-				ClusterIPs: []string{"2.2.2.2"},
-			},
-		})
-	k8sWatcher := enterpriseWatcher.NewK8sWatcher(client, 0)
-	k8sWatcher.Start()
 	nodeIPs := map[string]struct{}{
 		"10.0.0.1": {},
 		"10.0.0.2": {},
 	}
-	e := NewJSONEncoder(io.Discard, io.Discard, k8sWatcher, true, nodeIPs)
+	e := NewJSONEncoder(io.Discard, io.Discard, true, nodeIPs)
 
 	// Empty connect event
 	event := tetragon.GetEventsResponse{
@@ -152,6 +128,10 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				Protocol:        tetragon.SocketProtocol_TCP,
 			},
 		},
+	}
+	event.GetProcessConnect().DestinationService = &tetragon.Service{
+		Namespace: "ns-2",
+		Name:      "svc-2",
 	}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
@@ -194,6 +174,10 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				"key2": "val2",
 			},
 		},
+	}
+	event.GetProcessConnect().DestinationService = &tetragon.Service{
+		Namespace: "ns-2",
+		Name:      "svc-2",
 	}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{

@@ -445,7 +445,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if option.Config.ExportFilename != "" {
-		if err = startExporter(ctx, pm.Server, k8sWatcher); err != nil {
+		if err = startExporter(ctx, pm.Server); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
@@ -665,7 +665,7 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	return writer, nil
 }
 
-func startExporter(ctx context.Context, server *server.Server, watcher watcher.K8sResourceWatcher) error {
+func startExporter(ctx context.Context, server *server.Server) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
 		return err
@@ -716,7 +716,7 @@ func startExporter(ctx context.Context, server *server.Server, watcher watcher.K
 	nodeIPs := encoder.GetNodeIPs()
 	// Track how many bytes are written to the event export location
 	encoderWriter := exporter.NewExportedBytesTotalWriter(writer)
-	encoder := encoder.NewJSONEncoder(encoderWriter, flowWriter, watcher, enableFlowExport, nodeIPs)
+	encoder := encoder.NewJSONEncoder(encoderWriter, flowWriter, enableFlowExport, nodeIPs)
 	var rateLimiter *ratelimit.RateLimiter
 	if option.Config.ExportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, option.Config.ExportRateLimit, encoder)

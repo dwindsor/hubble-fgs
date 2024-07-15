@@ -25,10 +25,7 @@ import (
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/golang/protobuf/ptypes/wrappers"
-
-	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.
@@ -39,15 +36,13 @@ import (
 type JSONEncoder struct {
 	flowEncoder      *json.Encoder
 	protoJSONEncoder *jsonEncoder.ProtojsonEncoder
-	watcher          watcher.K8sResourceWatcher
 	enableFlowExport bool
 	nodeIPs          map[string]struct{}
 }
 
-func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, watcher watcher.K8sResourceWatcher, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
+func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
 	encoder := JSONEncoder{
 		protoJSONEncoder: jsonEncoder.NewProtojsonEncoder(writer),
-		watcher:          watcher,
 		nodeIPs:          nodeIPs,
 	}
 	if enableFlowExport {
@@ -133,6 +128,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		source.Labels = labels.LabelWorld.GetModel()
 	}
 	destinationPod := pc.GetDestinationPod()
+	destinationSvc := pc.GetDestinationService()
 	var destinationService *flow.Service
 	if destinationPod != nil {
 		destination.Namespace = destinationPod.Namespace
@@ -143,19 +139,16 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		if destinationPod.Workload != "" && destinationPod.WorkloadKind != "" {
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
 		}
-	} else {
-		k8sDestinationServices, err := enterpriseWatcher.FindServiceByIP(h.watcher, pc.GetDestinationIp())
-		if err == nil {
-			destination.Namespace = k8sDestinationServices[0].Namespace
-			destinationService = &flow.Service{
-				Name:      k8sDestinationServices[0].Name,
-				Namespace: k8sDestinationServices[0].Namespace,
-			}
-		} else if _, ok := h.nodeIPs[pc.GetDestinationIp()]; ok {
-			destination.Labels = labels.LabelHost.GetModel()
-		} else {
-			destination.Labels = labels.LabelWorld.GetModel()
+	} else if destinationSvc != nil {
+		destination.Namespace = destinationSvc.Namespace
+		destinationService = &flow.Service{
+			Name:      destinationSvc.Name,
+			Namespace: destinationSvc.Namespace,
 		}
+	} else if _, ok := h.nodeIPs[pc.GetDestinationIp()]; ok {
+		destination.Labels = labels.LabelHost.GetModel()
+	} else {
+		destination.Labels = labels.LabelWorld.GetModel()
 	}
 	return &flow.Flow{
 		Verdict:            flow.Verdict_TRACED,
