@@ -150,7 +150,7 @@ tetragon-bpf-container:
 	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
 .PHONY: fgs-bench
-fgs-bench:
+fgs-bench: ## Compile fgs-bench tool.
 	$(GO) build ./cmd/fgs-bench
 
 .PHONY: fgs-bench-image
@@ -200,13 +200,13 @@ install:
 ##@ Container images
 
 .PHONY: image
-image:
+image: ## Build the Tetragon agent container image.
 	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --target release --platform=linux/${TARGET_ARCH} .
 	$(QUIET)@echo "Push like this when ready:"
 	$(QUIET)@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 .PHONY: image-operator
-image-operator:
+image-operator: ## Build the Tetragon operator container image.
 	$(CONTAINER_ENGINE) build -f Dockerfile.operator -t "${OPERATOR_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
 	$(QUIET)@echo "Push like this when ready:"
 	$(QUIET)@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
@@ -274,7 +274,7 @@ GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.59.1@sha256:b5f8712114561
 GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
-check:
+check: ## Run Go linters.
 	golangci-lint run
 else
 check:
@@ -282,7 +282,7 @@ check:
 endif
 
 .PHONY: test
-test: tester-progs hubble-bpf
+test: tester-progs hubble-bpf ## Run Go tests.
 	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
@@ -295,11 +295,11 @@ tester-progs:
 
 .PHONY: tetragon-bpf-verify hubble-bpf-verify
 hubble-bpf-verify: | tetragon-bpf-verify
-tetragon-bpf-verify: tetragon-bpf
+tetragon-bpf-verify: tetragon-bpf ## Verify BPF programs.
 	sudo contrib/fgs-verify-programs bpf/objs
 
 .PHONY: alignchecker
-alignchecker:
+alignchecker: ## Run alignchecker.
 	$(GO) test -c ./pkg/alignchecker -o alignchecker
 
 TEST_COMPILE ?= ./...
@@ -362,7 +362,7 @@ endif
 		-tetragon.helm.set tetragonOperator.image.override="$(E2E_OPERATOR)"
 
 .PHONY: parsertest
-parsertest:
+parsertest: ## Run parser Go tests.
 	$(GO) test -c ./pkg/parsertest -o parsertest
 
 .PHONY: parsertest-gen
@@ -371,9 +371,8 @@ parsertest-gen:
 
 ##@ Development
 
-# generate cscope for bpf files
 .PHONY: cscope
-cscope:
+cscope: ## Generate cscope for bpf files.
 	find bpf -name "*.[chxsS]" -print > cscope.files
 	cscope -b -q -k
 
@@ -402,7 +401,7 @@ crds: ## Generate kubebuilder files.
 	$(MAKE) vendor
 
 .PHONY: vendor
-vendor:
+vendor: ## Tidy and vendor Go modules.
 	$(MAKE) -C ./api vendor
 	$(MAKE) -C ./pkg/k8s vendor
 	$(GO) mod tidy
@@ -411,7 +410,7 @@ vendor:
 
 .PHONY: clang-format
 ifeq (1,$(LOCAL_CLANG_FORMAT))
-clang-format:
+clang-format: ## Run code formatter on BPF code.
 	find bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 clang-format -i -style=file
 else
 clang-format:
@@ -421,11 +420,11 @@ clang-format:
 endif
 
 .PHONY: go-format
-go-format:
+go-format: ## Run code formatter on Go code.
 	find . -name '*.go' -not -path './vendor/*' -not -path './api/vendor/*' -not -path './pkg/k8s/vendor/*' -not -path './modules/*' -not -path './api/v1/tetragon/*' | xargs gofmt -w
 
 .PHONY: format
-format: go-format clang-format
+format: go-format clang-format ## Convenience alias for clang-format and go-format.
 
 .PHONY: generate-flags
 generate-flags: tetragon ## Generate Tetragon daemon flags for documentation.
@@ -460,20 +459,20 @@ metrics-docs: tetragon-metrics-docs ## Generate metrics reference.
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs tls >> $(METRICS_DOCS_PATH)
 
 .PHONY: lint-metrics-md
-lint-metrics-md: metrics-docs
+lint-metrics-md: metrics-docs ## Check if metrics reference is up to date.
 	@if [ -n "$$(git status --porcelain $(METRICS_DOCS_PATH))" ]; then \
 		echo "metrics doc out of sync; please run 'make metrics-docs'" > /dev/stderr; \
 		false; \
 	fi
 
 .PHONY: update-copyright
-update-copyright:
+update-copyright: ## Update copyright headers.
 	for dir in $(COPYRIGHT_DIRS); do \
 		contrib/copyright-headers update $$dir; \
 	done
 
 .PHONY: check-copyright
-check-copyright:
+check-copyright: ## Check copyright headers.
 	for dir in $(COPYRIGHT_DIRS); do \
 		contrib/copyright-headers check $$dir; \
 	done
