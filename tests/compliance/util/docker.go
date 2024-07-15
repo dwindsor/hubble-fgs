@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -59,7 +58,7 @@ func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []st
 		return []string{}, fmt.Errorf("failed to create docker client: %w", err)
 	}
 
-	res, err := client.ContainerExecCreate(ctx.Ctx, ctx.ContainerId, types.ExecConfig{
+	res, err := client.ContainerExecCreate(ctx.Ctx, ctx.ContainerId, container.ExecOptions{
 		Tty:          true,
 		AttachStderr: true,
 		AttachStdout: true,
@@ -71,7 +70,7 @@ func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []st
 	}
 	execID := res.ID
 
-	execRes, err := client.ContainerExecAttach(ctx.Ctx, execID, types.ExecStartCheck{
+	execRes, err := client.ContainerExecAttach(ctx.Ctx, execID, container.ExecStartOptions{
 		Detach: false,
 		Tty:    true,
 	})
