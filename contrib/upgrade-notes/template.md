@@ -13,6 +13,10 @@ Depending on your setup, changes listed here might require a manual intervention
 
 * TBD
 
+### OLM manifests
+
+* TBD
+
 ### TracingPolicy (k8s CRD)
 
 * TBD
