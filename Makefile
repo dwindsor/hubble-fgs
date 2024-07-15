@@ -108,56 +108,32 @@ all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 -include Makefile.bundle
 -include Makefile.olmindex
 
-.PHONY: help
-help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well-documented-makefiles/
-	$(call print_help_from_comments)
-
-.PHONY: oss-sync
-oss-sync: ## Sync OSS submodule and create an oss-sync commit.
-	@echo Syncing OSS submodule...
-	@./contrib/oss-chores/oss-sync.sh "$(OSS_SYNC_TARGET)"
-
-.PHONY: oss-init
-oss-init: ## Initialize the OSS submodule.
-	@echo Initializing and updating submodules...
-	git submodule update --init $(OSS_DIR)
-
-.PHONY: oss-update
-oss-update: ## Pull in latest OSS code and update everything (codegen, go modules).
-	# Update the submodule and vendor any changes.
-	@echo Updating submodule...
-	git submodule update --remote $(OSS_DIR)
-	@echo Vendoring and verifiying modules...
-	make vendor
-	# Codegen is vendored, so we need to run make generate && make codegen here to
-	# pick up changes.
-	@echo Generating code...
-	make generate && make codegen
-	# NB, we need to vendor for a second time here since codegen may have introduced
-	# new dependencies.
-	@echo Vendoring and verifiying modules...
-	make vendor
-
-.PHONY: oss-checkout
-oss-checkout: ## Pull in OSS code that matches the current registered version and update everything (codegen, go modules).
-	@echo Updating submodule to match the registered version...
-	git submodule update $(OSS_DIR)
-	# Codegen is vendored, so we need to run make generate && make codegen here to
-	# pick up changes.
-	@echo Generating code...
-	make generate && make codegen
-	# NB, we need to vendor for a second time here since codegen may have introduced
-	# new dependencies.
-	@echo Vendoring and verifiying modules...
-	make vendor
-
-# Generate compile-commands.json using bear
-.PHONY: compile-commands
-compile-commands:
+.PHONY: clean
+clean: tarball-clean
 	$(MAKE) -C ./bpf clean
-	bear -- $(MAKE) -C ./bpf
+	$(MAKE) -C $(TESTER_PROGS_DIR) clean
+	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN) $(FS_SCANNER_RUNNER)
+	rm -fr ./release
 
-.PHONY: tetragon-bpf
+##@ Build and install
+
+.PHONY: tetragon hubble-fgs
+hubble-fgs: | tetragon
+tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
+	$(GO_BUILD) ./cmd/tetragon
+
+.PHONY: tetragon-operator hubble-enterprise-operator
+hubble-enterprise-operator: | tetragon-operator
+tetragon-operator: ## Compile the Tetragon operator.
+	$(GO_BUILD) -o $@ ./operator
+
+.PHONY: tetra hubble-enterprise
+hubble-enterprise: | tetra
+tetra: ## Compile the Tetragon gRPC client.
+	$(GO_BUILD) ./cmd/tetra
+
+.PHONY: tetragon-bpf hubble-bpf
+hubble-bpf: | tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
 tetragon-bpf: tetragon-bpf-local ## Compile bpf programs.
 else
@@ -173,57 +149,6 @@ tetragon-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang || true
 	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
-.PHONY: tetragon-bpf-verify
-tetragon-bpf-verify: tetragon-bpf
-	sudo contrib/fgs-verify-programs bpf/objs
-
-.PHONY: tetragon
-tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
-	$(GO_BUILD) ./cmd/tetragon
-
-.PHONY: tetra
-tetra: ## Compile the Tetragon gRPC client.
-	$(GO_BUILD) ./cmd/tetra
-
-.PHONY: tetragon-operator
-tetragon-operator: ## Compile the Tetragon operator.
-	$(GO_BUILD) -o $@ ./operator
-
-.PHONY: tetragon-fs-scanner
-tetragon-fs-scanner:
-	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
-	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
-
-.PHONY: generate-flags
-generate-flags: tetragon ## Generate Tetragon daemon flags for documentation.
-	echo "$$(./tetragon --generate-docs)" > docs/configuration/tetragon_flags.yaml
-
-.PHONY: ksyms
-ksyms:
-	make -C $(OSS_DIR) ksyms
-	cp $(OSS_DIR)/ksyms ksyms
-
-.PHONY: install
-install:
-	groupadd -f hubble
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
-
-.PHONY: vendor
-vendor:
-	$(MAKE) -C ./api vendor
-	$(MAKE) -C ./pkg/k8s vendor
-	$(GO) mod tidy
-	$(GO) mod vendor
-	$(GO) mod verify
-
-.PHONY: clean
-clean: tarball-clean
-	$(MAKE) -C ./bpf clean
-	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN) $(FS_SCANNER_RUNNER)
-	rm -fr ./release
-
 .PHONY: fgs-bench
 fgs-bench:
 	$(GO) build ./cmd/fgs-bench
@@ -236,26 +161,169 @@ fgs-bench-image:
 fgs-bench-graph:
 	$(GO) build ./cmd/fgs-bench-graph
 
-.PHONY: parsertest
-parsertest:
-	$(GO) test -c ./pkg/parsertest -o parsertest
+.PHONY: tetragon-fs-scanner
+tetragon-fs-scanner:
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
+	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
 
-.PHONY: parsertest-gen
-parsertest-gen:
-	$(GO_BUILD) ./cmd/parsertest-gen
+GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)
 
-.PHONY: alignchecker
-alignchecker:
-	$(GO) test -c ./pkg/alignchecker -o alignchecker
+.PHONY: tetragon-oci-hook
+tetragon-oci-hook:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/oci-hook
+
+.PHONY: tetragon-oci-hook-setup
+tetragon-oci-hook-setup:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/setup
+
+.PHONY: tetragon-nri-hook
+tetragon-nri-hook:
+	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/nri-hook
+
+.PHONY: ksyms
+ksyms:
+	make -C $(OSS_DIR) ksyms
+	cp $(OSS_DIR)/ksyms ksyms
+
+# Generate compile-commands.json using bear
+.PHONY: compile-commands
+compile-commands:
+	$(MAKE) -C ./bpf clean
+	bear -- $(MAKE) -C ./bpf
+
+.PHONY: install
+install:
+	groupadd -f hubble
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
+
+##@ Container images
+
+.PHONY: image
+image:
+	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --target release --platform=linux/${TARGET_ARCH} .
+	$(QUIET)@echo "Push like this when ready:"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-operator
+image-operator:
+	$(CONTAINER_ENGINE) build -f Dockerfile.operator -t "${OPERATOR_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
+	$(QUIET)@echo "Push like this when ready:"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-test
+image-test:
+	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)@echo "Push like this when ready:"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-clang
+image-clang:
+	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)@echo "Push like this when ready:"
+	$(QUIET)@echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
+
+##@ Packages
+
+.PHONY: tarball
+# Share same build environment as docker image
+# Then it uses docker save to dump the layer and use it to
+# contruct the tarball.
+# Requires 'jq' to be installed
+tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
+	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
+	$(CONTAINER_ENGINE) save isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/docker/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/docker/
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
+	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	sync $(BUILD_PKG_DIR)/docker/manifest.json
+	cat $(BUILD_PKG_DIR)/docker/manifest.json
+	cp "${BUILD_PKG_DIR}/docker/$$(jq -r '.[].Layers[0]' "${BUILD_PKG_DIR}/docker/manifest.json")" ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
+	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/bin/tetragon" - \
+		|| (echo "make: '$@' Error: could not find tetragon inside generated tarball"; exit 1)
+	@rm -fr $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
+	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
+
+.PHONY: tarball-release
+tarball-release: tarball ## Build Tetragon Enterprise release tarball.
+	mkdir -p release/
+	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz release/
+	(cd release && sha256sum tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
+
+.PHONY: tarball-clean
+tarball-clean:
+	rm -fr $(BUILD_PKG_DIR)
 
 .PHONY: package-fgs-bench
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
 
+##@ Test
+
+.PHONY: lint
+lint:
+	golint -set_exit_status $$(go list ./...)
+
+# renovate: datasource=docker
+GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.59.1@sha256:b5f8712114561f1e2fbe74d04ed07ddfd992768705033a6251f3c7b848eac38e
+GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
+GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
+ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
+check:
+	golangci-lint run
+else
+check:
+	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
+endif
+
 .PHONY: test
 test: tester-progs hubble-bpf
 	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
+
+.PHONY: tester-progs
+tester-progs:
+	$(MAKE) -C $(TESTER_PROGS_DIR)
+	$(MAKE) -C $(OSS_TESTER_PROGS_DIR)
+	# NB(kkourt): This is not pretty, but we need it so that OSS testutils can find its contrib
+	# programs. We can probably refactor OSS to deal with it, but that's for another day.
+	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
+
+.PHONY: tetragon-bpf-verify hubble-bpf-verify
+hubble-bpf-verify: | tetragon-bpf-verify
+tetragon-bpf-verify: tetragon-bpf
+	sudo contrib/fgs-verify-programs bpf/objs
+
+.PHONY: alignchecker
+alignchecker:
+	$(GO) test -c ./pkg/alignchecker -o alignchecker
+
+TEST_COMPILE ?= ./...
+.PHONY: test-compile
+test-compile: ## Compile Go tests.
+	mkdir -p go-tests
+	for pkg in $$($(GO) list "$(TEST_COMPILE)"); do \
+		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
+		localtestfile=$$(echo $$localpkg | sed -e 's:/:.:g'); \
+		numtests=$$(ls -l ./$$localpkg/*_test.go 2> /dev/null | wc -l); \
+		if [ $$numtests -le 0 ]; then \
+			continue; \
+		fi; \
+		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
+	done | GOMAXPROCS=1 xargs -P $(JOBS) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
+
+.PHONY: fetch-testdata
+fetch-testdata:
+	docker stop fgs-md-temp || true
+	docker rm fgs-md-temp || true
+	docker create --name fgs-md-temp $(METADATA_IMAGE)
+	mkdir -p testdata/btf
+	docker cp fgs-md-temp:/var/run/tetragon-ee-metadata/vmlinux-5.4.104+ testdata/btf
+	docker stop fgs-md-temp || true
 
 E2E_TIMEOUT ?= 20m
 # Agent image to use for end-to-end tests
@@ -291,115 +359,23 @@ endif
 		-tetragon.helm.set tetragon.image.override="$(E2E_AGENT)"      \
 		-tetragon.helm.set tetragonOperator.image.override="$(E2E_OPERATOR)"
 
-TEST_COMPILE ?= ./...
-.PHONY: test-compile
-test-compile: ## Compile Go tests.
-	mkdir -p go-tests
-	for pkg in $$($(GO) list "$(TEST_COMPILE)"); do \
-		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
-		localtestfile=$$(echo $$localpkg | sed -e 's:/:.:g'); \
-		numtests=$$(ls -l ./$$localpkg/*_test.go 2> /dev/null | wc -l); \
-		if [ $$numtests -le 0 ]; then \
-			continue; \
-		fi; \
-		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
-	done | GOMAXPROCS=1 xargs -P $(JOBS) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
+.PHONY: parsertest
+parsertest:
+	$(GO) test -c ./pkg/parsertest -o parsertest
 
+.PHONY: parsertest-gen
+parsertest-gen:
+	$(GO_BUILD) ./cmd/parsertest-gen
 
-.PHONY: check-copyright
-check-copyright:
-	for dir in $(COPYRIGHT_DIRS); do \
-		contrib/copyright-headers check $$dir; \
-	done
+##@ Development
 
-.PHONY: update-copyright
-update-copyright:
-	for dir in $(COPYRIGHT_DIRS); do \
-		contrib/copyright-headers update $$dir; \
-	done
+# generate cscope for bpf files
+.PHONY: cscope
+cscope:
+	find bpf -name "*.[chxsS]" -print > cscope.files
+	cscope -b -q -k
 
-.PHONY: lint
-lint:
-	golint -set_exit_status $$(go list ./...)
-
-.PHONY: tarball
-# Share same build environment as docker image
-# Then it uses docker save to dump the layer and use it to
-# contruct the tarball.
-# Requires 'jq' to be installed
-tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
-	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
-	$(CONTAINER_ENGINE) save isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	$(QUIET)rm -fr $(BUILD_PKG_DIR)/docker/
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/docker/
-	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
-	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	sync $(BUILD_PKG_DIR)/docker/manifest.json
-	cat $(BUILD_PKG_DIR)/docker/manifest.json
-	cp "${BUILD_PKG_DIR}/docker/$$(jq -r '.[].Layers[0]' "${BUILD_PKG_DIR}/docker/manifest.json")" ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
-	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/bin/tetragon" - \
-		|| (echo "make: '$@' Error: could not find tetragon inside generated tarball"; exit 1)
-	@rm -fr $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
-	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
-	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
-
-.PHONY: tarball-release
-tarball-release: tarball ## Build Tetragon Enterprise release tarball.
-	mkdir -p release/
-	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz release/
-	(cd release && sha256sum tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
-
-.PHONY: tarball-clean
-tarball-clean:
-	rm -fr $(BUILD_PKG_DIR)
-
-.PHONY: image
-image:
-	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --target release --platform=linux/${TARGET_ARCH} .
-	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-operator
-image-operator:
-	$(CONTAINER_ENGINE) build -f Dockerfile.operator -t "${OPERATOR_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
-	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-test
-image-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
-	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-clang
-image-clang:
-	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
-	$(QUIET)@echo "Push like this when ready:"
-	$(QUIET)@echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: protoc-gen-go-tetragon
-protoc-gen-go-tetragon:
-	$(GO_BUILD) -o bin/$@ ./tools/protoc-gen-go-tetragon/
-
-.PHONY: fetch-testdata
-fetch-testdata:
-	docker stop fgs-md-temp || true
-	docker rm fgs-md-temp || true
-	docker create --name fgs-md-temp $(METADATA_IMAGE)
-	mkdir -p testdata/btf
-	docker cp fgs-md-temp:/var/run/tetragon-ee-metadata/vmlinux-5.4.104+ testdata/btf
-	docker stop fgs-md-temp || true
-
-.PHONY: generate crds
-generate: | crds
-crds: ## Generate kubebuilder files.
-	# Need to call vendor twice here, once before and once after generate, the reason
-	# being we need to grab changes first plus pull in whatever gets generated here.
-	$(MAKE) vendor
-	$(MAKE) -C pkg/k8s
-	$(MAKE) vendor
+##@ Chores and generated files
 
 .PHONY: codegen protogen
 codegen: | protogen
@@ -410,17 +386,26 @@ protogen: protoc-gen-go-tetragon ## Generate code based on .proto files.
 	$(MAKE) -C api
 	$(MAKE) vendor
 
-# renovate: datasource=docker
-GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.59.1@sha256:b5f8712114561f1e2fbe74d04ed07ddfd992768705033a6251f3c7b848eac38e
-GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
-GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
-ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
-check:
-	golangci-lint run
-else
-check:
-	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
-endif
+.PHONY: protoc-gen-go-tetragon
+protoc-gen-go-tetragon:
+	$(GO_BUILD) -o bin/$@ ./tools/protoc-gen-go-tetragon/
+
+.PHONY: generate crds
+generate: | crds
+crds: ## Generate kubebuilder files.
+	# Need to call vendor twice here, once before and once after generate, the reason
+	# being we need to grab changes first plus pull in whatever gets generated here.
+	$(MAKE) vendor
+	$(MAKE) -C pkg/k8s
+	$(MAKE) vendor
+
+.PHONY: vendor
+vendor:
+	$(MAKE) -C ./api vendor
+	$(MAKE) -C ./pkg/k8s vendor
+	$(GO) mod tidy
+	$(GO) mod vendor
+	$(GO) mod verify
 
 .PHONY: clang-format
 ifeq (1,$(LOCAL_CLANG_FORMAT))
@@ -440,50 +425,9 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-# generate cscope for bpf files
-.PHONY: cscope
-cscope:
-	find bpf -name "*.[chxsS]" -print > cscope.files
-	cscope -b -q -k
-
-.PHONY: tester-progs
-tester-progs:
-	$(MAKE) -C $(TESTER_PROGS_DIR)
-	$(MAKE) -C $(OSS_TESTER_PROGS_DIR)
-	# NB(kkourt): This is not pretty, but we need it so that OSS testutils can find its contrib
-	# programs. We can probably refactor OSS to deal with it, but that's for another day.
-	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
-
-.PHONY: version
-version: ## Print Tetragon version.
-	@echo $(VERSION)
-
-# those are legacy aliases
-.PHONY: hubble-fgs
-hubble-fgs: tetragon
-.PHONY: hubble-enterprise
-hubble-enterprise: tetra
-.PHONY: hubble-enterprise-operator
-hubble-enterprise-operator: tetragon-operator
-.PHONY: hubble-bpf
-hubble-bpf: tetragon-bpf
-.PHONY: hubble-bpf-verify
-hubble-bpf-verify: tetragon-bpf-verify
-
-
-GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)
-
-.PHONY: tetragon-oci-hook
-tetragon-oci-hook:
-	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/oci-hook
-
-.PHONY: tetragon-oci-hook-setup
-tetragon-oci-hook-setup:
-	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/setup
-
-.PHONY: tetragon-nri-hook
-tetragon-nri-hook:
-	$(GO_BUILD_HOOK) -o $(shell realpath .)/$@ ./cmd/nri-hook
+.PHONY: generate-flags
+generate-flags: tetragon ## Generate Tetragon daemon flags for documentation.
+	echo "$$(./tetragon --generate-docs)" > docs/configuration/tetragon_flags.yaml
 
 METRICS_DOCS_PATH := docs/metrics/metrics.md
 
@@ -519,3 +463,66 @@ lint-metrics-md: metrics-docs
 		echo "metrics doc out of sync; please run 'make metrics-docs'" > /dev/stderr; \
 		false; \
 	fi
+
+.PHONY: update-copyright
+update-copyright:
+	for dir in $(COPYRIGHT_DIRS); do \
+		contrib/copyright-headers update $$dir; \
+	done
+
+.PHONY: check-copyright
+check-copyright:
+	for dir in $(COPYRIGHT_DIRS); do \
+		contrib/copyright-headers check $$dir; \
+	done
+
+##@ OSS submodule helpers
+
+.PHONY: oss-sync
+oss-sync: ## Sync OSS submodule and create an oss-sync commit.
+	@echo Syncing OSS submodule...
+	@./contrib/oss-chores/oss-sync.sh "$(OSS_SYNC_TARGET)"
+
+.PHONY: oss-init
+oss-init: ## Initialize the OSS submodule.
+	@echo Initializing and updating submodules...
+	git submodule update --init $(OSS_DIR)
+
+.PHONY: oss-checkout
+oss-checkout: ## Pull in OSS code that matches the current registered version and update everything (codegen, go modules).
+	@echo Updating submodule to match the registered version...
+	git submodule update $(OSS_DIR)
+	# Codegen is vendored, so we need to run make generate && make codegen here to
+	# pick up changes.
+	@echo Generating code...
+	make generate && make codegen
+	# NB, we need to vendor for a second time here since codegen may have introduced
+	# new dependencies.
+	@echo Vendoring and verifiying modules...
+	make vendor
+
+.PHONY: oss-update
+oss-update: ## Pull in latest OSS code and update everything (codegen, go modules).
+	# Update the submodule and vendor any changes.
+	@echo Updating submodule...
+	git submodule update --remote $(OSS_DIR)
+	@echo Vendoring and verifiying modules...
+	make vendor
+	# Codegen is vendored, so we need to run make generate && make codegen here to
+	# pick up changes.
+	@echo Generating code...
+	make generate && make codegen
+	# NB, we need to vendor for a second time here since codegen may have introduced
+	# new dependencies.
+	@echo Vendoring and verifiying modules...
+	make vendor
+
+##@ Documentation
+
+.PHONY: help
+help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well-documented-makefiles/
+	$(call print_help_from_comments)
+
+.PHONY: version
+version: ## Print Tetragon version.
+	@echo $(VERSION)

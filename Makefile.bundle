@@ -9,6 +9,8 @@ else
 	IMAGE_REPOSITORY := $(DOCKER_REGISTRY)/$(DOCKER_DEV_ACCOUNT)
 endif
 
+##@ OLM bundle
+
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
 	$(CONTAINER_ENGINE) build -f ./install/olm/bundle.Dockerfile -t $(IMAGE_REPOSITORY)/tetragon-operator-bundle:$(DOCKER_IMAGE_TAG) ./install/olm
