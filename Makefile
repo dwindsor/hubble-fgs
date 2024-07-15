@@ -1,3 +1,7 @@
+OSS_DIR := modules/tetragon-oss
+
+include $(OSS_DIR)/Makefile.defs
+
 GO := go
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
@@ -43,7 +47,6 @@ BUILD_PKG_DIR ?= $(shell pwd)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always --exclude 'api/*')
 
-OSS_DIR=./modules/tetragon-oss
 FS_SCANNER_BIN=bpf/objs/tetragon-fs-scanner
 FS_SCANNER_RUNNER=bpf/objs/tetragon-runner 
 
@@ -106,46 +109,21 @@ all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 -include Makefile.olmindex
 
 .PHONY: help
-help:
-	@echo 'OSS submodule helpers: '
-	@echo '    oss-sync     - sync OSS submodule and create an oss-sync commit'
-	@echo '    oss-init     - initialize the OSS submodule'
-	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
-	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
-	@echo 'Generated files: '
-	@echo '    protogen          - generate code based on .proto files'
-	@echo '    crds              - generate kubebuilder files'
-	@echo '    metrics-docs      - generate metrics reference'
-	@echo '    generate-flags    - generate Tetragon daemon flags for documentation'
-	@echo 'Compilation: '
-	@echo '    tetragon          - compile the Tetragon agent'
-	@echo '    tetragon-operator - compile the Tetragon operator'
-	@echo '    tetra             - compile the Tetragon gRPC client'
-	@echo '    tetragon-bpf      - compile bpf programs'
-	@echo '    test-compile - compile go tests'
-	@echo 'Packages:'
-	@echo '    tarball           - build Tetragon Enterprise compressed tarball'
-	@echo '    tarball-release   - build Tetragon Enterprise release tarball'
-	@echo 'Helpers: '
-	@echo '    version     - retrieve the current git tag version of the project'
-	@echo 'End-to-end tests: '
-	@echo '    e2e-test                                        - run e2e tests'
-	@echo '    e2e-test E2E_BUILD_IMAGES=0                     - run e2e tests without (re-)building images'
-	@echo '    e2e-test E2E_TESTS=./tests/e2e/tests/skeleton   - run a specific e2e test'
-
+help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well-documented-makefiles/
+	$(call print_help_from_comments)
 
 .PHONY: oss-sync
-oss-sync:
+oss-sync: ## Sync OSS submodule and create an oss-sync commit.
 	@echo Syncing OSS submodule...
 	@./contrib/oss-chores/oss-sync.sh "$(OSS_SYNC_TARGET)"
 
 .PHONY: oss-init
-oss-init:
+oss-init: ## Initialize the OSS submodule.
 	@echo Initializing and updating submodules...
 	git submodule update --init $(OSS_DIR)
 
 .PHONY: oss-update
-oss-update:
+oss-update: ## Pull in latest OSS code and update everything (codegen, go modules).
 	# Update the submodule and vendor any changes.
 	@echo Updating submodule...
 	git submodule update --remote $(OSS_DIR)
@@ -161,7 +139,7 @@ oss-update:
 	make vendor
 
 .PHONY: oss-checkout
-oss-checkout:
+oss-checkout: ## Pull in OSS code that matches the current registered version and update everything (codegen, go modules).
 	@echo Updating submodule to match the registered version...
 	git submodule update $(OSS_DIR)
 	# Codegen is vendored, so we need to run make generate && make codegen here to
@@ -181,7 +159,7 @@ compile-commands:
 
 .PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
-tetragon-bpf: tetragon-bpf-local
+tetragon-bpf: tetragon-bpf-local ## Compile bpf programs.
 else
 tetragon-bpf: tetragon-bpf-container
 endif
@@ -200,15 +178,15 @@ tetragon-bpf-verify: tetragon-bpf
 	sudo contrib/fgs-verify-programs bpf/objs
 
 .PHONY: tetragon
-tetragon: tetragon-fs-scanner
+tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 	$(GO_BUILD) ./cmd/tetragon
 
 .PHONY: tetra
-tetra:
+tetra: ## Compile the Tetragon gRPC client.
 	$(GO_BUILD) ./cmd/tetra
 
 .PHONY: tetragon-operator
-tetragon-operator:
+tetragon-operator: ## Compile the Tetragon operator.
 	$(GO_BUILD) -o $@ ./operator
 
 .PHONY: tetragon-fs-scanner
@@ -217,7 +195,7 @@ tetragon-fs-scanner:
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
 
 .PHONY: generate-flags
-generate-flags: tetragon
+generate-flags: tetragon ## Generate Tetragon daemon flags for documentation.
 	echo "$$(./tetragon --generate-docs)" > docs/configuration/tetragon_flags.yaml
 
 .PHONY: ksyms
@@ -315,7 +293,7 @@ endif
 
 TEST_COMPILE ?= ./...
 .PHONY: test-compile
-test-compile:
+test-compile: ## Compile Go tests.
 	mkdir -p go-tests
 	for pkg in $$($(GO) list "$(TEST_COMPILE)"); do \
 		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
@@ -349,7 +327,7 @@ lint:
 # Then it uses docker save to dump the layer and use it to
 # contruct the tarball.
 # Requires 'jq' to be installed
-tarball: tarball-clean image
+tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
 	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
 	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
 	$(CONTAINER_ENGINE) save isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
@@ -368,7 +346,7 @@ tarball: tarball-clean image
 	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
 
 .PHONY: tarball-release
-tarball-release: tarball
+tarball-release: tarball ## Build Tetragon Enterprise release tarball.
 	mkdir -p release/
 	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz release/
 	(cd release && sha256sum tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
@@ -416,7 +394,7 @@ fetch-testdata:
 
 .PHONY: generate crds
 generate: | crds
-crds:
+crds: ## Generate kubebuilder files.
 	# Need to call vendor twice here, once before and once after generate, the reason
 	# being we need to grab changes first plus pull in whatever gets generated here.
 	$(MAKE) vendor
@@ -425,7 +403,7 @@ crds:
 
 .PHONY: codegen protogen
 codegen: | protogen
-protogen: protoc-gen-go-tetragon
+protogen: protoc-gen-go-tetragon ## Generate code based on .proto files.
 	# Need to call vendor twice here, once before and once after codegen the reason
 	# being we need to grab changes first plus pull in whatever gets generated here.
 	$(MAKE) vendor
@@ -477,7 +455,7 @@ tester-progs:
 	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
 
 .PHONY: version
-version:
+version: ## Print Tetragon version.
 	@echo $(VERSION)
 
 # those are legacy aliases
@@ -514,7 +492,7 @@ tetragon-metrics-docs:
 	$(GO_BUILD) ./cmd/tetragon-metrics-docs/
 
 .PHONY: metrics-docs
-metrics-docs: tetragon-metrics-docs
+metrics-docs: tetragon-metrics-docs ## Generate metrics reference.
 	echo '<!-- This file is autogenerated via `make metrics-docs` please do not edit directly. -->' > $(METRICS_DOCS_PATH)
 	echo "" >> $(METRICS_DOCS_PATH)
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs health >> $(METRICS_DOCS_PATH)
