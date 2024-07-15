@@ -153,10 +153,6 @@ tetragon-bpf-container:
 fgs-bench: ## Compile fgs-bench tool.
 	$(GO) build ./cmd/fgs-bench
 
-.PHONY: fgs-bench-image
-fgs-bench-image:
-	$(GO_BUILD) ./cmd/fgs-bench
-
 .PHONY: fgs-bench-graph
 fgs-bench-graph:
 	$(GO) build ./cmd/fgs-bench-graph
