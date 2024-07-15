@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
@@ -78,6 +79,14 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		// new accept sensor
 		3: tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
 		4: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
+	}
+
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			tus.SensorProg{Name: "security_sk_alloc",
+				Type: ebpf.Tracing,
+			},
+		}...)
 	}
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
@@ -382,7 +391,9 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	sensorProgs = append(sensorProgs, []tus.SensorProg{
 		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
 	}...)
-	confMap := tus.SensorMap{Name: "tg_conf_map", Progs: []uint{ni}}
+	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
+		"tg_event_tcp_connect", "execve_send",
+	})
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,

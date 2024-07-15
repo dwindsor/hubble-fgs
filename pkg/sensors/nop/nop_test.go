@@ -118,5 +118,13 @@ func TestLoadNopSensor(t *testing.T) {
 
 	assert.NoError(t, err, "nop sensor should load")
 
+	sensorProgs = append(sensorProgs, []tus.SensorProg{
+		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
+	}...)
+	ni := uint(len(sensorProgs))
+	sensorMaps = append(sensorMaps, []tus.SensorMap{
+		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{ni - 1}},
+	}...)
+
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 }
