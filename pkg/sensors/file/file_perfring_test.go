@@ -34,6 +34,7 @@ import (
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -281,7 +282,7 @@ func TestFileSuffixPattern(t *testing.T) {
 func TestFileFsTypeMatch(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
 
-	if (probeTracingModifyReturn() != nil) || (probeLSM() != nil) || (probeBpfLoop() != nil) {
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) {
 		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs")
 	}
 

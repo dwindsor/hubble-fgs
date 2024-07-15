@@ -19,8 +19,8 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func New() *cobra.Command {
@@ -110,7 +110,7 @@ func supportEnforcementCmd() *cobra.Command {
 		Short: "1 if host supports file enforcement, 0 otherwise",
 		Args:  cobra.ExactArgs(0),
 		Run: func(_ *cobra.Command, _ []string) {
-			if file.SupportEnforcement() {
+			if utils.SupportEnforcement() {
 				fmt.Print("1")
 			} else {
 				fmt.Print("0")

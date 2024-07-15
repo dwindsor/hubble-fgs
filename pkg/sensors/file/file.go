@@ -59,6 +59,7 @@ import (
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/google/uuid"
 )
@@ -1519,11 +1520,11 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 
 // returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
 func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
-	supportTracing := (probeTracingModifyReturn() == nil)
+	supportTracing := utils.SupportFmodRet()
 	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
 
-	supportLSM := (probeLSM() == nil)
+	supportLSM := utils.SupportLSM()
 	supportImaFileHash := (probeImaFileHashHelper() == nil)
 	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
