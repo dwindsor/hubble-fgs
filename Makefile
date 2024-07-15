@@ -226,6 +226,7 @@ ksyms:
 	make -C $(OSS_DIR) ksyms
 	cp $(OSS_DIR)/ksyms ksyms
 
+.PHONY: install
 install:
 	groupadd -f hubble
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
@@ -270,6 +271,7 @@ parsertest-gen:
 alignchecker:
 	$(GO) test -c ./pkg/alignchecker -o alignchecker
 
+.PHONY: package-fgs-bench
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
@@ -327,17 +329,19 @@ test-compile:
 	done | GOMAXPROCS=1 xargs -P $(JOBS) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
 
 
-.PHONY: check-copyright update-copyright
+.PHONY: check-copyright
 check-copyright:
 	for dir in $(COPYRIGHT_DIRS); do \
 		contrib/copyright-headers check $$dir; \
 	done
 
+.PHONY: update-copyright
 update-copyright:
 	for dir in $(COPYRIGHT_DIRS); do \
 		contrib/copyright-headers update $$dir; \
 	done
 
+.PHONY: lint
 lint:
 	golint -set_exit_status $$(go list ./...)
 
@@ -386,6 +390,7 @@ image-operator:
 	$(QUIET)@echo "Push like this when ready:"
 	$(QUIET)@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
+.PHONY: image-test
 image-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)@echo "Push like this when ready:"
@@ -401,6 +406,7 @@ image-clang:
 protoc-gen-go-tetragon:
 	$(GO_BUILD) -o bin/$@ ./tools/protoc-gen-go-tetragon/
 
+.PHONY: fetch-testdata
 fetch-testdata:
 	docker stop fgs-md-temp || true
 	docker rm fgs-md-temp || true
@@ -457,26 +463,23 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-.PHONY: headers image install lint check
-
-
 # generate cscope for bpf files
+.PHONY: cscope
 cscope:
 	find bpf -name "*.[chxsS]" -print > cscope.files
 	cscope -b -q -k
-.PHONY: cscope
 
+.PHONY: tester-progs
 tester-progs:
 	$(MAKE) -C $(TESTER_PROGS_DIR)
 	$(MAKE) -C $(OSS_TESTER_PROGS_DIR)
 	# NB(kkourt): This is not pretty, but we need it so that OSS testutils can find its contrib
 	# programs. We can probably refactor OSS to deal with it, but that's for another day.
 	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
-.PHONY: tester-progs
 
+.PHONY: version
 version:
 	@echo $(VERSION)
-.PHONY: version
 
 # those are legacy aliases
 .PHONY: hubble-fgs
