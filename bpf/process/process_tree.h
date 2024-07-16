@@ -61,12 +61,12 @@ struct {
 struct process_tree_key {
 	__u64 nsid;
 	struct msg_execve_key self;
+	struct msg_execve_key parent;
 };
 
 struct process_tree_value {
 	__u64 ktime_first_exec;
 	__u64 ktime_last_exec;
-	struct process_tree_key parent;
 };
 
 struct {
@@ -110,6 +110,7 @@ int insert_process_tree(void)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
 	__u32 pid = (get_current_pid_tgid() >> 32);
+	struct execve_map_value *parent;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
 	struct process_tree_key *k;
@@ -134,6 +135,16 @@ int insert_process_tree(void)
 				&curr->bin, &curr->key, 0);
 		self_uid = &curr->key;
 	}
+
+	parent = event_find_parent();
+	if (!parent)
+		goto out;
+
+	parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+	if (!parent_uid)
+		goto out;
+
+	k->parent = *parent_uid;
 	k->self = *self_uid;
 
 	cgid = tg_get_current_cgroup_id();
@@ -145,45 +156,29 @@ int insert_process_tree(void)
 
 	old = map_lookup_elem(&process_tree_map, k);
 	if (!old) {
-		struct process_tree_key parent_key = {};
-		struct execve_map_value *parent;
-
 		old = map_lookup_elem(&process_tree_value_heap, &zero);
 		if (!old)
 			return 0;
 
 		old->ktime_last_exec = ktime_get_ns();
 		old->ktime_first_exec = ktime_get_ns();
-
-		parent = event_find_parent();
-		if (!parent)
-			goto out;
-
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map,
-					     &parent->bin);
-		if (!parent_uid)
-			goto out;
-
-		parent_key.self = *parent_uid;
-		parent_key.nsid = k->nsid;
-		old->parent = parent_key;
+		map_update_elem(&process_tree_map, k, old, 0);
 	} else {
 		// Duplicating ktime sets in both branches to help verifier and
 		// clang generate code that play well together. Otherwise we lose
 		// old != NULL on some kernels.
 		old->ktime_last_exec = ktime_get_ns();
-		old->ktime_first_exec = ktime_get_ns();
 	}
 out:
-	map_update_elem(&process_tree_map, k, old, 0);
 	return 0;
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v)
 {
+	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
 	struct destination_endpoint_value *dest;
-	struct msg_execve_key *self_uid;
+	struct execve_map_value *parent;
 	struct execve_map_value *curr;
 	__u64 cgid, *nsid;
 
@@ -208,7 +203,17 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 				   &curr->bin);
 	if (!self_uid)
 		return 0;
+
+	parent = event_find_parent();
+	if (!parent)
+		return 0;
+
+	parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+	if (!parent_uid)
+		return 0;
+
 	destkey.process_id.self = *self_uid;
+	destkey.process_id.parent = *parent_uid;
 
 	cgid = tg_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);

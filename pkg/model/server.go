@@ -38,12 +38,12 @@ type processExecveKey struct {
 type processTreeKey struct {
 	CgroupId uint64
 	Self     processExecveKey
+	Parent   processExecveKey
 }
 
 type processTreeValue struct {
 	KtimeFirstExec uint64
 	KtimeLastExec  uint64
-	Parent         processTreeKey
 }
 
 type destinationEndpointKey struct {
@@ -164,7 +164,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 		selfStr := fmt.Sprintf("%s", uidValue.Path)
 
 		parentPath := ""
-		err = uidMap.Lookup(&val.Parent.Self, &uidValue)
+		err = uidMap.Lookup(&key.Parent, &uidValue)
 		if err == nil {
 			parentPath = fmt.Sprintf("%s", uidValue.Path)
 		}
