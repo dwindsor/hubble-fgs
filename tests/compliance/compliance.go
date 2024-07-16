@@ -130,6 +130,7 @@ func (ct *Test) createTestContainer(t *testing.T, ctx context.Context, cmd ...st
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
+	client.NegotiateAPIVersion(ctx)
 
 	containerCfg := &container.Config{
 		AttachStdout: true,
@@ -160,6 +161,7 @@ func (ct *Test) startTestContainer(t *testing.T, ctx *testcontext.TestContext) e
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
+	client.NegotiateAPIVersion(ctx.Ctx)
 
 	err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, container.StartOptions{})
 	if err != nil {
@@ -200,6 +202,7 @@ func (ct *Test) stopTestContainer(ctx *testcontext.TestContext) error {
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
+	client.NegotiateAPIVersion(ctx.Ctx)
 
 	if err := client.ContainerStop(ctx.Ctx, ctx.ContainerId, container.StopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop container: %w", err)
@@ -257,6 +260,7 @@ func (ct *Test) Build(t *testing.T, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
+	client.NegotiateAPIVersion(ctx)
 
 	res, err := client.ImageBuild(ctx, tar, types.ImageBuildOptions{
 		Tags:       []string{ct.Tag()},
