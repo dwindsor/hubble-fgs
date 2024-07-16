@@ -1,4 +1,4 @@
-package execconfig
+package layer3
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ func (v *ConfigValue) String() string {
 	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
 }
 
-func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) error {
+func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) error {
 	confMutex.Lock()
 	defer confMutex.Unlock()
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
@@ -85,13 +85,13 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	}
 	err = m.Put(key, value)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("ConfigureSettings couldn't update tg_cfg_map")
+		logger.GetLogger().WithError(err).Warn("configureSettings couldn't update tg_cfg_map")
 		return err
 	}
 	var vOut ConfigValue
 	err = m.Lookup(key, &vOut)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("ConfigureSettings couldn't lookup tg_cfg_map")
+		logger.GetLogger().WithError(err).Warn("configureSettings couldn't lookup tg_cfg_map")
 		return err
 	}
 	logger.GetLogger().WithFields(logrus.Fields{"enableIcmpTracking": icmpTracking}).Info("Config:")

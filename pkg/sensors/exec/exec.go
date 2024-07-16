@@ -24,7 +24,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
-	execconfig "github.com/isovalent/hubble-fgs/pkg/sensors/exec/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
 
@@ -244,17 +243,10 @@ type execSensor struct {
 
 func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err := program.LoadTracepointProgram(args.BPFDir, args.Load, args.Verbose)
-	if err == nil {
-		err = execconfig.ConfigureSettings(false, false, false)
-		if err != nil {
-			return err
-		}
-		err = procevents.GetRunningProcs()
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	return procevents.GetRunningProcs()
 }
 
 func init() {
