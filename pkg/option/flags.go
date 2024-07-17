@@ -33,6 +33,7 @@ const (
 	KeyBpfEndpointCacheSize     = "bpf-endpoint-cache-size"
 	KeyProcessTreeSize          = "process-tree-cache-size"
 	KeyTlsCacheSize             = "tls-cache-size"
+	KeyTcpCacheSize             = "tcp-cache-size"
 	KeyNetNsCacheSize           = "net-ns-cache-size"
 	KeyDetatchOldBPF            = "detach-old-bpf"
 	KeyEnableProcessAncestors   = "enable-process-ancestors"
@@ -55,6 +56,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyEndpointCacheSize, 1024, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
 	flags.Int(KeyBpfEndpointCacheSize, 1024, "Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
 	flags.Int(KeyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
+	flags.Int(KeyTcpCacheSize, 32768, "Set the size of the internal TCP cache. Higher values enable Tetragon to keep track of more concurrent TCP sessions before evicting old ones")
 	flags.Int(KeyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
 	flags.String(KeyFimFifoPath, defaults.DefaultRunDir, "Path for the FIFO used for fs-scanner and tetragon communication")
 	flags.String(KeyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
@@ -80,6 +82,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EndpointCacheSize = viper.GetInt(KeyEndpointCacheSize)
 	Config.BpfEndpointCacheSize = viper.GetInt(KeyBpfEndpointCacheSize)
 	Config.TlsCacheSize = viper.GetInt(KeyTlsCacheSize)
+	Config.TcpCacheSize = viper.GetInt(KeyTcpCacheSize)
 	Config.NetNsCacheSize = viper.GetInt(KeyNetNsCacheSize)
 	Config.FimFifoPath = viper.GetString(KeyFimFifoPath)
 	Config.FimRuntimeEndpoint = viper.GetString(KeyFimRuntimeEndpoint)

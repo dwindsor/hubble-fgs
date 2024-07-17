@@ -219,6 +219,10 @@ options:
       default_value: localhost:54321
       usage: |
         gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')
+    - name: tcp-cache-size
+      default_value: "32768"
+      usage: |
+        Set the size of the internal TCP cache. Higher values enable Tetragon to keep track of more concurrent TCP sessions before evicting old ones
     - name: tls-cache-size
       default_value: "1024"
       usage: |

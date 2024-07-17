@@ -10,6 +10,7 @@ type config struct {
 	EndpointCacheSize      int
 	BpfEndpointCacheSize   int
 	TlsCacheSize           int
+	TcpCacheSize           int
 	NetNsCacheSize         int
 	FimFifoPath            string
 	DisableKprobeMulti     bool
@@ -38,6 +39,7 @@ var (
 		BpfEndpointCacheSize:   1024,
 		EndpointCacheSize:      1024,
 		TlsCacheSize:           1024,
+		TcpCacheSize:           32768,
 		NetNsCacheSize:         256,
 		FimFifoPath:            "/var/run/cilium/hubble",
 		FimRuntimeEndpoint:     "",
