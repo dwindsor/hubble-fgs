@@ -6,6 +6,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"net"
 	"path/filepath"
 	"strings"
 
@@ -46,13 +47,21 @@ type processTreeValue struct {
 	KtimeLastExec  uint64
 }
 
+const (
+	DestinationSourceUknown = 0
+	DestinationSourceBpf    = 1
+	DestinationSourceUser   = 2
+)
+
 type destinationEndpointKey struct {
-	ProcessId     processTreeKey
-	DestinationId uint64
+	ProcessId         processTreeKey
+	DestinationId     uint64
+	DestinationSource uint64
 }
 
 type destinationEndpointValue struct {
 	KtimeCreate uint64
+	AddrCreate  [16]byte
 }
 
 type Server struct {
@@ -82,9 +91,27 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	iter := endpt.Iterate()
 	for iter.Next(&dstKey, &dstVal) {
 		var d *tetragon.Destination
+		var ep endpoint.Endpoint
 
-		ep, ok := c.LookupID(dstKey.DestinationId)
-		if !ok {
+		if dstKey.DestinationSource == DestinationSourceBpf {
+			ip := make(net.IP, 4)
+			ip[0] = dstVal.AddrCreate[0]
+			ip[1] = dstVal.AddrCreate[1]
+			ip[2] = dstVal.AddrCreate[2]
+			ip[3] = dstVal.AddrCreate[3]
+			ep = endpoint.Endpoint{
+				Type: endpoint.IpType,
+				Ip:   ip.String(),
+			}
+		} else if dstKey.DestinationSource == DestinationSourceUser {
+			var ok bool
+
+			ep, ok = c.LookupID(dstKey.DestinationId)
+			if !ok {
+				continue
+			}
+		} else {
+			logger.GetLogger().WithError(err).Warn("unknown dstKey.DestinationSrc")
 			continue
 		}
 
@@ -100,6 +127,10 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 					Workload:     ep.Name,
 					WorkloadKind: ep.Kind,
 				},
+			}
+		case endpoint.IpType:
+			d = &tetragon.Destination{
+				DestinationNames: strings.Split(ep.Ip, ","),
 			}
 		}
 

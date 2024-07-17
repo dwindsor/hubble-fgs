@@ -26,8 +26,9 @@
 
 #include "policy_filter.h"
 
-#define PROCESS_TREE_SIZE 500000
-#define PROCESS_ENDPOINTS 500000
+#define PROCESS_TREE_SIZE     500000
+#define PROCESS_ENDPOINTS     500000
+#define PROCESS_BPF_ENDPOINTS 500000
 
 struct endpoint_id_key {
 	uint64_t addr[2];
@@ -57,6 +58,20 @@ struct {
  * just accept the winner and accept values specific to the initial
  * condition may not be exact. Userspace is read-only.
  */
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, PROCESS_BPF_ENDPOINTS);
+	__uint(key_size, sizeof(struct endpoint_id_key));
+	__uint(value_size, sizeof(struct endpoint_id_value));
+} tg_bpf_endpoint_id_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct endpoint_id_value));
+} tg_bpf_endpoint_id_heap SEC(".maps");
+
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, PROCESS_TREE_SIZE);
@@ -124,13 +139,19 @@ struct {
 	__uint(value_size, sizeof(struct process_tree_value));
 } process_tree_value_heap SEC(".maps");
 
+#define DESTINATION_SOURCE_UNKNOWNN  0
+#define DESTINATION_SOURCE_BPF	     1
+#define DESTINATION_SOURCE_USERSPACE 2
+
 struct destination_endpoint_key {
 	struct process_tree_key process_id;
 	uint64_t destination_id; // unwrapped endpoint_id_value
+	uint64_t source;
 };
 
 struct destination_endpoint_value {
 	__u64 ktime_create;
+	__u64 addr_create[2];
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its
@@ -214,6 +235,8 @@ out:
 	return 0;
 }
 
+uint64_t glbl_bpf_endpoint_id;
+
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
@@ -226,22 +249,16 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
 
+	__u64 source = DESTINATION_SOURCE_USERSPACE;
+
 	if (!v)
-		return 0;
-
-	key.addr[0] = v->tuple.daddr[0];
-	key.addr[1] = v->tuple.daddr[1];
-
-	value = map_lookup_elem(&tg_endpoint_id_map, &key);
-	if (!value)
 		return 0;
 
 	curr = execve_map_get_noinit(v->key.pid);
 	if (!curr)
 		return 0;
 
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map,
-				   &curr->bin);
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, &curr->bin);
 	if (!self_uid)
 		return 0;
 
@@ -253,8 +270,27 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	if (!parent_uid)
 		return 0;
 
+	key.addr[0] = v->tuple.daddr[0];
+	key.addr[1] = v->tuple.daddr[1];
+
+	value = map_lookup_elem(&tg_endpoint_id_map, &key);
+	if (!value) {
+		value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
+		if (!value) {
+			int zero = 0;
+
+			value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
+			if (!value)
+				return 0;
+			value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
+			source = DESTINATION_SOURCE_BPF;
+			map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
+		}
+	}
+
 	destkey.process_id.self = *self_uid;
 	destkey.process_id.parent = *parent_uid;
+	destkey.source = source;
 
 	cgid = tg_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
@@ -266,10 +302,12 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	destkey.destination_id = value->id;
 	dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 	if (!dest) {
-		struct destination_endpoint_value v;
+		struct destination_endpoint_value destvalue;
 
-		v.ktime_create = ktime_get_ns();
-		map_update_elem(&destination_endpoint_map, &destkey, &v, 0);
+		destvalue.ktime_create = ktime_get_ns();
+		destvalue.addr_create[0] = v->tuple.daddr[0];
+		destvalue.addr_create[1] = v->tuple.daddr[1];
+		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
 	return 0;
 }

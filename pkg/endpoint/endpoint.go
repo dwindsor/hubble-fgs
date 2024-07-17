@@ -23,6 +23,7 @@ const (
 	UnknownType Type = 0
 	DnsType     Type = 1
 	PodType     Type = 2
+	IpType      Type = 3
 )
 
 type Endpoint struct {
@@ -31,6 +32,7 @@ type Endpoint struct {
 	Kind      string
 	Namespace string
 	Name      string
+	Ip        string
 }
 
 type Cache struct {
