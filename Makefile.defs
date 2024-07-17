@@ -1,0 +1,2 @@
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+OSS_DIR := $(ROOT_DIR)/modules/tetragon-oss

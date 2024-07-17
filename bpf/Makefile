@@ -1,3 +1,5 @@
+include ../Makefile.defs
+
 .PHONY: all clean
 .SUFFIXES:
 
@@ -17,8 +19,7 @@ ifeq ($(UNAME_M),aarch64)
 endif
 BPF_TARGET_ARCH ?= x86
 
-OSSDIR := ../modules/tetragon-oss
-OSSBPFDIR := $(OSSDIR)/bpf
+OSSBPFDIR := $(OSS_DIR)/bpf
 
 TLSDIR := parsers/tls/
 HTTPDIR := parsers/http/

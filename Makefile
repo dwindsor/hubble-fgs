@@ -1,5 +1,4 @@
-OSS_DIR := modules/tetragon-oss
-
+include Makefile.defs
 include $(OSS_DIR)/Makefile.defs
 
 GO := go
@@ -43,7 +42,7 @@ ifeq ($(TARGET_ARCH),arm64)
 endif
 BPF_TARGET_ARCH ?= x86
 
-BUILD_PKG_DIR ?= $(shell pwd)/build/$(TARGET_ARCH)
+BUILD_PKG_DIR ?= $(CURDIR)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always --exclude 'api/*')
 
@@ -283,7 +282,7 @@ tester-progs:
 	$(MAKE) -C $(OSS_TESTER_PROGS_DIR)
 	# NB(kkourt): This is not pretty, but we need it so that OSS testutils can find its contrib
 	# programs. We can probably refactor OSS to deal with it, but that's for another day.
-	ln -s -f ../../../../modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
+	ln -s -f $(OSS_DIR)/contrib vendor/github.com/cilium/tetragon/
 
 .PHONY: tetragon-bpf-verify hubble-bpf-verify
 hubble-bpf-verify: | tetragon-bpf-verify

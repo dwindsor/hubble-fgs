@@ -1,6 +1,8 @@
 # Copyright 2017-2020 Authors of Cilium
 # SPDX-License-Identifier: Apache-2.0
 
+include ../Makefile.defs
+
 # renovate: datasource=docker
 BUILDER_IMAGE=quay.io/cilium/cilium-builder@sha256:a2036a3f6420647e6702695dabd2ffa4d2832db45157042d0255bdc707b8e1f2
 GO ?= go
@@ -13,7 +15,7 @@ proto: v1
 
 .PHONY: copy_oss_files
 copy_oss_files:
-	for oss_file in  $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon/*.proto; do \
+	for oss_file in $(OSS_DIR)/api/v1/tetragon/*.proto; do \
 		dst_file="v1/tetragon/$$(basename $$oss_file)"; \
 		if [ $$dst_file = "v1/tetragon/events.proto" ]; then \
 			echo "Skipping $$dst_file"; \
