@@ -1008,32 +1008,29 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	serverCmd := exec.Command(os.Args[0], "-tcpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
 	if err != nil {
-		fmt.Printf("ERROR Could not connect to server output pipe\n")
-		panic(err)
+		t.Fatalf("ERROR Could not connect to server output pipe: '%s'", err)
 	}
 	serverCmd.Stderr = os.Stderr
 
 	err = serverCmd.Start()
 	if err != nil {
-		fmt.Printf("ERROR Cannot start server\n")
-		panic(err)
+		t.Fatalf("ERROR Cannot start server: '%s'", err)
 	}
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, serverCmd)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
-			panic(fmt.Errorf("received empty line from TCP server"))
+			t.Fatal("received empty line from TCP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("TCP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("TCP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -1042,16 +1039,14 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), networkWatermarksEvents.ProcessNetworkWatermarksMapName)
 	m, err := ebpf.LoadPinnedMap(watermarksMapFile, nil)
 	if err != nil {
-		fmt.Printf("ERROR Cannot open map file\n")
-		panic(err)
+		t.Fatalf("ERROR Cannot open map file: '%s'", err)
 	}
 	defer m.Close()
 	processKey := &networkWatermarksEvents.ProcessNetworkWatermarksKey{Key: networkWatermarksEvents.PidToWatermarksKey(serverPid, syscall.IPPROTO_TCP, 0)}
 	var processValue networkWatermarksEvents.ProcessNetworkWatermarksValue
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
-		fmt.Printf("ERROR Server process in network watermarks map before traffic\n")
-		os.Exit(-1)
+		t.Fatal("ERROR Server process in network watermarks map before traffic")
 	}
 
 	clientCmd := exec.Command(os.Args[0], "-tcpClient")
@@ -1059,14 +1054,12 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
 	if err != nil {
-		fmt.Printf("ERROR Cannot start client\n")
-		panic(err)
+		t.Fatalf("ERROR Cannot start client: '%s'", err)
 	}
 
 	err = m.Lookup(processKey, &processValue)
 	if err != nil {
-		fmt.Printf("ERROR Server process not in network watermarks map\n")
-		panic(err)
+		t.Fatalf("ERROR Server process not in network watermarks map: '%s'", err)
 	}
 
 	if serverCmd != nil {
@@ -1075,12 +1068,10 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 			serverProcess.Kill()
 			serverProcess.Wait()
 		} else {
-			fmt.Printf("ERROR serverProcess is nil\n")
-			os.Exit(-1)
+			t.Fatal("ERROR serverProcess is nil")
 		}
 	} else {
-		fmt.Printf("ERROR serverCmd is nil\n")
-		os.Exit(-1)
+		t.Fatal("ERROR serverCmd is nil")
 	}
 
 	quit := false
@@ -1100,8 +1091,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
-		fmt.Printf("ERROR Server process in network watermarks map after exit\n")
-		os.Exit(-1)
+		t.Fatal("ERROR Server process in network watermarks map after exit")
 	}
 }
 
@@ -1760,19 +1750,18 @@ func TestIOUringAcceptEvent(t *testing.T) {
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, cmdServer)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, cmdServer)
-			panic(fmt.Errorf("received empty line from TCP server"))
+			t.Fatal("received empty line from TCP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("TCP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("TCP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -1865,15 +1854,15 @@ func TestIOUringConnectEvent(t *testing.T) {
 
 	serverBuf := bufio.NewReader(serverError)
 	var line []byte
-	for string(line[:]) != "Listening on 0.0.0.0 8001" {
+	for string(line) != "Listening on 0.0.0.0 8001" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, cmdServer)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, cmdServer)
-			panic(fmt.Errorf("received empty line from TCP server"))
+			t.Fatal("received empty line from TCP server")
 		}
 	}
 
@@ -1890,7 +1879,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	err = cmdClient.Wait()
 	if err != nil {
 		killAndWaitCommand(t, cmdServer)
-		panic(err)
+		t.Fatal(err)
 	}
 
 	err = jsonchecker.JsonTestCheck(t, checker)

@@ -410,19 +410,18 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, serverCmd)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
-			panic(fmt.Errorf("received empty line from UDP server"))
+			t.Fatal("received empty line from UDP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("UDP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -650,19 +649,18 @@ func TestUdpSeqCheck(t *testing.T) {
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, serverCmd)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
-			panic(fmt.Errorf("received empty line from UDP server"))
+			t.Fatal("received empty line from UDP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("UDP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -1673,19 +1671,18 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, serverCmd)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, serverCmd)
-			panic(fmt.Errorf("received empty line from UDP server"))
+			t.Fatal("received empty line from UDP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("UDP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -2081,19 +2078,18 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
-	for string(line[:]) != "Ready" {
+	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
 			killAndWaitCommand(t, cmdServer)
-			panic(err)
+			t.Fatal(err)
 		}
 		if len(line) == 0 {
 			killAndWaitCommand(t, cmdServer)
-			panic(fmt.Errorf("received empty line from UDP server"))
+			t.Fatal("received empty line from UDP server")
 		}
-		if strings.HasPrefix(string(line[:]), "NotReady") {
-			logger.GetLogger().WithError(fmt.Errorf(string(line[:]))).Error("UDP server failed to start")
-			panic(string(line[:]))
+		if strings.HasPrefix(string(line), "NotReady") {
+			t.Fatalf("UDP server failed to start: '%s'", string(line))
 		}
 	}
 
