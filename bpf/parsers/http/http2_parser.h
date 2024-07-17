@@ -249,7 +249,8 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	event->common.ktime = ktime_get_ns();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = size;
-	event->tuple = socket->tuple;
+	event->socket_cookie = cookie;
+	event->socket_version = socket->version;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 
          * Due to per-cpu rings the events we send here may be read out-of-order in user-space. Because HTTP/2

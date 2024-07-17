@@ -17,7 +17,7 @@
 #include "bpf_process_event.h"
 #include "bpf_helpers.h"
 #include "bpf_rate.h"
-#include "bpf_tcp_info.h"
+#include "../networking/l3/tcp/bpf_tcp_info.h"
 
 #include "bpf_tracing.h"
 
@@ -233,7 +233,7 @@ out:
 
 uint64_t glbl_bpf_endpoint_id;
 
-static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v)
+static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
@@ -266,8 +266,8 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	if (!parent_uid)
 		return 0;
 
-	key.addr[0] = v->tuple.daddr[0];
-	key.addr[1] = v->tuple.daddr[1];
+	key.addr[0] = tuple->daddr[0];
+	key.addr[1] = tuple->daddr[1];
 
 	// destination_id verifier fix to if/else;
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);
@@ -306,8 +306,8 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		struct destination_endpoint_value destvalue;
 
 		destvalue.ktime_create = ktime_get_ns();
-		destvalue.addr_create[0] = v->tuple.daddr[0];
-		destvalue.addr_create[1] = v->tuple.daddr[1];
+		destvalue.addr_create[0] = tuple->daddr[0];
+		destvalue.addr_create[1] = tuple->daddr[1];
 		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
 	return 0;

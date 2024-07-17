@@ -147,7 +147,7 @@ tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
 
 static inline __attribute__((always_inline)) int
 bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
-		   struct msg_ip_tuple *tuple, u32 offset)
+		   __u64 socket_cookie, __u32 socket_version, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;
@@ -184,7 +184,8 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 	}
 
 	event->op = ISO_MSG_OP_TLS_CONT;
-	event->tuple = *tuple;
+	event->socket_cookie = socket_cookie;
+	event->socket_version = socket_version;
 	event->payload_size = end_offset - offset;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_TLS_CONT, &tcpmon_map, BPF_F_CURRENT_CPU, event,
@@ -269,7 +270,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		post->common.ktime = ktime_get_ns();
 
 		post->execve = socket->key;
-		post->tuple = socket->tuple;
+		post->socket_cookie = cookie;
+		post->socket_version = socket->version;
 
 		perf_event_output_metric(skb, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 					 sizeof(struct msg_tls_event));
@@ -278,7 +280,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, &socket->tuple,
+			next = bpf_parse_tls_cert(skb, bottle, event, cookie, socket->version,
 						  next);
 			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
@@ -307,7 +309,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 			return;
 		}
 
-		err = bpf_parse_tls_cert(skb, bottle, event, &socket->tuple,
+		err = bpf_parse_tls_cert(skb, bottle, event, cookie, socket->version,
 					 event->bytes);
 		if (err == TLS_PARSE_OUT_OF_DATA) {
 			tls_inc_ingress_out_of_data();

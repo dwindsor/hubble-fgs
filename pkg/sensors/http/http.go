@@ -36,6 +36,7 @@ import (
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -327,13 +328,15 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 		Msg: m,
 	}
 
+	unix.Tuple = tcpCache.GetTuple(m.SocketCookie, m.SocketVersion)
+
 	if m.Request.Length > HTTP_CLAMP_URL_LENGTH {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"length": m.Request.Length,
-			"saddr":  networkapi.GetIP(m.Tuple.SAddr, m.Common.Op, m.Tuple.IPv6 != 0).String(),
-			"daddr":  networkapi.GetIP(m.Tuple.DAddr, m.Common.Op, m.Tuple.IPv6 != 0).String(),
-			"sport":  m.Tuple.SPort,
-			"dport":  m.Tuple.DPort,
+			"saddr":  networkapi.GetIP(unix.Tuple.SAddr, m.Common.Op, unix.Tuple.IPv6 != 0).String(),
+			"daddr":  networkapi.GetIP(unix.Tuple.DAddr, m.Common.Op, unix.Tuple.IPv6 != 0).String(),
+			"sport":  unix.Tuple.SPort,
+			"dport":  unix.Tuple.DPort,
 		}).Warnf("url length %d would exceed %d", m.Request.Length, HTTP_CLAMP_URL_LENGTH)
 	}
 
@@ -348,7 +351,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 		if !enableHttp2 {
 			return nil, nil
 		}
-		return http2ToHTTPEventUnix(m, url)
+		return http2ToHTTPEventUnix(m, unix.Tuple, url)
 	case MethodResponse:
 		unix.Request.RequestId = m.Request.RespId
 	default:
@@ -360,10 +363,10 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
 	// header decoders.
-	unix.Msg.Tuple.Proto = 0
+	unix.Tuple.Proto = 0
 
 	key := api.HttpKey{
-		Tuple: unix.Msg.Tuple,
+		Tuple: *unix.Tuple,
 		Id:    unix.Request.RequestId,
 	}
 	usedMoreBytes := uint32(0)
@@ -427,7 +430,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 	// Workaround kernel bug for HTTPS while waiting for upstream kernel fix
 	// to land. Instead of spending time to work out per port disabling just
 	// hard code and we will revert when fix lands.
-	if !aggregateEnable || unix.Msg.Tuple.DPort == 47873 {
+	if !aggregateEnable || unix.Tuple.DPort == 47873 {
 		return []observer.Event{unix}, nil
 	}
 
@@ -481,8 +484,8 @@ type http2State struct {
 	frameQueue *http2FrameQueue
 }
 
-func http2ToHTTPEventUnix(m *api.MsgHttpEvent, url []byte) ([]observer.Event, error) {
-	state, ok := http2StateCache.Get(m.Tuple)
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent, tuple *networkapi.MsgIPTuple, url []byte) ([]observer.Event, error) {
+	state, ok := http2StateCache.Get(*tuple)
 	if !ok {
 		reader := bytes.NewReader(nil)
 		state = &http2State{
@@ -491,7 +494,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, url []byte) ([]observer.Event, er
 			framer:     http2.NewFramer(nil, reader),
 			frameQueue: newHttp2FrameQueue(frameQueueSize, 1),
 		}
-		http2StateCache.Add(m.Tuple, state)
+		http2StateCache.Add(*tuple, state)
 	}
 
 	// Push the header frame into the queue for ordering.
@@ -517,7 +520,8 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, url []byte) ([]observer.Event, er
 			}
 
 			unix := &httpproto.MsgHttpEventUnix{
-				Msg: m,
+				Msg:   m,
+				Tuple: tuple,
 			}
 			unix.Request.Flags = m.Request.Flags
 
@@ -534,7 +538,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 
 	frame, err := s.framer.ReadFrame()
 	if err != nil {
-		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Msg.Tuple)
+		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Tuple)
 		return false
 	}
 
@@ -568,7 +572,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	})
 
 	if _, err = s.decoder.Write(headers.HeaderBlockFragment()); err != nil {
-		logger.GetLogger().Warnf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Msg.Tuple)
+		logger.GetLogger().Warnf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Tuple)
 		// Keep going as the decoding error may have been due to a lost event desyncing
 		// the header compression and we may have partially succeeded in decoding some of the headers.
 		// Better to emit the events with partial data than drop them completely. It's also likely
@@ -582,13 +586,13 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	streamId := headers.Header().StreamID
 	isRequest := unix.Request.Code == ""
 
-	unix.Msg.Tuple.Proto = 0
+	unix.Tuple.Proto = 0
 
 	unix.Request.Protocol = "HTTP/2"
 	unix.Request.RespVersion = "HTTP/2"
 
 	key := api.HttpKey{
-		Tuple: unix.Msg.Tuple,
+		Tuple: *unix.Tuple,
 		Id:    uint64(streamId),
 	}
 

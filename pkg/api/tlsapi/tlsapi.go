@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
 const (
@@ -141,9 +140,11 @@ type MsgTLSAlert struct {
 }
 
 type MsgTLSEvent struct {
-	Common      processapi.MsgCommon    `align:"common"`
-	Tuple       networkapi.MsgIPTuple   `align:"tuple"`
-	ClientHello MsgTLS                  `align:"clienthello"`
-	ServerHello MsgTLS                  `align:"serverhello"`
-	ProcessKey  processapi.MsgExecveKey `align:"execve"`
+	Common        processapi.MsgCommon `align:"common"`
+	SocketCookie  uint64               `align:"socket_cookie"`
+	SocketVersion uint32               `align:"socket_version"`
+	Pad           uint32
+	ClientHello   MsgTLS                  `align:"clienthello"`
+	ServerHello   MsgTLS                  `align:"serverhello"`
+	ProcessKey    processapi.MsgExecveKey `align:"execve"`
 }

@@ -111,7 +111,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 			  _(&(skp->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
-	if (!socket->tuple.ipv6) {
+	if (!socket->ipv6) {
 		val->tuple.ipv6 = false;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(u32),
 				  _(&(skp->__sk_common.skc_rcv_saddr)));
@@ -141,7 +141,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 					 size);
 	}
 
-	if (!socket->tuple.ipv6) {
+	if (!socket->ipv6) {
 		del_tcpsocketmap(&cookie);
 		del_tlsmap(&cookie);
 		map_delete_elem(&tg_http_map, &cookie);

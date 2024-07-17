@@ -122,13 +122,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
 	v.sent = 0;
 	v.received = 0;
-	v.tuple.saddr[0] = val->tuple.saddr[0];
-	v.tuple.saddr[1] = val->tuple.saddr[1];
-	v.tuple.daddr[0] = v.tuple.daddr[1] = 0;
-	v.tuple.ipv6 = (family == AF_INET6);
-	v.tuple.dport = 0;
-	v.tuple.sport = val->tuple.sport;
-	v.tuple.proto = IPPROTO_TCP;
+	v.ipv6 = (family == AF_INET6);
 	v.version = val->version;
 
 	add_tcpsocketmap(&cookie, &v, true);

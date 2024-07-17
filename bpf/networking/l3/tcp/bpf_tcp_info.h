@@ -37,12 +37,12 @@ struct tcpsocketmap_value {
 	__u32 version;
 	__u64 rtt_buckets[8];
 	__u64 latency_buckets[8];
+	__u8 ipv6;
 	__u8 fin_rx;
 	__u8 protocol;
-	__u8 pad[6];
+	__u8 pad[5];
 	__u64 rtt_sum;
 	__u64 latency_sum;
-	struct msg_ip_tuple tuple;
 };
 
 struct {

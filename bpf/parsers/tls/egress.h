@@ -24,10 +24,11 @@
 // #include "../http/http_parser.h"
 
 static inline __attribute__((always_inline)) void
-egress_post_event(ctx_md *ctx, struct msg_ip_tuple *tuple,
+egress_post_event(ctx_md *ctx, __u64 socket_cookie, __u32 socket_version,
 		  struct msg_tls_event *post)
 {
-	post->tuple = *tuple;
+	post->socket_cookie = socket_cookie;
+	post->socket_version = socket_version;
 	post->common.op = ISO_MSG_OP_TLS;
 	post->common.size = sizeof(struct msg_tls_event);
 	post->common.ktime = ktime_get_ns();
@@ -99,7 +100,7 @@ bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie, int payload_off)
 	case TLS_PARSE_ERROR:
 		tls_inc_egress_parse_error();
 
-		egress_post_event(ctx, &socket->tuple, event);
+		egress_post_event(ctx, *cookie, socket->version, event);
 
 		/* Add an entry to stop parsing further packets */
 		tls_mark_complete(clienthello);

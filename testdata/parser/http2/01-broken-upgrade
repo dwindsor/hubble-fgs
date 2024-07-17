@@ -71,11 +71,12 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1116       # size
+  h4 1084       # size
   NZ 8          # ktime
 
-  ## Tuple
-  TUPLE CLI SRV
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
 
   ## Process
   $ ?? ?? ?? ??             # pid
@@ -123,11 +124,12 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1116       # size
+  h4 1084       # size
   NZ 8          # ktime
 
-  ## Tuple
-  TUPLE SRV CLI
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
 
   ? 1100
 END
@@ -136,11 +138,13 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1116       # size
+  h4 1084       # size
   NZ 8          # ktime
 
-  ## Tuple
-  TUPLE CLI SRV
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
+
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
   A SRV_PORT                # dport

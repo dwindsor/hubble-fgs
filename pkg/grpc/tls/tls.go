@@ -49,6 +49,7 @@ func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
 type MsgTLSEventUnix struct {
 	Msg        *tlsapi.MsgTLSEvent
 	ServerCert tlsapi.MsgTLSCertificates
+	Tuple      *networkapi.MsgIPTuple
 }
 
 func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
@@ -57,10 +58,10 @@ func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
 
 	log.WithFields(logrus.Fields{
 		"op":                           ops.OpCode(op).String(),
-		"saddr":                        networkapi.GetIP(msg.Msg.Tuple.SAddr, op, msg.Msg.Tuple.IPv6 != 0).String(),
-		"sport":                        networkapi.GetSport(msg.Msg.Tuple.SPort),
-		"dport":                        msg.Msg.Tuple.DPort,
-		"daddr":                        networkapi.GetIP(msg.Msg.Tuple.DAddr, op, msg.Msg.Tuple.IPv6 != 0).String(),
+		"saddr":                        networkapi.GetIP(msg.Tuple.SAddr, op, msg.Tuple.IPv6 != 0).String(),
+		"sport":                        networkapi.GetSport(msg.Tuple.SPort),
+		"dport":                        msg.Tuple.DPort,
+		"daddr":                        networkapi.GetIP(msg.Tuple.DAddr, op, msg.Tuple.IPv6 != 0).String(),
 		"Client-TLS-Version":           readertls.GetTLSVersion(msg.Msg.ClientHello.Version),
 		"Server-TLS-Version":           readertls.GetTLSVersion(msg.Msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,
@@ -74,14 +75,14 @@ func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
 func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
-	if event.Msg.Tuple.SPort != 0 {
+	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(event.Msg.Tuple.SPort),
+			Value: uint32(event.Tuple.SPort),
 		}
 	}
-	if event.Msg.Tuple.DPort != 0 {
+	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(event.Msg.Tuple.DPort),
+			Value: uint32(event.Tuple.DPort),
 		}
 	}
 
@@ -113,9 +114,9 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	fgsEvent := &tetragon.Tls{
 		Process:             proc,
 		Parent:              parent,
-		SourceIp:            networkapi.GetIP(event.Msg.Tuple.SAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0).String(),
+		SourceIp:            networkapi.GetIP(event.Tuple.SAddr, event.Msg.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:          sourcePort,
-		DestinationIp:       networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0).String(),
+		DestinationIp:       networkapi.GetIP(event.Tuple.DAddr, event.Msg.Common.Op, event.Tuple.IPv6 != 0).String(),
 		DestinationPort:     destinationPort,
 		NegotiatedVersion:   negotiatedVersion,
 		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.Msg.ClientHello.SupportedVersions, true),

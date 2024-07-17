@@ -844,7 +844,8 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
-	http->tuple = socket->tuple;
+	http->socket_cookie = cookie;
+	http->socket_version = socket->version;
 
 	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
 	if (size > sizeof(struct msg_http_event))
@@ -898,7 +899,8 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 	http->common.ktime = ktime_get_ns();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
-	http->tuple = socket->tuple;
+	http->socket_cookie = cookie;
+	http->socket_version = socket->version;
 
 	size = (sizeof(struct __msg_http_event) + http->request.url_length) & 0x0fff;
 	if (size > sizeof(struct msg_http_event))

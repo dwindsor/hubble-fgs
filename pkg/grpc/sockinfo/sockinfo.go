@@ -21,6 +21,10 @@ import (
 func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
+	if tuple == nil {
+		return &tetragon.SockInfo{}
+	}
+
 	if tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(networkapi.GetSport(tuple.SPort)),
@@ -47,6 +51,10 @@ func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockIn
 
 func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
+
+	if tuple == nil {
+		return &tetragon.SockInfo{}
+	}
 
 	if tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{

@@ -133,19 +133,12 @@ __event_tcp_connect(struct pt_regs *ctx)
 	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
 	v.sent = 0;
 	v.received = 0;
-	v.tuple.saddr[0] = val->tuple.saddr[0];
-	v.tuple.saddr[1] = val->tuple.saddr[1];
-	v.tuple.daddr[0] = val->tuple.daddr[0];
-	v.tuple.daddr[1] = val->tuple.daddr[1];
-	v.tuple.ipv6 = (family == AF_INET6);
-	v.tuple.dport = val->tuple.dport;
-	v.tuple.sport = val->tuple.sport;
-	v.tuple.proto = IPPROTO_TCP;
+	v.ipv6 = (family == AF_INET6);
 	v.version = val->version;
 
 	add_tcpsocketmap(&cookie, &v, true);
 #ifdef KERNEL_5_15
-	process_socketmap_add(&v);
+	process_socketmap_add(&v, &(val->tuple));
 #endif
 	return 1;
 }

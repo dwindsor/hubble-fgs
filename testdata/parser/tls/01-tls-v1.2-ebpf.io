@@ -421,10 +421,12 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 544                    # size
+  h4 512                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
-  TUPLE CLI SRV
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
 
   ## Client hello
   $ 03 03       # version v1.2
@@ -510,7 +512,9 @@ EVENT tlscont
   ## op (TLSCONT)
   $ 0c
 
-  TUPLE CLI SRV
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
 
   ## length
   h4 3837

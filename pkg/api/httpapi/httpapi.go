@@ -45,10 +45,12 @@ type MsgHttp struct {
 }
 
 type MsgHttpEvent struct {
-	Common     processapi.MsgCommon    `align:"common"`
-	Tuple      networkapi.MsgIPTuple   `align:"tuple"`
-	ProcessKey processapi.MsgExecveKey `align:"execve"`
-	Request    MsgHttp                 `align:"request"`
+	Common        processapi.MsgCommon `align:"common"`
+	SocketCookie  uint64               `align:"socket_cookie"`
+	SocketVersion uint32               `align:"socket_version"`
+	Pad           uint32
+	ProcessKey    processapi.MsgExecveKey `align:"execve"`
+	Request       MsgHttp                 `align:"request"`
 }
 
 // In-order string representation of enum http_state from http.h

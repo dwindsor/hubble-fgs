@@ -37,11 +37,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 217        # size
+    h4 185        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE CLI SRV
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -72,11 +73,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 217        # size
+    h4 185        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE SRV CLI
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -125,11 +127,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 186        # size
+    h4 154        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE SRV CLI
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -161,11 +164,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 186        # size
+    h4 154        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE CLI SRV
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -243,11 +247,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 202        # size
+    h4 170        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE CLI SRV
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -278,11 +283,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 202        # size
+    h4 170        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE SRV CLI
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -342,11 +348,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 195        # size
+    h4 163        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE SRV CLI
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid
@@ -378,11 +385,12 @@ EVENTS
   EVENT HTTP
     ## Common
     $ 10 00 00 00 # op + pad
-    h4 195        # size
+    h4 163        # size
     NZ 8          # ktime
 
-    ## Tuple
-    TUPLE CLI SRV
+    ## socket cookie
+    ? 8                       # socket cookie
+    ? 8                       # version and pad
 
     ## Process
     NZ 4                      # pid

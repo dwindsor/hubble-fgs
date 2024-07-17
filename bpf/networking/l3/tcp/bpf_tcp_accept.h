@@ -167,13 +167,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	socket->sent = 0;
 	socket->zero_window = 0;
 	socket->fin_rx = 0;
-	socket->tuple.saddr[0] = val->tuple.saddr[0];
-	socket->tuple.saddr[1] = val->tuple.saddr[1];
-	socket->tuple.daddr[0] = val->tuple.daddr[0];
-	socket->tuple.daddr[1] = val->tuple.daddr[1];
-	socket->tuple.ipv6 = (family == AF_INET6);
-	socket->tuple.dport = val->tuple.dport;
-	socket->tuple.sport = val->tuple.sport;
+	socket->ipv6 = (family == AF_INET6);
 
 	add_socket_tuple_map(&cookie);
 

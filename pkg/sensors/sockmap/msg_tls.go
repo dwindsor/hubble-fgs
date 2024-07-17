@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 )
 
 var (
@@ -46,7 +47,7 @@ type MsgTLSEventCert struct {
 	cert []byte
 }
 
-type tlsCache = lru.Cache[networkapi.MsgIPTuple, *MsgTLSEventCert]
+type tlsCache = lru.Cache[networkapi.MsgSocketId, *MsgTLSEventCert]
 
 // Return a reference to the tlsCache, allocating it first if necessary.
 func getCache() (*tlsCache, error) {
@@ -55,7 +56,7 @@ func getCache() (*tlsCache, error) {
 	}
 
 	logger.GetLogger().WithField("size", enterpriseOption.Config.TlsCacheSize).Info("Initializing TLS cache")
-	lru, err := lru.New[networkapi.MsgIPTuple, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
+	lru, err := lru.New[networkapi.MsgSocketId, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TLS cache: %w", err)
 	}
@@ -75,6 +76,9 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errSt
 	} else {
 		unix.ServerCert.Certificates = certs
 	}
+
+	unix.Tuple = tcpCache.GetTuple(m.SocketCookie, m.SocketVersion)
+
 	return unix
 }
 
@@ -104,7 +108,11 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 		v := &MsgTLSEventCert{}
 		v.tls = m
 		v.cert = make([]byte, 0)
-		cache.Add(m.Tuple, v)
+		socketId := networkapi.MsgSocketId{
+			Cookie:  m.SocketCookie,
+			Version: m.SocketVersion,
+		}
+		cache.Add(socketId, v)
 		return nil, nil
 	}
 
@@ -119,6 +127,7 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	var errCode uint32
 	var errState api.MsgTLSParserState
 	var bytes uint32
+	var pad uint32
 	var op uint8
 
 	tlsmetrics.TlsActualContinuationTotal().Inc()
@@ -131,8 +140,11 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	if err = binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
 		return nil, err
 	}
-	key := networkapi.MsgIPTuple{}
+	key := networkapi.MsgSocketId{}
 	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
+		return nil, err
+	}
+	if err := binary.Read(r, native_endian.NativeEndian(), &pad); err != nil {
 		return nil, err
 	}
 
