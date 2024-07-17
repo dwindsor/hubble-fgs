@@ -170,6 +170,11 @@ var (
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
 )
 
+func ConfigureSensor() error {
+	getRunningSockets(true, true)
+	return nil
+}
+
 func UnloadSensor() error {
 	TimestampEnabled = false
 

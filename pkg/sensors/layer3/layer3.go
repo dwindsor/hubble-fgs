@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
@@ -384,22 +383,22 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		l3cfg := CgroupProtocolConfigValue{}
 
 		if tcpEnabled {
-			tcp.GetRunningSockets(true, true)
+			tcp.ConfigureSensor()
 			l3cfg.tcp4Enabled = 1
 			l3cfg.tcp6Enabled = 1
 		}
 		if udpEnabled {
-			ip.LoadSockets(udp.FdCallback, unix.IPPROTO_UDP)
+			udp.ConfigureSensor()
 			l3cfg.udp4Enabled = 1
 			l3cfg.udp6Enabled = 1
 		}
 		if icmpEnabled {
-			ip.LoadSockets(icmp.FdCallback, unix.IPPROTO_ICMP)
+			icmp.ConfigureSensor()
 			l3cfg.icmp4Enabled = 1
 			l3cfg.icmp6Enabled = 1
 		}
 		if rawEnabled {
-			ip.LoadSockets(rawsock.FdCallback, unix.IPPROTO_RAW)
+			rawsock.ConfigureSensor()
 		}
 
 		if icmpEnabled || tcpEnabled || udpEnabled {

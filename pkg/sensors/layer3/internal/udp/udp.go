@@ -194,7 +194,7 @@ func (v *ConfigValue) String() string {
 		v.watermarksDipTriggerPercent)
 }
 
-func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	saddr := api.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
 	daddr := api.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
@@ -257,6 +257,11 @@ func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 	}
 	m.Put(key, &config)
 	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
+	return nil
+}
+
+func ConfigureSensor() error {
+	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP)
 	return nil
 }
 

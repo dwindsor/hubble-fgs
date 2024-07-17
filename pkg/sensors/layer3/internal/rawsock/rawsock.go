@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
+	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -92,11 +93,16 @@ func EnableRawsock() ([]*program.Program, []*program.Map) {
 	return progs, maps
 }
 
+func ConfigureSensor() error {
+	ip.LoadSockets(fdCallback, unix.IPPROTO_RAW)
+	return nil
+}
+
 func UnloadSensor() error {
 	return nil
 }
 
-func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered Raw Socket")
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
 	stats, err := proc.GetProcStatStrings(pathName)

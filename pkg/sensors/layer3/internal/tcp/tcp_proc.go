@@ -38,7 +38,7 @@ var (
 	_pushEvents = false
 )
 
-func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	saddr := networkapi.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
 	daddr := networkapi.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
@@ -85,7 +85,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	}
 }
 
-func GetRunningSockets(_, pushEvents bool) {
+func getRunningSockets(_, pushEvents bool) {
 	/* Lock is required to prevent concurrent access to object vars,
 	 * just in case this gets called twice at once.
 	 */
@@ -93,5 +93,5 @@ func GetRunningSockets(_, pushEvents bool) {
 	defer loading.Unlock()
 
 	_pushEvents = pushEvents
-	ip.LoadSockets(FdCallback, syscall.IPPROTO_TCP)
+	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP)
 }

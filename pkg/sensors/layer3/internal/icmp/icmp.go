@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
+	"golang.org/x/sys/unix"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -131,6 +132,11 @@ func ConfigureIcmpSensor(mapDir string, mapName string, config ConfigValue) erro
 	return nil
 }
 
+func ConfigureSensor() error {
+	ip.LoadSockets(fdCallback, unix.IPPROTO_ICMP)
+	return nil
+}
+
 func UnloadSensor() error {
 	return nil
 }
@@ -150,7 +156,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	return nil
 }
 
-func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
 }
 
