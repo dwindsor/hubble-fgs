@@ -367,6 +367,36 @@ cscope: ## Generate cscope for bpf files.
 	find bpf -name "*.[chxsS]" -print > cscope.files
 	cscope -b -q -k
 
+.PHONY: kind
+kind: ## Create a kind cluster for Tetragon development.
+	$(MAKE) -C $(OSS_DIR) kind
+
+KIND_BUILD_IMAGES ?= 1
+export TETRAGON_KIND_BASE_VALUES = ./contrib/kind/values.yaml
+export TETRAGON_KIND_HELM_CHART = ./install/kubernetes/tetragon
+
+## kind-install-tetragon: ## Install Tetragon in a kind cluster.
+## kind-install-tetragon KIND_BUILD_IMAGES=0: ## Install Tetragon in a kind cluster without (re-)building images.
+## kind-install-tetragon VALUES=values.yaml: ## Install Tetragon in a kind cluster using additional Helm values.
+.PHONY: kind-install-tetragon
+ifneq ($(KIND_BUILD_IMAGES), 0)
+kind-install-tetragon: image image-operator
+else
+kind-install-tetragon:
+endif
+ifneq ($(VALUES),)
+	$(OSS_DIR)/contrib/kind/install-tetragon.sh -v $(VALUES)
+else
+	$(OSS_DIR)/contrib/kind/install-tetragon.sh
+endif
+
+.PHONY: kind-setup
+kind-setup: kind kind-install-tetragon ## Create a kind cluster and install local version of Tetragon.
+
+.PHONY: kind-down
+kind-down: ## Delete a kind cluster for Tetragon development.
+	$(MAKE) -C $(OSS_DIR) kind-down
+
 ##@ Chores and generated files
 
 .PHONY: codegen protogen

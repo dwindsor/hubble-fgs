@@ -1,0 +1,7 @@
+tetragon:
+  image:
+    override: isovalent/tetragon:latest
+  hostProcPath: /procHost # configured in kind-config.yaml (OSS)
+tetragonOperator:
+  image:
+    override: isovalent/tetragon-operator:latest
