@@ -87,6 +87,9 @@ __event_tcp_connect(struct pt_regs *ctx)
 		.close_time = 0,
 	};
 
+	if (socket)
+		val->version = socket->version;
+
 	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
 			  _(&(skp->__sk_common.skc_num)));
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
@@ -138,7 +141,7 @@ __event_tcp_connect(struct pt_regs *ctx)
 	v.tuple.dport = val->tuple.dport;
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
-	v.version = cookie_inc_version();
+	v.version = val->version;
 
 	add_tcpsocketmap(&cookie, &v, true);
 #ifdef KERNEL_5_15

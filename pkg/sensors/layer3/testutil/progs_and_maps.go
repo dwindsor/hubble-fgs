@@ -138,7 +138,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	})
 
 	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{
-		"tg_event_tcp_connect", "tg_event_sys_listen", "tg_event_tcp_accept_ret",
+		"tg_event_tcp_accept_ret",
 	})
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}

@@ -96,7 +96,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 
 		.socket_cookie = cookie,
 		.socket_flags = 0,
-		.version = 0,
+		.version = socket->version,
 	};
 
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
@@ -105,7 +105,27 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	val->create_time = socket->create_time;
 	val->close_time = ktime_get_ns();
 	val->socket_flags = socket->socket_flags;
-	val->tuple = socket->tuple;
+	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
+			  _(&(skp->__sk_common.skc_num)));
+	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
+			  _(&(skp->__sk_common.skc_dport)));
+	val->tuple.dport = bpf_ntohs(val->tuple.dport);
+
+	if (!socket->tuple.ipv6) {
+		val->tuple.ipv6 = false;
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(u32),
+				  _(&(skp->__sk_common.skc_rcv_saddr)));
+		val->tuple.saddr[1] = 0;
+		probe_read_kernel(&val->tuple.daddr[0], sizeof(u32),
+				  _(&(skp->__sk_common.skc_daddr)));
+		val->tuple.daddr[1] = 0;
+	} else {
+		val->tuple.ipv6 = true;
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
+				  _(&(skp->__sk_common.skc_v6_daddr)));
+	}
 
 	get_socket_stats(skp, socket, &val->stats);
 	val->stats.bytes_received -= socket->fin_rx;

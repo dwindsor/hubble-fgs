@@ -86,6 +86,8 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		.create_time = 0,
 		.close_time = 0,
 	};
+	if (socket)
+		val->version = socket->version;
 
 	probe_read_kernel(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
 
@@ -127,7 +129,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.tuple.dport = 0;
 	v.tuple.sport = val->tuple.sport;
 	v.tuple.proto = IPPROTO_TCP;
-	v.version = cookie_inc_version();
+	v.version = val->version;
 
 	add_tcpsocketmap(&cookie, &v, true);
 

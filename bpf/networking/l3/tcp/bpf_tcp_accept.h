@@ -69,13 +69,16 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 		return 0;
 
 	cookie_version = cookie_inc_version();
+	// copy existing entries but with new version number.
 	if (listen_process) {
-		listen_process->version = cookie_version;
-		add_socketmap(&accept_cookie, listen_process, true);
+		struct socketmap_value accept_process = *listen_process;
+		accept_process.version = cookie_version;
+		add_socketmap(&accept_cookie, &accept_process, true);
 	}
 	if (listen_socket) {
-		listen_socket->version = cookie_version;
-		add_tcpsocketmap(&accept_cookie, listen_socket, true);
+		struct tcpsocketmap_value accept_socket = *listen_socket;
+		accept_socket.version = cookie_version;
+		add_tcpsocketmap(&accept_cookie, &accept_socket, true);
 	}
 	return 1;
 }
@@ -138,6 +141,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	if (socket) {
 		val->key.pid = socket->key.pid;
 		val->key.ktime = socket->key.ktime;
+		val->version = socket->version;
 	} else {
 		val->key.pid = 0;
 		val->key.ktime = 0;
