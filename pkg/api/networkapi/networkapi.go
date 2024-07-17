@@ -50,6 +50,11 @@ type MsgIPTuple struct {
 	Pad      uint16
 }
 
+type MsgSocketId struct {
+	Cookie  uint64
+	Version uint32
+}
+
 func (m *MsgIPTuple) GetPostDAddr() uint32 {
 	return binary.LittleEndian.Uint32(m.PostData[0:4])
 }

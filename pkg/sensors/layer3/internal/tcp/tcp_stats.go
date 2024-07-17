@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -66,7 +67,6 @@ type tcpValue struct {
 	Pad             [6]uint8
 	RttSum          uint64
 	LatencySum      uint64
-	MsgIPTuple      networkapi.MsgIPTuple
 }
 
 func (t *tcpValue) String() string {
@@ -136,7 +136,7 @@ func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *
 }
 
 func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
-	tuple := value.ToMsgIpTuple()
+	tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
 	tcpStats := value.ToMsgSocketStatsUnix()
 	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
 
@@ -230,10 +230,6 @@ func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStats {
 	}
 
 	return s
-}
-
-func (t *tcpValue) ToMsgIpTuple() *networkapi.MsgIPTuple {
-	return &t.MsgIPTuple
 }
 
 func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string) (networkapi.Histogram, error) {

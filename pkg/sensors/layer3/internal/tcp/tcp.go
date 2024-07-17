@@ -29,6 +29,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -172,6 +173,7 @@ var (
 
 func ConfigureSensor() error {
 	getRunningSockets(true, true)
+	tcpCache.StartGc()
 	return nil
 }
 
@@ -182,6 +184,7 @@ func UnloadSensor() error {
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
+	tcpCache.StopGc()
 	return nil
 }
 
@@ -360,6 +363,10 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		stats.Remove(statsKey)
 		return []observer.Event{tcp, &c}, nil
 	}
+
+	// Remove tuple from the cache.
+	tcpCache.RemoveTuple(m.SockCookie, m.Version)
+
 	return []observer.Event{tcp}, nil
 }
 
@@ -370,6 +377,18 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	tcp := ip.MsgToIPUnix(&m)
+
+	// Store tuple in the cache.
+	tcpTuples, err := tcpCache.GetCache()
+	if err == nil {
+		socketId := networkapi.MsgSocketId{
+			Cookie:  m.SockCookie,
+			Version: m.Version,
+		}
+		tcpTuples.Add(socketId, &m.Tuple)
+	} else {
+		logger.GetLogger().WithError(err).Warn("handleTcp: GetCache failed")
+	}
 	return []observer.Event{tcp}, nil
 }
 
