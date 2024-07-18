@@ -273,6 +273,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	key.addr[0] = v->tuple.daddr[0];
 	key.addr[1] = v->tuple.daddr[1];
 
+	// destination_id verifier fix to if/else;
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);
 	if (!value) {
 		value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
@@ -283,9 +284,14 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 			if (!value)
 				return 0;
 			value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
+			destkey.destination_id = value->id;
 			source = DESTINATION_SOURCE_BPF;
 			map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
+		} else {
+			destkey.destination_id = value->id;
 		}
+	} else {
+		destkey.destination_id = value->id;
 	}
 
 	destkey.process_id.self = *self_uid;
@@ -299,7 +305,6 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	else
 		destkey.process_id.nsid = 0;
 
-	destkey.destination_id = value->id;
 	dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 	if (!dest) {
 		struct destination_endpoint_value destvalue;
