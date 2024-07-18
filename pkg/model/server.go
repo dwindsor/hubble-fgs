@@ -99,9 +99,23 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			ip[1] = dstVal.AddrCreate[1]
 			ip[2] = dstVal.AddrCreate[2]
 			ip[3] = dstVal.AddrCreate[3]
-			ep = endpoint.Endpoint{
-				Type: endpoint.IpType,
-				Ip:   ip.String(),
+
+			// If the IP has resolved to a DNS or K8s object lets
+			// omit the duplicate individual IP. This can happen
+			// when the connect races with the watchers and/or DNS
+			// handler.
+			if id, err := c.LookupIP(ip); err == nil {
+				var ok bool
+
+				ep, ok = c.LookupID(id)
+				if !ok {
+					continue
+				}
+			} else {
+				ep = endpoint.Endpoint{
+					Type: endpoint.IpType,
+					Ip:   ip.String(),
+				}
 			}
 		} else if dstKey.DestinationSource == DestinationSourceUser {
 			var ok bool
@@ -138,7 +152,18 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 		if !ok {
 			dstList[dstKey.ProcessId] = []*tetragon.Destination{d}
 		} else {
-			l = append(l, d)
+			skip := false
+
+			for _, dedup := range l {
+				if dedup.DestinationPod == nil &&
+					strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 {
+					skip = true
+					break
+				}
+			}
+			if !skip {
+				l = append(l, d)
+			}
 			dstList[dstKey.ProcessId] = l
 		}
 	}
