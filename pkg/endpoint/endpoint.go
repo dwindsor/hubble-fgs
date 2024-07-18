@@ -81,6 +81,28 @@ func (c *Cache) LookupID(id uint64) (value Endpoint, ok bool) {
 	return c.cache.Get(id)
 }
 
+func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
+	file := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
+	m, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer m.Close()
+
+	var (
+		key   endpointKey
+		value endpointValue
+	)
+
+	key.Addr[0] = uint64(binary.LittleEndian.Uint32(ip[0:]))
+	key.Addr[1] = 0
+
+	if err := m.Lookup(&key, &value); err != nil {
+		return 0, err
+	}
+	return value.Id, nil
+}
+
 func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 	file := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
 	m, err := ebpf.LoadPinnedMap(file, nil)
