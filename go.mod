@@ -9,7 +9,7 @@ require (
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
-	github.com/containerd/containerd v1.7.19
+	github.com/containerd/containerd v1.7.20
 	github.com/containernetworking/plugins v1.5.1
 	github.com/cri-o/cri-o v1.30.3
 	github.com/docker/docker v27.0.3+incompatible
