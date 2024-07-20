@@ -391,9 +391,17 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	sensorProgs = append(sensorProgs, []tus.SensorProg{
 		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
 	}...)
-	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
-		"tg_event_tcp_connect", "execve_send",
-	})
+
+	var confMap tus.SensorMap
+	if kernels.MinKernelVersion("5.14.0") {
+		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
+			"tg_event_tcp_connect", "execve_send",
+		})
+	} else {
+		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
+			"execve_send",
+		})
+	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,

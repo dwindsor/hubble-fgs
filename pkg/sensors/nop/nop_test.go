@@ -122,6 +122,7 @@ func TestLoadNopSensor(t *testing.T) {
 		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
 	}...)
 	ni := uint(len(sensorProgs))
+
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{ni - 1}},
 	}...)

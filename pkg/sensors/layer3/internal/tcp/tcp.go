@@ -67,6 +67,14 @@ var (
 		"layer3_sensor",
 	)
 
+	Connect515 = program.Builder(
+		"bpf_tcp_connect_5_15.o",
+		"tcp_connect",
+		"kprobe/tcp_connect",
+		"tg_tcp_connect",
+		"layer3_sensor",
+	)
+
 	CloseAndAccept = program.Builder(
 		"bpf_tcp_close_and_accept.o",
 		"tcp_set_state",
@@ -165,7 +173,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	TimestampEnabled = false
 
 	progs := []*program.Program{
-		Connect,
 		CloseAndAccept,
 		Listen,
 		Accept,
@@ -191,6 +198,15 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		ProcessNetworkWatermarksMap,
 		EventDisableConfig,
 		VerMap,
+	}
+
+	// Kernels before 5.15 are difficult to support BPF in kernel models
+	// for connect maps. The main issue is lack of atomic operations to
+	// support multiple cores accessing the map.
+	if !kernels.MinKernelVersion("5.14.0") {
+		progs = append(progs, Connect)
+	} else {
+		progs = append(progs, Connect515)
 	}
 
 	if tcpconfig.RttHistogramMax != 0 {

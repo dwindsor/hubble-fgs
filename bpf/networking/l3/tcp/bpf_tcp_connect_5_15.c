@@ -9,6 +9,7 @@
 // permission is obtained from Isovalent Inc.
 //
 
+#define KERNEL_5_15
 #include "bpf_tcp_connect.h"
 
 __attribute__((section("kprobe/tcp_connect"), used)) int
