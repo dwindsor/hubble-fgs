@@ -29,7 +29,7 @@ jobs:
           path: vex
       - name: Download Grype
         id: grype
-        uses: anchore/scan-action/download-grype@3343887d815d7b07465f6fdcd395bd66508d486a #v3.6.4
+        uses: anchore/scan-action/download-grype@d43cc1dfea6a99ed123bf8f3133f1797c9b44492 # v4.1.0
       - name: Scan image
         id: scan-image
         run: |
