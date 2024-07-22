@@ -26,6 +26,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
@@ -292,6 +293,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
+	model.DefaultNewServer()
+
 	if spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)

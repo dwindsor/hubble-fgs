@@ -26,6 +26,18 @@
 
 #include "policy_filter.h"
 
+struct process_tree_config {
+	uint64_t bpfGenIds;
+};
+
+/* Read only configuration single entry array. */
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct process_tree_config));
+} tg_process_tree_config_map SEC(".maps");
+
 struct endpoint_id_key {
 	uint64_t addr[2];
 };
@@ -238,9 +250,11 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
 	struct destination_endpoint_value *dest;
+	struct process_tree_config *cfg;
 	struct execve_map_value *parent;
 	struct execve_map_value *curr;
 	__u64 cgid, *nsid;
+	int zero = 0;
 
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
@@ -248,6 +262,10 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	__u64 source = DESTINATION_SOURCE_USERSPACE;
 
 	if (!v)
+		return 0;
+
+	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
+	if (!cfg)
 		return 0;
 
 	curr = execve_map_get_noinit(v->key.pid);
@@ -272,10 +290,11 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	// destination_id verifier fix to if/else;
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);
 	if (!value) {
+		if (!cfg->bpfGenIds)
+			return 0;
+
 		value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
 		if (!value) {
-			int zero = 0;
-
 			value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
 			if (!value)
 				return 0;

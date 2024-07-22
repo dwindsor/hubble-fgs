@@ -147,6 +147,8 @@ var (
 	BpfEndpointIdMapV53 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV53)
 	BpfEndpointIdMapV61 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV61)
 
+	PorcessTreeConfigMap = program.MapBuilder("tg_process_tree_config_map", Execve)
+
 	sensor = sensors.Sensor{
 		Name: "__main__",
 	}
@@ -233,6 +235,7 @@ func GetDefaultMaps() []*program.Map {
 		ExecveJoinMapStats,
 		StatsMap,
 		DestinationEndpointMap,
+		PorcessTreeConfigMap,
 	}
 
 	if kernels.EnableV61Progs() {

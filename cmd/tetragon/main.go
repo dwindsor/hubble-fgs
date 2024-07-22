@@ -431,7 +431,10 @@ func hubbleFGSExecute() error {
 		return err
 	}
 
-	modelServer := model.NewServer()
+	modelServer, err := model.DefaultNewServer()
+	if err != nil {
+		return err
+	}
 
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,

@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 )
@@ -244,6 +245,16 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	}, nil
 }
 
-func NewServer() *Server {
-	return &Server{}
+func DefaultNewServer() (*Server, error) {
+	dfltBpfId := true
+	return NewServer(dfltBpfId)
+}
+
+func NewServer(enableBpfId bool) (*Server, error) {
+	cfg := &CfgProcessModel{
+		Enable:      option.Config.EnableProcessTree,
+		EnableBpfId: enableBpfId,
+	}
+	err := configureSettings(cfg)
+	return &Server{}, err
 }
