@@ -65,7 +65,7 @@ enableCiliumAPI: false
 metadataImagePullPolicy: Always
 # Configure export container
 # Valid values: "stdout". Disabled by default, populate the value to enable.
-exportMode: stdout
+exportMode: ""
 #exportExtraEnv:
 #exportResources:
 #exportSecurityContext:
