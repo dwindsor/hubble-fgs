@@ -112,7 +112,7 @@ jobs:
           rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@3c748d6fc9d6c44a433de85a66f70e8f7043be04 # v0.0.18
+        uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
           install-dependencies: true
           test-name: tetragon-e2e
@@ -158,7 +158,7 @@ jobs:
           docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@3c748d6fc9d6c44a433de85a66f70e8f7043be04 # v0.0.18
+        uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
           provision: "false"
           cmd: |
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload end-to-end test logs
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         with:
           name: tetragon-e2e-${{ matrix.kernel }}
           path: logs/e2e

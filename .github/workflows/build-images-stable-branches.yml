@@ -28,7 +28,7 @@ jobs:
           submodules: true
 
       - name: Login to quay.io
-        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
@@ -73,7 +73,7 @@ jobs:
 
       # Upload artifact digests
       - name: Upload artifact digests
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         with:
           name: image-digest ${{ matrix.name }}
           path: image-digest
@@ -91,7 +91,7 @@ jobs:
           mkdir -p image-digest/
 
       - name: Download digests of all images built
-        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           path: image-digest/
 
