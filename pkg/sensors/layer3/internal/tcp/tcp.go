@@ -140,7 +140,8 @@ var (
 	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
 	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
 	// Endpoint Models
-	EndpointIdMap = program.MapBuilder("tg_endpoint_id_map", Connect515)
+	EndpointIdMap    = program.MapBuilder("tg_endpoint_id_map", Connect515)
+	BpfEndpointIdMap = program.MapBuilder("tg_bpf_endpoint_id_map", Connect515)
 
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
@@ -177,9 +178,11 @@ func UnloadSensor() error {
 func processModelMapsEnable() []*program.Map {
 	maps := []*program.Map{
 		EndpointIdMap,
+		BpfEndpointIdMap,
 	}
 
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
 	return maps
 }
 

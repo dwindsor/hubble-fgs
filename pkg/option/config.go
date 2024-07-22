@@ -7,6 +7,7 @@ type config struct {
 	EnableProcessAncestors bool
 	DnsCacheSize           int
 	EndpointCacheSize      int
+	BpfEndpointCacheSize   int
 	TlsCacheSize           int
 	NetNsCacheSize         int
 	FimFifoPath            string
@@ -32,6 +33,7 @@ var (
 	Config = config{
 		EnableProcessAncestors: false,
 		DnsCacheSize:           1024,
+		BpfEndpointCacheSize:   1024,
 		EndpointCacheSize:      1024,
 		TlsCacheSize:           1024,
 		NetNsCacheSize:         256,

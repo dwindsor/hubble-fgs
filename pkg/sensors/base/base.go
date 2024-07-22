@@ -133,6 +133,10 @@ var (
 
 	DestinationEndpointMap = program.MapBuilder("destination_endpoint_map", Execve)
 
+	BpfEndpointIdMap    = program.MapBuilder("tg_bpf_endpoint_id_map", Execve)
+	BpfEndpointIdMapV53 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV53)
+	BpfEndpointIdMapV61 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV61)
+
 	sensor = sensors.Sensor{
 		Name: "__main__",
 	}
@@ -232,6 +236,7 @@ func GetDefaultMaps() []*program.Map {
 			TCPMonMapV61,
 			TetragonConfMapV61,
 			EndpointIdMapV61,
+			BpfEndpointIdMapV61,
 		)
 	} else if kernels.EnableLargeProgs() {
 		maps = append(maps,
@@ -241,6 +246,7 @@ func GetDefaultMaps() []*program.Map {
 			TCPMonMapV53,
 			TetragonConfMapV53,
 			EndpointIdMapV53,
+			BpfEndpointIdMapV53,
 		)
 	} else {
 		maps = append(maps,
@@ -250,6 +256,7 @@ func GetDefaultMaps() []*program.Map {
 			TCPMonMap,
 			TetragonConfMap,
 			EndpointIdMap,
+			BpfEndpointIdMap,
 		)
 	}
 	if option.CgroupRateEnabled() {
@@ -288,4 +295,7 @@ func ConfigureMapSizes() {
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+	BpfEndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+	BpfEndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
 }
