@@ -26,6 +26,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
@@ -138,6 +139,9 @@ var (
 	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
 	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
 	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
+	// Endpoint Models
+	EndpointIdMap = program.MapBuilder("tg_endpoint_id_map", Connect515)
+
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
@@ -168,6 +172,15 @@ func UnloadSensor() error {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
 	return nil
+}
+
+func processModelMapsEnable() []*program.Map {
+	maps := []*program.Map{
+		EndpointIdMap,
+	}
+
+	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	return maps
 }
 
 func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
@@ -211,6 +224,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			progs = append(progs, Connect)
 		} else {
 			progs = append(progs, Connect515)
+			maps = append(maps, processModelMapsEnable()...)
 		}
 	}
 

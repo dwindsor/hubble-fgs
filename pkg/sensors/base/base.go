@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 )
 
@@ -125,8 +126,12 @@ var (
 	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve)
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve)
 	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve)
-	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve)
-	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve)
+
+	EndpointIdMap    = program.MapBuilder("tg_endpoint_id_map", Execve)
+	EndpointIdMapV53 = program.MapBuilder("tg_endpoint_id_map", ExecveV53)
+	EndpointIdMapV61 = program.MapBuilder("tg_endpoint_id_map", ExecveV61)
+
+	DestinationEndpointMap = program.MapBuilder("destination_endpoint_map", Execve)
 
 	sensor = sensors.Sensor{
 		Name: "__main__",
@@ -216,7 +221,6 @@ func GetDefaultMaps() []*program.Map {
 		ProcessTreeMap,
 		ProcessTreeBinaryUUIDMap,
 		ProcessTreeUUIDBinaryMap,
-		EndpointIdMap,
 		DestinationEndpointMap,
 	}
 
@@ -227,6 +231,7 @@ func GetDefaultMaps() []*program.Map {
 			ExecveTailCallsMapV61,
 			TCPMonMapV61,
 			TetragonConfMapV61,
+			EndpointIdMapV61,
 		)
 	} else if kernels.EnableLargeProgs() {
 		maps = append(maps,
@@ -235,6 +240,7 @@ func GetDefaultMaps() []*program.Map {
 			ExecveTailCallsMapV53,
 			TCPMonMapV53,
 			TetragonConfMapV53,
+			EndpointIdMapV53,
 		)
 	} else {
 		maps = append(maps,
@@ -243,13 +249,15 @@ func GetDefaultMaps() []*program.Map {
 			ExecveTailCallsMap,
 			TCPMonMap,
 			TetragonConfMap,
+			EndpointIdMap,
 		)
 	}
 	if option.CgroupRateEnabled() {
 		maps = append(maps, CgroupRateMap, CgroupRateOptionsMap)
 	}
-	return maps
 
+	ConfigureMapSizes()
+	return maps
 }
 
 // GetInitialSensor returns the collection of Sensor that is loaded at
@@ -274,4 +282,10 @@ func LoadDefault(bpfDir string) error {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 	return nil
+}
+
+func ConfigureMapSizes() {
+	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	EndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	EndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 }
