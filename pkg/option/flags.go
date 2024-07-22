@@ -31,6 +31,7 @@ const (
 	KeyDnsCacheSize             = "dns-cache-size"
 	KeyEndpointCacheSize        = "endpoint-cache-size"
 	KeyBpfEndpointCacheSize     = "bpf-endpoint-cache-size"
+	KeyProcessTreeSize          = "process-tree-cache-size"
 	KeyTlsCacheSize             = "tls-cache-size"
 	KeyNetNsCacheSize           = "net-ns-cache-size"
 	KeyDetatchOldBPF            = "detach-old-bpf"
@@ -50,6 +51,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
 	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
+	flags.Int(KeyProcessTreeSize, 1024, "Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(KeyEndpointCacheSize, 1024, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
 	flags.Int(KeyBpfEndpointCacheSize, 1024, "Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
 	flags.Int(KeyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
@@ -74,6 +76,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableProcessAncestors = viper.GetBool(KeyEnableProcessAncestors)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
+	Config.ProcessTreeCacheSize = viper.GetInt(KeyProcessTreeSize)
 	Config.EndpointCacheSize = viper.GetInt(KeyEndpointCacheSize)
 	Config.BpfEndpointCacheSize = viper.GetInt(KeyBpfEndpointCacheSize)
 	Config.TlsCacheSize = viper.GetInt(KeyTlsCacheSize)

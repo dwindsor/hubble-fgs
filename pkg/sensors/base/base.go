@@ -123,15 +123,25 @@ var (
 	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
 
 	/* In BPF memory aggregated data */
-	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve)
-	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve)
-	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve)
+	ProcessTreeMap    = program.MapBuilder("process_tree_map", Execve)
+	ProcessTreeMapV53 = program.MapBuilder("process_tree_map", ExecveV53)
+	ProcessTreeMapV61 = program.MapBuilder("process_tree_map", ExecveV61)
+
+	ProcessTreeBinaryUUIDMap    = program.MapBuilder("process_tree_binary_uid_map", Execve)
+	ProcessTreeBinaryUUIDMapV53 = program.MapBuilder("process_tree_binary_uid_map", ExecveV53)
+	ProcessTreeBinaryUUIDMapV61 = program.MapBuilder("process_tree_binary_uid_map", ExecveV61)
+
+	ProcessTreeUUIDBinaryMap    = program.MapBuilder("process_tree_uid_binary_map", Execve)
+	ProcessTreeUUIDBinaryMapV53 = program.MapBuilder("process_tree_uid_binary_map", ExecveV53)
+	ProcessTreeUUIDBinaryMapV61 = program.MapBuilder("process_tree_uid_binary_map", ExecveV61)
 
 	EndpointIdMap    = program.MapBuilder("tg_endpoint_id_map", Execve)
 	EndpointIdMapV53 = program.MapBuilder("tg_endpoint_id_map", ExecveV53)
 	EndpointIdMapV61 = program.MapBuilder("tg_endpoint_id_map", ExecveV61)
 
-	DestinationEndpointMap = program.MapBuilder("destination_endpoint_map", Execve)
+	DestinationEndpointMap    = program.MapBuilder("destination_endpoint_map", Execve)
+	DestinationEndpointMapV53 = program.MapBuilder("destination_endpoint_map", ExecveV53)
+	DestinationEndpointMapV61 = program.MapBuilder("destination_endpoint_map", ExecveV61)
 
 	BpfEndpointIdMap    = program.MapBuilder("tg_bpf_endpoint_id_map", Execve)
 	BpfEndpointIdMapV53 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV53)
@@ -222,9 +232,6 @@ func GetDefaultMaps() []*program.Map {
 		ExecveJoinMap,
 		ExecveJoinMapStats,
 		StatsMap,
-		ProcessTreeMap,
-		ProcessTreeBinaryUUIDMap,
-		ProcessTreeUUIDBinaryMap,
 		DestinationEndpointMap,
 	}
 
@@ -237,6 +244,9 @@ func GetDefaultMaps() []*program.Map {
 			TetragonConfMapV61,
 			EndpointIdMapV61,
 			BpfEndpointIdMapV61,
+			ProcessTreeMapV61,
+			ProcessTreeBinaryUUIDMapV61,
+			ProcessTreeUUIDBinaryMapV61,
 		)
 	} else if kernels.EnableLargeProgs() {
 		maps = append(maps,
@@ -247,6 +257,9 @@ func GetDefaultMaps() []*program.Map {
 			TetragonConfMapV53,
 			EndpointIdMapV53,
 			BpfEndpointIdMapV53,
+			ProcessTreeMapV53,
+			ProcessTreeBinaryUUIDMapV53,
+			ProcessTreeUUIDBinaryMapV53,
 		)
 	} else {
 		maps = append(maps,
@@ -257,6 +270,9 @@ func GetDefaultMaps() []*program.Map {
 			TetragonConfMap,
 			EndpointIdMap,
 			BpfEndpointIdMap,
+			ProcessTreeMap,
+			ProcessTreeBinaryUUIDMap,
+			ProcessTreeUUIDBinaryMap,
 		)
 	}
 	if option.CgroupRateEnabled() {
@@ -295,7 +311,24 @@ func ConfigureMapSizes() {
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+
 	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
 	BpfEndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
 	BpfEndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+
+	ProcessTreeBinaryUUIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeBinaryUUIDMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeBinaryUUIDMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeUUIDBinaryMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeUUIDBinaryMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DestinationEndpointMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DestinationEndpointMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 }

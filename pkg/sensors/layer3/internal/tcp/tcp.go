@@ -139,9 +139,14 @@ var (
 	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
 	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
 	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
+
 	// Endpoint Models
-	EndpointIdMap    = program.MapBuilder("tg_endpoint_id_map", Connect515)
-	BpfEndpointIdMap = program.MapBuilder("tg_bpf_endpoint_id_map", Connect515)
+	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Connect515)
+	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Connect515)
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", Connect515)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Connect515)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Connect515)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Connect515)
 
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
@@ -179,10 +184,19 @@ func processModelMapsEnable() []*program.Map {
 	maps := []*program.Map{
 		EndpointIdMap,
 		BpfEndpointIdMap,
+		ProcessTreeMap,
+		ProcessTreeBinaryUUIDMap,
+		ProcessTreeUUIDBinaryMap,
+		DestinationEndpointMap,
 	}
 
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeBinaryUUIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
 	return maps
 }
 

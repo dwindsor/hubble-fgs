@@ -26,8 +26,6 @@
 
 #include "policy_filter.h"
 
-#define PROCESS_TREE_SIZE 500000
-
 struct endpoint_id_key {
 	uint64_t addr[2];
 };
@@ -72,7 +70,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, PROCESS_TREE_SIZE);
+	__uint(max_entries, 1); // will be resized by user space
 	__uint(key_size, sizeof(struct binary));
 	__uint(value_size, sizeof(struct msg_execve_key));
 } process_tree_binary_uid_map SEC(".maps");
@@ -85,7 +83,7 @@ struct {
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, PROCESS_TREE_SIZE);
+	__uint(max_entries, 1); // will be resized by user space
 	__uint(key_size, sizeof(struct msg_execve_key));
 	__uint(value_size, sizeof(struct binary));
 } process_tree_uid_binary_map SEC(".maps");
@@ -112,7 +110,7 @@ struct process_tree_value {
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, PROCESS_TREE_SIZE);
+	__uint(max_entries, 1); // will be resized by user space
 	__uint(key_size, sizeof(struct process_tree_key));
 	__uint(value_size, sizeof(struct process_tree_value));
 } process_tree_map SEC(".maps");
@@ -161,7 +159,7 @@ struct destination_endpoint_value {
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, PROCESS_TREE_SIZE);
+	__uint(max_entries, 1); // will be resized by userspace
 	__uint(key_size, sizeof(struct destination_endpoint_key));
 	__uint(value_size, sizeof(struct destination_endpoint_value));
 } destination_endpoint_map SEC(".maps");

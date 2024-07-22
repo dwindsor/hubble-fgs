@@ -6,6 +6,7 @@ package option
 type config struct {
 	EnableProcessAncestors bool
 	DnsCacheSize           int
+	ProcessTreeCacheSize   int
 	EndpointCacheSize      int
 	BpfEndpointCacheSize   int
 	TlsCacheSize           int
@@ -33,6 +34,7 @@ var (
 	Config = config{
 		EnableProcessAncestors: false,
 		DnsCacheSize:           1024,
+		ProcessTreeCacheSize:   1024,
 		BpfEndpointCacheSize:   1024,
 		EndpointCacheSize:      1024,
 		TlsCacheSize:           1024,
