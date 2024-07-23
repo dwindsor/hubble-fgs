@@ -282,6 +282,7 @@ struct {
 	__type(key, struct inode_key);
 	__type(value, struct inode_val);
 	__uint(max_entries, 1); /* the user will setup this */
+	__uint(map_flags, BPF_F_NO_PREALLOC);
 } hash_map_inode_alloc SEC(".maps");
 
 struct {
