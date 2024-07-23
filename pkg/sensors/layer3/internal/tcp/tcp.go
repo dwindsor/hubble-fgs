@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -206,7 +207,11 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	if !kernels.MinKernelVersion("5.14.0") {
 		progs = append(progs, Connect)
 	} else {
-		progs = append(progs, Connect515)
+		if runtime.GOARCH != "amd64" {
+			progs = append(progs, Connect)
+		} else {
+			progs = append(progs, Connect515)
+		}
 	}
 
 	if tcpconfig.RttHistogramMax != 0 {

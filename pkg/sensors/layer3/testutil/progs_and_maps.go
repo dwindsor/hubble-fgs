@@ -11,6 +11,8 @@
 package testutil
 
 import (
+	"runtime"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 
@@ -394,9 +396,15 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 	var confMap tus.SensorMap
 	if kernels.MinKernelVersion("5.14.0") {
-		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
-			"tg_event_tcp_connect", "execve_send",
-		})
+		if runtime.GOARCH != "amd64" {
+			confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
+				"execve_send",
+			})
+		} else {
+			confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
+				"tg_event_tcp_connect", "execve_send",
+			})
+		}
 	} else {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
 			"execve_send",
