@@ -3,6 +3,10 @@ synopsis: |
     Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
 usage: tetragon [flags]
 options:
+    - name: bpf-endpoint-cache-size
+      default_value: "1024"
+      usage: |
+        Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: bpf-lib
       default_value: /var/lib/tetragon/
       usage: Location of hubble libs (btf and bpf files)
@@ -180,6 +184,10 @@ options:
     - name: process-cache-size
       default_value: "65536"
       usage: Size of the process cache
+    - name: process-tree-cache-size
+      default_value: "1024"
+      usage: |
+        Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
     - name: procfs
       default_value: /proc/
       usage: Location of procfs to consume existing PIDs
