@@ -27,6 +27,7 @@
 #include "policy_filter.h"
 
 struct process_tree_config {
+	uint64_t enableProcessTree;
 	uint64_t bpfGenIds;
 };
 
@@ -181,11 +182,16 @@ int insert_process_tree(void)
 	struct msg_execve_key *self_uid, *parent_uid;
 	__u32 pid = (get_current_pid_tgid() >> 32);
 	struct execve_map_value *parent;
+	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
 	struct process_tree_key *k;
 	__u64 cgid, *nsid;
 	__u32 zero = 0;
+
+	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
+	if (!cfg || !cfg->enableProcessTree)
+		return 0;
 
 	pid = get_current_pid_tgid();
 	curr = execve_map_get_noinit(pid);
@@ -265,7 +271,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		return 0;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
-	if (!cfg)
+	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
 	curr = execve_map_get_noinit(v->key.pid);

@@ -5,6 +5,7 @@ package option
 
 type config struct {
 	EnableProcessAncestors bool
+	EnableProcessTree      bool
 	DnsCacheSize           int
 	ProcessTreeCacheSize   int
 	EndpointCacheSize      int
@@ -34,6 +35,7 @@ var (
 	// Config contains all the configuration used by Tetragon.
 	Config = config{
 		EnableProcessAncestors: false,
+		EnableProcessTree:      false,
 		DnsCacheSize:           1024,
 		ProcessTreeCacheSize:   1024,
 		BpfEndpointCacheSize:   1024,

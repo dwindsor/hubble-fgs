@@ -34,16 +34,17 @@ func (k *ConfigKey) String() string {
 }
 
 type CfgProcessModel struct {
-	Enable bool
+	Enable      bool
 	EnableBpfId bool
 }
 
 type ConfigValue struct {
-	EnableBpfId uint64
+	EnableProcessTree uint64
+	EnableBpfId       uint64
 }
 
 func (v *ConfigValue) String() string {
-	return fmt.Sprintf("EnableBpfIds: %d", v.EnableBpfId)
+	return fmt.Sprintf("Enable: %d EnableBpfIds: %d", v.EnableProcessTree, v.EnableBpfId)
 }
 
 func configureSettings(cfg *CfgProcessModel) error {
@@ -63,7 +64,7 @@ func configureSettings(cfg *CfgProcessModel) error {
 	}
 	m, err := ebpf.NewMapWithOptions(c, opts)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer m.Close()
 
@@ -77,8 +78,13 @@ func configureSettings(cfg *CfgProcessModel) error {
 	} else {
 		value.EnableBpfId = 0
 	}
+	if cfg.Enable {
+		value.EnableProcessTree = 1
+	} else {
+		value.EnableProcessTree = 0
+	}
 
-	err = m.Put(key, cfg)
+	err = m.Put(key, value)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Model configuration could not update map")
 		return err
