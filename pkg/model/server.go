@@ -136,6 +136,10 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 		case endpoint.DnsType:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
+				Stats: &tetragon.DestinationStats{
+					TxBytes: dstVal.TxBytes,
+					RxBytes: dstVal.RxBytes,
+				},
 			}
 		case endpoint.PodType:
 			d = &tetragon.Destination{

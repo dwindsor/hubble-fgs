@@ -174,14 +174,27 @@ var (
 	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
 
 	// Process Tree maps
-	DestinationEndpointEgressMap  = program.MapBuilder("destination_endpoint_map", EgressDispatcher)
-	DestinationEndpointIngressMap = program.MapBuilder("destination_endpoint_map", IngressDispatcher)
+	DestinationEndpointEgressMap    = program.MapBuilder("destination_endpoint_map", EgressDispatcher)
+	DestinationEndpointIngressMap   = program.MapBuilder("destination_endpoint_map", IngressDispatcher)
+	ProcessTreeBinaryUUIDEgressMap  = program.MapBuilder("process_tree_binary_uid_map", EgressDispatcher)
+	ProcessTreeBinaryUUIDIngressMap = program.MapBuilder("process_tree_binary_uid_map", IngressDispatcher)
+	BpfEndpointIdEgressMap          = program.MapBuilder("tg_bpf_endpoint_id_map", EgressDispatcher)
+	BpfEndpointIdIngressMap         = program.MapBuilder("tg_bpf_endpoint_id_map", IngressDispatcher)
+	EndpointIdEgressMap             = program.MapBuilder("tg_endpoint_id_map", EgressDispatcher)
+	EndpointIdIngressMap            = program.MapBuilder("tg_endpoint_id_map", IngressDispatcher)
 
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
 		[]*program.Map{protoCfgMap,
 			DestinationEndpointIngressMap,
-			DestinationEndpointEgressMap}...)
+			DestinationEndpointEgressMap,
+			ProcessTreeBinaryUUIDEgressMap,
+			ProcessTreeBinaryUUIDIngressMap,
+			BpfEndpointIdEgressMap,
+			BpfEndpointIdIngressMap,
+			EndpointIdEgressMap,
+			EndpointIdIngressMap,
+		}...)
 	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
 )
@@ -192,6 +205,15 @@ func processModelMapsEnable() {
 	}
 	DestinationEndpointEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	ProcessTreeBinaryUUIDEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ProcessTreeBinaryUUIDIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	BpfEndpointIdEgressMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+	BpfEndpointIdIngressMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+
+	EndpointIdEgressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+	EndpointIdIngressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 }
 
 func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {

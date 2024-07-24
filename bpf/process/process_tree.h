@@ -131,8 +131,6 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
 
-	__u64 source = DESTINATION_SOURCE_USERSPACE;
-
 	if (!v)
 		return 0;
 
@@ -165,6 +163,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		if (!cfg->bpfGenIds)
 			return 0;
 
+		destkey.source = DESTINATION_SOURCE_BPF;
 		value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
 		if (!value) {
 			value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
@@ -172,18 +171,17 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 				return 0;
 			value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
 			destkey.destination_id = value->id;
-			source = DESTINATION_SOURCE_BPF;
 			map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
 		} else {
 			destkey.destination_id = value->id;
 		}
 	} else {
 		destkey.destination_id = value->id;
+		destkey.source = DESTINATION_SOURCE_USERSPACE;
 	}
 
 	destkey.process_id.self = *self_uid;
 	destkey.process_id.parent = *parent_uid;
-	destkey.source = source;
 
 	cgid = tg_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
@@ -195,7 +193,9 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	/* Push destkey into socket metadata so future update can avoid
 	 * the key generation above. Notice because many sockets may have
 	 * the same destkey this is not necessarily a new entry in the
-	 * desetination_endpoint_map.
+	 * destination_endpoint_map. Further we complicate our life here
+	 * a bit because now we have to promote keys to the 'more' correct
+	 * userspace key if it shows up.
 	 */
 	v->dst_key = destkey;
 
@@ -212,27 +212,71 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	return 0;
 }
 
-static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, __u64 bytes)
+static inline __attribute__((always_inline)) int process_socketmap_rekey(struct destination_endpoint_key *key, struct __sk_buff *skb)
+{
+	struct endpoint_id_value *value;
+	struct endpoint_id_key idkey;
+
+	if (skb->family != AF_INET6) {
+		idkey.addr[0] = skb->remote_ip4;
+		idkey.addr[1] = 0;
+	} else {
+		__u32 l[2];
+		__u32 u[2];
+
+		l[0] = skb->remote_ip6[0];
+		l[1] = skb->remote_ip6[1];
+		u[0] = skb->remote_ip6[2];
+		u[1] = skb->remote_ip6[3];
+
+		idkey.addr[0] = (__u64)l;
+		idkey.addr[1] = (__u64)u;
+	}
+
+	value = map_lookup_elem(&tg_endpoint_id_map, &idkey);
+	if (value && value->id != key->destination_id) {
+		key->source = DESTINATION_SOURCE_USERSPACE;
+		key->destination_id = value->id;
+	}
+	return 0;
+}
+
+static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
+	__u64 len;
 
+	/* These are incomplete keys the result of process and sessions taht
+	 * existed before Tetragon started. We may add support for these flows
+	 * in the future for now we just pass them along.
+	 */
+	if (!v->dst_key.source)
+		return SK_PASS;
+
+	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
 		return SK_PASS;
-
-	__sync_fetch_and_add(&dest->tx_bytes, bytes);
+	len = skb->len;
+	__sync_fetch_and_add(&dest->tx_bytes, len);
 	return SK_PASS;
 }
 
-static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, __u64 bytes)
+static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
+	__u64 len;
 
+	/* Same as above see note in _send. */
+	if (!v->dst_key.source)
+		return SK_PASS;
+
+	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
 		return SK_PASS;
-
-	__sync_fetch_and_add(&dest->rx_bytes, bytes);
+	len = skb->len;
+	__sync_fetch_and_add(&dest->rx_bytes, len);
 	return SK_PASS;
 }
 
