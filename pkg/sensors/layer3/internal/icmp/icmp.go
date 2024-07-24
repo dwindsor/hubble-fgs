@@ -180,6 +180,5 @@ func handleIcmp(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ICMP, handleIcmp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ICMPV6, handleIcmp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 	return nil
 }

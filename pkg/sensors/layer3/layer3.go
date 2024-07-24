@@ -22,11 +22,14 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
@@ -578,6 +581,8 @@ func AddLayer3() {
 	sensors.RegisterProbeType("cgrp_inet6_bind", l3)
 	sensors.RegisterProbeType("udp_tc_egress", l3)
 	sensors.RegisterProbeType("tcp_tc_egress", l3)
+
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 }
 
 func HTTPContext() *program.Map {
