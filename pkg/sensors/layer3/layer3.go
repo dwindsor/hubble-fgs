@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
@@ -172,11 +173,23 @@ var (
 	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
 	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
 
+	// Process Tree maps
+	DestinationEndpointEgressMap  = program.MapBuilder("destination_endpoint_map", EgressDispatcher)
+	DestinationEndpointIngressMap = program.MapBuilder("destination_endpoint_map", IngressDispatcher)
+
 	// Dispatcher all maps
-	dispatcherMaps          = append(udpMaps, protoCfgMap)
+	dispatcherMaps = append(udpMaps,
+		[]*program.Map{protoCfgMap,
+			DestinationEndpointIngressMap,
+			DestinationEndpointEgressMap}...)
 	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
 )
+
+func processModelMapsEnable() {
+	DestinationEndpointEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DestinationEndpointIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+}
 
 func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
@@ -223,6 +236,7 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 			} else {
 				progs = append(progs, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
+				processModelMapsEnable()
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
