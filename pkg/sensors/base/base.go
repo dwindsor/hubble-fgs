@@ -234,7 +234,6 @@ func GetDefaultMaps() []*program.Map {
 		ExecveJoinMap,
 		ExecveJoinMapStats,
 		StatsMap,
-		DestinationEndpointMap,
 		PorcessTreeConfigMap,
 	}
 
@@ -250,6 +249,7 @@ func GetDefaultMaps() []*program.Map {
 			ProcessTreeMapV61,
 			ProcessTreeBinaryUUIDMapV61,
 			ProcessTreeUUIDBinaryMapV61,
+			DestinationEndpointMapV61,
 		)
 	} else if kernels.EnableLargeProgs() {
 		maps = append(maps,
@@ -263,6 +263,7 @@ func GetDefaultMaps() []*program.Map {
 			ProcessTreeMapV53,
 			ProcessTreeBinaryUUIDMapV53,
 			ProcessTreeUUIDBinaryMapV53,
+			DestinationEndpointMapV53,
 		)
 	} else {
 		maps = append(maps,
@@ -276,6 +277,7 @@ func GetDefaultMaps() []*program.Map {
 			ProcessTreeMap,
 			ProcessTreeBinaryUUIDMap,
 			ProcessTreeUUIDBinaryMap,
+			DestinationEndpointMap,
 		)
 	}
 	if option.CgroupRateEnabled() {
