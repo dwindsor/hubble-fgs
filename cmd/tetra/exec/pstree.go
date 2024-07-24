@@ -142,7 +142,26 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 				path := fmt.Sprintf("%s:%s", p.Parent, p.Binary)
 				binaryBranch := wlTree.AddBranch(path)
 				for _, d := range p.Dest {
-					binaryBranch.AddBranch(d)
+					endptName := ""
+					txBytes := uint64(0)
+					rxBytes := uint64(0)
+
+					if d.DestinationPod != nil {
+						endptName = d.DestinationPod.String()
+					}
+					if len(d.DestinationNames) > 0 {
+						if endptName != "" {
+							endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
+						} else {
+							endptName = fmt.Sprintf("%s", d.DestinationNames)
+						}
+					}
+					if d.Stats != nil {
+						txBytes = d.Stats.TxBytes
+						rxBytes = d.Stats.RxBytes
+					}
+					compact := fmt.Sprintf("%s [tx: %d rx: %d]", endptName, txBytes, rxBytes)
+					binaryBranch.AddBranch(compact)
 				}
 			}
 		}
