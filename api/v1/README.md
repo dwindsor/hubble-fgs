@@ -171,6 +171,7 @@
   
 - [tetragon/model.proto](#tetragon_model-proto)
     - [Destination](#tetragon-Destination)
+    - [DestinationStats](#tetragon-DestinationStats)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
     - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
     - [ProcessModel](#tetragon-ProcessModel)
@@ -3094,6 +3095,23 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ----- | ---- | ----- | ----------- |
 | destination_names | [string](#string) | repeated |  |
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
+| stats | [DestinationStats](#tetragon-DestinationStats) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DestinationStats"></a>
+
+### DestinationStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| TxBytes | [uint64](#uint64) |  |  |
+| RxBytes | [uint64](#uint64) |  |  |
 
 
 

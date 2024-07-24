@@ -25,9 +25,15 @@ message Workload {
 	string kind = 2;
 }
 
+message DestinationStats {
+	uint64 TxBytes = 1;
+	uint64 RxBytes = 2;
+}
+
 message Destination {
 	repeated string destination_names = 1;
 	tetragon.Pod destination_pod = 2;
+	DestinationStats stats = 3;
 }
 
 message ProcessModel {
