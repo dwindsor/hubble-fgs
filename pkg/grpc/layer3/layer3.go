@@ -50,8 +50,6 @@ const (
 	refDec
 )
 
-var IpErrorMax = int64(len(iperrormetrics.IpErrorToString) - 1)
-
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & networkapi.SOCKFLAGS_TYPE_DNSREADY) != 0
 }
@@ -737,11 +735,11 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	}
 
 	var details string
+	var ok bool
 
 	// Lower 32 bits is error code, upper 32 bits is data if required.
 	errorCode := event.Msg.Return & 0xffffffff
-	if errorCode <= IpErrorMax {
-		details = iperrormetrics.IpErrorToString[errorCode]
+	if details, ok = iperrormetrics.IpErrorToString[iperrormetrics.Error(errorCode)]; ok {
 		// Populate the metrics here before we parameterize with any data, otherwise we
 		// risk cardinality exploding
 		iperrormetrics.ProcessIpErrors(details, version).Inc()

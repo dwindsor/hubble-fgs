@@ -16,45 +16,88 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var IpErrorToString = []string{
-	0:  "Header error",
-	1:  "No heap available",
-	2:  "Read IPv6 next failed (probe)",
-	3:  "Read IPv6 next failed (skb_load)",
-	4:  "Read IPv6 next failed (skb)",
-	5:  "Unknown IPv6 extension",
-	6:  "Too many IPv6 extensions",
-	7:  "UDP stack no cookie",
-	8:  "UDP stack read version failed",
-	9:  "UDP stack read IP header failed",
-	10: "UDP stack read UDP header failed",
-	11: "UDP stack no payload offset",
-	12: "UDP stack invalid IP version",
-	13: "UDP stack burst no process",
-	14: "UDP stack burst no PID",
-	15: "UDP stack read payload failed",
-	16: "UDP send no socket info",
-	17: "UDP send no cookie",
-	18: "UDP recv no cookie",
-	19: "UDP recv read IP header failed",
-	20: "UDP recv read UDP header failed",
-	21: "UDP recv invalid IP version",
-	22: "UDP sock create no cookie",
-	23: "UDP sock release no cookie",
-	24: "UDP failed to read IP option",
-	25: "UDP retprobe add failed",
-	26: "UDP retprobe delete failed",
-	27: "UDP sock release no sock",
-	28: "UDP send missing process",
-	29: "UDP recv missing process",
-	30: "Update socketmap no process",
-	31: "Socket discovery no process",
-	32: "Socket discovery read error",
-	33: "UDP sock create no process",
-	34: "Socket discovery no sk",
-	35: "UDP sock create PID=0",
-	36: "UDP sequence check read payload flags",
-	37: "UDP sequence check read payload data",
+type Error int
+
+const (
+	HeaderError Error = iota
+	NoHeapAvailable
+	ReadIpv6NextFailedKprobe
+	ReadIpv6NextFailedSkbLoad
+	ReadIpv6NextFailedSkb
+	UnknownIpv6Extension
+	TooManyIpv6Extensions
+	UdpStackNoCookie
+	UdpStackReadVersionFailed
+	UdpStackReadIpHeaderFailed
+	UdpStackReadUdpHeaderFailed
+	UdpStackNoPayloadOffset
+	UdpStackInvalidIpVersion
+	UdpStackBurstNoProcess
+	UdpStackBurstNoPID
+	UdpStackReadPayloadFailed
+	UdpSendNoSocketInfo
+	UdpSendNoCookie
+	UdpRecvNoCookie
+	UdpRecvReadIpHeaderFailed
+	UdpRecvReadUdpHeaderFailed
+	UdpRecvInvalidIpVersion
+	UdpSockCreateNoCookie
+	UdpSockReleaseNoCookie
+	UdpFailedToReadIpOption
+	UdpRetprobeAddFailed
+	UdpRetprobeDeleteFailed
+	UdpSockReleaseNoSock
+	UdpSendMissingProcess
+	UdpRecvMissingProcess
+	UpdateSocketmapNoProcess
+	SocketDiscoveryNoProcess
+	SocketDiscoveryReadError
+	UdpSockCreateNoProcess
+	SocketDiscoveryNoSk
+	UdpSockCreatePid0
+	UdpSequenceCheckReadPayloadFlags
+	UdpSequenceCheckReadPayloadData
+)
+
+var IpErrorToString = map[Error]string{
+	HeaderError:                      "Header error",
+	NoHeapAvailable:                  "No heap available",
+	ReadIpv6NextFailedKprobe:         "Read IPv6 next failed (probe)",
+	ReadIpv6NextFailedSkbLoad:        "Read IPv6 next failed (skb_load)",
+	ReadIpv6NextFailedSkb:            "Read IPv6 next failed (skb)",
+	UnknownIpv6Extension:             "Unknown IPv6 extension",
+	TooManyIpv6Extensions:            "Too many IPv6 extensions",
+	UdpStackNoCookie:                 "UDP stack no cookie",
+	UdpStackReadVersionFailed:        "UDP stack read version failed",
+	UdpStackReadIpHeaderFailed:       "UDP stack read IP header failed",
+	UdpStackReadUdpHeaderFailed:      "UDP stack read UDP header failed",
+	UdpStackNoPayloadOffset:          "UDP stack no payload offset",
+	UdpStackInvalidIpVersion:         "UDP stack invalid IP version",
+	UdpStackBurstNoProcess:           "UDP stack burst no process",
+	UdpStackBurstNoPID:               "UDP stack burst no PID",
+	UdpStackReadPayloadFailed:        "UDP stack read payload failed",
+	UdpSendNoSocketInfo:              "UDP send no socket info",
+	UdpSendNoCookie:                  "UDP send no cookie",
+	UdpRecvNoCookie:                  "UDP recv no cookie",
+	UdpRecvReadIpHeaderFailed:        "UDP recv read IP header failed",
+	UdpRecvReadUdpHeaderFailed:       "UDP recv read UDP header failed",
+	UdpRecvInvalidIpVersion:          "UDP recv invalid IP version",
+	UdpSockCreateNoCookie:            "UDP sock create no cookie",
+	UdpSockReleaseNoCookie:           "UDP sock release no cookie",
+	UdpFailedToReadIpOption:          "UDP failed to read IP option",
+	UdpRetprobeAddFailed:             "UDP retprobe add failed",
+	UdpRetprobeDeleteFailed:          "UDP retprobe delete failed",
+	UdpSockReleaseNoSock:             "UDP sock release no sock",
+	UdpSendMissingProcess:            "UDP send missing process",
+	UdpRecvMissingProcess:            "UDP recv missing process",
+	UpdateSocketmapNoProcess:         "Update socketmap no process",
+	SocketDiscoveryNoProcess:         "Socket discovery no process",
+	SocketDiscoveryReadError:         "Socket discovery read error",
+	UdpSockCreateNoProcess:           "UDP sock create no process",
+	SocketDiscoveryNoSk:              "Socket discovery no sk",
+	UdpSockCreatePid0:                "UDP sock create PID=0",
+	UdpSequenceCheckReadPayloadFlags: "UDP sequence check read payload flags",
+	UdpSequenceCheckReadPayloadData:  "UDP sequence check read payload data",
 }
 
 var (
