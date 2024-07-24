@@ -45,6 +45,7 @@
     - [ProcessExit](#tetragon-ProcessExit)
     - [ProcessKprobe](#tetragon-ProcessKprobe)
     - [ProcessLoader](#tetragon-ProcessLoader)
+    - [ProcessLsm](#tetragon-ProcessLsm)
     - [ProcessTracepoint](#tetragon-ProcessTracepoint)
     - [ProcessUprobe](#tetragon-ProcessUprobe)
     - [RuntimeHookRequest](#tetragon-RuntimeHookRequest)
@@ -985,6 +986,28 @@ loader sensor event triggered for loaded binary/library
 | process | [Process](#tetragon-Process) |  |  |
 | path | [string](#string) |  |  |
 | buildid | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessLsm"></a>
+
+### ProcessLsm
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| function_name | [string](#string) |  | LSM hook name. |
+| policy_name | [string](#string) |  | Name of the policy that created that LSM hook. |
+| message | [string](#string) |  | Short message of the Tracing Policy to inform users what is going on. |
+| args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed LSM hook. |
+| action | [KprobeAction](#tetragon-KprobeAction) |  | Action performed when the LSM hook matched. |
+| tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
 
 
 
