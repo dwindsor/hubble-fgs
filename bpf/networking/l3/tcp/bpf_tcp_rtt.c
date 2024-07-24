@@ -49,6 +49,7 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 
 	socket = lookup_tcpsocketmap(&cookie);
 	if (!socket) {
+		emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_NO_SOCKET);
 		return 0;
 	}
 
@@ -61,8 +62,10 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 
 	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
 
-	if (rtt_us <= 0)
+	if (rtt_us <= 0) {
+		emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_EQUALS_ZERO);
 		return 0;
+	}
 
 	if (cfg->bucket00 > rtt_us)
 		socket->rtt_buckets[0]++;

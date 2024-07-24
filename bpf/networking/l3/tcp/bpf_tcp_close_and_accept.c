@@ -68,8 +68,10 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 		return 0;
 
 	socket = lookup_tcpsocketmap(&cookie);
-	if (!socket)
+	if (!socket) {
+		emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
 		return 0;
+	}
 
 	if (state == TCP_CLOSE_WAIT) {
 		/* When a socket is closing, it may have received a FIN/ACK segment.

@@ -20,7 +20,7 @@
 #include "bpf_process_event.h"
 #include "bpf_helpers.h"
 #include "bpf_rate.h"
-#include "../networking/l3/tcp/bpf_tcp_info.h"
+#include "networking/l3/tcp/bpf_tcp_info.h"
 
 #include "bpf_tracing.h"
 

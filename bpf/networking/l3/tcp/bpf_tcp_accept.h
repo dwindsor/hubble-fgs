@@ -60,13 +60,17 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	listen_cookie_p = map_lookup_elem(&tg_tcp_accept_sock_map, &pid_tgid);
-	if (!listen_cookie_p)
+	if (!listen_cookie_p) {
+		emit_ip_error_event(ctx, 0, &accept_cookie, false, 0, 0, 0, IP_ERROR_TCP_ACCEPTRET_MISSING_PROCESS);
 		return 0;
+	}
 	listen_process = lookup_socketmap(listen_cookie_p);
 	listen_socket = lookup_tcpsocketmap(listen_cookie_p);
 	map_delete_elem(&tg_tcp_accept_sock_map, &pid_tgid);
-	if (!accept_cookie)
+	if (!accept_cookie) {
+		emit_ip_error_event(ctx, 0, 0, false, 0, 0, 0, IP_ERROR_TCP_ACCEPTRET_NO_COOKIE);
 		return 0;
+	}
 
 	cookie_version = cookie_inc_version();
 	// copy existing entries but with new version number.
@@ -95,8 +99,10 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	size_t size;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
-	if (!cookie)
+	if (!cookie) {
+		emit_ip_error_event(ctx, 0, 0, false, 0, 0, 0, IP_ERROR_TCP_ACCEPT_NO_COOKIE);
 		return 0;
+	}
 	socket = lookup_tcpsocketmap(&cookie);
 
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,
@@ -157,8 +163,10 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPACCEPT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
-	if (!socket)
+	if (!socket) {
+		emit_ip_error_event(ctx, 0, &cookie, val->tuple.ipv6, 0, 0, 0, IP_ERROR_TCP_ACCEPT_NO_SOCKET);
 		return 0;
+	}
 
 	socket->create_time = val->common.ktime;
 	socket->socket_flags = SOCKFLAGS_TYPE_ACCEPT;

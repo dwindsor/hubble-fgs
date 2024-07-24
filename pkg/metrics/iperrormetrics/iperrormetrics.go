@@ -57,6 +57,23 @@ const (
 	UdpSockCreatePid0
 	UdpSequenceCheckReadPayloadFlags
 	UdpSequenceCheckReadPayloadData
+	TcpAcceptRetMissingProcess
+	TcpAcceptRetNoCookie
+	TcpAcceptNoCookie
+	TcpAcceptNoSocket
+	TcpCloseNoSocket
+	TcpConnectNoProcess
+	TcpListenNoProcess
+	TcpTimestampNoSocket
+	TcpSendNoCookie
+	TcpSendNoIpHeader
+	TcpSendNoSocket
+	TcpSendNoSk
+	TcpSendNoTcpSock
+	TcpRecvNoCookie
+	TcpRecvNoIpHeader
+	TcpRttNoSocket
+	TcpRttEqualsZero
 )
 
 var IpErrorToString = map[Error]string{
@@ -98,6 +115,23 @@ var IpErrorToString = map[Error]string{
 	UdpSockCreatePid0:                "UDP sock create PID=0",
 	UdpSequenceCheckReadPayloadFlags: "UDP sequence check read payload flags",
 	UdpSequenceCheckReadPayloadData:  "UDP sequence check read payload data",
+	TcpAcceptRetMissingProcess:       "TCP accept return missing process",
+	TcpAcceptRetNoCookie:             "TCP accept return no cookie",
+	TcpAcceptNoCookie:                "TCP accept no cookie",
+	TcpAcceptNoSocket:                "TCP accept no socket",
+	TcpCloseNoSocket:                 "TCP close no socket",
+	TcpConnectNoProcess:              "TCP connect no process",
+	TcpListenNoProcess:               "TCP listen no process",
+	TcpTimestampNoSocket:             "TCP timestamp no socket",
+	TcpSendNoCookie:                  "TCP send no cookie",
+	TcpSendNoIpHeader:                "TCP send no IP header",
+	TcpSendNoSocket:                  "TCP send no socket",
+	TcpSendNoSk:                      "TCP send no sk",
+	TcpSendNoTcpSock:                 "TCP send no TCP socket",
+	TcpRecvNoCookie:                  "TCP recv no cookie",
+	TcpRecvNoIpHeader:                "TCP recv no IP header",
+	TcpRttNoSocket:                   "TCP RTT no socket",
+	TcpRttEqualsZero:                 "TCP RTT equals zero",
 }
 
 var (

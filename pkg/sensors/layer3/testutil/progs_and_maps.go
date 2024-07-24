@@ -128,7 +128,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	}
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
-		tcpConnectProg, tcpListenProg, tcpAcceptRetProg,
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
 	})
 
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{
@@ -161,7 +161,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	})
 
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
 	})
 
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{
@@ -192,6 +192,9 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 			{Name: tcpSendCheck6Prog, Type: ebpf.Kprobe},
 		}...)
 
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			"tg_event_tcp_v4_send_check", "tg_event_tcp_v6_send_check",
+		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)

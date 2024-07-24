@@ -74,8 +74,10 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 * to user space.
 	 */
 	socket = lookup_tcpsocketmap(&cookie);
-	if (unlikely(!socket))
+	if (unlikely(!socket)) {
+		emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
 		return 0;
+	}
 
 	/* Get the current socket TCP state. */
 	probe_read_kernel(&state, sizeof(state),

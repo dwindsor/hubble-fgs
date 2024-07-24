@@ -21,6 +21,7 @@
 #include "bpf_tcp_network_event_config.h"
 #include "lib/address_family.h"
 #include "bpf_tcp_info.h"
+#include "bpf_network_helpers.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -60,8 +61,10 @@ tg_event_sys_listen(struct pt_regs *ctx)
 		key = &socket->key;
 	} else {
 		process = event_find_curr(&ppid, &walker);
-		if (!process)
+		if (!process) {
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_LISTEN_NO_PROCESS);
 			return 0;
+		}
 		key = &process->key;
 	}
 

@@ -33,7 +33,7 @@ struct {
 } tcp_cookie_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
+check_timestamp(void *ctx, struct timestamp_option *ts_opt, u64 *cookie)
 {
 	struct latency_protocol_config *tcp_latency = 0;
 	struct latency_config *latency_config = 0;
@@ -52,8 +52,10 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 		socket = lookup_tcpsocketmap(&c);
 	}
 
-	if (!socket)
+	if (!socket) {
+		emit_ip_error_event(ctx, 0, cookie, false, 0, 0, 0, IP_ERROR_TCP_TIMESTAMP_NO_SOCKET);
 		return SK_PASS;
+	}
 
 	latency = calc_latency(latency_config->boot_ns,
 			       bpf_ntohl(ts_opt->timestamp_low),
@@ -82,22 +84,30 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	__u8 state;
 	__u64 c;
 
-	if (!cookie)
+	if (!cookie) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_COOKIE);
 		return SK_PASS;
+	}
 
 	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
-	if (unlikely(!socket))
+	if (unlikely(!socket)) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
 		return SK_PASS;
+	}
 
 	skp = skb->sk;
-	if (!skp)
+	if (!skp) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SK);
 		return SK_PASS;
+	}
 
 	tcp = (struct tcp_sock *)skc_to_tcp_sock(skp);
 	sk = (struct sock *)tcp;
-	if (!sk || !tcp)
+	if (!tcp) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_TCPSOCK);
 		return SK_PASS;
+	}
 
 	probe_read_kernel(&state, sizeof(state),
 			  _((const void *)&(sk->__sk_common.skc_state)));
@@ -168,10 +178,14 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 		return SK_PASS;
 #endif
 
-	if (!cookie)
+	if (!cookie) {
+		emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
 		return SK_PASS;
-	if (!ip)
+	}
+	if (!ip) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
 		return SK_PASS;
+	}
 
 	/* Packet has at least enough space for the Timestamp IP Option,
 	 * so check if the first option is the Timestamp option that we
@@ -181,7 +195,7 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 		struct timestamp_option ts_opt;
 
 		if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
-			emit_ip_error_event(skb, &ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			return SK_PASS;
 		}
 		if (ts_opt.type != IPO_TYPE &&
@@ -189,7 +203,7 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 		    ts_opt.magic != ts_opt.magic2) {
 			return SK_PASS;
 		}
-		check_timestamp(&ts_opt, cookie);
+		check_timestamp(skb, &ts_opt, cookie);
 	}
 	return SK_PASS;
 }
@@ -213,8 +227,10 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	struct tcpsocketmap_value *socket;
 	__u64 c;
 
-	if (!ip)
+	if (!ip) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
 		return SK_PASS;
+	}
 
 	if (!cookie)
 		return SK_PASS;
@@ -232,8 +248,10 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		struct timestamp_option *ts_opt;
 
 		if (data + ts_size > data_end) {
-			if (!cookie)
+			if (!cookie) {
+				emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
 				return SK_PASS;
+			}
 			emit_ip_error_event(skb, ip, cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			return SK_PASS;
 		}
@@ -243,7 +261,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		    ts_opt->magic != ts_opt->magic2) {
 			return SK_PASS;
 		}
-		check_timestamp(ts_opt, cookie);
+		check_timestamp(skb, ts_opt, cookie);
 	}
 	return SK_PASS;
 }

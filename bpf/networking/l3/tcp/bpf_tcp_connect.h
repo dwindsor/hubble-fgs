@@ -22,6 +22,7 @@
 #include "bpf_tracing.h"
 #include "bpf_tcp_network_event_config.h"
 #include "bpf_tcp_info.h"
+#include "bpf_network_helpers.h"
 
 #include "process/process_tree.h"
 
@@ -63,8 +64,10 @@ __event_tcp_connect(struct pt_regs *ctx)
 	} else {
 		/* We shouldn't need this fall back. */
 		process = event_find_curr(&ppid, &walker);
-		if (!process)
+		if (!process) {
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
 			return 0;
+		}
 		key = &process->key;
 	}
 
