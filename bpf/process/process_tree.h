@@ -8,6 +8,9 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+#ifndef __PROCESS_TREE_H__
+#define __PROCESS_TREE_H__
+
 #include "vmlinux.h"
 #include "api.h"
 
@@ -337,3 +340,4 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	}
 	return 0;
 }
+#endif // __PROCESS_TREE_H__
