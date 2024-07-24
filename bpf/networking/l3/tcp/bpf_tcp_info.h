@@ -19,9 +19,11 @@
 #include "../icmp/bpf_icmp_cookie.h"
 #include "../udp/bpf_udp_info.h"
 #include "bpf_tracing.h"
+#include "process/process_endpoint.h"
 
 struct tcpsocketmap_value {
 	struct msg_execve_key key;
+	struct destination_endpoint_key dst_key;
 	__u64 create_time;
 	__u32 zero_window;
 	__u32 socket_flags;

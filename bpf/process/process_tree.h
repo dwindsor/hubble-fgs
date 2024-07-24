@@ -192,6 +192,13 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	else
 		destkey.process_id.nsid = 0;
 
+	/* Push destkey into socket metadata so future update can avoid
+	 * the key generation above. Notice because many sockets may have
+	 * the same destkey this is not necessarily a new entry in the
+	 * desetination_endpoint_map.
+	 */
+	v->dst_key = destkey;
+
 	dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 	if (!dest) {
 		struct destination_endpoint_value destvalue;

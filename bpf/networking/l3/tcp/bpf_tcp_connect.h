@@ -136,9 +136,9 @@ __event_tcp_connect(struct pt_regs *ctx)
 	v.ipv6 = (family == AF_INET6);
 	v.version = val->version;
 
-	add_tcpsocketmap(&cookie, &v, true);
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
 #endif
+	add_tcpsocketmap(&cookie, &v, true);
 	return 1;
 }
