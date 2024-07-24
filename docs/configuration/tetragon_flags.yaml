@@ -77,6 +77,9 @@ options:
       default_value: "false"
       usage: |
         Enable namespace information in process_exec and process_kprobe events
+    - name: enable-process-tree
+      default_value: "false"
+      usage: Include BPF process tree in memory
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
