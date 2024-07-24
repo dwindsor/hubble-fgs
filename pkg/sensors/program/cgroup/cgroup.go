@@ -116,12 +116,15 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 					!strings.Contains(n, "inet_recv") &&
 					!strings.Contains(n, "inet_lazy_recv") &&
 					!strings.Contains(n, "inet_lazy_send") &&
+					!strings.Contains(n, "tls_inet_send") &&
+					!strings.Contains(n, "tls_inet_recv") &&
 					!strings.HasPrefix(n, "tg_") &&
 					!strings.HasPrefix(n, "CGroupSKB(tg_") {
 					break
 				}
 			} else if tgTypes {
 				if !strings.HasPrefix(n, "tg_") &&
+					!strings.HasPrefix(n, "CGroupSKB(tls_inet_") &&
 					!strings.HasPrefix(n, "CGroupSKB(tg_") {
 					break
 				}
