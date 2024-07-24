@@ -23,6 +23,7 @@
 #include "lib/address_family.h"
 #include "bpf_tracing.h"
 #include "bpf_tcp_info.h"
+#include "process/process_tree.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -70,7 +71,7 @@ static inline __attribute__((always_inline))
 int
 tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 {
-	__u64 tcp_bytes_sent, tcp_bytes_received;
+	__u64 tcp_bytes_sent, tcp_bytes_received, skb_tx_bytes;
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
 	struct tcp_sock *tcp;
@@ -89,6 +90,7 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	if (unlikely(!socket))
 		return SK_PASS;
 
+	skb_tx_bytes = skb->len;
 	skp = skb->sk;
 	if (!skp)
 		return SK_PASS;
@@ -148,6 +150,7 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 		}
 	}
 	cgrp_tcp_socketmap_stats(sk, socket);
+	process_socketmap_send(socket, skb_tx_bytes);
 	return SK_PASS;
 }
 
@@ -156,6 +159,8 @@ static inline __attribute__((always_inline)) int
 tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	struct tcpsocketmap_value *socket;
+	__u64 c;
 
 	if (send)
 #ifndef NO_SK_TO_TCP
@@ -168,6 +173,11 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 		return SK_PASS;
 	if (!ip)
 		return SK_PASS;
+
+	c = *cookie;
+	socket = lookup_tcpsocketmap(&c);
+	if (socket)
+		process_socketmap_recv(socket, skb->len);
 
 	/* Packet has at least enough space for the Timestamp IP Option,
 	 * so check if the first option is the Timestamp option that we
@@ -206,9 +216,19 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
+	struct tcpsocketmap_value *socket;
+	__u64 c;
 
 	if (!ip)
 		return SK_PASS;
+
+	if (!cookie)
+		return SK_PASS;
+
+	c = *cookie;
+	socket = lookup_tcpsocketmap(&c);
+	if (socket)
+		process_socketmap_recv(socket, skb->len);
 
 	/* Packet has at least enough space for the Timestamp IP Option,
 	 * so check if the first option is the Timestamp option that we

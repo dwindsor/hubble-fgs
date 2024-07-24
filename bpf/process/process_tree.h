@@ -206,8 +206,34 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		destvalue.ktime_create = ktime_get_ns();
 		destvalue.addr_create[0] = tuple->daddr[0];
 		destvalue.addr_create[1] = tuple->daddr[1];
+		destvalue.tx_bytes = destvalue.rx_bytes = 0;
 		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
 	return 0;
 }
+
+static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, __u64 bytes)
+{
+	struct destination_endpoint_value *dest;
+
+	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+	if (!dest)
+		return SK_PASS;
+
+	__sync_fetch_and_add(&dest->tx_bytes, bytes);
+	return SK_PASS;
+}
+
+static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, __u64 bytes)
+{
+	struct destination_endpoint_value *dest;
+
+	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+	if (!dest)
+		return SK_PASS;
+
+	__sync_fetch_and_add(&dest->rx_bytes, bytes);
+	return SK_PASS;
+}
+
 #endif // __PROCESS_TREE_H__

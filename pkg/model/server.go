@@ -63,6 +63,8 @@ type destinationEndpointKey struct {
 type destinationEndpointValue struct {
 	KtimeCreate uint64
 	AddrCreate  [16]byte
+	TxBytes     uint64
+	RxBytes     uint64
 }
 
 type Server struct {
