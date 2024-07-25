@@ -128,11 +128,13 @@ struct destination_endpoint_key {
 	struct process_tree_key process_id;
 	uint64_t destination_id; // unwrapped endpoint_id_value
 	uint64_t source;
+	uint64_t port;
 };
 
 struct destination_endpoint_value {
 	__u64 ktime_create;
 	__u64 addr_create[2];
+	__u64 port;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
 };

@@ -58,11 +58,13 @@ type destinationEndpointKey struct {
 	ProcessId         processTreeKey
 	DestinationId     uint64
 	DestinationSource uint64
+	DestinationPort   uint64
 }
 
 type destinationEndpointValue struct {
 	KtimeCreate uint64
 	AddrCreate  [16]byte
+	Port        uint64
 	TxBytes     uint64
 	RxBytes     uint64
 }

@@ -182,6 +182,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 
 	destkey.process_id.self = *self_uid;
 	destkey.process_id.parent = *parent_uid;
+	destkey.port = tuple->dport;
 
 	cgid = tg_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
@@ -206,6 +207,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		destvalue.ktime_create = ktime_get_ns();
 		destvalue.addr_create[0] = tuple->daddr[0];
 		destvalue.addr_create[1] = tuple->daddr[1];
+		destvalue.port = tuple->dport;
 		destvalue.tx_bytes = destvalue.rx_bytes = 0;
 		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
