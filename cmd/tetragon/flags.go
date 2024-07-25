@@ -87,7 +87,8 @@ const (
 
 	keyEnablePidSetFilter = "enable-pid-set-filter"
 
-	keyEnablePodInfo = "enable-pod-info"
+	keyEnablePodInfo          = "enable-pod-info"
+	keyEnableTracingPolicyCRD = "enable-tracing-policy-crd"
 
 	keyEnableMsgHandlingLatency = "enable-msg-handling-latency"
 
@@ -171,6 +172,7 @@ func readAndSetFlags() error {
 	}
 
 	option.Config.EnablePodInfo = viper.GetBool(keyEnablePodInfo)
+	option.Config.EnableTracingPolicyCRD = viper.GetBool(keyEnableTracingPolicyCRD)
 
 	option.Config.K8sKubeConfigPath = viper.GetString(keyK8sKubeConfigPath)
 

@@ -83,6 +83,10 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
+    - name: enable-tracing-policy-crd
+      default_value: "true"
+      usage: |
+        Enable TracingPolicy and TracingPolicyNamespaced custom resources
     - name: endpoint-cache-size
       default_value: "1024"
       usage: |
