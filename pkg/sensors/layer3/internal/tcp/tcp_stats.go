@@ -61,9 +61,10 @@ type tcpValue struct {
 	Version         uint32
 	RttBuckets      [8]uint64
 	LatencyBuckets  [8]uint64
+	Ipv6            uint8
 	FinRx           uint8
 	Protocol        uint8
-	Pad             [6]uint8
+	Pad             [5]uint8
 	RttSum          uint64
 	LatencySum      uint64
 }
