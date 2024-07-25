@@ -72,305 +72,341 @@ func SensorMapByProgName(progs []tus.SensorProg, mapName string, progNames []str
 	return tus.SensorMap{Name: mapName, Progs: getMapIndicesByName(progs, progNames)}
 }
 
+// Define names of programs to provide some consistency checking.
+const (
+	fentrySkAlloc = "security_sk_alloc"
+
+	cgroupEgressProg  = "tg_cgroup_egress"
+	cgroupIngressProg = "tg_cgroup_ingress"
+
+	tcpConnectProg        = "tg_event_tcp_connect"
+	tcpCloseAndAcceptProg = "tg_event_tcp_close_and_accept"
+	tcpListenProg         = "tg_event_sys_listen"
+	tcpAcceptProg         = "tg_event_tcp_accept"
+	tcpAcceptRetProg      = "tg_event_tcp_accept_ret"
+	tcpSendCheck4Prog     = "tg_event_tcp_v4_send_check"
+	tcpSendCheck6Prog     = "tg_event_tcp_v6_send_check"
+
+	udpInetLazySendProg    = "tg_inet_lazy_send_kp"
+	udp4SendProg           = "tg_udp4_send_kprobe"
+	udp4SendRetProg        = "tg_udp4_sendret_kprobe"
+	udp6SendProg           = "tg_udp6_send_kprobe"
+	udp6SendRetProg        = "tg_udp6_sendret_kprobe"
+	udpRecvProg            = "tg_udp_recv_kprobe"
+	udpBindProg            = "tg_udp_bind_sock"
+	udpBindDummy4Prog      = "tg_udp_bind_dummy4"
+	udpBindDummy6Prog      = "tg_udp_bind_dummy6"
+	udpEgressTimestampProg = "tg_egress_timestamp"
+
+	pingInitSockProg = "tg_ping_init_sock"
+	icmp4RcvProg     = "tg_icmp_rcv"
+	icmp6RcvProg     = "tg_icmpv6_rcv"
+
+	rawsock4SkInitProg = "tg_rawsock_sk_init"
+	rawsock6SkInitProg = "tg_rawsockv6_init_sk"
+
+	execveSendProg = "execve_send"
+)
+
 func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
 	sensorProgs := []tus.SensorProg{
-		0: tus.SensorProg{Name: "tg_event_tcp_connect", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "tg_event_tcp_close_and_accept", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "tg_event_sys_listen", Type: ebpf.Kprobe},
+		0: {Name: tcpConnectProg, Type: ebpf.Kprobe},
+		1: {Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
+		2: {Name: tcpListenProg, Type: ebpf.Kprobe},
 
 		// new accept sensor
-		3: tus.SensorProg{Name: "tg_event_tcp_accept", Type: ebpf.Kprobe},
-		4: tus.SensorProg{Name: "tg_event_tcp_accept_ret", Type: ebpf.Kprobe},
+		3: {Name: tcpAcceptProg, Type: ebpf.Kprobe},
+		4: {Name: tcpAcceptRetProg, Type: ebpf.Kprobe},
 	}
 
 	if utils.SupportFentry() {
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "security_sk_alloc",
+			{Name: fentrySkAlloc,
 				Type: ebpf.Tracing,
 			},
 		}...)
 	}
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
-		"tg_event_tcp_connect", "tg_event_sys_listen", "tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpListenProg, tcpAcceptRetProg,
 	})
 
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{
-		"tg_event_tcp_accept_ret",
+		tcpAcceptRetProg,
 	})
 
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	tcpSocketMapStats := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map_stats", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
 	})
 
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{
-		"tg_event_tcp_connect", "tg_event_sys_listen",
+		tcpConnectProg, tcpListenProg,
 	})
 
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_cfg_map", []string{
-		"tg_event_tcp_connect", "tg_event_tcp_close_and_accept", "tg_event_sys_listen",
-		"tg_event_tcp_accept_ret",
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
 	})
 
 	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{
-		"tg_event_tcp_accept_ret",
+		tcpAcceptRetProg,
 	})
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
 
 	sensorMaps := []tus.SensorMap{
 		SensorMapByProgName(sensorProgs, "tg_tcp_accept_sock_map", []string{
-			"tg_event_tcp_accept", "tg_event_tcp_accept_ret",
+			tcpAcceptProg, tcpAcceptRetProg,
 		}),
 		tcpSocketMapStats,
 	}
 
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_event_tcp_v4_send_check", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_event_tcp_v6_send_check", Type: ebpf.Kprobe},
+			{Name: tcpSendCheck4Prog, Type: ebpf.Kprobe},
+			{Name: tcpSendCheck6Prog, Type: ebpf.Kprobe},
 		}...)
 
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_event_tcp_v4_send_check", "tg_event_tcp_v6_send_check",
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_event_tcp_v4_send_check", "tg_event_tcp_v6_send_check",
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_event_tcp_v4_send_check", "tg_event_tcp_v6_send_check",
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
 	}
 
 	if !kernels.MinKernelVersion("5.4.0") { // 4.19 - <5.4
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_inet_lazy_send_kp", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp4_send_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp4_sendret_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp6_send_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp6_sendret_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp_recv_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp_bind_sock", Type: ebpf.Kprobe},
+			{Name: udpInetLazySendProg, Type: ebpf.Kprobe},
+			{Name: udp4SendProg, Type: ebpf.Kprobe},
+			{Name: udp4SendRetProg, Type: ebpf.Kprobe},
+			{Name: udp6SendProg, Type: ebpf.Kprobe},
+			{Name: udp6SendRetProg, Type: ebpf.Kprobe},
+			{Name: udpRecvProg, Type: ebpf.Kprobe},
+			{Name: udpBindProg, Type: ebpf.Kprobe},
 		}...)
 
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
 			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map", []string{
-				"tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe", "tg_udp6_send_kprobe",
-				"tg_udp6_sendret_kprobe",
+				udp4SendProg, udp4SendRetProg, udp6SendProg,
+				udp6SendRetProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map_stats", []string{
-				"tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe", "tg_udp6_send_kprobe",
-				"tg_udp6_sendret_kprobe",
+				udp4SendProg, udp4SendRetProg, udp6SendProg,
+				udp6SendRetProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
-				"tg_inet_lazy_send_kp", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-				"tg_udp_recv_kprobe",
+				udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg,
+				udpRecvProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
-				"tg_inet_lazy_send_kp",
+				udpInetLazySendProg,
 			}),
 		}...)
 
 		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_inet_lazy_send_kp", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_inet_lazy_send_kp", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
-			"tg_udp_bind_sock",
+			udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg, udpRecvProg,
+			udpBindProg,
 		})...)
 		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_inet_lazy_send_kp", "tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe", "tg_udp6_send_kprobe",
-			"tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe", "tg_udp_bind_sock",
+			udpInetLazySendProg, udp4SendProg, udp4SendRetProg, udp6SendProg,
+			udp6SendRetProg, udpRecvProg, udpBindProg,
 		})...)
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_inet_lazy_send_kp",
+			udpInetLazySendProg,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 	} else { // 5.4+
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_cgroup_egress", Type: ebpf.CGroupSKB},
-			tus.SensorProg{Name: "tg_cgroup_ingress", Type: ebpf.CGroupSKB},
-			tus.SensorProg{Name: "tg_udp4_send_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp4_sendret_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp6_send_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp6_sendret_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp_recv_kprobe", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_udp_bind_sock", Type: ebpf.Kprobe},
+			{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
+			{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
+			{Name: udp4SendProg, Type: ebpf.Kprobe},
+			{Name: udp4SendRetProg, Type: ebpf.Kprobe},
+			{Name: udp6SendProg, Type: ebpf.Kprobe},
+			{Name: udp6SendRetProg, Type: ebpf.Kprobe},
+			{Name: udpRecvProg, Type: ebpf.Kprobe},
+			{Name: udpBindProg, Type: ebpf.Kprobe},
 		}...)
 
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
 			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map", []string{
-				"tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe", "tg_udp6_send_kprobe",
-				"tg_udp6_sendret_kprobe",
+				udp4SendProg, udp4SendRetProg, udp6SendProg,
+				udp6SendRetProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map_stats", []string{
-				"tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe", "tg_udp6_send_kprobe",
-				"tg_udp6_sendret_kprobe",
+				udp4SendProg, udp4SendRetProg, udp6SendProg,
+				udp6SendRetProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
-				"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-				"tg_udp_recv_kprobe",
+				cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+				udpRecvProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
-				"tg_cgroup_egress", "tg_cgroup_ingress",
+				cgroupEgressProg, cgroupIngressProg,
 			}),
 		}...)
 
 		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg,
 		})...)
 		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg,
 		})...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg,
 		})...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe", "tg_udp_bind_sock",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg, udpBindProg,
 		})...)
 		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress",
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_send_kprobe", "tg_udp4_sendret_kprobe",
-			"tg_udp6_send_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe", "tg_udp_bind_sock",
+			cgroupEgressProg, cgroupIngressProg, udp4SendProg, udp4SendRetProg,
+			udp6SendProg, udp6SendRetProg, udpRecvProg, udpBindProg,
 		})...)
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress",
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_cgroup_egress", "tg_cgroup_ingress", "tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe",
-			"tg_udp_recv_kprobe",
+			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
+			udpRecvProg,
 		})...)
 		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_udp4_sendret_kprobe", "tg_udp6_sendret_kprobe", "tg_udp_recv_kprobe",
+			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 	}
 
 	if kernels.MinKernelVersion("5.14.0") { // 5.14+
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_udp_bind_dummy4", Type: ebpf.CGroupSock},
-			tus.SensorProg{Name: "tg_udp_bind_dummy6", Type: ebpf.CGroupSock},
+			{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
+			{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
 		}...)
 	}
 
 	if withUdpLatency {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_egress_timestamp", Type: ebpf.SchedCLS})
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpEgressTimestampProg, Type: ebpf.SchedCLS})
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_egress_timestamp",
+			udpEgressTimestampProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_egress_timestamp",
+			udpEgressTimestampProg,
 		})...)
 	}
 
 	if withIcmp && kernels.MinKernelVersion("5.4.0") {
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_ping_init_sock", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_icmp_rcv", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_icmpv6_rcv", Type: ebpf.Kprobe},
+			{Name: pingInitSockProg, Type: ebpf.Kprobe},
+			{Name: icmp4RcvProg, Type: ebpf.Kprobe},
+			{Name: icmp6RcvProg, Type: ebpf.Kprobe},
 		}...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock", "tg_icmp_rcv", "tg_icmpv6_rcv",
+			pingInitSockProg, icmp4RcvProg, icmp6RcvProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock", "tg_icmp_rcv", "tg_icmpv6_rcv",
+			pingInitSockProg, icmp4RcvProg, icmp6RcvProg,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock", "tg_icmp_rcv", "tg_icmpv6_rcv",
+			pingInitSockProg, icmp4RcvProg, icmp6RcvProg,
 		})...)
 		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock",
+			pingInitSockProg,
 		})...)
 		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_icmp_rcv", "tg_icmpv6_rcv",
+			icmp4RcvProg, icmp6RcvProg,
 		})...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_icmp_rcv", "tg_icmpv6_rcv",
+			icmp4RcvProg, icmp6RcvProg,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock",
+			pingInitSockProg,
 		})...)
 		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_ping_init_sock",
+			pingInitSockProg,
 		})...)
 	}
 
 	if withRaw && kernels.MinKernelVersion("5.4.0") {
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			tus.SensorProg{Name: "tg_rawsock_sk_init", Type: ebpf.Kprobe},
-			tus.SensorProg{Name: "tg_rawsockv6_init_sk", Type: ebpf.Kprobe},
+			{Name: rawsock4SkInitProg, Type: ebpf.Kprobe},
+			{Name: rawsock6SkInitProg, Type: ebpf.Kprobe},
 		}...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_rawsock_sk_init", "tg_rawsockv6_init_sk",
+			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
 	}
 
@@ -391,24 +427,24 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 	// merge base sensor extensions specific for EE
 	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
+		{Name: execveSendProg, Type: ebpf.TracePoint},
 	}...)
 
-	var confMap tus.SensorMap
+	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH != "amd64" {
-			confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
-				"execve_send",
-			})
+			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+				execveSendProg,
+			})...)
 		} else {
-			confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
-				"tg_event_tcp_connect", "execve_send",
-			})
+			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+				tcpConnectProg, execveSendProg,
+			})...)
 		}
 	} else {
-		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{
-			"execve_send",
-		})
+		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			execveSendProg,
+		})...)
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
