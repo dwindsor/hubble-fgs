@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -785,6 +786,29 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
+
+	// Report error to console.
+	// This sounds dubious but is actually quite sensible. In a perfect system
+	// where the code is robust and handles all situations, no error events will
+	// be generated so no errors will be reported to the console. If, however,
+	// issues cause errors to be generated, then we really need to know about
+	// them and console messages are a great way to get attention while preserving
+	// some context relative to other logger console messages. We will not ship a
+	// release that has produced lots of error messages in dogfooding, so this
+	// approach should focus efforts on removing the bugs that cause these errors.
+	//
+	// Still, if necessary, a switch statement can be used to choose which error
+	// types should be reported to the console or not.
+	logger.GetLogger().WithFields(logrus.Fields{
+		"Process":     fgsProcess,
+		"Tuple":       event.Msg.Tuple.String(),
+		"Cookie":      event.Msg.SockCookie,
+		"IpVersion":   version,
+		"Details":     details,
+		"Send":        send,
+		"VersionByte": uint64(event.Msg.Tuple.VersionByte),
+		"Data":        event.Msg.CreateTime,
+	}).Warn("IP error. This is a bug, please report it to Tetragon developers.")
 
 	return fgsEvent
 }

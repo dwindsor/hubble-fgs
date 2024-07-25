@@ -128,7 +128,7 @@ func TupleAddrString(tuple *MsgIPTuple, op uint8) (string, string) {
 
 func (m *MsgIPTuple) String() string {
 	source, dest := TupleAddrString(m, ops.MSG_OP_TCPSTATS)
-	return fmt.Sprintf("%s:%d -> %s:%d", source, m.SPort, dest, m.DPort)
+	return fmt.Sprintf("%s -> %s", source, dest)
 }
 
 type MsgIPEvent struct {
