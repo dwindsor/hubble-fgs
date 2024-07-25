@@ -1778,6 +1778,13 @@ func (in *TracingPolicySpec) DeepCopyInto(out *TracingPolicySpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.LsmHooks != nil {
+		in, out := &in.LsmHooks, &out.LsmHooks
+		*out = make([]LsmHookSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.PodSelector != nil {
 		in, out := &in.PodSelector, &out.PodSelector
 		*out = new(v1.LabelSelector)
