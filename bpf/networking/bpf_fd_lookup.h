@@ -221,6 +221,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	if (required_protocol == IPPROTO_TCP) {
 		tcp_socketmap_stats(sk, &tcp_stats);
 		tcp_stats.key = value->key;
+		tcp_stats.create_time = sockmap_process.create_time;
 		add_tcpsocketmap(&cookie, &tcp_stats, false);
 	}
 
