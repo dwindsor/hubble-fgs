@@ -1883,6 +1883,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_rawsock_close | [ProcessRawsockClose](#tetragon-ProcessRawsockClose) |  |  |
 | process_sandbox_syscall | [ProcessSandboxSyscall](#tetragon-ProcessSandboxSyscall) |  |  |
 | process_throttle | [ProcessThrottle](#tetragon-ProcessThrottle) |  |  |
+| process_lsm | [ProcessLsm](#tetragon-ProcessLsm) |  |  |
 | test | [Test](#tetragon-Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon-RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -1985,6 +1986,7 @@ GetEventsResponse event oneof.
 | PROCESS_RAWSOCK_CLOSE | 25 |  |
 | PROCESS_SANDBOX_SYSCALL | 26 |  |
 | PROCESS_THROTTLE | 27 |  |
+| PROCESS_LSM | 28 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 

@@ -145,6 +145,7 @@ type eventCheckerHelper struct {
 	ProcessKprobe           *eventchecker.ProcessKprobeChecker           `json:"kprobe,omitempty"`
 	ProcessTracepoint       *eventchecker.ProcessTracepointChecker       `json:"tracepoint,omitempty"`
 	ProcessUprobe           *eventchecker.ProcessUprobeChecker           `json:"uprobe,omitempty"`
+	ProcessLsm              *eventchecker.ProcessLsmChecker              `json:"lsm,omitempty"`
 	Test                    *eventchecker.TestChecker                    `json:"test,omitempty"`
 	ProcessLoader           *eventchecker.ProcessLoaderChecker           `json:"loader,omitempty"`
 	InterfaceStats          *eventchecker.InterfaceStatsChecker          `json:"interfaceStats,omitempty"`
@@ -211,6 +212,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessUprobe, eventChecker)
 		}
 		eventChecker = helper.ProcessUprobe
+	}
+	if helper.ProcessLsm != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessLsm, eventChecker)
+		}
+		eventChecker = helper.ProcessLsm
 	}
 	if helper.Test != nil {
 		if eventChecker != nil {
@@ -368,6 +375,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessTracepoint = c
 	case *eventchecker.ProcessUprobeChecker:
 		helper.ProcessUprobe = c
+	case *eventchecker.ProcessLsmChecker:
+		helper.ProcessLsm = c
 	case *eventchecker.TestChecker:
 		helper.Test = c
 	case *eventchecker.ProcessLoaderChecker:

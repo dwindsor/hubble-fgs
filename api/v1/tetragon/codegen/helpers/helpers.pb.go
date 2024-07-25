@@ -74,6 +74,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_SANDBOX_SYSCALL.String(), nil
 	case *tetragon.GetEventsResponse_ProcessThrottle:
 		return tetragon.EventType_PROCESS_THROTTLE.String(), nil
+	case *tetragon.GetEventsResponse_ProcessLsm:
+		return tetragon.EventType_PROCESS_LSM.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -110,6 +112,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessTracepoint.Process
 	case *tetragon.GetEventsResponse_ProcessUprobe:
 		return ev.ProcessUprobe.Process
+	case *tetragon.GetEventsResponse_ProcessLsm:
+		return ev.ProcessLsm.Process
 	case *tetragon.GetEventsResponse_ProcessLoader:
 		return ev.ProcessLoader.Process
 	case *tetragon.GetEventsResponse_ProcessConnect:
@@ -189,6 +193,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessTracepoint.Parent
 	case *tetragon.GetEventsResponse_ProcessUprobe:
 		return ev.ProcessUprobe.Parent
+	case *tetragon.GetEventsResponse_ProcessLsm:
+		return ev.ProcessLsm.Parent
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Parent
 	case *tetragon.GetEventsResponse_ProcessClose:
