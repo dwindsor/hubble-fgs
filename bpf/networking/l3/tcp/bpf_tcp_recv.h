@@ -64,17 +64,11 @@ check_timestamp(struct timestamp_option *ts_opt, u64 *cookie)
 	return SK_PASS;
 }
 
-static inline __attribute__((always_inline)) int
-tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
-{
-	return SK_PASS;
-}
-
 #ifdef SKB_LOAD_BYTES
 static inline __attribute__((always_inline))
 #endif
 int
-tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
+tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 {
 	__u64 tcp_bytes_sent, tcp_bytes_received;
 	struct tcp_send_check_sample_cfg *cfg;
@@ -88,8 +82,6 @@ tcp_handler_ip4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	__u64 c;
 
 	if (!cookie)
-		return SK_PASS;
-	if (!ip)
 		return SK_PASS;
 
 	c = *cookie;
@@ -167,7 +159,7 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 
 	if (send)
 #ifndef NO_SK_TO_TCP
-		return tcp_handler_ip4_send(skb, ip, cookie);
+		return tcp_handler_send(skb, cookie);
 #else
 		return SK_PASS;
 #endif
@@ -197,6 +189,17 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	}
 	return SK_PASS;
 }
+
+static inline __attribute__((always_inline)) int
+tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
+{
+#ifndef NO_SK_TO_TCP
+	if (send)
+		return tcp_handler_send(skb, cookie);
+#endif
+	return SK_PASS;
+}
+
 #else
 int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
@@ -234,9 +237,16 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	if (send)
-		return tcp_handler_ip4_send(skb, ip, cookie);
+		return tcp_handler_send(skb, cookie);
 
 	return tcp_handler_ip4_recv(skb, ip, cookie);
+}
+
+int tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
+{
+	if (send)
+		return tcp_handler_send(skb, cookie);
+	return SK_PASS;
 }
 #endif // SKB_LOAD_BYTES
 #endif //__BPF_TCP_RECV_H_
