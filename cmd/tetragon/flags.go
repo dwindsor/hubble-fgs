@@ -98,6 +98,8 @@ const (
 
 	KeyHealthServerAddress = "health-server-address"
 	KeyHealthTimeInterval  = "health-server-interval"
+
+	KeyKeepSensorsOnExit = "keep-sensors-on-exit"
 )
 
 func readAndSetFlags() error {
@@ -196,5 +198,7 @@ func readAndSetFlags() error {
 
 	option.Config.HealthServerAddress = viper.GetString(KeyHealthServerAddress)
 	option.Config.HealthServerInterval = viper.GetInt(KeyHealthTimeInterval)
+
+	option.Config.KeepSensorsOnExit = viper.GetBool(KeyKeepSensorsOnExit)
 	return nil
 }

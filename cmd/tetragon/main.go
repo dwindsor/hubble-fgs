@@ -204,6 +204,10 @@ func hubbleFGSExecute() error {
 	}
 	defer pidfile.Delete()
 
+	if option.Config.KeepSensorsOnExit {
+		log.Info("Not unloading sensors on exit")
+	}
+
 	if err := checkStructAlignments(); err != nil {
 		return fmt.Errorf("struct alignment checks failed: %w", err)
 	}
@@ -979,6 +983,8 @@ func execute() error {
 	flags.Int(KeyHealthTimeInterval, 10, "Health server interval in seconds")
 
 	flags.String(option.KeyRBQueueSize, "65535", "Set size of channel between ring buffer and sensor go routines (default 65k, allows K/M/G suffix)")
+
+	flags.Bool(KeyKeepSensorsOnExit, false, "Do not unload sensors on exit")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
