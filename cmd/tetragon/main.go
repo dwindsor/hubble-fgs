@@ -158,6 +158,38 @@ func saveInitInfo() error {
 	return bugtool.SaveInitInfo(&info)
 }
 
+func getOldBpfDir(path string) (string, error) {
+	if _, err := os.Stat(path); err != nil {
+		return "", nil
+	}
+	old := path + "_old"
+	// remove the 'xxx_old' leftover instance if needed
+	if _, err := os.Stat(old); err == nil {
+		os.RemoveAll(old)
+		log.WithField("path", old).
+			Info("Found bpf leftover instance, removing")
+	}
+	// rename current tetragon instance to tetragon_old
+	if err := os.Rename(path, old); err != nil {
+		return "", err
+	}
+	log.Infof("Found bpf instance: %s, moved to: %s", path, old)
+	return old, nil
+}
+
+func deleteOldBpfDir(path string) {
+	if path == "" {
+		return
+	}
+	if err := os.RemoveAll(path); err != nil {
+		log.WithError(err).
+			WithField("path", path).
+			Error("Failed to remove old bpf instance")
+		return
+	}
+	log.Infof("Removed bpf instance: %s", path)
+}
+
 func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -224,6 +256,16 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
+
+	// We try to detect previous instance, which might be there for legitimate
+	// reasons (--keep-sensors-on-exit) and rename to 'tetragon_old'.
+	// Then we do the 'best' effort to keep running sensors as long as possible
+	// and remove 'tetragon_old' directory when tetragon is started and its
+	// policy is loaded.
+	oldBpfDir, err := getOldBpfDir(bpf.MapPrefixPath())
+	if err != nil {
+		return fmt.Errorf("Failed to move old tetragon base directory: %w", err)
+	}
 
 	// Raise memory resource
 	bpf.ConfigureResourceLimits()
@@ -305,20 +347,6 @@ func hubbleFGSExecute() error {
 	}()
 	if err := obs.InitSensorManager(sensorMgWait); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
-	}
-
-	// Remove old tcpmon BPF directory
-	//
-	// commit https://github.com/cilium/tetragon/commit/f1a37fc2dfbf5827611ad5b9db966502ecdb0db9
-	// in OSS, changed the prefix where the bpf maps and programs should be pinned from "tcpmon"
-	// to "tetragon".
-	// commit https://github.com/isovalent/hubble-fgs/commit/642115d3b8d2283f4463bbc2208f4a959e93ba24
-	// imported that change in v1.9.0-rc3.
-	// Users upgrading from older (e.g., v1.8 versions) might end up with duplicated maps and
-	// programs. We have no upgrade method, so completely remove the directory.
-	oldBpfDir := filepath.Join(bpf.GetMapRoot(), "tcpmon")
-	if err := os.RemoveAll(oldBpfDir); err != nil {
-		log.Warnf("faied to clean %s. Consider removing it manually", oldBpfDir)
 	}
 
 	err = btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
@@ -484,6 +512,9 @@ func hubbleFGSExecute() error {
 			).Fatal("sandbox policies specified but the feature is disabled")
 		}
 	}
+
+	// Remove previous tetragon instance if detected
+	deleteOldBpfDir(oldBpfDir)
 
 	// k8s should have metrics, so periodically log only in a non k8s
 	if option.Config.EnableK8s == false {
