@@ -118,6 +118,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.key.pid = key->pid;
 	v.key.ktime = key->ktime;
 	v.create_time = val->common.ktime;
+	v.last_time = v.create_time;
 	v.zero_window = 0;
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
 	v.sent = 0;
