@@ -160,7 +160,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 						txBytes = d.Stats.TxBytes
 						rxBytes = d.Stats.RxBytes
 					}
-					compact := fmt.Sprintf("%s [tx: %d rx: %d]", endptName, txBytes, rxBytes)
+					compact := fmt.Sprintf("%s (%d) [tx: %d rx: %d]", endptName, d.Port, txBytes, rxBytes)
 					binaryBranch.AddBranch(compact)
 				}
 			}
