@@ -13,7 +13,6 @@ package tcp
 import (
 	"fmt"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -140,28 +139,21 @@ func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
 	tcpStats := value.ToMsgSocketStatsUnix()
 	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
 
-	// This case handles kernels <5.10 where map will have udp stats
-	// that are not yet associated to a process between IP stack and
-	// socket handling of the UDP data.
-	if value.Key.Pid == 0 {
-		return
-	} else if tuple.Proto == syscall.IPPROTO_TCP {
-		last, ok := stats.Get(statsKey)
-		if ok {
-			// If Ktime is the same as last read then nothing has changed.
-			if tcpStats.Ktime != last.Ktime {
-				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
-				if err == nil {
-					stats.Add(statsKey, *tcpStats)
-					emitStatEvent(&statsKey, value, tuple, &diffValue)
-				} else {
-					logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
-				}
+	last, ok := stats.Get(statsKey)
+	if ok {
+		// If Ktime is the same as last read then nothing has changed.
+		if tcpStats.Ktime != last.Ktime {
+			diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
+			if err == nil {
+				stats.Add(statsKey, *tcpStats)
+				emitStatEvent(&statsKey, value, tuple, &diffValue)
+			} else {
+				logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
 			}
-		} else {
-			emitStatEvent(&statsKey, value, tuple, tcpStats)
-			stats.Add(statsKey, *tcpStats)
 		}
+	} else {
+		emitStatEvent(&statsKey, value, tuple, tcpStats)
+		stats.Add(statsKey, *tcpStats)
 	}
 }
 
