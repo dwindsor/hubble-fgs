@@ -187,6 +187,9 @@ var (
 )
 
 func processModelMapsEnable() {
+	if !enterpriseOption.Config.EnableProcessTree {
+		return
+	}
 	DestinationEndpointEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 }

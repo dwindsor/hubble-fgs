@@ -313,6 +313,12 @@ func LoadDefault(bpfDir string) error {
 }
 
 func ConfigureMapSizes() {
+	// If Process Tree Modeling is enabled also set maps to minimal size
+	// to avoid unnecessary memory usage.
+	if !enterpriseOption.Config.EnableProcessTree {
+		return
+	}
+
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)

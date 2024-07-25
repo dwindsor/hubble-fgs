@@ -199,6 +199,10 @@ func processModelMapsEnable() []*program.Map {
 		DestinationEndpointMap,
 	}
 
+	if !enterpriseOption.Config.EnableProcessTree {
+		return maps
+	}
+
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
