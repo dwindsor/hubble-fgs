@@ -3095,6 +3095,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ----- | ---- | ----- | ----------- |
 | destination_names | [string](#string) | repeated |  |
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
+| Port | [uint64](#uint64) |  |  |
 | stats | [DestinationStats](#tetragon-DestinationStats) |  |  |
 
 

@@ -33,7 +33,8 @@ message DestinationStats {
 message Destination {
 	repeated string destination_names = 1;
 	tetragon.Pod destination_pod = 2;
-	DestinationStats stats = 3;
+	uint64 Port = 3;
+	DestinationStats stats = 4;
 }
 
 message ProcessModel {
