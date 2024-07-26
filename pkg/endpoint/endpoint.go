@@ -42,7 +42,7 @@ type Cache struct {
 
 var (
 	cache           *Cache
-	id              uint64
+	id              = uint64(1)
 	endpointIdMap   = "tg_endpoint_id_map"
 	initGlobalCache sync.Once
 )

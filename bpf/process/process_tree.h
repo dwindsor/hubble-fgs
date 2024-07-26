@@ -115,7 +115,7 @@ out:
 	return 0;
 }
 
-uint64_t glbl_bpf_endpoint_id;
+uint64_t glbl_bpf_endpoint_id = 1;
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
 {
@@ -219,6 +219,14 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
+
+		destkey.process_id.self.pid = 0;
+		destkey.process_id.self.ktime = 0;
+		destkey.process_id.parent.pid = 0;
+		destkey.process_id.parent.ktime = 0;
+		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
+		if (!dest)
+			map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
 
 	return 0;
@@ -281,6 +289,15 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 
+	key.process_id.self.pid = 0;
+	key.process_id.self.ktime = 0;
+	key.process_id.parent.pid = 0;
+	key.process_id.parent.ktime = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		return SK_PASS;
+	__sync_fetch_and_add(&dest->tx_bytes, len);
+
 	return SK_PASS;
 }
 
@@ -304,6 +321,15 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		return SK_PASS;
+	__sync_fetch_and_add(&dest->rx_bytes, len);
+
+	key.process_id.self.pid = 0;
+	key.process_id.self.ktime = 0;
+	key.process_id.parent.pid = 0;
+	key.process_id.parent.ktime = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
