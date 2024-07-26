@@ -210,7 +210,17 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		destvalue.port = tuple->dport;
 		destvalue.tx_bytes = destvalue.rx_bytes = 0;
 		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
+		/* If there is a dest.port entry then we previously also
+		 * add the dest.port=0 entry so we only need to check this
+		 * on new dest entries.
+		 */
+		destkey.port = 0;
+		destvalue.port = 0;
+		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
+		if (!dest)
+			map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
 	}
+
 	return 0;
 }
 
@@ -246,6 +256,7 @@ static inline __attribute__((always_inline)) int process_socketmap_rekey(struct 
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
+	struct destination_endpoint_key key;
 	__u64 len;
 
 	/* These are incomplete keys the result of process and sessions taht
@@ -261,12 +272,22 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 	len = skb->len;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
+
+	/* Also update the per dst entry */
+	key = v->dst_key;
+	key.port = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		return SK_PASS;
+	__sync_fetch_and_add(&dest->tx_bytes, len);
+
 	return SK_PASS;
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
+	struct destination_endpoint_key key;
 	__u64 len;
 
 	/* Same as above see note in _send. */
@@ -279,6 +300,15 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return SK_PASS;
 	len = skb->len;
 	__sync_fetch_and_add(&dest->rx_bytes, len);
+
+	/* Also update the per dst entry */
+	key = v->dst_key;
+	key.port = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		return SK_PASS;
+	__sync_fetch_and_add(&dest->rx_bytes, len);
+
 	return SK_PASS;
 }
 
