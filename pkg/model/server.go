@@ -91,6 +91,8 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	)
 
 	dstList := make(map[processTreeKey][]*tetragon.Destination)
+	nsList := make(map[uint64][]*tetragon.Destination)
+
 	c := endpoint.Get()
 
 	iter := endpt.Iterate()
@@ -168,6 +170,19 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			}
 		}
 
+		// If this is the Zero ProcessID then its an aggregated CgroupId
+		// destination. Log separately so we can entry for these.
+		if dstKey.ProcessId.Self.Pid == 0 {
+			cgid := dstKey.ProcessId.CgroupId
+			l, ok := nsList[cgid]
+			if !ok {
+				nsList[cgid] = []*tetragon.Destination{d}
+			} else {
+				l := append(l, d)
+				nsList[cgid] = l
+			}
+		}
+
 		l, ok := dstList[dstKey.ProcessId]
 		if !ok {
 			dstList[dstKey.ProcessId] = []*tetragon.Destination{d}
@@ -216,6 +231,33 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Could not get policyfilter state")
 		return nil, err
+	}
+
+	/* Build out Branches for workloads */
+	for ns, d := range nsList {
+		var nsPath, wlPath, kind string
+
+		nsId, ok := state.GetNsId(policyfilter.StateID(ns))
+		if ok {
+			nsPath = nsId.Namespace
+			wlPath = nsId.Workload
+			kind = nsId.Kind
+		} else {
+			nsPath = "<host-namespace>"
+			wlPath = "<host-workload>"
+			kind = "<host-kind>"
+		}
+
+		model = append(model, &tetragon.ProcessModel{
+			Binary:    "",
+			Parent:    "",
+			Namespace: nsPath,
+			Workload: &tetragon.Workload{
+				Name: wlPath,
+				Kind: kind,
+			},
+			Dest: d,
+		})
 	}
 
 	iter = m.Iterate()
