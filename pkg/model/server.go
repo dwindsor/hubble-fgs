@@ -176,7 +176,8 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 
 			for _, dedup := range l {
 				if dedup.DestinationPod == nil &&
-					strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 {
+					strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 &&
+					dedup.Port == d.Port {
 					skip = true
 					break
 				}
