@@ -141,10 +141,22 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			for _, p := range wlProcesses {
 				path := fmt.Sprintf("%s:%s", p.Parent, p.Binary)
 				binaryBranch := wlTree.AddBranch(path)
+
+				zeroDests := make(map[string]treeprint.Tree)
+
 				for _, d := range p.Dest {
-					endptName := ""
 					txBytes := uint64(0)
 					rxBytes := uint64(0)
+					endptName := ""
+
+					if d.Port != 0 {
+						continue
+					}
+
+					if d.Stats != nil {
+						txBytes = d.Stats.TxBytes
+						rxBytes = d.Stats.RxBytes
+					}
 
 					if d.DestinationPod != nil {
 						endptName = d.DestinationPod.String()
@@ -156,12 +168,35 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 							endptName = fmt.Sprintf("%s", d.DestinationNames)
 						}
 					}
+
+					compact := fmt.Sprintf("%s      [tx: %d rx: %d]", endptName, txBytes, rxBytes)
+					zeroDests[endptName] = binaryBranch.AddBranch(compact)
+				}
+				for _, d := range p.Dest {
+					txBytes := uint64(0)
+					rxBytes := uint64(0)
+					endptName := ""
+
+					if d.Port == 0 {
+						continue
+					}
 					if d.Stats != nil {
 						txBytes = d.Stats.TxBytes
 						rxBytes = d.Stats.RxBytes
 					}
-					compact := fmt.Sprintf("%s (%d) [tx: %d rx: %d]", endptName, d.Port, txBytes, rxBytes)
-					binaryBranch.AddBranch(compact)
+
+					if d.DestinationPod != nil {
+						endptName = d.DestinationPod.String()
+					}
+					if len(d.DestinationNames) > 0 {
+						if endptName != "" {
+							endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
+						} else {
+							endptName = fmt.Sprintf("%s", d.DestinationNames)
+						}
+					}
+					compact := fmt.Sprintf("   (%d) [tx: %d rx: %d]", d.Port, txBytes, rxBytes)
+					zeroDests[endptName].AddBranch(compact)
 				}
 			}
 		}
