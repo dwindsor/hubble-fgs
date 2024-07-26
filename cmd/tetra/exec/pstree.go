@@ -139,7 +139,12 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			wlTree := nsTree.AddBranch(wlStr)
 
 			for _, p := range wlProcesses {
-				path := fmt.Sprintf("%s:%s", p.Parent, p.Binary)
+				path := ""
+				if p.Binary != "" {
+					path = fmt.Sprintf("%s:%s", p.Parent, p.Binary)
+				} else {
+					path = fmt.Sprintf("<wl-destinations>")
+				}
 				binaryBranch := wlTree.AddBranch(path)
 
 				zeroDests := make(map[string]treeprint.Tree)
