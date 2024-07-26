@@ -83,6 +83,10 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
+    - name: enable-sandboxpolicies-crd
+      default_value: "true"
+      usage: |
+        Enable SandboxPolicy and SanboxPolicyNamespaced custom resources
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |

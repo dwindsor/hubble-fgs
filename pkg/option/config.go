@@ -26,9 +26,10 @@ type config struct {
 
 	EnableDnsDebug bool
 
-	EnableSandboxPolicies bool
-	SandboxPolicies       []string
-	EnableCilium          bool
+	EnableSandboxPolicies    bool
+	EnableSandboxPoliciesCRD bool
+	SandboxPolicies          []string
+	EnableCilium             bool
 }
 
 var (

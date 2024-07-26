@@ -425,7 +425,7 @@ func hubbleFGSExecute() error {
 		if option.Config.EnableTracingPolicyCRD {
 			go osscrd.WatchTracePolicy(ctx, observer.GetSensorManager())
 		}
-		if enterpriseOption.Config.EnableSandboxPolicies {
+		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
 			go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
 		}
 	}
@@ -501,7 +501,7 @@ func waitCRDs(config *rest.Config) error {
 		crds[v1alpha1.PIName] = struct{}{}
 	}
 
-	if enterpriseOption.Config.EnableSandboxPolicies {
+	if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
 		crds[client.SandboxPolicyCRD.ResName] = struct{}{}
 		crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
 	}
