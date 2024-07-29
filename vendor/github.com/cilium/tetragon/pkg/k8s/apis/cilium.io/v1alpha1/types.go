@@ -560,6 +560,9 @@ type TcpPolicySpec struct {
 	// TCP latency observability policy specification
 	Latency LatencyPolicySpec `json:"latency"`
 	// +kubebuilder:validation:Optional
+	// TCP QOS policy specification
+	Qos *QosPolicySpec `json:"qos,omitempty"`
+	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
 	Metrics *PromMetrics `json:"metrics,omitempty"`
@@ -677,6 +680,33 @@ type UdpWatermarksPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent under average deemed to be a dip
 	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
+}
+
+type QuotaDestination struct {
+	// +kubebuilder:validation:Required
+	Dns []string `json:"dns"`
+	// +kubebuilder:validation:Optional
+	Port []uint32 `json:"port"`
+}
+
+type QuotaPolicySpec struct {
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
+	// +kubebuilder:validation:Required
+	Workload string `json:"workload"`
+	// +kubebuilder:validation:Required
+	WorkloadKind string `json:"workloadKind"`
+	// +kubebuilder:validation:Required
+	Destination QuotaDestination `json:"destination"`
+	// +kubebuilder:validation:Required
+	Quota string `json:"quota"`
+}
+
+type QosPolicySpec struct {
+	// +kubebuilder:validation:Optional
+	QuotaResetLimits string `json:"quotaReset"`
+	// +kubebuilder:validation:Optional
+	QuotaPolicySpec []QuotaPolicySpec `json:"quotaLimits", omitempty"`
 }
 
 type LatencyPolicySpec struct {
