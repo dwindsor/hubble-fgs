@@ -296,8 +296,29 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	return progs, maps
 }
 
+func configureQos(qos *v1alpha1.QosPolicySpec) error {
+	for _, p := range qos.QuotaPolicySpec {
+		if len(p.Destination.Dns) > 0 {
+			err := model.AddDnsQuota(p.Namespace,
+				p.Workload, p.WorkloadKind,
+				p.Destination.Dns,
+				p.Quota)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	model.DefaultNewServer()
+
+	if spec.Parser.Tcp.Qos != nil {
+		if err := configureQos(spec.Parser.Tcp.Qos); err != nil {
+			return false, err
+		}
+	}
 
 	if spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable

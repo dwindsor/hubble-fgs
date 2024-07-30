@@ -77,6 +77,22 @@ type endpointValue struct {
 	Id uint64
 }
 
+func (c *Cache) AddEndpoint(ep Endpoint) (uint64, error) {
+	dstId, ok := c.revCache.Get(ep)
+	if !ok {
+		if c.cache.Add(id, ep) {
+			dnsmetrics.DnsCacheEvictions().Inc()
+		}
+		if c.revCache.Add(ep, id) {
+			dnsmetrics.DnsCacheEvictions().Inc()
+		}
+		dstId = id
+		id++
+	}
+	logger.GetLogger().Info("PolicyID %d allocated\n", dstId)
+	return dstId, nil
+}
+
 func (c *Cache) LookupID(id uint64) (value Endpoint, ok bool) {
 	return c.cache.Get(id)
 }
@@ -219,13 +235,21 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 			}
 			ep.Dns = strings.Join(newNameSet, ",")
 		} else {
-			value.Id = id
+			// Its possible this EP has a preconfigured ID from
+			// a QOS policy. In that case we need to map to that
+			// value.
+			idExists, ok := c.revCache.Get(ep)
+			if ok {
+				value.Id = idExists
+			} else {
+				value.Id = id
+				newKey = true
+			}
 
 			if err := m.Update(key, value, 0); err != nil {
 				logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
 				continue
 			}
-			newKey = true
 		}
 
 		if c.cache.Add(id, ep) {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cilium/ebpf"
@@ -31,16 +32,16 @@ type binary struct {
 	Path   [256]byte
 }
 
-type processExecveKey struct {
+type ProcessExecveKey struct {
 	Pid   uint32
 	Pad   uint32
 	Ktime uint64
 }
 
-type processTreeKey struct {
+type ProcessTreeKey struct {
 	CgroupId uint64
-	Self     processExecveKey
-	Parent   processExecveKey
+	Self     ProcessExecveKey
+	Parent   ProcessExecveKey
 }
 
 type processTreeValue struct {
@@ -54,17 +55,18 @@ const (
 	DestinationSourceUser   = 2
 )
 
-type destinationEndpointKey struct {
-	ProcessId         processTreeKey
+type DestinationEndpointKey struct {
+	ProcessId         ProcessTreeKey
 	DestinationId     uint64
 	DestinationSource uint64
 	DestinationPort   uint64
 }
 
-type destinationEndpointValue struct {
+type DestinationEndpointValue struct {
 	KtimeCreate uint64
 	AddrCreate  [16]byte
 	Port        uint64
+	TxQuota     uint64
 	TxBytes     uint64
 	RxBytes     uint64
 }
@@ -86,11 +88,11 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	defer endpt.Close()
 
 	var (
-		dstKey destinationEndpointKey
-		dstVal destinationEndpointValue
+		dstKey DestinationEndpointKey
+		dstVal DestinationEndpointValue
 	)
 
-	dstList := make(map[processTreeKey][]*tetragon.Destination)
+	dstList := make(map[ProcessTreeKey][]*tetragon.Destination)
 	nsList := make(map[uint64][]*tetragon.Destination)
 
 	c := endpoint.Get()
@@ -213,7 +215,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 	defer m.Close()
 
 	var (
-		key processTreeKey
+		key ProcessTreeKey
 		val processTreeValue
 	)
 
@@ -319,4 +321,91 @@ func NewServer(enableBpfId bool) (*Server, error) {
 	}
 	err := configureSettings(cfg)
 	return &Server{}, err
+}
+
+func AddDnsQuota(namespace, wl, kind string, dns []string, quota string) error {
+	ep := endpoint.Endpoint{
+		Type: endpoint.DnsType,
+		Dns:  strings.Join(dns, ","),
+	}
+
+	c := endpoint.Get()
+	dstId, err := c.AddEndpoint(ep)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+		return err
+	}
+
+	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	dstMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
+		return err
+	}
+	defer dstMap.Close()
+
+	var nsId policyfilter.StateID
+	if namespace != "" {
+		var ok bool
+
+		workload := policyfilter.NSID{
+			Namespace: namespace,
+			Workload:  wl,
+			Kind:      kind,
+		}
+
+		state, err := policyfilter.GetState()
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Unable to get policyfilter")
+			return nil
+		}
+		nsId, ok = state.GetIdNs(workload)
+		if !ok {
+			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Info("workload does not exist.")
+			return nil
+		}
+	} else {
+		nsId = policyfilter.StateID(0)
+	}
+
+	processId := ProcessTreeKey{
+		CgroupId: uint64(nsId),
+		Self: ProcessExecveKey{
+			Pid:   0,
+			Pad:   0,
+			Ktime: 0,
+		},
+		Parent: ProcessExecveKey{
+			Pid:   0,
+			Pad:   0,
+			Ktime: 0,
+		},
+	}
+
+	key := &DestinationEndpointKey{
+		ProcessId:         processId,
+		DestinationId:     dstId,
+		DestinationSource: DestinationSourceUser,
+		DestinationPort:   0,
+	}
+
+	var addr [16]byte
+	quotaBytes, err := strconv.ParseUint(quota, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	value := &DestinationEndpointValue{
+		KtimeCreate: 0,
+		AddrCreate:  addr,
+		Port:        0,
+		TxQuota:     quotaBytes,
+		TxBytes:     0,
+		RxBytes:     0,
+	}
+
+	if err := dstMap.Update(key, value, 0); err != nil {
+		return err
+	}
+	return nil
 }
