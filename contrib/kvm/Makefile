@@ -92,3 +92,9 @@ add-kernel:
 	@test ${KERNEL}
 	@test ${KERNEL_URL}
 	lvh kernels --dir _data add ${KERNEL} ${KERNEL_URL} --fetch
+
+.PHONY: workaround
+workaround: systemd-pidfd-fix.so
+
+systemd-pidfd-fix.so: ./workaround/systemd-pidfd-fix.c
+	gcc -Wall -O2 -ldl -fPIC -shared -o systemd-pidfd-fix.so ./workaround/systemd-pidfd-fix.c
