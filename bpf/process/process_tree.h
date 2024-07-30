@@ -212,6 +212,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->port = tuple->dport;
+		destvalue->tx_quota = 0;
 		destvalue->tx_bytes = destvalue->rx_bytes = 0;
 		map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
 		/* If there is a dest.port entry then we previously also
@@ -269,7 +270,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 {
 	struct destination_endpoint_value *dest;
 	struct destination_endpoint_key key;
-	__u64 len;
+	__u64 len, quota, bytes;
 
 	/* These are incomplete keys the result of process and sessions taht
 	 * existed before Tetragon started. We may add support for these flows
@@ -300,7 +301,12 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
-	__sync_fetch_and_add(&dest->tx_bytes, len);
+	bytes = __sync_fetch_and_add(&dest->tx_bytes, len);
+	quota = dest->tx_quota;
+	if (quota) {
+		if (quota < bytes)
+			return SK_DROP;
+	}
 
 	return SK_PASS;
 }
