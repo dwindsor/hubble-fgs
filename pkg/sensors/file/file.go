@@ -1766,7 +1766,7 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 	case "fentry", "fexit", "fmod_ret":
 		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
 	case "lsm", "lsm.s":
-		err = program.LoadLSMProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadLSMProgramSimple(args.BPFDir, args.Load, args.Verbose)
 	default:
 		err = fmt.Errorf("file: %s programs are not supported", v.tp)
 	}
