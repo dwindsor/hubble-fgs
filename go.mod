@@ -12,7 +12,7 @@ require (
 	github.com/containerd/containerd v1.7.20
 	github.com/containernetworking/plugins v1.5.1
 	github.com/cri-o/cri-o v1.30.3
-	github.com/docker/docker v27.0.3+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.17.0
 	github.com/go-logr/logr v1.4.2
