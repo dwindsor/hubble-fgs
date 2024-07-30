@@ -41,7 +41,10 @@ func listCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c := common.NewConnectedClient()
+			c, err := common.NewClientWithDefaultContextAndAddress()
+			if err != nil {
+				return fmt.Errorf("failed to create gRPC client: %w", err)
+			}
 			defer c.Close()
 
 			res, err := c.Client.ListTracingPolicies(c.Ctx, &tetragon.ListTracingPoliciesRequest{})
