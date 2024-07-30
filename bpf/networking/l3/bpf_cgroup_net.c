@@ -20,11 +20,15 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("cgroup_skb/ingress"), used)) int
 tg_cgroup_ingress(struct __sk_buff *skb)
 {
-	return tg_cgroup_dispatcher(skb, 0);
+	int ret = tg_cgroup_dispatcher(skb, 0);
+
+	return ret & 1;
 }
 
 __attribute__((section("cgroup_skb/egress"), used)) int
 tg_cgroup_egress(struct __sk_buff *skb)
 {
-	return tg_cgroup_dispatcher(skb, 1);
+	int ret = tg_cgroup_dispatcher(skb, 1);
+
+	return ret & 1;
 }

@@ -150,7 +150,7 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	}
 	cgrp_tcp_socketmap_stats(sk, socket);
 #ifndef SKB_LOAD_BYTES
-	process_socketmap_send(socket, skb);
+	return process_socketmap_send(socket, skb);
 #endif
 	return SK_PASS;
 }
