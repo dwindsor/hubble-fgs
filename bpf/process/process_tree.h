@@ -202,23 +202,27 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 
 	dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 	if (!dest) {
-		struct destination_endpoint_value destvalue;
+		struct destination_endpoint_value *destvalue;
 
-		destvalue.ktime_create = ktime_get_ns();
-		destvalue.addr_create[0] = tuple->daddr[0];
-		destvalue.addr_create[1] = tuple->daddr[1];
-		destvalue.port = tuple->dport;
-		destvalue.tx_bytes = destvalue.rx_bytes = 0;
-		map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
+		destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+		if (!destvalue)
+			return 0;
+
+		destvalue->ktime_create = ktime_get_ns();
+		destvalue->addr_create[0] = tuple->daddr[0];
+		destvalue->addr_create[1] = tuple->daddr[1];
+		destvalue->port = tuple->dport;
+		destvalue->tx_bytes = destvalue->rx_bytes = 0;
+		map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
 		/* If there is a dest.port entry then we previously also
 		 * add the dest.port=0 entry so we only need to check this
 		 * on new dest entries.
 		 */
 		destkey.port = 0;
-		destvalue.port = 0;
+		destvalue->port = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
-			map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
+			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
 
 		destkey.process_id.self.pid = 0;
 		destkey.process_id.self.ktime = 0;
@@ -226,7 +230,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 		destkey.process_id.parent.ktime = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
-			map_update_elem(&destination_endpoint_map, &destkey, &destvalue, 0);
+			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
 	}
 
 	return 0;

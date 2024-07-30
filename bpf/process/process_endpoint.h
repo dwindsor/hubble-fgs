@@ -152,4 +152,12 @@ struct {
 	__uint(key_size, sizeof(struct destination_endpoint_key));
 	__uint(value_size, sizeof(struct destination_endpoint_value));
 } destination_endpoint_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct destination_endpoint_value));
+} destination_endpoint_heap SEC(".maps");
+
 #endif //__PROCESS_ENDPOINTS_H__
