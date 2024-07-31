@@ -63,13 +63,15 @@ type DestinationEndpointKey struct {
 }
 
 type DestinationEndpointValue struct {
-	KtimeCreate uint64
-	AddrCreate  [16]byte
-	Port        uint64
-	TxQuota     uint64
-	TxLimit     uint64
-	TxBytes     uint64
-	RxBytes     uint64
+	KtimeCreate    uint64
+	AddrCreate     [16]byte
+	Port           uint64
+	TxQuota        uint64
+	TxLimit        uint64
+	KtimeLastReset uint64
+	KtimeTxReset   uint64
+	TxBytes        uint64
+	RxBytes        uint64
 }
 
 type Server struct {

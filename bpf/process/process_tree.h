@@ -43,6 +43,11 @@ struct {
 	__uint(value_size, sizeof(struct process_tree_config));
 } tg_process_tree_config_map SEC(".maps");
 
+static int atomic_xchg(__u64 *cnt, __u64 val)
+{
+	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
+}
+
 int insert_process_tree(void)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
@@ -270,7 +275,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 {
 	struct destination_endpoint_value *dest;
 	struct destination_endpoint_key key;
-	__u64 len, quota;
+	__u64 len, quota, now;
 
 	/* These are incomplete keys the result of process and sessions taht
 	 * existed before Tetragon started. We may add support for these flows
@@ -302,6 +307,19 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (!dest)
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
+
+	/* This is all a bit racy, but if you are surfing on the edge of a
+	 * time window the observer can't tell order of operations between
+	 * two skbs and they can't measure time well enough to know if I did
+	 * it 100% correctly. All this is write_once so values are not going
+	 * to be corrupted.
+	 */
+	now = ktime_get_ns();
+	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
+		atomic_xchg(&dest->tx_quota, 0);
+		atomic_xchg(&dest->ktime_last_reset, now);
+	}
+
 	quota = __sync_fetch_and_add(&dest->tx_quota, len);
 	if (dest->tx_limit && quota > dest->tx_limit)
 		return SK_DROP;
