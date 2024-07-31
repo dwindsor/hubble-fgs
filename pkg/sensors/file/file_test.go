@@ -60,7 +60,7 @@ import (
 )
 
 var (
-	workingDir = "/tmp"
+	workingDir = "/mnt"
 )
 
 func TestMain(m *testing.M) {
