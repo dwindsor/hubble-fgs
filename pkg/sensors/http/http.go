@@ -125,18 +125,18 @@ type httpSensor struct {
 }
 
 func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := sk.LoadSkProgram(args.BPFDir, args.Load, sockops.HttpSockMap, TailCalls, args.Verbose)
+	err := sk.LoadSkProgram(args.BPFDir, args.Load, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.HttpSockMap, nil, args.Verbose)
+		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.HttpSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.HttpSockMap, SkbTailCalls, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
@@ -242,6 +242,9 @@ func init() {
 
 	sensors.RegisterPolicyHandlerAtInit(http.name, http)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_HTTP, handleHTTP)
+
+	Skmsg.SetTailCall("sk_msg", TailCalls)
+	SkSkbVerdict.SetTailCall("sk_skb/stream_verdict", SkbTailCalls)
 }
 
 /* Add sensor from CRD */

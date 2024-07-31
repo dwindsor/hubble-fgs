@@ -155,7 +155,12 @@ var (
 	sensorInit sync.Once
 )
 
-func setupExitProgram() {
+func setupPrograms() {
+	// execve program tail calls details
+	Execve.SetTailCall("tracepoint", ExecveTailCallsMap)
+	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMapV53)
+	ExecveV61.SetTailCall("tracepoint", ExecveTailCallsMapV61)
+
 	ks, err := ksyms.KernelSymbols()
 	if err == nil {
 		has_acct_process := ks.IsAvailable("acct_process")
@@ -292,7 +297,7 @@ func GetDefaultMaps() []*program.Map {
 // initialization time.
 func GetInitialSensor() *sensors.Sensor {
 	sensorInit.Do(func() {
-		setupExitProgram()
+		setupPrograms()
 		sensor.Progs = GetDefaultPrograms()
 		sensor.Maps = GetDefaultMaps()
 	})
