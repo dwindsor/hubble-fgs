@@ -67,6 +67,7 @@ type DestinationEndpointValue struct {
 	AddrCreate  [16]byte
 	Port        uint64
 	TxQuota     uint64
+	TxLimit     uint64
 	TxBytes     uint64
 	RxBytes     uint64
 }
@@ -399,7 +400,8 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota string) error {
 		KtimeCreate: 0,
 		AddrCreate:  addr,
 		Port:        0,
-		TxQuota:     quotaBytes,
+		TxQuota:     0,
+		TxLimit:     quotaBytes,
 		TxBytes:     0,
 		RxBytes:     0,
 	}

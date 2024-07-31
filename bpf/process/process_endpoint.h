@@ -136,6 +136,7 @@ struct destination_endpoint_value {
 	__u64 addr_create[2];
 	__u64 port;
 	__u64 tx_quota;
+	__u64 tx_limit;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
 };
