@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"time"
 	"unsafe"
 
@@ -259,9 +260,14 @@ func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterv
 				progs = append(progs, dispatcherSkbLoadProgs...)
 				maps = append(maps, dispatcherSkbLoadMaps...)
 			} else {
-				progs = append(progs, dispatcherProgs...)
-				maps = append(maps, dispatcherMaps...)
-				processModelMapsEnable()
+				if runtime.GOARCH != "amd64" {
+					progs = append(progs, dispatcherSkbLoadProgs...)
+					maps = append(maps, dispatcherSkbLoadMaps...)
+				} else {
+					progs = append(progs, dispatcherProgs...)
+					maps = append(maps, dispatcherMaps...)
+					processModelMapsEnable()
+				}
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
