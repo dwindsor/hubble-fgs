@@ -125,6 +125,10 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 				if !ok {
 					continue
 				}
+				if ep.Type == endpoint.DnsType {
+					ep.Dns = ep.Dns + "<promoted>"
+				}
+
 			} else {
 				ep = endpoint.Endpoint{
 					Type: endpoint.IpType,
