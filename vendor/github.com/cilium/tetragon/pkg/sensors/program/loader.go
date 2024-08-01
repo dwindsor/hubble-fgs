@@ -26,17 +26,9 @@ type AttachFunc func(*ebpf.Collection, *ebpf.CollectionSpec, *ebpf.Program, *ebp
 
 type OpenFunc func(*ebpf.CollectionSpec) error
 
-type tailCall struct {
-	name   string
-	prefix string
-}
-
 type LoadOpts struct {
 	Attach AttachFunc
 	Open   OpenFunc
-
-	TcMap    string
-	TcPrefix string
 }
 
 func linkPinPath(bpfDir string, load *Program, extra ...string) string {
@@ -543,17 +535,8 @@ func MultiKprobeAttach(load *Program, bpfDir string) AttachFunc {
 }
 
 func LoadTracepointProgram(bpfDir string, load *Program, verbose int) error {
-	var tc tailCall
-	for mName, m := range load.PinMap {
-		if mName == "tp_calls" || mName == "execve_calls" {
-			tc = tailCall{m.PinName, "tracepoint"}
-			break
-		}
-	}
 	opts := &LoadOpts{
-		Attach:   TracepointAttach(load, bpfDir),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: TracepointAttach(load, bpfDir),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
@@ -566,18 +549,9 @@ func LoadRawTracepointProgram(bpfDir string, load *Program, verbose int) error {
 }
 
 func LoadKprobeProgram(bpfDir string, load *Program, verbose int) error {
-	var tc tailCall
-	for mName, m := range load.PinMap {
-		if mName == "kprobe_calls" || mName == "retkprobe_calls" {
-			tc = tailCall{m.PinName, "kprobe"}
-			break
-		}
-	}
 	opts := &LoadOpts{
-		Attach:   KprobeAttach(load, bpfDir),
-		Open:     KprobeOpen(load),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: KprobeAttach(load, bpfDir),
+		Open:   KprobeOpen(load),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
@@ -612,34 +586,16 @@ func LoadKprobeProgramAttachMany(bpfDir string, load *Program, syms []string, ve
 }
 
 func LoadUprobeProgram(bpfDir string, load *Program, verbose int) error {
-	var tc tailCall
-	for mName, m := range load.PinMap {
-		if mName == "uprobe_calls" {
-			tc = tailCall{m.PinName, "uprobe"}
-			break
-		}
-	}
 	opts := &LoadOpts{
-		Attach:   UprobeAttach(load),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: UprobeAttach(load),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
 
 func LoadMultiKprobeProgram(bpfDir string, load *Program, verbose int) error {
-	var tc tailCall
-	for mName, m := range load.PinMap {
-		if mName == "kprobe_calls" || mName == "retkprobe_calls" {
-			tc = tailCall{m.PinName, "kprobe"}
-			break
-		}
-	}
 	opts := &LoadOpts{
-		Attach:   MultiKprobeAttach(load, bpfDir),
-		Open:     KprobeOpen(load),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: MultiKprobeAttach(load, bpfDir),
+		Open:   KprobeOpen(load),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
@@ -688,18 +644,9 @@ func LoadTracingProgram(bpfDir string, load *Program, verbose int) error {
 }
 
 func LoadLSMProgram(bpfDir string, load *Program, verbose int) error {
-	var tc tailCall
-	for mName, mPath := range load.PinMap {
-		if mName == "lsm_calls" {
-			tc = tailCall{mPath.PinName, "lsm"}
-			break
-		}
-	}
 	opts := &LoadOpts{
-		Attach:   LSMAttach(),
-		Open:     LSMOpen(load),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: LSMAttach(),
+		Open:   LSMOpen(load),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
@@ -712,11 +659,8 @@ func LoadLSMProgramSimple(bpfDir string, load *Program, verbose int) error {
 }
 
 func LoadMultiUprobeProgram(bpfDir string, load *Program, verbose int) error {
-	tc := tailCall{fmt.Sprintf("%s-up_calls", load.PinPath), "uprobe"}
 	opts := &LoadOpts{
-		Attach:   MultiUprobeAttach(load),
-		TcMap:    tc.name,
-		TcPrefix: tc.prefix,
+		Attach: MultiUprobeAttach(load),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
@@ -756,7 +700,7 @@ func slimVerifierError(errStr string) string {
 	return errStr[:headEnd] + "\n...\n" + errStr[tailStart:]
 }
 
-func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection, loadOpts *LoadOpts) error {
+func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection, load *Program) error {
 	// FIXME(JM): This should be replaced by using the cilium/ebpf prog array initialization.
 
 	secToProgName := make(map[string]string)
@@ -764,8 +708,8 @@ func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 		secToProgName[prog.SectionName] = name
 	}
 
-	install := func(mapName string, secPrefix string) error {
-		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(bpfDir, mapName), nil)
+	install := func(pinPath string, secPrefix string) error {
+		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(bpfDir, pinPath), nil)
 		if err != nil {
 			return nil
 		}
@@ -777,7 +721,7 @@ func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 				if prog, ok := coll.Programs[progName]; ok {
 					err := tailCallsMap.Update(uint32(i), uint32(prog.FD()), ebpf.UpdateAny)
 					if err != nil {
-						return fmt.Errorf("update of tail-call map '%s' failed: %w", mapName, err)
+						return fmt.Errorf("update of tail-call map '%s' failed: %w", pinPath, err)
 					}
 				}
 			}
@@ -785,8 +729,8 @@ func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 		return nil
 	}
 
-	if len(loadOpts.TcMap) != 0 {
-		if err := install(loadOpts.TcMap, loadOpts.TcPrefix); err != nil {
+	if load.TcMap != nil {
+		if err := install(load.TcMap.PinName, load.TcPrefix); err != nil {
 			return err
 		}
 	}
@@ -917,7 +861,7 @@ func doLoadProgram(
 	}
 	defer coll.Close()
 
-	err = installTailCalls(bpfDir, spec, coll, loadOpts)
+	err = installTailCalls(bpfDir, spec, coll, load)
 	if err != nil {
 		return nil, fmt.Errorf("installing tail calls failed: %s", err)
 	}
