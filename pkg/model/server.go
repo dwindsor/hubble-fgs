@@ -63,15 +63,17 @@ type DestinationEndpointKey struct {
 }
 
 type DestinationEndpointValue struct {
-	KtimeCreate    uint64
-	AddrCreate     [16]byte
-	Port           uint64
 	TxQuota        uint64
 	TxLimit        uint64
 	KtimeLastReset uint64
 	KtimeTxReset   uint64
 	TxBytes        uint64
 	RxBytes        uint64
+	Pad0           uint64
+	Pad1           uint64
+	KtimeCreate    uint64
+	AddrCreate     [16]byte
+	Port           uint64
 }
 
 type Server struct {
@@ -399,13 +401,17 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota string) error {
 	}
 
 	value := &DestinationEndpointValue{
-		KtimeCreate: 0,
-		AddrCreate:  addr,
-		Port:        0,
-		TxQuota:     0,
-		TxLimit:     quotaBytes,
-		TxBytes:     0,
-		RxBytes:     0,
+		TxQuota:        0,
+		TxLimit:        quotaBytes,
+		KtimeLastReset: 0,
+		KtimeTxReset:   0,
+		TxBytes:        0,
+		RxBytes:        0,
+		Pad0:           0,
+		Pad1:           0,
+		KtimeCreate:    0,
+		AddrCreate:     addr,
+		Port:           0,
 	}
 
 	if err := dstMap.Update(key, value, 0); err != nil {

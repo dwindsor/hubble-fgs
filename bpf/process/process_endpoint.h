@@ -132,15 +132,17 @@ struct destination_endpoint_key {
 };
 
 struct destination_endpoint_value {
-	__u64 ktime_create;
-	__u64 addr_create[2];
-	__u64 port;
 	__u64 tx_quota;
 	__u64 tx_limit;
 	__u64 ktime_last_reset;
 	__u64 ktime_tx_reset;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
+	__u64 pad0;
+	__u64 pad1;
+	__u64 ktime_create;
+	__u64 addr_create[2];
+	__u64 port;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its
