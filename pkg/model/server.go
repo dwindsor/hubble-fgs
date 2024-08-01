@@ -328,10 +328,38 @@ func NewServer(enableBpfId bool) (*Server, error) {
 	return &Server{}, err
 }
 
-func AddDnsQuota(namespace, wl, kind string, dns []string, quota string) error {
+func quotaToNs(reset string) (uint64, error) {
+	var mult uint64
+
+	specifier := reset[len(reset)-1:]
+	if specifier == "m" {
+		mult = 60000000000
+	} else if specifier == "h" {
+		mult = 3600000000000
+	} else if specifier == "s" {
+		mult = 1000000000
+	} else {
+		return 0, fmt.Errorf("unknown reset specifier %s", specifier)
+	}
+	time := reset[0 : len(reset)-1]
+	resetNS, err := strconv.ParseUint(time, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	resetNS *= mult
+	return resetNS, nil
+}
+
+func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) error {
 	ep := endpoint.Endpoint{
 		Type: endpoint.DnsType,
 		Dns:  strings.Join(dns, ","),
+	}
+
+	resetNS, err := quotaToNs(reset)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("failed to conver reset time")
+		return err
 	}
 
 	c := endpoint.Get()
@@ -404,7 +432,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota string) error {
 		TxQuota:        0,
 		TxLimit:        quotaBytes,
 		KtimeLastReset: 0,
-		KtimeTxReset:   0,
+		KtimeTxReset:   resetNS,
 		TxBytes:        0,
 		RxBytes:        0,
 		Pad0:           0,
