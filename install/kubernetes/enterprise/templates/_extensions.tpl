@@ -11,6 +11,7 @@ flow-export-file-compress: {{ .Values.tetragon.flowExportFileCompress | quote }}
 enable-cilium-api: "true"
 {{- end }}
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
+enable-process-tree: {{ .Values.tetragon.enableProcessTree | quote }}
 {{- end }}
 
 {{- define "volumes.extra" -}}

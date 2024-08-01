@@ -252,6 +252,8 @@ tetragon:
   tcpStatsSampleSegs: 0
   # -- Enable sandboxpolicies.
   enableSandboxpolicies: true
+  # -- Enable process tree.
+  enableProcessTree: false
 # Tetragon Operator settings
 tetragonOperator:
   # -- Enables the Tetragon Operator.

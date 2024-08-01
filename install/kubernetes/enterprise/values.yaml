@@ -50,6 +50,8 @@ tetragon:
   tcpStatsSampleSegs: 0
   # -- Enable sandboxpolicies.
   enableSandboxpolicies: true
+  # -- Enable process tree.
+  enableProcessTree: false
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator

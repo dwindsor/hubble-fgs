@@ -62,6 +62,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.enablePolicyFilterDebug | bool | `false` | Enable policy filter debug messages. |
 | tetragon.enableProcessCred | bool | `false` | Enable Capabilities visibility in exec and kprobe events. |
 | tetragon.enableProcessNs | bool | `false` | Enable Namespaces visibility in exec and kprobe events. |
+| tetragon.enableProcessTree | bool | `false` | Enable process tree. |
 | tetragon.enableSandboxpolicies | bool | `true` | Enable sandboxpolicies. |
 | tetragon.enabled | bool | `true` |  |
 | tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_FILE\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_SANDBOX_SYSCALL\", \"PROCESS_TLS\"]}"` | Allowlist for JSON export. For example, to export only process_connect events from the default namespace:  exportAllowList: |   {"namespace":["default"],"event_set":["PROCESS_EXEC"]} |
