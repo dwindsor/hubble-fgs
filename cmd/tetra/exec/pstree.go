@@ -38,6 +38,8 @@ import (
 var (
 	host       bool
 	namespaces []string
+
+	hostNamespace = "<host-namespace>"
 )
 
 type ConnectedModelClient struct {
@@ -119,12 +121,16 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		nsPrintList[n] = true
 	}
 
+	if host {
+		nsPrintList[hostNamespace] = true
+	}
+
 	// For each namespace collection find workload collections
 	for n, r := range nsCollections {
 		var nsStr string
 
 		if n == "" {
-			nsStr = "<host-namespace>"
+			nsStr = hostNamespace
 		} else {
 			nsStr = n
 		}
@@ -285,6 +291,7 @@ func New() *cobra.Command {
 	flags := ret.Flags()
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
 	flags.StringSliceVar(&namespaces, "namespaces", nil, "Get tree by Kubernetes namespaces")
+	flags.BoolVar(&host, "host", false, "Include the tree for host")
 	viper.BindPFlags(flags)
 
 	return ret
