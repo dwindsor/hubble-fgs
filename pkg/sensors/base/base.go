@@ -26,13 +26,15 @@ import (
 )
 
 var (
+	basePolicy = "__base__"
+
 	Execve = program.Builder(
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	)
+	).SetPolicy(basePolicy)
 
 	ExecveV53 = program.Builder(
 		"bpf_execve_event_v53.o",
@@ -40,7 +42,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	)
+	).SetPolicy(basePolicy)
 
 	ExecveV61 = program.Builder(
 		"bpf_execve_event_v61.o",
@@ -48,7 +50,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	)
+	).SetPolicy(basePolicy)
 
 	ExecveBprmCommit = program.Builder(
 		"bpf_execve_bprm_commit_creds.o",
@@ -56,7 +58,7 @@ var (
 		"kprobe/security_bprm_committing_creds",
 		"tg_kp_bprm_committing_creds",
 		"kprobe",
-	)
+	).SetPolicy(basePolicy)
 
 	Exit = program.Builder(
 		"bpf_exit.o",
@@ -64,7 +66,7 @@ var (
 		"kprobe/acct_process",
 		"event_exit",
 		"kprobe",
-	)
+	).SetPolicy(basePolicy)
 
 	Fork = program.Builder(
 		"bpf_fork.o",
@@ -72,7 +74,7 @@ var (
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe",
-	)
+	).SetPolicy(basePolicy)
 
 	CgroupRmdir = program.Builder(
 		"bpf_cgroup.o",
@@ -80,7 +82,7 @@ var (
 		"raw_tracepoint/cgroup_rmdir",
 		"tg_cgroup_rmdir",
 		"raw_tracepoint",
-	)
+	).SetPolicy(basePolicy)
 
 	/* Event Ring map */
 	TCPMonMap    = program.MapBuilder("tcpmon_map", Execve)
@@ -150,7 +152,7 @@ var (
 	PorcessTreeConfigMap = program.MapBuilder("tg_process_tree_config_map", Execve)
 
 	sensor = sensors.Sensor{
-		Name: "__main__",
+		Name: basePolicy,
 	}
 	sensorInit sync.Once
 )
