@@ -185,7 +185,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          submodules: false
+          submodules: true
 
       - name: Prepare download of image digests
         if: ${{ steps.legacy.outputs.is == 'false' }}
