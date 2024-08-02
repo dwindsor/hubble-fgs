@@ -38,6 +38,7 @@ import (
 var (
 	host       bool
 	namespaces []string
+	workloads  []string
 
 	hostNamespace = "<host-namespace>"
 )
@@ -107,6 +108,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 	// Create namespaces collections
 	nsCollections := make(map[string][]*tetragon.ProcessModel)
 	nsPrintList := make(map[string]bool)
+	wlPrintList := make(map[string]bool)
 
 	for _, p := range res.Processes {
 		ns, ok := nsCollections[p.Namespace]
@@ -119,6 +121,10 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 
 	for _, n := range namespaces {
 		nsPrintList[n] = true
+	}
+
+	for _, wl := range workloads {
+		wlPrintList[wl] = true
 	}
 
 	if host {
@@ -144,11 +150,17 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		// Create workload collections
 		wlCollections := make(map[string][]*tetragon.ProcessModel)
 		for _, p := range r {
-			wl, ok := wlCollections[p.Workload.Name]
+			wlName := p.Workload.Name
+
+			if _, ok := wlPrintList[wlName]; !ok && len(workloads) > 0 {
+				continue
+			}
+
+			wl, ok := wlCollections[wlName]
 			if ok {
-				wlCollections[p.Workload.Name] = append(wl, p)
+				wlCollections[wlName] = append(wl, p)
 			} else {
-				wlCollections[p.Workload.Name] = []*tetragon.ProcessModel{p}
+				wlCollections[wlName] = []*tetragon.ProcessModel{p}
 			}
 		}
 
@@ -291,6 +303,7 @@ func New() *cobra.Command {
 	flags := ret.Flags()
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
 	flags.StringSliceVar(&namespaces, "namespaces", nil, "Get tree by Kubernetes namespaces")
+	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
 	flags.BoolVar(&host, "host", false, "Include the tree for host")
 	viper.BindPFlags(flags)
 
