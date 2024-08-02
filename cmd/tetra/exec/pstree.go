@@ -35,6 +35,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+var (
+	host       bool
+	namespaces []string
+)
+
 type ConnectedModelClient struct {
 	Client tetragon.ProcessModelServiceClient
 	Ctx    context.Context
@@ -99,6 +104,7 @@ var tree = treeprint.New()
 func printTree(res *tetragon.GetProcessModelResponse) error {
 	// Create namespaces collections
 	nsCollections := make(map[string][]*tetragon.ProcessModel)
+	nsPrintList := make(map[string]bool)
 
 	for _, p := range res.Processes {
 		ns, ok := nsCollections[p.Namespace]
@@ -107,6 +113,10 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		} else {
 			nsCollections[p.Namespace] = []*tetragon.ProcessModel{p}
 		}
+	}
+
+	for _, n := range namespaces {
+		nsPrintList[n] = true
 	}
 
 	// For each namespace collection find workload collections
@@ -118,6 +128,11 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		} else {
 			nsStr = n
 		}
+
+		if _, ok := nsPrintList[n]; !ok && len(namespaces) > 0 {
+			continue
+		}
+
 		nsTree := tree.AddBranch(nsStr)
 
 		// Create workload collections
@@ -269,6 +284,7 @@ func New() *cobra.Command {
 
 	flags := ret.Flags()
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
+	flags.StringSliceVar(&namespaces, "namespaces", nil, "Get tree by Kubernetes namespaces")
 	viper.BindPFlags(flags)
 
 	return ret
