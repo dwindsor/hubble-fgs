@@ -36,6 +36,8 @@ hostProcPath: /proc
 imagePullPolicy: IfNotPresent
 #imagePullSecrets:
 #podSecurityContext:
+#podAnnotations:
+#  key1: value1
 #affinity:
 tolerations: |
   - operator: Exists
@@ -46,6 +48,7 @@ nodeSelector:
 # exportDirectory specifies directory to put Tetragon JSON export files.
 exportDirectory: /var/run/cilium/tetragon
 # Configure tetragon's init container for setting up tetragon-oci-hook on the host
+# the following ociHook fields have been deprecated, please use runtime hooks instead
 ociHookSetupEnabled: false
 # ociHookSetupInterface specifies how the hook is configured. There is only one available value for now:
 # oci-hooks (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md).
@@ -58,6 +61,9 @@ ociHookSetupSecurityContext: |
 #ociHookSetupResources:
 # Extra volume mounts to add to the oci-hook-setup init container
 #ociHookSetupExtraVolumeMounts:
+# Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent.
+# The namespace Tetragon is deployed in is always added as an exception and must not be added again.
+ociHookFailAllowNamespaces:
 # Configure metadata init container
 metadataEnabled: false
 # Access Cilium API to associate Tetragon events with Cilium DNS cache.
@@ -75,6 +81,8 @@ exportFileNames:
 # Configure tetragon container
 tetragonEnabled: true
 #tetragonResources:
+tetragonGrpcEnabled: true
+tetragonGrpcAddress: "localhost:54321"
 tetragonSecurityContext: |
   privileged: true
 # Overrides the default livenessProbe for the tetragon container.

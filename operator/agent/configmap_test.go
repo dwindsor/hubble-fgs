@@ -10,15 +10,16 @@ import (
 
 func TestDefaultOperatorConfigMap(t *testing.T) {
 	expected := map[string]string{
-		"skip-pod-info-crd":                "false",
-		"skip-tracing-policy-crd":          "false",
-		"skip-policysandbox-crd":           "false",
-		"force-update-crds":                "false",
-		"serviceMonitorEnabled":            "false",
-		"serviceMonitorScrapeInterval":     "10s",
-		"serviceMonitorPrometheusPort":     "2113",
-		OperatorConfigMapAgentConfigMapKey: defaultAgentConfig,
-		OperatorConfigMapAgentDaemonSetKey: defaultDSConfig,
+		"skip-pod-info-crd":                  "false",
+		"skip-tracing-policy-crd":            "false",
+		"skip-policysandbox-crd":             "false",
+		"force-update-crds":                  "false",
+		"serviceMonitorEnabled":              "false",
+		"serviceMonitorScrapeInterval":       "10s",
+		"serviceMonitorPrometheusPort":       "2113",
+		OperatorConfigMapAgentConfigMapKey:   defaultAgentConfig,
+		OperatorConfigMapAgentDaemonSetKey:   defaultDSConfig,
+		OperatorConfigMapRTHooksDaemonSetKey: defaultRTDSConfig,
 	}
 	actual := DefaultOperatorConfigMap(logr.Log, "kube-system", "test")
 

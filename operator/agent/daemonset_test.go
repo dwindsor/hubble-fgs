@@ -263,6 +263,7 @@ func TestDaemonSet(t *testing.T) {
 								"app.kubernetes.io/name":       "tetragon",
 								"app.kubernetes.io/managed-by": "tetragon-operator",
 							},
+							Annotations: map[string]string{},
 						},
 						Spec: corev1.PodSpec{
 							ImagePullSecrets: []corev1.LocalObjectReference{},
@@ -330,20 +331,6 @@ func TestDaemonSet(t *testing.T) {
 							},
 							InitContainers: []corev1.Container{},
 							Containers: []corev1.Container{
-								{
-									Name:                     "export-stdout",
-									ImagePullPolicy:          corev1.PullIfNotPresent,
-									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-									Command:                  []string{"hubble-export-stdout"},
-									Args:                     []string{"/var/run/cilium/tetragon/tetragon.log"},
-									Env:                      []corev1.EnvVar{},
-									VolumeMounts: []corev1.VolumeMount{{
-										Name:      "export-logs",
-										MountPath: "/var/run/cilium/tetragon",
-									}},
-									SecurityContext: &corev1.SecurityContext{},
-									Resources:       corev1.ResourceRequirements{},
-								},
 								{
 									Name:    "tetragon",
 									Command: []string{},
@@ -417,6 +404,9 @@ labelsOverride:
 annotations:
   test-annotation1: test-value1
   test-annotation2: test-value2
+podAnnotations:
+  pod-annotation1: pod-value1
+  pod-annotation2: pod-value2
 imagePullSecrets: |
   - name: test-secret1
   - name: test-secret2
@@ -478,6 +468,7 @@ ociHookSetupInterface: oci-hooks-test
 ociHookSetupInstallDir: /opt/tetragon-test
 ociHookSetupSecurityContext: |
  privileged: true
+ociHookFailAllowNamespaces: fail-allow-ns
 
 # Extra volume mounts to add to the oci-hook-setup init container
 ociHookSetupExtraVolumeMounts: |
@@ -509,6 +500,7 @@ argsOverride:
   - --test-arg2=test-value2
 tetragonHealthGrpcEnabled: true
 tetragonHealthGrpcPort: "1234"
+tetragonGrpcAddress: localhost:54321
 serviceMonitorEnabled: true
 agentServiceMonitorPrometheusAddress: localhost
 agentServiceMonitorPrometheusPort: "1234"`,
@@ -548,6 +540,10 @@ agentServiceMonitorPrometheusPort: "1234"`,
 								"app.kubernetes.io/instance":   "tetragon",
 								"app.kubernetes.io/name":       "tetragon",
 								"app.kubernetes.io/managed-by": "tetragon-operator",
+							},
+							Annotations: map[string]string{
+								"pod-annotation1": "pod-value1",
+								"pod-annotation2": "pod-value2",
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -699,6 +695,10 @@ agentServiceMonitorPrometheusPort: "1234"`,
 										"--host-install-dir",
 										"/opt/tetragon-test",
 										"--oci-hooks.local-dir=/hostHooks",
+										"hook-args",
+										"--grpc-address=localhost:54321",
+										"--fail-allow-namespaces",
+										"kube-system,fail-allow-ns",
 									},
 									VolumeMounts: []corev1.VolumeMount{
 										{
@@ -860,8 +860,7 @@ agentServiceMonitorPrometheusPort: "1234"`,
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// function to test
-			actual, err := daemonSet(logr.Log, tt.namespace, tt.dsName, tt.cm)
-
+			actual, err := DaemonSet(logr.Log, tt.namespace, tt.dsName, tt.cm)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
 		})
@@ -873,23 +872,25 @@ func TestDaemonSetInitContainers(t *testing.T) {
 	unprivileged := false
 
 	testCases := []struct {
-		name       string
-		yamlString string
-		expected   []corev1.Container
+		name            string
+		agentYAMLString string
+		rtYAMLString    string
+		expected        []corev1.Container
 	}{
 		{
 			name: "init containers disabled (explicitly)",
-			yamlString: `ociHookSetupEnabled: false
+			agentYAMLString: `ociHookSetupEnabled: false
 metadataEnabled: false`,
 			expected: []corev1.Container{},
 		},
 		{
 			name: "oci-hook-setup init container enabled (with default values)",
-			yamlString: `ociHookSetupEnabled: true
+			agentYAMLString: `ociHookSetupEnabled: true
 ociHookSetupInterface: oci-hooks
 ociHookSetupInstallDir: /opt/tetragon
 ociHookSetupSecurityContext: |
   privileged: true`,
+			rtYAMLString: ``,
 			expected: []corev1.Container{{
 				Name: "oci-hook-setup",
 				Command: []string{
@@ -901,6 +902,10 @@ ociHookSetupSecurityContext: |
 					"--host-install-dir",
 					"/opt/tetragon",
 					"--oci-hooks.local-dir=/hostHooks",
+					"hook-args",
+					"--grpc-address=",
+					"--fail-allow-namespaces",
+					"kube-system",
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -917,8 +922,8 @@ ociHookSetupSecurityContext: |
 			}},
 		},
 		{
-			name:       "tetragon init container enabled (with default values)",
-			yamlString: "metadataEnabled: true",
+			name:            "tetragon init container enabled (with default values)",
+			agentYAMLString: "metadataEnabled: true",
 			expected: []corev1.Container{{
 				Name:    "tetragon",
 				Command: []string{"sh"},
@@ -935,12 +940,13 @@ ociHookSetupSecurityContext: |
 		},
 		{
 			name: "oci-hook-setup and tetragon init containers enabled (with default values)",
-			yamlString: `ociHookSetupEnabled: true
+			agentYAMLString: `ociHookSetupEnabled: true
 ociHookSetupInterface: oci-hooks
 ociHookSetupInstallDir: /opt/tetragon
 ociHookSetupSecurityContext: |
   privileged: true
 metadataEnabled: true`,
+			rtYAMLString: ``,
 			expected: []corev1.Container{
 				{
 					Name: "oci-hook-setup",
@@ -953,6 +959,10 @@ metadataEnabled: true`,
 						"--host-install-dir",
 						"/opt/tetragon",
 						"--oci-hooks.local-dir=/hostHooks",
+						"hook-args",
+						"--grpc-address=",
+						"--fail-allow-namespaces",
+						"kube-system",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -984,7 +994,7 @@ metadataEnabled: true`,
 		},
 		{
 			name: "oci-hook-setup and tetragon init containers enabled (with custom values)",
-			yamlString: `ociHookSetupEnabled: true
+			agentYAMLString: `ociHookSetupEnabled: true
 ociHookSetupSecurityContext: |
   privileged: false
 ociHookSetupExtraVolumeMounts: |
@@ -998,9 +1008,13 @@ ociHookSetupResources: |
     memory: 1536Mi
 ociHookSetupInterface: oci-hooks-test
 ociHookSetupInstallDir: /test/install
+ociHookFailAllowNamespaces: fail-allow-ns
+tetragonGrpcAddress: localhost:54321
 metadataEnabled: true
 enableCiliumAPI: true
-metadataImagePullPolicy: Always`,
+metadataImagePullPolicy: Always
+`,
+			rtYAMLString: ``,
 			expected: []corev1.Container{
 				{
 					Name: "oci-hook-setup",
@@ -1013,6 +1027,10 @@ metadataImagePullPolicy: Always`,
 						"--host-install-dir",
 						"/test/install",
 						"--oci-hooks.local-dir=/hostHooks",
+						"hook-args",
+						"--grpc-address=localhost:54321",
+						"--fail-allow-namespaces",
+						"kube-system,fail-allow-ns",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -1064,11 +1082,12 @@ metadataImagePullPolicy: Always`,
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cfgMap := make(map[string]any)
-			require.NoError(t, yaml.Unmarshal([]byte(tt.yamlString), &cfgMap))
+			agentConfigMap := make(map[string]any)
+			require.NoError(t, yaml.Unmarshal([]byte(tt.agentYAMLString), &agentConfigMap))
+			rtConfigMap := make(map[string]any)
+			require.NoError(t, yaml.Unmarshal([]byte(tt.rtYAMLString), &rtConfigMap))
 			// function to test
-			actual := daemonSetInitContainers(logr.Log, cfgMap)
-
+			actual := daemonSetInitContainers(logr.Log, "kube-system", agentConfigMap)
 			require.Equal(t, tt.expected, actual)
 		})
 	}
@@ -1149,19 +1168,6 @@ tetragonHealthGrpcPort: 6789`,
 			name:       "export and tetragon containers enabled (with default values)",
 			yamlString: defaultDSConfig,
 			expected: []corev1.Container{
-				{
-					Name:                     "export-stdout",
-					ImagePullPolicy:          corev1.PullIfNotPresent,
-					TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-					Command:                  []string{"hubble-export-stdout"},
-					Args:                     []string{"/var/run/cilium/tetragon/tetragon.log"},
-					Env:                      []corev1.EnvVar{},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "export-logs",
-						MountPath: "/var/run/cilium/tetragon",
-					}},
-					SecurityContext: &corev1.SecurityContext{},
-				},
 				{
 					Name:                     "tetragon",
 					ImagePullPolicy:          corev1.PullIfNotPresent,
@@ -1836,5 +1842,332 @@ func TestConfigValueInt(t *testing.T) {
 		actual := configValueInt(logr.Log, tt.configMap, key, 32, tt.defaultValue)
 
 		require.Equal(t, tt.expected, actual)
+	}
+}
+
+func TestRTDaemonSet(t *testing.T) {
+	runAsUser := int64(123)
+	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
+	hostPathDirectoryVolumeType := corev1.HostPathDirectory
+	hostPathSocketVolumeType := corev1.HostPathSocket
+	boolTrue := true
+	boolFalse := false
+
+	testCases := []struct {
+		name      string
+		namespace string
+		dsName    string
+		cm        *corev1.ConfigMap
+		expected  *appv1.DaemonSet
+	}{
+		{
+			name:      "default values",
+			namespace: "kube-system",
+			dsName:    RTDaemonSetName,
+			cm:        DefaultOperatorConfigMap(logr.Log, "kube-system", "tetragon"),
+			expected:  nil,
+		},
+		{
+			name:      "oci hooks enabled",
+			namespace: "kube-system",
+			dsName:    RTDaemonSetName,
+			cm: &corev1.ConfigMap{
+				Data: map[string]string{
+					OperatorConfigMapAgentDaemonSetKey: `
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations: |
+  - operator: Exists
+`,
+					OperatorConfigMapRTHooksDaemonSetKey: `
+enabled: true
+interface: oci-hooks
+ociHooksPath: "/usr/share/containers/oci/hooks.d"
+installDir: "/opt/tetragon"
+podSecurityContext: |
+    privileged: true
+`,
+				},
+			},
+			expected: &appv1.DaemonSet{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "DaemonSet",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      RTDaemonSetName,
+					Namespace: "kube-system",
+					Labels: map[string]string{
+						"app.kubernetes.io/instance":   RTDaemonSetName,
+						"app.kubernetes.io/name":       RTDaemonSetName,
+						"app.kubernetes.io/managed-by": "tetragon-operator",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: appv1.DaemonSetSpec{
+					Selector: &v1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance":   RTDaemonSetName,
+							"app.kubernetes.io/name":       RTDaemonSetName,
+							"app.kubernetes.io/managed-by": "tetragon-operator",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: v1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance":   RTDaemonSetName,
+								"app.kubernetes.io/name":       RTDaemonSetName,
+								"app.kubernetes.io/managed-by": "tetragon-operator",
+							},
+							Annotations: map[string]string{},
+						},
+						Spec: corev1.PodSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{},
+							SecurityContext:  &corev1.PodSecurityContext{},
+							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
+							},
+							Affinity: &corev1.Affinity{},
+							Tolerations: []corev1.Toleration{
+								{Operator: "Exists"},
+							},
+							AutomountServiceAccountToken: &boolFalse,
+							Containers: []corev1.Container{
+								{
+									Name: "tetragon-rthooks",
+									Command: []string{
+										"tetragon-oci-hook-setup",
+										"install",
+										"--interface=oci-hooks",
+										"--local-install-dir=/hostInstall",
+										"--host-install-dir",
+										"/opt/tetragon",
+										"--oci-hooks.local-dir=/hostHooks",
+										"--daemonize",
+										"hook-args",
+										"--grpc-address=",
+										"--fail-allow-namespaces",
+										"kube-system",
+									},
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									ImagePullPolicy:          corev1.PullIfNotPresent,
+									SecurityContext:          &corev1.SecurityContext{},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "oci-hooks-install-path",
+											MountPath: "/hostInstall",
+										},
+										{
+											Name:      "oci-hooks-path",
+											MountPath: "/hostHooks",
+										},
+									},
+								},
+							},
+							Volumes: []corev1.Volume{
+								{
+									Name: "oci-hooks-install-path",
+									VolumeSource: corev1.VolumeSource{
+										HostPath: &corev1.HostPathVolumeSource{
+											Path: "/opt/tetragon",
+											Type: &hostPathDirectoryOrCreateVolumeType,
+										},
+									},
+								},
+								{
+									Name: "oci-hooks-path",
+									VolumeSource: corev1.VolumeSource{
+										HostPath: &corev1.HostPathVolumeSource{
+											Path: "/usr/share/containers/oci/hooks.d",
+											Type: &hostPathDirectoryVolumeType,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:      "custom values",
+			namespace: "kube-system",
+			dsName:    RTDaemonSetName,
+			cm: &corev1.ConfigMap{
+				Data: map[string]string{
+					OperatorConfigMapAgentDaemonSetKey: `
+imagePullSecrets: |
+  - name: test-secret1
+  - name: test-secret2
+nodeSelector:
+  test-selector-key1: test-selector-value1
+  test-selector-key2: test-selector-value2
+  kubernetes.io/os: linux
+affinity: |
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - namespaces:
+          - test-affinity-ns1
+          - test-affinity-ns2
+tolerations: |
+  - key: test-key1
+    value: test-value1
+  - key: test-key2
+    value: test-value2
+`,
+					OperatorConfigMapRTHooksDaemonSetKey: `
+enabled: true
+interface: nri-hook
+nriHookSocket: "/var/run/nri/nri-custom.sock"
+installDir: "/opt/custom-tetragon"
+securityContext: |
+  privileged: true
+labelsOverride:
+  test-label1: test-value1
+  test-label2: test-value2
+annotations:
+  test-annotation1: test-value1
+  test-annotation2: test-value2
+podAnnotations:
+  pod-annotation1: pod-value1
+  pod-annotation2: pod-value2
+priorityClassName: system-node-critical
+podSecurityContext: |
+  runAsUser: 123
+failAllowNamespaces: fail-allow-ns
+`,
+				},
+			},
+			expected: &appv1.DaemonSet{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "DaemonSet",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      RTDaemonSetName,
+					Namespace: "kube-system",
+					Labels: map[string]string{
+						"test-label1": "test-value1",
+						"test-label2": "test-value2",
+					},
+					Annotations: map[string]string{
+						"test-annotation1": "test-value1",
+						"test-annotation2": "test-value2",
+					},
+				},
+				Spec: appv1.DaemonSetSpec{
+					Selector: &v1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance":   RTDaemonSetName,
+							"app.kubernetes.io/name":       RTDaemonSetName,
+							"app.kubernetes.io/managed-by": "tetragon-operator",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: v1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance":   RTDaemonSetName,
+								"app.kubernetes.io/name":       RTDaemonSetName,
+								"app.kubernetes.io/managed-by": "tetragon-operator",
+							},
+							Annotations: map[string]string{
+								"pod-annotation1": "pod-value1",
+								"pod-annotation2": "pod-value2",
+							},
+						},
+						Spec: corev1.PodSpec{
+							PriorityClassName: "system-node-critical",
+							ImagePullSecrets: []corev1.LocalObjectReference{
+								{Name: "test-secret1"},
+								{Name: "test-secret2"},
+							},
+							SecurityContext: &corev1.PodSecurityContext{RunAsUser: &runAsUser},
+							NodeSelector: map[string]string{
+								"test-selector-key1": "test-selector-value1",
+								"test-selector-key2": "test-selector-value2",
+								"kubernetes.io/os":   "linux",
+							},
+							Affinity: &corev1.Affinity{
+								PodAffinity: &corev1.PodAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+										{
+											Namespaces: []string{"test-affinity-ns1", "test-affinity-ns2"},
+										},
+									},
+								},
+							},
+							Tolerations: []corev1.Toleration{
+								{Key: "test-key1", Value: "test-value1"},
+								{Key: "test-key2", Value: "test-value2"},
+							},
+							AutomountServiceAccountToken: &boolFalse,
+							Containers: []corev1.Container{
+								{
+									Name: "tetragon-rthooks",
+									Command: []string{
+										"tetragon-oci-hook-setup",
+										"install",
+										"--interface=nri-hook",
+										"--local-install-dir=/hostInstall",
+										"--host-install-dir",
+										"/opt/custom-tetragon",
+										"--oci-hooks.local-dir=/hostHooks",
+										"--daemonize",
+										"hook-args",
+										"--grpc-address=",
+										"--fail-allow-namespaces",
+										"kube-system,fail-allow-ns",
+									},
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									ImagePullPolicy:          corev1.PullIfNotPresent,
+									SecurityContext: &corev1.SecurityContext{
+										Privileged: &boolTrue,
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "oci-hooks-install-path",
+											MountPath: "/hostInstall",
+										},
+										{
+											Name:      "nri-socket-path",
+											MountPath: "/var/run/nri/nri-custom.sock",
+										},
+									},
+								},
+							},
+							Volumes: []corev1.Volume{
+								{
+									Name: "oci-hooks-install-path",
+									VolumeSource: corev1.VolumeSource{
+										HostPath: &corev1.HostPathVolumeSource{
+											Path: "/opt/custom-tetragon",
+											Type: &hostPathDirectoryOrCreateVolumeType,
+										},
+									},
+								},
+								{
+									Name: "nri-socket-path",
+									VolumeSource: corev1.VolumeSource{
+										HostPath: &corev1.HostPathVolumeSource{
+											Path: "/var/run/nri/nri-custom.sock",
+											Type: &hostPathSocketVolumeType,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			// function to test
+			actual, err := RTDaemonSet(logr.Log, tt.namespace, tt.dsName, tt.cm)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
 	}
 }

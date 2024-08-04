@@ -24,6 +24,7 @@ const (
 	AgentConfigMapName    = "tetragon-config"
 	OperatorConfigMapName = "tetragon-operator-config"
 	DaemonSetName         = "tetragon"
+	RTDaemonSetName       = "tetragon-rthooks"
 )
 
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
@@ -52,51 +53,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		err = r.Create(ctx, DefaultOperatorConfigMap(log, req.NamespacedName.Namespace, OperatorConfigMapName))
 		if err == nil {
 			log.Info("operator ConfigMap created")
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 		if apierrors.IsAlreadyExists(err) {
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 		log.Error(err, "unable to create operator ConfigMap")
 		return ctrl.Result{}, err
-	}
-
-	// Reconcile the agent DaemonSet.
-	desiredDS, err := daemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
-	if err != nil {
-		log.Error(err, "unable to generate the desired DaemonSet")
-		return ctrl.Result{}, err
-	}
-	if err := ctrl.SetControllerReference(opCM, desiredDS, r.Scheme); err != nil {
-		log.Error(err, "unable to set the owner reference to the DaemonSet")
-		return ctrl.Result{}, err
-	}
-	ds := &appsv1.DaemonSet{}
-	dsNamespacedName := types.NamespacedName{
-		Namespace: req.NamespacedName.Namespace,
-		Name:      DaemonSetName,
-	}
-	if err := r.Get(ctx, dsNamespacedName, ds); err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "unable to fetch daemon set")
-			return ctrl.Result{}, err
-		}
-		log.Info("daemon set not found, creating")
-		if err := r.Create(ctx, desiredDS); err != nil {
-			log.Error(err, "unable to create daemon set")
-			return ctrl.Result{}, err
-		}
-		log.Info("daemon set created")
-		return ctrl.Result{}, nil
-	}
-	if !equality.Semantic.DeepEqual(ds.Labels, desiredDS.Labels) ||
-		!equality.Semantic.DeepEqual(ds.Spec, desiredDS.Spec) {
-		log.Info("updating daemon set")
-		if err := r.Update(ctx, desiredDS); err != nil {
-			log.Error(err, "unable to update daemon set")
-			return ctrl.Result{}, err
-		}
-		log.Info("daemon set updated")
 	}
 
 	// Reconcile the agent ConfigMap.
@@ -120,8 +83,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			log.Error(err, "unable to create the agent ConfigMap")
 			return ctrl.Result{}, err
 		}
-		log.Info("daemon set created")
-		return ctrl.Result{}, nil
+		log.Info("agent ConfigMap created")
+		return ctrl.Result{Requeue: true}, nil
 	}
 	if !equality.Semantic.DeepEqual(agentCM.Labels, desiredCM.Labels) || !equality.Semantic.DeepEqual(agentCM.Data, desiredCM.Data) {
 		log.Info("updating agent ConfigMap")
@@ -131,6 +94,98 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		log.Info("agent ConfigMap updated")
 	}
+
+	// Reconcile the agent DaemonSet.
+	desiredDS, err := DaemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
+	if err != nil {
+		log.Error(err, "unable to generate the desired daemon set")
+		return ctrl.Result{}, nil
+	}
+	if err := ctrl.SetControllerReference(opCM, desiredDS, r.Scheme); err != nil {
+		log.Error(err, "unable to set the owner reference to the DaemonSet")
+		return ctrl.Result{}, err
+	}
+	ds := &appsv1.DaemonSet{}
+	dsNamespacedName := types.NamespacedName{
+		Namespace: req.NamespacedName.Namespace,
+		Name:      DaemonSetName,
+	}
+	if err := r.Get(ctx, dsNamespacedName, ds); err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "unable to fetch daemon set")
+			return ctrl.Result{}, err
+		}
+		log.Info("daemon set not found, creating")
+		if err := r.Create(ctx, desiredDS); err != nil {
+			log.Error(err, "unable to create daemon set")
+			return ctrl.Result{}, err
+		}
+		log.Info("daemon set created")
+		return ctrl.Result{Requeue: true}, nil
+	}
+	if !equality.Semantic.DeepEqual(ds.Labels, desiredDS.Labels) ||
+		!equality.Semantic.DeepEqual(ds.Spec, desiredDS.Spec) {
+		log.Info("updating daemon set")
+		if err := r.Update(ctx, desiredDS); err != nil {
+			log.Error(err, "unable to update daemon set")
+			return ctrl.Result{}, err
+		}
+		log.Info("daemon set updated")
+	}
+
+	// Reconcile the runtime hooks DaemonSet
+	desiredRTDS, err := RTDaemonSet(log, req.NamespacedName.Namespace, RTDaemonSetName, opCM)
+	if err != nil {
+		log.Error(err, "unable to generate the desired runtime hooks daemon set")
+		// no need to requeue as it is not recoverable without a config change
+		// that would trigger an event anyway.
+		return ctrl.Result{}, nil
+	}
+	if desiredRTDS != nil {
+		if err := ctrl.SetControllerReference(opCM, desiredRTDS, r.Scheme); err != nil {
+			log.Error(err, "unable to set the owner reference to the runtime hooks DaemonSet")
+			return ctrl.Result{}, err
+		}
+	}
+	rtDS := &appsv1.DaemonSet{}
+	rtDSNamespacedName := types.NamespacedName{
+		Namespace: req.NamespacedName.Namespace,
+		Name:      RTDaemonSetName,
+	}
+	if err := r.Get(ctx, rtDSNamespacedName, rtDS); err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "unable to fetch the runtime hooks daemon set")
+			return ctrl.Result{}, err
+		}
+		if desiredRTDS != nil {
+			log.Info("runtime hooks daemon set not found, creating")
+			if err := r.Create(ctx, desiredRTDS); err != nil {
+				log.Error(err, "unable to create the runtime hooks daemon set")
+				return ctrl.Result{}, err
+			}
+			log.Info("runtime hooks daemon set created")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	} else {
+		if desiredRTDS == nil {
+			if err := r.Delete(ctx, desiredRTDS); err != nil {
+				log.Error(err, "unable to delete the runtime hooks daemon set")
+				return ctrl.Result{}, err
+			}
+			log.Info("runtime hooks daemon set deleted")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	}
+	if desiredRTDS != nil && (!equality.Semantic.DeepEqual(rtDS.Labels, desiredRTDS.Labels) ||
+		!equality.Semantic.DeepEqual(ds.Spec, desiredRTDS.Spec)) {
+		log.Info("updating runtime hooks daemon set")
+		if err := r.Update(ctx, desiredRTDS); err != nil {
+			log.Error(err, "unable to update the runtime hooks daemon set")
+			return ctrl.Result{}, err
+		}
+		log.Info("runtime hooks daemon set updated")
+	}
+
 	log.Info("reconciliation completed")
 	return ctrl.Result{}, nil
 }

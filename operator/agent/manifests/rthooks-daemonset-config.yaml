@@ -1,0 +1,63 @@
+# Configuration of the runtime hooks
+# The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host.
+# See: https://tetragon.io/docs/concepts/runtime-hooks
+#
+# Enable the Tetragon rthooks daemonset
+enabled: false
+#
+# Method to use for installing  rthooks. Values:
+#
+#    "oci-hooks":
+#      Add an appropriate file to "/usr/share/containers/oci/hooks.d". Use this with CRI-O.
+#      See https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md
+#      for more details.
+#      Specific configuration for this interface can be found under "OciHooks".
+#
+#    "nri-hook":
+#      Install the hook via NRI. Use this with containerd. Requires NRI being enabled.
+#      see: https://github.com/containerd/containerd/blob/main/docs/NRI.md.
+interface: "oci-hooks"
+#
+# configuration for "oci-hooks" interface
+# directory to install .json file for running the hook
+# mind that "/usr/share/containers/oci/hooks.d" is a readonly filesystem on CoreOS
+ociHooksPath: "/etc/containers/oci/hooks.d"
+
+# configuration for the "nri-hook" interface
+# path to NRI socket
+nriHookSocket: "/var/run/nri/nri.sock"
+# installDir is the host location where the tetragon-oci-hook binary will be installed
+installDir: "/opt/tetragon"
+#
+# Override the default labels set on the runtime hooks DaemonSet
+#labelsOverride:
+#   key1: value1
+#
+#annotations:
+#  key1: value1
+annotations: {}
+#
+serviceAccountName: tetragon
+#
+#podAnnotations:
+#  key1: value1
+#
+# priorityClassName for the pod
+priorityClassName: ""
+#
+# podSecurityContext: |
+# securityContext for the container
+securityContext: |
+  privileged: true
+#
+# Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent.
+# The namespace Tetragon is deployed in is always added as an exception and must not be added again.
+failAllowNamespaces: ""
+#
+# -- extra args to pass to tetragon-oci-hook
+extraHookArgs: {}
+#
+# Extra volumes to add to the runtime hooks pod
+#extraVolumes:
+# Extra volume mounts to add to the runtime hooks container
+#extraVolumeMounts:

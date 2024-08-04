@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	OperatorConfigMapAgentConfigMapKey = "agentConfigMap"
-	OperatorConfigMapAgentDaemonSetKey = "agentDaemonSet"
+	OperatorConfigMapAgentConfigMapKey   = "agentConfigMap"
+	OperatorConfigMapAgentDaemonSetKey   = "agentDaemonSet"
+	OperatorConfigMapRTHooksDaemonSetKey = "rtHooks"
 )
 
 var (
@@ -23,8 +24,11 @@ var (
 	//go:embed manifests/tetragon-config.yaml
 	defaultAgentConfig string
 
-	//go:embed manifests/daemonset-config.yaml
+	//go:embed manifests/agent-daemonset-config.yaml
 	defaultDSConfig string
+
+	//go:embed manifests/rthooks-daemonset-config.yaml
+	defaultRTDSConfig string
 )
 
 // DefaultOperatorConfigMap creates a ConfigMap.
@@ -36,6 +40,7 @@ func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *c
 	data := ValuesAsMap(log, defaultOperatorConfig)
 	data[OperatorConfigMapAgentConfigMapKey] = defaultAgentConfig
 	data[OperatorConfigMapAgentDaemonSetKey] = defaultDSConfig
+	data[OperatorConfigMapRTHooksDaemonSetKey] = defaultRTDSConfig
 	cm := &corev1.ConfigMap{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -72,7 +77,7 @@ func ExtractAgentConfigMap(log logr.Logger, namespace string, name string, opCM 
 func ValuesAsMap(log logr.Logger, yamlValues string) map[string]string {
 	values := map[string]string{}
 	if err := yaml.Unmarshal([]byte(yamlValues), &values); err != nil {
-		log.WithValues("value", yamlValues).Error(err, "could not unmarshal the agent ConfigMap, left empy")
+		log.WithValues("value", yamlValues).Error(err, "could not unmarshal the agent ConfigMap, left empty")
 	}
 	return values
 }

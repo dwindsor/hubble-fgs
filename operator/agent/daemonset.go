@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	appv1 "k8s.io/api/apps/v1"
@@ -13,14 +14,26 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// daemonSet instantiates a Tetragon DaemonSet configuration.
-func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
+// DaemonSet instantiates a Tetragon DaemonSet configuration.
+func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
 	dsTerminationGracePeriodSec := int64(1)
 
+	// TODO: Unmarshalling of the CM should be done once: before calling DaemonSet and RTDaemonSet
+	// Separating the code in 3 files could be considered
+	// - common
+	// - specific to the agent DS
+	// - specific to the RT DS
 	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
 	cmFields := make(map[string]interface{})
 	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
 		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
+		return nil, err
+	}
+	// RT hooks fail namespaces need to be passed to the agent
+	rtConfigYaml := cm.Data[OperatorConfigMapRTHooksDaemonSetKey]
+	rtCMfields := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(rtConfigYaml), &rtCMfields); err != nil {
+		log.WithValues("value", rtConfigYaml).Error(err, "could not unmarshal the runtime hooks DaemonSet configuration")
 		return nil, err
 	}
 
@@ -66,7 +79,7 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 
 	labels := configMapOfString(log, cmFields, "labelsOverride")
 	if len(labels) == 0 {
-		labels = labelsForManaged()
+		labels = labelsForManaged(name)
 	}
 
 	ds := &appv1.DaemonSet{
@@ -82,18 +95,19 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{
-				MatchLabels: labelsForManaged(),
+				MatchLabels: labelsForManaged(name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: k8sv1.ObjectMeta{
-					Labels: labelsForManaged(),
+					Labels:      labelsForManaged(name),
+					Annotations: configMapOfString(log, cmFields, "podAnnotations"),
 				},
 				Spec: corev1.PodSpec{
 					PriorityClassName:             configValue(log, cmFields, "priorityClassName", ""),
 					ImagePullSecrets:              imagePullSecrets,
 					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", ""),
 					SecurityContext:               &securityContext,
-					InitContainers:                daemonSetInitContainers(log, cmFields),
+					InitContainers:                daemonSetInitContainers(log, namespace, cmFields),
 					Containers:                    daemonSetContainers(log, cmFields),
 					NodeSelector:                  configMapOfString(log, cmFields, "nodeSelector"),
 					Affinity:                      &affinity,
@@ -112,7 +126,103 @@ func daemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	return ds, nil
 }
 
-func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
+// RTDaemonSet instantiates a Tetragon DaemonSet for the runtime hooks.
+func RTDaemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
+	// TODO: Unmarshalling of the CM should be done once: before calling DaemonSet and RTDaemonSet (see above)
+	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
+	cmFields := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
+		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
+		return nil, err
+	}
+	rtConfigYaml := cm.Data[OperatorConfigMapRTHooksDaemonSetKey]
+	rtCMFields := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(rtConfigYaml), &rtCMFields); err != nil {
+		log.WithValues("value", rtConfigYaml).Error(err, "could not unmarshal the runtime hooks DaemonSet configuration")
+		return nil, err
+	}
+	// the runtime hooks DaemonSet gets only created if it is enabled
+	if !configValue(log, rtCMFields, "enabled", false) {
+		return nil, nil
+	}
+
+	labels := configMapOfString(log, rtCMFields, "labelsOverride")
+	if len(labels) == 0 {
+		labels = labelsForManaged(name)
+	}
+
+	imagePullSecrets := make([]corev1.LocalObjectReference, 0)
+	imagePullSecretsValue := configValue(log, cmFields, "imagePullSecrets", "")
+	if imagePullSecretsValue != "" {
+		if err := yaml.Unmarshal([]byte(imagePullSecretsValue), &imagePullSecrets); err != nil {
+			log.WithValues("value", imagePullSecretsValue).Error(err, "could not unmarshal the imagePullSecrets, skipped")
+		}
+	}
+
+	podSecurityContext := corev1.PodSecurityContext{}
+	podSecurityContextValue := configValue(log, rtCMFields, "podSecurityContext", "")
+	if podSecurityContextValue != "" {
+		if err := yaml.Unmarshal([]byte(podSecurityContextValue), &podSecurityContext); err != nil {
+			log.WithValues("value", podSecurityContextValue).Error(err, "could not unmarshal the podSecurityContext, default value used instead")
+		}
+	}
+
+	var affinity corev1.Affinity
+	affinityValue := configValue(log, cmFields, "affinity", "")
+	if affinityValue != "" {
+		if err := yaml.Unmarshal([]byte(affinityValue), &affinity); err != nil {
+			log.WithValues("value", affinityValue).Error(err, "could not unmarshal the affinity, affinity not applied")
+		}
+	}
+
+	tolerations := make([]corev1.Toleration, 0)
+	tolerationValues := configValue(log, cmFields, "tolerations", "")
+	if tolerationValues != "" {
+		if err := yaml.Unmarshal([]byte(tolerationValues), &tolerations); err != nil {
+			log.WithValues("value", tolerationValues).Error(err, "could not unmarshal the toleration, toleration not applied")
+		}
+	}
+
+	boolFalse := false
+	ds := &appv1.DaemonSet{
+		TypeMeta: k8sv1.TypeMeta{
+			Kind:       "DaemonSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: k8sv1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: configMapOfString(log, rtCMFields, "annotations"),
+			Labels:      labels,
+		},
+		Spec: appv1.DaemonSetSpec{
+			Selector: &k8sv1.LabelSelector{
+				MatchLabels: labelsForManaged(name),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: k8sv1.ObjectMeta{
+					Labels:      labelsForManaged(name),
+					Annotations: configMapOfString(log, rtCMFields, "podAnnotations"),
+				},
+				Spec: corev1.PodSpec{
+					PriorityClassName:            configValue(log, rtCMFields, "priorityClassName", ""),
+					ImagePullSecrets:             imagePullSecrets,
+					ServiceAccountName:           configValue(log, rtCMFields, "serviceAccountName", ""),
+					AutomountServiceAccountToken: &boolFalse,
+					SecurityContext:              &podSecurityContext,
+					Containers:                   rtDaemonSetContainers(log, rtCMFields, cmFields, namespace),
+					NodeSelector:                 configMapOfString(log, cmFields, "nodeSelector"),
+					Affinity:                     &affinity,
+					Tolerations:                  tolerations,
+					Volumes:                      rtVolumes(log, rtCMFields),
+				},
+			},
+		},
+	}
+	return ds, nil
+}
+
+func daemonSetInitContainers(log logr.Logger, namespace string, cmFields map[string]any) []corev1.Container {
 	containers := make([]corev1.Container, 0)
 	if configValue(log, cmFields, "ociHookSetupEnabled", false) {
 		securityContext := corev1.SecurityContext{}
@@ -131,6 +241,14 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 			}
 		}
 
+		grpcAddress := fmt.Sprintf("--grpc-address=%s", configValue(log, cmFields, "tetragonGrpcAddress", ""))
+		failNs := configValue(log, cmFields, "ociHookFailAllowNamespaces", "")
+		if failNs != "" {
+			failNs = strings.Join([]string{namespace, failNs}, ",")
+		} else {
+			failNs = namespace
+		}
+
 		containers = append(containers, corev1.Container{
 			Name:                     "oci-hook-setup",
 			SecurityContext:          &securityContext,
@@ -145,6 +263,10 @@ func daemonSetInitContainers(log logr.Logger, cmFields map[string]any) []corev1.
 				"--host-install-dir",
 				configValue(log, cmFields, "ociHookSetupInstallDir", ""),
 				"--oci-hooks.local-dir=/hostHooks",
+				"hook-args",
+				grpcAddress,
+				"--fail-allow-namespaces",
+				failNs,
 			},
 			VolumeMounts: append(
 				volumeMountsFromConfigMap(log, cmFields, "ociHookSetupExtraVolumeMounts"),
@@ -374,6 +496,77 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 	return containers
 }
 
+func rtDaemonSetContainers(log logr.Logger, rtCMFields map[string]any, cmFields map[string]any, namespace string) []corev1.Container {
+	securityContext := corev1.SecurityContext{}
+	securityContextValue := configValue(log, rtCMFields, "securityContext", "")
+	if securityContextValue != "" {
+		if err := yaml.Unmarshal([]byte(securityContextValue), &securityContext); err != nil {
+			log.WithValues("value", securityContextValue).Error(err, "could not unmarshal the rthooks container security context, default value used instead")
+		}
+	}
+
+	failNs := configValue(log, rtCMFields, "failAllowNamespaces", "")
+	if failNs != "" {
+		failNs = strings.Join([]string{namespace, failNs}, ",")
+	} else {
+		failNs = namespace
+	}
+
+	commands := []string{
+		"tetragon-oci-hook-setup",
+		"install",
+		fmt.Sprintf("--interface=%s", configValue(log, rtCMFields, "interface", "")),
+		"--local-install-dir=/hostInstall",
+		"--host-install-dir",
+		configValue(log, rtCMFields, "installDir", ""),
+		"--oci-hooks.local-dir=/hostHooks",
+		"--daemonize",
+		"hook-args",
+		fmt.Sprintf("--grpc-address=%s", configValue(log, cmFields, "tetragonGrpcAddress", "")),
+		"--fail-allow-namespaces",
+		failNs,
+	}
+	for k, v := range configMapOfString(log, rtCMFields, "extraHookArgs") {
+		if v != "" {
+			commands = append(commands, fmt.Sprintf("%s=%s", k, v))
+		} else {
+			commands = append(commands, k)
+		}
+	}
+
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "oci-hooks-install-path",
+			MountPath: "/hostInstall",
+		},
+	}
+	switch configValue(log, rtCMFields, "interface", "") {
+	case "oci-hooks":
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "oci-hooks-path",
+			MountPath: "/hostHooks",
+		})
+	case "nri-hook":
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "nri-socket-path",
+			MountPath: configValue(log, rtCMFields, "nriHookSocket", ""),
+		})
+	}
+	volumeMounts = append(volumeMounts, volumeMountsFromConfigMap(log, rtCMFields, "extraVolumeMounts")...)
+
+	containers := make([]corev1.Container, 0)
+	containers = append(containers, corev1.Container{
+		Name:                     "tetragon-rthooks",
+		Image:                    os.Getenv("TETRAGON_RTHOOKS_IMAGE"),
+		SecurityContext:          &securityContext,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		ImagePullPolicy:          imagePullPolicy(log, cmFields, "imagePullPolicy"),
+		Command:                  commands,
+		VolumeMounts:             volumeMounts,
+	})
+	return containers
+}
+
 func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 	policy := corev1.DNSPolicy(configValue(log, config, "dnsPolicy", ""))
 	switch policy {
@@ -480,6 +673,46 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 			Name: "metadata-files",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+	return volumes
+}
+
+func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
+	hostPathDirectoryVolumeType := corev1.HostPathDirectory
+	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
+	hostPathSocket := corev1.HostPathSocket
+	volumes := []corev1.Volume{
+		{
+			Name: "oci-hooks-install-path",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: configValue(log, cmFields, "installDir", ""),
+					Type: &hostPathDirectoryOrCreateVolumeType,
+				},
+			},
+		},
+	}
+	switch configValue(log, cmFields, "interface", "") {
+	case "oci-hooks":
+		volumes = append(volumes, corev1.Volume{
+			Name: "oci-hooks-path",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: configValue(log, cmFields, "ociHooksPath", ""),
+					Type: &hostPathDirectoryVolumeType,
+				},
+			},
+		})
+	case "nri-hook":
+		volumes = append(volumes, corev1.Volume{
+			Name: "nri-socket-path",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: configValue(log, cmFields, "nriHookSocket", ""),
+					Type: &hostPathSocket,
+				},
 			},
 		})
 	}
