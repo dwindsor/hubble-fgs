@@ -274,7 +274,7 @@ endif
 
 .PHONY: test
 test: tester-progs hubble-bpf ## Run Go tests.
-	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ${EXTRA_TESTFLAGS}
+	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ./operator/... ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
 tester-progs:
