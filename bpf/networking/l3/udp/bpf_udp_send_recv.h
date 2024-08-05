@@ -343,6 +343,12 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 			 */
 			emit_ip_error_event(ctx, 0, 0, false,
 					    0, 2, 0, IP_ERROR_UDP_SEND_NO_SOCK_INFO);
+		} else {
+			/* We still need to decrement the map count because we've had
+			 * two entries (both incremented the count), and one exit (IPv4
+			 * decremented the count), so decement it here.
+			 */
+			udp_retprobe_map_dec();
 		}
 		return 0;
 	}
