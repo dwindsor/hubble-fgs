@@ -306,7 +306,7 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 	}
 
 	if (!err) {
-		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
+		if (!val && (cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		set_tuple_hint(key);
 	}
