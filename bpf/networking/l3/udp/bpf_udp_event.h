@@ -103,7 +103,7 @@ build_udp_payload_event(struct udp_info_value *v, u64 cookie, u32 cookie_ver, in
 	val->event.tuple.daddr[0] = v->daddr[0];
 	val->event.tuple.daddr[1] = v->daddr[1];
 	val->event.tuple.dport = v->dport;
-	val->event.create_time = 0;
+	val->event.create_time = v->create_time;
 	val->event.close_time = 0;
 	// WRITE_ONCE to tell compiler to use single store instead
 	// of optimizing into a byte by byte store that would be
