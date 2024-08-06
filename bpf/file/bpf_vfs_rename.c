@@ -256,19 +256,26 @@ struct renamedata {
 	struct dentry *new_dentry;
 	struct inode **delegated_inode;
 	unsigned int flags;
-} __randomize_layout;
+} __attribute__((preserve_access_index));
 
 #ifdef __LARGE_BPF_PROG
 SEC("kprobe/vfs_rename/512")
 int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 {
-	struct renamedata d;
+	struct inode *old_dir = 0, *new_dir = 0, **delegated_inode = 0;
+	struct dentry *old_dentry = 0, *new_dentry = 0;
 	int err;
 
-	probe_read(&d, sizeof(struct renamedata), rd);
+	if (bpf_core_type_exists(struct renamedata)) {
+		old_dir = BPF_CORE_READ(rd, old_dir);
+		old_dentry = BPF_CORE_READ(rd, old_dentry);
+		new_dir = BPF_CORE_READ(rd, new_dir);
+		new_dentry = BPF_CORE_READ(rd, new_dentry);
+		delegated_inode = BPF_CORE_READ(rd, delegated_inode);
+	}
 
-	err = kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
-				d.new_dentry, d.delegated_inode);
+	err = kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir,
+				new_dentry, delegated_inode);
 	if (err < 0)
 		inc_error(hook_vfs_rename, -err);
 
