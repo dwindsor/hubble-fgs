@@ -127,7 +127,6 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	var errCode uint32
 	var errState api.MsgTLSParserState
 	var bytes uint32
-	var pad uint32
 	var op uint8
 
 	tlsmetrics.TlsActualContinuationTotal().Inc()
@@ -142,9 +141,6 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	key := networkapi.MsgSocketId{}
 	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
-		return nil, err
-	}
-	if err := binary.Read(r, native_endian.NativeEndian(), &pad); err != nil {
 		return nil, err
 	}
 

@@ -32,8 +32,9 @@ struct udp_info_key {
 	u64 daddr[2];
 	u16 dport;
 	u8 ipv6;
-	u8 padding;
-	u32 version;
+	u8 padding1;
+	u32 padding2;
+	u64 version;
 }; // All fields aligned so no 'packed' attribute.
 
 struct udp_info_value {
@@ -98,7 +99,7 @@ struct {
 } tg_udp_info_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-udp_key(struct udp_info_key *key, u64 *cookie, u32 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
+udp_key(struct udp_info_key *key, u64 *cookie, u64 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 {
 	if (send) {
 		if (!ipv6) {
@@ -128,7 +129,8 @@ udp_key(struct udp_info_key *key, u64 *cookie, u32 version, struct iphdr *ip, bo
 		key->dport = bpf_ntohs(udp->source);
 	}
 	key->cookie = *cookie;
-	key->padding = 0;
+	key->padding1 = 0;
+	key->padding2 = 0;
 	key->version = version;
 }
 

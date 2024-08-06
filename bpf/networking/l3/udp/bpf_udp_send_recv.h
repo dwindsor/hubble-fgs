@@ -146,7 +146,7 @@ udp6_get_info(struct udp_sock_info *sock_info)
 }
 
 static inline __attribute__((always_inline)) void
-udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, struct udp_sock_info *sock_info)
+udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, struct udp_sock_info *sock_info)
 {
 	struct msghdr *msg = sock_info->msg;
 	struct sock *sk = sock_info->sk;
@@ -182,7 +182,8 @@ udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, struc
 	}
 	key->dport = bpf_ntohs(key->dport);
 	key->cookie = *cookie;
-	key->padding = 0;
+	key->padding1 = 0;
+	key->padding2 = 0;
 	key->version = cookie_ver;
 }
 
@@ -319,7 +320,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 	struct udp_info *info = 0;
 	int ret = PT_REGS_RC(ctx);
 	struct udp_info_key key;
-	u32 cookie_ver = 0;
+	u64 cookie_ver = 0;
 	u64 cookie = 0;
 	int zero = 0;
 	int hasctx;
@@ -498,7 +499,7 @@ udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 }
 
 static inline __attribute__((always_inline)) bool
-udp_set_key(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, void *ctx, struct sk_buff *skb)
+udp_set_key(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, void *ctx, struct sk_buff *skb)
 {
 	struct udp_packet_details *packet;
 	u16 network_header_off;
@@ -553,7 +554,8 @@ udp_set_key(struct udp_info_key *key, u64 *cookie, u32 cookie_ver, void *ctx, st
 	}
 	key->dport = bpf_ntohs(packet->udp.source);
 	key->cookie = *cookie;
-	key->padding = 0;
+	key->padding1 = 0;
+	key->padding2 = 0;
 	key->version = cookie_ver;
 
 	return true;
@@ -636,7 +638,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 	struct udp_info_value *value;
 	struct udp_info_key *key;
 	int valid_addr = 0;
-	u32 cookie_ver = 0;
+	u64 cookie_ver = 0;
 	int hasctx = 1;
 	int zero = 0;
 	u64 cookie;

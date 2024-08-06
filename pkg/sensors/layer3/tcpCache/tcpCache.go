@@ -44,7 +44,7 @@ type TcpLru = lru.Cache[networkapi.MsgSocketId, *networkapi.MsgIPTuple]
 type expiredTuple struct {
 	expired time.Time
 	cookie  uint64
-	version uint32
+	version uint64
 }
 
 // Return a reference to the tlsCache, allocating it first if necessary.
@@ -64,7 +64,7 @@ func GetCache() (*TcpLru, error) {
 }
 
 // Return the tuple for a socket
-func GetTuple(cookie uint64, version uint32) *networkapi.MsgIPTuple {
+func GetTuple(cookie uint64, version uint64) *networkapi.MsgIPTuple {
 	// Retrieve TCP tuple from the cache.
 	tcpTuples, err := GetCache()
 	if err != nil {
@@ -81,7 +81,7 @@ func GetTuple(cookie uint64, version uint32) *networkapi.MsgIPTuple {
 	return &networkapi.MsgIPTuple{}
 }
 
-func RemoveTuple(cookie uint64, version uint32) {
+func RemoveTuple(cookie uint64, version uint64) {
 	expiredLock.Lock()
 	defer expiredLock.Unlock()
 	expiredTuples = append(expiredTuples, expiredTuple{

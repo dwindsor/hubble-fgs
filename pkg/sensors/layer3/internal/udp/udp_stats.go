@@ -48,7 +48,7 @@ type udpPseudoSocket struct {
 
 type cookieVer struct {
 	Cookie  uint64
-	Version uint32
+	Version uint64
 }
 
 var (
@@ -68,8 +68,8 @@ type udpInfoKey struct {
 	DAddr   [2]uint64
 	DPort   uint16
 	IPv6    uint8
-	Padding uint8
-	Version uint32
+	Padding [5]uint8
+	Version uint64
 }
 
 type udpInfoValue struct {

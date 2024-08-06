@@ -64,9 +64,9 @@ func (k *sockKey) String() string { return fmt.Sprintf("Cookie: %d", k.SockCooki
 type sockValue struct {
 	Key        processapi.MsgExecveKey
 	CreateTime uint64
-	Version    uint32
+	Version    uint64
 	Protocol   uint8
-	Pad        [3]uint8
+	Pad        [7]uint8
 }
 
 func (v *sockValue) String() string {

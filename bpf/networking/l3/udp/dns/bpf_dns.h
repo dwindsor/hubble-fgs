@@ -31,7 +31,7 @@ udp_dns(struct __sk_buff *skb,
 	struct iphdr *ip,
 	bool ipv6,
 	u64 *cookie,
-	u32 cookie_ver,
+	u64 cookie_ver,
 	int payload_off,
 	int payload_sz)
 {

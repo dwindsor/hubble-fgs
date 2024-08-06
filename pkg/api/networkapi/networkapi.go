@@ -52,7 +52,7 @@ type MsgIPTuple struct {
 
 type MsgSocketId struct {
 	Cookie  uint64
-	Version uint32
+	Version uint64
 }
 
 func (m *MsgIPTuple) GetPostDAddr() uint32 {
@@ -138,7 +138,8 @@ type MsgIPEvent struct {
 	ProcessKey  processapi.MsgExecveKey `align:"key"`
 	SockCookie  uint64                  `align:"socket_cookie"`
 	SocketFlags uint32                  `align:"socket_flags"`
-	Version     uint32                  `align:"version"`
+	Pad         uint32                  `align:"pad"`
+	Version     uint64                  `align:"version"`
 	CreateTime  uint64                  `align:"create_time"`
 	CloseTime   uint64                  `align:"close_time"`
 }

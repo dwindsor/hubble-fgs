@@ -147,7 +147,7 @@ tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
 
 static inline __attribute__((always_inline)) int
 bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
-		   __u64 socket_cookie, __u32 socket_version, u32 offset)
+		   __u64 socket_cookie, __u64 socket_version, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;

@@ -55,7 +55,7 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	struct socketmap_value *listen_process;
 	u64 pid_tgid = get_current_pid_tgid();
 	u64 accept_cookie = PT_REGS_RC(ctx);
-	u32 cookie_version = 0;
+	u64 cookie_version = 0;
 	u64 *listen_cookie_p;
 
 	/* In TCP we use the struct sock address as the socket cookie. */

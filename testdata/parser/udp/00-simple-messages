@@ -8,7 +8,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 120        # size
+      h4 128        # size
       ? 8           # ktime
 
       ## tuple
@@ -27,7 +27,8 @@ EVENTS
 
       ## socket flags
       $ 00 00 00 00
-      ? 4 # cookie version
+      h4 0x00 # pad
+      ? 8 # cookie version
       ## create time
       ? 8
       ## close time
@@ -39,7 +40,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 120        # size
+      h4 128        # size
       ? 8           # ktime
 
       ## tuple
@@ -58,7 +59,8 @@ EVENTS
 
       ## socket flags
       $ 00 00 00 00
-      ? 4 # cookie version
+      h4 0x00 # pad
+      ? 8 # cookie version
       ## create time
       ? 8
       ## close time

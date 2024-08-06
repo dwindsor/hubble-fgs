@@ -57,16 +57,16 @@ type tcpValue struct {
 	RetransmitBytes uint64
 	RetransmitSegs  uint32
 	SkDrops         uint32
-	Srtt            uint32
-	Version         uint32
+	Version         uint64
 	RttBuckets      [8]uint64
+	RttSum          uint64
 	LatencyBuckets  [8]uint64
+	LatencySum      uint64
+	Srtt            uint32
 	Ipv6            uint8
 	FinRx           uint8
 	Protocol        uint8
-	Pad             [5]uint8
-	RttSum          uint64
-	LatencySum      uint64
+	Pad             uint8
 }
 
 func (t *tcpValue) String() string {

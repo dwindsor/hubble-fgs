@@ -45,10 +45,9 @@ type MsgHttp struct {
 }
 
 type MsgHttpEvent struct {
-	Common        processapi.MsgCommon `align:"common"`
-	SocketCookie  uint64               `align:"socket_cookie"`
-	SocketVersion uint32               `align:"socket_version"`
-	Pad           uint32
+	Common        processapi.MsgCommon    `align:"common"`
+	SocketCookie  uint64                  `align:"socket_cookie"`
+	SocketVersion uint64                  `align:"socket_version"`
 	ProcessKey    processapi.MsgExecveKey `align:"execve"`
 	Request       MsgHttp                 `align:"request"`
 }

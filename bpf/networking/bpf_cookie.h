@@ -22,9 +22,9 @@
 struct socketmap_value {
 	struct msg_execve_key key;
 	__u64 create_time;
-	__u32 version;
+	__u64 version;
 	__u8 protocol;
-	__u8 pad[3];
+	__u8 pad[7];
 };
 
 struct {
@@ -54,17 +54,17 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__type(key, u32);
-	__type(value, u32);
+	__type(value, u64);
 	__uint(max_entries, 1);
 } tg_ver_map SEC(".maps");
 
-static inline __attribute__((always_inline)) u32
+static inline __attribute__((always_inline)) u64
 cookie_inc_version()
 {
-	u32 *version;
+	u64 *version;
 	u32 zero = 0;
 
-	version = (u32 *)map_lookup_elem(&tg_ver_map, &zero);
+	version = (u64 *)map_lookup_elem(&tg_ver_map, &zero);
 	if (!version)
 		return 0;
 	__sync_fetch_and_add(version, 1);

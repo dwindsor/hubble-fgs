@@ -81,7 +81,7 @@ struct {
 } tg_udp_header_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-build_udp_payload_event(struct udp_info_value *v, u64 cookie, u32 cookie_ver, int size)
+build_udp_payload_event(struct udp_info_value *v, u64 cookie, u64 cookie_ver, int size)
 {
 	struct msg_udp_event *val;
 	int z = 0;
@@ -114,7 +114,7 @@ build_udp_payload_event(struct udp_info_value *v, u64 cookie, u32 cookie_ver, in
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_event(void *ctx, int op, u64 *cookie, u32 cookie_ver, struct udp_info_value *v)
+emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
 	struct msg_ip_event *val;
@@ -128,7 +128,7 @@ emit_udp_event(void *ctx, int op, u64 *cookie, u32 cookie_ver, struct udp_info_v
 }
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
+create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
 			 bool ipv6, void *skb_head, struct udp_info_value *v,
 			 int off, int payload_size, size_t *size)
 {
@@ -164,7 +164,7 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver, bool ipv6,
+emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver, bool ipv6,
 		       struct udp_info_value *v, int off, int payload_size)
 {
 	struct msg_udp_event *val;
@@ -181,7 +181,7 @@ emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver, bool ip
 }
 
 static inline __attribute__((always_inline)) void
-store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
+store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
 			bool ipv6, void *skb_head, struct udp_info_value *v,
 			int off, int payload_size)
 {
@@ -208,7 +208,7 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u32 cookie_ver,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_connect_event(void *ctx, u64 *cookie, u32 cookie_ver, struct udp_info_value *v)
+emit_udp_connect_event(void *ctx, u64 *cookie, u64 cookie_ver, struct udp_info_value *v)
 {
 	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, cookie_ver, v);
 }

@@ -35,16 +35,16 @@ struct tcpsocketmap_value {
 	__u64 retransbytes;
 	__u32 retranssegs;
 	__u32 sk_drops;
-	__u32 srtt;
-	__u32 version;
+	__u64 version;
 	__u64 rtt_buckets[8];
+	__u64 rtt_sum;
 	__u64 latency_buckets[8];
+	__u64 latency_sum;
+	__u32 srtt;
 	__u8 ipv6;
 	__u8 fin_rx;
 	__u8 protocol;
-	__u8 pad[5];
-	__u64 rtt_sum;
-	__u64 latency_sum;
+	__u8 pad;
 };
 
 struct {

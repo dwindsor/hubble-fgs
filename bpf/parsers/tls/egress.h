@@ -24,7 +24,7 @@
 // #include "../http/http_parser.h"
 
 static inline __attribute__((always_inline)) void
-egress_post_event(ctx_md *ctx, __u64 socket_cookie, __u32 socket_version,
+egress_post_event(ctx_md *ctx, __u64 socket_cookie, __u64 socket_version,
 		  struct msg_tls_event *post)
 {
 	post->socket_cookie = socket_cookie;
