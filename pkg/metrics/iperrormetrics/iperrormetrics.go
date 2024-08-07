@@ -73,7 +73,6 @@ const (
 	TcpRecvNoCookie
 	TcpRecvNoIpHeader
 	TcpRttNoSocket
-	TcpRttEqualsZero
 )
 
 var IpErrorToString = map[Error]string{
@@ -131,7 +130,6 @@ var IpErrorToString = map[Error]string{
 	TcpRecvNoCookie:                  "TCP recv no cookie",
 	TcpRecvNoIpHeader:                "TCP recv no IP header",
 	TcpRttNoSocket:                   "TCP RTT no socket",
-	TcpRttEqualsZero:                 "TCP RTT equals zero",
 }
 
 var (

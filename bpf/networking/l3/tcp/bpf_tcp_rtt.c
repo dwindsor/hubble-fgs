@@ -62,10 +62,8 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 
 	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
 
-	if (rtt_us <= 0) {
-		emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_EQUALS_ZERO);
+	if (rtt_us <= 0)
 		return 0;
-	}
 
 	if (cfg->bucket00 > rtt_us)
 		socket->rtt_buckets[0]++;
