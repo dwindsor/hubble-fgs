@@ -53,8 +53,7 @@ NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o
 SOCKTRACK = bpf_sk_alloc.o bpf_security_sk_alloc.o
 
 UDP = bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o \
-      bpf_udp_inet_lazy_kp.o \
-      bpf_udp_send_recv.o
+      bpf_udp_inet_lazy_kp.o
 
 TCP = bpf_tcp_accept.o bpf_tcp_close_and_accept.o \
       bpf_tcp_connect.o bpf_tcp_connect_5_15.o    \

@@ -88,11 +88,6 @@ const (
 	tcpSendCheck6Prog     = "tg_event_tcp_v6_send_check"
 
 	udpInetLazySendProg    = "tg_inet_lazy_send_kp"
-	udp4SendProg           = "tg_udp4_send_kprobe"
-	udp4SendRetProg        = "tg_udp4_sendret_kprobe"
-	udp6SendProg           = "tg_udp6_send_kprobe"
-	udp6SendRetProg        = "tg_udp6_sendret_kprobe"
-	udpRecvProg            = "tg_udp_recv_kprobe"
 	udpBindProg            = "tg_udp_bind_sock"
 	udpBindDummy4Prog      = "tg_udp_bind_dummy4"
 	udpBindDummy6Prog      = "tg_udp_bind_dummy6"
@@ -209,88 +204,40 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	if !kernels.MinKernelVersion("5.4.0") { // 4.19 - <5.4
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: udpInetLazySendProg, Type: ebpf.Kprobe},
-			{Name: udp4SendProg, Type: ebpf.Kprobe},
-			{Name: udp4SendRetProg, Type: ebpf.Kprobe},
-			{Name: udp6SendProg, Type: ebpf.Kprobe},
-			{Name: udp6SendRetProg, Type: ebpf.Kprobe},
-			{Name: udpRecvProg, Type: ebpf.Kprobe},
 			{Name: udpBindProg, Type: ebpf.Kprobe},
 		}...)
 
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
-			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map", []string{
-				udp4SendProg, udp4SendRetProg, udp6SendProg,
-				udp6SendRetProg,
-			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map_stats", []string{
-				udp4SendProg, udp4SendRetProg, udp6SendProg,
-				udp6SendRetProg,
-			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
-				udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg,
-				udpRecvProg,
+				udpInetLazySendProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
 				udpInetLazySendProg,
 			}),
 		}...)
 
-		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
-		})...)
-		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
-		})...)
-		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
-		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg, udpRecvProg,
+			udpInetLazySendProg,
 		})...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpInetLazySendProg, udp4SendRetProg, udp6SendRetProg, udpRecvProg,
-			udpBindProg,
-		})...)
-		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
+			udpInetLazySendProg, udpBindProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpInetLazySendProg, udp4SendProg, udp4SendRetProg, udp6SendProg,
-			udp6SendRetProg, udpRecvProg, udpBindProg,
+			udpInetLazySendProg, udpBindProg,
 		})...)
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			udpInetLazySendProg,
-		})...)
-		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
-		})...)
-		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
 		})...)
 	} else { // 5.4+
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
 			{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
-			{Name: udp4SendProg, Type: ebpf.Kprobe},
-			{Name: udp4SendRetProg, Type: ebpf.Kprobe},
-			{Name: udp6SendProg, Type: ebpf.Kprobe},
-			{Name: udp6SendRetProg, Type: ebpf.Kprobe},
-			{Name: udpRecvProg, Type: ebpf.Kprobe},
 			{Name: udpBindProg, Type: ebpf.Kprobe},
 		}...)
 
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
-			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map", []string{
-				udp4SendProg, udp4SendRetProg, udp6SendProg,
-				udp6SendRetProg,
-			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_retprobe_map_stats", []string{
-				udp4SendProg, udp4SendRetProg, udp6SendProg,
-				udp6SendRetProg,
-			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
-				cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-				udpRecvProg,
+				cgroupEgressProg, cgroupIngressProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
 				cgroupEgressProg, cgroupIngressProg,
@@ -298,44 +245,31 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		}...)
 
 		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg, udpBindProg,
-		})...)
-		socketMapStats.Progs = append(socketMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		})...)
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendProg, udp4SendRetProg,
-			udp6SendProg, udp6SendRetProg, udpRecvProg, udpBindProg,
+			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		})...)
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg, udp4SendRetProg, udp6SendRetProg,
-			udpRecvProg,
-		})...)
-		verMap.Progs = append(verMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udp4SendRetProg, udp6SendRetProg, udpRecvProg,
+			cgroupEgressProg, cgroupIngressProg,
 		})...)
 	}
 

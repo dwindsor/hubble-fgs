@@ -77,13 +77,9 @@ type udpInfoKey struct {
 }
 
 type udpInfoValue struct {
-	SubmittedBytes   uint64
 	TXBytes          uint64
-	ConsumedBytes    uint64
 	RXBytes          uint64
-	ConsumedSegs     uint64
 	SegsIn           uint64
-	SubmittedSegs    uint64
 	SegsOut          uint64
 	Ktime            uint64
 	PidKtime         uint64
@@ -115,17 +111,13 @@ func (v *udpInfoValue) String() string {
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
-			"SubmittedBytes: %d ConsumedBytes %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
-			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
 			"SkbConsumeMisses: %d\n",
 		ipSrc, v.SPort, ipDst, v.DPort,
 		v.Pid, v.Ktime,
-		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
-		v.SubmittedSegs, v.ConsumedSegs,
 		v.SegsOut, v.SegsIn,
 		v.SkDrops, v.SkbConsumeMisses)
 }
@@ -155,13 +147,13 @@ func createUdpStatsEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration)
 		Ktime: v.PidKtime,
 	}
 	unix.Msg.SocketStats = api.MsgSocketStats{
-		BytesSubmitted:   v.SubmittedBytes,
-		BytesConsumed:    v.ConsumedBytes,
+		BytesSubmitted:   v.TXBytes,
+		BytesConsumed:    v.RXBytes,
 		BytesSent:        v.TXBytes,
 		BytesReceived:    v.RXBytes,
-		SegsConsumed:     uint32(v.ConsumedSegs),
+		SegsConsumed:     uint32(v.SegsIn),
 		SegsIn:           uint32(v.SegsIn),
-		SegsSubmitted:    uint32(v.SubmittedSegs),
+		SegsSubmitted:    uint32(v.SegsOut),
 		SegsOut:          uint32(v.SegsOut),
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
@@ -243,12 +235,8 @@ func udpResetEvent(curr, last *udpInfoValue) bool {
 	// If we have fewer bytes or segs than last measurement this is a
 	// sure sign we had a data race. Counters in BPF side are monotonic
 	// so a single entry will never be decrementing.
-	if curr.ConsumedSegs < last.ConsumedSegs ||
-		curr.ConsumedBytes < last.ConsumedBytes ||
-		curr.SegsIn < last.SegsIn ||
+	if curr.SegsIn < last.SegsIn ||
 		curr.RXBytes < last.RXBytes ||
-		curr.SubmittedSegs < last.SubmittedSegs ||
-		curr.SubmittedBytes < last.SubmittedBytes ||
 		curr.SegsOut < last.SegsOut ||
 		curr.TXBytes < last.TXBytes ||
 		latencyResetEvent(&curr.Buckets, &last.Buckets, curr.LatencySum, last.LatencySum) {
@@ -319,12 +307,8 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 	}
 
 	return udpInfoValue{
-		SubmittedBytes:   curr.SubmittedBytes - last.SubmittedBytes,
-		ConsumedBytes:    curr.ConsumedBytes - last.ConsumedBytes,
 		TXBytes:          curr.TXBytes - last.TXBytes,
 		RXBytes:          curr.RXBytes - last.RXBytes,
-		ConsumedSegs:     curr.ConsumedSegs - last.ConsumedSegs,
-		SubmittedSegs:    curr.SubmittedSegs - last.SubmittedSegs,
 		SegsIn:           curr.SegsIn - last.SegsIn,
 		SegsOut:          curr.SegsOut - last.SegsOut,
 		SkDrops:          curr.SkDrops - last.SkDrops,
