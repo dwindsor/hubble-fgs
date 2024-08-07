@@ -186,7 +186,7 @@ func UnloadSensor() error {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
 	tcpCache.StopGc()
-	return nil
+	return model.ClearDnsQuota()
 }
 
 func processModelMapsEnable() []*program.Map {
