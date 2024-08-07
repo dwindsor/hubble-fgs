@@ -20,7 +20,7 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("cgroup_skb/ingress"), used)) int
 tg_cgroup_ingress(struct __sk_buff *skb)
 {
-	int ret = tg_cgroup_dispatcher(skb, 0);
+	volatile int ret = tg_cgroup_dispatcher(skb, 0);
 
 	return ret & 1;
 }
@@ -28,7 +28,7 @@ tg_cgroup_ingress(struct __sk_buff *skb)
 __attribute__((section("cgroup_skb/egress"), used)) int
 tg_cgroup_egress(struct __sk_buff *skb)
 {
-	int ret = tg_cgroup_dispatcher(skb, 1);
+	volatile int ret = tg_cgroup_dispatcher(skb, 1);
 
 	return ret & 1;
 }
