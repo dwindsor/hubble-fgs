@@ -29,11 +29,13 @@ struct {
 
 struct udp_info_key {
 	u64 cookie;
+	u64 saddr[2];
 	u64 daddr[2];
+	u16 sport;
 	u16 dport;
 	u8 ipv6;
 	u8 padding1;
-	u32 padding2;
+	u16 padding2;
 	u64 version;
 }; // All fields aligned so no 'packed' attribute.
 
@@ -103,29 +105,41 @@ udp_key(struct udp_info_key *key, u64 *cookie, u64 version, struct iphdr *ip, bo
 {
 	if (send) {
 		if (!ipv6) {
+			key->saddr[0] = ip->saddr;
+			key->saddr[1] = 0;
 			key->daddr[0] = ip->daddr;
 			key->daddr[1] = 0;
 			key->ipv6 = false;
 		} else {
-			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
+			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
+			key->saddr[0] = addr[0];
+			key->saddr[1] = addr[1];
+			addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
 			key->daddr[0] = addr[0];
 			key->daddr[1] = addr[1];
 			key->ipv6 = true;
 		}
 		// In the key, the port is always host order.
+		key->sport = bpf_ntohs(udp->source);
 		key->dport = bpf_ntohs(udp->dest);
 	} else {
 		if (!ipv6) {
+			key->saddr[0] = ip->daddr;
+			key->saddr[1] = 0;
 			key->daddr[0] = ip->saddr;
 			key->daddr[1] = 0;
 			key->ipv6 = false;
 		} else {
-			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
+			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
+			key->saddr[0] = addr[0];
+			key->saddr[1] = addr[1];
+			addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
 			key->daddr[0] = addr[0];
 			key->daddr[1] = addr[1];
 			key->ipv6 = true;
 		}
 		// In the key, the port is always host order.
+		key->sport = bpf_ntohs(udp->dest);
 		key->dport = bpf_ntohs(udp->source);
 	}
 	key->cookie = *cookie;

@@ -41,6 +41,8 @@ const (
 )
 
 type udpPseudoSocket struct {
+	SAddr [2]uint64
+	SPort uint16
 	DAddr [2]uint64
 	DPort uint16
 	IPv6  uint8
@@ -65,10 +67,12 @@ var (
 
 type udpInfoKey struct {
 	Cookie  uint64
+	SAddr   [2]uint64
 	DAddr   [2]uint64
+	SPort   uint16
 	DPort   uint16
 	IPv6    uint8
-	Padding [5]uint8
+	Padding [3]uint8
 	Version uint64
 }
 
@@ -98,9 +102,11 @@ type udpInfoValue struct {
 }
 
 func (k *udpInfoKey) String() string {
+	ipSrc := api.GetIP(k.SAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
 	ipDst := api.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
 	return fmt.Sprintf("Cookie=%d:%d\n"+
-		"DAddr=%s:%d\n", k.Version, k.Cookie, ipDst, k.DPort)
+		"SAddr=%s:%d\n"+
+		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.SPort, ipDst, k.DPort)
 }
 
 func (v *udpInfoValue) String() string {
@@ -398,7 +404,7 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 		pseudoSocketsUpdate.Lock()
 		pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
 		if pseudoSockets[pseudoKey] != nil {
-			delete(pseudoSockets[pseudoKey], udpPseudoSocket{DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
+			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.SAddr, SPort: udpKey.SPort, DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
 		deleteLastKey = &udpInfoKey{}

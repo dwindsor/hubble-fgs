@@ -146,32 +146,42 @@ udp6_get_info(struct udp_sock_info *sock_info)
 }
 
 static inline __attribute__((always_inline)) void
-udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, struct udp_sock_info *sock_info)
+udp_key_from_msg(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, struct udp_sock_info *sock_info)
 {
 	struct msghdr *msg = sock_info->msg;
 	struct sock *sk = sock_info->sk;
+	struct ipv6_pinfo *pinet6;
 	struct sockaddr_in6 *in6;
 	struct sockaddr_in *in;
+	struct inet_sock *inet;
 	int namelen;
 
+	inet = (struct inet_sock *)sk;
 	probe_read_kernel(&in, sizeof(void *), _(&(msg->msg_name)));
 	in6 = (struct sockaddr_in6 *)in;
 	probe_read_kernel(&namelen, sizeof(int), _(&(msg->msg_namelen)));
 
 	if (!key->ipv6) {
-		u32 daddr;
+		u32 addr;
+		probe_read_kernel(&addr, sizeof(addr), _(&(inet->inet_saddr)));
+		key->saddr[0] = addr;
+		key->saddr[1] = 0;
+		probe_read_kernel(&key->sport, sizeof(key->sport), _(&(inet->inet_sport)));
 		if (in && namelen >= sizeof(*in)) {
-			probe_read_kernel(&daddr, sizeof(daddr), _(&(in->sin_addr.s_addr)));
-			key->daddr[0] = daddr;
+			probe_read_kernel(&addr, sizeof(addr), _(&(in->sin_addr.s_addr)));
+			key->daddr[0] = addr;
 			key->daddr[1] = 0;
 			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(in->sin_port)));
 		} else {
-			probe_read_kernel(&daddr, sizeof(daddr), _(&(sk->__sk_common.skc_daddr)));
-			key->daddr[0] = daddr;
+			probe_read_kernel(&addr, sizeof(addr), _(&(sk->__sk_common.skc_daddr)));
+			key->daddr[0] = addr;
 			key->daddr[1] = 0;
 			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
 		}
 	} else {
+		probe_read_kernel(&pinet6, sizeof(struct ipv6_pinfo *), _(&(inet->pinet6)));
+		probe_read_kernel(&key->saddr, sizeof(struct in6_addr), _(&(pinet6->saddr)));
+		probe_read_kernel(&key->sport, sizeof(u16), _(&(inet->inet_sport)));
 		if (in6 && namelen >= sizeof(*in6)) {
 			probe_read_kernel(&key->daddr, sizeof(struct in6_addr), _(&(in6->sin6_addr)));
 			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(in6->sin6_port)));
@@ -180,6 +190,7 @@ udp_key_daddr_dport(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, struc
 			probe_read_kernel(&key->dport, sizeof(key->dport), _(&(sk->__sk_common.skc_dport)));
 		}
 	}
+	key->sport = bpf_ntohs(key->sport);
 	key->dport = bpf_ntohs(key->dport);
 	key->cookie = *cookie;
 	key->padding1 = 0;
@@ -367,7 +378,7 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 		cookie_ver = process->version;
 
 	key.ipv6 = ipv6;
-	udp_key_daddr_dport(&key, &cookie, cookie_ver, sock_info);
+	udp_key_from_msg(&key, &cookie, cookie_ver, sock_info);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, &key);
 	if (!value) {
@@ -389,7 +400,6 @@ udp_sendret(struct pt_regs *ctx, bool ipv6)
 			del_from_retprobe_map(ctx, cookie, info, &pid_tgid);
 			return 0;
 		}
-
 		udp_info_tx_reset(value, 0);
 		if (!ipv6) {
 			set_ipv6_addr_from_ipv4(value->saddr, info->saddr.ipv4);
@@ -545,13 +555,19 @@ udp_set_key(struct udp_info_key *key, u64 *cookie, u64 cookie_ver, void *ctx, st
 
 	/* addresses are in network byte order and ports are in host byte order. */
 	if (!key->ipv6) {
+		key->saddr[0] = packet->ip.ip4.daddr;
+		key->saddr[1] = 0;
 		key->daddr[0] = packet->ip.ip4.saddr;
 		key->daddr[1] = 0;
 	} else {
-		u64 *addr = (u64 *)&packet->ip.ip6.saddr;
+		u64 *addr = (u64 *)&packet->ip.ip6.daddr;
+		key->saddr[0] = addr[0];
+		key->saddr[1] = addr[1];
+		addr = (u64 *)&packet->ip.ip6.saddr;
 		key->daddr[0] = addr[0];
 		key->daddr[1] = addr[1];
 	}
+	key->sport = bpf_ntohs(packet->udp.dest);
 	key->dport = bpf_ntohs(packet->udp.source);
 	key->cookie = *cookie;
 	key->padding1 = 0;
@@ -664,6 +680,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx)
 		cookie_ver = process->version;
 
 	if (!udp_set_key(key, &cookie, cookie_ver, ctx, skb)) {
+		key->saddr[0] = 0;
+		key->saddr[1] = 0;
 		key->daddr[0] = 0;
 		key->daddr[1] = 0;
 		key->ipv6 = 0;
