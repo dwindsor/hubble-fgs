@@ -19,6 +19,7 @@ static inline __attribute__((always_inline)) int
 icmp_rcv(struct pt_regs *ctx)
 {
 	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
+	__attribute__((aligned(8))) struct ipv6hdr ip6;
 	u8 icmp_data[ICMP_HDR_LEN];
 	struct msg_icmp_event *val;
 	u16 transport_header_off;
@@ -27,7 +28,6 @@ icmp_rcv(struct pt_regs *ctx)
 	u16 network_header_off;
 	struct iphdr *rep_ip4;
 	struct tcphdr *tcp;
-	struct ipv6hdr ip6;
 	void *skb_head = 0;
 	unsigned long err;
 	struct iphdr ip4;
