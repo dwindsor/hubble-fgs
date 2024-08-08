@@ -1,0 +1,14 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-pattern"
+spec:
+  file:
+    file_paths_patterns:
+    - type: AllFileOps
+    selectors:
+    - matchFilename:
+      - operator: "InPattern" 
+        values: 
+        - "/usr/*.so.*"
+        - "*.txt"
