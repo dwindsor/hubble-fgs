@@ -1186,12 +1186,12 @@ find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
 	return map_lookup_elem(inode_map, &file_key);
 }
 
-static inline __attribute__((always_inline)) void inc_error(__u32 hook, __u32 metric)
+static inline __attribute__((always_inline)) void inc_error(__u32 hook, int metric)
 {
 	__u32 zero = 0;
 	struct file_errors *valp;
 
-	if (metric >= FILE_ERR_MAX)
+	if (metric >= FILE_ERR_MAX || metric < 0)
 		metric = FILE_ERR_UNEXPECTED;
 
 	valp = map_lookup_elem(&file_errors_map, &zero);
