@@ -83,13 +83,20 @@ int insert_process_tree(void)
 		self_uid = &curr->key;
 	}
 
-	parent = event_find_parent();
-	if (!parent)
-		goto out;
+	struct msg_execve_key zero_uid;
 
-	parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
-	if (!parent_uid)
-		goto out;
+	zero_uid.pid = 0;
+	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
+	zero_uid.ktime = 0;
+
+	parent = event_find_parent();
+	if (!parent) {
+		parent_uid = &zero_uid;
+	} else {
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+		if (!parent_uid)
+			parent_uid = &zero_uid;
+	}
 
 	k->parent = *parent_uid;
 	k->self = *self_uid;
@@ -116,7 +123,6 @@ int insert_process_tree(void)
 		// old != NULL on some kernels.
 		old->ktime_last_exec = ktime_get_ns();
 	}
-out:
 	return 0;
 }
 
