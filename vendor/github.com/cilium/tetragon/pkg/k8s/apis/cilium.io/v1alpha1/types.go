@@ -201,6 +201,17 @@ type FileOpenFlagsTypeSelector struct {
 	Values []OpenFlagSelectorValue `json:"values,omitempty"`
 }
 
+// Example: "ab*bc?d"
+type GlobPattern = string
+
+type FilePathGlobSelector struct {
+	// +kubebuilder:validation:Enum=InPattern
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Glob patterns to compare the argument against.
+	Values []GlobPattern `json:"values,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -224,6 +235,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of file open flags filters.
 	MatchOpenFlags []FileOpenFlagsTypeSelector `json:"matchOpenFlags,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of glob patterns to match the filename.
+	MatchFilename []FilePathGlobSelector `json:"matchFilename,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
