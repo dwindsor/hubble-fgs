@@ -1543,6 +1543,9 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
 	supportBpfLoop := (probeBpfLoop() == nil)
 	logger.GetLogger().Infof("probeBpfLoop() = %t", supportBpfLoop)
 
+	supportBpfForEachMapElem := (probeForEachMapElem() == nil)
+	logger.GetLogger().Infof("probeForEachMapElem() = %t", supportBpfForEachMapElem)
+
 	logger.GetLogger().WithFields(logrus.Fields{
 		"security_file_permission":  (probeDpathSecurityFilePermission() == nil),
 		"security_path_truncate":    (probeDpathSecurityPathTruncate() == nil),

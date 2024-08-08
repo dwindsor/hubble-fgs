@@ -57,6 +57,11 @@ var probeBpfLoop = sync.OnceValue(func() error {
 		return link.AttachLSM(link.LSMOptions{Program: prog})
 	})
 })
+var probeForEachMapElem = sync.OnceValue(func() error {
+	return _probeProg("probe_for_each_map_elem.o", "lsm_security_file_open", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
 
 //	int BPF_PROG(bprm_check, struct linux_binprm *bprm) {
 //	    __u64 data;
