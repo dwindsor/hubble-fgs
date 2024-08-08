@@ -210,6 +210,13 @@ func processModelMapsEnable() []*program.Map {
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 
+	EndpointIdMap.PinState.RefInc()
+	BpfEndpointIdMap.PinState.RefInc()
+	ProcessTreeMap.PinState.RefInc()
+	ProcessTreeBinaryUUIDMap.PinState.RefInc()
+	ProcessTreeUUIDBinaryMap.PinState.RefInc()
+	DestinationEndpointMap.PinState.RefInc()
+
 	return maps
 }
 

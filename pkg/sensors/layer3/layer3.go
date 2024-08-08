@@ -218,6 +218,15 @@ func processModelMapsEnable() {
 
 	EndpointIdEgressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	EndpointIdIngressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
+
+	DestinationEndpointEgressMap.PinState.RefInc()
+	DestinationEndpointIngressMap.PinState.RefInc()
+	ProcessTreeBinaryUUIDEgressMap.PinState.RefInc()
+	ProcessTreeBinaryUUIDIngressMap.PinState.RefInc()
+	BpfEndpointIdEgressMap.PinState.RefInc()
+	BpfEndpointIdIngressMap.PinState.RefInc()
+	EndpointIdEgressMap.PinState.RefInc()
+	EndpointIdIngressMap.PinState.RefInc()
 }
 
 func EnableLayer3(tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
