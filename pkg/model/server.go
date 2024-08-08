@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 )
@@ -480,5 +481,12 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 	if err := dstMap.Update(key, value, 0); err != nil {
 		return err
 	}
+	logger.GetLogger().WithFields(logrus.Fields{
+		"namespace": namespace,
+		"workload":  wl,
+		"quota":     quotaBytes,
+		"reset":     reset,
+		"dest":      strings.Join(dns, " "),
+	}).Info("TCP Quota Added")
 	return nil
 }
