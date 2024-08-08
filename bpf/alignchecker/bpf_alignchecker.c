@@ -38,5 +38,6 @@ struct file_sel_namespaces _file_sel_namespaces;
 struct file_errors _file_errors;
 struct pattern_val _pattern_val;
 struct full_path _full_path;
+struct glob_state _glob_state;
 
 struct fd_lookup_config _fd_lookup_config;

@@ -333,6 +333,19 @@ struct inode_pair {
 	__u32 dev_file;
 };
 
+struct glob_state {
+	s32 idx;
+	s32 nextChar;
+	s32 nextStar;
+	s32 nextQmark;
+	u8 hasChar;
+	u8 hasStar;
+	u8 hasQmark;
+	u8 isFinal;
+	u8 valueChar;
+	u8 pad[3];
+};
+
 #define FILE_ERR_NO_ERROR		     0 // success
 #define FILE_ERR_UNKNOWN		     1 // unknown error
 #define FILE_ERR_GET_MSG_HEAP		     2 // map_lookup_elem(&file_heap_map, &zero) == 0

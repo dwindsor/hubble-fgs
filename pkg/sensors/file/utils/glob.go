@@ -18,15 +18,16 @@ import (
 )
 
 type GlobState struct {
-	idx       int32 // my ID (i.e. index in the state array)
-	nextChar  int32 // valid only when hasChar == true
-	nextStar  int32 // valid only when hasStar == true
-	nextQmark int32 // valid only when hasQmark == true
-	hasChar   bool  // char transition
-	hasStar   bool  // * transition
-	hasQmark  bool  // ? transition
-	isFinal   bool
-	valueChar byte // valid only when hasChar == true
+	idx       int32   `align:"idx"`       // my ID (i.e. index in the state array)
+	nextChar  int32   `align:"nextChar"`  // valid only when hasChar == true
+	nextStar  int32   `align:"nextStar"`  // valid only when hasStar == true
+	nextQmark int32   `align:"nextQmark"` // valid only when hasQmark == true
+	hasChar   bool    `align:"hasChar"`   // char transition
+	hasStar   bool    `align:"hasStar"`   // * transition
+	hasQmark  bool    `align:"hasQmark"`  // ? transition
+	isFinal   bool    `align:"isFinal"`
+	valueChar byte    `align:"valueChar"` // valid only when hasChar == true
+	_         [3]byte `align:"pad"`
 }
 
 func (s *GlobState) AddTransition(input rune, target int32) {
