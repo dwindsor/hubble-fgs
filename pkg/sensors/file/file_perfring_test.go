@@ -388,3 +388,107 @@ func TestFileFsTypeMatch(t *testing.T) {
 	assert.Greater(t, procEvents, 0, "we expect to have at least one event from proc")
 	assert.Greater(t, sysfsEvents, 0, "we expect to have at least one event from sysfs")
 }
+
+func TestFileGlobMatch(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tus.GetTestSensorManager(ctx, t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-glob",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchFilename: []v1alpha1.FilePathGlobSelector{
+							{
+								Operator: "InPattern",
+								Values: []v1alpha1.GlobPattern{
+									"*.c",
+									"/*/?.txt",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	execFn := func(bin string, args ...string) {
+		cmd := exec.Command(bin, args...)
+		assert.NoError(t, cmd.Run())
+	}
+
+	ops := func() {
+		a := filepath.Join(testDir, "a.txt")  // match on "/*/?.txt"
+		b := filepath.Join(testDir, "bb.txt") // does not match
+		c := filepath.Join(testDir, "c.c")    // match on "*.c"
+		d := filepath.Join(testDir, "d.go")   // does not match
+		e := filepath.Join(testDir, "e.dat")  // does not match
+
+		execFn("/usr/bin/touch", a) // match
+		execFn("/usr/bin/touch", b) // no match
+		execFn("/usr/bin/touch", c) // match
+
+		execFn("/usr/bin/mv", c, d) // src match
+		execFn("/usr/bin/mv", d, e) // nothing match
+		execFn("/usr/bin/mv", e, c) // dst match
+
+		execFn("/usr/bin/rm", a) // match
+		execFn("/usr/bin/rm", b) // no match
+		execFn("/usr/bin/rm", c) // match
+	}
+
+	events := perfring.RunTestEvents(t, ctx, ops)
+
+	assert.Greater(t, len(events), 0, "we expect to have some events")
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	capturedEvents := 0
+	for _, ev := range events {
+		if _, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			capturedEvents++
+		} else if _, ok := ev.(*grpc.MsgFileRenameEventUnix); ok {
+			capturedEvents++
+		}
+	}
+
+	assert.Equal(t, capturedEvents, 6, "we expect to have 6 events")
+}
