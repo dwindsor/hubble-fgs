@@ -136,6 +136,10 @@ type OpenFlagsOps struct {
 	flags [maxOpenFlagMaskPerOp]OpenFlagsPair
 }
 
+type MatchFilenameOps struct {
+	fsm []*GlobFSM
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -157,6 +161,9 @@ type KernelSelectorState struct {
 	// matchOpenFlags
 	oflags map[uint32]*OpenFlagsOps
 
+	// matchFilename
+	patterns map[uint32]*MatchFilenameOps
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -173,6 +180,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		namespaces:          map[uint32]*fileapi.SelNs{},
 		rename:              map[uint32]*RenameOps{},
 		oflags:              map[uint32]*OpenFlagsOps{},
+		patterns:            map[uint32]*MatchFilenameOps{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -222,6 +230,16 @@ func (k *KernelSelectorState) InitOrGetRename(selIdx uint32) *RenameOps {
 	}
 	inner := &RenameOps{}
 	k.rename[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) InitOrGetPatterns(selIdx uint32) *MatchFilenameOps {
+	val, ok := k.patterns[selIdx]
+	if ok {
+		return val
+	}
+	inner := &MatchFilenameOps{}
+	k.patterns[selIdx] = inner
 	return inner
 }
 
@@ -554,6 +572,67 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 	return nil
 }
 
+type patternKey struct {
+	selIdx     uint32
+	patternIdx uint32
+}
+
+func GeneratePatternsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	for selID, entries := range sel.patterns {
+		for patternID, fsm := range entries.fsm {
+			innerName := fmt.Sprintf("glob_patterns_map_%d", selID)
+			innerSpec := &ebpf.MapSpec{
+				Name:       innerName,
+				Type:       ebpf.Array,
+				KeySize:    4, // uint32
+				ValueSize:  uint32(unsafe.Sizeof(GlobState{})),
+				MaxEntries: uint32(GetMaxInnerEntriesPatternsMap(sel)),
+			}
+			innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+				PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+			})
+			if err != nil {
+				return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+			}
+			defer innerMap.Close()
+
+			innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+			for i, s := range fsm.stateArr {
+				idx := uint32(i)
+				if err := innerMap.Put(idx, s); err != nil {
+					return fmt.Errorf("put failed: %w", err)
+				}
+			}
+
+			if err := outerMap.Update(patternKey{
+				selIdx:     selID,
+				patternIdx: uint32(patternID),
+			}, uint32(innerMap.FD()), 0); err != nil {
+				return fmt.Errorf("failed to insert %s: %w", innerName, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func GetMaxInnerEntriesPatternsMap(sel *KernelSelectorState) int {
+	maxEntries := 0
+	for _, entry := range sel.patterns {
+		for _, p := range entry.fsm {
+			num := len(p.stateArr)
+			if num > maxEntries {
+				maxEntries = num
+			}
+		}
+	}
+	if maxEntries == 0 {
+		maxEntries = 1
+	}
+	return maxEntries
+}
+
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
 		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
@@ -880,6 +959,29 @@ func ParseOpenFlags(k *KernelSelectorState, op []v1alpha1.FileOpenFlagsTypeSelec
 	return nil
 }
 
+func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+
+	for _, o := range op {
+		if o.Operator != "InPattern" {
+			return fmt.Errorf("only support op 'InPattern'")
+		}
+
+		val := k.InitOrGetPatterns(uint32(selIdx))
+		for _, p := range o.Values {
+			fsm, err := CompileGlob(p)
+			if err != nil {
+				return fmt.Errorf("failed to compile glob, pattern: %s error: %w", p, err)
+			}
+			val.fsm = append(val.fsm, fsm)
+		}
+	}
+
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
 	if len(fileSel) > MaxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -906,6 +1008,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorSt
 		}
 		if err := ParseOpenFlags(kernelSelectors, s.MatchOpenFlags, i); err != nil {
 			return nil, fmt.Errorf("parseOpenFlags error: %w", err)
+		}
+		if err := ParseMatchFilename(kernelSelectors, s.MatchFilename, i); err != nil {
+			return nil, fmt.Errorf("parseMatchFilename error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)
