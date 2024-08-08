@@ -49,7 +49,9 @@
 
 #define PAGE_SIZE 4096
 
-#ifdef __LARGE_BPF_PROG
+#if defined(__ENABLE_GLOB_SUPPORT)
+#define MAX_FIM_SELECTORS 128
+#elif defined(__LARGE_BPF_PROG)
 #define MAX_FIM_SELECTORS 6
 #else
 #define MAX_FIM_SELECTORS 4
@@ -640,6 +642,35 @@ static inline __attribute__((always_inline)) int check_match_capabilities(__u32 
 	return (caps & sel_caps->filter) ? 0 : 1; // op_filter_notin
 }
 
+// same as get_namespaces(struct msg_ns *msg, struct task_struct *task) but tries to use less stack space
+static inline __attribute__((always_inline)) void __get_namespaces(struct msg_ns *msg, struct task_struct *task)
+{
+	msg->uts_inum = BPF_CORE_READ(task, nsproxy, uts_ns, ns.inum);
+	msg->ipc_inum = BPF_CORE_READ(task, nsproxy, ipc_ns, ns.inum);
+	msg->mnt_inum = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	{
+		struct pid *p = BPF_CORE_READ(task, thread_pid);
+		if (p) {
+			int level = BPF_CORE_READ(p, level);
+			msg->pid_inum = BPF_CORE_READ(p, numbers[level].ns, ns.inum);
+		} else
+			msg->pid_inum = 0;
+	}
+
+	msg->pid_for_children_inum = BPF_CORE_READ(task, nsproxy, pid_ns_for_children, ns.inum);
+	msg->net_inum = BPF_CORE_READ(task, nsproxy, net_ns, ns.inum);
+
+	// this also includes time_ns_for_children
+	if (bpf_core_field_exists(((struct nsproxy *)0)->time_ns)) {
+		msg->time_inum = BPF_CORE_READ(task, nsproxy, time_ns, ns.inum);
+		msg->time_for_children_inum = BPF_CORE_READ(task, nsproxy, time_ns_for_children, ns.inum);
+	}
+
+	msg->cgroup_inum = BPF_CORE_READ(task, nsproxy, cgroup_ns, ns.inum);
+	msg->user_inum = BPF_CORE_READ(task, mm, user_ns, ns.inum);
+}
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_namespaces(__u32 sel_idx)
 {
@@ -660,14 +691,15 @@ static inline __attribute__((always_inline)) int check_match_namespaces(__u32 se
 	if (!task)
 		return 0; // we cannot apply matchNamespaces without the task_struct
 
-	get_namespaces(n, task);
+	__get_namespaces(n, task);
 
+#ifndef __ENABLE_GLOB_SUPPORT
 #pragma unroll
+#endif
 	for (i = 0; i < ns_max_types; ++i) {
-		bool same_inum = sel_ns->ns.inum[i] == n->inum[i];
-		if (sel_ns->filter.filter[i] == NS_FILTER_HOST && !same_inum)
+		if (sel_ns->filter.filter[i] == NS_FILTER_HOST && (sel_ns->ns.inum[i] != n->inum[i]))
 			return 0;
-		if (sel_ns->filter.filter[i] == NS_FILTER_NOHOST && same_inum)
+		if (sel_ns->filter.filter[i] == NS_FILTER_NOHOST && (sel_ns->ns.inum[i] == n->inum[i]))
 			return 0;
 	}
 	return 1;
@@ -827,13 +859,66 @@ nopost:
 	return 0;
 }
 
+#ifdef __V61_BPF_PROG
+struct selectors_ctx {
+	char *path;
+	__u32 len;
+	__u32 retval;
+	__u32 action;
+	__u32 flags;
+	__u32 num_selectors;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct selectors_ctx);
+	__uint(max_entries, 1);
+} selectors_ctx_heap SEC(".maps");
+
+static long selectors_cb(u32 index, void *ununsed)
+{
+	struct selectors_ctx *ctx;
+	struct execve_map_value *execve;
+	__u32 zero = 0;
+	bool walker = 0;
+
+	ctx = map_lookup_elem(&selectors_ctx_heap, &zero);
+	if (!ctx)
+		return 0;
+
+	if (index >= ctx->num_selectors) // no need to check more selectors
+		return 1;
+
+	/*
+	 * Do this outside of the loop in order to reduce the number of instructions
+	 * and make that work on 4.19 kernels. The check for != 0 is done close to
+	 * the use as we don't know here if the selector that uses that has matchBinaries
+	 * selector.
+	 */
+	execve = event_find_curr(&zero, &walker);
+
+	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, 0, execve, ctx->path, ctx->len);
+	if (ctx->retval) { // we return the value from the first selector that matches
+		return 1;
+	}
+
+	return 0;
+}
+#endif
+
 static inline __attribute__((always_inline)) __u32
 eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len)
 {
-	__u32 ppid, i, val = 0, zero = 0;
 	struct file_config_map_value *conf;
+	__u32 zero = 0;
+#ifndef __V61_BPF_PROG
 	struct execve_map_value *execve;
+	__u32 ppid, i, val = 0;
 	bool walker = 0;
+#else
+	struct selectors_ctx *ctx;
+#endif
 
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
@@ -848,6 +933,22 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	if (conf->num_selectors == 0)
 		return FILE_OP_POST;
 
+#ifdef __V61_BPF_PROG
+	ctx = map_lookup_elem(&selectors_ctx_heap, &zero);
+	if (!ctx)
+		return 0;
+
+	ctx->action = action;
+	ctx->flags = flags;
+	ctx->path = path;
+	ctx->len = len;
+	ctx->retval = 0;
+	ctx->num_selectors = conf->num_selectors;
+
+	loop(128, &selectors_cb, 0, 0);
+	if (ctx->retval)
+		return ctx->retval;
+#else /* __V61_BPF_PROG */
 	/*
 	 * Do this outside of the loop in order to reduce the number of instructions
 	 * and make that work on 4.19 kernels. The check for != 0 is done close to
@@ -858,7 +959,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 
 #ifndef __LARGE_BPF_PROG
 #pragma unroll
-#endif
+#endif /* __LARGE_BPF_PROG */
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
@@ -866,6 +967,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
+#endif /* __V61_BPF_PROG */
 	return 0; // not selector matches
 }
 

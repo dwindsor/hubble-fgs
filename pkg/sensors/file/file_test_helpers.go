@@ -161,7 +161,7 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 		}
 	}
 
-	sel, err := fm.InitKernelSelectorState(spec.Selectors)
+	sel, err := fm.InitKernelSelectorState(spec.Selectors, fm.MaxFimSelectors)
 	if err != nil {
 		return fmt.Errorf("failed to initialize kernel selector state: %w", err)
 	}

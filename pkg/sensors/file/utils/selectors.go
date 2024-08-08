@@ -33,7 +33,8 @@ const (
 	FileOperationTypePost  = uint32(tetragon.FileOperation_FILE_OP_POST)
 	FileOperationTypeBlock = uint32(tetragon.FileOperation_FILE_OP_BLOCK)
 
-	MaxFimSelectors = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
+	MaxFimSelectors     = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
+	MaxFimGlobSelectors = 128
 )
 
 const (
@@ -986,8 +987,8 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 	return nil
 }
 
-func InitKernelSelectorState(fileSel []v1alpha1.FileSelector) (*KernelSelectorState, error) {
-	if len(fileSel) > MaxFimSelectors {
+func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
+	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
 	}
 	kernelSelectors := NewKernelSelectorState()

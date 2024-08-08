@@ -881,7 +881,7 @@ type FimLoaderData struct {
 	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
 }
 
-func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher, mode TpMode) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -1017,6 +1017,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	numFileSystemTypes := len(fileSystemTypes)
 	if numFileSystemTypes == 0 {
 		numFileSystemTypes = 1
+	}
+
+	maxSelectors := fm.MaxFimSelectors
+	if mode == PathBasedTpMode {
+		maxSelectors = fm.MaxFimGlobSelectors
 	}
 
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
@@ -1379,14 +1384,22 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
 			case m.Name == "file_ops_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
+				m.SetMaxEntries(maxSelectors)
 			case m.Name == "file_digests_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(sel)))
+				m.SetMaxEntries(maxSelectors)
 			case m.Name == "hash_map_inode_alloc":
 				m.SetMaxEntries(int(config.MaxWatchedInodes))
 			case m.Name == "exact_match_map_alloc":
 				m.SetMaxEntries(int(exactFilePathMatchSize))
 			case m.Name == "file_system_type_map":
 				m.SetMaxEntries(numFileSystemTypes)
+			case m.Name == "file_actions_map":
+				m.SetMaxEntries(maxSelectors)
+			case m.Name == "file_namespaces_map":
+				m.SetMaxEntries(maxSelectors)
+			case m.Name == "file_capabilities_map":
+				m.SetMaxEntries(maxSelectors)
 			}
 			maps = append(maps, m)
 		}
@@ -1778,7 +1791,11 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileMonitoring does not support mixes mode")
 	}
 
-	selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors)
+	maxSel := fm.MaxFimSelectors
+	if mode == PathBasedTpMode {
+		maxSel = fm.MaxFimGlobSelectors
+	}
+	selState, err := fm.InitKernelSelectorState(spec.FileMonitoring.Selectors, maxSel)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to parse selectors: %w", err)
 	}
@@ -1810,7 +1827,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf, pathMatcher)
+	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf, pathMatcher, mode)
 }
 
 func loadProbe(args sensors.LoadProbeArgs) error {
