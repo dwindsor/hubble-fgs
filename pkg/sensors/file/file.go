@@ -1060,6 +1060,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				"PATH_BASED_MATCHER": uint32(pathMatcher),
 			}
 		}
+		isPathBased := checkReWrite != nil
 
 		progs = append(progs, load)
 
@@ -1260,6 +1261,49 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			},
 		}
 
+		if isPathBased {
+			load.MapLoad = append(load.MapLoad, &program.MapLoad{
+				Index: 0,
+				Name:  "glob_patterns_map",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					if err := fm.GeneratePatternsMap(m, sel, e.PinPathPrefix); err != nil {
+						return fmt.Errorf("glob_patterns_map: %w", err)
+					}
+					return nil
+				},
+			})
+
+			load.MapLoad = append(load.MapLoad, &program.MapLoad{
+				Index: 0,
+				Name:  "glob_temp_maps",
+				Load: func(m *ebpf.Map, _ uint32) error {
+					for i := range 2 * bpf.GetNumPossibleCPUs() {
+						innerName := fmt.Sprintf("glob_inner_%d", i)
+						innerSpec := &ebpf.MapSpec{
+							Name:       innerName,
+							Type:       ebpf.Hash,
+							KeySize:    4,
+							ValueSize:  4,
+							MaxEntries: 128,
+						}
+						innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+							PinPath: sensors.PathJoin(e.PinPathPrefix, innerName),
+						})
+						if err != nil {
+							return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+						}
+						defer innerMap.Close()
+
+						if err := m.Update(uint32(i), uint32(innerMap.FD()), 0); err != nil {
+							return fmt.Errorf("failed to insert %s: %w", innerName, err)
+						}
+					}
+
+					return nil
+				},
+			})
+		}
+
 		// only for exec events when digests are enabled
 		if h.name == "security_bprm_check" && h.progName == "bpf_security_bprm_check_enforce_lsm_digest.o" {
 			m := "exec_retprobe_map"
@@ -1312,6 +1356,19 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				maps,
 				program.MapBuilderPin(m, sensors.PathJoin(e.PinPathPrefix, m), load),
 			)
+		}
+
+		if isPathBased {
+			mapName := "glob_patterns_map"
+			m := program.MapBuilderPin(mapName, sensors.PathJoin(e.PinPathPrefix, mapName), load)
+			m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
+			maps = append(maps, m)
+
+			mapName = "glob_temp_maps"
+			m = program.MapBuilderPin(mapName, sensors.PathJoin(e.PinPathPrefix, mapName), load)
+			m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
+			m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
+			maps = append(maps, m)
 		}
 
 		for _, m := range SharedMaps {
@@ -1556,7 +1613,7 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
 	digestSupport := supportLSM && supportImaFileHash
 
 	if h == PathBasedTpMode {
-		if supportTracing && supportLSM && supportBpfLoop {
+		if supportTracing && supportLSM && supportBpfLoop && supportBpfForEachMapElem {
 			return PathBased, digestSupport
 		}
 		return PathBasedNotSupported, digestSupport

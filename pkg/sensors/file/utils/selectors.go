@@ -969,6 +969,10 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 			return fmt.Errorf("only support op 'InPattern'")
 		}
 
+		if len(o.Values) > 256 {
+			return fmt.Errorf("only support up to 256 patterns")
+		}
+
 		val := k.InitOrGetPatterns(uint32(selIdx))
 		for _, p := range o.Values {
 			fsm, err := CompileGlob(p)

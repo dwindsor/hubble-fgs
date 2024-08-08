@@ -1,4 +1,5 @@
 #define __V61_BPF_PROG
+#define __ENABLE_GLOB_SUPPORT
 #include "bpf_file.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -27,11 +28,11 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	operation = eval_selectors(action_exec, 0, 0);
+	generate_path(msg, _(&file->f_path));
+
+	operation = eval_selectors(action_exec, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
 		return 0;
-
-	generate_path(msg, _(&file->f_path));
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
 

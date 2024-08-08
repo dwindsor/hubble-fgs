@@ -1,4 +1,5 @@
 #define __V61_BPF_PROG
+#define __ENABLE_GLOB_SUPPORT
 #include "bpf_file.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -24,16 +25,16 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
+	generate_path(msg, (struct path *)path);
+
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action, 0, 0);
+	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
 		return 0;
-
-	generate_path(msg, (struct path *)path);
 
 	set_attr(msg, dentry, mode, uid, gid);
 

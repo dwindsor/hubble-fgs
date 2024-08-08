@@ -15,6 +15,10 @@
 #include "process/policy_filter.h"
 #include "bpf_overlay.h"
 
+#ifdef __ENABLE_GLOB_SUPPORT
+#include "bpf_glob.h"
+#endif
+
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
 #define FILTER_MATCH	1
@@ -336,6 +340,24 @@ struct {
 			__type(value, __u32);
 		});
 } file_digests_maps SEC(".maps");
+
+struct pattern_key {
+	__u32 sel_idx;
+	__u32 pattern_idx;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS); // max number of selectors -- to be set from the user-space
+	__type(key, struct pattern_key); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_ARRAY);
+			__uint(key_size, sizeof(__u32));
+			__uint(value_size, sizeof(struct glob_state));
+			__uint(max_entries, 1);
+		});
+} glob_patterns_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -708,6 +730,61 @@ static inline __attribute__((always_inline)) int check_match_open_flags(__u32 se
 	return 0;
 }
 
+#ifdef __ENABLE_GLOB_SUPPORT
+struct pattern_loop_ctx {
+	__u32 sel_idx;
+	char *path;
+	__u32 len;
+	int ret;
+};
+
+static long pattern_loop_cb(u32 index, void *_ctx)
+{
+	struct pattern_loop_ctx *ctx = (struct pattern_loop_ctx *)_ctx;
+	struct pattern_key key;
+	void *inner_pattern_map;
+
+	key.sel_idx = ctx->sel_idx;
+	key.pattern_idx = index;
+
+	inner_pattern_map = map_lookup_elem(&glob_patterns_map, &key);
+	if (!inner_pattern_map) { // no matchFilename for this selector (i == 0) *or* none of the previous patterns match (i != 0)
+		ctx->ret = index == 0;
+		return 1; // we match
+	}
+
+	ctx->ret = check_pattern(inner_pattern_map, ctx->path, ctx->len);
+	if (ctx->ret == 1)
+		return 1; // we match and stop
+
+	if (ctx->ret != 0) {
+		// TODO: report errors better
+		ctx->ret = 0; // do not match on errors
+		return 0; // error -- continue on the next pattern
+	}
+
+	return 0; // no match -- continue on the next pattern
+}
+
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_idx, char *path, __u32 len)
+{
+	struct pattern_loop_ctx ctx = {
+		.sel_idx = sel_idx,
+		.path = path,
+		.len = len,
+		.ret = 0,
+	};
+
+	if (!path) // no path in eval_selectors call, inode-based hooks do not support that
+		return 1;
+
+	loop(256, &pattern_loop_cb, &ctx, 0); // maximum 256 patterns per selector
+
+	return ctx.ret;
+}
+#endif /* __ENABLE_GLOB_SUPPORT */
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
 {
@@ -718,7 +795,7 @@ static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve)
+__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len)
 {
 	if (!check_match_binaries(sel_idx, execve))
 		goto nopost;
@@ -734,6 +811,10 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *di
 	if (!check_match_open_flags(sel_idx, action, flags))
 		goto nopost;
 #endif
+#ifdef __ENABLE_GLOB_SUPPORT
+	if (!check_match_filename(sel_idx, path, len))
+		goto nopost;
+#endif
 	if (!check_match_rename(sel_idx, action, flags))
 		goto nopost;
 	if (!check_enforcement(sel_idx))
@@ -747,7 +828,7 @@ nopost:
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action, __u32 flags, struct digest_key *digest)
+eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len)
 {
 	__u32 ppid, i, val = 0, zero = 0;
 	struct file_config_map_value *conf;
@@ -781,7 +862,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest)
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, flags, digest, execve);
+		val = __eval_selectors(i, action, flags, digest, execve, path, len);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
@@ -1336,15 +1417,15 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
+	generate_path(msg, _(&file->f_path));
+
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action, 0, 0);
+	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
 		return 0;
-
-	generate_path(msg, _(&file->f_path));
 
 	complete_msg(msg, action, hook_type, operation, rule_id, 0);
 

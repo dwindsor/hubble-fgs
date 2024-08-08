@@ -100,7 +100,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_link, 0, 0);
+	operation = eval_selectors(action_link, 0, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 
