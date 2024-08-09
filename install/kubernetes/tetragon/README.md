@@ -92,7 +92,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.hostProcPath | string | `"/proc"` | Location of the host proc filesystem in the runtime environment. If the runtime runs in the host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself does not run on the host. |
 | tetragon.image.override | string | `nil` |  |
 | tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
-| tetragon.image.tag | string | `"v1.14.0-pre.0"` |  |
+| tetragon.image.tag | string | `"v1.14.0-rc1"` |  |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |
@@ -126,7 +126,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.extraVolumeMounts | list | `[]` |  |
 | tetragonOperator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Operator Deployment. |
 | tetragonOperator.forceUpdateCRDs | bool | `false` |  |
-| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.14.0-pre.0"}` | tetragon-operator image. |
+| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.14.0-rc1"}` | tetragon-operator image. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.podInfo.enabled | bool | `true` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
