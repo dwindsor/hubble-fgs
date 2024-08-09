@@ -135,6 +135,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	struct destination_endpoint_value *dest;
 	struct process_tree_config *cfg;
 	struct execve_map_value *parent;
+	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
 	__u64 cgid, *nsid;
 	int zero = 0;
@@ -157,13 +158,18 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	if (!self_uid)
 		return 0;
 
-	parent = event_find_parent();
-	if (!parent)
-		return 0;
+	zero_uid.pid = 0;
+	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
+	zero_uid.ktime = 0;
 
-	parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
-	if (!parent_uid)
-		return 0;
+	parent = event_find_parent();
+	if (!parent) {
+		parent_uid = &zero_uid;
+	} else {
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+		if (!parent_uid)
+			parent_uid = &zero_uid;
+	}
 
 	key.addr[0] = tuple->daddr[0];
 	key.addr[1] = tuple->daddr[1];
