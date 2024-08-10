@@ -12,133 +12,16 @@ permissions:
   pull-requests: write
 
 jobs:
-  conf:
-    runs-on: ubuntu-22.04
-    outputs:
-      matrix: ${{ steps.conf.outputs.matrix }}
-    steps:
-      - name: Getting image tag
-        id: tag
-        run: |
-          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
-
-      - name: generate matrix configuration
-        id: conf
-        shell: bash
-        run: |
-          truncate -s 0 /tmp/out
-          if (echo ${{ steps.tag.outputs.tag }} | grep -q -e '^v1.12\|^v1.11\|^v1.10'); then
-              echo "Build legacy matrix for ${{ steps.tag.outputs.tag }}"
-              echo '{"name": "tetragon", "dockerfile": "./Dockerfile", "legacy-name": "hubble-enterprise"}' >> /tmp/out
-              echo '{"name": "tetragon-operator", "dockerfile": "./Dockerfile.operator", "legacy-name": "hubble-enterprise-operator"}' >> /tmp/out
-          else
-              echo "Build matrix for ${{ steps.tag.outputs.tag }}"
-              echo '{"name": "tetragon", "dockerfile": "./Dockerfile"}' >> /tmp/out
-              echo '{"name": "tetragon-operator", "dockerfile": "./Dockerfile.operator"}' >> /tmp/out
-          fi
-          echo "matrix=$(jq -cs . </tmp/out)" | tee -a $GITHUB_OUTPUT
-
   build-and-push:
-    needs: conf
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        include: ${{ fromJSON(needs.conf.outputs.matrix) }}
-
-    steps:
-      # https://github.com/docker/setup-qemu-action
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: arm64
-
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
-
-      - name: Login to quay.io
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_TOKEN }}
-
-      - name: Getting image tag
-        id: tag
-        run: |
-          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
-
-      - name: Checkout Source Code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-          submodules: true
-
-      - name: Legacy Release Build ${{ matrix.name }}
-        if: ${{ matrix.legacy-name != '' }}
-        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
-        id: docker_build_release-legacy
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          target: release
-          tags: |
-            quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
-            quay.io/${{ github.repository_owner }}/${{ matrix.legacy-name }}:${{ steps.tag.outputs.tag }}
-
-      - name: Legacy Image Release Digest
-        if: ${{ matrix.legacy-name != '' }}
-        shell: bash
-        run: |
-          mkdir -p image-digest/
-          job_name=${{ matrix.name }}
-          job_name_capital=${job_name^^}
-          job_name_underscored=${job_name_capital//-/_}
-          echo "${job_name_underscored}_DIGEST := \"${{ steps.docker_build_release-legacy.outputs.digest }}\"" > image-digest/makefile-digest.txt
-
-          echo "### ${{ matrix.name }}" > image-digest/${{ matrix.name }}.txt
-          echo "" >> image-digest/${{ matrix.name }}.txt
-          echo "\`quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_release-legacy.outputs.digest }}\`" >> image-digest/${{ matrix.name }}.txt
-          echo "" >> image-digest/${{ matrix.name }}.txt
-
-      - name: Release Build ${{ matrix.name }}
-        if: ${{ matrix.legacy-name == '' }}
-        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
-        id: docker_build_release
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          target: release
-          tags: |
-            quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
-
-      - name: Image Release Digest
-        if: ${{ matrix.legacy-name == '' }}
-        shell: bash
-        run: |
-          mkdir -p image-digest/
-          job_name=${{ matrix.name }}
-          job_name_capital=${job_name^^}
-          job_name_underscored=${job_name_capital//-/_}
-          echo "${job_name_underscored}_DIGEST := \"${{ steps.docker_build_release.outputs.digest }}\"" > image-digest/makefile-digest.txt
-
-          echo "### ${{ matrix.name }}" > image-digest/${{ matrix.name }}.txt
-          echo "" >> image-digest/${{ matrix.name }}.txt
-          echo "\`quay.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_release.outputs.digest }}\`" >> image-digest/${{ matrix.name }}.txt
-          echo "" >> image-digest/${{ matrix.name }}.txt
-
-      # Upload artifact digests
-      - name: Upload artifact digests
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-        with:
-          name: image-digest ${{ matrix.name }}
-          path: image-digest
-          retention-days: 1
+    uses: ./.github/workflows/build-images-base.yml
+    with:
+      sha: "${{ github.sha }}"
+      tag: "${{ github.ref_name }}"
+      is_release: true
+      is_legacy: ${{ startsWith(github.ref_name, 'v1.11') || startsWith(github.ref_name, 'v1.12') }}
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USER }}
+      QUAY_PASSWORD: ${{ secrets.QUAY_TOKEN }}
 
   # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
   # produced during these builds.
@@ -271,28 +154,6 @@ jobs:
           gh pr create -B master --title "chore: Add bundle ${{ steps.tag.outputs.tag }} to the OLM catalog" --body "${body}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  image-digests:
-    if: ${{ github.repository == 'isovalent/hubble-fgs' }}
-    name: Display Digests
-    runs-on: ubuntu-22.04
-    needs: build-and-push
-    steps:
-      - name: Prepare download of image digests
-        shell: bash
-        run: |
-          mkdir -p image-digest/
-
-      - name: Download digests of all images built
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
-        with:
-          path: image-digest/
-
-      - name: Image Digests Output
-        shell: bash
-        run: |
-          cd image-digest/
-          find -type f | sort | xargs -d '\n' cat
 
   draft-github-release:
     name: Create Release

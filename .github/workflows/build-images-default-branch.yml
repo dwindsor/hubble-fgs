@@ -1,17 +1,16 @@
-name: Image CI Stable Branches
+name: Image CI Latest
 
 on:
   push:
     branches:
-      - v*
+      - master
 
 jobs:
   build-and-push:
     uses: ./.github/workflows/build-images-base.yml
     with:
       sha: "${{ github.sha }}"
-      tag: "${{ github.ref_name }}-latest"
-      is_legacy: ${{ github.ref_name == 'v1.11' || github.ref_name == 'v1.12' }}
+      tag: latest
     secrets:
       QUAY_USERNAME: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
       QUAY_PASSWORD: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}

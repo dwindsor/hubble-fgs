@@ -1,0 +1,150 @@
+name: Base Image Build
+
+on:
+  workflow_call:
+    secrets:
+      QUAY_USERNAME:
+        required: true
+      QUAY_PASSWORD:
+        required: true
+    inputs:
+      # Used to checkout the source code and as a tag for non-release images.
+      sha:
+        required: true
+        type: string
+      # Tag to push. Optional for non-release images - if empty, only the sha tag is pushed.
+      tag:
+        type: string
+      # Release images are pushed to isovalent Quay org, non-release to isovalent-dev.
+      is_release:
+        type: boolean
+      # Whether to push hubble-enterprise images in addition to tetragon ones. Should be true only
+      # for branches/releases < v1.13.
+      is_legacy:
+        type: boolean
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - name: tetragon
+            legacy-name: hubble-enterprise
+            dockerfile: ./Dockerfile
+
+          - name: tetragon-operator
+            legacy-name: hubble-enterprise-operator
+            dockerfile: ./Dockerfile.operator
+
+    steps:
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+        with:
+          platforms: arm64
+
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+
+      - name: Login to quay.io
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Checkout Source Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ inputs.sha }}
+          submodules: true
+          persist-credentials: false
+          fetch-depth: 0
+
+      # TODO: Validate that at least one tag is set. If is_release=true and
+      # tag="" then there is no tag to push.
+      - name: Get image tags
+        id: tags
+        run: |
+          org="${{ github.repository_owner }}"
+          repo="${{ matrix.name }}"
+          legacy_repo="${{ matrix.legacy-name }}"
+          if ! ${{ inputs.is_release }}; then
+            org="$org-dev"
+            repo="$repo-ci"
+            legacy_repo="$legacy_repo-ci"
+          fi
+
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          if ! ${{ inputs.is_release }}; then
+            echo "quay.io/$org/$repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "quay.io/$org/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          fi
+          if ${{ inputs.is_legacy }}; then
+            if ! ${{ inputs.is_release }}; then
+              echo "quay.io/$org/$legacy_repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
+            fi
+            if [ -n "${{ inputs.tag }}" ]; then
+              echo "quay.io/$org/$legacy_repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            fi
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build and Push
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        id: build-and-push
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.tags.outputs.tags }}
+
+      - name: Image digests
+        run: |
+          mkdir -p image-digest/
+          job_name=${{ matrix.name }}
+          job_name_capital=${job_name^^}
+          job_name_underscored=${job_name_capital//-/_}
+          echo "${job_name_underscored}_DIGEST := \"${{ steps.build-and-push.outputs.digest }}\"" > image-digest/makefile-digest.txt
+
+          echo "### ${{ matrix.name }}" > image-digest/${{ matrix.name }}.txt
+          echo "" >> image-digest/${{ matrix.name }}.txt
+          for tag in $(cat tags.txt); do
+            echo "\`$tag@${{ steps.build-and-push.outputs.digest }}\`" >> image-digest/${{ matrix.name }}.txt
+          done
+          echo "" >> image-digest/${{ matrix.name }}.txt
+
+      - name: Upload digests artifact
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: image-digest ${{ matrix.name }}
+          path: image-digest
+          retention-days: 1
+
+  image-digests:
+    if: ${{ always() }}
+    name: Display Digests
+    runs-on: ubuntu-22.04
+    needs: build-and-push
+    steps:
+      - name: Downloading Image Digests
+        shell: bash
+        run: |
+          mkdir -p image-digest/
+
+      - name: Download digests of all images built
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: image-digest/
+
+      - name: Image Digests Output
+        shell: bash
+        run: |
+          cd image-digest/
+          find -type f | sort | xargs -d '\n' cat
