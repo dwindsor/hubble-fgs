@@ -157,7 +157,7 @@ jobs:
 
   draft-github-release:
     name: Create Release
-    if: github.repository == 'isovalent/hubble-fgs'
+    if: github.repository == 'isovalent/hubble-fgs' && !contains(github.ref_name, '-')
     environment: release
     runs-on: ubuntu-22.04
     steps:
@@ -181,9 +181,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.ref }}
-          name: ${{ steps.tag.outputs.tag }}
+          name: ${{ github.ref_name }}
           draft: true
-          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
           body: |
             Please update the description with the actual release notes and publish the release.
             See the release issue for instructions.
