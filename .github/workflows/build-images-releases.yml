@@ -29,6 +29,7 @@ jobs:
   # The context needs to be passed to the build.
   # => hence a separate job
   bundle-build-and-push:
+    if: ${{ startsWith(github.ref_name, 'v1.11') || startsWith(github.ref_name, 'v1.12') }}
     needs: build-and-push
     runs-on: ubuntu-22.04
     steps:
@@ -37,24 +38,12 @@ jobs:
         run: |
           echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
           echo "minor=$(echo ${GITHUB_REF##*/} | cut -d. -f-2)" >> $GITHUB_OUTPUT
-
-      - name: Legacy check
-        id: legacy
-        shell: bash
-        run: |
-          if (echo ${{ steps.tag.outputs.tag }} | grep -q -e '^v1.12\|^v1.11\|^v1.10'); then
-            echo "is=true" >> $GITHUB_OUTPUT
-          else
-            echo "is=false" >> $GITHUB_OUTPUT
-          fi
         
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
 
       - name: Login to quay.io
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: quay.io
@@ -63,7 +52,6 @@ jobs:
 
       # Checking out the release branch
       - name: Checkout Source Code
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           persist-credentials: false
@@ -71,13 +59,11 @@ jobs:
           submodules: true
 
       - name: Prepare download of image digests
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         shell: bash
         run: |
           mkdir -p image-digest/
 
       - name: Download digests of all images built
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           path: image-digest/
@@ -89,7 +75,6 @@ jobs:
           # renovate: datasource=docker depName=quay.io/cilium/tetragon-rthooks
           rthooks_tag: v0.2
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         run: |
           lower_tag="${{ steps.tag.outputs.tag }}"
           lower_tag="${lower_tag,,}"
@@ -128,7 +113,6 @@ jobs:
           gh pr create -B ${{ steps.tag.outputs.minor }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
 
       - name: Bundle build 
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
         id: bundle_build
         with:
@@ -139,7 +123,6 @@ jobs:
             quay.io/${{ github.repository_owner }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
       
       - name: Catalog update PR
-        if: ${{ steps.legacy.outputs.is == 'false' }}
         run: |
           git checkout master
           git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
