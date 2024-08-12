@@ -237,7 +237,8 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 
 	switch iperrormetrics.Error(m.Return) {
 	case iperrormetrics.UdpStackBurstNoProcess,
-		iperrormetrics.SocketDiscoveryReadError:
+		iperrormetrics.SocketDiscoveryReadError,
+		iperrormetrics.TcpRttEqualsZero:
 		// Just increment the metric and don't report the event.
 		var version string
 		if m.Tuple.IPv6 == 0 {

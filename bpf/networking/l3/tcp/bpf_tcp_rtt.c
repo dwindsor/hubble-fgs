@@ -60,10 +60,15 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 	}
 
-	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
-
-	if (rtt_us <= 0)
+	if (rtt.rtt_us == 0) {
+		// If we've already got beyond the handshake then the RTT should have been
+		// calculated. If it hasn't then this is an error.
+		if (socket->segs_in > 2 && socket->segs_out > 2)
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_EQUALS_ZERO);
 		return 0;
+	}
+
+	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
 
 	if (cfg->bucket00 > rtt_us)
 		socket->rtt_buckets[0]++;

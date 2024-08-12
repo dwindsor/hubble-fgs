@@ -71,6 +71,7 @@
 #define IP_ERROR_TCP_RECV_NO_COOKIE	       51
 #define IP_ERROR_TCP_RECV_NO_IPHDR	       52
 #define IP_ERROR_TCP_RTT_NO_SOCKET	       53
+#define IP_ERROR_TCP_RTT_EQUALS_ZERO	       54
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
