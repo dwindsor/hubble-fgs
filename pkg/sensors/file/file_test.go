@@ -32,6 +32,7 @@ import (
 
 	check "github.com/cilium/cilium/pkg/alignchecker"
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -44,8 +45,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 
+	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -61,6 +64,32 @@ import (
 
 var (
 	workingDir = "/mnt"
+)
+
+var (
+	protoToProg = map[string]string{
+		// vfs_rename
+		"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)": "419",
+		"vfs_rename(struct renamedata*)": "512",
+		// security_inode_setattr
+		"security_inode_setattr(struct dentry*, struct iattr*)":                         "419",
+		"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)": "60",
+		"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)":      "63",
+		// vfs_unlink
+		"vfs_unlink(struct inode*, struct dentry*, struct inode**)":                         "419",
+		"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)": "512",
+		"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)":      "63",
+		// vfs_mkdir
+		"vfs_mkdir(struct inode*, struct dentry*, umode_t)":                         "419",
+		"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)": "512",
+		"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":      "63",
+		// io_read
+		"io_read(struct io_kiocb*, int)":                            "510",
+		"io_read(struct io_kiocb*, bool, struct io_comp_state*)":    "59",
+		"io_read(struct io_kiocb*, bool)":                           "57",
+		"io_read(struct io_kiocb*, struct io_kiocb**, bool)":        "55",
+		"io_read(struct io_kiocb*, const struct sqe_submit*, bool)": "51",
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -853,6 +882,20 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func getProgSuffix(t *testing.T, spec *btf.Spec, fnName string) string {
+	proto, err := fgsBTF.GetFuncProto(spec, fnName, false)
+	if err != nil {
+		t.Fatalf("GetFuncProto function: %s error: %s", fnName, err)
+	}
+
+	prog, ok := protoToProg[proto]
+	if !ok {
+		t.Fatalf("%s program not found", fnName)
+	}
+
+	return prog
+}
+
 func TestLoadFileSensor(t *testing.T) {
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	specFname := createSpecFile(t, test_path)
@@ -867,37 +910,15 @@ func TestLoadFileSensor(t *testing.T) {
 		pol.ResetFIMTracingPolicies()
 	})
 
-	verSuffix := "v419"
-	if kernels.MinKernelVersion("6.3.0") {
-		verSuffix = "v63"
-	} else if kernels.MinKernelVersion("5.12.0") {
-		verSuffix = "v512"
+	spec, err := ossBTF.NewBTF()
+	if err != nil || spec == nil {
+		t.Fatalf("GetCachedBTF error: %s", err)
 	}
 
-	renameVerSuffix := "v419"
-	if kernels.MinKernelVersion("5.12.0") {
-		renameVerSuffix = "v512"
-	}
-
-	attrVerSuffix := "v419"
-	if kernels.MinKernelVersion("6.3.0") {
-		attrVerSuffix = "v63"
-	} else if kernels.MinKernelVersion("6.0.0") {
-		attrVerSuffix = "v60"
-	}
-
-	var ioUringSuffix string
-	if kernels.MinKernelVersion("5.10.0") {
-		ioUringSuffix = "510"
-	} else if kernels.MinKernelVersion("5.9.0") {
-		ioUringSuffix = "59"
-	} else if kernels.MinKernelVersion("5.7.0") {
-		ioUringSuffix = "57"
-	} else if kernels.MinKernelVersion("5.5.0") {
-		ioUringSuffix = "55"
-	} else {
-		ioUringSuffix = "51"
-	}
+	mkdirVerSuffix := getProgSuffix(t, spec, "vfs_mkdir")
+	unlinkVerSuffix := getProgSuffix(t, spec, "vfs_unlink")
+	attrVerSuffix := getProgSuffix(t, spec, "security_inode_setattr")
+	renameVerSuffix := getProgSuffix(t, spec, "vfs_rename")
 
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
@@ -905,24 +926,25 @@ func TestLoadFileSensor(t *testing.T) {
 		2:  tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
 		3:  tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
 		4:  tus.SensorProg{Name: "security_file_permission", Type: ebpf.Kprobe},
-		5:  tus.SensorProg{Name: fmt.Sprintf("vfs_unlink_%s", verSuffix), Type: ebpf.Kprobe},
+		5:  tus.SensorProg{Name: fmt.Sprintf("vfs_unlink_v%s", unlinkVerSuffix), Type: ebpf.Kprobe},
 		6:  tus.SensorProg{Name: "finish_open", Type: ebpf.Kprobe},
 		7:  tus.SensorProg{Name: "security_inode_rmdir", Type: ebpf.Kprobe},
-		8:  tus.SensorProg{Name: fmt.Sprintf("vfs_mkdir_%s", verSuffix), Type: ebpf.Kprobe},
+		8:  tus.SensorProg{Name: fmt.Sprintf("vfs_mkdir_v%s", mkdirVerSuffix), Type: ebpf.Kprobe},
 		9:  tus.SensorProg{Name: "vfs_mkdir_exit", Type: ebpf.Kprobe},
 		10: tus.SensorProg{Name: "security_path_rename", Type: ebpf.Kprobe},
 		11: tus.SensorProg{Name: "security_path_rename_exit", Type: ebpf.Kprobe},
-		12: tus.SensorProg{Name: fmt.Sprintf("vfs_rename_%s", renameVerSuffix), Type: ebpf.Kprobe},
+		12: tus.SensorProg{Name: fmt.Sprintf("vfs_rename_v%s", renameVerSuffix), Type: ebpf.Kprobe},
 		13: tus.SensorProg{Name: "vfs_rename_exit", Type: ebpf.Kprobe},
 		14: tus.SensorProg{Name: "vfs_open", Type: ebpf.Kprobe},
 		15: tus.SensorProg{Name: "iterate_dir", Type: ebpf.Kprobe},
-		16: tus.SensorProg{Name: fmt.Sprintf("security_inode_setattr_%s", attrVerSuffix), Type: ebpf.Kprobe},
+		16: tus.SensorProg{Name: fmt.Sprintf("security_inode_setattr_v%s", attrVerSuffix), Type: ebpf.Kprobe},
 		17: tus.SensorProg{Name: "security_bprm_check", Type: ebpf.Kprobe},
 		18: tus.SensorProg{Name: "security_inode_link", Type: ebpf.Kprobe},
 		19: tus.SensorProg{Name: "security_file_open", Type: ebpf.Kprobe},
 	}
 
 	if fm.SupportIoUring() {
+		ioUringSuffix := getProgSuffix(t, spec, "io_read")
 		ioUringProgs := []tus.SensorProg{
 			{Name: fmt.Sprintf("io_read_entry_%s", ioUringSuffix), Type: ebpf.Kprobe},
 			{Name: "io_read_exit", Type: ebpf.Kprobe},
