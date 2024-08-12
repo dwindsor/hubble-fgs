@@ -58,15 +58,12 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Prepare download of image digests
-        shell: bash
-        run: |
-          mkdir -p image-digest/
-
       - name: Download digests of all images built
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          path: image-digest/
+          path: digests/
+          pattern: digest-*
+          merge-multiple: true
       
       - name: Update ClusterServiceVersion
         env:
@@ -80,11 +77,9 @@ jobs:
           lower_tag="${lower_tag,,}"
           git checkout ${{ steps.tag.outputs.minor }}
           git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
-          tetragon_img="$(cat image-digest/image-digest\ tetragon/tetragon.txt | grep isovalent)"
-          tetragon_img="${tetragon_img//\`}"
+          tetragon_img="$(cat digests/tetragon.txt | grep isovalent)"
           echo "tetragon image: ${tetragon_img}"
-          tetragon_operator_img="$(cat image-digest/image-digest\ tetragon-operator/tetragon-operator.txt | grep isovalent)"
-          tetragon_operator_img="${tetragon_operator_img//\`}"
+          tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
           hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
           tetragon_rthooks_image_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/cilium/tetragon-rthooks:${rthooks_tag} | jq -r '.Digest')
