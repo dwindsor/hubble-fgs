@@ -147,6 +147,7 @@
                     "items": {
                       "properties": {
                         "followChildren": {
+                          "default": false,
                           "description": "In addition to binaries, match children processes of specified binaries.",
                           "type": "boolean"
                         },
@@ -169,7 +170,6 @@
                         }
                       },
                       "required": [
-                        "followChildren",
                         "operator",
                         "values"
                       ],
@@ -530,6 +530,7 @@
                     "items": {
                       "properties": {
                         "followChildren": {
+                          "default": false,
                           "description": "In addition to binaries, match children processes of specified binaries.",
                           "type": "boolean"
                         },
@@ -552,7 +553,6 @@
                         }
                       },
                       "required": [
-                        "followChildren",
                         "operator",
                         "values"
                       ],
@@ -1155,6 +1155,7 @@
                       "items": {
                         "properties": {
                           "followChildren": {
+                            "default": false,
                             "description": "In addition to binaries, match children processes of specified binaries.",
                             "type": "boolean"
                           },
@@ -1177,7 +1178,6 @@
                           }
                         },
                         "required": [
-                          "followChildren",
                           "operator",
                           "values"
                         ],
@@ -1854,6 +1854,7 @@
                       "items": {
                         "properties": {
                           "followChildren": {
+                            "default": false,
                             "description": "In addition to binaries, match children processes of specified binaries.",
                             "type": "boolean"
                           },
@@ -1876,7 +1877,6 @@
                           }
                         },
                         "required": [
-                          "followChildren",
                           "operator",
                           "values"
                         ],
@@ -3457,6 +3457,7 @@
                       "items": {
                         "properties": {
                           "followChildren": {
+                            "default": false,
                             "description": "In addition to binaries, match children processes of specified binaries.",
                             "type": "boolean"
                           },
@@ -3479,7 +3480,6 @@
                           }
                         },
                         "required": [
-                          "followChildren",
                           "operator",
                           "values"
                         ],
@@ -4111,6 +4111,7 @@
                       "items": {
                         "properties": {
                           "followChildren": {
+                            "default": false,
                             "description": "In addition to binaries, match children processes of specified binaries.",
                             "type": "boolean"
                           },
@@ -4133,7 +4134,6 @@
                           }
                         },
                         "required": [
-                          "followChildren",
                           "operator",
                           "values"
                         ],
