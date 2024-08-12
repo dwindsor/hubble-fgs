@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/mbset"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -151,6 +152,8 @@ var (
 
 	PorcessTreeConfigMap = program.MapBuilder("tg_process_tree_config_map", Execve)
 
+	MatchBinariesSetMap = program.MapBuilder(mbset.MapName, Execve)
+
 	sensor = sensors.Sensor{
 		Name: basePolicy,
 	}
@@ -242,6 +245,7 @@ func GetDefaultMaps() []*program.Map {
 		ExecveJoinMapStats,
 		StatsMap,
 		PorcessTreeConfigMap,
+		MatchBinariesSetMap,
 	}
 
 	if kernels.EnableV61Progs() {
