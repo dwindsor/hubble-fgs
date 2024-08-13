@@ -28,6 +28,7 @@ import (
 	oss "github.com/cilium/tetragon/pkg/watcher"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 const (
@@ -92,6 +93,7 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 				logger.GetLogger().Debug("Add Pod: %v", t)
 				c := endpoint.Get()
 				c.AddIpPodMap(t)
+				model.CheckWorkloadQuotaPolicy(t)
 			}
 		},
 		UpdateFunc: func(old interface{}, _ interface{}) {

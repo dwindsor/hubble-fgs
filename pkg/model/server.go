@@ -13,6 +13,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -386,6 +387,41 @@ func ClearDnsQuota() error {
 	return nil
 }
 
+type quotaPolicy struct {
+	dns   []string
+	quota string
+	reset string
+}
+
+var (
+	queueWl = make(map[policyfilter.NSID]quotaPolicy)
+)
+
+func queueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string) {
+	qp := quotaPolicy{
+		dns:   dns,
+		quota: quota,
+		reset: reset,
+	}
+
+	queueWl[wl] = qp
+}
+
+func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
+	wl := policyfilter.NSID{
+		Kind:      epPod.WorkloadType.Kind,
+		Namespace: epPod.WorkloadObject.Namespace,
+		Workload:  epPod.WorkloadObject.Name,
+	}
+
+	qp, ok := queueWl[wl]
+	if !ok {
+		return nil
+	}
+	delete(queueWl, wl)
+	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
+}
+
 func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) error {
 	ep := endpoint.Endpoint{
 		Type: endpoint.DnsType,
@@ -428,9 +464,14 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 			logger.GetLogger().WithError(err).Warn("Unable to get policyfilter")
 			return nil
 		}
+		// If the ID does not yet exist we need to wait for it to be added. This is
+		// an imperfect solution. Ideally we would just modify the policyfilter state
+		// to preallocate an ID.But, its in OSS and not obvious how to extend it to
+		// support this.
 		nsId, ok = state.GetIdNs(workload)
 		if !ok {
-			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Info("workload does not exist.")
+			queueWorkloadQuotaPolicy(workload, dns, reset, quota)
+			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Info("workload info does not exist yet, queuing for workload updates.")
 			return nil
 		}
 	} else {
