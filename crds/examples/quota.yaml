@@ -1,0 +1,24 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "tcp-quota"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 10
+    tcp:
+      enable: true
+      qos:
+        quotaReset: "1m"
+        quotaLimits:
+        - namespace: "bar"
+          workload: "xwing"
+          workloadKind: "Pod"
+          destination:
+            dns: ["isovalent.com."]
+          quota: "1024"
+      statsInterval: 10
+    dns:
+      enable: true
