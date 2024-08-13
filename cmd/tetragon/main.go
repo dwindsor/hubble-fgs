@@ -159,6 +159,10 @@ func saveInitInfo() error {
 }
 
 func getOldBpfDir(path string) (string, error) {
+	// bpffs directory will be removed, so we don't care
+	if option.Config.ReleasePinned {
+		return "", nil
+	}
 	if _, err := os.Stat(path); err != nil {
 		return "", nil
 	}
@@ -262,6 +266,9 @@ func hubbleFGSExecute() error {
 	// Then we do the 'best' effort to keep running sensors as long as possible
 	// and remove 'tetragon_old' directory when tetragon is started and its
 	// policy is loaded.
+	// If there's --release-pinned-bpf option enabled, we need to remove previous
+	// sysfs instance right away (see check for option.Config.ReleasePinned below),
+	// so we don't bother renaming in that case.
 	oldBpfDir, err := getOldBpfDir(bpf.MapPrefixPath())
 	if err != nil {
 		return fmt.Errorf("Failed to move old tetragon base directory: %w", err)
