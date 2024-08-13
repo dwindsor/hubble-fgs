@@ -241,6 +241,12 @@ func hubbleFGSExecute() error {
 	defer pidfile.Delete()
 
 	if option.Config.KeepSensorsOnExit {
+		// The effect of having both --release-pinned-bpf and --keep-sensors-on-exit options
+		// enabled is that the previous bpffs instance will be removed early before the new
+		// config is set. Not a big problem, but better to warn..
+		if option.Config.ReleasePinned {
+			log.Warn("Options --release-pinned-bpf and --keep-sensors-on-exit enabled together, we will remove bpffs instance early.")
+		}
 		log.Info("Not unloading sensors on exit")
 	}
 
