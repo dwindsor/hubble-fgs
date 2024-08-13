@@ -222,6 +222,9 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_socketmap_stats(sk, &tcp_stats);
 		tcp_stats.key = value->key;
 		tcp_stats.create_time = sockmap_process.create_time;
+		tcp_stats.last_time = sockmap_process.create_time;
+		tcp_stats.ipv6 = (family == AF_INET6);
+		tcp_stats.version = sockmap_process.version;
 		add_tcpsocketmap(&cookie, &tcp_stats, false);
 	}
 

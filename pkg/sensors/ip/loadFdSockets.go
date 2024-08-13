@@ -482,6 +482,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				var err error
 				socket, err = GetAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {
+					logger.GetLogger().WithError(err).WithFields(logrus.Fields{"pid": pid, "fd": fd, "protocol": protocol}).Warn("Socket discovery failed")
 					continue
 				}
 				v = &socket
