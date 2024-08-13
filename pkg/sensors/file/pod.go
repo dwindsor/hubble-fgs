@@ -131,12 +131,14 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 	cgRoot, err := cgroups.HostCgroupRoot()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("failed to retrieve host cgroup root, aborting hook")
+		filemetrics.FileTotalErrorsInc(filemetrics.SendorFileGetHostCgroupRoot)
 		return err
 	}
 	path := filepath.Join(cgRoot, cgPath)
 	cgID, err := cgroups.GetCgroupIdFromPath(path)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("path", path).WithField("cgroup-id", cgID).Warn("retrieving cgroup id failed, aborting hook")
+		filemetrics.FileTotalErrorsInc(filemetrics.SendorFileGetCgroupId)
 		return err
 	}
 
@@ -166,6 +168,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 	}
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("failed to get pod info, aborting hook.")
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileGetPodInfo)
 		return err
 	}
 

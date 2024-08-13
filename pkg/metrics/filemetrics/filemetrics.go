@@ -42,6 +42,9 @@ const (
 	SensorFileDestroyPodUpdateScanner
 	SensorFileInitPodUpdateScanner
 	SensorFileDestroyPodDeleteScanner
+	SensorFileGetPodInfo
+	SendorFileGetHostCgroupRoot
+	SendorFileGetCgroupId
 	GrpcNilEvProc
 	GrpcNotValidAction
 	GrpcOpGtOne
@@ -65,6 +68,9 @@ var fileErrorLabelValues = map[FileError]string{
 	SensorFileDestroyPodUpdateScanner: "sensor_file_destroy_podUpdate_scanner",
 	SensorFileInitPodUpdateScanner:    "sensor_file_init_podUpdate_scanner",
 	SensorFileDestroyPodDeleteScanner: "sensor_file_destroy_podDelete_scanner",
+	SensorFileGetPodInfo:              "sensor_file_get_pod_info",
+	SendorFileGetHostCgroupRoot:       "sensor_file_get_host_cgroup_root",
+	SendorFileGetCgroupId:             "sensor_file_get_cgroup_id",
 	GrpcNilEvProc:                     "grpc_nil_ev_proc",
 	GrpcNotValidAction:                "grpc_not_valid_action",
 	GrpcOpGtOne:                       "grpc_op_gt_one",
