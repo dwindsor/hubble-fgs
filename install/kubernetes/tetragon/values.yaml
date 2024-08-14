@@ -50,7 +50,7 @@ tetragon:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon
-    tag: v1.14.0-rc2
+    tag: v1.14.0-rc3
   resources: {}
   extraArgs: {}
   extraEnv: []
@@ -300,7 +300,7 @@ tetragonOperator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.14.0-rc2
+    tag: v1.14.0-rc3
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Operator Deployment.
   extraVolumes: []
