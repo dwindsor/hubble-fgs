@@ -244,7 +244,6 @@ func ParseDisableSpec(spec *v1alpha1.TracingPolicySpec) {
 	DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
 	DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
 	DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
-	logger.GetLogger().WithField("disableEvents", spec.Parser.Udp.DisableEvents).Warn("UDP")
 	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": DisableCloseEvents, "disableListen": DisableListenEvents,
 		"disableClose": DisableCloseEvents, "disableStats": DisableStatsEvents}).Info("UDP event types")
 }
