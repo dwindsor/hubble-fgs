@@ -56,9 +56,6 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, erro
 			if x86ids.X64 != nil {
 				ids = append(ids, uint32(*x86ids.X64))
 			}
-			if x86ids.X32 != nil {
-				ids = append(ids, uint32(*x86ids.X64))
-			}
 			if x86ids.IA32 != nil {
 				ids = append(ids, tracing.Is32Bit|uint32(*x86ids.X64))
 			}
