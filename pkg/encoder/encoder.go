@@ -75,6 +75,24 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 
 	switch response.Event.(type) {
 
+	case *tetragon.GetEventsResponse_ProcessIpError:
+		processInfo := ""
+		caps := ""
+
+		ipError := response.GetProcessIpError()
+		if ipError.Process != nil {
+			processInfo, caps = p.colorer.ProcessInfo(response.NodeName, ipError.Process)
+		} else {
+			processInfo = fmt.Sprintf("(unknown process)")
+			caps = fmt.Sprintf("")
+		}
+		event := p.colorer.Blue.Sprintf("💢 %-7s", "IP-Error")
+		errDetails := p.colorer.Cyan.Sprint(ipError.SourceIp, "->", ipError.DestinationIp,
+			":", ipError.Version,
+			" Error:", ipError.Details)
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, errDetails), caps), nil
+
 	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
 		wm := response.GetProcessNetworkWatermark()
 		if wm.Process == nil {
