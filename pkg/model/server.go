@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -394,7 +395,8 @@ type quotaPolicy struct {
 }
 
 var (
-	queueWl = make(map[policyfilter.NSID]quotaPolicy)
+	queueWl     = make(map[policyfilter.NSID]quotaPolicy)
+	queueWlLock = sync.Mutex{}
 )
 
 func queueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string) {
@@ -404,7 +406,9 @@ func queueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota s
 		reset: reset,
 	}
 
+	queueWlLock.Lock()
 	queueWl[wl] = qp
+	queueWlLock.Unlock()
 }
 
 func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
@@ -414,11 +418,14 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 		Workload:  epPod.WorkloadObject.Name,
 	}
 
+	queueWlLock.Lock()
 	qp, ok := queueWl[wl]
 	if !ok {
+		queueWlLock.Unlock()
 		return nil
 	}
 	delete(queueWl, wl)
+	queueWlLock.Unlock()
 	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
 }
 
