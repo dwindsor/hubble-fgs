@@ -75,6 +75,21 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 
 	switch response.Event.(type) {
 
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		icmp := response.GetProcessIcmp()
+		if icmp.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		event := p.colorer.Blue.Sprintf("📶 %-7s", "icmp")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, icmp.Process)
+		destination := p.colorer.Cyan.Sprint(icmp.Protocol, " ", icmp.SourceIp, "=>", icmp.DestinationIp)
+		dns := ""
+		if len(icmp.DestinationNames) > 0 {
+			dns = strings.Join(icmp.DestinationNames, ",")
+		}
+		info := p.colorer.Cyan.Sprint(icmp.IcmpType, " (", icmp.IcmpTypeValue, ")")
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s", event, processInfo, destination, info, dns), caps), nil
+
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		processInfo := ""
 		caps := ""
