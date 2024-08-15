@@ -74,6 +74,17 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 	}
 
 	switch response.Event.(type) {
+
+	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
+		wm := response.GetProcessNetworkWatermark()
+		if wm.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		event := p.colorer.Blue.Sprintf("➖ %-7s", "watermark")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, wm.Process)
+		wmDetails := p.colorer.Cyan.Sprint(wm.Protocol, " ", wm.WatermarksState, " ", wm.Direction, " ", wm.WatermarksType)
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, wmDetails), caps), nil
+
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		connect := response.GetProcessConnect()
 		if connect.Process == nil {
