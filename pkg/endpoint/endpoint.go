@@ -42,9 +42,11 @@ type Cache struct {
 
 var (
 	cache           *Cache
-	id              = uint64(1)
 	endpointIdMap   = "tg_endpoint_id_map"
 	initGlobalCache sync.Once
+
+	idLock sync.Mutex
+	id     = uint64(1)
 )
 
 func newCache() (*Cache, error) {
@@ -66,6 +68,7 @@ func newCache() (*Cache, error) {
 		cache:    fwdlru,
 		revCache: revLru,
 	}
+
 	return cache, nil
 }
 
@@ -77,24 +80,45 @@ type endpointValue struct {
 	Id uint64
 }
 
+// Helper routine requires correct locking and should only be used from
+// insertNew and insertKnown.
+func (c *Cache) insertEndpoint(ep Endpoint, key uint64) {
+	if c.cache.Add(key, ep) {
+		dnsmetrics.DnsCacheEvictions().Inc()
+	}
+	if c.revCache.Add(ep, key) {
+		dnsmetrics.DnsCacheEvictions().Inc()
+	}
+}
+
+func (c *Cache) insertNewEndpoint(ep Endpoint) uint64 {
+	idLock.Lock()
+	defer idLock.Unlock()
+
+	dstId := id
+	c.insertEndpoint(ep, dstId)
+	id++
+	return dstId
+}
+
+func (c *Cache) insertKnownEndpoint(ep Endpoint, key uint64) {
+	idLock.Lock()
+	defer idLock.Unlock()
+
+	c.insertEndpoint(ep, key)
+}
+
 func (c *Cache) AddEndpoint(ep Endpoint) (uint64, error) {
 	dstId, ok := c.revCache.Get(ep)
 	if !ok {
-		if c.cache.Add(id, ep) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		if c.revCache.Add(ep, id) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		dstId = id
-		id++
+		dstId = c.insertNewEndpoint(ep)
 	}
 	logger.GetLogger().Info("PolicyID %d allocated\n", dstId)
 	return dstId, nil
 }
 
-func (c *Cache) LookupID(id uint64) (value Endpoint, ok bool) {
-	return c.cache.Get(id)
+func (c *Cache) LookupID(lookup uint64) (value Endpoint, ok bool) {
+	return c.cache.Get(lookup)
 }
 
 func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
@@ -146,14 +170,7 @@ func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 	if idExists, ok := c.revCache.Get(ep); ok {
 		value.Id = idExists
 	} else {
-		value.Id = id
-		if c.cache.Add(id, ep) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		if c.revCache.Add(ep, id) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		id++
+		value.Id = c.insertNewEndpoint(ep)
 	}
 
 	for _, ip := range epPod.Status.PodIPs {
@@ -195,8 +212,6 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 	}
 
 	for _, ip := range dns.Ips {
-		newKey := false
-
 		ipEncoded4 := net.ParseIP(ip).To4()
 		if ipEncoded4 != nil {
 			key.Addr[0] = uint64(binary.LittleEndian.Uint32(ipEncoded4[0:]))
@@ -234,6 +249,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 				}
 			}
 			ep.Dns = strings.Join(newNameSet, ",")
+			c.insertKnownEndpoint(ep, tmp.Id)
 		} else {
 			// Its possible this EP has a preconfigured ID from
 			// a QOS policy. In that case we need to map to that
@@ -242,24 +258,13 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 			if ok {
 				value.Id = idExists
 			} else {
-				value.Id = id
-				newKey = true
+				value.Id = c.insertNewEndpoint(ep)
 			}
 
 			if err := m.Update(key, value, 0); err != nil {
 				logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
 				continue
 			}
-		}
-
-		if c.cache.Add(id, ep) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		if c.revCache.Add(ep, id) {
-			dnsmetrics.DnsCacheEvictions().Inc()
-		}
-		if newKey {
-			id++
 		}
 	}
 }
