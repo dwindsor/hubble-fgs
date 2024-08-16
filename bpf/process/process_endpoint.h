@@ -134,6 +134,7 @@ struct destination_endpoint_key {
 struct destination_endpoint_value {
 	__u64 tx_quota;
 	__u64 tx_limit;
+	__u64 tx_drops;
 	__u64 ktime_last_reset;
 	__u64 ktime_tx_reset;
 	__u64 tx_bytes;

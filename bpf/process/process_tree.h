@@ -333,8 +333,10 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	}
 
 	quota = __sync_fetch_and_add(&dest->tx_quota, len);
-	if (dest->tx_limit && quota > dest->tx_limit)
+	if (dest->tx_limit && quota > dest->tx_limit) {
+		__sync_fetch_and_add(&dest->tx_drops, len);
 		return SK_DROP;
+	}
 
 	return SK_PASS;
 }

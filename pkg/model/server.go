@@ -69,6 +69,7 @@ type DestinationEndpointKey struct {
 type DestinationEndpointValue struct {
 	TxQuota        uint64
 	TxLimit        uint64
+	TxDrops        uint64
 	KtimeLastReset uint64
 	KtimeTxReset   uint64
 	TxBytes        uint64
@@ -448,6 +449,7 @@ func addSingleDnsQuota(src *ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.
 	value := &DestinationEndpointValue{
 		TxQuota:        0,
 		TxLimit:        quota,
+		TxDrops:        0,
 		KtimeLastReset: 0,
 		KtimeTxReset:   reset,
 		TxBytes:        0,
