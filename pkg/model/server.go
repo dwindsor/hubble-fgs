@@ -429,33 +429,44 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
 }
 
-func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) error {
-	ep := endpoint.Endpoint{
-		Type: endpoint.DnsType,
-		Dns:  strings.Join(dns, ","),
-	}
-
-	resetNS, err := quotaToNs(reset)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to conver reset time")
-		return err
-	}
+func addSingleDnsQuota(src *ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset uint64) error {
+	var addr [16]byte
 
 	c := endpoint.Get()
-	dstId, err := c.AddEndpoint(ep)
+	dst, err := c.AddEndpoint(*ep)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
 		return err
 	}
+	key := &DestinationEndpointKey{
+		ProcessId:         *src,
+		DestinationId:     dst,
+		DestinationSource: DestinationSourceUser,
+		DestinationPort:   0,
+	}
 
-	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	dstMap, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
+	value := &DestinationEndpointValue{
+		TxQuota:        0,
+		TxLimit:        quota,
+		KtimeLastReset: 0,
+		KtimeTxReset:   reset,
+		TxBytes:        0,
+		RxBytes:        0,
+		Pad0:           0,
+		Pad1:           0,
+		KtimeCreate:    0,
+		AddrCreate:     addr,
+		Port:           0,
+	}
+
+	if err := dstMap.Update(key, value, 0); err != nil {
 		return err
 	}
-	defer dstMap.Close()
 
+	return nil
+}
+
+func createSrcKey(namespace, wl, kind string) (*ProcessTreeKey, error) {
 	var nsId policyfilter.StateID
 	if namespace != "" {
 		var ok bool
@@ -469,7 +480,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 		state, err := policyfilter.GetState()
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("Unable to get policyfilter")
-			return nil
+			return nil, err
 		}
 		// If the ID does not yet exist we need to wait for it to be added. This is
 		// an imperfect solution. Ideally we would just modify the policyfilter state
@@ -477,15 +488,14 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 		// support this.
 		nsId, ok = state.GetIdNs(workload)
 		if !ok {
-			queueWorkloadQuotaPolicy(workload, dns, reset, quota)
 			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Info("workload info does not exist yet, queuing for workload updates.")
-			return nil
+			return nil, nil
 		}
 	} else {
 		nsId = policyfilter.StateID(0)
 	}
 
-	processId := ProcessTreeKey{
+	return &ProcessTreeKey{
 		CgroupId: uint64(nsId),
 		Self: ProcessExecveKey{
 			Pid:   0,
@@ -497,37 +507,61 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 			Pad:   0,
 			Ktime: 0,
 		},
+	}, nil
+}
+
+func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) error {
+	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	dstMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
+		return err
 	}
 
-	key := &DestinationEndpointKey{
-		ProcessId:         processId,
-		DestinationId:     dstId,
-		DestinationSource: DestinationSourceUser,
-		DestinationPort:   0,
+	defer dstMap.Close()
+	src, err := createSrcKey(namespace, wl, kind)
+	if err != nil {
+		return err
 	}
 
-	var addr [16]byte
+	// If the src does not yet exist we watch for it and create the policy
+	// once an ID has been generated.
+	if src == nil {
+		workload := policyfilter.NSID{
+			Namespace: namespace,
+			Workload:  wl,
+			Kind:      kind,
+		}
+		queueWorkloadQuotaPolicy(workload, dns, reset, quota)
+		return nil
+	}
+
+	resetNS, err := quotaToNs(reset)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("failed to conver reset time")
+		return err
+	}
+
 	quotaBytes, err := strconv.ParseUint(quota, 10, 64)
 	if err != nil {
 		return err
 	}
 
-	value := &DestinationEndpointValue{
-		TxQuota:        0,
-		TxLimit:        quotaBytes,
-		KtimeLastReset: 0,
-		KtimeTxReset:   resetNS,
-		TxBytes:        0,
-		RxBytes:        0,
-		Pad0:           0,
-		Pad1:           0,
-		KtimeCreate:    0,
-		AddrCreate:     addr,
-		Port:           0,
-	}
+	for _, entry := range dns {
+		ep := &endpoint.Endpoint{
+			Type: endpoint.DnsType,
+			Dns:  entry,
+		}
 
-	if err := dstMap.Update(key, value, 0); err != nil {
-		return err
+		if err := addSingleDnsQuota(src, ep, dstMap, quotaBytes, resetNS); err != nil {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"namespace": namespace,
+				"workload":  wl,
+				"quota":     quotaBytes,
+				"reset":     reset,
+				"dest":      entry,
+			}).Warn("TCP quota entry Failed")
+		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"namespace": namespace,
@@ -535,6 +569,6 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 		"quota":     quotaBytes,
 		"reset":     reset,
 		"dest":      strings.Join(dns, " "),
-	}).Info("TCP Quota Added")
+	}).Info("TCP quota added")
 	return nil
 }
