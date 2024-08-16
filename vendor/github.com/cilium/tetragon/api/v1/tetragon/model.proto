@@ -28,6 +28,7 @@ message Workload {
 message DestinationStats {
 	uint64 TxBytes = 1;
 	uint64 RxBytes = 2;
+	uint64 TxDrops = 3;
 }
 
 message Destination {
