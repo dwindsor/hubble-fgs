@@ -152,15 +152,18 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			continue
 		}
 
+		stats := &tetragon.DestinationStats{
+			TxBytes: dstVal.TxBytes,
+			RxBytes: dstVal.RxBytes,
+			TxDrops: dstVal.TxDrops,
+		}
+
 		switch ep.Type {
 		case endpoint.DnsType:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
 				Port:             dstVal.Port,
-				Stats: &tetragon.DestinationStats{
-					TxBytes: dstVal.TxBytes,
-					RxBytes: dstVal.RxBytes,
-				},
+				Stats:            stats,
 			}
 		case endpoint.PodType:
 			d = &tetragon.Destination{
@@ -169,20 +172,14 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 					Workload:     ep.Name,
 					WorkloadKind: ep.Kind,
 				},
-				Port: dstVal.Port,
-				Stats: &tetragon.DestinationStats{
-					TxBytes: dstVal.TxBytes,
-					RxBytes: dstVal.RxBytes,
-				},
+				Port:  dstVal.Port,
+				Stats: stats,
 			}
 		case endpoint.IpType:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Ip, ","),
 				Port:             dstVal.Port,
-				Stats: &tetragon.DestinationStats{
-					TxBytes: dstVal.TxBytes,
-					RxBytes: dstVal.RxBytes,
-				},
+				Stats:            stats,
 			}
 		}
 
