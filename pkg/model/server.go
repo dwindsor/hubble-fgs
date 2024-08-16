@@ -156,6 +156,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			TxBytes: dstVal.TxBytes,
 			RxBytes: dstVal.RxBytes,
 			TxDrops: dstVal.TxDrops,
+			TxLimit: dstVal.TxLimit,
 		}
 
 		switch ep.Type {
