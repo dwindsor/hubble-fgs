@@ -3137,6 +3137,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | TxBytes | [uint64](#uint64) |  |  |
 | RxBytes | [uint64](#uint64) |  |  |
 | TxDrops | [uint64](#uint64) |  |  |
+| TxLimit | [uint64](#uint64) |  |  |
 
 
 
