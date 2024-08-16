@@ -12,16 +12,22 @@ package encoder
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/encoder"
+	"github.com/sryoya/protorand"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -899,4 +905,77 @@ func TestCompactEncoder_FileEventToString(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "📁 file    my-node /usr/bin/curl isovalent.com FILE_READ rw_verify_area /run/systemd/resolve/resolv.conf 1234", result)
+}
+
+func FuzzProtojsonCompatibility(f *testing.F) {
+	for _, n := range []int64{
+		1337,
+		78776406,
+		56343416,
+		68876713,
+		51156281,
+		45544244,
+		4011756,
+	} {
+		f.Add(n)
+	}
+	f.Fuzz(func(t *testing.T, seed int64) {
+		pr := protorand.New()
+		pr.Seed(seed)
+		ev := &tetragon.GetEventsResponse{}
+		msg, err := pr.Gen(ev)
+		require.NoError(t, err)
+
+		var buf1 bytes.Buffer
+		protojsonEncoder := encoder.NewProtojsonEncoder(&buf1)
+		err = protojsonEncoder.Encode(msg)
+		require.NoError(t, err)
+
+		var buf2 bytes.Buffer
+		jsonEncoder := json.NewEncoder(&buf2)
+		err = jsonEncoder.Encode(msg)
+		require.NoError(t, err)
+
+		msgProtojson := &tetragon.GetEventsResponse{}
+		err = protojson.Unmarshal(buf2.Bytes(), msgProtojson)
+		require.NoError(t, err)
+		msgJson := &tetragon.GetEventsResponse{}
+		err = json.Unmarshal(buf2.Bytes(), msgJson)
+		require.NoError(t, err)
+
+		assert.True(t, proto.Equal(msgJson, msgProtojson))
+		assert.True(t, proto.Equal(msg, msgProtojson))
+	})
+}
+
+func FuzzCompactEncoder(f *testing.F) {
+	for _, n := range []int64{
+		1337,
+		78776406,
+		56343416,
+		68876713,
+		51156281,
+		45544244,
+		4011756,
+	} {
+		for _, ts := range []bool{true, false} {
+			f.Add(n, ts)
+		}
+	}
+	f.Fuzz(func(t *testing.T, seed int64, timestamps bool) {
+		pr := protorand.New()
+		pr.Seed(seed)
+		ev := &tetragon.GetEventsResponse{}
+		msg, err := pr.Gen(ev)
+		require.NoError(t, err)
+
+		if helpers.ResponseGetProcess(msg.(*tetragon.GetEventsResponse)) == nil {
+			t.Skipf("Empty process")
+		}
+
+		var buf1 bytes.Buffer
+		compactEncoder := NewEnterpriseEncoder(&buf1, "always", timestamps)
+		err = compactEncoder.Encode(msg)
+		require.NoError(t, err)
+	})
 }

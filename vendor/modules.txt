@@ -1163,6 +1163,9 @@ github.com/spf13/viper/internal/encoding/json
 github.com/spf13/viper/internal/encoding/toml
 github.com/spf13/viper/internal/encoding/yaml
 github.com/spf13/viper/internal/features
+# github.com/sryoya/protorand v0.0.0-20240429201223-e7440656b2a4
+## explicit; go 1.17
+github.com/sryoya/protorand
 # github.com/stoewer/go-strcase v1.3.0
 ## explicit; go 1.11
 github.com/stoewer/go-strcase
