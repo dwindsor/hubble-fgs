@@ -104,6 +104,29 @@ func (c ConnectedModelClient) Close() {
 
 var tree = treeprint.New()
 
+func printDestination(d *tetragon.Destination) (string, string) {
+	endptName := ""
+	dst := ""
+
+	if d.DestinationPod != nil {
+		endptName = d.DestinationPod.String()
+	}
+	if len(d.DestinationNames) > 0 {
+		if endptName != "" {
+			endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
+		} else {
+			endptName = fmt.Sprintf("%s", d.DestinationNames)
+		}
+	}
+
+	if d.Port != 0 {
+		dst = fmt.Sprintf("%s   (%d) ", endptName, d.Port)
+	} else {
+		dst = fmt.Sprintf("%s ", endptName)
+	}
+	return endptName, dst
+}
+
 func printTree(res *tetragon.GetProcessModelResponse) error {
 	// Create namespaces collections
 	nsCollections := make(map[string][]*tetragon.ProcessModel)
@@ -183,23 +206,13 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 				zeroDests := make(map[string]treeprint.Tree)
 
 				for _, d := range p.Dest {
-					endptName := ""
 					stats := ""
 
 					if d.Port != 0 {
 						continue
 					}
 
-					if d.DestinationPod != nil {
-						endptName = d.DestinationPod.String()
-					}
-					if len(d.DestinationNames) > 0 {
-						if endptName != "" {
-							endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
-						} else {
-							endptName = fmt.Sprintf("%s", d.DestinationNames)
-						}
-					}
+					endptName, dstStr := printDestination(d)
 					if d.Stats != nil {
 						if d.Stats.TxLimit > 0 {
 							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
@@ -207,27 +220,17 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 							stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
 						}
 					}
-					compact := fmt.Sprintf("%s      [%s]", endptName, stats)
+					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
 					zeroDests[endptName] = binaryBranch.AddBranch(compact)
 				}
 				for _, d := range p.Dest {
-					endptName := ""
 					stats := ""
 
 					if d.Port == 0 {
 						continue
 					}
 
-					if d.DestinationPod != nil {
-						endptName = d.DestinationPod.String()
-					}
-					if len(d.DestinationNames) > 0 {
-						if endptName != "" {
-							endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
-						} else {
-							endptName = fmt.Sprintf("%s", d.DestinationNames)
-						}
-					}
+					endptName, dstStr := printDestination(d)
 					if d.Stats != nil {
 						if d.Stats.TxLimit > 0 {
 							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
@@ -236,7 +239,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 						}
 					}
 
-					compact := fmt.Sprintf("   (%d) [%s]", stats)
+					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
 					zeroDests[endptName].AddBranch(compact)
 				}
 			}
