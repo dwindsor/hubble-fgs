@@ -352,7 +352,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		event := p.colorer.Blue.Sprintf("📒 %-7s", "netstat")
 		return fmt.Sprintf("%s %s tx %s rx %s", event, interfaceInfo, txBytes, rxBytes), nil
 	}
-	return "", encoder.ErrUnknownEventType
+	return "", fmt.Errorf("%w: %s", ErrUnknownEventType, response.EventType())
 }
 
 func dnsToString(dnsInfo *tetragon.DnsInfo) string {
