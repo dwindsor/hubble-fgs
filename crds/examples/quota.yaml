@@ -17,7 +17,7 @@ spec:
           workload: "xwing"
           workloadKind: "Pod"
           destination:
-            dns: ["isovalent.com."]
+            dns: ["isovalent.com.", "cilium.io"]
           quota: "1024"
       statsInterval: 10
     dns:
