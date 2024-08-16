@@ -183,19 +183,13 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 				zeroDests := make(map[string]treeprint.Tree)
 
 				for _, d := range p.Dest {
-					txBytes := uint64(0)
-					rxBytes := uint64(0)
 					endptName := ""
+					stats := ""
 
 					if d.Port != 0 {
 						continue
 					}
 
-					if d.Stats != nil {
-						txBytes = d.Stats.TxBytes
-						rxBytes = d.Stats.RxBytes
-					}
-
 					if d.DestinationPod != nil {
 						endptName = d.DestinationPod.String()
 					}
@@ -206,22 +200,23 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 							endptName = fmt.Sprintf("%s", d.DestinationNames)
 						}
 					}
-
-					compact := fmt.Sprintf("%s      [tx: %d rx: %d]", endptName, txBytes, rxBytes)
+					if d.Stats != nil {
+						if d.Stats.TxLimit > 0 {
+							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
+						} else {
+							stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
+						}
+					}
+					compact := fmt.Sprintf("%s      [%s]", endptName, stats)
 					zeroDests[endptName] = binaryBranch.AddBranch(compact)
 				}
 				for _, d := range p.Dest {
-					txBytes := uint64(0)
-					rxBytes := uint64(0)
 					endptName := ""
+					stats := ""
 
 					if d.Port == 0 {
 						continue
 					}
-					if d.Stats != nil {
-						txBytes = d.Stats.TxBytes
-						rxBytes = d.Stats.RxBytes
-					}
 
 					if d.DestinationPod != nil {
 						endptName = d.DestinationPod.String()
@@ -233,7 +228,15 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 							endptName = fmt.Sprintf("%s", d.DestinationNames)
 						}
 					}
-					compact := fmt.Sprintf("   (%d) [tx: %d rx: %d]", d.Port, txBytes, rxBytes)
+					if d.Stats != nil {
+						if d.Stats.TxLimit > 0 {
+							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
+						} else {
+							stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
+						}
+					}
+
+					compact := fmt.Sprintf("   (%d) [%s]", stats)
 					zeroDests[endptName].AddBranch(compact)
 				}
 			}
