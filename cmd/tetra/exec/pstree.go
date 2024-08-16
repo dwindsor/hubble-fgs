@@ -127,6 +127,21 @@ func printDestination(d *tetragon.Destination) (string, string) {
 	return endptName, dst
 }
 
+func printStats(d *tetragon.Destination) string {
+	stats := ""
+
+	if d.Stats == nil {
+		return stats
+	}
+
+	if d.Stats.TxLimit > 0 {
+		stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
+	} else {
+		stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
+	}
+	return stats
+}
+
 func printTree(res *tetragon.GetProcessModelResponse) error {
 	// Create namespaces collections
 	nsCollections := make(map[string][]*tetragon.ProcessModel)
@@ -206,39 +221,21 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 				zeroDests := make(map[string]treeprint.Tree)
 
 				for _, d := range p.Dest {
-					stats := ""
-
 					if d.Port != 0 {
 						continue
 					}
 
 					endptName, dstStr := printDestination(d)
-					if d.Stats != nil {
-						if d.Stats.TxLimit > 0 {
-							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
-						} else {
-							stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
-						}
-					}
+					stats := printStats(d)
 					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
 					zeroDests[endptName] = binaryBranch.AddBranch(compact)
 				}
 				for _, d := range p.Dest {
-					stats := ""
-
 					if d.Port == 0 {
 						continue
 					}
-
 					endptName, dstStr := printDestination(d)
-					if d.Stats != nil {
-						if d.Stats.TxLimit > 0 {
-							stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
-						} else {
-							stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
-						}
-					}
-
+					stats := printStats(d)
 					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
 					zeroDests[endptName].AddBranch(compact)
 				}
