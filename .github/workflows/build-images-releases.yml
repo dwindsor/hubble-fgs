@@ -202,7 +202,7 @@ jobs:
       - name: Update ClusterServiceVersion
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
-          yq_version: 4.44.2
+          yq_version: 4.44.3
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ steps.legacy.outputs.is == 'false' }}
         run: |

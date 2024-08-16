@@ -119,7 +119,7 @@ jobs:
       - name: Update OLM catalog index
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
-          yq_version: 4.44.2
+          yq_version: 4.44.3
         run: |
             set -eux
             # Point to the newly built CI catalog index tests/e2e/olm/catalogsource.yaml
