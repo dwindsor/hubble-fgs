@@ -297,6 +297,18 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		burstState := p.colorer.Red.Sprint(event.BurstState)
 
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s", eventName, processInfo, protocol, direction, burstState), caps), nil
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		event := response.GetProcessSandboxSyscall()
+		if event.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
+
+		eventName := p.colorer.Blue.Sprintf("❌ %-7s", "sandbox")
+		syscall := p.colorer.Cyan.Sprintf("sys_%s", event.Name)
+		policy := p.colorer.Green.Sprintf("(%s)", event.Policy)
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s", eventName, processInfo, syscall, policy), caps), nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		dns := response.GetProcessDns()
 		if dns.Process == nil {
