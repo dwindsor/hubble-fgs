@@ -378,3 +378,34 @@ func (s *Server) RuntimeHook(ctx context.Context, req *tetragon.RuntimeHookReque
 	}
 	return &tetragon.RuntimeHookResponse{}, nil
 }
+
+func (s *Server) GetDebug(_ context.Context, req *tetragon.GetDebugRequest) (*tetragon.GetDebugResponse, error) {
+	switch req.GetFlag() {
+	case tetragon.ConfigFlag_CONFIG_FLAG_LOG_LEVEL:
+		logger.GetLogger().Debugf("Client requested current log level: %s", logger.GetLogLevel().String())
+		return &tetragon.GetDebugResponse{
+			Flag:  tetragon.ConfigFlag_CONFIG_FLAG_LOG_LEVEL,
+			Level: tetragon.LogLevel(logger.GetLogLevel()),
+		}, nil
+	default:
+		logger.GetLogger().WithField("request", req).Warnf("Client requested unknown config flag %d", req.GetFlag())
+		return nil, fmt.Errorf("client requested unknown config flag %d", req.GetFlag())
+	}
+}
+
+func (s *Server) SetDebug(_ context.Context, req *tetragon.SetDebugRequest) (*tetragon.SetDebugResponse, error) {
+	switch req.GetFlag() {
+	case tetragon.ConfigFlag_CONFIG_FLAG_LOG_LEVEL:
+		currentLogLevel := logger.GetLogLevel()
+		changedLogLevel := logrus.Level(req.GetLevel())
+		logger.SetLogLevel(changedLogLevel)
+		logger.GetLogger().WithField("request", req).Warnf("Log level changed from %s to %s", currentLogLevel, changedLogLevel.String())
+		return &tetragon.SetDebugResponse{
+			Flag:  tetragon.ConfigFlag_CONFIG_FLAG_LOG_LEVEL,
+			Level: tetragon.LogLevel(changedLogLevel),
+		}, nil
+	default:
+		logger.GetLogger().WithField("request", req).Warnf("Client requested change of unknown config flag %d", req.GetFlag())
+		return nil, fmt.Errorf("client requested change of unknown config flag %d", req.GetFlag())
+	}
+}

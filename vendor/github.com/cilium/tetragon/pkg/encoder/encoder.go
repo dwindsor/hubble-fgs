@@ -226,6 +226,10 @@ func HumanStackTrace(response *tetragon.GetEventsResponse, colorer *Colorer) str
 
 func (p *CompactEncoder) EventToString(response *tetragon.GetEventsResponse) (string, error) {
 	switch response.Event.(type) {
+	case *tetragon.GetEventsResponse_Test:
+		// This shouldn't normally be reachable since Tetragon won't generate Test
+		// events outside of specific unit tests.
+		return "TEST EVENT", nil
 	case *tetragon.GetEventsResponse_ProcessExec:
 		exec := response.GetProcessExec()
 		if exec.Process == nil {
@@ -491,6 +495,14 @@ func (p *CompactEncoder) EventToString(response *tetragon.GetEventsResponse) (st
 			event := p.Colorer.Blue.Sprintf("⁉️ %-7s", "tracepoint")
 			return CapTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, tp.Subsys, tp.Event), caps), nil
 		}
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		uprobe := response.GetProcessUprobe()
+		if uprobe.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		processInfo, caps := p.Colorer.ProcessInfo(response.NodeName, uprobe.Process)
+		event := p.Colorer.Blue.Sprintf("🕵️ %-7s", "uprobe")
+		return CapTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, uprobe.Path, uprobe.Symbol), caps), nil
 	case *tetragon.GetEventsResponse_ProcessLsm:
 		lsm := response.GetProcessLsm()
 		if lsm.Process == nil {
@@ -501,7 +513,7 @@ func (p *CompactEncoder) EventToString(response *tetragon.GetEventsResponse) (st
 		return CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, lsm.FunctionName), caps), nil
 	}
 
-	return "", ErrUnknownEventType
+	return "", fmt.Errorf("%w: %s", ErrUnknownEventType, response.EventType())
 }
 
 func rawSyscallEnter(tp *tetragon.ProcessTracepoint) string {

@@ -79,6 +79,8 @@
     - [EnableSensorResponse](#tetragon-EnableSensorResponse)
     - [EnableTracingPolicyRequest](#tetragon-EnableTracingPolicyRequest)
     - [EnableTracingPolicyResponse](#tetragon-EnableTracingPolicyResponse)
+    - [GetDebugRequest](#tetragon-GetDebugRequest)
+    - [GetDebugResponse](#tetragon-GetDebugResponse)
     - [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest)
     - [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse)
     - [GetVersionRequest](#tetragon-GetVersionRequest)
@@ -90,8 +92,12 @@
     - [RemoveSensorRequest](#tetragon-RemoveSensorRequest)
     - [RemoveSensorResponse](#tetragon-RemoveSensorResponse)
     - [SensorStatus](#tetragon-SensorStatus)
+    - [SetDebugRequest](#tetragon-SetDebugRequest)
+    - [SetDebugResponse](#tetragon-SetDebugResponse)
     - [TracingPolicyStatus](#tetragon-TracingPolicyStatus)
   
+    - [ConfigFlag](#tetragon-ConfigFlag)
+    - [LogLevel](#tetragon-LogLevel)
     - [TracingPolicyState](#tetragon-TracingPolicyState)
   
     - [FineGuidanceSensors](#tetragon-FineGuidanceSensors)
@@ -1470,6 +1476,37 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 
 
 
+<a name="tetragon-GetDebugRequest"></a>
+
+### GetDebugRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| flag | [ConfigFlag](#tetragon-ConfigFlag) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetDebugResponse"></a>
+
+### GetDebugResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| flag | [ConfigFlag](#tetragon-ConfigFlag) |  |  |
+| level | [LogLevel](#tetragon-LogLevel) |  |  |
+
+
+
+
+
+
 <a name="tetragon-GetStackTraceTreeRequest"></a>
 
 ### GetStackTraceTreeRequest
@@ -1617,6 +1654,38 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 
 
 
+<a name="tetragon-SetDebugRequest"></a>
+
+### SetDebugRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| flag | [ConfigFlag](#tetragon-ConfigFlag) |  |  |
+| level | [LogLevel](#tetragon-LogLevel) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SetDebugResponse"></a>
+
+### SetDebugResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| flag | [ConfigFlag](#tetragon-ConfigFlag) |  |  |
+| level | [LogLevel](#tetragon-LogLevel) |  |  |
+
+
+
+
+
+
 <a name="tetragon-TracingPolicyStatus"></a>
 
 ### TracingPolicyStatus
@@ -1640,6 +1709,34 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 
 
  
+
+
+<a name="tetragon-ConfigFlag"></a>
+
+### ConfigFlag
+For now, we only want to support debug-related config flags to be configurable.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CONFIG_FLAG_LOG_LEVEL | 0 |  |
+
+
+
+<a name="tetragon-LogLevel"></a>
+
+### LogLevel
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LOG_LEVEL_PANIC | 0 |  |
+| LOG_LEVEL_FATAL | 1 |  |
+| LOG_LEVEL_ERROR | 2 |  |
+| LOG_LEVEL_WARN | 3 |  |
+| LOG_LEVEL_INFO | 4 |  |
+| LOG_LEVEL_DEBUG | 5 |  |
+| LOG_LEVEL_TRACE | 6 |  |
+
 
 
 <a name="tetragon-TracingPolicyState"></a>
@@ -1684,6 +1781,8 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | GetStackTraceTree | [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse) |  |
 | GetVersion | [GetVersionRequest](#tetragon-GetVersionRequest) | [GetVersionResponse](#tetragon-GetVersionResponse) |  |
 | RuntimeHook | [RuntimeHookRequest](#tetragon-RuntimeHookRequest) | [RuntimeHookResponse](#tetragon-RuntimeHookResponse) |  |
+| GetDebug | [GetDebugRequest](#tetragon-GetDebugRequest) | [GetDebugResponse](#tetragon-GetDebugResponse) |  |
+| SetDebug | [SetDebugRequest](#tetragon-SetDebugRequest) | [SetDebugResponse](#tetragon-SetDebugResponse) |  |
 
  
 

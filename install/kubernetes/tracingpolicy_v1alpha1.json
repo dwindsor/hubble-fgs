@@ -157,7 +157,9 @@
                             "In",
                             "NotIn",
                             "Prefix",
-                            "NotPrefix"
+                            "NotPrefix",
+                            "Postfix",
+                            "NotPostfix"
                           ],
                           "type": "string"
                         },
@@ -540,7 +542,9 @@
                             "In",
                             "NotIn",
                             "Prefix",
-                            "NotPrefix"
+                            "NotPrefix",
+                            "Postfix",
+                            "NotPostfix"
                           ],
                           "type": "string"
                         },
@@ -1193,7 +1197,9 @@
                               "In",
                               "NotIn",
                               "Prefix",
-                              "NotPrefix"
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix"
                             ],
                             "type": "string"
                           },
@@ -1892,7 +1898,9 @@
                               "In",
                               "NotIn",
                               "Prefix",
-                              "NotPrefix"
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix"
                             ],
                             "type": "string"
                           },
@@ -3495,7 +3503,9 @@
                               "In",
                               "NotIn",
                               "Prefix",
-                              "NotPrefix"
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix"
                             ],
                             "type": "string"
                           },
@@ -4149,7 +4159,9 @@
                               "In",
                               "NotIn",
                               "Prefix",
-                              "NotPrefix"
+                              "NotPrefix",
+                              "Postfix",
+                              "NotPostfix"
                             ],
                             "type": "string"
                           },

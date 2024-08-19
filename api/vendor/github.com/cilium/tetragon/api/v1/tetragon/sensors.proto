@@ -125,6 +125,38 @@ message GetVersionResponse{
 	string version = 1;
 }
 
+// For now, we only want to support debug-related config flags to be configurable.
+enum ConfigFlag {
+	CONFIG_FLAG_LOG_LEVEL = 0;
+}
+
+enum LogLevel {
+	LOG_LEVEL_PANIC = 0;
+	LOG_LEVEL_FATAL = 1;
+	LOG_LEVEL_ERROR = 2;
+	LOG_LEVEL_WARN = 3;
+	LOG_LEVEL_INFO = 4;
+	LOG_LEVEL_DEBUG = 5;
+	LOG_LEVEL_TRACE = 6;
+}
+
+message GetDebugRequest{
+	ConfigFlag flag = 1;
+}
+message GetDebugResponse{
+	ConfigFlag flag = 1;
+	LogLevel level = 2;
+}
+
+message SetDebugRequest{
+	ConfigFlag flag = 1;
+	LogLevel level = 2;
+}
+message SetDebugResponse{
+	ConfigFlag flag = 1;
+	LogLevel level = 2;
+}
+
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
@@ -153,4 +185,7 @@ service FineGuidanceSensors {
     rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
 
     rpc RuntimeHook(RuntimeHookRequest) returns (RuntimeHookResponse) {}
+
+    rpc GetDebug(GetDebugRequest) returns (GetDebugResponse) {}
+    rpc SetDebug(SetDebugRequest) returns (SetDebugResponse) {}
 }
