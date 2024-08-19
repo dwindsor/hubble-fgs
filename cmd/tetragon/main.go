@@ -403,6 +403,7 @@ func hubbleFGSExecute() error {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
+	k8sWatcher.Start()
 	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
@@ -463,7 +464,8 @@ func hubbleFGSExecute() error {
 	}
 
 	log.WithField("enabled", option.Config.ExportFilename != "").WithField("fileName", option.Config.ExportFilename).Info("Exporter configuration")
-
+	obs.AddListener(pm)
+	saveInitInfo()
 	if option.Config.EnableK8s {
 		if option.Config.EnableTracingPolicyCRD {
 			go osscrd.WatchTracePolicy(ctx, observer.GetSensorManager())
@@ -487,8 +489,7 @@ func hubbleFGSExecute() error {
 	cgrouprate.NewCgroupRate(ctx, pm, base.CgroupRateMap, &option.Config.CgroupRate)
 	cgrouprate.Config(base.CgroupRateOptionsMap)
 
-	// The last step before making the system live is to bring up any default policy
-	// configuration we may need.
+	// now that the base sensor was loaded, we can start the sensor manager
 	close(sensorMgWait)
 	sensorMgWait = nil
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
@@ -524,12 +525,6 @@ func hubbleFGSExecute() error {
 			).Fatal("sandbox policies specified but the feature is disabled")
 		}
 	}
-
-	// now that the base sensor was loaded, we can start the sensor manager
-	// kick start the K8s watchers and listeners. After this we are live
-	k8sWatcher.Start()
-	obs.AddListener(pm)
-	saveInitInfo()
 
 	// Remove previous tetragon instance if detected
 	deleteOldBpfDir(oldBpfDir)
