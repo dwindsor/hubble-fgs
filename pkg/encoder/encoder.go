@@ -265,6 +265,26 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		inodeNumber = p.colorer.Cyan.Sprint(inodeNumber)
 
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s", eventName, processInfo, fileName, inodeNumber), caps), nil
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		event := response.GetProcessRawsockCreate()
+		if event.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		eventName := p.colorer.Blue.Sprintf("🔌 %-7s", "rawsock-create")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
+		cookie := p.colorer.Cyan.Sprint(event.SockCookie)
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, cookie), caps), nil
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		event := response.GetProcessRawsockClose()
+		if event.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		eventName := p.colorer.Blue.Sprintf("\U0001F9F9 %-7s", "rawsock-close")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
+		cookie := p.colorer.Cyan.Sprint(event.SockCookie)
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, cookie), caps), nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		dns := response.GetProcessDns()
 		if dns.Process == nil {
