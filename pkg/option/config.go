@@ -30,6 +30,8 @@ type config struct {
 	EnableSandboxPoliciesCRD bool
 	SandboxPolicies          []string
 	EnableCilium             bool
+
+	DebugX []string
 }
 
 var (

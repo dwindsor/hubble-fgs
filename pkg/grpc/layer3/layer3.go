@@ -735,20 +735,20 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		version = networkapi.IPv6Family
 	}
 
-	var details string
+	var details iperrormetrics.Config
 	var ok bool
 
 	// Lower 32 bits is error code, upper 32 bits is data if required.
 	errorCode := event.Msg.Return & 0xffffffff
-	if details, ok = iperrormetrics.IpErrorToString[iperrormetrics.Error(errorCode)]; ok {
+	if details, ok = iperrormetrics.IpErrorToString[iperrormetrics.IpError(errorCode)]; ok {
 		// Populate the metrics here before we parameterize with any data, otherwise we
 		// risk cardinality exploding
-		iperrormetrics.ProcessIpErrors(details, version).Inc()
+		iperrormetrics.ProcessIpErrors(details.Msg, version).Inc()
 		if errorCode == 5 {
-			details = details + fmt.Sprintf(": %d", event.Msg.Return>>32)
+			details.Msg = details.Msg + fmt.Sprintf(": %d", event.Msg.Return>>32)
 		}
 	} else {
-		details = "Unknown error"
+		details = iperrormetrics.Config{Msg: "Unknown error", Protocol: iperrormetrics.Unknown}
 	}
 
 	var send string
@@ -766,7 +766,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		DestinationIp: destinationIP.String(),
 		Version:       version,
 		SockCookie:    event.Msg.SockCookie,
-		Details:       details,
+		Details:       details.Msg,
 		Send:          send,
 		VersionByte:   uint64(event.Msg.Tuple.VersionByte),
 		Data:          event.Msg.CreateTime, // We use the CreateTime field to pass error data
@@ -787,28 +787,30 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		return nil
 	}
 
-	// Report error to console.
-	// This sounds dubious but is actually quite sensible. In a perfect system
-	// where the code is robust and handles all situations, no error events will
-	// be generated so no errors will be reported to the console. If, however,
-	// issues cause errors to be generated, then we really need to know about
-	// them and console messages are a great way to get attention while preserving
-	// some context relative to other logger console messages. We will not ship a
-	// release that has produced lots of error messages in dogfooding, so this
-	// approach should focus efforts on removing the bugs that cause these errors.
-	//
-	// Still, if necessary, a switch statement can be used to choose which error
-	// types should be reported to the console or not.
-	logger.GetLogger().WithFields(logrus.Fields{
-		"Process":     fgsProcess,
-		"Tuple":       event.Msg.Tuple.String(),
-		"Cookie":      event.Msg.SockCookie,
-		"IpVersion":   version,
-		"Details":     details,
-		"Send":        send,
-		"VersionByte": uint64(event.Msg.Tuple.VersionByte),
-		"Data":        event.Msg.CreateTime,
-	}).Warn("IP error. This is a bug, please report it to Tetragon developers.")
+	if iperrormetrics.ProtoConsoleEnabled(details.Protocol) {
+		// Report error to console.
+		// This sounds dubious but is actually quite sensible. In a perfect system
+		// where the code is robust and handles all situations, no error events will
+		// be generated so no errors will be reported to the console. If, however,
+		// issues cause errors to be generated, then we really need to know about
+		// them and console messages are a great way to get attention while preserving
+		// some context relative to other logger console messages. We will not ship a
+		// release that has produced lots of error messages in dogfooding, so this
+		// approach should focus efforts on removing the bugs that cause these errors.
+		//
+		// Still, if necessary, a switch statement can be used to choose which error
+		// types should be reported to the console or not.
+		logger.GetLogger().WithFields(logrus.Fields{
+			"Process":     fgsProcess,
+			"Tuple":       event.Msg.Tuple.String(),
+			"Cookie":      event.Msg.SockCookie,
+			"IpVersion":   version,
+			"Details":     details.Msg,
+			"Send":        send,
+			"VersionByte": uint64(event.Msg.Tuple.VersionByte),
+			"Data":        event.Msg.CreateTime,
+		}).Warn("IP error. This is a bug, please report it to Tetragon developers.")
+	}
 
 	return fgsEvent
 }

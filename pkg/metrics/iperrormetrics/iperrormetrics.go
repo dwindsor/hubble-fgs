@@ -13,13 +13,14 @@ package iperrormetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type Error int
+type IpError int
 
 const (
-	HeaderError Error = iota
+	HeaderError IpError = iota
 	NoHeapAvailable
 	ReadIpv6NextFailedKprobe
 	ReadIpv6NextFailedSkbLoad
@@ -76,62 +77,85 @@ const (
 	TcpRttEqualsZero
 )
 
-var IpErrorToString = map[Error]string{
-	HeaderError:                      "Header error",
-	NoHeapAvailable:                  "No heap available",
-	ReadIpv6NextFailedKprobe:         "Read IPv6 next failed (probe)",
-	ReadIpv6NextFailedSkbLoad:        "Read IPv6 next failed (skb_load)",
-	ReadIpv6NextFailedSkb:            "Read IPv6 next failed (skb)",
-	UnknownIpv6Extension:             "Unknown IPv6 extension",
-	TooManyIpv6Extensions:            "Too many IPv6 extensions",
-	UdpStackNoCookie:                 "UDP stack no cookie",
-	UdpStackReadVersionFailed:        "UDP stack read version failed",
-	UdpStackReadIpHeaderFailed:       "UDP stack read IP header failed",
-	UdpStackReadUdpHeaderFailed:      "UDP stack read UDP header failed",
-	UdpStackNoPayloadOffset:          "UDP stack no payload offset",
-	UdpStackInvalidIpVersion:         "UDP stack invalid IP version",
-	UdpStackBurstNoProcess:           "UDP stack burst no process",
-	UdpStackBurstNoPID:               "UDP stack burst no PID",
-	UdpStackReadPayloadFailed:        "UDP stack read payload failed",
-	UdpSendNoSocketInfo:              "UDP send no socket info",
-	UdpSendNoCookie:                  "UDP send no cookie",
-	UdpRecvNoCookie:                  "UDP recv no cookie",
-	UdpRecvReadIpHeaderFailed:        "UDP recv read IP header failed",
-	UdpRecvReadUdpHeaderFailed:       "UDP recv read UDP header failed",
-	UdpRecvInvalidIpVersion:          "UDP recv invalid IP version",
-	UdpSockCreateNoCookie:            "UDP sock create no cookie",
-	UdpSockReleaseNoCookie:           "UDP sock release no cookie",
-	UdpFailedToReadIpOption:          "UDP failed to read IP option",
-	UdpRetprobeAddFailed:             "UDP retprobe add failed",
-	UdpRetprobeDeleteFailed:          "UDP retprobe delete failed",
-	UdpSockReleaseNoSock:             "UDP sock release no sock",
-	UdpSendMissingProcess:            "UDP send missing process",
-	UdpRecvMissingProcess:            "UDP recv missing process",
-	UpdateSocketmapNoProcess:         "Update socketmap no process",
-	SocketDiscoveryNoProcess:         "Socket discovery no process",
-	SocketDiscoveryReadError:         "Socket discovery read error",
-	UdpSockCreateNoProcess:           "UDP sock create no process",
-	SocketDiscoveryNoSk:              "Socket discovery no sk",
-	UdpSockCreatePid0:                "UDP sock create PID=0",
-	UdpSequenceCheckReadPayloadFlags: "UDP sequence check read payload flags",
-	UdpSequenceCheckReadPayloadData:  "UDP sequence check read payload data",
-	TcpAcceptRetMissingProcess:       "TCP accept return missing process",
-	TcpAcceptRetNoCookie:             "TCP accept return no cookie",
-	TcpAcceptNoCookie:                "TCP accept no cookie",
-	TcpAcceptNoSocket:                "TCP accept no socket",
-	TcpCloseNoSocket:                 "TCP close no socket",
-	TcpConnectNoProcess:              "TCP connect no process",
-	TcpListenNoProcess:               "TCP listen no process",
-	TcpTimestampNoSocket:             "TCP timestamp no socket",
-	TcpSendNoCookie:                  "TCP send no cookie",
-	TcpSendNoIpHeader:                "TCP send no IP header",
-	TcpSendNoSocket:                  "TCP send no socket",
-	TcpSendNoSk:                      "TCP send no sk",
-	TcpSendNoTcpSock:                 "TCP send no TCP socket",
-	TcpRecvNoCookie:                  "TCP recv no cookie",
-	TcpRecvNoIpHeader:                "TCP recv no IP header",
-	TcpRttNoSocket:                   "TCP RTT no socket",
-	TcpRttEqualsZero:                 "TCP RTT equals zero",
+type Protocol int
+
+const (
+	Unknown Protocol = iota
+	Tcp
+	Udp
+	Ipv6
+	SocketDiscovery
+)
+
+var ProtocolToString = map[Protocol]string{
+	Unknown:         "unknown",
+	Tcp:             "tcp",
+	Udp:             "udp",
+	Ipv6:            "ipv6",
+	SocketDiscovery: "socketdiscovery",
+}
+
+type Config struct {
+	Msg      string
+	Protocol Protocol
+}
+
+var IpErrorToString = map[IpError]Config{
+	HeaderError:                      {Msg: "Header error", Protocol: Ipv6},
+	NoHeapAvailable:                  {Msg: "No heap available", Protocol: Ipv6},
+	ReadIpv6NextFailedKprobe:         {Msg: "Read IPv6 next failed (probe)", Protocol: Ipv6},
+	ReadIpv6NextFailedSkbLoad:        {Msg: "Read IPv6 next failed (skb_load)", Protocol: Ipv6},
+	ReadIpv6NextFailedSkb:            {Msg: "Read IPv6 next failed (skb)", Protocol: Ipv6},
+	UnknownIpv6Extension:             {Msg: "Unknown IPv6 extension", Protocol: Ipv6},
+	TooManyIpv6Extensions:            {Msg: "Too many IPv6 extensions", Protocol: Ipv6},
+	UdpStackNoCookie:                 {Msg: "UDP stack no cookie", Protocol: Udp},
+	UdpStackReadVersionFailed:        {Msg: "UDP stack read version failed", Protocol: Udp},
+	UdpStackReadIpHeaderFailed:       {Msg: "UDP stack read IP header failed", Protocol: Udp},
+	UdpStackReadUdpHeaderFailed:      {Msg: "UDP stack read UDP header failed", Protocol: Udp},
+	UdpStackNoPayloadOffset:          {Msg: "UDP stack no payload offset", Protocol: Udp},
+	UdpStackInvalidIpVersion:         {Msg: "UDP stack invalid IP version", Protocol: Udp},
+	UdpStackBurstNoProcess:           {Msg: "UDP stack burst no process", Protocol: Udp},
+	UdpStackBurstNoPID:               {Msg: "UDP stack burst no PID", Protocol: Udp},
+	UdpStackReadPayloadFailed:        {Msg: "UDP stack read payload failed", Protocol: Udp},
+	UdpSendNoSocketInfo:              {Msg: "UDP send no socket info", Protocol: Udp},
+	UdpSendNoCookie:                  {Msg: "UDP send no cookie", Protocol: Udp},
+	UdpRecvNoCookie:                  {Msg: "UDP recv no cookie", Protocol: Udp},
+	UdpRecvReadIpHeaderFailed:        {Msg: "UDP recv read IP header failed", Protocol: Udp},
+	UdpRecvReadUdpHeaderFailed:       {Msg: "UDP recv read UDP header failed", Protocol: Udp},
+	UdpRecvInvalidIpVersion:          {Msg: "UDP recv invalid IP version", Protocol: Udp},
+	UdpSockCreateNoCookie:            {Msg: "UDP sock create no cookie", Protocol: Udp},
+	UdpSockReleaseNoCookie:           {Msg: "UDP sock release no cookie", Protocol: Udp},
+	UdpFailedToReadIpOption:          {Msg: "UDP failed to read IP option", Protocol: Udp},
+	UdpRetprobeAddFailed:             {Msg: "UDP retprobe add failed", Protocol: Udp},
+	UdpRetprobeDeleteFailed:          {Msg: "UDP retprobe delete failed", Protocol: Udp},
+	UdpSockReleaseNoSock:             {Msg: "UDP sock release no sock", Protocol: Udp},
+	UdpSendMissingProcess:            {Msg: "UDP send missing process", Protocol: Udp},
+	UdpRecvMissingProcess:            {Msg: "UDP recv missing process", Protocol: Udp},
+	UpdateSocketmapNoProcess:         {Msg: "Update socketmap no process", Protocol: Udp},
+	SocketDiscoveryNoProcess:         {Msg: "Socket discovery no process", Protocol: SocketDiscovery},
+	SocketDiscoveryReadError:         {Msg: "Socket discovery read error", Protocol: SocketDiscovery},
+	UdpSockCreateNoProcess:           {Msg: "UDP sock create no process", Protocol: Udp},
+	SocketDiscoveryNoSk:              {Msg: "Socket discovery no sk", Protocol: SocketDiscovery},
+	UdpSockCreatePid0:                {Msg: "UDP sock create PID=0", Protocol: Udp},
+	UdpSequenceCheckReadPayloadFlags: {Msg: "UDP sequence check read payload flags", Protocol: Udp},
+	UdpSequenceCheckReadPayloadData:  {Msg: "UDP sequence check read payload data", Protocol: Udp},
+	TcpAcceptRetMissingProcess:       {Msg: "TCP accept return missing process", Protocol: Tcp},
+	TcpAcceptRetNoCookie:             {Msg: "TCP accept return no cookie", Protocol: Tcp},
+	TcpAcceptNoCookie:                {Msg: "TCP accept no cookie", Protocol: Tcp},
+	TcpAcceptNoSocket:                {Msg: "TCP accept no socket", Protocol: Tcp},
+	TcpCloseNoSocket:                 {Msg: "TCP close no socket", Protocol: Tcp},
+	TcpConnectNoProcess:              {Msg: "TCP connect no process", Protocol: Tcp},
+	TcpListenNoProcess:               {Msg: "TCP listen no process", Protocol: Tcp},
+	TcpTimestampNoSocket:             {Msg: "TCP timestamp no socket", Protocol: Tcp},
+	TcpSendNoCookie:                  {Msg: "TCP send no cookie", Protocol: Tcp},
+	TcpSendNoIpHeader:                {Msg: "TCP send no IP header", Protocol: Tcp},
+	TcpSendNoSocket:                  {Msg: "TCP send no socket", Protocol: Tcp},
+	TcpSendNoSk:                      {Msg: "TCP send no sk", Protocol: Tcp},
+	TcpSendNoTcpSock:                 {Msg: "TCP send no TCP socket", Protocol: Tcp},
+	TcpRecvNoCookie:                  {Msg: "TCP recv no cookie", Protocol: Tcp},
+	TcpRecvNoIpHeader:                {Msg: "TCP recv no IP header", Protocol: Tcp},
+	TcpRttNoSocket:                   {Msg: "TCP RTT no socket", Protocol: Tcp},
+	TcpRttEqualsZero:                 {Msg: "TCP RTT equals zero", Protocol: Tcp},
 }
 
 var (
@@ -145,13 +169,39 @@ var (
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(processIpErrors)
 
-	for _, error := range IpErrorToString {
+	for _, errorStr := range IpErrorToString {
 		for _, version := range networkapi.IPFamilies {
-			ProcessIpErrors(error, version).Add(0)
+			ProcessIpErrors(errorStr.Msg, version).Add(0)
 		}
 	}
 }
 
 func ProcessIpErrors(err string, version string) prometheus.Counter {
 	return processIpErrors.WithLabelValues(err, version)
+}
+
+func ProtoEnabled(proto Protocol) bool {
+	pstr, ok := ProtocolToString[proto]
+	if !ok {
+		return false
+	}
+	for _, p := range option.Config.DebugX {
+		if pstr == p || pstr+"+" == p {
+			return true
+		}
+	}
+	return false
+}
+
+func ProtoConsoleEnabled(proto Protocol) bool {
+	pstr, ok := ProtocolToString[proto]
+	if !ok {
+		return false
+	}
+	for _, p := range option.Config.DebugX {
+		if pstr+"+" == p {
+			return true
+		}
+	}
+	return false
 }

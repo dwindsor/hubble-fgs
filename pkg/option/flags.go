@@ -42,6 +42,7 @@ const (
 	keyEnableSandboxPolicies    = "enable-sandboxpolicies"
 	keyEnableSandboxPoliciesCRD = "enable-sandboxpolicies-crd"
 	keySandboxPolicy            = "sandbox-policy"
+	keyDebugX                   = "debugx"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -76,6 +77,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
 	flags.Bool(keyEnableSandboxPoliciesCRD, true, "Enable SandboxPolicy and SanboxPolicyNamespaced custom resources")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
+	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -108,4 +110,5 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
 	Config.EnableSandboxPoliciesCRD = viper.GetBool(keyEnableSandboxPoliciesCRD)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
+	Config.DebugX = viper.GetStringSlice(keyDebugX)
 }

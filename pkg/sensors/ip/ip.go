@@ -221,6 +221,17 @@ func findPidFdForCookie(cookie uint64) (int, int, int, error) {
 	return 0, 0, 0, fmt.Errorf("failed to find pid and fd for cookie")
 }
 
+func incMetric(code int64, ipv6 uint8) {
+	var version string
+	if ipv6 == 0 {
+		version = networkapi.IPv4Family
+	} else {
+		version = networkapi.IPv6Family
+	}
+	iperrormetrics.ProcessIpErrors(iperrormetrics.IpErrorToString[iperrormetrics.IpError(code)].Msg, version).Inc()
+
+}
+
 func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
@@ -228,26 +239,31 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 
-	if iperrormetrics.Error(m.Return) == iperrormetrics.UdpStackBurstNoProcess {
+	if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess {
 		pid, fd, family, err := findPidFdForCookie(m.SockCookie)
 		if err == nil {
 			GetSocketForFD(syscall.IPPROTO_UDP, pid, fd, m.SockCookie, family)
 		}
 	}
 
-	switch iperrormetrics.Error(m.Return) {
+	switch iperrormetrics.IpError(m.Return) {
 	case iperrormetrics.UdpStackBurstNoProcess,
 		iperrormetrics.SocketDiscoveryReadError,
 		iperrormetrics.TcpRttEqualsZero:
 		// Just increment the metric and don't report the event.
-		var version string
-		if m.Tuple.IPv6 == 0 {
-			version = networkapi.IPv4Family
-		} else {
-			version = networkapi.IPv6Family
-		}
-		iperrormetrics.ProcessIpErrors(iperrormetrics.IpErrorToString[iperrormetrics.Error(m.Return)], version).Inc()
-		return nil, fmt.Errorf("IP Error handled as metric only")
+		incMetric(m.Return, m.Tuple.IPv6)
+		return nil, nil
+	}
+
+	errorMsg, ok := iperrormetrics.IpErrorToString[iperrormetrics.IpError(m.Return)]
+	if !ok {
+		errorMsg = iperrormetrics.Config{Protocol: iperrormetrics.Unknown}
+	}
+
+	if !iperrormetrics.ProtoEnabled(errorMsg.Protocol) {
+		// Just increment the metric and don't report the event.
+		incMetric(m.Return, m.Tuple.IPv6)
+		return nil, nil
 	}
 
 	msgUnix := MsgToIPUnix(&m)

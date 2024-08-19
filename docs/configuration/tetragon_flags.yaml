@@ -28,6 +28,10 @@ options:
       shorthand: d
       default_value: "false"
       usage: Enable debug messages. Equivalent to '--log-level=debug'
+    - name: debugx
+      default_value: '[]'
+      usage: |
+        Extended debug to enable (e.g. "tcp,udp+"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages
     - name: detach-old-bpf
       default_value: "false"
       usage: |
