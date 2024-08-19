@@ -33,6 +33,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
+	"github.com/cilium/tetragon/pkg/sensors/exec/userinfo"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
@@ -287,6 +288,8 @@ func pushExecveEvents(p procs) {
 		m.Unix.Msg.Common.Ktime = p.ktime
 		m.Unix.Process.Filename = filename
 		m.Unix.Process.Args = args
+
+		userinfo.MsgToExecveAccountUnix(m.Unix)
 
 		observer.AllListeners(&m)
 	}
