@@ -3,9 +3,9 @@ package endpoint
 import (
 	"encoding/binary"
 	"net"
-	"path/filepath"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -36,8 +36,9 @@ type Endpoint struct {
 }
 
 type Cache struct {
-	cache    *lru.Cache[uint64, Endpoint]
-	revCache *lru.Cache[Endpoint, uint64]
+	cache       *lru.Cache[uint64, Endpoint]
+	revCache    *lru.Cache[Endpoint, uint64]
+	endpointMap *ebpf.Map
 }
 
 var (
@@ -64,9 +65,27 @@ func newCache() (*Cache, error) {
 		return nil, err
 	}
 
+	spec := &ebpf.MapSpec{
+		Name:       endpointIdMap,
+		Type:       bpf.BPF_MAP_TYPE_LRU_HASH,
+		KeySize:    uint32(unsafe.Sizeof(endpointKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(endpointValue{})),
+		MaxEntries: uint32(enterpriseOption.Config.EndpointCacheSize),
+		Pinning:    ebpf.PinByName,
+	}
+	opts := ebpf.MapOptions{
+		PinPath: bpf.MapPrefixPath(),
+	}
+	m, err := ebpf.NewMapWithOptions(spec, opts)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Could not create endpoint map")
+		return nil, err
+	}
+
 	cache = &Cache{
-		cache:    fwdlru,
-		revCache: revLru,
+		cache:       fwdlru,
+		revCache:    revLru,
+		endpointMap: m,
 	}
 
 	return cache, nil
@@ -122,13 +141,6 @@ func (c *Cache) LookupID(lookup uint64) (value Endpoint, ok bool) {
 }
 
 func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
-	file := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
-	m, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		return 0, err
-	}
-	defer m.Close()
-
 	var (
 		key   endpointKey
 		value endpointValue
@@ -137,21 +149,13 @@ func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
 	key.Addr[0] = uint64(binary.LittleEndian.Uint32(ip[0:]))
 	key.Addr[1] = 0
 
-	if err := m.Lookup(&key, &value); err != nil {
+	if err := c.endpointMap.Lookup(&key, &value); err != nil {
 		return 0, err
 	}
 	return value.Id, nil
 }
 
 func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
-	file := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
-	m, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
-		return
-	}
-	defer m.Close()
-
 	var (
 		key   endpointKey
 		value endpointValue
@@ -181,7 +185,7 @@ func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 		} else {
 			continue
 		}
-		if err := m.Update(key, value, 0); err != nil {
+		if err := c.endpointMap.Update(key, value, 0); err != nil {
 			logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
 			continue
 		}
@@ -192,14 +196,6 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 	if !dns.Response {
 		return
 	}
-
-	file := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
-	m, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
-		return
-	}
-	defer m.Close()
 
 	var (
 		key   endpointKey
@@ -227,7 +223,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 		// to anyways in most cases without L7 visibility. e.g. in
 		// HTTP the endpoint may be determined by the Host field.
 		var tmp endpointValue
-		if err := m.Lookup(key, &tmp); err == nil {
+		if err := c.endpointMap.Lookup(key, &tmp); err == nil {
 			epExists, ok := c.cache.Get(tmp.Id)
 			if !ok {
 				logger.GetLogger().WithError(err).Warn("AddIpDnsMap BPF map and user cache out of sync")
@@ -261,7 +257,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 				value.Id = c.insertNewEndpoint(ep)
 			}
 
-			if err := m.Update(key, value, 0); err != nil {
+			if err := c.endpointMap.Update(key, value, 0); err != nil {
 				logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
 				continue
 			}
