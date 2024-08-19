@@ -285,6 +285,18 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		cookie := p.colorer.Cyan.Sprint(event.SockCookie)
 
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, cookie), caps), nil
+	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
+		event := response.GetProcessNetworkBurst()
+		if event.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		eventName := p.colorer.Blue.Sprintf("🤯 %-7s", "netburst")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
+		protocol := p.colorer.Cyan.Sprint(event.Protocol)
+		direction := p.colorer.Green.Sprint(event.Protocol)
+		burstState := p.colorer.Red.Sprint(event.BurstState)
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s", eventName, processInfo, protocol, direction, burstState), caps), nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		dns := response.GetProcessDns()
 		if dns.Process == nil {
