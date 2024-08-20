@@ -31,9 +31,7 @@ const (
 )
 
 type binary struct {
-	Length   int64
-	Path     [256]byte
-	MbBitSet uint64
+	Path [256]byte
 }
 
 type ProcessExecveKey struct {

@@ -56,7 +56,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct binary));
+	__type(key, __u8[BINARY_PATH_MAX_LEN]);
 	__uint(value_size, sizeof(struct msg_execve_key));
 } process_tree_binary_uid_map SEC(".maps");
 

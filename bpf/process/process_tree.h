@@ -74,12 +74,12 @@ int insert_process_tree(void)
 		return 0;
 
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map,
-				   &curr->bin);
+				   curr->bin.path);
 	if (!self_uid) {
 		map_update_elem(&process_tree_uid_binary_map,
 				&curr->key, &curr->bin, 0);
 		map_update_elem(&process_tree_binary_uid_map,
-				&curr->bin, &curr->key, 0);
+				curr->bin.path, &curr->key, 0);
 		self_uid = &curr->key;
 	}
 
@@ -93,7 +93,7 @@ int insert_process_tree(void)
 	if (!parent) {
 		parent_uid = &zero_uid;
 	} else {
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
 		if (!parent_uid)
 			parent_uid = &zero_uid;
 	}
@@ -154,7 +154,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	if (!curr)
 		return 0;
 
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map, &curr->bin);
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, curr->bin.path);
 	if (!self_uid)
 		return 0;
 
@@ -166,7 +166,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	if (!parent) {
 		parent_uid = &zero_uid;
 	} else {
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, &parent->bin);
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
 		if (!parent_uid)
 			parent_uid = &zero_uid;
 	}
