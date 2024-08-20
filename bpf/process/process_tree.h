@@ -77,7 +77,7 @@ int insert_process_tree(void)
 				   curr->bin.path);
 	if (!self_uid) {
 		map_update_elem(&process_tree_uid_binary_map,
-				&curr->key, &curr->bin, 0);
+				&curr->key, &curr->bin.path, 0);
 		map_update_elem(&process_tree_binary_uid_map,
 				curr->bin.path, &curr->key, 0);
 		self_uid = &curr->key;
