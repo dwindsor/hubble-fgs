@@ -15,7 +15,7 @@ hostNetwork: true
 tetragon:
   image:
     repository: quay.io/isovalent/tetragon
-    tag: v1.14.0-rc4
+    tag: v1.14.0-rc5
   metadata:
     enabled: false
     image:
@@ -55,7 +55,7 @@ tetragon:
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.14.0-rc4
+    tag: v1.14.0-rc5
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
