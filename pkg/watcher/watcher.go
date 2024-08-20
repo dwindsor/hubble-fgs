@@ -84,37 +84,40 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 		},
 	})
 
+	podInfoInformerFactory := externalversions.NewSharedInformerFactory(tetragonClient, stateSyncIntervalSec)
+	podInfoInformer := podInfoInformerFactory.Cilium().V1alpha1().PodInfo().Informer()
+
 	// Init endpoint outside event handler to ensure we have maps and
 	// caches configured. But, more importantly avoid racing with sensor
 	// coming online. Because NewK8sWatcher is serialized with Sensor
-	// loads we avoid having to consider a Mutex.
-	endpoint.Get()
-
-	podInfoInformerFactory := externalversions.NewSharedInformerFactory(tetragonClient, stateSyncIntervalSec)
-	podInfoInformer := podInfoInformerFactory.Cilium().V1alpha1().PodInfo().Informer()
-	podInfoInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			switch t := obj.(type) {
-			case *v1alpha1.PodInfo:
-				c := endpoint.Get()
-				logger.GetLogger().Debug("Add Pod: %v", t)
-				c.AddIpPodMap(t)
-				model.CheckWorkloadQuotaPolicy(t)
-			}
-		},
-		UpdateFunc: func(old interface{}, _ interface{}) {
-			switch t := old.(type) {
-			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug("Update Pod: %v", t)
-			}
-		},
-		DeleteFunc: func(old interface{}) {
-			switch t := old.(type) {
-			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug("Delete Pod: %v", t)
-			}
-		},
-	})
+	// loads we avoid having to consider a Mutex. Get() may return nil
+	// if feature is not enabled.
+	c := endpoint.Get()
+	if c != nil {
+		podInfoInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				switch t := obj.(type) {
+				case *v1alpha1.PodInfo:
+					c := endpoint.Get()
+					logger.GetLogger().Debug("Add Pod: %v", t)
+					c.AddIpPodMap(t)
+					model.CheckWorkloadQuotaPolicy(t)
+				}
+			},
+			UpdateFunc: func(old interface{}, _ interface{}) {
+				switch t := old.(type) {
+				case *v1alpha1.PodInfo:
+					logger.GetLogger().Debug("Update Pod: %v", t)
+				}
+			},
+			DeleteFunc: func(old interface{}) {
+				switch t := old.(type) {
+				case *v1alpha1.PodInfo:
+					logger.GetLogger().Debug("Delete Pod: %v", t)
+				}
+			},
+		})
+	}
 
 	k8sWatcher.AddInformers(podInfoInformerFactory, &oss.InternalInformer{
 		Name:     podInfoInformerName,

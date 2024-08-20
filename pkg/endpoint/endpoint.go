@@ -14,6 +14,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -266,6 +267,10 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 }
 
 func Get() *Cache {
+	if !option.Config.EnableProcessTree {
+		return nil
+	}
+
 	initGlobalCache.Do(func() {
 		var err error
 
