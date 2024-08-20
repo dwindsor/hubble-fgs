@@ -113,7 +113,7 @@ func (c *Cache) AddEndpoint(ep Endpoint) (uint64, error) {
 	if !ok {
 		dstId = c.insertNewEndpoint(ep)
 	}
-	logger.GetLogger().Info("PolicyID %d allocated\n", dstId)
+	logger.GetLogger().WithField("id", dstId).Info("PolicyID allocated")
 	return dstId, nil
 }
 
