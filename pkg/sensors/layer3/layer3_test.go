@@ -127,6 +127,20 @@ func getNCCommand(t *testing.T, orig string) string {
 	return server
 }
 
+func getSocatCommand(t *testing.T, orig string) string {
+	if _, err := exec.LookPath(orig); err == nil {
+		return orig
+	}
+
+	server := "socat"
+	if _, err := exec.LookPath(server); err != nil {
+		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
+	}
+	t.Logf("Using %q instead of original program %q", server, orig)
+
+	return server
+}
+
 // Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
 // This is included to test latency timestamps are NOT added
 // to any real TCP packets.

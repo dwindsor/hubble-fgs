@@ -1211,6 +1211,96 @@ func TestUdpDetectLatency4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
+func TestUdpMulticast4(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getSocatCommand(t, "socat")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	socatSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("- UDP4-LISTEN:8100,ip-add-membership=224.0.0.1:lo"))
+
+	socatCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("- UDP4-DATAGRAM:224.0.0.1:8100"))
+
+	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats1").
+		WithProcess(socatCliChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithDestinationIp(sm.Full("224.0.0.1")).
+			WithDestinationPort(8100)).
+		WithStats(ec.NewSocketStatsChecker().
+			WithBytesSent(5).
+			WithBytesReceived(0))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
+		WithProcess(socatSrvChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithSourcePort(8100)).
+		WithStats(ec.NewSocketStatsChecker().
+			WithBytesReceived(5).
+			WithBytesSent(0))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(socatSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(socatCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("serverConnect").
+			WithProcess(socatSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("224.0.0.1")).
+			WithSourcePort(8100).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessConnectChecker("clientConnect").
+			WithProcess(socatCliChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("224.0.0.1")).
+			WithDestinationPort(8100).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		clientStatsChecker,
+		serverStatsChecker,
+	)
+
+	obs := getBasicUdpObserver(t, ctx)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-", "UDP4-LISTEN:8100,ip-add-membership=224.0.0.1:lo")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-", "UDP4-DATAGRAM:224.0.0.1:8100")
+	stdinClient, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdinClient.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
 func TestUdpConnectEvent6(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
