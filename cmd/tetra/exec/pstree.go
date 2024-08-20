@@ -20,6 +20,7 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 
@@ -169,9 +170,18 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		nsPrintList[hostNamespace] = true
 	}
 
+	nsKeys := make([]string, 0, len(nsCollections))
+	for nsKey := range nsCollections {
+		nsKeys = append(nsKeys, nsKey)
+	}
+	sort.Strings(nsKeys)
+
 	// For each namespace collection find workload collections
-	for n, r := range nsCollections {
+	for _, k := range nsKeys {
 		var nsStr string
+
+		n := k
+		r := nsCollections[k]
 
 		if n == "" {
 			nsStr = hostNamespace
@@ -202,7 +212,16 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			}
 		}
 
-		for wlStr, wlProcesses := range wlCollections {
+		wlKeys := make([]string, 0, len(wlCollections))
+		for key := range wlCollections {
+			wlKeys = append(wlKeys, key)
+		}
+		sort.Strings(wlKeys)
+
+		for _, key := range wlKeys {
+			wlStr := key
+			wlProcesses := wlCollections[key]
+
 			if wlStr == "" {
 				wlStr = "<host-workload>"
 			}
