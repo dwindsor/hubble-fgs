@@ -339,10 +339,12 @@ github.com/cilium/tetragon/pkg/arch
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
+github.com/cilium/tetragon/pkg/cgidmap
 github.com/cilium/tetragon/pkg/cgrouprate
 github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cmdref
+github.com/cilium/tetragon/pkg/cri
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/eventcache
@@ -395,6 +397,7 @@ github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/observer/observertesthelper
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/pidfile
+github.com/cilium/tetragon/pkg/podhelpers
 github.com/cilium/tetragon/pkg/podhooks
 github.com/cilium/tetragon/pkg/policyfilter
 github.com/cilium/tetragon/pkg/policyfilter/rthooks
@@ -1176,6 +1179,15 @@ github.com/stretchr/testify/require
 # github.com/subosito/gotenv v1.6.0
 ## explicit; go 1.18
 github.com/subosito/gotenv
+# github.com/tidwall/gjson v1.17.0
+## explicit; go 1.12
+github.com/tidwall/gjson
+# github.com/tidwall/match v1.1.1
+## explicit; go 1.15
+github.com/tidwall/match
+# github.com/tidwall/pretty v1.2.0
+## explicit; go 1.16
+github.com/tidwall/pretty
 # github.com/tklauser/go-sysconf v0.3.11
 ## explicit; go 1.13
 github.com/tklauser/go-sysconf
@@ -2105,6 +2117,9 @@ k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/metrics/prometheus/feature
 k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
+# k8s.io/cri-api v0.30.3
+## explicit; go 1.22.0
+k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70
 ## explicit; go 1.20
 k8s.io/gengo/v2

@@ -6,13 +6,13 @@ package watcher
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/podhooks"
+	"github.com/cilium/tetragon/pkg/reader/node"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +45,8 @@ type K8sResourceWatcher interface {
 
 	// Find a pod given the podID
 	FindPod(podID string) (*corev1.Pod, error)
+	// Find a mirror pod for a static pod
+	FindMirrorPod(hash string) (*corev1.Pod, error)
 }
 
 // K8sWatcher maintains a local cache of k8s resources.
@@ -121,7 +123,7 @@ func containerIndexFunc(obj interface{}) ([]string, error) {
 
 // NewK8sWatcher returns a pointer to an initialized K8sWatcher struct.
 func NewK8sWatcher(k8sClient kubernetes.Interface, stateSyncIntervalSec time.Duration) *K8sWatcher {
-	nodeName := os.Getenv("NODE_NAME")
+	nodeName := node.GetNodeNameForExport()
 	if nodeName == "" {
 		logger.GetLogger().Warn("env var NODE_NAME not specified, K8s watcher will not work as expected")
 	}
@@ -134,7 +136,7 @@ func NewK8sWatcher(k8sClient kubernetes.Interface, stateSyncIntervalSec time.Dur
 	k8sInformerFactory := informers.NewSharedInformerFactoryWithOptions(k8sClient, stateSyncIntervalSec,
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			// Watch local pods only.
-			options.FieldSelector = "spec.nodeName=" + os.Getenv("NODE_NAME")
+			options.FieldSelector = "spec.nodeName=" + nodeName
 		}))
 	podInformer := k8sInformerFactory.Core().V1().Pods().Informer()
 	k8sWatcher.AddInformers(k8sInformerFactory, &InternalInformer{
@@ -211,6 +213,28 @@ func (watcher *K8sWatcher) FindContainer(containerID string) (*corev1.Pod, *core
 		return findContainer(containerID, podInformer.GetStore().List())
 	}
 	return findContainer(containerID, objs)
+}
+
+// FindMirrorPod finds the mirror pod of a static pod based on the hash
+// see: https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-config-hash,
+// https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-config-mirror,
+// https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
+func (watcher *K8sWatcher) FindMirrorPod(hash string) (*corev1.Pod, error) {
+	podInformer := watcher.GetInformer(podInformerName)
+	if podInformer == nil {
+		return nil, fmt.Errorf("pod informer not initialized")
+	}
+	pods := podInformer.GetStore().List()
+	for i := range pods {
+		if pod, ok := pods[i].(*corev1.Pod); ok {
+			if ha, ok := pod.Annotations["kubernetes.io/config.mirror"]; ok {
+				if hash == ha {
+					return pod, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("static pod (hash=%s) not found", hash)
 }
 
 func (watcher *K8sWatcher) FindPod(podID string) (*corev1.Pod, error) {

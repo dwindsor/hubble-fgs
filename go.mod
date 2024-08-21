@@ -137,6 +137,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
+	github.com/tidwall/gjson v1.17.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
@@ -159,6 +162,7 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	k8s.io/apiserver v0.30.3 // indirect
 	k8s.io/component-base v0.30.3 // indirect
+	k8s.io/cri-api v0.30.3 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 )
 
