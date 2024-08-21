@@ -51,7 +51,7 @@ var (
 	WatermarksDipTriggerMult   uint64
 	WatermarksEnabled          = false
 
-	stats          *lru.Cache[tcpKey, networkapi.MsgSocketStats]
+	stats          *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]
 	statsCacheSize = 32000
 
 	TimestampEnabled = false
@@ -395,7 +395,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		}
 		// Convert to a TCPStats event by simply setting op code
 		c.Msg.Common.Op = ops.MsgOpTCPStats
-		statsKey := tcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateKtime}
+		statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateKtime}
 		stats.Remove(statsKey)
 		return []observer.Event{tcp, &c}, nil
 	}
@@ -431,7 +431,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	var err error
 
-	stats, err = lru.New[tcpKey, networkapi.MsgSocketStats](statsCacheSize)
+	stats, err = lru.New[networkapi.TcpKey, networkapi.MsgSocketStats](statsCacheSize)
 	if err != nil {
 		return err
 	}

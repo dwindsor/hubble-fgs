@@ -57,7 +57,7 @@ var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
 	udpStatsEnable    = false
 
-	stats *lru.Cache[udpInfoKey, udpInfoValue]
+	stats *lru.Cache[api.UdpInfoKey, api.UdpInfoValue]
 
 	gcTimer = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 
@@ -65,65 +65,8 @@ var (
 	pseudoSocketsUpdate sync.Mutex
 )
 
-type udpInfoKey struct {
-	Cookie  uint64
-	SAddr   [2]uint64
-	DAddr   [2]uint64
-	SPort   uint16
-	DPort   uint16
-	IPv6    uint8
-	Padding [3]uint8
-	Version uint64
-}
-
-type udpInfoValue struct {
-	TXBytes          uint64
-	RXBytes          uint64
-	SegsIn           uint64
-	SegsOut          uint64
-	Ktime            uint64
-	PidKtime         uint64
-	Pid              uint32
-	SkDrops          uint32
-	SAddr            [2]uint64
-	DAddr            [2]uint64
-	SPort            uint16
-	DPort            uint16
-	SkbConsumeMisses uint32
-	Buckets          [8]uint64
-	LatencySum       uint64
-	IPv6             uint8
-	Padding          [7]uint8
-	CreateTime       uint64
-}
-
-func (k *udpInfoKey) String() string {
-	ipSrc := api.GetIP(k.SAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
-	ipDst := api.GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
-	return fmt.Sprintf("Cookie=%d:%d\n"+
-		"SAddr=%s:%d\n"+
-		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.SPort, ipDst, k.DPort)
-}
-
-func (v *udpInfoValue) String() string {
-	ipDst := api.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
-	ipSrc := api.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
-	return fmt.Sprintf(
-		"SAddr=%s:%d DAddr=%s:%d\n"+
-			"Pid: %d Ktime %d\n"+
-			"TXBytes: %d RXBytes%d\n"+
-			"SegsOut: %d SegsIn: %d\n"+
-			"SkDrops: %d\n"+
-			"SkbConsumeMisses: %d\n",
-		ipSrc, v.SPort, ipDst, v.DPort,
-		v.Pid, v.Ktime,
-		v.TXBytes, v.RXBytes,
-		v.SegsOut, v.SegsIn,
-		v.SkDrops, v.SkbConsumeMisses)
-}
-
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func createUdpStatsEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *layer3.MsgIPWithStatsEventUnix {
+func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.Duration) *layer3.MsgIPWithStatsEventUnix {
 	unix := layer3.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
@@ -173,7 +116,7 @@ func createUdpStatsEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration)
 	return &unix
 }
 
-func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer3.MsgIPWithStatsEventUnix {
+func createCloseEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, closeTimeNs uint64) *layer3.MsgIPWithStatsEventUnix {
 	var duration time.Duration
 	if closeTimeNs > v.CreateTime {
 		duration = time.Duration(closeTimeNs - v.CreateTime)
@@ -186,7 +129,7 @@ func createCloseEvent(k *udpInfoKey, v *udpInfoValue, closeTimeNs uint64) *layer
 	return unix
 }
 
-func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
+func emitCloseEvent(k *api.UdpInfoKey, v *api.UdpInfoValue) {
 	currentTime := unix.Timespec{}
 	closeTimeNs := uint64(0)
 	err := unix.ClockGettime(int32(unix.CLOCK_MONOTONIC), &currentTime)
@@ -199,14 +142,14 @@ func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
 	observer.AllListeners(unix)
 }
 
-func createStatEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPWithStatsEventUnix {
+func createStatEvent(k *api.UdpInfoKey, v *api.UdpInfoValue) *layer3.MsgIPWithStatsEventUnix {
 	unix := createUdpStatsEvent(k, v, 0)
 	unix.Msg.Common.Op = ops.MSG_OP_UDPSTATS
 
 	return unix
 }
 
-func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
+func emitStatEvent(k *api.UdpInfoKey, v *api.UdpInfoValue) {
 	unix := createStatEvent(k, v)
 
 	if DisableStatsEvents {
@@ -231,7 +174,7 @@ func latencyResetEvent(curr, last *[8]uint64, currSum, lastSum uint64) bool {
 	return false
 }
 
-func udpResetEvent(curr, last *udpInfoValue) bool {
+func udpResetEvent(curr, last *api.UdpInfoValue) bool {
 	// If we have fewer bytes or segs than last measurement this is a
 	// sure sign we had a data race. Counters in BPF side are monotonic
 	// so a single entry will never be decrementing.
@@ -275,7 +218,7 @@ func udpDiffLatency(last, curr *[8]uint64) [8]uint64 {
 	}
 }
 
-func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
+func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpInfoValue, error) {
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
 	// unlucky timing but here we go.
@@ -292,7 +235,7 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 	// using v2 and because we have atomic only incrementing counters we
 	// eventually we get a good entry and correct for any bytes at that time.
 	if curr.Ktime < last.Ktime {
-		return udpInfoValue{}, fmt.Errorf("UDP Skip OOO Event")
+		return api.UdpInfoValue{}, fmt.Errorf("UDP Skip OOO Event")
 	}
 
 	// Test if this curr and last pair indicate a race condition in the
@@ -303,10 +246,10 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 		ipSrc := api.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
 		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key,
 			"pid": curr.Pid, "pidktime": curr.PidKtime}).Warnf("UDP stats underflow")
-		return udpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
+		return api.UdpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
 
-	return udpInfoValue{
+	return api.UdpInfoValue{
 		TXBytes:          curr.TXBytes - last.TXBytes,
 		RXBytes:          curr.RXBytes - last.RXBytes,
 		SegsIn:           curr.SegsIn - last.SegsIn,
@@ -327,10 +270,10 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 }
 
 var (
-	deleteLastKey *udpInfoKey
+	deleteLastKey *api.UdpInfoKey
 )
 
-func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
+func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 	// Access to TypeTotalRetrieve metrics is serialized by UdpGC.
 	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTotalRetrieve)
 
@@ -391,7 +334,7 @@ func udpGcCb(m *ebpf.Map, udpKey *udpInfoKey, udpValue *udpInfoValue) {
 			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.SAddr, SPort: udpKey.SPort, DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
-		deleteLastKey = &udpInfoKey{}
+		deleteLastKey = &api.UdpInfoKey{}
 		*deleteLastKey = *udpKey
 	}
 }
@@ -412,8 +355,8 @@ func runUdpGC() {
 	defer m.Close()
 
 	var (
-		key udpInfoKey
-		val udpInfoValue
+		key api.UdpInfoKey
+		val api.UdpInfoValue
 	)
 
 	iter := m.Iterate()

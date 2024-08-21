@@ -255,3 +255,120 @@ type MsgUdpSeqCheckErrorEvent struct {
 }
 
 type MsgProcessNetworkWatermarksEventUnix = MsgProcessNetworkWatermarkEvent
+
+type TcpBpfKey struct {
+	SockCookie uint64
+}
+
+func (k *TcpBpfKey) String() string { return fmt.Sprintf("Cookie: %d", k.SockCookie) }
+
+type TcpKey struct {
+	SockCookie uint64
+	CreateTime uint64
+}
+
+type ProcessTreeKey struct {
+	Nsid   uint64                  `align:"nsid"`
+	Self   processapi.MsgExecveKey `align:"self"`
+	Parent processapi.MsgExecveKey `align:"parent"`
+}
+
+type DestinationEndpointKey struct {
+	ProcessId     ProcessTreeKey `align:"process_id"`
+	DestinationId uint64         `align:"destination_id"`
+	Source        uint64         `align:"source"`
+	Port          uint64         `align:"port"`
+}
+
+type TcpValue struct {
+	Key             processapi.MsgExecveKey `align:"key"`
+	DstKey          DestinationEndpointKey  `align:"dst_key"`
+	CreateTime      uint64                  `align:"create_time"`
+	ZeroWindow      uint32                  `align:"zero_window"`
+	SocketFlags     uint32                  `align:"socket_flags"`
+	LastTime        uint64                  `align:"last_time"`
+	Sent            uint64                  `align:"sent"`
+	Recv            uint64                  `align:"received"`
+	SegsOut         uint32                  `align:"segs_out"`
+	SegsIn          uint32                  `align:"segs_in"`
+	RetransmitBytes uint64                  `align:"retransbytes"`
+	RetransmitSegs  uint32                  `align:"retranssegs"`
+	SkDrops         uint32                  `align:"sk_drops"`
+	Version         uint64                  `align:"version"`
+	RttBuckets      [8]uint64               `align:"rtt_buckets"`
+	RttSum          uint64                  `align:"rtt_sum"`
+	LatencyBuckets  [8]uint64               `align:"latency_buckets"`
+	LatencySum      uint64                  `align:"latency_sum"`
+	Srtt            uint32                  `align:"srtt"`
+	Ipv6            uint8                   `align:"ipv6"`
+	FinRx           uint8                   `align:"fin_rx"`
+	Protocol        uint8                   `align:"protocol"`
+	Pad             uint8                   `align:"pad"`
+}
+
+func (t *TcpValue) String() string {
+	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
+		t.Key.Pid,
+		t.CreateTime, t.LastTime,
+		t.Sent, t.SegsOut, t.Recv-uint64(t.FinRx), t.SegsIn,
+		t.ZeroWindow,
+		t.RetransmitBytes, t.RetransmitSegs,
+		t.SkDrops, t.Srtt)
+}
+
+type UdpInfoKey struct {
+	Cookie  uint64    `align:"cookie"`
+	SAddr   [2]uint64 `align:"saddr"`
+	DAddr   [2]uint64 `align:"daddr"`
+	SPort   uint16    `align:"sport"`
+	DPort   uint16    `align:"dport"`
+	IPv6    uint8     `align:"ipv6"`
+	Padding [3]uint8  `align:"padding1"`
+	Version uint64    `align:"version"`
+}
+
+type UdpInfoValue struct {
+	TXBytes          uint64    `align:"tx_bytes"`
+	RXBytes          uint64    `align:"rx_bytes"`
+	SegsIn           uint64    `align:"segs_in"`
+	SegsOut          uint64    `align:"segs_out"`
+	Ktime            uint64    `align:"ktime"`
+	PidKtime         uint64    `align:"pid_ktime"`
+	Pid              uint32    `align:"pid"`
+	SkDrops          uint32    `align:"sk_drops"`
+	SAddr            [2]uint64 `align:"saddr"`
+	DAddr            [2]uint64 `align:"daddr"`
+	SPort            uint16    `align:"sport"`
+	DPort            uint16    `align:"dport"`
+	SkbConsumeMisses uint32    `align:"skb_consume_misses"`
+	Buckets          [8]uint64 `align:"buckets"`
+	LatencySum       uint64    `align:"latency_sum"`
+	IPv6             uint8     `align:"ipv6"`
+	Padding          [7]uint8  `align:"padding"`
+	CreateTime       uint64    `align:"create_time"`
+}
+
+func (k *UdpInfoKey) String() string {
+	ipSrc := GetIP(k.SAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
+	ipDst := GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
+	return fmt.Sprintf("Cookie=%d:%d\n"+
+		"SAddr=%s:%d\n"+
+		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.SPort, ipDst, k.DPort)
+}
+
+func (v *UdpInfoValue) String() string {
+	ipDst := GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
+	ipSrc := GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
+	return fmt.Sprintf(
+		"SAddr=%s:%d DAddr=%s:%d\n"+
+			"Pid: %d Ktime %d\n"+
+			"TXBytes: %d RXBytes%d\n"+
+			"SegsOut: %d SegsIn: %d\n"+
+			"SkDrops: %d\n"+
+			"SkbConsumeMisses: %d\n",
+		ipSrc, v.SPort, ipDst, v.DPort,
+		v.Pid, v.Ktime,
+		v.TXBytes, v.RXBytes,
+		v.SegsOut, v.SegsIn,
+		v.SkDrops, v.SkbConsumeMisses)
+}

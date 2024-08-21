@@ -353,7 +353,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSockets[pseudoKey][udpPseudoSocket{SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
 		pseudoSocketsUpdate.Unlock()
 		// If there is an existing cache entry for this pseudosocket then it must be stale, so remove it.
-		udpKey := udpInfoKey{Cookie: m.SockCookie, Version: m.Version, SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}
+		udpKey := api.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}
 		stats.Remove(udpKey)
 		if DisableConnectEvents {
 			return []observer.Event{}, nil
@@ -385,8 +385,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 
 		for psock := range pseudoSocketList {
 			// Send stats event
-			udpKey := udpInfoKey{Cookie: m.SockCookie, Version: m.Version, SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6}
-			var udpValue udpInfoValue
+			udpKey := api.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6}
+			var udpValue api.UdpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)
 			if err != nil {
 				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event")
@@ -459,7 +459,7 @@ func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	var err error
 
-	stats, err = lru.New[udpInfoKey, udpInfoValue](udpStatsCacheSize)
+	stats, err = lru.New[api.UdpInfoKey, api.UdpInfoValue](udpStatsCacheSize)
 	if err != nil {
 		return err
 	}

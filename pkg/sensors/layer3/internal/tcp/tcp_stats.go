@@ -33,66 +33,6 @@ var (
 	TcpMapName = "tg_tcpsocket_map"
 )
 
-type tcpBpfKey struct {
-	SockCookie uint64
-}
-
-func (k *tcpBpfKey) String() string { return fmt.Sprintf("Cookie: %d", k.SockCookie) }
-
-type tcpKey struct {
-	SockCookie uint64
-	CreateTime uint64
-}
-
-type processTreeKey struct {
-	Nsid   uint64
-	Self   processapi.MsgExecveKey
-	Parent processapi.MsgExecveKey
-}
-
-type destinationEndpointKey struct {
-	ProcessId     processTreeKey
-	DestinationId uint64
-	Source        uint64
-	Port          uint64
-}
-
-type tcpValue struct {
-	Key             processapi.MsgExecveKey
-	DstKey          destinationEndpointKey
-	CreateTime      uint64
-	ZeroWindow      uint32
-	SocketFlags     uint32
-	LastTime        uint64
-	Sent            uint64
-	Recv            uint64
-	SegsOut         uint32
-	SegsIn          uint32
-	RetransmitBytes uint64
-	RetransmitSegs  uint32
-	SkDrops         uint32
-	Version         uint64
-	RttBuckets      [8]uint64
-	RttSum          uint64
-	LatencyBuckets  [8]uint64
-	LatencySum      uint64
-	Srtt            uint32
-	Ipv6            uint8
-	FinRx           uint8
-	Protocol        uint8
-	Pad             uint8
-}
-
-func (t *tcpValue) String() string {
-	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
-		t.Key.Pid,
-		t.CreateTime, t.LastTime,
-		t.Sent, t.SegsOut, t.Recv-uint64(t.FinRx), t.SegsIn,
-		t.ZeroWindow,
-		t.RetransmitBytes, t.RetransmitSegs,
-		t.SkDrops, t.Srtt)
-}
-
 type SockStatKey struct {
 	Zero uint32
 }
@@ -126,7 +66,7 @@ func (v *SockStatValue) String() string {
 		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 
-func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
+func emitStatEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
 	unix := grpc.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
@@ -149,10 +89,10 @@ func emitStatEvent(k *tcpKey, v *tcpValue, tuple *networkapi.MsgIPTuple, stats *
 	observer.AllListeners(&unix)
 }
 
-func tcpGcCb(_ *ebpf.Map, key *tcpBpfKey, value *tcpValue) {
+func tcpGcCb(_ *ebpf.Map, key *networkapi.TcpBpfKey, value *networkapi.TcpValue) {
 	tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
-	tcpStats := value.ToMsgSocketStatsUnix()
-	statsKey := tcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
+	tcpStats := ToMsgSocketStatsUnix(value)
+	statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
 
 	last, ok := stats.Get(statsKey)
 	if ok {
@@ -183,8 +123,8 @@ func runTcpGC() {
 	defer m.Close()
 
 	var (
-		key tcpBpfKey
-		val tcpValue
+		key networkapi.TcpBpfKey
+		val networkapi.TcpValue
 	)
 
 	iter := m.Iterate()
@@ -193,7 +133,7 @@ func runTcpGC() {
 	}
 }
 
-func (t *tcpValue) ToMsgSocketStatsUnix() *networkapi.MsgSocketStats {
+func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s := &networkapi.MsgSocketStats{}
 	s.Ktime = t.LastTime
 	s.CreateKtime = t.CreateTime
@@ -325,7 +265,7 @@ func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithSt
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
 func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
-	statsKey := tcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
+	statsKey := networkapi.TcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
 	if !ok {
 		return copyMsgIpWithStatsEvent(&tcp), nil
