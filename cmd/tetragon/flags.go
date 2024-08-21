@@ -200,5 +200,11 @@ func readAndSetFlags() error {
 	option.Config.HealthServerInterval = viper.GetInt(KeyHealthTimeInterval)
 
 	option.Config.KeepSensorsOnExit = viper.GetBool(KeyKeepSensorsOnExit)
+
+	option.Config.EnableCRI = viper.GetBool(option.KeyEnableCRI)
+	option.Config.CRIEndpoint = viper.GetString(option.KeyCRIEndpoint)
+
+	option.Config.EnableCgIDmap = viper.GetBool(option.KeyEnableCgIDmap)
+	option.Config.EnableCgIDmapDebug = viper.GetBool(option.KeyEnableCgIDmapDebug)
 	return nil
 }

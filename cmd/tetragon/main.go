@@ -1030,6 +1030,12 @@ func execute() error {
 
 	flags.Bool(KeyKeepSensorsOnExit, false, "Do not unload sensors on exit")
 
+	flags.Bool(option.KeyEnableCRI, false, "enable CRI client for tetragon")
+	flags.String(option.KeyCRIEndpoint, "", "CRI endpoint")
+
+	flags.Bool(option.KeyEnableCgIDmap, false, "enable pod resolution via cgroup ids")
+	flags.Bool(option.KeyEnableCgIDmapDebug, false, "enable cgidmap deubgging info")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

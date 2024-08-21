@@ -19,6 +19,8 @@ options:
       usage: Configuration directory that contains a file for each option
     - name: config-file
       usage: Configuration file to load from
+    - name: cri-endpoint
+      usage: CRI endpoint
     - name: data-cache-size
       default_value: "1024"
       usage: Size of the data events cache
@@ -37,10 +39,19 @@ options:
       default_value: "1024"
       usage: |
         Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones
+    - name: enable-cgidmap
+      default_value: "false"
+      usage: enable pod resolution via cgroup ids
+    - name: enable-cgidmap-debug
+      default_value: "false"
+      usage: enable cgidmap deubgging info
     - name: enable-cilium-api
       default_value: "false"
       usage: |
         Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache
+    - name: enable-cri
+      default_value: "false"
+      usage: enable CRI client for tetragon
     - name: enable-dns-debug
       default_value: "false"
       usage: Enable DNS debug messages
