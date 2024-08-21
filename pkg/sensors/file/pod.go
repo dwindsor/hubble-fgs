@@ -12,21 +12,14 @@ package file
 
 import (
 	"context"
-	"path/filepath"
 	"sync"
-	"time"
 
-	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/google/uuid"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	v1 "k8s.io/api/core/v1"
-)
-
-const (
-	uidStringLen = len("00000000-0000-0000-0000-000000000000")
 )
 
 type ContInit struct {
@@ -127,45 +120,19 @@ func podContainerDiff(oldPod *v1.Pod, newPod *v1.Pod) ([]string, []string) {
 }
 
 func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) error {
-	cgPath := arg.Req.CgroupsPath
-	cgRoot, err := cgroups.HostCgroupRoot()
+	containerID, err := arg.ContainerID()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to retrieve host cgroup root, aborting hook")
-		filemetrics.FileTotalErrorsInc(filemetrics.SendorFileGetHostCgroupRoot)
-		return err
-	}
-	path := filepath.Join(cgRoot, cgPath)
-	cgID, err := cgroups.GetCgroupIdFromPath(path)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("path", path).WithField("cgroup-id", cgID).Warn("retrieving cgroup id failed, aborting hook")
-		filemetrics.FileTotalErrorsInc(filemetrics.SendorFileGetCgroupId)
+		logger.GetLogger().WithError(err).Warn("failed to retrieve container id, aborting hook")
 		return err
 	}
 
-	containerID := filepath.Base(cgPath)
-	podPath := filepath.Dir(cgPath)
-	podIDstr := filepath.Base(podPath)
-	if len(podIDstr) > uidStringLen {
-		podIDstr = podIDstr[len(podIDstr)-uidStringLen:] // remove pod prefix
-	}
-	podID, err := uuid.Parse(podIDstr)
+	podIDstr, err := arg.PodID()
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("uuid", podIDstr).WithField("cgroup-path", cgPath).Warn("failed to parse uuid, aborting hook")
+		logger.GetLogger().WithError(err).Warn("failed to retrieve pod id, aborting hook")
 		return err
 	}
 
-	// Because we are still creating the container, its status is not available at the k8s API.
-	// Instead, we use the PodID.
-	var pod *v1.Pod
-	nretries := 5
-	for i := 0; i < nretries; i++ {
-		pod, err = arg.Watcher.FindPod(podIDstr)
-		if err == nil {
-			break
-		}
-		logger.GetLogger().Infof("failed to get pod info from watcher (%T): will retry (%d/%d).", arg.Watcher, i+1, nretries)
-		time.Sleep(10 * time.Millisecond)
-	}
+	pod, err := arg.Pod()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("failed to get pod info, aborting hook.")
 		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileGetPodInfo)
@@ -175,7 +142,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 	initNeeded := false // do we need to call TracingPolicyInitContainerFsScanner?
 
 	allPodsMu.Lock()
-	if m, ok := allPods[podID.String()]; ok {
+	if m, ok := allPods[podIDstr]; ok {
 		// if the container ID already exists there is nothing more to do
 		if !m.LookupContainer(containerID) {
 			m.AddContainer(containerID, arg.Req.RootDir)

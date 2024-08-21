@@ -489,7 +489,7 @@ Total number of process_file event errors (can be from the grpc or sensor).
 
 | label | values |
 | ----- | ------ |
-| `reason` | `grpc_eventcache_retry, grpc_nil_ev_proc, grpc_not_valid_action, grpc_not_valid_op, grpc_op_gt_one, sensor_file_destroy_podDelete_scanner, sensor_file_destroy_podUpdate_scanner, sensor_file_get_cgroup_id, sensor_file_get_host_cgroup_root, sensor_file_get_pod_info, sensor_file_init_container_scanner, sensor_file_init_podAdd_scanner, sensor_file_init_podUpdate_scanner, sensor_file_init_scanner, sensor_file_mv, sensor_file_mv_scanner, sensor_file_mv_tcid, sensor_file_op, sensor_file_rpc_destroy_cont, sensor_file_rpc_init_cont, sensor_file_rpc_init_host, sensor_file_rpc_scanner, sensor_file_rpc_terminate` |
+| `reason` | `grpc_eventcache_retry, grpc_nil_ev_proc, grpc_not_valid_action, grpc_not_valid_op, grpc_op_gt_one, sensor_file_destroy_podDelete_scanner, sensor_file_destroy_podUpdate_scanner, sensor_file_get_pod_info, sensor_file_init_container_scanner, sensor_file_init_podAdd_scanner, sensor_file_init_podUpdate_scanner, sensor_file_init_scanner, sensor_file_mv, sensor_file_mv_scanner, sensor_file_mv_tcid, sensor_file_op, sensor_file_rpc_destroy_cont, sensor_file_rpc_init_cont, sensor_file_rpc_init_host, sensor_file_rpc_scanner, sensor_file_rpc_terminate` |
 
 ### `tetragon_file_events_total`
 
