@@ -44,8 +44,22 @@ type tcpKey struct {
 	CreateTime uint64
 }
 
+type processTreeKey struct {
+	Nsid   uint64
+	Self   processapi.MsgExecveKey
+	Parent processapi.MsgExecveKey
+}
+
+type destinationEndpointKey struct {
+	ProcessId     processTreeKey
+	DestinationId uint64
+	Source        uint64
+	Port          uint64
+}
+
 type tcpValue struct {
 	Key             processapi.MsgExecveKey
+	DstKey          destinationEndpointKey
 	CreateTime      uint64
 	ZeroWindow      uint32
 	SocketFlags     uint32
