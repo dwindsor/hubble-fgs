@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -97,6 +98,10 @@ func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	}
 
 	return &corev1.Pod{}, nil
+}
+
+func (r *raceK8sWatcher) FindMirrorPod(_ string) (*corev1.Pod, error) {
+	return nil, fmt.Errorf("raceK8sWatcher does not support Mirror pods")
 }
 
 func (r *raceK8sWatcher) AddInformers(_ watcher.InternalSharedInformerFactory, _ ...*watcher.InternalInformer) {
