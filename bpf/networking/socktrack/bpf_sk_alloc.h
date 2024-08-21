@@ -133,6 +133,9 @@ destroy_socket(void *ctx, u64 cookie)
 			if (cfg->raw_report_close)
 				emit_sk_event(ctx, process, cookie, ISO_MSG_OP_RAWSOCK_CLOSE);
 			break;
+		case IPPROTO_TCP:
+			del_tcpsocketmap(&cookie);
+			break;
 		}
 	}
 
