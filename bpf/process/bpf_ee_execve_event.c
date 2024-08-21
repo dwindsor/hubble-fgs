@@ -14,7 +14,51 @@
 #include "policy_filter.h"
 #include "process_tree.h"
 
+#ifdef __V611_BPF_PROG
+
+int execve_rate(void *ctx);
+int ee_execve_send(void *ctx);
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__uint(max_entries, 2);
+	__uint(key_size, sizeof(__u32));
+	__array(values, int(void *));
+} execve_calls SEC(".maps") = {
+	.values = {
+		[0] = (void *)&execve_rate,
+		[1] = (void *)&ee_execve_send,
+	},
+};
+
+#define OVERRIDE_TAILCALL
+#include "bpf_execve_event.c"
+
+__attribute__((section("tracepoint"), used)) int
+ee_execve_send(void *ctx)
+{
+	execve_send(ctx);
+	insert_process_tree();
+	return 0;
+}
+
+#else
+
+int execve_rate(void *ctx);
 int oss_execve_send(void *ctx);
+int execve_send(void *ctx);
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__uint(max_entries, 2);
+	__uint(key_size, sizeof(__u32));
+	__array(values, int(void *));
+} execve_calls SEC(".maps") = {
+	.values = {
+		[0] = (void *)&execve_rate,
+		[1] = (void *)&execve_send,
+	},
+};
 
 #define execve_send                    \
 	execve_send(void *ctx)         \
@@ -25,4 +69,7 @@ int oss_execve_send(void *ctx);
 	}                              \
 	__attribute__((always_inline)) int oss_execve_send
 
+#define OVERRIDE_TAILCALL
 #include "bpf_execve_event.c"
+
+#endif /* __V611_BPF_PROG */
