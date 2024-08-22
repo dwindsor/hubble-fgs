@@ -1,0 +1,7 @@
+crds:
+  installMethod: helm
+export:
+  mode: stdout
+tracingPolicies:
+  default:
+    enabled: true
