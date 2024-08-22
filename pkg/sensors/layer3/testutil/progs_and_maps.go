@@ -74,7 +74,11 @@ func SensorMapByProgName(progs []tus.SensorProg, mapName string, progNames []str
 
 // Define names of programs to provide some consistency checking.
 const (
-	fentrySkAlloc = "security_sk_alloc"
+	fentrySkAlloc    = "security_sk_alloc"
+	fentrySkFreeProg = "security_sk_free"
+
+	securitySkAllocProg = "tg_security_sk_alloc"
+	securitySkFreeProg  = "tg_security_sk_free"
 
 	cgroupEgressProg  = "tg_cgroup_egress"
 	cgroupIngressProg = "tg_cgroup_ingress"
@@ -104,6 +108,8 @@ const (
 )
 
 func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
+	var skFreeProg string
+
 	sensorProgs := []tus.SensorProg{
 		0: {Name: tcpConnectProg, Type: ebpf.Kprobe},
 		1: {Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
@@ -119,7 +125,21 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 			{Name: fentrySkAlloc,
 				Type: ebpf.Tracing,
 			},
+			{Name: fentrySkFreeProg,
+				Type: ebpf.Tracing,
+			},
 		}...)
+		skFreeProg = fentrySkFreeProg
+	} else {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: securitySkAllocProg,
+				Type: ebpf.Kprobe,
+			},
+			{Name: securitySkFreeProg,
+				Type: ebpf.Kprobe,
+			},
+		}...)
+		skFreeProg = securitySkFreeProg
 	}
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
@@ -131,13 +151,13 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	})
 
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
+		skFreeProg,
 	})
 
 	tcpSocketMapStats := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map_stats", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpAcceptRetProg,
+		skFreeProg,
 	})
 
 	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{
