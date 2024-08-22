@@ -29,16 +29,6 @@ spec:
         disableListen: true
     tcp:
       enable: true
-      qos:
-        quotaReset: "1m"
-        quotaLimits:
-        - namespace: ""
-          workload: ""
-          workloadKind: ""
-          destination:
-            dns: ["isovalent.com."]
-            port: [80]
-          quota: "1024"
       statsInterval: 10
       watermarks:
         enable: true
