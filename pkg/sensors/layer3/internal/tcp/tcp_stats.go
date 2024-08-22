@@ -298,6 +298,13 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 	}, nil
 }
 
+func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithStatsEventUnix {
+	newTcp := *tcp
+	newMsg := *tcp.Msg
+	newTcp.Msg = &newMsg
+	return newTcp
+}
+
 // There is a race condition where two events are sent from BPF side in close
 // proximity time wise to each other. In this case its possible to process the
 // events out of order. Specifically it means when we diff the events the 'last'
@@ -307,7 +314,7 @@ func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsE
 	statsKey := tcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
 	last, ok := stats.Get(statsKey)
 	if !ok {
-		return tcp, nil
+		return copyMsgIpWithStatsEvent(&tcp), nil
 	}
 	if tcp.Msg.SocketStats.Ktime < last.Ktime {
 		// Current stats message is older than last stats message.
@@ -324,11 +331,7 @@ func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsE
 	if err != nil {
 		return grpc.MsgIPWithStatsEventUnix{}, err
 	}
-	// Make a copy of the event
-	newTcp := tcp
-	// Make a copy of the referenced Msg
-	newMsg := *tcp.Msg
-	newTcp.Msg = &newMsg
+	newTcp := copyMsgIpWithStatsEvent(&tcp)
 	stats.Add(statsKey, tcp.Msg.SocketStats)
 	newTcp.Msg.SocketStats = tmpSocketStats
 	return newTcp, nil
