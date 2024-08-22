@@ -323,6 +323,10 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	model.DefaultNewServer()
 
 	if spec.Parser.Tcp.Qos != nil {
+		if !enterpriseOption.Config.EnableProcessTree {
+			return false, fmt.Errorf("Failed to load quota policy. Requires enable process tree")
+		}
+
 		if err := configureQos(spec.Parser.Tcp.Qos); err != nil {
 			return false, err
 		}
