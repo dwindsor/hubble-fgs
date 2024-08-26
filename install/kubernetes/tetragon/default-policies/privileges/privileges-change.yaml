@@ -23,8 +23,7 @@ spec:
       syscall: false
       args:
         - index: 0
-          # The new process_credentials to be applied, ref: https://tetragon.io/docs/reference/grpc-api/#processcredentials
-          type: "cred"
+          type: "nop"
         - index: 1
           # The current process_credentials, no need to print it as we are interested in
           # capabilities, and current capabilities are printed outside of process_credentials.
