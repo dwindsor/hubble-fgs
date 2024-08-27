@@ -280,7 +280,7 @@ type FileSystemTypePattern struct {
 	Names []FileSystemName `json:"names,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type))",message="Type should match the argument type."
+// +kubebuilder:validation:XValidation:rule="(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type)) || (self.type == 'AllFileOps')",message="Type should match the argument type."
 type FilePathPattern struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch;FileSystemType;AllFileOps

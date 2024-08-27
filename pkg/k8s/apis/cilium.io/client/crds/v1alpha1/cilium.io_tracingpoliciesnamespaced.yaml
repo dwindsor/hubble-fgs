@@ -387,6 +387,7 @@ spec:
                           || (self.type == 'PathPrefix' && has(self.path_prefix))
                           || (self.type == 'FileExactMatch' && has(self.file_exact_match))
                           || (self.type == 'FileSystemType' && has(self.file_system_type))
+                          || (self.type == 'AllFileOps')
                     type: array
                   monitorHostFiles:
                     default: true

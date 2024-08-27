@@ -436,7 +436,7 @@
                 "x-kubernetes-validations": [
                   {
                     "message": "Type should match the argument type.",
-                    "rule": "(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type))"
+                    "rule": "(self.type == 'FilePrefixSuffix' && has(self.file_prefix_suffix)) || (self.type == 'PathPrefix' && has(self.path_prefix)) || (self.type == 'FileExactMatch' && has(self.file_exact_match)) || (self.type == 'FileSystemType' && has(self.file_system_type)) || (self.type == 'AllFileOps')"
                   }
                 ],
                 "additionalProperties": false
