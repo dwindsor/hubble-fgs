@@ -236,6 +236,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		return *last, err
 	}
 	return networkapi.MsgSocketStats{
+		Ktime:            curr.Ktime,
 		BytesSubmitted:   0,
 		BytesSent:        curr.BytesSent - last.BytesSent,
 		BytesConsumed:    0,
