@@ -79,6 +79,10 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		return 0;
 	}
 
+	/* We don't need to account further if the socket has already been closed. */
+	if (socket->closed)
+		return 0;
+
 	/* Get the current socket TCP state. */
 	probe_read_kernel(&state, sizeof(state),
 			  _((const void *)&(skp->__sk_common.skc_state)));

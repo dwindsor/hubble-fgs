@@ -73,6 +73,10 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 		return 0;
 	}
 
+	/* We don't need to account further if the socket has already been closed. */
+	if (socket->closed)
+		return 0;
+
 	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING || (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) || (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT)) {
 		/* When a socket is closing, it may have received a FIN(/ACK) segment.
 		* Unfortunately, a FIN(/ACK) increases the received sequence counter
@@ -131,6 +135,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 
 	get_socket_stats(skp, socket, &val->stats);
 	val->stats.bytes_received -= socket->fin_rx;
+	socket->closed = 1;
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);

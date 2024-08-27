@@ -303,7 +303,7 @@ type TcpValue struct {
 	Ipv6            uint8                   `align:"ipv6"`
 	FinRx           uint8                   `align:"fin_rx"`
 	Protocol        uint8                   `align:"protocol"`
-	Pad             uint8                   `align:"pad"`
+	Closed          uint8                   `align:"closed"`
 }
 
 func (t *TcpValue) String() string {

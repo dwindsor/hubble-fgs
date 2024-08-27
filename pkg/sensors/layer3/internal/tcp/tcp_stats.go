@@ -90,6 +90,10 @@ func emitStatEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networka
 }
 
 func tcpGcCb(_ *ebpf.Map, key *networkapi.TcpBpfKey, value *networkapi.TcpValue) {
+	// We don't need to account further if the socket has already been closed.
+	if value.Closed != 0 {
+		return
+	}
 	tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
 	tcpStats := ToMsgSocketStatsUnix(value)
 	statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}

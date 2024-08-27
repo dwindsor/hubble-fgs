@@ -44,7 +44,7 @@ struct tcpsocketmap_value {
 	__u8 ipv6;
 	__u8 fin_rx;
 	__u8 protocol;
-	__u8 pad;
+	__u8 closed;
 };
 
 struct {
