@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/fs"
 	"net"
+	"net/http"
+	pprofhttp "net/http/pprof"
 	"os"
 	"os/signal"
 	"path"
@@ -266,6 +268,15 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
+
+	if option.Config.PprofAddr != "" {
+		go func() {
+			log.Infof("Starting pprof via HTTP on %s", option.Config.PprofAddr)
+			if err := servePprof(option.Config.PprofAddr); err != nil {
+				log.Warnf("Failed serving pprof via HTTP: %v", err)
+			}
+		}()
+	}
 
 	// We try to detect previous instance, which might be there for legitimate
 	// reasons (--keep-sensors-on-exit) and rename to 'tetragon_old'.
@@ -861,6 +872,16 @@ func startGopsServer() error {
 	return nil
 }
 
+func servePprof(addr string) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprofhttp.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprofhttp.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprofhttp.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprofhttp.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprofhttp.Trace)
+	return http.ListenAndServe(addr, mux)
+}
+
 func resizeCaches() error {
 	if err := dns.ResizeCache(enterpriseOption.Config.DnsCacheSize); err != nil {
 		return err
@@ -1035,6 +1056,8 @@ func execute() error {
 
 	flags.Bool(option.KeyEnableCgIDmap, false, "enable pod resolution via cgroup ids")
 	flags.Bool(option.KeyEnableCgIDmapDebug, false, "enable cgidmap deubgging info")
+
+	flags.String(option.KeyPprofAddr, "", "Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

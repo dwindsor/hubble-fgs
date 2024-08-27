@@ -206,5 +206,8 @@ func readAndSetFlags() error {
 
 	option.Config.EnableCgIDmap = viper.GetBool(option.KeyEnableCgIDmap)
 	option.Config.EnableCgIDmapDebug = viper.GetBool(option.KeyEnableCgIDmapDebug)
+
+	option.Config.PprofAddr = viper.GetString(option.KeyPprofAddr)
+
 	return nil
 }

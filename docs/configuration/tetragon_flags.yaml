@@ -210,6 +210,9 @@ options:
     - name: netns-dir
       default_value: /var/run/docker/netns/
       usage: Network namespace dir
+    - name: pprof-address
+      usage: |
+        Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default
     - name: process-cache-size
       default_value: "65536"
       usage: Size of the process cache
