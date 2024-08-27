@@ -1,4 +1,29 @@
 ---
+# report any exec operations on files inside /tmp/
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-exec-tmp"
+  labels:
+    app.kubernetes.io/version: 1.14.0-pre.0
+spec:
+  file:
+    file_config:
+      watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
+      watchedInodeMapSizeMultiplier: "1"
+      watchedInodeMapSizeConstant: "131072"
+    file_paths_patterns:
+      - type: PathPrefix
+        path_prefix:
+          prefix: "/tmp/"
+    monitorHostFiles: true
+    podSelector: {}
+    selectors:
+      - matchOperations:
+          - operator: "In"
+            values:
+              - "FILE_EXEC"
+---
 # report any exec/write/rename/create operations on files inside sensitive directories
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -13,9 +38,6 @@ spec:
       watchedInodeMapSizeMultiplier: "1"
       watchedInodeMapSizeConstant: "131072"
     file_paths_patterns:
-      - type: PathPrefix
-        path_prefix:
-          prefix: "/tmp/"
       - type: PathPrefix
         path_prefix:
           prefix: "/etc/"
