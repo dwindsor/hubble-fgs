@@ -64,7 +64,7 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
 		return __event_tcp_accept_state(ctx, skp);
 
-	if (state != TCP_CLOSE && state != TCP_CLOSE_WAIT)
+	if (state != TCP_CLOSE && state != TCP_CLOSE_WAIT && state != TCP_CLOSING && old_state != TCP_FIN_WAIT2)
 		return 0;
 
 	socket = lookup_tcpsocketmap(&cookie);
@@ -73,12 +73,12 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 		return 0;
 	}
 
-	if (state == TCP_CLOSE_WAIT) {
-		/* When a socket is closing, it may have received a FIN/ACK segment.
-		* Unfortunately, a FIN/ACK increases the received sequence counter
+	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING || (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) || (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT)) {
+		/* When a socket is closing, it may have received a FIN(/ACK) segment.
+		* Unfortunately, a FIN(/ACK) increases the received sequence counter
 		* by 1 (in order to maintain appropriate state). We use the received
 		* sequence counter to indicate the number of bytes received, so if
-		* we have received a FIN/ACK then our counter will be 1 greater than
+		* we have received a FIN(/ACK) then our counter will be 1 greater than
 		* it should be. Mark the socket so that stats calculations can take
 		* this into account.
 		*/

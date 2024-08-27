@@ -83,20 +83,6 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	probe_read_kernel(&state, sizeof(state),
 			  _((const void *)&(skp->__sk_common.skc_state)));
 
-	/* If we're in FIN_WAIT2, then the packet we are sending *must*
-	 * (according to the TCP finite state machine, caveat emptor) be
-	 * ACKing a FIN. Assuming a relatively standard TCP stack - one
-	 * where FIN packets do not have a payload (i.e. payloads are
-	 * sent, and then afterwards a FIN is sent) - this means that a
-	 * FIN packet with 0 payload was received, and this would have
-	 * incremented our receive sequence number by 1. Mark the socket
-	 * so that stats calculations can take this into account.
-	 */
-	if (state == TCP_FIN_WAIT2) {
-		socket->fin_rx = 1;
-		return 0;
-	}
-
 	/* Check if this socket is established. If it is in the handshake
 	 * then there will be no data to account; if it is closing, then
 	 * we will account for the data when the socket actually closes.
