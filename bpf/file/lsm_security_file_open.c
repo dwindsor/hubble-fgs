@@ -11,6 +11,9 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	struct dentry *dentry;
 	int err;
 
+	if (skip_access(BPF_CORE_READ(file, f_inode)))
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

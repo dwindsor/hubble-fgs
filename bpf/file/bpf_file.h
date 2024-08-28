@@ -1477,6 +1477,15 @@ run_matcher(__u32 s_magic)
 	return 0;
 }
 
+// we do not care about any operations on sockets and fifos in the context of FIM
+static inline __attribute__((always_inline)) bool
+skip_access(struct inode *inode)
+{
+	umode_t i_mode = BPF_CORE_READ(inode, i_mode);
+
+	return (S_ISSOCK(i_mode) | S_ISFIFO(i_mode)) != 0;
+}
+
 static inline __attribute__((always_inline)) int
 path_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
 {
@@ -1492,6 +1501,9 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 
 	if (!file)
 		return -FILE_ERR_FILE_ARG;
+
+	if (skip_access(BPF_CORE_READ(file, f_inode)))
+		return 0;
 
 	msg = get_msg_init();
 	if (!msg)
