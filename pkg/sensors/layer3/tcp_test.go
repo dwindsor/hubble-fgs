@@ -39,6 +39,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1311,6 +1312,117 @@ func TestDetectRTT4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDetectSRTT4(t *testing.T) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8184"))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
+		WithProcess(ncChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8184))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker("ncListen").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker("ncAccept").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("ncClose").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("accept")))
+
+	statsChecker := &ec.FnEventChecker{
+		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+			event, ok := event_.(*tetragon.ProcessSockStats)
+			if !ok {
+				return false, fmt.Errorf("event is not a sockstats event")
+			}
+
+			if event.Stats == nil {
+				return false, fmt.Errorf("event has no stats field")
+			}
+
+			if serverStatsChecker.Check(event) == nil {
+				if event.Stats.Srtt <= 0 {
+					return false, fmt.Errorf("event SRTT <= 0")
+				}
+				if event.Stats.Srtt > 1000 {
+					return false, fmt.Errorf("event SRTT > 1000us")
+				}
+				return false, nil
+			}
+
+			return false, fmt.Errorf("sockstats event is not from server")
+		},
+		FinalCheckFn: func(_ *logrus.Logger) error {
+			return nil
+		},
+	}
+
+	obs := getTcpObserverWithRTTDetection(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-nvlp", "8184")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "127.0.0.1", "8184")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	assert.NoError(t, err)
+}
+
 func TestConnectEvent6(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -1852,6 +1964,117 @@ func TestDetectRTT6(t *testing.T) {
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
+func TestDetectSRTT6(t *testing.T) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8184"))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
+		WithProcess(ncChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSourceIp(sm.Full("::1")).
+			WithDestinationIp(sm.Full("::1")).
+			WithSourcePort(8184))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker("ncListen").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker("ncAccept").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("ncClose").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8184).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("accept")))
+
+	statsChecker := &ec.FnEventChecker{
+		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+			event, ok := event_.(*tetragon.ProcessSockStats)
+			if !ok {
+				return false, fmt.Errorf("event is not a sockstats event")
+			}
+
+			if event.Stats == nil {
+				return false, fmt.Errorf("event has no stats field")
+			}
+
+			if serverStatsChecker.Check(event) == nil {
+				if event.Stats.Srtt <= 0 {
+					return false, fmt.Errorf("event SRTT <= 0")
+				}
+				if event.Stats.Srtt > 1000 {
+					return false, fmt.Errorf("event SRTT > 1000us")
+				}
+				return false, nil
+			}
+
+			return false, fmt.Errorf("sockstats event is not from server")
+		},
+		FinalCheckFn: func(_ *logrus.Logger) error {
+			return nil
+		},
+	}
+
+	obs := getTcpObserverWithRTTDetection(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-6nvlp", "8184")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-6n", "::1", "8184")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	assert.NoError(t, err)
+}
+
 func TestIOUringAcceptEvent(t *testing.T) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skipf("io_uring requires kernel >= 5.4")
