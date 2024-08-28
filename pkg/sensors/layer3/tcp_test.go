@@ -113,6 +113,24 @@ spec:
       enable: true
 `
 
+// Setting TCP RTT max to 1,000,000 means 1% equates to
+// 10ms, which a packet across loopback should easily be
+// quicker than.
+const tcpBasicConfigWithRTTDetection = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "tcp"
+spec:
+  parser:
+    tcp:
+      enable: true
+      histogram:
+        enable: true
+        min: 0
+        max: 1000000
+`
+
 // Setting TCP latency max to 1,000,000 means 1% equates to
 // 10ms, which a packet across loopback should easily be
 // quicker than.
@@ -163,6 +181,10 @@ func getTcpObserver(t *testing.T, ctx context.Context, config string, docker boo
 
 func getBasicTcpObserver(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
 	return getTcpObserver(t, ctx, tcpBasicConfig, docker)
+}
+
+func getTcpObserverWithRTTDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
+	return getTcpObserver(t, ctx, tcpBasicConfigWithRTTDetection, docker)
 }
 
 func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
@@ -1213,6 +1235,82 @@ func TestDetectLatency4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDetectRTT4(t *testing.T) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8083"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker("ncListen").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker("ncAccept").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("ncClose").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("accept")).
+			WithStats(ec.NewSocketStatsChecker().
+				WithRtt(ec.NewHistogramChecker().
+					WithBuckets(ec.NewHistogramBucketListMatcher().
+						WithValues(ec.NewHistogramBucketChecker().
+							WithPercentile(1))))))
+
+	obs := getTcpObserverWithRTTDetection(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-nvlp", "8083")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "127.0.0.1", "8083")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
 func TestConnectEvent6(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -1674,6 +1772,82 @@ func TestDockerListenConnect6(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestDetectRTT6(t *testing.T) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8083"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker("ncListen").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker("ncAccept").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker("ncClose").
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8083).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("accept")).
+			WithStats(ec.NewSocketStatsChecker().
+				WithRtt(ec.NewHistogramChecker().
+					WithBuckets(ec.NewHistogramBucketListMatcher().
+						WithValues(ec.NewHistogramBucketChecker().
+							WithPercentile(1))))))
+
+	obs := getTcpObserverWithRTTDetection(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-6nvlp", "8083")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-6n", "::1", "8083")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
