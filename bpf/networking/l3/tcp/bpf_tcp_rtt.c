@@ -18,13 +18,6 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-// Copied from struct tcp_sock defined in include/linux/tcp.h
-struct rcv_rtt_est {
-	u32 rtt_us;
-	u32 seq;
-	u64 time;
-};
-
 #define FLAG_DATA_ACKED 0x04
 #define FLAG_SYN_ACKED	0x10
 #define FLAG_ACKED	(FLAG_DATA_ACKED | FLAG_SYN_ACKED)
@@ -32,19 +25,22 @@ struct rcv_rtt_est {
 #define TCP_TS_HZ	1000
 #define INT_MAX		((int)(~0U >> 1))
 
-__attribute__((section("kprobe/__tcp_ack_snd_check"), used)) int
-tg_tcp_ack_snd_check(struct pt_regs *ctx)
+__attribute__((section("kprobe/tcp_ack_update_rtt"), used)) int
+tg_tcp_ack_update_rtt(struct pt_regs *ctx)
 {
 	struct tcp_sock *skp = (struct tcp_sock *)PT_REGS_PARM1(ctx);
+	s64 sack_rtt_us = (s64)PT_REGS_PARM4(ctx);
+	s64 seq_rtt_us = (s64)PT_REGS_PARM3(ctx);
 	struct tcp_send_check_sample_cfg *cfg;
+	u32 flag = (u32)PT_REGS_PARM2(ctx);
+	struct tcp_options_received rx_opt;
 	struct tcpsocketmap_value *socket;
-	struct rcv_rtt_est rtt;
+	u64 tcp_time_stamp;
+	s64 rtt_us = -1;
 	int zero = 0;
 	u64 cookie;
-	u64 rtt_us;
 
-	/* In TCP we use the struct sock address as the socket cookie.
-	 */
+	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skp;
 
 	socket = lookup_tcpsocketmap(&cookie);
@@ -53,22 +49,44 @@ tg_tcp_ack_snd_check(struct pt_regs *ctx)
 		return 0;
 	}
 
-	probe_read_kernel(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
 		&tg_tcp_send_check_sampler, &zero);
-	if (!cfg) {
+	if (!cfg)
 		return 0;
+
+	/* Implement logic from tcp_ack_update_rtt()
+	 * This has been reworked to avoid the probe_read if unnecessary,
+	 * and to invert all the tests to avoid nested ifs.
+	 */
+	if (seq_rtt_us >= 0)
+		rtt_us = seq_rtt_us;
+	else if (sack_rtt_us >= 0)
+		rtt_us = sack_rtt_us;
+	else {
+		if (probe_read(&rx_opt, sizeof(rx_opt), _(&(skp->rx_opt))) < 0) {
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_CANNOT_READ_RX_OPT);
+			return 0;
+		}
+		if (!rx_opt.saw_tstamp || !rx_opt.rcv_tsecr || !(flag & FLAG_ACKED)) {
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_NO_TIMESTAMP);
+			return 0;
+		}
+		probe_read(&tcp_time_stamp, sizeof(tcp_time_stamp), _(&(skp->tcp_mstamp)));
+		tcp_time_stamp /= (USEC_PER_SEC / TCP_TS_HZ);
+		rtt_us = tcp_time_stamp - rx_opt.rcv_tsecr;
+		if (rtt_us >= INT_MAX / (USEC_PER_SEC / TCP_TS_HZ)) {
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_DELTA_TOO_BIG);
+			return 0;
+		}
+		if (!rtt_us)
+			rtt_us = 1;
+		rtt_us *= (USEC_PER_SEC / TCP_TS_HZ);
 	}
 
-	if (rtt.rtt_us == 0) {
-		// If we've already got beyond the handshake then the RTT should have been
-		// calculated. If it hasn't then this is an error.
-		if (socket->segs_in > 2 && socket->segs_out > 2)
-			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_EQUALS_ZERO);
+	if (rtt_us == 0) {
+		emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_EQUALS_ZERO);
 		return 0;
 	}
-
-	rtt_us = rtt.rtt_us / 8; // RTT is reported as <<3 in us
 
 	if (cfg->bucket00 > rtt_us)
 		socket->rtt_buckets[0]++;

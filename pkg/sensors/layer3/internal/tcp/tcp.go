@@ -130,9 +130,9 @@ var (
 	// although open to improvements and discussion.
 	RttTracer = program.Builder(
 		"bpf_tcp_rtt.o",
-		"__tcp_ack_snd_check",
-		"kprobe/__tcp_ack_snd_check",
-		"tg_tcp_ack_snd_check",
+		"tcp_ack_update_rtt",
+		"kprobe/tcp_ack_update_rtt",
+		"tg_tcp_ack_update_rtt",
 		"kprobe")
 
 	// Maps for TCP Sockets

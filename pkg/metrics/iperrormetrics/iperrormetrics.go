@@ -75,6 +75,9 @@ const (
 	TcpRecvNoIpHeader
 	TcpRttNoSocket
 	TcpRttEqualsZero
+	TcpRttCannotReadRxOpt
+	TcpRttNoTimestamp
+	TcpRttDeltaTooBig
 )
 
 type Protocol int
@@ -156,6 +159,9 @@ var IpErrorToString = map[IpError]Config{
 	TcpRecvNoIpHeader:                {Msg: "TCP recv no IP header", Protocol: Tcp},
 	TcpRttNoSocket:                   {Msg: "TCP RTT no socket", Protocol: Tcp},
 	TcpRttEqualsZero:                 {Msg: "TCP RTT equals zero", Protocol: Tcp},
+	TcpRttCannotReadRxOpt:            {Msg: "TCP RTT cannot read rx_opt", Protocol: Tcp},
+	TcpRttNoTimestamp:                {Msg: "TCP RTT no timestamp", Protocol: Tcp},
+	TcpRttDeltaTooBig:                {Msg: "TCP RTT delta too big", Protocol: Tcp},
 }
 
 var (
