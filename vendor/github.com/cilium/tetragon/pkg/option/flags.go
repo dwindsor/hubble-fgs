@@ -45,9 +45,10 @@ const (
 	KeyTracingPolicy      = "tracing-policy"
 	KeyTracingPolicyDir   = "tracing-policy-dir"
 
-	KeyCpuProfile = "cpuprofile"
-	KeyMemProfile = "memprofile"
-	KeyPprofAddr  = "pprof-addr"
+	KeyCpuProfile          = "cpuprofile"
+	KeyMemProfile          = "memprofile"
+	KeyPprofAddr           = "pprof-address"
+	KeyDeprecatedPprofAddr = "pprof-addr"
 
 	KeyExportFilename             = "export-filename"
 	KeyExportFileMaxSizeMB        = "export-file-max-size-mb"
@@ -184,6 +185,7 @@ func ReadAndSetFlags() error {
 
 	Config.CpuProfile = viper.GetString(KeyCpuProfile)
 	Config.MemProfile = viper.GetString(KeyMemProfile)
+	Config.PprofAddr = viper.GetString(KeyDeprecatedPprofAddr)
 	Config.PprofAddr = viper.GetString(KeyPprofAddr)
 
 	Config.EventQueueSize = viper.GetUint(KeyEventQueueSize)
@@ -308,7 +310,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(KeyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(KeyMetricsLabelFilter, "namespace,workload,pod,binary", "Comma-separated list of enabled metrics labels. Unknown labels will be ignored.")
-	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'")
+	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server")
 	flags.String(KeyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
 	flags.Bool(KeyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(KeyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
@@ -326,8 +328,9 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyMemProfile, "", "Store MEM profile into provided file")
 	flags.MarkHidden(KeyMemProfile)
 
-	flags.String(KeyPprofAddr, "", "Profile via pprof http")
-	flags.MarkHidden(KeyPprofAddr)
+	flags.String(KeyPprofAddr, "", "Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default")
+	flags.String(KeyDeprecatedPprofAddr, "", "")
+	flags.MarkDeprecated(KeyDeprecatedPprofAddr, "please use --pprof-address")
 
 	// JSON export aggregation options.
 	flags.Bool(KeyEnableExportAggregation, false, "Enable JSON export aggregation")

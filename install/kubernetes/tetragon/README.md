@@ -28,7 +28,7 @@ Helm chart for Tetragon Enterprise
 | podLabelsOverride | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | priorityClassName | string | `""` |  |
-| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","image":{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.2"},"installDir":"/opt/tetragon","interface":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"priorityClassName":"","resources":{},"securityContext":{"privileged":true}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
+| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","image":{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.2"},"installDir":"/opt/tetragon","interface":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"podSecurityContext":{"privileged":true},"priorityClassName":"","resources":{}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
 | rthooks.annotations | object | `{}` | Annotations for the Tetragon rthooks daemonset |
 | rthooks.enabled | bool | `false` | Enable the Tetragon rthooks daemonset |
 | rthooks.extraHookArgs | object | `{}` | extra args to pass to tetragon-oci-hook |
@@ -43,9 +43,9 @@ Helm chart for Tetragon Enterprise
 | rthooks.ociHooks | object | `{"hooksPath":"/usr/share/containers/oci/hooks.d"}` | configuration for "oci-hooks" interface |
 | rthooks.ociHooks.hooksPath | string | `"/usr/share/containers/oci/hooks.d"` | directory to install .json file for running the hook |
 | rthooks.podAnnotations | object | `{}` | Pod annotations for the Tetrargon rthooks pod |
+| rthooks.podSecurityContext | object | `{"privileged":true}` | security context for the Tetrargon rthooks pod |
 | rthooks.priorityClassName | string | `""` | priorityClassName for the Tetrargon rthooks pod |
 | rthooks.resources | object | `{}` | resources for the the oci-hook-setup init container |
-| rthooks.securityContext | object | `{"privileged":true}` | security context for the Tetrargon rthooks pod |
 | selectorLabelsOverride | object | `{}` |  |
 | serviceAccount.annotations | object | `{}` |  |
 | serviceAccount.create | bool | `true` |  |
@@ -106,6 +106,9 @@ Helm chart for Tetragon Enterprise
 | tetragon.ociHookSetup.interface | string | `"oci-hooks"` | interface specifices how the hook is  configured. There is only one avaialble value for now: "oci-hooks" (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md). |
 | tetragon.ociHookSetup.resources | object | `{}` | resources for the the oci-hook-setup init container |
 | tetragon.ociHookSetup.securityContext | object | `{"privileged":true}` | Security context for oci-hook-setup init container |
+| tetragon.pprof.address | string | `"localhost"` | The address at which to expose pprof. |
+| tetragon.pprof.enabled | bool | `false` | Whether to enable exposing pprof server. |
+| tetragon.pprof.port | int | `6060` | The port at which to expose pprof. |
 | tetragon.processCacheSize | int | `65536` | Tetragon puts processes in an LRU cache. The cache is used to find ancestors for subsequently exec'ed processes. |
 | tetragon.prometheus.address | string | `""` | The address at which to expose metrics. Set it to "" to expose on all available interfaces. |
 | tetragon.prometheus.enabled | bool | `true` | Whether to enable exposing Tetragon metrics. |

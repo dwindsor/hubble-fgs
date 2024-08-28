@@ -2,6 +2,15 @@
 
 ## Tetragon Health Metrics
 
+### `tetragon_bpf_missed_events_total`
+
+Number of Tetragon perf events that are failed to be sent from the kernel.
+
+| label | values |
+| ----- | ------ |
+| `error` | `EBUSY, ENOSPC, unknown` |
+| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
+
 ### `tetragon_build_info`
 
 Build information about tetragon
@@ -165,14 +174,6 @@ The number of errors per map.
 | label | values |
 | ----- | ------ |
 | `map  ` | `execve_map, tg_execve_joined_info_map` |
-
-### `tetragon_missed_events_total`
-
-The total number of Tetragon events per type that are failed to sent from the kernel.
-
-| label | values |
-| ----- | ------ |
-| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
 
 ### `tetragon_missed_link_probes_total`
 
