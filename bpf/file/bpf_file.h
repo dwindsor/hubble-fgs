@@ -817,45 +817,35 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 }
 #endif /* __ENABLE_GLOB_SUPPORT */
 
-// returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_enforcement(__u32 sel_idx)
-{
-	__u32 *action = map_lookup_elem(&file_actions_map, &sel_idx);
-	if (!action)
-		return 0;
-	return (*action & FILE_OP_BLOCK) != 0;
-}
-
 static inline __attribute__((always_inline)) __u32
 __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len)
 {
+	__u32 *act = 0;
+
 	if (!check_match_binaries(sel_idx, execve))
-		goto nopost;
+		return 0;
 	if (!check_match_operations(sel_idx, action))
-		goto nopost;
+		return 0;
 #ifdef __LARGE_BPF_PROG
 	if (!check_match_digests(sel_idx, digest, action))
-		goto nopost;
+		return 0;
 	if (!check_match_namespaces(sel_idx))
-		goto nopost;
+		return 0;
 	if (!check_match_capabilities(sel_idx))
-		goto nopost;
+		return 0;
 	if (!check_match_open_flags(sel_idx, action, flags))
-		goto nopost;
+		return 0;
 #endif
 #ifdef __ENABLE_GLOB_SUPPORT
 	if (!check_match_filename(sel_idx, path, len))
-		goto nopost;
+		return 0;
 #endif
 	if (!check_match_rename(sel_idx, action, flags))
-		goto nopost;
-	if (!check_enforcement(sel_idx))
-		goto post;
+		return 0;
 
-	return FILE_OP_POST | FILE_OP_BLOCK;
-post:
-	return FILE_OP_POST;
-nopost:
+	act = map_lookup_elem(&file_actions_map, &sel_idx);
+	if (act)
+		return *act;
 	return 0;
 }
 
@@ -974,21 +964,20 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 static inline __attribute__((always_inline)) __u32
 __eval_exec_selectors(__u32 sel_idx, struct digest_key *digest, struct execve_map_value *execve)
 {
-	if (!check_match_binaries(sel_idx, execve))
-		goto nopost;
-	if (!check_match_digests(sel_idx, digest, action_exec))
-		goto nopost;
-	if (!check_match_capabilities(sel_idx))
-		goto nopost;
-	if (!check_match_namespaces(sel_idx))
-		goto nopost;
-	if (!check_enforcement(sel_idx))
-		goto post;
+	__u32 *act = 0;
 
-	return FILE_OP_POST | FILE_OP_BLOCK;
-post:
-	return FILE_OP_POST;
-nopost:
+	if (!check_match_binaries(sel_idx, execve))
+		return 0;
+	if (!check_match_digests(sel_idx, digest, action_exec))
+		return 0;
+	if (!check_match_capabilities(sel_idx))
+		return 0;
+	if (!check_match_namespaces(sel_idx))
+		return 0;
+
+	act = map_lookup_elem(&file_actions_map, &sel_idx);
+	if (act)
+		return *act;
 	return 0;
 }
 
@@ -1539,7 +1528,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	// At these events we don't need to update any internal maps.
 	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	complete_msg(msg, action, hook_type, operation, rule_id, 0);
 

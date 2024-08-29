@@ -119,6 +119,7 @@ spec:
                           enum:
                           - Post
                           - Block
+                          - NoPost
                           type: string
                       required:
                       - action
@@ -149,6 +150,7 @@ spec:
                                 enum:
                                 - Post
                                 - Block
+                                - NoPost
                                 type: string
                             required:
                             - action
@@ -469,6 +471,7 @@ spec:
                                 enum:
                                 - Post
                                 - Block
+                                - NoPost
                                 type: string
                             required:
                             - action

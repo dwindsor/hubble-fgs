@@ -3021,6 +3021,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_OP_UNKNOWN | 0 |  |
 | FILE_OP_POST | 1 |  |
 | FILE_OP_BLOCK | 2 |  |
+| FILE_OP_NOPOST | 4 |  |
 
 
 

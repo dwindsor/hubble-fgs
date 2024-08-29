@@ -685,7 +685,7 @@ Total file events per action
 | `action` | `FILE_CHATTR, FILE_CREATE, FILE_DELETE, FILE_EXEC, FILE_INVALID, FILE_LINK, FILE_MKDIR, FILE_OPEN, FILE_READ, FILE_READDIR, FILE_RENAME, FILE_RMDIR, FILE_WRITE` |
 | `namespace` | `example-namespace` |
 | `node ` | `example-nodename` |
-| `operation` | `FILE_OP_BLOCK, FILE_OP_POST, FILE_OP_UNKNOWN` |
+| `operation` | `FILE_OP_BLOCK, FILE_OP_NOPOST, FILE_OP_POST, FILE_OP_UNKNOWN` |
 | `pod  ` | `example-pod` |
 | `policy` | `example-tracingpolicy` |
 | `rule ` | `/etc/example/` |
@@ -697,7 +697,7 @@ Total file exec events per action
 
 | label | values |
 | ----- | ------ |
-| `action` | `FILE_OP_BLOCK, FILE_OP_POST, FILE_OP_UNKNOWN` |
+| `action` | `FILE_OP_BLOCK, FILE_OP_NOPOST, FILE_OP_POST, FILE_OP_UNKNOWN` |
 | `digest` | `HASH_ALGO_SHA256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef` |
 | `file ` | `/bin/example` |
 | `namespace` | `example-namespace` |

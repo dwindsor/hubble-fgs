@@ -35,7 +35,7 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, const st
 	// which is already done here.
 	operation = eval_selectors(action_link, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	complete_msg(msg, action_link, hook_security_path_link, operation, rule_id, 0);
 

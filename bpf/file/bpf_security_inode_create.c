@@ -60,7 +60,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	// which is already done here.
 	operation = eval_selectors(action_create, 0, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	msg->action = action_create;
 	msg->hook = hook_security_inode_create;

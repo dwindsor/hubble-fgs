@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	FileOperationTypePost  = uint32(tetragon.FileOperation_FILE_OP_POST)
-	FileOperationTypeBlock = uint32(tetragon.FileOperation_FILE_OP_BLOCK)
+	FileOperationTypePost   = uint32(tetragon.FileOperation_FILE_OP_POST)
+	FileOperationTypeBlock  = uint32(tetragon.FileOperation_FILE_OP_BLOCK)
+	FileOperationTypeNoPost = uint32(tetragon.FileOperation_FILE_OP_NOPOST)
 
 	MaxFimSelectors     = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
 	MaxFimGlobSelectors = 128
@@ -114,8 +115,9 @@ var namespaceFilterTable = map[string]uint32{
 }
 
 var fileActionTypeTable = map[string]uint32{
-	"post":  FileOperationTypePost,
-	"block": FileOperationTypeBlock,
+	"post":   FileOperationTypePost,
+	"block":  FileOperationTypeBlock,
+	"nopost": FileOperationTypeNoPost,
 }
 
 type SelOps struct {
@@ -725,6 +727,13 @@ func GetActions(actions []v1alpha1.FileActionSelector) (uint32, error) {
 	if len(actions) > 1 {
 		return 0, fmt.Errorf("only support single actions selector")
 	}
+
+	// no specific actions for this selector, use Post by default
+	if len(actions) == 0 {
+		return FileOperationTypePost, nil
+	}
+
+	// parse all actions
 	action := uint32(0)
 	for _, a := range actions {
 		act, ok := fileActionTypeTable[strings.ToLower(a.Action)]
@@ -733,6 +742,17 @@ func GetActions(actions []v1alpha1.FileActionSelector) (uint32, error) {
 		}
 		action |= act
 	}
+
+	// having both post and nopost is not allowed
+	if action&FileOperationTypePost != 0 && action&FileOperationTypeNoPost != 0 {
+		return 0, fmt.Errorf("parseMatchAction: Post and NoPost actions are not allowed: %s", actions)
+	}
+
+	// if we have only block (and not NoPost), let's add Post as well
+	if action&FileOperationTypeBlock != 0 && action&FileOperationTypeNoPost == 0 {
+		action |= FileOperationTypePost
+	}
+
 	return action, nil
 }
 

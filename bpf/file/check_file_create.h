@@ -88,7 +88,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	// which is already done here.
 	operation = eval_selectors(action_create, 0, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 	/* operation cannot be FILE_OP_BLOCK here */
 
 	probe_read(&(msg->imode[0]), sizeof(msg->imode[0]), _(&inode->i_mode));

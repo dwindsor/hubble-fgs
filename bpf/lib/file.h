@@ -24,8 +24,9 @@
 #define CONTAINER_FILE	(1 << 1)
 #define PATH_BASED_FILE (1 << 2)
 
-#define FILE_OP_POST  (1 << 0) // 0x1
-#define FILE_OP_BLOCK (1 << 1) // 0x2
+#define FILE_OP_POST   (1 << 0) // 0x1
+#define FILE_OP_BLOCK  (1 << 1) // 0x2
+#define FILE_OP_NOPOST (1 << 2) // 0x4
 
 #define CONTAINER_ID_LEN 64
 

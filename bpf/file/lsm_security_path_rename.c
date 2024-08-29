@@ -111,7 +111,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	// check both the one non-zero operation
 	operation = src_op ? src_op : dst_op;
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	msg->action = action_rename;
 	msg->hook = hook_security_path_rename;

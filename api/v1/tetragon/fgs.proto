@@ -334,6 +334,7 @@ enum FileOperation {
     FILE_OP_UNKNOWN = 0x00;
     FILE_OP_POST = 0x01;
     FILE_OP_BLOCK = 0x02;
+    FILE_OP_NOPOST = 0x04;
 }
 
 message ProcessFile {

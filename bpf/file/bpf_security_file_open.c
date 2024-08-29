@@ -60,7 +60,7 @@ file_open(void *ctx, struct file *file)
 	// which is already done here.
 	operation = eval_selectors(action_open, open_flags, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	// first check if we care about the file/dir itself
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, msg->ino, msg->fs.dev);

@@ -76,7 +76,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	// At these events we don't need to update any internal maps.
 	operation = eval_selectors(action, 0, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;

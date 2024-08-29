@@ -41,7 +41,7 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	open_flags = BPF_CORE_READ(file, f_flags);
 	operation = eval_selectors(action_open, open_flags, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	complete_msg(msg, action_open, hook_security_file_open, operation, rule_id, open_flags);
 

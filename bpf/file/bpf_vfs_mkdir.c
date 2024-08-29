@@ -294,7 +294,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	// we can avoid sending the message.
 	// In these events have already updated any internal maps.
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	/* operation cannot be FILE_OP_BLOCK here as this operation will 
 	 * be block by lsm/fmod_ret programs */

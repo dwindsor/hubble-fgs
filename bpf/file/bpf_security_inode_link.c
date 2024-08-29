@@ -102,7 +102,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	// which is already done here.
 	operation = eval_selectors(action_link, 0, 0, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	msg->action = action_link;
 	msg->hook = hook_security_inode_link;

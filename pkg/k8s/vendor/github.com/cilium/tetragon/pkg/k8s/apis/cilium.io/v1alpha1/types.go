@@ -163,7 +163,7 @@ type OperationSelector struct {
 }
 
 type FileActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;Block
+	// +kubebuilder:validation:Enum=Post;Block;NoPost
 	// Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).
 	Action string `json:"action"`
 }

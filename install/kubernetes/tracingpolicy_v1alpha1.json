@@ -98,7 +98,8 @@
                     "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
                     "enum": [
                       "Post",
-                      "Block"
+                      "Block",
+                      "NoPost"
                     ],
                     "type": "string"
                   }
@@ -129,7 +130,8 @@
                           "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
                           "enum": [
                             "Post",
-                            "Block"
+                            "Block",
+                            "NoPost"
                           ],
                           "type": "string"
                         }
@@ -514,7 +516,8 @@
                           "description": "Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).",
                           "enum": [
                             "Post",
-                            "Block"
+                            "Block",
+                            "NoPost"
                           ],
                           "type": "string"
                         }

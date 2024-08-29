@@ -70,7 +70,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	// At these events we don't need to update any internal maps.
 	operation = eval_selectors(action_exec, 0, digest, 0, 0);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	memcpy(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;

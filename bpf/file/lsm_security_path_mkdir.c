@@ -35,7 +35,7 @@ static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const s
 	// which is already done here.
 	operation = eval_selectors(action_mkdir, 0, 0, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST))
-		return 0;
+		return operation;
 
 	complete_msg(msg, action_mkdir, hook_security_path_mkdir, operation, rule_id, 0);
 

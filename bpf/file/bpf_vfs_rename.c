@@ -595,7 +595,7 @@ vfs_rename_exit_out:
 	// we can avoid creating the message.
 	// In these events we have already updated any internal maps.
 	if (!(msg->operation & FILE_OP_POST))
-		return 0;
+		return msg->operation;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE_RENAME, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 				 sizeof(struct msg_file_rename_ops));
