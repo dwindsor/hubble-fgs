@@ -398,7 +398,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 			return []observer.Event{tcp}, nil
 		}
 		// Convert to a TCPStats event by simply setting op code
-		c.Msg.Common.Op = ops.MsgOpTCPStats
+		c.Msg.Common.Op = ops.MSG_OP_TCPSTATS
 		statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateKtime}
 		stats.Remove(statsKey)
 		return []observer.Event{tcp, &c}, nil

@@ -122,7 +122,7 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	raw.Msg.Common.Ktime = ktime
 
 	raw.Msg.SockCookie = socket.Sockaddr
-	raw.Msg.Common.Op = ops.MsgOpRawsockCreate
+	raw.Msg.Common.Op = ops.MSG_OP_RAWSOCK_CREATE
 
 	observer.AllListeners(&raw)
 }

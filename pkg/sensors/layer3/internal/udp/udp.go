@@ -164,12 +164,12 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 		if DisableListenEvents {
 			return
 		}
-		udp.Msg.Common.Op = ops.MsgOpUDPListen
+		udp.Msg.Common.Op = ops.MSG_OP_UDPLISTEN
 	} else {
 		if DisableConnectEvents {
 			return
 		}
-		udp.Msg.Common.Op = ops.MsgOpUDPConnect
+		udp.Msg.Common.Op = ops.MSG_OP_UDPCONNECT
 	}
 
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))

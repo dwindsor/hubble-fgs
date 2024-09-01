@@ -75,9 +75,9 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Msg.SockCookie = socket.Sockaddr
 
 	if socket.State == TCP_PROC_STATE_LISTEN {
-		tcp.Msg.Common.Op = ops.MsgOpListen
+		tcp.Msg.Common.Op = ops.MSG_OP_LISTEN
 	} else {
-		tcp.Msg.Common.Op = ops.MsgOpTCPConnectReturn
+		tcp.Msg.Common.Op = ops.MSG_OP_TCPCONNECTRET
 	}
 
 	if _pushEvents {

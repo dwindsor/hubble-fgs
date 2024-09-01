@@ -71,7 +71,7 @@ func emitStatEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networka
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
-		Op:    ops.MsgOpTCPStats,
+		Op:    ops.MSG_OP_TCPSTATS,
 		Size:  1,
 		Ktime: stats.Ktime,
 	}

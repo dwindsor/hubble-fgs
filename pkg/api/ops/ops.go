@@ -1,5 +1,7 @@
 package ops
 
+type OpCode int
+
 const (
 	MSG_OP_UNDEF = 0
 	// The following events generate MsgTcpConnectUnix type events.
@@ -107,89 +109,46 @@ const (
 	MSG_OP_RAWSOCK_CLOSE  = 138
 )
 
-type OpCode int
-
-const (
-	MsgOpUndef                   = iota
-	MsgOpTCPConnect              = 1
-	MsgOpTCPConnectReturn        = 2
-	MsgOpBind                    = 3
-	MsgOpListen                  = 4
-	MsgOpExecve                  = 5
-	MsgOpTLS                     = 6
-	MsgOpExit                    = 7
-	MsgOpTCPClose                = 8
-	MsgOpAccept                  = 9
-	MsgOpCred                    = 10
-	MsgOpKfreeSkb                = 11
-	MsgOpTLSCont                 = 12
-	MsgOpGenericKprobe           = 13
-	MsgOpGeneric_Tracepoint      = 14
-	MsgOpTCPStats                = 15
-	MsgOpHTTP                    = 16
-	MsgOpUDPClose                = 17
-	MsgOpUDPConnect              = 18
-	MsgOpUDPStats                = 19
-	MsgOpInterfaceStats          = 20
-	MsgOpUDPPayload              = 21
-	MsgOpProcessNetworkBurst     = 22
-	MsgOpClone                   = 23
-	MsgOpData                    = 24
-	MsgOpNetnsExit               = 25
-	MsgOpTest                    = 254
-	MsgOpDNS                     = 128
-	MsgOpFile                    = 129
-	MsgOpIpError                 = 130
-	MsgOpFileRename              = 131
-	MsgOpProcessNetworkWatermark = 132
-	MsgOpUdpSeqError             = 133
-	MsgOpIcmp                    = 134
-	MsgOpIcmpV6                  = 135
-	MsgOpUDPListen               = 136
-	MsgOpRawsockCreate           = 137
-	MsgOpRawSockClose            = 138
-)
-
 func (op OpCode) String() string {
 	opCodeMap := map[OpCode]string{
-		MsgOpUndef:                   "Undef",
-		MsgOpTCPConnect:              "TCPConnect",
-		MsgOpTCPConnectReturn:        "TCPConnectReturn",
-		MsgOpBind:                    "TCPBind",
-		MsgOpListen:                  "TCPListen",
-		MsgOpExecve:                  "Execve",
-		MsgOpTLS:                     "TLS",
-		MsgOpExit:                    "Exit",
-		MsgOpTCPClose:                "TCPClose",
-		MsgOpAccept:                  "TCPAccept",
-		MsgOpCred:                    "Cred",
-		MsgOpKfreeSkb:                "KfreeSkb",
-		MsgOpTLSCont:                 "TLSCont",
-		MsgOpGenericKprobe:           "GenericKprobe",
-		MsgOpGeneric_Tracepoint:      "GenericTracepoint",
-		MsgOpTCPStats:                "TCPStats",
-		MsgOpHTTP:                    "HTTP",
-		MsgOpUDPClose:                "UDPClose",
-		MsgOpUDPConnect:              "UDPConnect",
-		MsgOpUDPStats:                "UDPStats",
-		MsgOpInterfaceStats:          "InterfaceStats",
-		MsgOpUDPPayload:              "UDPPayload",
-		MsgOpProcessNetworkBurst:     "ProcessNetworkBurst",
-		MsgOpClone:                   "Clone",
-		MsgOpData:                    "Data",
-		MsgOpNetnsExit:               "NetNsExit",
-		MsgOpTest:                    "Test",
-		MsgOpDNS:                     "DNS",
-		MsgOpFile:                    "File",
-		MsgOpIpError:                 "IPError",
-		MsgOpFileRename:              "FileRename",
-		MsgOpProcessNetworkWatermark: "ProcessNetworkWatermark",
-		MsgOpUdpSeqError:             "UDPSeqError",
-		MsgOpIcmp:                    "Icmp",
-		MsgOpIcmpV6:                  "IcmpV6",
-		MsgOpUDPListen:               "UDPListen",
-		MsgOpRawsockCreate:           "RawsockCreate",
-		MsgOpRawSockClose:            "RawsockClose",
+		MSG_OP_UNDEF:                     "Undef",
+		MSG_OP_TCPCONNECT:                "TCPConnect",
+		MSG_OP_TCPCONNECTRET:             "TCPConnectReturn",
+		MSG_OP_BIND:                      "TCPBind",
+		MSG_OP_LISTEN:                    "TCPListen",
+		MSG_OP_EXECVE:                    "Execve",
+		MSG_OP_TLS:                       "TLS",
+		MSG_OP_EXIT:                      "Exit",
+		MSG_OP_TCPCLOSE:                  "TCPClose",
+		MSG_OP_ACCEPT:                    "TCPAccept",
+		MSG_OP_CRED:                      "Cred",
+		MSG_OP_KFREE_SKB:                 "KfreeSkb",
+		MSG_OP_TLS_CONT:                  "TLSCont",
+		MSG_OP_GENERIC_KPROBE:            "GenericKprobe",
+		MSG_OP_GENERIC_TRACEPOINT:        "GenericTracepoint",
+		MSG_OP_TCPSTATS:                  "TCPStats",
+		MSG_OP_HTTP:                      "HTTP",
+		MSG_OP_UDPCLOSE:                  "UDPClose",
+		MSG_OP_UDPCONNECT:                "UDPConnect",
+		MSG_OP_UDPSTATS:                  "UDPStats",
+		MSG_OP_INTERFACE_STATS:           "InterfaceStats",
+		MSG_OP_UDPPAYLOAD:                "UDPPayload",
+		MSG_OP_PROCESS_NETWORK_BURST:     "ProcessNetworkBurst",
+		MSG_OP_CLONE:                     "Clone",
+		MSG_OP_DATA:                      "Data",
+		MSG_OP_NETNS_EXIT:                "NetNsExit",
+		MSG_OP_TEST:                      "Test",
+		MSG_OP_DNS:                       "DNS",
+		MSG_OP_FILE:                      "File",
+		MSG_OP_IP_ERROR:                  "IPError",
+		MSG_OP_FILE_RENAME:               "FileRename",
+		MSG_OP_PROCESS_NETWORK_WATERMARK: "ProcessNetworkWatermark",
+		MSG_OP_UDP_SEQ_ERROR:             "UDPSeqError",
+		MSG_OP_ICMP:                      "Icmp",
+		MSG_OP_ICMPV6:                    "IcmpV6",
+		MSG_OP_UDPLISTEN:                 "UDPListen",
+		MSG_OP_RAWSOCK_CREATE:            "RawsockCreate",
+		MSG_OP_RAWSOCK_CLOSE:             "RawsockClose",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val
