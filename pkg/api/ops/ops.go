@@ -1,7 +1,15 @@
 package ops
 
+import (
+	"fmt"
+
+	"github.com/cilium/tetragon/pkg/logger"
+)
+
 type OpCode int
 
+// OpCodes must be in sync with iso_msg_ops enum in bpf/lib/iso_msg_types.h
+// and should have a human-readable representation in OpCodeStrings.
 const (
 	MSG_OP_UNDEF = 0
 	// The following events generate MsgTcpConnectUnix type events.
@@ -109,49 +117,52 @@ const (
 	MSG_OP_RAWSOCK_CLOSE  = 138
 )
 
+var OpCodeStrings = map[OpCode]string{
+	MSG_OP_UNDEF:                     "Undef",
+	MSG_OP_TCPCONNECT:                "TCPConnect",
+	MSG_OP_TCPCONNECTRET:             "TCPConnectReturn",
+	MSG_OP_BIND:                      "TCPBind",
+	MSG_OP_LISTEN:                    "TCPListen",
+	MSG_OP_EXECVE:                    "Execve",
+	MSG_OP_TLS:                       "TLS",
+	MSG_OP_EXIT:                      "Exit",
+	MSG_OP_TCPCLOSE:                  "TCPClose",
+	MSG_OP_ACCEPT:                    "TCPAccept",
+	MSG_OP_CRED:                      "Cred",
+	MSG_OP_KFREE_SKB:                 "KfreeSkb",
+	MSG_OP_TLS_CONT:                  "TLSCont",
+	MSG_OP_GENERIC_KPROBE:            "GenericKprobe",
+	MSG_OP_GENERIC_TRACEPOINT:        "GenericTracepoint",
+	MSG_OP_TCPSTATS:                  "TCPStats",
+	MSG_OP_HTTP:                      "HTTP",
+	MSG_OP_UDPCLOSE:                  "UDPClose",
+	MSG_OP_UDPCONNECT:                "UDPConnect",
+	MSG_OP_UDPSTATS:                  "UDPStats",
+	MSG_OP_INTERFACE_STATS:           "InterfaceStats",
+	MSG_OP_UDPPAYLOAD:                "UDPPayload",
+	MSG_OP_PROCESS_NETWORK_BURST:     "ProcessNetworkBurst",
+	MSG_OP_CLONE:                     "Clone",
+	MSG_OP_DATA:                      "Data",
+	MSG_OP_NETNS_EXIT:                "NetNsExit",
+	MSG_OP_TEST:                      "Test",
+	MSG_OP_DNS:                       "DNS",
+	MSG_OP_FILE:                      "File",
+	MSG_OP_IP_ERROR:                  "IPError",
+	MSG_OP_FILE_RENAME:               "FileRename",
+	MSG_OP_PROCESS_NETWORK_WATERMARK: "ProcessNetworkWatermark",
+	MSG_OP_UDP_SEQ_ERROR:             "UDPSeqError",
+	MSG_OP_ICMP:                      "Icmp",
+	MSG_OP_ICMPV6:                    "IcmpV6",
+	MSG_OP_UDPLISTEN:                 "UDPListen",
+	MSG_OP_RAWSOCK_CREATE:            "RawsockCreate",
+	MSG_OP_RAWSOCK_CLOSE:             "RawsockClose",
+}
+
 func (op OpCode) String() string {
-	opCodeMap := map[OpCode]string{
-		MSG_OP_UNDEF:                     "Undef",
-		MSG_OP_TCPCONNECT:                "TCPConnect",
-		MSG_OP_TCPCONNECTRET:             "TCPConnectReturn",
-		MSG_OP_BIND:                      "TCPBind",
-		MSG_OP_LISTEN:                    "TCPListen",
-		MSG_OP_EXECVE:                    "Execve",
-		MSG_OP_TLS:                       "TLS",
-		MSG_OP_EXIT:                      "Exit",
-		MSG_OP_TCPCLOSE:                  "TCPClose",
-		MSG_OP_ACCEPT:                    "TCPAccept",
-		MSG_OP_CRED:                      "Cred",
-		MSG_OP_KFREE_SKB:                 "KfreeSkb",
-		MSG_OP_TLS_CONT:                  "TLSCont",
-		MSG_OP_GENERIC_KPROBE:            "GenericKprobe",
-		MSG_OP_GENERIC_TRACEPOINT:        "GenericTracepoint",
-		MSG_OP_TCPSTATS:                  "TCPStats",
-		MSG_OP_HTTP:                      "HTTP",
-		MSG_OP_UDPCLOSE:                  "UDPClose",
-		MSG_OP_UDPCONNECT:                "UDPConnect",
-		MSG_OP_UDPSTATS:                  "UDPStats",
-		MSG_OP_INTERFACE_STATS:           "InterfaceStats",
-		MSG_OP_UDPPAYLOAD:                "UDPPayload",
-		MSG_OP_PROCESS_NETWORK_BURST:     "ProcessNetworkBurst",
-		MSG_OP_CLONE:                     "Clone",
-		MSG_OP_DATA:                      "Data",
-		MSG_OP_NETNS_EXIT:                "NetNsExit",
-		MSG_OP_TEST:                      "Test",
-		MSG_OP_DNS:                       "DNS",
-		MSG_OP_FILE:                      "File",
-		MSG_OP_IP_ERROR:                  "IPError",
-		MSG_OP_FILE_RENAME:               "FileRename",
-		MSG_OP_PROCESS_NETWORK_WATERMARK: "ProcessNetworkWatermark",
-		MSG_OP_UDP_SEQ_ERROR:             "UDPSeqError",
-		MSG_OP_ICMP:                      "Icmp",
-		MSG_OP_ICMPV6:                    "IcmpV6",
-		MSG_OP_UDPLISTEN:                 "UDPListen",
-		MSG_OP_RAWSOCK_CREATE:            "RawsockCreate",
-		MSG_OP_RAWSOCK_CLOSE:             "RawsockClose",
+	s, ok := OpCodeStrings[op]
+	if !ok {
+		logger.GetLogger().WithField("opcode", op).Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.")
+		return fmt.Sprintf("Unknown(%d)", op)
 	}
-	if val, ok := opCodeMap[op]; ok {
-		return val
-	}
-	return "undefOpCode"
+	return s
 }
