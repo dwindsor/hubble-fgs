@@ -45,12 +45,10 @@ import (
 )
 
 const (
-	UdpMapName           = "tg_udp_map"
-	UdpRetprobeMapName   = "tg_udp_retprobe_map"
-	UdpRetprobeStatsName = "tg_udp_retprobe_map_stats"
-	ConfigMapName        = "tg_udp_config_map"
-	UdpPayloadMapName    = "tg_udp_payload_map"
-	SocketMapName        = "tg_socket_map"
+	UdpMapName        = "tg_udp_map"
+	ConfigMapName     = "tg_udp_config_map"
+	UdpPayloadMapName = "tg_udp_payload_map"
+	SocketMapName     = "tg_socket_map"
 )
 
 var (
