@@ -25,12 +25,13 @@
   // https://docs.renovatebot.com/self-hosted-configuration/#requireconfig
   "allowedPostUpgradeCommands": [
     "^/tmp/install-buildx$",
-    "^make codegen$",
-    "^make generate$",
+    "^make protogen$",
+    "^make crds$",
     "^make vendor$",
     "^install/kubernetes/test.sh$",
     "^go mod vendor$",
     "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$",
-    "^make -C install/kubernetes$"
+    "^make -C install/kubernetes$",
+    "^make metrics-docs",
   ],
 }
