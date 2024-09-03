@@ -8,7 +8,7 @@ Number of Tetragon perf events that are failed to be sent from the kernel.
 
 | label | values |
 | ----- | ------ |
-| `error` | `EBUSY, ENOSPC, unknown` |
+| `error` | `E2BIG, EBUSY, EINVAL, ENOENT, ENOSPC, unknown` |
 | `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
 
 ### `tetragon_build_info`
@@ -44,11 +44,7 @@ The total number of Tetragon errors. For internal use only.
 
 | label | values |
 | ----- | ------ |
-| `type ` | `event_finalize_process_info_failed, event_missing_process_info, handler_error, process_cache_evicted, process_cache_miss_on_get, process_cache_miss_on_remove, process_metadata_username_failed, process_metadata_username_ignored_not_in_host_namespaces, process_pid_tid_mismatch` |
-
-### `tetragon_event_cache_accesses_total`
-
-The total number of Tetragon event cache accesses. For internal use only.
+| `type ` | `event_finalize_process_info_failed, process_metadata_username_failed, process_metadata_username_ignored_not_in_host_namespaces, process_pid_tid_mismatch` |
 
 ### `tetragon_event_cache_entries`
 
@@ -63,37 +59,26 @@ The total of errors encountered while fetching process exec information from the
 | `error` | `nil_process_pid` |
 | `event_type` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, RATE_LIMIT_INFO` |
 
-### `tetragon_event_cache_parent_info_errors_total`
+### `tetragon_event_cache_fetch_failures_total`
 
-The total of times we failed to fetch cached parent info for a given event type.
-
-| label | values |
-| ----- | ------ |
-| `event_type` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, RATE_LIMIT_INFO` |
-
-### `tetragon_event_cache_pod_info_errors_total`
-
-The total of times we failed to fetch cached pod info for a given event type.
-
-| label | values |
-| ----- | ------ |
-| `event_type` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, RATE_LIMIT_INFO` |
-
-### `tetragon_event_cache_process_info_errors_total`
-
-The total of times we failed to fetch cached process info for a given event type.
-
-| label | values |
-| ----- | ------ |
-| `event_type` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, RATE_LIMIT_INFO` |
-
-### `tetragon_event_cache_retries_total`
-
-The total number of retries for event caching per entry type.
+Number of failed fetches from the event cache. These won't be retried as they already exceeded the limit.
 
 | label | values |
 | ----- | ------ |
 | `entry_type` | `parent_info, pod_info, process_info` |
+| `event_type` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, RATE_LIMIT_INFO` |
+
+### `tetragon_event_cache_fetch_retries_total`
+
+Number of retries when fetching info from the event cache.
+
+| label | values |
+| ----- | ------ |
+| `entry_type` | `parent_info, pod_info, process_info` |
+
+### `tetragon_event_cache_inserts_total`
+
+Number of inserts to the event cache.
 
 ### `tetragon_events_exported_bytes_total`
 
@@ -106,6 +91,10 @@ Total number of events exported
 ### `tetragon_events_last_exported_timestamp`
 
 Timestamp of the most recent event to be exported
+
+### `tetragon_events_missing_process_info_total`
+
+Number of events missing process info.
 
 ### `tetragon_flags_total`
 
@@ -205,6 +194,26 @@ The total number of times we encounter a given message opcode. For internal use 
 
 The total number of events dropped because listener buffer was full
 
+### `tetragon_observer_ringbuf_errors_total`
+
+Number of errors when reading Tetragon ring buffer.
+
+### `tetragon_observer_ringbuf_events_lost_total`
+
+Number of perf events Tetragon ring buffer lost.
+
+### `tetragon_observer_ringbuf_events_received_total`
+
+Number of perf events Tetragon ring buffer received.
+
+### `tetragon_observer_ringbuf_queue_events_lost_total`
+
+Number of perf events Tetragon ring buffer events queue lost.
+
+### `tetragon_observer_ringbuf_queue_events_received_total`
+
+Number of perf events Tetragon ring buffer events queue received.
+
 ### `tetragon_policyfilter_hook_container_name_missing_total`
 
 The total number of operations when the container name was missing in the OCI hook
@@ -223,6 +232,18 @@ Number of policy filter operations.
 
 The capacity of the process cache. Expected to be constant.
 
+### `tetragon_process_cache_evictions_total`
+
+Number of process cache LRU evictions.
+
+### `tetragon_process_cache_misses_total`
+
+Number of process cache misses.
+
+| label | values |
+| ----- | ------ |
+| `operation` | `get, remove` |
+
 ### `tetragon_process_cache_size`
 
 The size of the process cache
@@ -238,26 +259,6 @@ Process Loader event statistics. For internal use only.
 ### `tetragon_ratelimit_dropped_total`
 
 The total number of rate limit Tetragon drops
-
-### `tetragon_ringbuf_perf_event_errors_total`
-
-The total number of errors when reading the Tetragon ringbuf.
-
-### `tetragon_ringbuf_perf_event_lost_total`
-
-The total number of Tetragon ringbuf perf events lost.
-
-### `tetragon_ringbuf_perf_event_received_total`
-
-The total number of Tetragon ringbuf perf events received.
-
-### `tetragon_ringbuf_queue_lost_total`
-
-The total number of Tetragon events ring buffer queue lost.
-
-### `tetragon_ringbuf_queue_received_total`
-
-The total number of Tetragon events ring buffer queue received.
 
 ### `tetragon_tracingpolicy_loaded`
 

@@ -12,15 +12,12 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/cgroupratemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
-	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/metrics/kprobemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/policyfiltermetrics"
 	"github.com/cilium/tetragon/pkg/metrics/policystatemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ratelimitmetrics"
-	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
-	"github.com/cilium/tetragon/pkg/metrics/ringbufqueuemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/watchermetrics"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/process"
@@ -60,9 +57,7 @@ func registerHealthMetrics(group metrics.Group) {
 	errormetrics.RegisterMetrics(group)
 	group.ExtendInit(errormetrics.InitMetrics)
 	// event cache metrics
-	eventcachemetrics.RegisterMetrics(group)
-	group.MustRegister(eventcache.NewCacheCollector())
-	group.ExtendInit(eventcachemetrics.InitMetrics)
+	eventcache.RegisterMetrics(group)
 	// event metrics
 	eventmetrics.RegisterHealthMetrics(group)
 	group.ExtendInit(eventmetrics.InitHealthMetrics)
@@ -75,10 +70,8 @@ func registerHealthMetrics(group metrics.Group) {
 	policyfiltermetrics.RegisterMetrics(group)
 	// process metrics
 	process.RegisterMetrics(group)
-	// ringbuf metrics
-	ringbufmetrics.RegisterMetrics(group)
-	// ringbuf queue metrics
-	ringbufqueuemetrics.RegisterMetrics(group)
+	// observer ringbuf metrics
+	observer.RegisterHealthMetrics(group)
 	// watcher metrics
 	watchermetrics.RegisterMetrics(group)
 	group.ExtendInit(watchermetrics.InitMetrics)

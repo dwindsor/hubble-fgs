@@ -9,7 +9,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
-	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -69,7 +68,7 @@ func HandleGenericInternal(ev notify.Event, pid uint32, tid *uint32, timestamp u
 	if parent != nil {
 		ev.SetParent(parent.UnsafeGetProcess())
 	} else {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.ParentInfo).Inc()
+		CacheRetries(ParentInfo).Inc()
 		err = ErrFailedToGetParentInfo
 	}
 
@@ -85,7 +84,7 @@ func HandleGenericInternal(ev notify.Event, pid uint32, tid *uint32, timestamp u
 		process.UpdateEventProcessTid(proc, tid)
 		ev.SetProcess(proc)
 	} else {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.ProcessInfo).Inc()
+		CacheRetries(ProcessInfo).Inc()
 		err = ErrFailedToGetProcessInfo
 	}
 
@@ -102,7 +101,7 @@ func HandleGenericInternal(ev notify.Event, pid uint32, tid *uint32, timestamp u
 func HandleGenericEvent(internal *process.ProcessInternal, ev notify.Event, tid *uint32) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
+		CacheRetries(PodInfo).Inc()
 		return ErrFailedToGetPodInfo
 	}
 
@@ -140,12 +139,13 @@ func (ec *Cache) handleEvents() {
 				tmp = append(tmp, event)
 				continue
 			}
+			eventType := notify.EventType(event.event).String()
 			if errors.Is(err, ErrFailedToGetParentInfo) {
-				eventcachemetrics.ParentInfoError(notify.EventType(event.event)).Inc()
+				failedFetches.WithLabelValues(eventType, ParentInfo.String()).Inc()
 			} else if errors.Is(err, ErrFailedToGetProcessInfo) {
-				eventcachemetrics.ProcessInfoError(notify.EventType(event.event)).Inc()
+				failedFetches.WithLabelValues(eventType, ProcessInfo.String()).Inc()
 			} else if errors.Is(err, ErrFailedToGetPodInfo) {
-				eventcachemetrics.PodInfoError(notify.EventType(event.event)).Inc()
+				failedFetches.WithLabelValues(eventType, PodInfo.String()).Inc()
 			}
 		}
 
@@ -176,7 +176,7 @@ func (ec *Cache) loop() {
 			ec.handleEvents()
 
 		case event := <-ec.objsChan:
-			eventcachemetrics.EventCacheCount.Inc()
+			cacheInserts.Inc()
 			ec.cache = append(ec.cache, event)
 
 		case <-ec.done:

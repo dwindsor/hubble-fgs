@@ -15,18 +15,8 @@ import (
 type ErrorType int
 
 const (
-	// Process not found on get() call.
-	ProcessCacheMissOnGet ErrorType = iota
-	// Process evicted from the cache.
-	ProcessCacheEvicted
-	// Process not found on remove() call.
-	ProcessCacheMissOnRemove
 	// Tid and Pid mismatch that could affect BPF and user space caching logic
-	ProcessPidTidMismatch
-	// An event is missing process info.
-	EventMissingProcessInfo
-	// An error occurred in an event handler.
-	HandlerError
+	ProcessPidTidMismatch ErrorType = iota
 	// An event finalizer on Process failed
 	EventFinalizeProcessInfoFailed
 	// Failed to resolve Process uid to username
@@ -37,12 +27,7 @@ const (
 )
 
 var errorTypeLabelValues = map[ErrorType]string{
-	ProcessCacheMissOnGet:                   "process_cache_miss_on_get",
-	ProcessCacheEvicted:                     "process_cache_evicted",
-	ProcessCacheMissOnRemove:                "process_cache_miss_on_remove",
 	ProcessPidTidMismatch:                   "process_pid_tid_mismatch",
-	EventMissingProcessInfo:                 "event_missing_process_info",
-	HandlerError:                            "handler_error",
 	EventFinalizeProcessInfoFailed:          "event_finalize_process_info_failed",
 	ProcessMetadataUsernameFailed:           "process_metadata_username_failed",
 	ProcessMetadataUsernameIgnoredNotInHost: "process_metadata_username_ignored_not_in_host_namespaces",

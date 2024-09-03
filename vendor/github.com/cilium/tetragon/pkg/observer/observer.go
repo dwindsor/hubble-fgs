@@ -23,8 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
-	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
-	"github.com/cilium/tetragon/pkg/metrics/ringbufqueuemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -126,8 +124,6 @@ func (k *Observer) receiveEvent(data []byte) {
 	op, events, err := HandlePerfData(data)
 	opcodemetrics.OpTotalInc(ops.OpCode(op))
 	if err != nil {
-		// Increment error metrics
-		errormetrics.ErrorTotalInc(errormetrics.HandlerError)
 		errormetrics.HandlerErrorsInc(ops.OpCode(op), err.kind)
 		switch err.kind {
 		case errormetrics.HandlePerfUnknownOp:
@@ -242,7 +238,7 @@ func (k *Observer) RunEvents(stopCtx context.Context, ready func()) error {
 				// NOTE(JM and Djalal): count and log errors while excluding the stopping context
 				if stopCtx.Err() == nil {
 					errorCnt := atomic.AddUint64(&k.errorCntr, 1)
-					ringbufmetrics.PerfEventErrors.Inc()
+					RingbufErrors.Inc()
 					k.log.WithField("errors", errorCnt).WithError(err).Warn("Reading bpf events failed")
 				}
 			} else {
@@ -251,15 +247,15 @@ func (k *Observer) RunEvents(stopCtx context.Context, ready func()) error {
 					case eventsQueue <- &record:
 					default:
 						// eventsQueue channel is full, drop the event
-						ringbufqueuemetrics.Lost.Inc()
+						queueLost.Inc()
 					}
 					k.recvCntr++
-					ringbufmetrics.PerfEventReceived.Inc()
+					RingbufReceived.Inc()
 				}
 
 				if record.LostSamples > 0 {
 					atomic.AddUint64(&k.lostCntr, uint64(record.LostSamples))
-					ringbufmetrics.PerfEventLost.Add(float64(record.LostSamples))
+					RingbufLost.Add(float64(record.LostSamples))
 				}
 			}
 		}
@@ -273,7 +269,7 @@ func (k *Observer) RunEvents(stopCtx context.Context, ready func()) error {
 			select {
 			case event := <-eventsQueue:
 				k.receiveEvent(event.RawSample)
-				ringbufqueuemetrics.Received.Inc()
+				queueReceived.Inc()
 			case <-stopCtx.Done():
 				k.log.WithError(stopCtx.Err()).Infof("Listening for events completed.")
 				k.log.Debugf("Unprocessed events in RB queue: %d", len(eventsQueue))

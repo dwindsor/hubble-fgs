@@ -14,7 +14,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/syscallmetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/exec"
@@ -25,7 +24,10 @@ import (
 var (
 	perfEventErrors = map[int]string{
 		processapi.SentFailedUnknown: "unknown",
+		processapi.SentFailedEnoent:  "ENOENT",
+		processapi.SentFailedE2big:   "E2BIG",
 		processapi.SentFailedEbusy:   "EBUSY",
+		processapi.SentFailedEinval:  "EINVAL",
 		processapi.SentFailedEnospc:  "ENOSPC",
 	}
 	perfEventErrorLabel = metrics.ConstrainedLabel{
@@ -65,12 +67,21 @@ var (
 		Help:        "Policy events calls observed.",
 		ConstLabels: nil,
 	}, []string{"policy", "hook"})
+
+	missingProcessInfo = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: consts.MetricsNamespace,
+		Name:      "events_missing_process_info_total",
+		Help:      "Number of events missing process info.",
+	})
 )
 
 func RegisterHealthMetrics(group metrics.Group) {
-	group.MustRegister(FlagCount)
-	group.MustRegister(NotifyOverflowedEvents)
-	group.MustRegister(NewBPFCollector())
+	group.MustRegister(
+		FlagCount,
+		NotifyOverflowedEvents,
+		NewBPFCollector(),
+		missingProcessInfo,
+	)
 }
 
 func InitHealthMetrics() {
@@ -107,7 +118,7 @@ func GetProcessInfo(process *tetragon.Process) (binary, pod, workload, namespace
 			pod = process.Pod.Name
 		}
 	} else {
-		errormetrics.ErrorTotalInc(errormetrics.EventMissingProcessInfo)
+		missingProcessInfo.Inc()
 	}
 	return binary, pod, workload, namespace
 }
