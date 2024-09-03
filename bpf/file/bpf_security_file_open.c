@@ -97,6 +97,10 @@ check_dir:
 #ifdef __LARGE_BPF_PROG
 	// append (deleted) at the file name in a similar way to d_path
 	if (d_unlinked(dentry) && msg->path.size < (MAX_FILEPATH_SIZE - DELETED_LEN)) {
+		// this is to satisfy the verifier, previous check is msg->path.size <
+		// 256 - 10 = 246 so that should be safe to AND msg->path.size with 255.
+		asm volatile("%[size] &= 0xff;\n"
+			     : [size] "+r"(msg->path.size));
 		probe_read_kernel(msg->path.str + msg->path.size, DELETED_LEN, DELETED_STR);
 		msg->path.size += DELETED_LEN;
 	}
