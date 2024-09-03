@@ -360,7 +360,7 @@ static inline __attribute__((always_inline)) void ovl_map_dev_ino(struct dentry 
 	}
 }
 
-bool ovl_verify_lower(struct super_block *sb)
+static inline __attribute__((always_inline)) bool ovl_verify_lower(struct super_block *sb)
 {
 	struct ovl_fs *ofs = BPF_CORE_READ(sb, s_fs_info);
 
