@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
-	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -55,7 +54,7 @@ func (msg *MsgICMPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 func (msg *MsgICMPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
+		eventcache.CacheRetries(eventcache.PodInfo).Inc()
 		return eventcache.ErrFailedToGetPodInfo
 	}
 

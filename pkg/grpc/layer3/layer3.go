@@ -19,7 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -534,7 +533,7 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 			refCntDone[exec.ParentRefCnt] = true
 		}
 	} else {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.ParentInfo).Inc()
+		eventcache.CacheRetries(eventcache.ParentInfo).Inc()
 		err = eventcache.ErrFailedToGetParentInfo
 	}
 
@@ -548,7 +547,7 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 			refCntDone[exec.ProcessRefCnt] = true
 		}
 	} else {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.ProcessInfo).Inc()
+		eventcache.CacheRetries(eventcache.ProcessInfo).Inc()
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
@@ -569,7 +568,7 @@ func (msg *MsgIPWithStatsEventUnix) RetryInternal(ev notify.Event, timestamp uin
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
+		eventcache.CacheRetries(eventcache.PodInfo).Inc()
 		return eventcache.ErrFailedToGetPodInfo
 	}
 
@@ -581,7 +580,7 @@ func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Ev
 func (msg *MsgIPWithStatsEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	p := internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		eventcachemetrics.EventCacheRetries(eventcachemetrics.PodInfo).Inc()
+		eventcache.CacheRetries(eventcache.PodInfo).Inc()
 		return eventcache.ErrFailedToGetPodInfo
 	}
 
