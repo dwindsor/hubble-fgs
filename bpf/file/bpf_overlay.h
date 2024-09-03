@@ -353,8 +353,8 @@ static inline __attribute__((always_inline)) void ovl_map_dev_ino(struct dentry 
 		 * bdev assigned to the underlying fs.
 		 */
 		struct ovl_sb *fs = BPF_CORE_READ(OVL_FS(sb), fs);
-		asm volatile("%[fsid] &= 0xf;\n" ::[fsid] "+r"(fsid)
-			     :);
+		asm volatile("%[fsid] &= 0xf;\n"
+			     : [fsid] "+r"(fsid));
 		fs += fsid;
 		stat->dev = BPF_CORE_READ(fs, pseudo_dev);
 	}

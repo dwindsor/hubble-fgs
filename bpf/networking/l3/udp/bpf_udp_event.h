@@ -149,8 +149,8 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
 	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
 	// we wont do a load_bytes with size == 0.
 	asm volatile(
-		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
-		:);
+		"%[payload_size] += 1;\n"
+		: [payload_size] "+r"(payload_size));
 #ifndef IS_KPROBE
 	err = skb_load_bytes((struct __sk_buff *)ctx, off, &val->payload, payload_size);
 #else

@@ -352,8 +352,8 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 
 	// copy parent directory path (including '/')
 	dir_size = dir_val->size;
-	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
-		     :);
+	asm volatile("%[dir_size] &= 0xbf;\n"
+		     : [dir_size] "+r"(dir_size));
 	probe_read_kernel(buf, dir_size, dir_val->path);
 	file_val->size = dir_size;
 	file_val->mode = HASH_MAP_FILE_MODE_FILE;
@@ -362,10 +362,10 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 	name_size = name->path.name_size;
 	// next, we will limit name up to 64 bytes and dir to be up to 192 bytes
 	// to make verifier happy.
-	asm volatile("%[name_size] &= 0x3f;\n" ::[name_size] "+r"(name_size)
-		     :);
-	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
-		     :);
+	asm volatile("%[name_size] &= 0x3f;\n"
+		     : [name_size] "+r"(name_size));
+	asm volatile("%[dir_size] &= 0xbf;\n"
+		     : [dir_size] "+r"(dir_size));
 	probe_read_kernel(buf + dir_size, name_size, name->path.name);
 	file_val->size += name_size;
 

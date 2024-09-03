@@ -87,8 +87,8 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	// first write the dentry name
 	probe_read_kernel(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
-	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
-		     :);
+	asm volatile("%[dlen_size] &= 0xff;\n"
+		     : [dlen_size] "+r"(dlen_size));
 	dlen_offset = 256;
 	probe_read_kernel(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
@@ -99,16 +99,16 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 
 	// write the directory name
 	dir_size = file_val->size;
-	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size)
-		     :);
+	asm volatile("%[dir_size] &= 0xff;\n"
+		     : [dir_size] "+r"(dir_size));
 	dir_offset = 256 - dir_size;
-	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
-		     :);
+	asm volatile("%[dir_offset] &= 0xff;\n"
+		     : [dir_offset] "+r"(dir_offset));
 	probe_read_kernel(buffer + dir_offset, dir_size, file_val->path);
 	path_size += dir_size;
 
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
-		     :);
+	asm volatile("%[path_size] &= 0xff;\n"
+		     : [path_size] "+r"(path_size));
 	probe_read_kernel(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
@@ -267,8 +267,8 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	file_val->action = action;
 	file_val->size = msg->path.size;
 	path_size = msg->path.size;
-	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
-		     :);
+	asm volatile("%[path_size] &= 0xff;\n"
+		     : [path_size] "+r"(path_size));
 	probe_read_kernel(file_val->path, path_size, msg->path.str);
 
 	if (msg->path.flags & CONTAINER_FILE) {
