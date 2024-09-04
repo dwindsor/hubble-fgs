@@ -149,9 +149,9 @@ func (v *ConfigValue) String() string {
 }
 
 func fdCallback(socket *ip.FdLookupValue, pid uint32) {
-	saddr := api.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
-	daddr := api.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
+	saddr := api.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
+	daddr := api.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
 
 	if socket.State != unix.BPF_TCP_CLOSE && socket.State != unix.BPF_TCP_ESTABLISHED {
 		return
@@ -186,13 +186,13 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	udp.Msg.ProcessKey.Ktime = ktime
 	udp.Msg.Common.Ktime = ktime
 
-	udp.Msg.Tuple.IPv6 = socket.IPv6
-	udp.Msg.Tuple.SAddr[0] = socket.Saddr[0]
-	udp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
-	udp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
-	udp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
-	udp.Msg.Tuple.DPort = socket.Dport
-	udp.Msg.Tuple.SPort = socket.Sport
+	udp.Msg.Tuple.IPv6 = socket.Tuple.IPv6
+	udp.Msg.Tuple.SAddr[0] = socket.Tuple.SAddr[0]
+	udp.Msg.Tuple.SAddr[1] = socket.Tuple.SAddr[1]
+	udp.Msg.Tuple.DAddr[0] = socket.Tuple.DAddr[0]
+	udp.Msg.Tuple.DAddr[1] = socket.Tuple.DAddr[1]
+	udp.Msg.Tuple.DPort = socket.Tuple.DPort
+	udp.Msg.Tuple.SPort = socket.Tuple.SPort
 	udp.Msg.Tuple.Proto = 2
 	udp.Msg.SockCookie = socket.Sockaddr
 

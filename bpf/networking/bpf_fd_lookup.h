@@ -26,18 +26,12 @@ struct fd_lookup_config {
 	uint32_t pid;
 	uint32_t fd;
 	uint64_t sockaddr;
-	uint64_t saddr[2];
-	uint64_t daddr[2];
-	uint16_t sport;
-	uint16_t dport;
-	uint16_t protocol;
+	struct msg_ip_tuple tuple;
 	uint8_t state;
-	uint8_t ipv6;
 	uint8_t signal_hit;
-	uint8_t pad1;
 	uint16_t family;
-	uint16_t pad2;
-	uint16_t pad3;
+	uint16_t protocol;
+	uint16_t pad;
 } __attribute__((packed));
 
 struct {
@@ -74,7 +68,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 {
 	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
 	struct socketmap_value sockmap_process = { 0 };
-	struct tcpsocketmap_value tcp_stats = { 0 };
+	struct tcpsocketmap_value *tcp_stats;
 	struct fd_lookup_config *config;
 	struct execve_map_value *value;
 	u16 required_protocol;
@@ -178,30 +172,30 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	 * buffer here because this preceeds the event handlers being
 	 * established.
 	 */
-	probe_read_kernel(&config->sport, sizeof(config->sport),
+	probe_read_kernel(&config->tuple.sport, sizeof(config->tuple.sport),
 			  _(&(sk->__sk_common.skc_num)));
-	probe_read_kernel(&config->dport, sizeof(config->dport),
+	probe_read_kernel(&config->tuple.dport, sizeof(config->tuple.dport),
 			  _(&(sk->__sk_common.skc_dport)));
-	config->dport = bpf_ntohs(config->dport);
+	config->tuple.dport = bpf_ntohs(config->tuple.dport);
 	probe_read_kernel(&config->state, sizeof(config->state),
 			  (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;
 	config->sockaddr = cookie;
 	if (family == AF_INET) {
-		config->ipv6 = 0;
-		config->saddr[0] = 0;
-		config->saddr[1] = 0;
-		config->saddr[0] = 0;
-		config->saddr[1] = 0;
-		probe_read_kernel(&config->saddr[0], sizeof(uint32_t),
+		config->tuple.ipv6 = 0;
+		config->tuple.saddr[0] = 0;
+		config->tuple.saddr[1] = 0;
+		config->tuple.saddr[0] = 0;
+		config->tuple.saddr[1] = 0;
+		probe_read_kernel(&config->tuple.saddr[0], sizeof(uint32_t),
 				  _(&(sk->__sk_common.skc_rcv_saddr)));
-		probe_read_kernel(&config->daddr[0], sizeof(uint32_t),
+		probe_read_kernel(&config->tuple.daddr[0], sizeof(uint32_t),
 				  _(&(sk->__sk_common.skc_daddr)));
 	} else {
-		config->ipv6 = 1;
-		probe_read_kernel(config->saddr, sizeof(config->saddr),
+		config->tuple.ipv6 = 1;
+		probe_read_kernel(config->tuple.saddr, sizeof(config->tuple.saddr),
 				  _(&(sk->__sk_common.skc_v6_rcv_saddr)));
-		probe_read_kernel(config->daddr, sizeof(config->daddr),
+		probe_read_kernel(config->tuple.daddr, sizeof(config->tuple.daddr),
 				  _(&(sk->__sk_common.skc_v6_daddr)));
 	}
 
@@ -219,13 +213,36 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	add_socketmap(&cookie, &sockmap_process, true);
 
 	if (required_protocol == IPPROTO_TCP) {
-		tcp_socketmap_stats(sk, &tcp_stats);
-		tcp_stats.key = value->key;
-		tcp_stats.create_time = sockmap_process.create_time;
-		tcp_stats.last_time = sockmap_process.create_time;
-		tcp_stats.ipv6 = (family == AF_INET6);
-		tcp_stats.version = sockmap_process.version;
-		add_tcpsocketmap(&cookie, &tcp_stats, false);
+		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
+		if (!tcp_stats)
+			return 0;
+		tcp_stats->sent = 0;
+		tcp_stats->segs_out = 0;
+		tcp_stats->retransbytes = 0;
+		tcp_stats->sk_drops = 0;
+		tcp_stats->zero_window = 0;
+		tcp_stats->socket_flags = 0;
+		tcp_stats->rtt_sum = 0;
+		tcp_stats->latency_sum = 0;
+		tcp_stats->fin_rx = 0;
+		tcp_stats->protocol = 0;
+
+#pragma unroll
+		for (int i = 0; i < 8; i++) {
+			tcp_stats->rtt_buckets[i] = 0;
+			tcp_stats->latency_buckets[i] = 0;
+		}
+
+		tcp_socketmap_stats(sk, tcp_stats);
+
+		memset(&tcp_stats->dst_key, 0, sizeof(tcp_stats->dst_key));
+
+		tcp_stats->key = value->key;
+		tcp_stats->create_time = sockmap_process.create_time;
+		tcp_stats->last_time = sockmap_process.create_time;
+		tcp_stats->ipv6 = (family == AF_INET6);
+		tcp_stats->version = sockmap_process.version;
+		add_tcpsocketmap(&cookie, tcp_stats, false);
 	}
 
 	return 0;

@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -47,18 +48,12 @@ type FdLookupValue struct {
 	Pid       uint32
 	Fd        uint32
 	Sockaddr  uint64
-	Saddr     [2]uint64
-	Daddr     [2]uint64
-	Sport     uint16
-	Dport     uint16
-	Protocol  uint16
+	Tuple     networkapi.MsgIPTuple
 	State     uint8
-	IPv6      uint8
 	SignalHit uint8
-	Pad1      uint8
 	Family    uint16
-	Pad2      uint16
-	Pad3      uint16
+	Protocol  uint16
+	Pad       uint16
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -356,12 +351,14 @@ func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, 
 		(*sockets)[inode] = FdLookupValue{
 			Sockaddr: cookie,
 			State:    uint8(state),
-			Saddr:    saddr,
-			Sport:    sport,
-			Daddr:    daddr,
-			Dport:    dport,
+			Tuple: networkapi.MsgIPTuple{
+				SAddr: saddr,
+				SPort: sport,
+				DAddr: daddr,
+				DPort: dport,
+				IPv6:  ipv6char,
+			},
 			Protocol: protocol,
-			IPv6:     ipv6char,
 		}
 	}
 	return nil

@@ -39,9 +39,9 @@ var (
 )
 
 func fdCallback(socket *ip.FdLookupValue, pid uint32) {
-	saddr := networkapi.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
-	daddr := networkapi.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
+	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
+	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
 
 	if socket.State == 0 {
 		return
@@ -64,13 +64,13 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Msg.ProcessKey.Ktime = ktime
 	tcp.Msg.Common.Ktime = ktime
 
-	tcp.Msg.Tuple.IPv6 = socket.IPv6
-	tcp.Msg.Tuple.SAddr[0] = socket.Saddr[0]
-	tcp.Msg.Tuple.SAddr[1] = socket.Saddr[1]
-	tcp.Msg.Tuple.DAddr[0] = socket.Daddr[0]
-	tcp.Msg.Tuple.DAddr[1] = socket.Daddr[1]
-	tcp.Msg.Tuple.DPort = socket.Dport
-	tcp.Msg.Tuple.SPort = socket.Sport
+	tcp.Msg.Tuple.IPv6 = socket.Tuple.IPv6
+	tcp.Msg.Tuple.SAddr[0] = socket.Tuple.SAddr[0]
+	tcp.Msg.Tuple.SAddr[1] = socket.Tuple.SAddr[1]
+	tcp.Msg.Tuple.DAddr[0] = socket.Tuple.DAddr[0]
+	tcp.Msg.Tuple.DAddr[1] = socket.Tuple.DAddr[1]
+	tcp.Msg.Tuple.DPort = socket.Tuple.DPort
+	tcp.Msg.Tuple.SPort = socket.Tuple.SPort
 	tcp.Msg.Tuple.Proto = 2
 	tcp.Msg.SockCookie = socket.Sockaddr
 
