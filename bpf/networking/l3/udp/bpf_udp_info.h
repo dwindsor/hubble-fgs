@@ -48,15 +48,10 @@ struct udp_info_value {
 	u64 pid_ktime;
 	u32 pid;
 	u32 sk_drops;
-	u64 saddr[2];
-	u64 daddr[2]; // retain (and complete) as useful for debugging
-	u16 sport;
-	u16 dport; // retain (and complete) as useful for debugging
 	u32 skb_consume_misses;
+	u32 padding;
 	u64 buckets[8];
 	u64 latency_sum;
-	u8 ipv6;
-	u8 padding[7];
 	u64 create_time;
 }; // All fields aligned so no 'packed' attribute.
 
@@ -128,22 +123,7 @@ udp_info_init(struct udp_info_value *v)
 	v->pid = 0;
 	v->pid_ktime = 0;
 	v->sk_drops = 0;
-	v->saddr[0] = 0;
-	v->saddr[1] = 0;
-	/* Technically, daddr, sport and dport don't need initialising
-	 * because if saddr is 0 then we know that the full tuple needs
-	 * to be filled in. However, to avoid a bug where the entry is
-	 * read from user space and treated as valid, even if the tuple
-	 * has yet to be completed, let's initialise them all. These
-	 * *_reset() functions only get called once per new socket so
-	 * the additional instructions shouldn't be a big overhead.
-	 */
-	v->daddr[0] = 0;
-	v->daddr[1] = 0;
-	v->sport = 0;
-	v->dport = 0;
 	v->skb_consume_misses = 0;
-	v->ipv6 = 0;
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 	v->create_time = 0;
 #pragma unroll

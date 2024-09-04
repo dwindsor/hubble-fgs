@@ -175,13 +175,13 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		e->key.ktime = 0;
 	}
 	e->tuple.ipv6 = ipv6;
-	e->tuple.saddr[0] = v->saddr[0];
-	e->tuple.saddr[1] = v->saddr[1];
+	e->tuple.saddr[0] = k->saddr[0];
+	e->tuple.saddr[1] = k->saddr[1];
 	/* FGS expects host byte-order */
-	e->tuple.sport = v->sport;
-	e->tuple.daddr[0] = v->daddr[0];
-	e->tuple.daddr[1] = v->daddr[1];
-	e->tuple.dport = v->dport;
+	e->tuple.sport = k->sport;
+	e->tuple.daddr[0] = k->daddr[0];
+	e->tuple.daddr[1] = k->daddr[1];
+	e->tuple.dport = k->dport;
 	e->tuple.proto = IPPROTO_UDP;
 	e->socket_cookie = *cookie;
 	e->application_id = UDPSEQERR_APP_MTP;
@@ -217,7 +217,7 @@ match_seq_check_ports(u16 *ports, uint16_t port1, uint16_t port2)
 static inline __attribute__((always_inline)) void
 udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		  struct udp_info_value *v)
+		  struct udp_info_key *k, struct udp_info_value *v)
 {
 #ifndef IS_KPROBE
 	struct udp_sensor_config *config = get_udp_config();
@@ -225,7 +225,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 	if (!config || !config->seq_check_app_id)
 		return;
 
-	if (!match_seq_check_ports(config->seq_check_ports, v->sport, v->dport))
+	if (!match_seq_check_ports(config->seq_check_ports, k->sport, k->dport))
 		return;
 
 	switch (config->seq_check_app_id) {

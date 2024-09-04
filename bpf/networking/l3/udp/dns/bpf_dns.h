@@ -27,6 +27,7 @@ dns_port_match(u16 *ports, u16 port1, u16 port2)
 static inline __attribute__((always_inline)) int
 udp_dns(struct __sk_buff *skb,
 	void *skb_head,
+	struct udp_info_key *key,
 	struct udp_info_value *value,
 	struct iphdr *ip,
 	bool ipv6,
@@ -45,7 +46,7 @@ udp_dns(struct __sk_buff *skb,
 	if (config->dnsPorts[0] == 0)
 		return 0;
 
-	isdns = dns_port_match(config->dnsPorts, value->sport, value->dport);
+	isdns = dns_port_match(config->dnsPorts, key->sport, key->dport);
 	if (!isdns)
 		return 0;
 
@@ -56,7 +57,7 @@ udp_dns(struct __sk_buff *skb,
 		 * must be nonzero.
 		 */
 		emit_udp_payload_event(skb, ip, cookie, cookie_ver,
-				       ipv6, value, payload_off,
+				       ipv6, key, value, payload_off,
 				       payload_sz - 1);
 		store = false;
 	}
@@ -73,7 +74,7 @@ udp_dns(struct __sk_buff *skb,
 		// Check payload offset is valid.
 		store_udp_payload_event(
 			skb, ip, cookie, cookie_ver, ipv6,
-			skb_head, value, payload_off,
+			skb_head, key, value, payload_off,
 			payload_sz - 1);
 	}
 	return 1;

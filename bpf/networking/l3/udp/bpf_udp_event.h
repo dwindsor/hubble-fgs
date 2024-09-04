@@ -81,7 +81,7 @@ struct {
 } tg_udp_header_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-build_udp_payload_event(struct udp_info_value *v, u64 cookie, u64 cookie_ver, int size)
+build_udp_payload_event(struct udp_info_key *k, struct udp_info_value *v, u64 cookie, u64 cookie_ver, int size)
 {
 	struct msg_udp_event *val;
 	int z = 0;
@@ -95,14 +95,14 @@ build_udp_payload_event(struct udp_info_value *v, u64 cookie, u64 cookie_ver, in
 	val->event.common.ktime = ktime_get_ns();
 	val->event.key.pid = v->pid;
 	val->event.key.ktime = v->pid_ktime;
-	val->event.tuple.ipv6 = v->ipv6;
-	val->event.tuple.saddr[0] = v->saddr[0];
-	val->event.tuple.saddr[1] = v->saddr[1];
+	val->event.tuple.ipv6 = k->ipv6;
+	val->event.tuple.saddr[0] = k->saddr[0];
+	val->event.tuple.saddr[1] = k->saddr[1];
 	/* FGS expects host byte-order */
-	val->event.tuple.sport = v->sport;
-	val->event.tuple.daddr[0] = v->daddr[0];
-	val->event.tuple.daddr[1] = v->daddr[1];
-	val->event.tuple.dport = v->dport;
+	val->event.tuple.sport = k->sport;
+	val->event.tuple.daddr[0] = k->daddr[0];
+	val->event.tuple.daddr[1] = k->daddr[1];
+	val->event.tuple.dport = k->dport;
 	val->event.create_time = v->create_time;
 	val->event.close_time = 0;
 	// WRITE_ONCE to tell compiler to use single store instead
@@ -114,12 +114,12 @@ build_udp_payload_event(struct udp_info_value *v, u64 cookie, u64 cookie_ver, in
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, struct udp_info_value *v)
+emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, struct udp_info_key *k, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
 	struct msg_ip_event *val;
 
-	val = (struct msg_ip_event *)build_udp_payload_event(v, *cookie, cookie_ver, size);
+	val = (struct msg_ip_event *)build_udp_payload_event(k, v, *cookie, cookie_ver, size);
 	if (!val)
 		return;
 	val->common.op = op;
@@ -129,14 +129,15 @@ emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, struct udp_info_v
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
 create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
-			 bool ipv6, void *skb_head, struct udp_info_value *v,
-			 int off, int payload_size, size_t *size)
+			 bool ipv6, void *skb_head, struct udp_info_key *k,
+			 struct udp_info_value *v, int off,
+			 int payload_size, size_t *size)
 {
 	struct msg_udp_event *val;
 	int err;
 
 	*size = payload_size + sizeof(struct msg_ip_event) + 1;
-	val = build_udp_payload_event(v, *cookie, cookie_ver, *size);
+	val = build_udp_payload_event(k, v, *cookie, cookie_ver, *size);
 	if (!val)
 		return 0;
 
@@ -165,12 +166,13 @@ create_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
 
 static inline __attribute__((always_inline)) void
 emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver, bool ipv6,
-		       struct udp_info_value *v, int off, int payload_size)
+		       struct udp_info_key *k, struct udp_info_value *v, int off,
+		       int payload_size)
 {
 	struct msg_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, 0, v, off, payload_size, &size);
+	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, 0, k, v, off, payload_size, &size);
 	if (!val)
 		return;
 
@@ -182,14 +184,14 @@ emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver, bool ip
 
 static inline __attribute__((always_inline)) void
 store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
-			bool ipv6, void *skb_head, struct udp_info_value *v,
-			int off, int payload_size)
+			bool ipv6, void *skb_head, struct udp_info_key *k,
+			struct udp_info_value *v, int off, int payload_size)
 {
 	struct msg_udp_event *val;
 	int zero = 0;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, skb_head, v, off,
+	val = create_udp_payload_event(ctx, ip, cookie, cookie_ver, ipv6, skb_head, k, v, off,
 				       payload_size, &size);
 	if (!val)
 		return;
@@ -208,8 +210,8 @@ store_udp_payload_event(void *ctx, void *ip, u64 *cookie, u64 cookie_ver,
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_connect_event(void *ctx, u64 *cookie, u64 cookie_ver, struct udp_info_value *v)
+emit_udp_connect_event(void *ctx, u64 *cookie, u64 cookie_ver, struct udp_info_key *k, struct udp_info_value *v)
 {
-	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, cookie_ver, v);
+	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, cookie_ver, k, v);
 }
 #endif // __BPF_UDP_EVENT_H__

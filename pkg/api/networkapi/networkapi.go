@@ -336,15 +336,10 @@ type UdpInfoValue struct {
 	PidKtime         uint64    `align:"pid_ktime"`
 	Pid              uint32    `align:"pid"`
 	SkDrops          uint32    `align:"sk_drops"`
-	SAddr            [2]uint64 `align:"saddr"`
-	DAddr            [2]uint64 `align:"daddr"`
-	SPort            uint16    `align:"sport"`
-	DPort            uint16    `align:"dport"`
 	SkbConsumeMisses uint32    `align:"skb_consume_misses"`
+	Padding          uint32    `align:"padding"`
 	Buckets          [8]uint64 `align:"buckets"`
 	LatencySum       uint64    `align:"latency_sum"`
-	IPv6             uint8     `align:"ipv6"`
-	Padding          [7]uint8  `align:"padding"`
 	CreateTime       uint64    `align:"create_time"`
 }
 
@@ -357,16 +352,12 @@ func (k *UdpInfoKey) String() string {
 }
 
 func (v *UdpInfoValue) String() string {
-	ipDst := GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
-	ipSrc := GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
 	return fmt.Sprintf(
-		"SAddr=%s:%d DAddr=%s:%d\n"+
-			"Pid: %d Ktime %d\n"+
+		"Pid: %d Ktime %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
 			"SkbConsumeMisses: %d\n",
-		ipSrc, v.SPort, ipDst, v.DPort,
 		v.Pid, v.Ktime,
 		v.TXBytes, v.RXBytes,
 		v.SegsOut, v.SegsIn,

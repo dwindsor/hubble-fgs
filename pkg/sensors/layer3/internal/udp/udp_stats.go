@@ -76,11 +76,11 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		Ktime: v.Ktime,
 	}
 	unix.Msg.Tuple = api.MsgIPTuple{
-		IPv6:  v.IPv6,
-		SAddr: v.SAddr,
-		DAddr: v.DAddr,
-		SPort: v.SPort,
-		DPort: v.DPort,
+		IPv6:  k.IPv6,
+		SAddr: k.SAddr,
+		DAddr: k.DAddr,
+		SPort: k.SPort,
+		DPort: k.DPort,
 		Proto: 0,
 	}
 	unix.Msg.SockCookie = k.Cookie
@@ -242,8 +242,8 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 	// datapath caused a map_value to replace the last entry. In this case
 	// to avoid dropping bytes on the counter we do not diff the values.
 	if udpResetEvent(curr, last) {
-		ipDst := api.GetIP(curr.DAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
-		ipSrc := api.GetIP(curr.SAddr, ops.MSG_OP_UDPSTATS, curr.IPv6 != 0)
+		ipDst := api.GetIP(key.DAddr, ops.MSG_OP_UDPSTATS, key.IPv6 != 0)
+		ipSrc := api.GetIP(key.SAddr, ops.MSG_OP_UDPSTATS, key.IPv6 != 0)
 		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key,
 			"pid": curr.Pid, "pidktime": curr.PidKtime}).Warnf("UDP stats underflow")
 		return api.UdpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
@@ -259,11 +259,6 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 		Ktime:            curr.Ktime,
 		PidKtime:         curr.PidKtime,
 		Pid:              curr.Pid,
-		IPv6:             curr.IPv6,
-		SAddr:            curr.SAddr,
-		DAddr:            curr.DAddr,
-		SPort:            curr.SPort,
-		DPort:            curr.DPort,
 		Buckets:          udpDiffLatency(&last.Buckets, &curr.Buckets),
 		LatencySum:       curr.LatencySum - last.LatencySum,
 	}, nil
