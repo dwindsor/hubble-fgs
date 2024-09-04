@@ -170,6 +170,11 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		tcpAcceptRetProg,
 	})
 
+	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{
+		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
+		tcpAcceptRetProg,
+	})
+
 	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{
 		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
 		tcpAcceptRetProg,
@@ -268,6 +273,9 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
+			cgroupEgressProg, cgroupIngressProg,
+		})...)
+		socketTupleRevMap.Progs = append(socketTupleRevMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg,
 		})...)
 		socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -376,6 +384,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 	socketMapStats.Progs = MergeIntoMap(socketMapStats.Progs, GetMapProgs(sockMaps, socketMapStats.Name), ni)
 	socketTupleMap.Progs = MergeIntoMap(socketTupleMap.Progs, GetMapProgs(sockMaps, socketTupleMap.Name), ni)
 	socketTupleMapStats.Progs = MergeIntoMap(socketTupleMapStats.Progs, GetMapProgs(sockMaps, socketTupleMapStats.Name), ni)
+	socketTupleRevMap.Progs = MergeIntoMap(socketTupleRevMap.Progs, GetMapProgs(sockMaps, socketTupleRevMap.Name), ni)
 	socketTupleHintMap.Progs = MergeIntoMap(socketTupleHintMap.Progs, GetMapProgs(sockMaps, socketTupleHintMap.Name), ni)
 	execveMap.Progs = MergeIntoMap(execveMap.Progs, GetMapProgs(sockMaps, execveMap.Name), ni)
 	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
@@ -409,6 +418,7 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 		socketMapStats,
 		socketTupleMap,
 		socketTupleMapStats,
+		socketTupleRevMap,
 		socketTupleHintMap,
 		tcpSocketMap,
 		execveMap,

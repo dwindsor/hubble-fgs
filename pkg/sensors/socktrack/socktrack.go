@@ -22,6 +22,7 @@ const (
 	SocketStatsName        = "tg_socket_map_stats"
 	SocketTupleMapName     = "tg_socket_tuple_map"
 	SocketTupleStatsName   = "tg_socket_tuple_map_stats"
+	SocketTupleRevMapName  = "tg_rev_tuple_map"
 	SocketTupleHintMapName = "tg_socket_tuple_hint_map"
 	SocketVersionMapName   = "tg_ver_map"
 	SocketCfgMapName       = "tg_cfg_map"
@@ -60,6 +61,7 @@ var (
 	SocketMapStatsKprobe      = program.MapBuilder(SocketStatsName, SkAllocKprobe)
 	SocketTupleMapKprobe      = program.MapBuilder(SocketTupleMapName, SkFreeKprobe)
 	SocketTupleMapStatsKprobe = program.MapBuilder(SocketTupleStatsName, SkFreeKprobe)
+	SocketTupleRevMapKprobe   = program.MapBuilder(SocketTupleRevMapName, SkFreeKprobe)
 	SocketTupleHintMapKprobe  = program.MapBuilder(SocketTupleHintMapName, SkFreeKprobe)
 	VersionMapKprobe          = program.MapBuilder(SocketVersionMapName, SkAllocKprobe)
 	ConfigMapKprobe           = program.MapBuilder(SocketCfgMapName, SkFreeKprobe)
@@ -67,6 +69,7 @@ var (
 	SocketMapStatsFentry      = program.MapBuilder(SocketStatsName, SkAllocFentry)
 	SocketTupleMapFentry      = program.MapBuilder(SocketTupleMapName, SkFreeFentry)
 	SocketTupleMapStatsFentry = program.MapBuilder(SocketTupleStatsName, SkFreeFentry)
+	SocketTupleRevMapFentry   = program.MapBuilder(SocketTupleRevMapName, SkFreeFentry)
 	SocketTupleHintMapFentry  = program.MapBuilder(SocketTupleHintMapName, SkFreeFentry)
 	VersionMapFentry          = program.MapBuilder(SocketVersionMapName, SkAllocFentry)
 	ConfigMapFentry           = program.MapBuilder(SocketCfgMapName, SkFreeFentry)
@@ -106,6 +109,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 			SocketMapStatsFentry,
 			SocketTupleMapFentry,
 			SocketTupleMapStatsFentry,
+			SocketTupleRevMapFentry,
 			SocketTupleHintMapFentry,
 			VersionMapFentry,
 			ConfigMapFentry,
@@ -120,6 +124,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 			SocketMapStatsKprobe,
 			SocketTupleMapKprobe,
 			SocketTupleMapStatsKprobe,
+			SocketTupleRevMapKprobe,
 			SocketTupleHintMapKprobe,
 			VersionMapKprobe,
 			ConfigMapKprobe,

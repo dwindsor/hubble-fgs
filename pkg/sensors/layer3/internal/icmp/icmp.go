@@ -68,6 +68,7 @@ var (
 	SocketCookieStats  = program.MapBuilder("tg_socket_map_stats", IcmpRcv)
 	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", IcmpRcv)
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcv)
+	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", IcmpRcv)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcv)
 	// ICMP runtime maps
 	CfgMap     = program.MapBuilder("tg_cfg_map", IcmpRcv)
@@ -107,6 +108,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 		SocketCookieStats,
 		SocketTupleMap,
 		SocketTupleStats,
+		SocketTupleRevMap,
 		SocketTupleHintMap,
 		CfgMap,
 		IcmpCfgMap,

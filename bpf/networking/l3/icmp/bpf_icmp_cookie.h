@@ -73,6 +73,13 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, u64);
+	__type(value, struct socket_tuple_key);
+	__uint(max_entries, 32768);
+} tg_rev_tuple_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct socket_tuple_hint_key);
 	__type(value, struct socket_tuple_hint_value);
 	__uint(max_entries, 32768);
@@ -287,6 +294,7 @@ get_tuple_hint(struct socket_tuple_key *key)
 static inline __attribute__((always_inline)) void
 __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 {
+	__u64 c = *cookie;
 	int zero = 0;
 	__s64 *cntr;
 	__u64 *val;
@@ -299,13 +307,10 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 	if (val)
 		delete_tuple_hint(key);
 
-	if (1) {
-		__u64 c = *cookie;
-
-		err = map_update_elem(&tg_socket_tuple_map, key, &c, 0);
-	}
+	err = map_update_elem(&tg_socket_tuple_map, key, &c, 0);
 
 	if (!err) {
+		map_update_elem(&tg_rev_tuple_map, &c, key, 0);
 		if (!val && (cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		set_tuple_hint(key);
@@ -346,8 +351,8 @@ add_socket_tuple_map_from_skb(u64 *cookie, struct __sk_buff *skb, u16 protocol)
 static inline __attribute__((always_inline)) void
 del_socket_tuple_map(u64 *cookie)
 {
-	struct sock *sk = (struct sock *)*cookie;
 	struct socket_tuple_key *key;
+	__u64 c = *cookie;
 	int zero = 0;
 	__s64 *cntr;
 	int err;
@@ -355,7 +360,7 @@ del_socket_tuple_map(u64 *cookie)
 	if (!icmp_tracking_enabled())
 		return;
 
-	key = make_tuple_key_from_sk(sk);
+	key = map_lookup_elem(&tg_rev_tuple_map, &c);
 	if (!key)
 		return;
 	err = map_delete_elem(&tg_socket_tuple_map, key);

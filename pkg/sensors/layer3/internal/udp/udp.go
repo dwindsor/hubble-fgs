@@ -109,6 +109,7 @@ var (
 	SocketCookieMap    = program.MapBuilder(SocketMapName, SkUdpBind)
 	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
 	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
+	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", SkUdpBind)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
 	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBind)
 
@@ -270,6 +271,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketCookieMap,
 			SocketTupleMap,
 			SocketTupleStats,
+			SocketTupleRevMap,
 			SocketTupleHintMap,
 			CfgMap,
 		}

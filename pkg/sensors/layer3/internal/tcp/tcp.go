@@ -140,6 +140,7 @@ var (
 	SocketStats        = program.MapBuilder(base.SocketStats.Name, Accept)
 	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
 	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
+	SocketTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, Connect)
 	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
 
 	// Endpoint Models
@@ -238,6 +239,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		AcceptSocketMap,
 		SocketTupleMap,
 		SocketTupleStats,
+		SocketTupleRevMap,
 		SocketTupleHintMap,
 		CfgMap,
 		HTTPContext,

@@ -99,6 +99,7 @@ var (
 	SocketStats                 = program.MapBuilder(socktrack.SocketStatsName, Exit)
 	SocketTupleMap              = program.MapBuilder(socktrack.SocketTupleMapName, Exit)
 	SocketTupleStats            = program.MapBuilder(socktrack.SocketTupleStatsName, Exit)
+	SocketTupleRevMap           = program.MapBuilder(socktrack.SocketTupleRevMapName, Exit)
 	SocketTupleHintMap          = program.MapBuilder(socktrack.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrack.SocketCfgMapName, Exit)
 
@@ -237,6 +238,7 @@ func GetDefaultMaps() []*program.Map {
 		SocketStats,
 		SocketTupleMap,
 		SocketTupleStats,
+		SocketTupleRevMap,
 		SocketTupleHintMap,
 		CfgMap,
 		ExecveJoinMap,
