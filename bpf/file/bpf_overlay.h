@@ -6,6 +6,11 @@
 #include "bpf_tracing.h"
 #include "bpf_core_read.h"
 
+struct ovl_kstat {
+	u64 ino;
+	dev_t dev;
+};
+
 static inline __attribute__((always_inline)) struct inode *d_inode(const struct dentry *dentry)
 {
 	return BPF_CORE_READ(dentry, d_inode);
@@ -296,7 +301,7 @@ static inline __attribute__((always_inline)) unsigned int ovl_xino_bits(struct s
 	return ovl_same_dev(sb) ? BPF_CORE_READ(ofs, xino_mode) : 0;
 }
 
-static inline __attribute__((always_inline)) void ovl_map_dev_ino(struct dentry *dentry, struct kstat *stat, int fsid)
+static inline __attribute__((always_inline)) void ovl_map_dev_ino(struct dentry *dentry, struct ovl_kstat *stat, int fsid)
 {
 	struct super_block *sb = BPF_CORE_READ(dentry, d_sb);
 	bool samefs = ovl_same_fs(sb);
@@ -321,7 +326,7 @@ static inline __attribute__((always_inline)) void ovl_map_dev_ino(struct dentry 
 		 * This way all overlay inode numbers are unique and use the
 		 * overlay st_dev.
 		 */
-		if (likely(!(BPF_CORE_READ(stat, ino) >> xinoshift))) {
+		if (likely(!(stat->ino >> xinoshift))) {
 			stat->ino |= ((u64)fsid) << (xinoshift + 1);
 			stat->dev = BPF_CORE_READ(dentry, d_sb, s_dev);
 			return;
@@ -371,7 +376,7 @@ static inline __attribute__((always_inline)) void ovl_getattr(struct inode *inod
 {
 	enum ovl_path_type type;
 	struct path realpath;
-	struct kstat stat = { 0 };
+	struct ovl_kstat stat = { 0 };
 	bool is_dir;
 	int fsid = 0;
 
