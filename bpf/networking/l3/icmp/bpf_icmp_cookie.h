@@ -134,7 +134,7 @@ make_tuple_key_from_sk(struct sock *sk)
 		key->saddr[1] = 0;
 		key->daddr[0] = 0;
 		probe_read_kernel(&key->daddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_daddr)));
-		key->daddr[0] = 0;
+		key->daddr[1] = 0;
 	}
 	probe_read_kernel(&key->bound_dev_if, sizeof(key->bound_dev_if), _(&(sk->__sk_common.skc_bound_dev_if)));
 	probe_read_kernel(&key->protocol, sizeof(key->protocol), _(&(sk->sk_protocol)));
