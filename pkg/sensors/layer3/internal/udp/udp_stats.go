@@ -26,7 +26,6 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -68,7 +67,7 @@ var (
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
 func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.Duration) *layer3.MsgIPWithStatsEventUnix {
 	unix := layer3.MsgIPWithStatsEventUnix{}
-	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
+	unix.Msg = &api.MsgIPWithStatsEvent{}
 
 	unix.Msg.Common = processapi.MsgCommon{
 		Op:    0,
@@ -76,11 +75,11 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		Ktime: v.Ktime,
 	}
 	unix.Msg.Tuple = api.MsgIPTuple{
-		IPv6:  k.IPv6,
-		SAddr: k.SAddr,
-		DAddr: k.DAddr,
-		SPort: k.SPort,
-		DPort: k.DPort,
+		IPv6:  k.Tuple.IPv6,
+		SAddr: k.Tuple.SAddr,
+		DAddr: k.Tuple.DAddr,
+		SPort: k.Tuple.SPort,
+		DPort: k.Tuple.DPort,
 		Proto: 0,
 	}
 	unix.Msg.SockCookie = k.Cookie
@@ -242,8 +241,8 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 	// datapath caused a map_value to replace the last entry. In this case
 	// to avoid dropping bytes on the counter we do not diff the values.
 	if udpResetEvent(curr, last) {
-		ipDst := api.GetIP(key.DAddr, ops.MSG_OP_UDPSTATS, key.IPv6 != 0)
-		ipSrc := api.GetIP(key.SAddr, ops.MSG_OP_UDPSTATS, key.IPv6 != 0)
+		ipDst := api.GetIP(key.Tuple.DAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
+		ipSrc := api.GetIP(key.Tuple.SAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
 		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key,
 			"pid": curr.Pid, "pidktime": curr.PidKtime}).Warnf("UDP stats underflow")
 		return api.UdpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
@@ -326,7 +325,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		pseudoSocketsUpdate.Lock()
 		pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
 		if pseudoSockets[pseudoKey] != nil {
-			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.SAddr, SPort: udpKey.SPort, DAddr: udpKey.DAddr, DPort: udpKey.DPort, IPv6: udpKey.IPv6})
+			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort, DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6})
 		}
 		pseudoSocketsUpdate.Unlock()
 		deleteLastKey = &api.UdpInfoKey{}

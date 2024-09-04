@@ -95,14 +95,14 @@ build_udp_payload_event(struct udp_info_key *k, struct udp_info_value *v, u64 co
 	val->event.common.ktime = ktime_get_ns();
 	val->event.key.pid = v->pid;
 	val->event.key.ktime = v->pid_ktime;
-	val->event.tuple.ipv6 = k->ipv6;
-	val->event.tuple.saddr[0] = k->saddr[0];
-	val->event.tuple.saddr[1] = k->saddr[1];
+	val->event.tuple.ipv6 = k->tuple.ipv6;
+	val->event.tuple.saddr[0] = k->tuple.saddr[0];
+	val->event.tuple.saddr[1] = k->tuple.saddr[1];
 	/* FGS expects host byte-order */
-	val->event.tuple.sport = k->sport;
-	val->event.tuple.daddr[0] = k->daddr[0];
-	val->event.tuple.daddr[1] = k->daddr[1];
-	val->event.tuple.dport = k->dport;
+	val->event.tuple.sport = k->tuple.sport;
+	val->event.tuple.daddr[0] = k->tuple.daddr[0];
+	val->event.tuple.daddr[1] = k->tuple.daddr[1];
+	val->event.tuple.dport = k->tuple.dport;
 	val->event.create_time = v->create_time;
 	val->event.close_time = 0;
 	// WRITE_ONCE to tell compiler to use single store instead

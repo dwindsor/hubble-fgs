@@ -46,7 +46,7 @@ udp_dns(struct __sk_buff *skb,
 	if (config->dnsPorts[0] == 0)
 		return 0;
 
-	isdns = dns_port_match(config->dnsPorts, key->sport, key->dport);
+	isdns = dns_port_match(config->dnsPorts, key->tuple.sport, key->tuple.dport);
 	if (!isdns)
 		return 0;
 

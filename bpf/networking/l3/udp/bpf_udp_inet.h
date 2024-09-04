@@ -159,7 +159,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	struct latency_config *latency_config = 0;
 	struct socketmap_value *process;
 	struct udp_info_value *value;
-	struct udp_info_key key;
+	struct udp_info_key key = { 0 };
 	u64 cookie_ver = 0;
 	s64 latency = 0;
 	int zero = 0;

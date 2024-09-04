@@ -11,6 +11,8 @@
 #ifndef __BPF_UDP_INFO_H_
 #define __BPF_UDP_INFO_H_
 
+#include "networkmsg.h"
+
 /* UDP Info maintains the statistics associated with a UDP "session".
  * Here we have the map and helper routines to setup keys and values.
  */
@@ -29,13 +31,7 @@ struct {
 
 struct udp_info_key {
 	u64 cookie;
-	u64 saddr[2];
-	u64 daddr[2];
-	u16 sport;
-	u16 dport;
-	u8 ipv6;
-	u8 padding1;
-	u16 padding2;
+	struct msg_ip_tuple tuple;
 	u64 version;
 }; // All fields aligned so no 'packed' attribute.
 
@@ -74,47 +70,46 @@ udp_key(struct udp_info_key *key, u64 *cookie, u64 version, struct iphdr *ip, bo
 {
 	if (send) {
 		if (!ipv6) {
-			key->saddr[0] = ip->saddr;
-			key->saddr[1] = 0;
-			key->daddr[0] = ip->daddr;
-			key->daddr[1] = 0;
-			key->ipv6 = false;
+			key->tuple.saddr[0] = ip->saddr;
+			key->tuple.saddr[1] = 0;
+			key->tuple.daddr[0] = ip->daddr;
+			key->tuple.daddr[1] = 0;
+			key->tuple.ipv6 = false;
 		} else {
 			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
-			key->saddr[0] = addr[0];
-			key->saddr[1] = addr[1];
+			key->tuple.saddr[0] = addr[0];
+			key->tuple.saddr[1] = addr[1];
 			addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
-			key->daddr[0] = addr[0];
-			key->daddr[1] = addr[1];
-			key->ipv6 = true;
+			key->tuple.daddr[0] = addr[0];
+			key->tuple.daddr[1] = addr[1];
+			key->tuple.ipv6 = true;
 		}
 		// In the key, the port is always host order.
-		key->sport = bpf_ntohs(udp->source);
-		key->dport = bpf_ntohs(udp->dest);
+		key->tuple.sport = bpf_ntohs(udp->source);
+		key->tuple.dport = bpf_ntohs(udp->dest);
 	} else {
 		if (!ipv6) {
-			key->saddr[0] = ip->daddr;
-			key->saddr[1] = 0;
-			key->daddr[0] = ip->saddr;
-			key->daddr[1] = 0;
-			key->ipv6 = false;
+			key->tuple.saddr[0] = ip->daddr;
+			key->tuple.saddr[1] = 0;
+			key->tuple.daddr[0] = ip->saddr;
+			key->tuple.daddr[1] = 0;
+			key->tuple.ipv6 = false;
 		} else {
 			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
-			key->saddr[0] = addr[0];
-			key->saddr[1] = addr[1];
+			key->tuple.saddr[0] = addr[0];
+			key->tuple.saddr[1] = addr[1];
 			addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
-			key->daddr[0] = addr[0];
-			key->daddr[1] = addr[1];
-			key->ipv6 = true;
+			key->tuple.daddr[0] = addr[0];
+			key->tuple.daddr[1] = addr[1];
+			key->tuple.ipv6 = true;
 		}
 		// In the key, the port is always host order.
-		key->sport = bpf_ntohs(udp->dest);
-		key->dport = bpf_ntohs(udp->source);
+		key->tuple.sport = bpf_ntohs(udp->dest);
+		key->tuple.dport = bpf_ntohs(udp->source);
 	}
 	key->cookie = *cookie;
-	key->padding1 = 0;
-	key->padding2 = 0;
 	key->version = version;
+	key->tuple.proto = IPPROTO_UDP;
 }
 
 static inline __attribute__((always_inline)) void

@@ -317,14 +317,9 @@ func (t *TcpValue) String() string {
 }
 
 type UdpInfoKey struct {
-	Cookie  uint64    `align:"cookie"`
-	SAddr   [2]uint64 `align:"saddr"`
-	DAddr   [2]uint64 `align:"daddr"`
-	SPort   uint16    `align:"sport"`
-	DPort   uint16    `align:"dport"`
-	IPv6    uint8     `align:"ipv6"`
-	Padding [3]uint8  `align:"padding1"`
-	Version uint64    `align:"version"`
+	Cookie  uint64     `align:"cookie"`
+	Tuple   MsgIPTuple `align:"tuple"`
+	Version uint64     `align:"version"`
 }
 
 type UdpInfoValue struct {
@@ -344,11 +339,11 @@ type UdpInfoValue struct {
 }
 
 func (k *UdpInfoKey) String() string {
-	ipSrc := GetIP(k.SAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
-	ipDst := GetIP(k.DAddr, ops.MSG_OP_UDPCONNECT, k.IPv6 != 0)
+	ipSrc := GetIP(k.Tuple.SAddr, ops.MSG_OP_UDPCONNECT, k.Tuple.IPv6 != 0)
+	ipDst := GetIP(k.Tuple.DAddr, ops.MSG_OP_UDPCONNECT, k.Tuple.IPv6 != 0)
 	return fmt.Sprintf("Cookie=%d:%d\n"+
 		"SAddr=%s:%d\n"+
-		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.SPort, ipDst, k.DPort)
+		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.Tuple.SPort, ipDst, k.Tuple.DPort)
 }
 
 func (v *UdpInfoValue) String() string {
