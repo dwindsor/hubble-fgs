@@ -12,10 +12,10 @@ The following is a release checklist that should be followed when cutting a new 
 
 ### Minor Version Bump
 
-If you are doing a minor version bump (i.e. the Y in X.Y.Z), there are a few steps we need to do first before we can work on the Enterprise release.
+If you are doing a minor version bump (i.e., releasing X.Y.0 or an -rc for it), there are a few
+steps we need to do first before we can work on the Enterprise release.
 
 - [ ] [Cut a new OSS release][oss-release]
-- [ ] **After** checking out your new release branch (see below) but **before** you push the tag, update the `modules/tetragon-oss` to point to your new OSS release branch, and do an OSS sync
 - [ ] Make sure you add the `-rc.N` suffix to the version number for release candidates (rc)
 
 Branch `X.Y` may not exist, because we have not branched out yet. This can only happen for
@@ -23,7 +23,6 @@ Branch `X.Y` may not exist, because we have not branched out yet. This can only 
 
    * If release is `X.Y.0`:
        * Create `X.Y` branch
-       * Copy the file `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` from the previous release branch, e.g. from `1.3` if creating release `1.4.0`.
    * Else: # release is `X.Y.0-rc.N`
        * If `N == 1`, no need to create a branch
        * If `N > 1`
@@ -34,11 +33,42 @@ Branch `X.Y` may not exist, because we have not branched out yet. This can only 
 
 See [tagging] for more details.
 
-If you create a `X.Y` branch:
- - Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
-    - update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/c6d2699d9d1829a2ea6a6276d410da22fef71629/pkg/k8s/apis/cilium.io/v1alpha1/version.go#L21) to `X.Y+1.0`.
- - Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
+To create a `X.Y` branch:
+ - [ ] Branch out
+   ```
+   git fetch
+   export BRANCH=v1.14
+   git switch -c $BRANCH origin/master # here we pick latest commit. Change it if needed
+   ```
+
+ - [ ] Change the OSS submodule to follow the corresponding OSS branch. For example, if releasing
+   EE `v1.14` that follows OSS `v1.2`:
+   ```
+   git submodule set-branch -b v1.2 modules/tetragon-oss
+   git add .gitmodules
+   git commit --signoff -m 'oss: update branch to v1.2'
+
+ - [ ] Copy the file `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` from the previous release branch, e.g. from `1.13` if branching `1.14`.
+   ```
+   git fetch origin v1.13
+   git show origin/v1.13:install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml > install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+   git add install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+   git commit --signoff -m 'olm: copy file from stable branch (v1.13)'
+   ```
+
+ - [ ] Push the new version
+   ```
+   git push origin v1.14 # push the new branch
+   ```
+ - [ ] Do an OSS sync (if needed) and create a PR
+
+ - [ ] Switch to `master` branch
+ - [ ] Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
+    - [ ] update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/c6d2699d9d1829a2ea6a6276d410da22fef71629/pkg/k8s/apis/cilium.io/v1alpha1/version.go#L21) to `X.Y+1.0`.
+    - [ ] Update "Versions" in `docs/backporting.md`
+ - [ ] Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
    `vX.Y+1.0-pre.0`.
+ - [ ] Add the stable branch to the renovate configuration
 
 ### Cutting the Tetragon Enterprise release
 
@@ -50,9 +80,9 @@ If you create a `X.Y` branch:
       dependency (preferred) or work with [#sig-security](https://isovalent.slack.com/archives/CHAA21WJU)
       to triage the issue and add it to the [Tetragon VEX doc](https://github.com/isovalent/hubble-fgs/blob/master/.github/.openvex.json),
       which will exclude it from the scan results if it is a false positive.
-- [ ] Set `RELEASE` environment variable. For example, if you are releasing `v1.9.0`:
+- [ ] Set `RELEASE` environment variable to the next -rc. For example, if you are releasing `v1.14.0`:
   ```
-  export RELEASE=v1.9.0
+  export RELEASE=v1.14.0-rc.X
   ```
 - [ ] Open a pull request to update the Helm chart and docs:
   ```
@@ -69,9 +99,9 @@ If you create a `X.Y` branch:
   git commit -s -m "Prepare for $RELEASE release"
   git push origin HEAD
   ```
-- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.9.0`:
+- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.14.0`:
   ```
-  export BRANCH=v1.9
+  export BRANCH=v1.14
   ```
 - [ ] Check that there are no open PRs (that need to be urgently merged) targeting `$BRANCH`
   ```
@@ -85,7 +115,7 @@ If you create a `X.Y` branch:
   git push origin "$RELEASE"
   git push origin "api/$RELEASE"
   ```
-- [ ] Only for major/minor release, update `.github/renovate.json5` to include the new stable branch and remove the unsupported branch.
+- [ ] Only for major/minor release, update `.github/renovate.json5` to remove the now unsupported branch.
 - When a tag is pushed, a GitHub Action job takes care of creating a new GitHub
   draft release, building artifacts and attaching them to the draft release. Once
   the draft is available in the [releases page]:
