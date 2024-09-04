@@ -72,7 +72,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 {
 	struct udp_info_value *value;
 	struct udp_info_key key;
-	struct udp_info *info;
 	u64 cookie_ver = 0;
 
 	if (process)
@@ -121,20 +120,17 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	/* Store the info in the entry for later use and potentially for
 	 * searching from userland in case we ever need to locate a socket
 	 */
-	info = udp_info(ip, ipv6, udp, send);
-	if (!info)
-		return 0;
 	if (!ipv6) {
-		set_ipv6_addr_from_ipv4(value->saddr, info->saddr.ipv4);
-		set_ipv6_addr_from_ipv4(value->daddr, info->daddr.ipv4);
+		set_ipv6_addr_from_ipv4(value->saddr, key.saddr[0]);
+		set_ipv6_addr_from_ipv4(value->daddr, key.daddr[0]);
 		value->ipv6 = false;
 	} else {
-		copy_ipv6_addr(value->saddr, info->saddr.ipv6);
-		copy_ipv6_addr(value->daddr, info->daddr.ipv6);
+		copy_ipv6_addr(value->saddr, key.saddr);
+		copy_ipv6_addr(value->daddr, key.daddr);
 		value->ipv6 = true;
 	}
-	value->sport = info->sport;
-	value->dport = info->dport;
+	value->sport = key.sport;
+	value->dport = key.dport;
 
 	/* socket create time is when we see the first datagram, as a socket can
 	 * support multiple pseudo-connections (using sendto()) and we shouldn't

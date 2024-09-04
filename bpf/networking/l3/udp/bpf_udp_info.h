@@ -60,21 +60,6 @@ struct udp_info_value {
 	u64 create_time;
 }; // All fields aligned so no 'packed' attribute.
 
-struct udp_info {
-	union {
-		u32 ipv4;
-		u64 ipv6[2];
-	} saddr;
-	union {
-		u32 ipv4;
-		u64 ipv6[2];
-	} daddr;
-	u16 sport;
-	u16 dport;
-	u8 ipv6;
-	u8 padding[3];
-}; // All fields aligned so no 'packed' attribute.
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
@@ -88,13 +73,6 @@ struct {
 	__type(value, struct udp_info_value);
 	__uint(max_entries, 1);
 } tg_udp_value_heap SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct udp_info);
-	__uint(max_entries, 1);
-} tg_udp_info_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 udp_key(struct udp_info_key *key, u64 *cookie, u64 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
@@ -142,85 +120,6 @@ udp_key(struct udp_info_key *key, u64 *cookie, u64 version, struct iphdr *ip, bo
 	key->padding1 = 0;
 	key->padding2 = 0;
 	key->version = version;
-}
-
-static inline __attribute__((always_inline)) void
-copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
-			struct in6_addr *daddr)
-{
-	u64 *addr;
-	addr = (u64 *)saddr;
-	info->saddr.ipv6[0] = addr[0];
-	info->saddr.ipv6[1] = addr[1];
-	addr = (u64 *)daddr;
-	info->daddr.ipv6[0] = addr[0];
-	info->daddr.ipv6[1] = addr[1];
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp_port_info(struct udphdr *udp, u64 send)
-{
-	struct udp_info *info;
-	int zero = 0;
-
-	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
-	if (!info)
-		return 0;
-
-	if (send) {
-		info->sport = bpf_ntohs(udp->source);
-		info->dport = bpf_ntohs(udp->dest);
-	} else {
-		info->sport = bpf_ntohs(udp->dest);
-		info->dport = bpf_ntohs(udp->source);
-	}
-	info->padding[0] = 0;
-	info->padding[1] = 0;
-	info->padding[2] = 0;
-	return info;
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
-{
-	struct udp_info *info;
-	int zero = 0;
-
-	info = (struct udp_info *)map_lookup_elem(&tg_udp_info_heap, &zero);
-	if (!info || !ip)
-		return 0;
-
-	if (send) {
-		if (!ipv6) {
-			info->saddr.ipv4 = ip->saddr;
-			info->daddr.ipv4 = ip->daddr;
-			info->ipv6 = false;
-		} else {
-			copy_ipv6_addrs_to_info(info,
-						&((struct ipv6hdr *)ip)->saddr,
-						&((struct ipv6hdr *)ip)->daddr);
-			info->ipv6 = true;
-		}
-		info->sport = bpf_ntohs(udp->source);
-		info->dport = bpf_ntohs(udp->dest);
-	} else {
-		if (!ipv6) {
-			info->saddr.ipv4 = ip->daddr;
-			info->daddr.ipv4 = ip->saddr;
-			info->ipv6 = false;
-		} else {
-			copy_ipv6_addrs_to_info(info,
-						&((struct ipv6hdr *)ip)->daddr,
-						&((struct ipv6hdr *)ip)->saddr);
-			info->ipv6 = true;
-		}
-		info->sport = bpf_ntohs(udp->dest);
-		info->dport = bpf_ntohs(udp->source);
-	}
-	info->padding[0] = 0;
-	info->padding[1] = 0;
-	info->padding[2] = 0;
-	return info;
 }
 
 static inline __attribute__((always_inline)) void
