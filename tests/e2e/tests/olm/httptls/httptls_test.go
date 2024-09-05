@@ -37,8 +37,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	runner = runners.NewRunner().WithInstallTetragonFn(olm.TetragonInstall(install.WithHelmOptions(map[string]string{
+	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragonFn(olm.TetragonInstall(install.WithHelmOptions(map[string]string{
 		"tetragon.exportAllowList": "",
+		"tetragon.enableCiliumAPI": "false",
 		// the parameter does not exist
 		// "enterprise.enableTLSEvents": "true",
 	}))).Init()

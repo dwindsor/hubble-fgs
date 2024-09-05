@@ -40,6 +40,7 @@ func TestMain(m *testing.M) {
 				"tetragon.exportAllowList":       "",
 				"tetragon.enablePolicyFilter":    "true",
 				"tetragon.enableSandboxpolicies": "true",
+				"tetragon.enableCiliumAPI":       "false",
 			})),
 		).Init()
 

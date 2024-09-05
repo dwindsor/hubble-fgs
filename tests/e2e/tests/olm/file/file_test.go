@@ -37,8 +37,9 @@ var runner *runners.Runner
 var supportEnforcement = false
 
 func TestMain(m *testing.M) {
-	runner = runners.NewRunner().WithInstallTetragonFn(olm.TetragonInstall(install.WithHelmOptions(map[string]string{
+	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragonFn(olm.TetragonInstall(install.WithHelmOptions(map[string]string{
 		"tetragon.exportAllowList":    "",
+		"tetragon.enableCiliumAPI":    "false",
 		"tetragon.enablePolicyFilter": "true",
 	}))).Init()
 

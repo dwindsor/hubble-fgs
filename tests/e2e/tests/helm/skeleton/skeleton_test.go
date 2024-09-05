@@ -27,6 +27,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
+	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -70,7 +71,13 @@ func TestMain(m *testing.M) {
 	//    cluster and running event checkers. This information is only dumped if the test
 	//    fails or if -tetragon.keep-export=true is set on the command line.
 	//
-	runner = runners.NewRunner().Init()
+	runner = runners.NewRunner().NoInstallCilium().
+		WithInstallTetragon(
+			install.WithHelmOptions(map[string]string{
+				"tetragon.exportAllowList": "",
+				"tetragon.enableCiliumAPI": "false",
+			}),
+		).Init()
 
 	// Any additional setup and cleanup can be performed here if you like.
 	// This would be done using testenv.Setup() and testenv.Finish() respectively.

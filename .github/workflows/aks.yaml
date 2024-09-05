@@ -22,7 +22,6 @@ permissions:
 
 env:
   ciliumCliVersion: v0.12.11
-  ciliumVersion: v1.12.4
   name: "${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.run_id }}"
   location: westus
   costReduction: --node-vm-size Standard_B2s --node-osdisk-size 30
@@ -96,7 +95,6 @@ jobs:
             --resource-group ${{ env.name }} \
             --name ${{ env.name }} \
             --location ${{ env.location }} \
-            --network-plugin none \
             --node-count 2 \
             ${{ env.costReduction }} \
             --generate-ssh-keys
@@ -106,12 +104,6 @@ jobs:
           az aks get-credentials \
             --resource-group ${{ env.name }} \
             --name ${{ env.name }}
-
-      # Temporary workaround while we don't have proper AKS options for installing Cilium
-      # via e2e-framework
-      - name: Install Cilium
-        run: |
-          cilium install --version "${{ env.ciliumVersion }}" --azure-resource-group ${{ env.name }}
 
       - name: Attempt to pull the FGS image
         uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3.0.0

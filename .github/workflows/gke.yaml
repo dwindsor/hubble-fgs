@@ -10,7 +10,6 @@ on:
 env:
   zone: us-west2-a
   ciliumCliVersion: v0.12.11
-  ciliumVersion: v1.12.4
 
 jobs:
   install-and-test:
@@ -99,7 +98,6 @@ jobs:
             --num-nodes 2 \
             --machine-type n1-standard-4 \
             --release-channel ${{ matrix.release-channel }} \
-            --node-taints node.cilium.io/agent-not-ready=true:NoExecute \
             --zone ${{ env.zone }}
 
       - name: Get Credentials
@@ -128,7 +126,7 @@ jobs:
             E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
             E2E_AGENT=${{ steps.vars.outputs.agentImage }}       \
             E2E_OPERATOR=${{ steps.vars.outputs.operatorImage }} \
-            E2E_EXTRA_TEST_FLAGS="-tetragon.keep-export=true -tetragon.cilium-version=${{ env.ciliumVersion }} -cluster-name ${{ steps.vars.outputs.clusterName }} -kubeconfig ~/.kube/config"
+            E2E_EXTRA_TEST_FLAGS="-tetragon.keep-export=true -cluster-name ${{ steps.vars.outputs.clusterName }} -kubeconfig ~/.kube/config"
 
       - name: Cleanup
         id: cleanup

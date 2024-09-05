@@ -36,8 +36,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
+	runner = runners.NewRunner().NoInstallCilium().WithInstallTetragon(install.WithHelmOptions(map[string]string{
 		"enterprise.exportAllowList": "",
+		"tetragon.enableCiliumAPI":   "false",
 		"enterprise.enableTLSEvents": "true",
 	})).Init()
 
