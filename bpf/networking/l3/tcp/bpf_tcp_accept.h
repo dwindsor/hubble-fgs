@@ -55,6 +55,7 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	struct socketmap_value *listen_process;
 	u64 pid_tgid = get_current_pid_tgid();
 	u64 accept_cookie = PT_REGS_RC(ctx);
+	u64 now = ktime_get_ns();
 	u64 cookie_version = 0;
 	u64 *listen_cookie_p;
 
@@ -77,11 +78,13 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	if (listen_process) {
 		struct socketmap_value accept_process = *listen_process;
 		accept_process.version = cookie_version;
+		accept_process.create_time = now;
 		add_socketmap(&accept_cookie, &accept_process, true);
 	}
 	if (listen_socket) {
 		struct tcpsocketmap_value accept_socket = *listen_socket;
 		accept_socket.version = cookie_version;
+		accept_socket.create_time = now;
 		add_tcpsocketmap(&accept_cookie, &accept_socket, true);
 	}
 	return 1;
