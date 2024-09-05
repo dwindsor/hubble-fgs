@@ -142,6 +142,6 @@ __event_tcp_connect(struct pt_regs *ctx)
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
 #endif
-	add_tcpsocketmap(&cookie, &v, true);
+	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
 	return 1;
 }

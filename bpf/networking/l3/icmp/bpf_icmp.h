@@ -130,7 +130,7 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 		process = lookup_socketmap(&c);
 	}
 	if (!process && icmp_tracking_enabled() && skb && protocol && sport) {
-		key = make_tuple_key_from_skb(skb, val, protocol, sport);
+		key = make_tuple_key_from_skb(skb, &val->tuple, protocol, sport);
 		if (key) {
 			probe_read_kernel(&dev, sizeof(dev), _(&(skb->dev)));
 			probe_read_kernel(&dif, sizeof(dif), _(&(dev->ifindex))); // might need additional checks for IPv6

@@ -133,7 +133,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 #ifdef TRACK_ICMP_FROM_SKB
 		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
 #else
-		add_socket_tuple_map(cookie);
+		add_socket_tuple_map(&key->tuple, cookie);
 #endif
 #endif
 	}

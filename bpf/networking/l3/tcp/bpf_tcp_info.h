@@ -76,7 +76,7 @@ struct {
  * some systems but not others.
  */
 static inline __attribute__((always_inline)) void
-add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, bool update_tuple_map)
+add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, bool update_tuple_map)
 {
 	struct tcpsocketmap_value *existing = (struct tcpsocketmap_value *)map_lookup_elem(&tg_tcpsocket_map, cookie);
 	int zero = 0;
@@ -88,7 +88,7 @@ add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, bool update_tuple_ma
 		if (!existing && (cntr = (__s64 *)map_lookup_elem(&tg_tcpsocket_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		if (update_tuple_map)
-			add_socket_tuple_map(cookie);
+			add_socket_tuple_map(tuple, cookie);
 	}
 }
 

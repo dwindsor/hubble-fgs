@@ -15,6 +15,7 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/config.h"
 #include "../lib/address_family.h"
+#include "bpf_tracing.h"
 
 /* We store the mapping from socket tuples to socket cookies so that ICMP datagrams (other than
  * ping), and any other datagrams as required, can be mapped to the socket they reference. ICMP
@@ -117,7 +118,7 @@ icmp_net_match()
 }
 
 static inline __attribute__((always_inline)) struct socket_tuple_key *
-make_tuple_key_from_sk(struct sock *sk)
+make_tuple_key_from_sk(struct msg_ip_tuple *tuple, struct sock *sk)
 {
 	struct socket_tuple_key *key;
 	int zero = 0;
@@ -131,24 +132,17 @@ make_tuple_key_from_sk(struct sock *sk)
 	} else {
 		key->net = 0;
 	}
-	probe_read_kernel(&key->family, sizeof(key->family), _(&(sk->__sk_common.skc_family)));
-	if (key->family == AF_INET6) {
-		probe_read_kernel(key->saddr, sizeof(key->saddr), _(&(sk->__sk_common.skc_v6_rcv_saddr)));
-		probe_read_kernel(key->daddr, sizeof(key->daddr), _(&(sk->__sk_common.skc_v6_daddr)));
-	} else {
-		key->saddr[0] = 0;
-		probe_read_kernel(&key->saddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_rcv_saddr)));
-		key->saddr[1] = 0;
-		key->daddr[0] = 0;
-		probe_read_kernel(&key->daddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_daddr)));
-		key->daddr[1] = 0;
-	}
+	if (tuple->ipv6)
+		key->family = AF_INET6;
+	else
+		key->family = AF_INET;
+	key->saddr[0] = tuple->saddr[0];
+	key->saddr[1] = tuple->saddr[1];
+	key->daddr[0] = tuple->daddr[0];
+	key->daddr[1] = tuple->daddr[1];
 	probe_read_kernel(&key->bound_dev_if, sizeof(key->bound_dev_if), _(&(sk->__sk_common.skc_bound_dev_if)));
-	probe_read_kernel(&key->protocol, sizeof(key->protocol), _(&(sk->sk_protocol)));
-	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
-		key->protocol >>= 8;
-	}
-	probe_read_kernel(&key->sport, sizeof(key->sport), _(&(sk->__sk_common.skc_num)));
+	key->protocol = tuple->proto;
+	key->sport = tuple->sport;
 	return key;
 }
 
@@ -158,7 +152,7 @@ struct ihlver {
 };
 
 static inline __attribute__((always_inline)) struct socket_tuple_key *
-make_tuple_key_from_skb(struct sk_buff *skb, struct msg_icmp_event *val, u8 protocol, u16 sport)
+make_tuple_key_from_skb(struct sk_buff *skb, struct msg_ip_tuple *tuple, u8 protocol, u16 sport)
 {
 	struct socket_tuple_key *key;
 	struct net_device *skb_dev;
@@ -174,15 +168,15 @@ make_tuple_key_from_skb(struct sk_buff *skb, struct msg_icmp_event *val, u8 prot
 	} else {
 		key->net = 0;
 	}
-	if (val->tuple.ipv6)
+	if (tuple->ipv6)
 		key->family = AF_INET6;
 	else
 		key->family = AF_INET;
 
-	key->saddr[0] = val->tuple.saddr[0];
-	key->saddr[1] = val->tuple.saddr[1];
-	key->daddr[0] = val->tuple.daddr[0];
-	key->daddr[1] = val->tuple.daddr[1];
+	key->saddr[0] = tuple->saddr[0];
+	key->saddr[1] = tuple->saddr[1];
+	key->daddr[0] = tuple->daddr[0];
+	key->daddr[1] = tuple->daddr[1];
 	// bound_dev_if will be filled in during look up.
 	key->bound_dev_if = 0;
 
@@ -310,6 +304,12 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 	err = map_update_elem(&tg_socket_tuple_map, key, &c, 0);
 
 	if (!err) {
+		// Add reverse mapping from cookie to tuple so that we can easily
+		// locate the tuple for deletion later. (We can't rely on the socket
+		// being in the same state at deletion as it was at creation; e.g.
+		// remote IP address could be empty at creation and filled in at
+		// deletion; also source port is often available at creation but not
+		// at deletion.)
 		map_update_elem(&tg_rev_tuple_map, &c, key, 0);
 		if (!val && (cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
 			*cntr = *cntr + 1;
@@ -318,7 +318,7 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 }
 
 static inline __attribute__((always_inline)) void
-add_socket_tuple_map(u64 *cookie)
+add_socket_tuple_map(struct msg_ip_tuple *tuple, u64 *cookie)
 {
 	struct sock *sk = (struct sock *)*cookie;
 	struct socket_tuple_key *key;
@@ -326,7 +326,7 @@ add_socket_tuple_map(u64 *cookie)
 	if (!icmp_tracking_enabled())
 		return;
 
-	key = make_tuple_key_from_sk(sk);
+	key = make_tuple_key_from_sk(tuple, sk);
 	if (!key)
 		return;
 
@@ -363,6 +363,8 @@ del_socket_tuple_map(u64 *cookie)
 	key = map_lookup_elem(&tg_rev_tuple_map, &c);
 	if (!key)
 		return;
+
+	map_delete_elem(&tg_rev_tuple_map, &c);
 	err = map_delete_elem(&tg_socket_tuple_map, key);
 	if (!err) {
 		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))

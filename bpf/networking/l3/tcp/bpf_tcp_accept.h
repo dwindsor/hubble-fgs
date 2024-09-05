@@ -56,8 +56,12 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	u64 pid_tgid = get_current_pid_tgid();
 	u64 accept_cookie = PT_REGS_RC(ctx);
 	u64 now = ktime_get_ns();
+	struct msg_ip_tuple tuple = { 0 };
 	u64 cookie_version = 0;
 	u64 *listen_cookie_p;
+	struct sock *sk;
+	u16 protocol;
+	u16 family;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	listen_cookie_p = map_lookup_elem(&tg_tcp_accept_sock_map, &pid_tgid);
@@ -73,19 +77,36 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 		return 0;
 	}
 
+	sk = (struct sock *)accept_cookie;
+	probe_read_kernel(&family, sizeof(family), _(&(sk->__sk_common.skc_family)));
+	if (family == AF_INET6) {
+		tuple.ipv6 = 1;
+		probe_read_kernel(tuple.saddr, sizeof(tuple.saddr), _(&(sk->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(tuple.daddr, sizeof(tuple.daddr), _(&(sk->__sk_common.skc_v6_daddr)));
+	} else {
+		probe_read_kernel(&tuple.saddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_rcv_saddr)));
+		probe_read_kernel(&tuple.daddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_daddr)));
+	}
+	probe_read_kernel(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
+	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
+		protocol >>= 8;
+	}
+	tuple.proto = protocol;
+	probe_read_kernel(&tuple.sport, sizeof(tuple.sport), _(&(sk->__sk_common.skc_num)));
+
 	cookie_version = cookie_inc_version();
 	// copy existing entries but with new version number.
 	if (listen_process) {
 		struct socketmap_value accept_process = *listen_process;
 		accept_process.version = cookie_version;
 		accept_process.create_time = now;
-		add_socketmap(&accept_cookie, &accept_process, true);
+		add_socketmap(&accept_cookie, &accept_process, &tuple, true);
 	}
 	if (listen_socket) {
 		struct tcpsocketmap_value accept_socket = *listen_socket;
 		accept_socket.version = cookie_version;
 		accept_socket.create_time = now;
-		add_tcpsocketmap(&accept_cookie, &accept_socket, true);
+		add_tcpsocketmap(&accept_cookie, &accept_socket, &tuple, true);
 	}
 	return 1;
 }
@@ -180,7 +201,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	socket->fin_rx = 0;
 	socket->ipv6 = (family == AF_INET6);
 
-	add_socket_tuple_map(&cookie);
+	add_socket_tuple_map(&val->tuple, &cookie);
 
 	return 1;
 }

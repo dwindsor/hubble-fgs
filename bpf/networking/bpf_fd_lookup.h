@@ -210,7 +210,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	sockmap_process.version = cookie_inc_version();
 
 	/* Store the socket even if family or protocol couldn't be read. */
-	add_socketmap(&cookie, &sockmap_process, true);
+	add_socketmap(&cookie, &sockmap_process, &config->tuple, true);
 
 	if (required_protocol == IPPROTO_TCP) {
 		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
@@ -242,7 +242,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_stats->last_time = sockmap_process.create_time;
 		tcp_stats->ipv6 = (family == AF_INET6);
 		tcp_stats->version = sockmap_process.version;
-		add_tcpsocketmap(&cookie, tcp_stats, false);
+		add_tcpsocketmap(&cookie, tcp_stats, 0, false);
 	}
 
 	return 0;

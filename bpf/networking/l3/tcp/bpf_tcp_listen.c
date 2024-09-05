@@ -129,7 +129,7 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	v.ipv6 = (family == AF_INET6);
 	v.version = val->version;
 
-	add_tcpsocketmap(&cookie, &v, true);
+	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
 
 	return 0;
 }

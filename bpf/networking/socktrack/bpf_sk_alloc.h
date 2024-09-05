@@ -100,7 +100,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	process.version = cookie_inc_version();
 	// Don't update the tuple map here because the socket hasn't yet
 	// been populated, and might be ICMP or raw without a tuple.
-	add_socketmap(&cookie, &process, false);
+	add_socketmap(&cookie, &process, 0, false);
 
 	cfg = map_lookup_elem(&tg_cfg_map, &zero);
 	if (!cfg)

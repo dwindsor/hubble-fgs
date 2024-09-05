@@ -147,7 +147,7 @@ static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
  * some systems but not others.
  */
 static inline __attribute__((always_inline)) void
-add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
+add_socketmap(u64 *cookie, struct socketmap_value *v, struct msg_ip_tuple *tuple, bool update_tuple_map)
 {
 	struct socketmap_value *existing = (struct socketmap_value *)map_lookup_elem(&tg_socket_map, cookie);
 	int zero = 0;
@@ -162,7 +162,7 @@ add_socketmap(u64 *cookie, struct socketmap_value *v, bool update_tuple_map)
 		if (!existing && (cntr = (__s64 *)map_lookup_elem(&tg_socket_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		if (update_tuple_map)
-			add_socket_tuple_map(cookie);
+			add_socket_tuple_map(tuple, cookie);
 	}
 }
 
@@ -191,7 +191,7 @@ lookup_socketmap(u64 *cookie)
  * mapping from cookie to process(pid).
  */
 static inline __attribute__((always_inline)) bool
-update_socketmap(u64 *cookie, u32 pid, u16 protocol)
+update_socketmap(u64 *cookie, u32 pid, u16 protocol, struct msg_ip_tuple *tuple)
 {
 	struct socketmap_value *process;
 	struct execve_map_value *value;
@@ -214,7 +214,7 @@ update_socketmap(u64 *cookie, u32 pid, u16 protocol)
 			process->create_time = ktime_get_ns();
 			process->version = cookie_inc_version();
 			process->protocol = protocol;
-			add_socketmap(cookie, process, true);
+			add_socketmap(cookie, process, tuple, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
