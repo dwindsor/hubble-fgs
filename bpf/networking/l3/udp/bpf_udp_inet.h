@@ -379,6 +379,7 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 	size_t ipopts_b = ipopts / sizeof(u32);
 	struct timestamp_option *ts_opt = 0;
+	struct timestamp_option ipopt;
 	int payload_off, payload_sz;
 	struct udphdr udp;
 	u8 udp_off;
@@ -391,7 +392,6 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 		return SK_PASS;
 
 	if (ip->ihl >= ipopts_b) {
-		struct timestamp_option ipopt;
 		int err;
 
 		/* Packet has at least enough space for the Timestamp IP Option,
