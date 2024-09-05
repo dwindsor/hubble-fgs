@@ -8,7 +8,6 @@
 package cgidmap
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -91,6 +90,8 @@ func newMap() (*cgidm, error) {
 	var criResolver *criResolver
 	if option.Config.EnableCRI {
 		criResolver = newCriResolver(m)
+	} else {
+		logger.GetLogger().Warn("cgidmap is enabled but cri is not. This means that pod association will not work for existing pods. You can enable cri using --enable-cri")
 	}
 	m.criResolver = criResolver
 	return m, nil
@@ -234,7 +235,9 @@ func (m *cgidm) Update(podID PodID, contIDs []ContainerID) {
 			contID: id,
 		})
 	}
-	m.criResolver.enqeue(unmappedIDs)
+	if m.criResolver != nil {
+		m.criResolver.enqeue(unmappedIDs)
+	}
 }
 
 // Global state
@@ -245,12 +248,20 @@ var (
 	setGlMap sync.Once
 )
 
+type cgidDisabledTy struct{}
+
+var cgidDisabled = &cgidDisabledTy{}
+
+func (e *cgidDisabledTy) Error() string {
+	return "cgidmap disabled"
+}
+
 // GetState returns the global map
 func GlobalMap() (Map, error) {
 	setGlMap.Do(func() {
 		if !option.Config.EnableCgIDmap {
 			glMap = nil
-			glError = errors.New("cgidmap disabled")
+			glError = cgidDisabled
 			return
 		}
 

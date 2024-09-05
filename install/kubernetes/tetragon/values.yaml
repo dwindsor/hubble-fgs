@@ -417,7 +417,10 @@ rthooks:
   image:
     override: ~
     repository: quay.io/cilium/tetragon-rthooks
-    tag: v0.2
+    tag: v0.3
+  # -- rthooks service account.
+  serviceAccount:
+    name: ""
 # -- Install tracing policies.
 # These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
 # either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart
