@@ -16,6 +16,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var exampleLabels = []string{
+	"example0", consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod,
+}
+
 // Interface metrics
 var (
 	InterfaceBytesSent = metrics.NewGaugeVecWithPod(prometheus.GaugeOpts{
@@ -101,19 +105,19 @@ func InitMetrics(registry *prometheus.Registry) {
 func InitMetricsForDocs(registry *prometheus.Registry) {
 	InitMetrics(registry)
 
-	InterfaceBytesSent.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceBytesReceived.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceSegmentsSent.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceSegmentsReceived.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceTxErrors.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceRxErrors.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceTxDrops.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceRxDrops.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	InterfaceBytesSent.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceBytesReceived.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceSegmentsSent.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceSegmentsReceived.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceTxErrors.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceRxErrors.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceTxDrops.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceRxDrops.WithLabelValues(exampleLabels...).Add(0)
 
 	qlenBuckets := []string{"10", "100", "250", "500", "750", "900", "990", "+Inf"}
 	for _, b := range qlenBuckets {
-		InterfaceQlenBucket.WithLabelValues(append(consts.ExampleProcessLabels, b)...).Add(0)
+		InterfaceQlenBucket.WithLabelValues(append(exampleLabels, b)...).Add(0)
 	}
-	InterfaceQlenCount.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
-	InterfaceQlenSum.WithLabelValues(consts.ExampleProcessLabels...).Add(0)
+	InterfaceQlenCount.WithLabelValues(exampleLabels...).Add(0)
+	InterfaceQlenSum.WithLabelValues(exampleLabels...).Add(0)
 }

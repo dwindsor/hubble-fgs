@@ -783,10 +783,10 @@ Histogram bucket for the number of enqueued packets
 | label | values |
 | ----- | ------ |
 | `le   ` | `+Inf, 10, 100, 250, 500, 750, 900, 990` |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_qlen_gcount`
 
@@ -794,10 +794,10 @@ Histogram count for the number of enqueued packets
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_qlen_gsum`
 
@@ -805,10 +805,10 @@ Histogram sum for the number of enqueued packets
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_rxbytes`
 
@@ -816,10 +816,10 @@ Bytes received per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_rxdrops`
 
@@ -827,10 +827,10 @@ RX drops per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_rxerrors`
 
@@ -838,10 +838,10 @@ RX errors per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_rxsegs`
 
@@ -849,10 +849,10 @@ Segments received per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_txbytes`
 
@@ -860,10 +860,10 @@ Bytes sent per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_txdrops`
 
@@ -871,10 +871,10 @@ TX drops per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_txerrors`
 
@@ -882,10 +882,10 @@ TX errors per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ### `tetragon_interface_txsegs`
 
@@ -893,10 +893,10 @@ Segments sent per network interface
 
 | label | values |
 | ----- | ------ |
-| `name ` | `example-namespace` |
-| `namespace` | `example-workload` |
-| `pod  ` | `example-binary` |
-| `workload` | `example-pod` |
+| `name ` | `example0` |
+| `namespace` | `example-namespace` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
 
 ## Tetragon TCP Metrics
 
