@@ -103,8 +103,9 @@ func tcpGcCb(_ *ebpf.Map, key *networkapi.TcpBpfKey, value *networkapi.TcpValue)
 		// If Ktime is the same as last read then nothing has changed.
 		if tcpStats.Ktime != last.Ktime {
 			diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
+			// Store the stats from the BPF map into the cache
+			stats.Add(statsKey, *tcpStats)
 			if err == nil {
-				stats.Add(statsKey, *tcpStats)
 				emitStatEvent(&statsKey, value, tuple, &diffValue)
 			} else {
 				logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
