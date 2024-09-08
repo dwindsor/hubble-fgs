@@ -401,7 +401,7 @@
       "id": 172,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -1144,7 +1144,7 @@
       "id": 186,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -1214,7 +1214,7 @@
       "id": 183,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -1245,7 +1245,7 @@
         }
       ],
       "timeFrom": "15m",
-      "title": "Max Tetragon Pod Restarts",
+      "title": "Total Tetragon Pod Restarts",
       "type": "stat"
     },
     {
@@ -1285,7 +1285,7 @@
       "id": 184,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -1316,7 +1316,7 @@
         }
       ],
       "timeFrom": "1h",
-      "title": "Max Tetragon Pod Restarts",
+      "title": "Total Tetragon Pod Restarts",
       "type": "stat"
     },
     {
@@ -1356,7 +1356,7 @@
       "id": 185,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -1387,7 +1387,7 @@
         }
       ],
       "timeFrom": "24h",
-      "title": "Max Tetragon Pod Restarts",
+      "title": "Total Tetragon Pod Restarts",
       "type": "stat"
     },
     {
