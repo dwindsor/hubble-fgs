@@ -253,12 +253,6 @@ tetragon:
   enableCiliumAPI: false
   # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
   fimRuntimeEndpoint: ""
-  # -- EXPERIMENTAL: This field may be removed in the future without notice.
-  #
-  # Enable TCP segment sampling to collect metrics. Recommended sample rate: 4096. Set it to zero to disable.
-  #
-  # Note that the counter for sampling is global, and it is not per socket.
-  tcpStatsSampleSegs: 0
   # -- Enable sandboxpolicies.
   enableSandboxpolicies: true
   # -- Enable process tree.
