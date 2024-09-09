@@ -228,6 +228,23 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		}).Warnf("TX TCP stats sent bytes underflow")
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
+	if curr.SegsIn < last.SegsIn {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"tuple": tuple,
+			"curr":  curr,
+			"last":  last,
+		}).Warnf("RX TCP stats SegsIn underflow")
+		return *last, fmt.Errorf("TCP SegsIn stats invalid diff operation")
+	}
+	if curr.SegsOut < last.SegsOut {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"tuple": tuple,
+			"curr":  curr,
+			"last":  last,
+		}).Warnf("TX TCP stats SegsOut underflow")
+		return *last, fmt.Errorf("TCP SegsOut stats invalid diff operation")
+	}
+
 	rttHist, err := tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT", source, dest)
 	if err != nil {
 		return *last, err
