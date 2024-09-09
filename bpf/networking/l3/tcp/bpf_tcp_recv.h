@@ -109,21 +109,12 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 		return SK_PASS;
 	}
 
-	probe_read_kernel(&state, sizeof(state),
-			  _((const void *)&(sk->__sk_common.skc_state)));
-
-	if (state == TCP_FIN_WAIT2) {
-		socket->fin_rx = 1;
-		return SK_PASS;
-	}
-	if (state != TCP_ESTABLISHED)
-		return SK_PASS;
-
+	probe_read_kernel(&state, sizeof(state), _((const void *)&(sk->__sk_common.skc_state)));
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 
-	if (!rcv_wnd)
+	if (!rcv_wnd && state == TCP_ESTABLISHED)
 		socket->zero_window++;
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
