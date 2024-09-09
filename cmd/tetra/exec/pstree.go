@@ -198,7 +198,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		// Create workload collections
 		wlCollections := make(map[string][]*tetragon.ProcessModel)
 		for _, p := range r {
-			wlName := p.Workload.Name
+			wlName := fmt.Sprintf("%s:%s", p.Workload.Kind, p.Workload.Name)
 
 			if _, ok := wlPrintList[wlName]; !ok && len(workloads) > 0 {
 				continue
