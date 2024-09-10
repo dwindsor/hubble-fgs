@@ -147,10 +147,10 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		return nil
 	}
 	if process != nil {
-		process.RefInc()
+		process.RefInc("process-connect")
 	}
 	if parent != nil {
-		parent.RefInc()
+		parent.RefInc("parent-connect")
 	}
 	return fgsEvent
 }
@@ -233,10 +233,10 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 		return nil
 	}
 	if process != nil {
-		process.RefDec()
+		process.RefDec(fmt.Sprintf("process-close-%s", SocketFlagsToType(event.Msg.SocketFlags)))
 	}
 	if parent != nil {
-		parent.RefDec()
+		parent.RefDec(fmt.Sprintf("parent-close-%s", SocketFlagsToType(event.Msg.SocketFlags)))
 	}
 	return fgsEvent
 }
@@ -284,10 +284,10 @@ func GetProcessListen(
 	}
 
 	if process != nil {
-		process.RefInc()
+		process.RefInc("process-listen")
 	}
 	if parent != nil {
-		parent.RefInc()
+		parent.RefInc("parent-listen")
 	}
 
 	return fgsEvent
@@ -357,10 +357,10 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		return nil
 	}
 	if process != nil {
-		process.RefInc()
+		process.RefInc("process-accept")
 	}
 	if parent != nil {
-		parent.RefInc()
+		parent.RefInc("parent-accept")
 	}
 
 	return fgsEvent
@@ -398,10 +398,10 @@ func GetProcessRawsockCreate(event *MsgIPEventUnix) *tetragon.ProcessRawsockCrea
 		return nil
 	}
 	if process != nil {
-		process.RefInc()
+		process.RefInc("process-rawsock-create")
 	}
 	if parent != nil {
-		parent.RefInc()
+		parent.RefInc("parent-rawsock-create")
 	}
 
 	eventmetrics.HandleRawsockCreateEvent(fgsEvent)
@@ -442,10 +442,10 @@ func GetProcessRawsockClose(event *MsgIPEventUnix) *tetragon.ProcessRawsockClose
 		return nil
 	}
 	if process != nil {
-		process.RefDec()
+		process.RefDec("process-rawsock-close")
 	}
 	if parent != nil {
-		parent.RefDec()
+		parent.RefDec("parent-rawsock-close")
 	}
 
 	eventmetrics.HandleRawsockCloseEvent(fgsEvent)
@@ -502,23 +502,31 @@ func GetProcessSockStats(event *MsgIPWithStatsEventUnix) *tetragon.ProcessSockSt
 	return CreateProcessSockStats(event, true)
 }
 
-func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
 	var err error
 
+	opStr := "unknown"
 	refAction := refNothing
 	switch op {
-	case ops.MSG_OP_TCPCONNECTRET,
-		ops.MSG_OP_UDPCONNECT,
-		ops.MSG_OP_LISTEN,
-		ops.MSG_OP_UDPLISTEN,
-		ops.MSG_OP_ACCEPT,
-		ops.MSG_OP_RAWSOCK_CREATE:
+	case ops.MSG_OP_TCPCONNECTRET, ops.MSG_OP_UDPCONNECT:
+		opStr = "connect"
 		refAction = refInc
-	case ops.MSG_OP_TCPCLOSE,
-		ops.MSG_OP_UDPCLOSE,
-		ops.MSG_OP_RAWSOCK_CLOSE:
+	case ops.MSG_OP_LISTEN, ops.MSG_OP_UDPLISTEN:
+		opStr = "listen"
+		refAction = refInc
+	case ops.MSG_OP_ACCEPT:
+		opStr = "accept"
+		refAction = refInc
+	case ops.MSG_OP_RAWSOCK_CREATE:
+		opStr = "rawsock-create"
+		refAction = refInc
+	case ops.MSG_OP_TCPCLOSE, ops.MSG_OP_UDPCLOSE:
+		opStr = fmt.Sprintf("close-%s", SocketFlagsToType(socketFlags))
+		refAction = refDec
+	case ops.MSG_OP_RAWSOCK_CLOSE:
+		opStr = "rawsock-close"
 		refAction = refDec
 	}
 
@@ -526,9 +534,9 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 		ev.SetParent(parent.UnsafeGetProcess())
 		if !refCntDone[exec.ParentRefCnt] {
 			if refAction == refInc {
-				parent.RefInc()
+				parent.RefInc(fmt.Sprintf("cache-parent-%s", opStr))
 			} else if refAction == refDec {
-				parent.RefDec()
+				parent.RefDec(fmt.Sprintf("cache-parent-%s", opStr))
 			}
 			refCntDone[exec.ParentRefCnt] = true
 		}
@@ -540,9 +548,9 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 	if process != nil {
 		if !refCntDone[exec.ProcessRefCnt] {
 			if refAction == refInc {
-				process.RefInc()
+				process.RefInc(fmt.Sprintf("cache-process-%s", opStr))
 			} else if refAction == refDec {
-				process.RefDec()
+				process.RefDec(fmt.Sprintf("cache-process-%s", opStr))
 			}
 			refCntDone[exec.ProcessRefCnt] = true
 		}
@@ -558,11 +566,11 @@ func ipEventRetryInternal(op uint8, refCntDone *[2]bool, ev notify.Event, timest
 }
 
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return ipEventRetryInternal(msg.Msg.Common.Op, &msg.RefCntDone, ev, timestamp)
+	return ipEventRetryInternal(msg.Msg.Common.Op, msg.Msg.SocketFlags, &msg.RefCntDone, ev, timestamp)
 }
 
 func (msg *MsgIPWithStatsEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return ipEventRetryInternal(msg.Msg.Common.Op, &msg.RefCntDone, ev, timestamp)
+	return ipEventRetryInternal(msg.Msg.Common.Op, msg.Msg.SocketFlags, &msg.RefCntDone, ev, timestamp)
 }
 
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

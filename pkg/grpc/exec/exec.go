@@ -72,7 +72,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	parentId := fgsProcess.ParentExecId
 	parent, err := process.Get(parentId)
 	if err == nil {
-		parent.RefInc()
+		parent.RefInc("parent")
 		fgsParent = parent.UnsafeGetProcess()
 	}
 
@@ -186,7 +186,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 		if parent == nil {
 			return err
 		}
-		parent.RefInc()
+		parent.RefInc("parent")
 		ev.SetParent(parent.UnsafeGetProcess())
 
 		// setup ancestors, we missed parent in the original event so now we can do that
@@ -295,10 +295,19 @@ func (msg *MsgCloneEventUnix) Notify() bool {
 }
 
 func (msg *MsgCloneEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
-	return nil, process.AddCloneEvent(&msg.MsgCloneEvent)
+	return process.AddCloneEvent(&msg.MsgCloneEvent)
 }
 
-func (msg *MsgCloneEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) error {
+func (msg *MsgCloneEventUnix) Retry(internal *process.ProcessInternal, _ notify.Event) error {
+	proc := internal.UnsafeGetProcess()
+	if option.Config.EnableK8s && proc.Docker != "" && proc.Pod == nil {
+		podInfo := process.GetPodInfo(internal.GetCgID(), proc.Docker, proc.Binary, proc.Arguments, msg.NSPID)
+		if podInfo == nil {
+			eventcache.CacheRetries(eventcache.PodInfo).Inc()
+			return eventcache.ErrFailedToGetPodInfo
+		}
+		internal.AddPodInfo(podInfo)
+	}
 	return nil
 }
 
@@ -306,9 +315,15 @@ func (msg *MsgCloneEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) 
 func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	switch msg.Common.Op {
 	case ops.MSG_OP_CLONE:
-		if err := process.AddCloneEvent(&msg.MsgCloneEvent); err != nil {
-			ec := eventcache.Get()
+		ec := eventcache.Get()
+		if internal, err := process.AddCloneEvent(&msg.MsgCloneEvent); err == nil {
+			if ec != nil && ec.Needed(internal.UnsafeGetProcess()) {
+				// adding to the cache due to missing pod info
+				ec.Add(internal, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
+			}
+		} else {
 			if ec != nil {
+				// adding to the cache due to missing parent
 				ec.Add(nil, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
 			}
 		}
@@ -386,10 +401,10 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		return nil
 	}
 	if parent != nil {
-		parent.RefDec()
+		parent.RefDec("parent")
 	}
 	if process != nil {
-		process.RefDec()
+		process.RefDec("process")
 	}
 	return fgsEvent
 }
@@ -411,7 +426,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	if parent != nil {
 		ev.SetParent(parent.UnsafeGetProcess())
 		if !msg.RefCntDone[ParentRefCnt] {
-			parent.RefDec()
+			parent.RefDec("parent")
 			msg.RefCntDone[ParentRefCnt] = true
 		}
 	} else {
@@ -422,7 +437,7 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	if internal != nil {
 		ev.SetProcess(internal.UnsafeGetProcess())
 		if !msg.RefCntDone[ProcessRefCnt] {
-			internal.RefDec()
+			internal.RefDec("process")
 			msg.RefCntDone[ProcessRefCnt] = true
 		}
 	} else {
@@ -480,7 +495,7 @@ func (msg *MsgProcessCleanupEventUnix) RetryInternal(_ notify.Event, timestamp u
 
 	if parent != nil {
 		if !msg.RefCntDone[ParentRefCnt] {
-			parent.RefDec()
+			parent.RefDec("parent")
 			msg.RefCntDone[ParentRefCnt] = true
 		}
 	} else {
@@ -489,7 +504,7 @@ func (msg *MsgProcessCleanupEventUnix) RetryInternal(_ notify.Event, timestamp u
 
 	if internal != nil {
 		if !msg.RefCntDone[ProcessRefCnt] {
-			internal.RefDec()
+			internal.RefDec("process")
 			msg.RefCntDone[ProcessRefCnt] = true
 		}
 	} else {
@@ -509,8 +524,8 @@ func (msg *MsgProcessCleanupEventUnix) Retry(_ *process.ProcessInternal, _ notif
 func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	msg.RefCntDone = [2]bool{false, false}
 	if process, parent := process.GetParentProcessInternal(msg.PID, msg.Ktime); process != nil && parent != nil {
-		parent.RefDec()
-		process.RefDec()
+		parent.RefDec("parent")
+		process.RefDec("process")
 	} else {
 		if ec := eventcache.Get(); ec != nil {
 			ec.Add(nil, nil, msg.Ktime, msg.Ktime, msg)

@@ -52,7 +52,16 @@ type ProcessInternal struct {
 	// garbage collector metadata
 	color  int // Writes should happen only inside gc select channel
 	refcnt uint32
-	cgID   uint64
+	// refcntOps is a map of operations to refcnt change
+	// keys can be:
+	// - "process++": process increased refcnt (i.e. this process starts)
+	// - "process--": process decreased refcnt (i.e. this process exits)
+	// - "parent++": parent increased refcnt (i.e. a process starts that has this process as a parent)
+	// - "parent--": parent decreased refcnt (i.e. a process exits that has this process as a parent)
+	refcntOps map[string]int32
+	// protects the refcntOps map
+	refcntOpsLock sync.Mutex
+	cgID          uint64
 }
 
 var (
@@ -110,6 +119,7 @@ func (pi *ProcessInternal) cloneInternalProcessCopy() *ProcessInternal {
 		apiBinaryProp: pi.apiBinaryProp,
 		namespaces:    pi.namespaces,
 		refcnt:        1, // Explicitly initialize refcnt to 1
+		refcntOps:     map[string]int32{"process++": 1},
 	}
 }
 
@@ -130,6 +140,10 @@ func (pi *ProcessInternal) putProcess() {
 
 func (pi *ProcessInternal) UnsafeGetProcess() *tetragon.Process {
 	return pi.process
+}
+
+func (pi *ProcessInternal) GetCgID() uint64 {
+	return pi.cgID
 }
 
 // UpdateExecOutsideCache() checks if we must augment the ProcessExec.Process
@@ -213,12 +227,12 @@ func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) error {
 	return nil
 }
 
-func (pi *ProcessInternal) RefDec() {
-	procCache.refDec(pi)
+func (pi *ProcessInternal) RefDec(reason string) {
+	procCache.refDec(pi, fmt.Sprintf("%s--", reason))
 }
 
-func (pi *ProcessInternal) RefInc() {
-	procCache.refInc(pi)
+func (pi *ProcessInternal) RefInc(reason string) {
+	procCache.refInc(pi, fmt.Sprintf("%s++", reason))
 }
 
 func (pi *ProcessInternal) RefGet() uint32 {
@@ -383,6 +397,7 @@ func initProcessInternalExec(
 		namespaces:    apiNs,
 		refcnt:        1,
 		cgID:          event.Kube.Cgrpid,
+		refcntOps:     map[string]int32{"process++": 1},
 	}
 }
 
@@ -491,7 +506,7 @@ func AddExecEvent(event *tetragonAPI.MsgExecveEventUnix) *ProcessInternal {
 }
 
 // AddCloneEvent adds a new process into the cache from a CloneEvent
-func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) error {
+func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) (*ProcessInternal, error) {
 	parentExecId := GetProcessID(event.Parent.Pid, event.Parent.Ktime)
 	parent, err := Get(parentExecId)
 	if err != nil {
@@ -500,17 +515,17 @@ func AddCloneEvent(event *tetragonAPI.MsgCloneEvent) error {
 			"event.parent.pid":     event.Parent.Pid,
 			"event.parent.exec_id": parentExecId,
 		}).WithError(err).Debug("CloneEvent: parent process not found in cache")
-		return err
+		return nil, err
 	}
 
 	proc, err := initProcessInternalClone(event, parent, parentExecId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	parent.RefInc()
+	parent.RefInc("parent")
 	procCache.add(proc)
-	return nil
+	return proc, nil
 }
 
 func Get(execId string) (*ProcessInternal, error) {
@@ -521,4 +536,8 @@ func Get(execId string) (*ProcessInternal, error) {
 // that k8s has been initialized.
 func GetK8s() watcher.K8sResourceWatcher {
 	return k8s
+}
+
+func DumpProcessCache(opts *tetragon.DumpProcessCacheReqArgs) []*tetragon.ProcessInternal {
+	return procCache.dump(opts)
 }

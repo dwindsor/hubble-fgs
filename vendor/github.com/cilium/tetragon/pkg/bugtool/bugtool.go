@@ -7,6 +7,7 @@ package bugtool
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -46,6 +47,7 @@ type InitInfo struct {
 	MapDir      string `json:"map_dir"`
 	BpfToolPath string `json:"bpftool_path"`
 	GopsPath    string `json:"gops_path"`
+	PID         int    `json:"pid"`
 }
 
 // LoadInitInfo returns the InitInfo by reading the info file from its default location
@@ -184,7 +186,7 @@ func (s *bugtoolInfo) tarAddFile(tarWriter *tar.Writer, fnameSrc string, fnameDs
 
 	_, err = io.Copy(tarWriter, fileSrc)
 	if err != nil {
-		s.multiLog.WithField("fnameSrc", fnameSrc).Warn("error copying data from source file")
+		s.multiLog.WithError(err).WithField("fnameSrc", fnameSrc).Warn("error copying data from source file")
 		return err
 	}
 
@@ -257,6 +259,8 @@ func doBugtool(info *InitInfo, outFname string) error {
 	si.addGopsInfo(tarWriter)
 	si.dumpPolicyFilterMap(tarWriter)
 	si.addGrpcInfo(tarWriter)
+	si.addPmapOut(tarWriter)
+	si.addMemCgroupStats(tarWriter)
 	return nil
 }
 
@@ -605,4 +609,149 @@ func (s *bugtoolInfo) addGrpcInfo(tarWriter *tar.Writer) {
 	}
 
 	s.multiLog.Infof("dumped tracing policies in %s", fname)
+}
+
+func (s bugtoolInfo) addPmapOut(tarWriter *tar.Writer) error {
+	pmap, err := exec.LookPath("pmap")
+	if err != nil {
+		s.multiLog.WithError(err).Warn("Failed to locate pmap. Please install it.")
+		return fmt.Errorf("failed to locate pmap: %w", err)
+	}
+
+	s.execCmd(tarWriter, "pmap.out", pmap, "-x", fmt.Sprintf("%d", s.info.PID))
+	return nil
+}
+
+func findCgroupMountPath(r io.Reader, unified bool, controller string) (string, error) {
+	cgroupName := "cgroup"
+	if unified {
+		cgroupName = "cgroup2"
+	}
+
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && (fields[2] == cgroupName) {
+			if unified || !unified && strings.HasSuffix(fields[1], controller) {
+				return fields[1], nil
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error reading /proc/mounts: %v", err)
+	}
+
+	return "", fmt.Errorf("cgroup filesystem not found")
+}
+
+func FindCgroupMountPath(unified bool, controller string) (string, error) {
+	file, err := os.Open("/proc/mounts")
+	if err != nil {
+		return "", fmt.Errorf("failed to open /proc/mounts: %v", err)
+	}
+	defer file.Close()
+	return findCgroupMountPath(file, unified, controller)
+}
+
+func findMemoryCgroupPath(r io.Reader) (bool, string, error) {
+	var unified bool
+	var memoryCgroupPath string
+
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// '/proc/$PID/cgroup' lists a process's cgroup membership. If legacy cgroup is
+		// in use in the system, this file may contain multiple lines, one for each
+		// hierarchy. The entry for cgroup v2 is always in the format '0::$PATH'.
+		if strings.HasPrefix(line, "0::/") {
+			unified = true
+			memoryCgroupPath = strings.TrimPrefix(line, "0::")
+
+			// we don't break here because we want to consider cases in which
+			// cgroup v2 line is before other cgroup v1 lines and we want to
+			// consider hybrid as v1, not sure it can happen in real life
+			continue
+		}
+
+		// Parsing for cgroup v1, consider hybrid as v1
+		parts := strings.SplitN(line, ":", 3)
+		if len(parts) == 3 {
+			if parts[1] == "memory" {
+				unified = false
+				memoryCgroupPath = parts[2]
+				break
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, "", fmt.Errorf("failed reading /proc/self/cgroup: %w", err)
+	}
+
+	return unified, memoryCgroupPath, nil
+}
+
+func FindMemoryCgroupPath() (unified bool, memoryCgroupPath string, err error) {
+	file, err := os.Open("/proc/self/cgroup")
+	if err != nil {
+		return false, "", fmt.Errorf("failed to open /proc/self/cgroup: %w", err)
+	}
+	defer file.Close()
+	return findMemoryCgroupPath(file)
+}
+
+func (s bugtoolInfo) addMemCgroupStats(tarWriter *tar.Writer) error {
+	unifiedCgroup, memoryCgroupPath, err := FindMemoryCgroupPath()
+	if err != nil {
+		s.multiLog.WithError(err).Warn("failed finding the memory cgroup path")
+		return fmt.Errorf("failed to find memory cgroup path: %w", err)
+	}
+
+	cgroupMountPath, err := FindCgroupMountPath(unifiedCgroup, "memory")
+	if err != nil {
+		s.multiLog.WithError(err).Warn("failed to find cgroup mount path")
+		return fmt.Errorf("failed to find cgroup mount path: %w", err)
+	}
+
+	cgroupPath := filepath.Join(cgroupMountPath, memoryCgroupPath)
+
+	// can't use s.tarAddFile here unfortunately because it is using io.Copy
+	// based on the size retrieved from the stat of the file, and cgroup fs
+	// files have size equal to 0
+	readAndWrite := func(cgroupBasePath string, file string) error {
+		buf, err := os.ReadFile(filepath.Join(cgroupBasePath, file))
+		if err != nil {
+			s.multiLog.WithError(err).WithField("file", file).Warn("failed to read cgroup file")
+			return fmt.Errorf("failed to read file %s: %w", file, err)
+		}
+		err = s.tarAddBuff(tarWriter, file, bytes.NewBuffer(buf))
+		if err == nil {
+			s.multiLog.WithField("file", file).Info("cgroup file added")
+			return fmt.Errorf("failed to add buffer: %w", err)
+		}
+		return nil
+	}
+
+	if unifiedCgroup {
+		readAndWrite(cgroupPath, "memory.current")
+		readAndWrite(cgroupPath, "memory.stat")
+	} else {
+		err := readAndWrite(cgroupPath, "memory.usage_in_bytes")
+		if err != nil {
+			// Before cgroup namespace, /proc/pid/cgroup mapping was broken, so
+			// Docker back in the days mounted the cgroup hierarchy flat in the
+			// containerfs.  For compatibility, it still does that for cgroup v1.
+			// See more https://lewisgaul.co.uk/blog/coding/2022/05/13/cgroups-intro/#cgroups-and-containers
+			cgroupPath = cgroupMountPath
+			s.multiLog.WithField("cgroupPath", cgroupPath).Info("retrying to read cgroup file from a different legacy path")
+			readAndWrite(cgroupPath, "memory.usage_in_bytes")
+		}
+		readAndWrite(cgroupPath, "memory.kmem.usage_in_bytes")
+		readAndWrite(cgroupPath, "memory.stat")
+	}
+
+	return nil
 }
