@@ -102,7 +102,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_vfs_unlink_enforce_lsm.o bpf_vfs_unlink_enforce_fmod.o \
 	  bpf_vfs_rename_enforce_lsm.o bpf_vfs_rename_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
-	  bpf_security_inode_setattr_enforce_fmod_v60.o bpf_security_inode_setattr_enforce_fmod_v63.o \
+	  bpf_security_inode_setattr_enforce_fmod_v61.o bpf_security_inode_setattr_enforce_fmod_v63.o \
 	  bpf_security_bprm_check.o bpf_security_bprm_check_v419.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
 	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_file_exec.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o \
 	  bpf_security_inode_link.o bpf_security_inode_link_v419.o bpf_security_inode_link_enforce_lsm.o bpf_security_inode_link_enforce_fmod.o \
@@ -349,17 +349,17 @@ objs/%_fmod.ll:
 $(DEPSDIR)%_fmod.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-objs/%_lsm_v60.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V60_BPF_PROG -c $< -o $@
+objs/%_lsm_v61.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V61_BPF_PROG -c $< -o $@
 
-$(DEPSDIR)%_lsm_v60.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V60_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+$(DEPSDIR)%_lsm_v61.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-objs/%_fmod_v60.ll:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V60_BPF_PROG -c $< -o $@
+objs/%_fmod_v61.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V61_BPF_PROG -c $< -o $@
 
-$(DEPSDIR)%_fmod_v60.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V60_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+$(DEPSDIR)%_fmod_v61.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 objs/%_lsm_v63.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V63_BPF_PROG -c $< -o $@
@@ -459,7 +459,7 @@ deps/bpf_vfs_rename_enforce_lsm.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_vfs_rename_enforce_fmod.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_security_inode_setattr_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_inode_setattr_enforce_fmod.d: $(FILEDIR)/bpf_security_inode_setattr.c
-deps/bpf_security_inode_setattr_enforce_fmod_v60.d: $(FILEDIR)/bpf_security_inode_setattr.c
+deps/bpf_security_inode_setattr_enforce_fmod_v61.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_inode_setattr_enforce_fmod_v63.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_bprm_check_enforce_lsm.d: $(FILEDIR)/bpf_security_bprm_check.c
 deps/bpf_security_bprm_check_enforce_fmod.d: $(FILEDIR)/bpf_security_bprm_check.c

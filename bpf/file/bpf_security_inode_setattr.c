@@ -167,7 +167,7 @@ int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *at
 
 #ifdef __FILE_ENFORCE_FMOD
 SEC("fmod_ret/security_inode_setattr")
-#if defined(__V60_BPF_PROG)
+#if defined(__V61_BPF_PROG)
 int BPF_PROG(security_inode_setattr_fmod, struct user_namespace *mnt_userns, struct dentry *dentry, struct iattr *attr, int ret)
 #elif defined(__V63_BPF_PROG)
 int BPF_PROG(security_inode_setattr_fmod, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr, int ret)
