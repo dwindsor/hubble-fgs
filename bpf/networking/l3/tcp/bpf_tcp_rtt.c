@@ -68,7 +68,10 @@ tg_tcp_ack_update_rtt(struct pt_regs *ctx)
 			return 0;
 		}
 		if (!rx_opt.saw_tstamp || !rx_opt.rcv_tsecr || !(flag & FLAG_ACKED)) {
-			emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_NO_TIMESTAMP);
+			// This is not an error per se as the kernel silently ignores this scenario.
+			// If RTT values look wrong or are all 0, then maybe re-enable this error
+			// message.
+			// emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_NO_TIMESTAMP);
 			return 0;
 		}
 		probe_read(&tcp_time_stamp, sizeof(tcp_time_stamp), _(&(skp->tcp_mstamp)));
