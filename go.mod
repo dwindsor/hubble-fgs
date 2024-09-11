@@ -25,7 +25,6 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.51
 	github.com/operator-framework/api v0.26.0
-	github.com/pawelgaczynski/giouring v0.0.0-20230826085535-69588b89acb9
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.0
 	github.com/prometheus/client_golang v1.20.2
 	github.com/prometheus/client_model v0.6.1

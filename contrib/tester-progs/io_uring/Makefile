@@ -1,6 +1,6 @@
 GCC ?= gcc
 
-PROGS = cp_liburing cat_liburing write_liburing sq_poll
+PROGS = cp_liburing cat_liburing write_liburing sq_poll tcp_iouring_server tcp_iouring_client udp_iouring_server
 
 all: $(PROGS)
 
@@ -15,6 +15,15 @@ write_liburing: write_liburing.c
 
 sq_poll: sq_poll.c
 	$(GCC) -Wall -o sq_poll sq_poll.c -luring
+
+tcp_iouring_server: tcp_iouring_server.c
+	$(GCC) -Wall -o tcp_iouring_server tcp_iouring_server.c -luring
+
+tcp_iouring_client: tcp_iouring_client.c
+	$(GCC) -Wall -o tcp_iouring_client tcp_iouring_client.c -luring
+
+udp_iouring_server: udp_iouring_server.c
+	$(GCC) -Wall -o udp_iouring_server udp_iouring_server.c -luring
 
 .PHONY: clean
 clean:

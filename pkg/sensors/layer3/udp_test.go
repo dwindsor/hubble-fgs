@@ -45,6 +45,7 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -1956,15 +1957,14 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := os.Args[0]
+	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/udp_iouring_server")
 	client := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-udpIouServer"))
+		WithBinary(sm.Suffix(server))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -2158,7 +2158,7 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(os.Args[0], "-udpIouServer")
+	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr

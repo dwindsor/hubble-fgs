@@ -32,12 +32,9 @@ import (
 var (
 	tcpClient           = false
 	tcpServer           = false
-	tcpIouServer        = false
-	tcpIouClient        = false
 	udpWatermarksClient = false
 	udpLayer7Client     = false
 	udpServer           = false
-	udpIouServer        = false
 )
 
 const (
@@ -48,13 +45,10 @@ const (
 func init() {
 	flag.BoolVar(&tcpClient, "tcpClient", false, "internal")
 	flag.BoolVar(&tcpServer, "tcpServer", false, "internal")
-	flag.BoolVar(&tcpIouServer, "tcpIouServer", false, "internal")
-	flag.BoolVar(&tcpIouClient, "tcpIouClient", false, "internal")
 
 	flag.BoolVar(&udpWatermarksClient, "udpWatermarksClient", false, "internal")
 	flag.BoolVar(&udpLayer7Client, "udpLayer7Client", false, "internal")
 	flag.BoolVar(&udpServer, "udpServer", false, "internal")
-	flag.BoolVar(&udpIouServer, "udpIouServer", false, "internal")
 }
 
 func TestMain(m *testing.M) {
@@ -69,24 +63,12 @@ func TestMain(m *testing.M) {
 		runTcpServer()
 		os.Exit(0)
 	}
-	if tcpIouServer {
-		runTcpIouServer()
-		os.Exit(0)
-	}
 	if tcpClient {
 		runTcpClient()
 		os.Exit(0)
 	}
-	if tcpIouClient {
-		runTcpIouClient()
-		os.Exit(0)
-	}
 	if udpServer {
 		runUdpServer()
-		os.Exit(0)
-	}
-	if udpIouServer {
-		runUdpIouServer()
 		os.Exit(0)
 	}
 	if udpWatermarksClient {

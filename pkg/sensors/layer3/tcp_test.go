@@ -47,6 +47,7 @@ import (
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -2089,15 +2090,14 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := os.Args[0]
+	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_server")
 	client := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-tcpIouServer"))
+		WithBinary(sm.Suffix(server))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -2137,7 +2137,7 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(os.Args[0], "-tcpIouServer")
+	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
 	require.NoError(t, err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr
@@ -2194,7 +2194,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	client := os.Args[0]
+	client := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_client")
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -2205,8 +2205,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 		WithArguments(sm.Full("-nvlp 8001"))
 
 	ncCliChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-tcpIouClient"))
+		WithBinary(sm.Suffix(client))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -2266,7 +2265,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 	serverPid := uint32(cmdServer.Process.Pid)
 	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
 
-	cmdClient := exec.Command(os.Args[0], "-tcpIouClient")
+	cmdClient := exec.Command(client)
 	cmdClient.Stderr = os.Stderr
 	cmdClient.Stdout = os.Stdout
 
