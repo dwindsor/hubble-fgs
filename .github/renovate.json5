@@ -8,6 +8,7 @@
   ],
   "baseBranches": [
     "master",
+    "v1.14",
     "v1.13",
     "v1.12",
     "v1.11",
@@ -21,6 +22,7 @@
       "enabled": false,
       "matchPackagePatterns": ["*"],
       "matchBaseBranches": [
+        "v1.14",
         "v1.13",
         "v1.12",
         "v1.11",
@@ -31,6 +33,7 @@
       "enabled": true,
       "matchPackageNames": ["docker.io/library/alpine"],
       "matchBaseBranches": [
+        "v1.14",
         "v1.13",
         "v1.12",
         "v1.11",
@@ -45,6 +48,7 @@
       ],
       "allowedVersions": "/^1\\.22\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
+        "v1.14",
         "v1.13",
       ]
     },
