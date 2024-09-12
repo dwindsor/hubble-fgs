@@ -3310,3 +3310,14 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
+
+func TestBPFFilesExist(t *testing.T) {
+	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FileExecHooksLsmDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+		for _, hk := range hks {
+			for _, of := range hk.prog {
+				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
+				assert.True(t, fileExists(t, objFile), "object file %s does not exist", objFile)
+			}
+		}
+	}
+}
