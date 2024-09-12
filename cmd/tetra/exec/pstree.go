@@ -341,7 +341,7 @@ func New() *cobra.Command {
 
 	flags := ret.Flags()
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
-	flags.StringSliceVar(&namespaces, "namespaces", nil, "Get tree by Kubernetes namespaces")
+	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil, "Get tree by Kubernetes namespaces")
 	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
 	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json")
 	flags.BoolVar(&host, "host", false, "Include the tree for host")
