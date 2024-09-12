@@ -1,5 +1,5 @@
 ---
-defaultChannel: alpha
+defaultChannel: v1.13
 description: |+
   The Tetragon Operator manages the deployment of the Tetragon components and the replication
   of pod information for efficient consumption by agents.
@@ -32,6 +32,21 @@ schema: olm.package
 schema: olm.channel
 package: tetragon-operator
 name: alpha
+entries:
+  - name: tetragon-operator.v1.13.0
+  - name: tetragon-operator.v1.13.1
+    replaces: tetragon-operator.v1.13.0
+    skipRange: '>=1.13.0 <1.13.1'
+  - name: tetragon-operator.v1.13.2
+    replaces: tetragon-operator.v1.13.1
+    skipRange: '>=1.13.0 <1.13.2'
+  - name: tetragon-operator.v1.13.3
+    replaces: tetragon-operator.v1.13.2
+    skipRange: '>=1.13.0 <1.13.3'
+---
+schema: olm.channel
+package: tetragon-operator
+name: v1.13
 entries:
   - name: tetragon-operator.v1.13.0
   - name: tetragon-operator.v1.13.1
@@ -487,3 +502,11 @@ relatedImages:
   - image: quay.io/isovalent/tetragon:v1.13.3@sha256:6973fadb5e0704c644c2b3e798f65a313ba82b14773de4fb9e6f21c4a4609610
     name: tetragon
 schema: olm.bundle
+---
+schema: olm.deprecations
+package: tetragon-operator
+entries:
+  - reference:
+      schema: olm.channel
+      name: alpha
+    message: "channel alpha is deprecated and will not receive further updates. Please switch to a release channel."
