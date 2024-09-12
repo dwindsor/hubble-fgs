@@ -283,6 +283,16 @@ func GetProcessListen(
 		return nil
 	}
 
+	// This is a workaround/bugfix for BPF side generating a
+	// LISTEN event on BIND. It is important to avoid reference
+	// counting here because unlike listen() the bind() call is
+	// not paired with a connect(). A proper bind() op will be
+	// added, this is a temporary fix to remove worst of the
+	// trouble.
+	if opToProtocol(event.Msg.Common.Op) == tetragon.SocketProtocol_UDP {
+		return fgsEvent
+	}
+
 	if process != nil {
 		process.RefInc("process-listen")
 	}
