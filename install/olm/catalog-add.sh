@@ -24,7 +24,7 @@ fi
 docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir quay.io/operator-framework/opm:latest render ${IMAGE_REPOSITORY}/tetragon-operator-bundle:${DOCKER_IMAGE_TAG} --output=yaml >> ${index_file}
 
 # Add bundle to channel
-entries=$(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} '.entries[]' /workdir/${index_file})
+entries=$(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} ". | select (.schema == \"olm.channel\" and .name == \"v${bundle_major}.${bundle_minor}\") | .entries[]" /workdir/${index_file})
 # output each entry as a single line json
 readarray entries < <(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} -o=j -I=0 '.entries[]' /workdir/${index_file})
 
@@ -62,7 +62,7 @@ retrieve_maxz maxz_for_current maxz_for_current_name exist_z_for_current_minor $
 if [[ "$exist_z_for_current_minor" == "true" ]]
 then
    echo "highest .z for the current minor version ${maxz_for_current}"
-   docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\", \"replaces\": \"${maxz_for_current_name}\", \"skipRange\": \">=${bundle_major}.${bundle_minor}.0 <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
+   docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\" and .name == \"v${bundle_major}.${bundle_minor}\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\", \"replaces\": \"${maxz_for_current_name}\", \"skipRange\": \">=${bundle_major}.${bundle_minor}.0 <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
 else
     echo "no existing bundle for the current minor version, searching the previous one"
     maxz_for_previous=0
@@ -76,7 +76,8 @@ else
        exit 1
     fi
     echo "highest .z for the previous minor version $maxz_for_previous"
-    docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.channel\").entries = .entries + {\"name\": \"tetragon-operator.${DOCKER_IMAGE_TAG,,}\", \"replaces\": \"${maxz_for_previous_name}\", \"skipRange\": \">=${bundle_major}.${previous_minor}.${maxz_for_previous} <${bundle_major}.${bundle_minor}.${bundle_zversion}\"}" /workdir/${index_file}
+    gawk -i inplace "FNR==NR{ if (/skipRange/) p=NR; next} 1; FNR==p{ print \"---\\nschema: olm.channel\\npackage: tetragon-operator\\nname: v${bundle_major}.${bundle_minor}\\nentries:\\n  - name: tetragon-operator.${DOCKER_IMAGE_TAG,,}\\n    replaces: ${maxz_for_previous_name}\\n    skipRange: '>= ${bundle_major}.${previous_minor}.${maxz_for_previous} <${bundle_major}.${bundle_minor}.${bundle_zversion}'\" }" $(git rev-parse --show-toplevel)/${index_file} $(git rev-parse --show-toplevel)/${index_file}
+    docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.package\").defaultChannel = \"v${bundle_major}.${bundle_minor}\"" /workdir/${index_file}
 fi
 
 docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:latest validate /workdir/install/olm/catalog
