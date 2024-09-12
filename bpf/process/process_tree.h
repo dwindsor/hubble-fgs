@@ -133,8 +133,8 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
 	struct destination_endpoint_value *dest;
-	struct process_tree_config *cfg;
 	struct execve_map_value *parent;
+	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
 	__u64 cgid, *nsid;

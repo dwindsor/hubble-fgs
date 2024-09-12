@@ -71,11 +71,11 @@ var (
 		"layer3_sensor",
 	)
 
-	Connect515 = program.Builder(
-		"bpf_tcp_connect_5_15.o",
-		"tcp_connect",
-		"kprobe/tcp_connect",
-		"tg_tcp_connect",
+	TcpSockops515 = program.Builder(
+		"bpf_tcp_sockops_5_15.o",
+		"sockops",
+		"sockops/tcp_sockops",
+		"tg_tcp_sockops",
 		"layer3_sensor",
 	)
 
@@ -136,32 +136,42 @@ var (
 		"kprobe")
 
 	// Maps for TCP Sockets
-	SocketMap          = program.MapBuilder(base.SocketMap.Name, Connect)
 	SocketStats        = program.MapBuilder(base.SocketStats.Name, Accept)
+	SocketMap          = program.MapBuilder(base.SocketMap.Name, Connect)
 	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
 	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
 	SocketTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, Connect)
 	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
 
+	// Maps for TCP Sockets on Sockops
+	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops515)
+	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops515)
+	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
+	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
+
 	// Endpoint Models
-	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Connect515)
-	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Connect515)
-	ProcessTreeMap           = program.MapBuilder("process_tree_map", Connect515)
-	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Connect515)
-	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Connect515)
-	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Connect515)
+	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", TcpSockops515)
+	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", TcpSockops515)
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", TcpSockops515)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", TcpSockops515)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", TcpSockops515)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", TcpSockops515)
 
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
+	CfgOpsMap       = program.MapBuilder("tg_cfg_map", TcpSockops515)
 	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
 	TcpSocketMap    = program.MapBuilder("tg_tcpsocket_map", Connect)
+	TcpOpsSocketMap = program.MapBuilder("tg_tcpsocket_map", TcpSockops515)
 	TcpSocketStats  = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
 	VerMap          = program.MapBuilder("tg_ver_map", Connect)
+	VerOpsMap       = program.MapBuilder("tg_ver_map", TcpSockops515)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
 	TLSContext     = program.MapBuilder("tg_tls_map", CloseAndAccept)
 	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", Connect)
+	TLSOpsMapStats = program.MapBuilder("tg_tls_map_stats", TcpSockops515)
 	TLSBottles     = program.MapBuilder("tg_bottles", CloseAndAccept)
 	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", CloseAndAccept)
 
@@ -170,7 +180,8 @@ var (
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 
 	// Map for disabling events
-	EventDisableConfig = program.MapBuilder("tg_event_disable_config", Connect)
+	EventDisableConfig    = program.MapBuilder("tg_event_disable_config", Connect)
+	EventDisableConfigOps = program.MapBuilder("tg_event_disable_config", TcpSockops515)
 )
 
 func ConfigureSensor() error {
@@ -231,26 +242,40 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		AcceptRet,
 	}
 
-	maps := []*program.Map{
-		SocketStats,
+	mapsOps := []*program.Map{
+		SocketOpsMap,
+		TcpOpsSocketMap,
+		VerOpsMap,
+		SocketOpsTupleMap,
+		SocketOpsTupleStats,
+		SocketOpsTupleHintMap,
+		TLSOpsMapStats,
+		CfgOpsMap,
+		EventDisableConfigOps,
+	}
+	mapsConnect := []*program.Map{
 		SocketMap,
 		TcpSocketMap,
-		TcpSocketStats,
-		AcceptSocketMap,
+		VerMap,
 		SocketTupleMap,
 		SocketTupleStats,
 		SocketTupleRevMap,
 		SocketTupleHintMap,
+		TLSMapStats,
 		CfgMap,
+		EventDisableConfig,
+	}
+
+	maps := []*program.Map{
+		SocketStats,
+		TcpSocketStats,
+		AcceptSocketMap,
 		HTTPContext,
 		TLSContext,
-		TLSMapStats,
 		TLSBottles,
 		TLSBottleStats,
 		SendCheckSampler,
 		ProcessNetworkWatermarksMap,
-		EventDisableConfig,
-		VerMap,
 	}
 
 	// Kernels before 5.15 are difficult to support BPF in kernel models
@@ -258,11 +283,14 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	// support multiple cores accessing the map.
 	if !kernels.MinKernelVersion("5.14.0") {
 		progs = append(progs, Connect)
+		maps = append(maps, mapsConnect...)
 	} else {
 		if runtime.GOARCH != "amd64" {
 			progs = append(progs, Connect)
+			maps = append(maps, mapsConnect...)
 		} else {
-			progs = append(progs, Connect515)
+			progs = append(progs, TcpSockops515)
+			maps = append(maps, mapsOps...)
 			maps = append(maps, processModelMapsEnable()...)
 		}
 	}

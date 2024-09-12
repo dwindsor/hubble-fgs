@@ -145,3 +145,90 @@ __event_tcp_connect(struct pt_regs *ctx)
 	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
 	return 1;
 }
+
+static inline __attribute__((always_inline)) int
+__event_tcp_connect_sockops(struct bpf_sock_ops *skops)
+{
+	struct tcp_event_disable_config *event_cfg;
+	struct socketmap_value *socket = 0;
+	struct msg_execve_key *key;
+	struct msg_ip_event *val;
+	__u32 zero = 0;
+	uint64_t size;
+	u64 cookie;
+
+	/* In TCP we use the struct sock address as the socket cookie. */
+	cookie = (__u64)skops->sk;
+	socket = lookup_socketmap(&cookie);
+	if (!socket)
+		return 0;
+
+	key = &socket->key;
+	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
+						     &zero);
+	if (!val) {
+		return 0;
+	}
+
+	*val = (struct msg_ip_event){
+		.common.op = ISO_MSG_OP_TCPCONNECTRET,
+		.common.ktime = ktime_get_ns(),
+		.common.size = sizeof(struct msg_ip_event),
+		.key.pid = key->pid,
+		.key.ktime = key->ktime,
+		.socket_cookie = cookie,
+		.socket_flags = 0,
+		.version = 0,
+		.create_time = 0,
+		.close_time = 0,
+	};
+
+	val->version = socket->version;
+	val->tuple.sport = skops->local_port;
+
+	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
+			  _(&(((struct sock *)cookie)->__sk_common.skc_dport)));
+	val->tuple.dport = bpf_ntohs(val->tuple.dport);
+
+	if (skops->family != AF_INET6) {
+		val->tuple.ipv6 = false;
+		val->tuple.saddr[0] = skops->local_ip4;
+		val->tuple.saddr[1] = 0;
+		val->tuple.daddr[0] = skops->remote_ip4;
+		val->tuple.daddr[1] = 0;
+	} else {
+		val->tuple.ipv6 = true;
+		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
+				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_daddr)));
+	}
+
+	event_cfg = (struct tcp_event_disable_config *)
+		map_lookup_elem(&tg_event_disable_config, &zero);
+
+	if (!event_cfg)
+		return 0;
+
+	if (!event_cfg->disableConnect) {
+		size = sizeof(struct msg_ip_event);
+		perf_event_output_metric(skops, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
+
+	struct tcpsocketmap_value v = { 0 };
+	v.key.pid = key->pid;
+	v.key.ktime = key->ktime;
+	v.create_time = val->common.ktime;
+	v.last_time = v.create_time;
+	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
+	v.sent = 0;
+	v.received = 0;
+	v.ipv6 = (skops->family == AF_INET6);
+	v.version = val->version;
+
+#ifdef KERNEL_5_15
+	process_socketmap_add(&v, &(val->tuple));
+#endif
+	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
+	return 0;
+}

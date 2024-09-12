@@ -509,7 +509,13 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 				tcpconfig.RttHistogramMin)
 		}
 		tcp.ConfigureTCPDisableEvents(tcp.DisableConnect, tcp.DisableClose, tcp.DisableAccept, tcp.DisableListen)
-		err := program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+
+		var err error
+		if args.Load.Attach == "sockops" {
+			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		} else {
+			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+		}
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("LAYER3_SENSOR")
 			return err
@@ -584,6 +590,7 @@ func AddLayer3() {
 	sensors.RegisterPolicyHandlerAtInit(l3.name, l3)
 
 	sensors.RegisterProbeType("layer3_sensor", l3)
+	sensors.RegisterProbeType("layer3Sockops", l3)
 	sensors.RegisterProbeType("cgrp_ingress", l3)
 	sensors.RegisterProbeType("cgrp_egress", l3)
 	sensors.RegisterProbeType("cgrp_inet4_bind", l3)

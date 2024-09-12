@@ -12,8 +12,20 @@
 #define KERNEL_5_15
 #include "bpf_tcp_connect.h"
 
-__attribute__((section("kprobe/tcp_connect"), used)) int
-tg_event_tcp_connect(struct pt_regs *ctx)
+__attribute__((section("sockops/tcp_sockops"), used)) int
+tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 {
-	return __event_tcp_connect(ctx);
+	__u32 family = skops->family;
+
+	if (family != AF_INET && family != AF_INET6)
+		return 0;
+
+	switch (skops->op) {
+	case BPF_SOCK_OPS_TCP_CONNECT_CB:
+		__event_tcp_connect_sockops(skops);
+		break;
+	default:
+		break;
+	}
+	return 0;
 }
