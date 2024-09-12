@@ -40,6 +40,7 @@ var (
 	host       bool
 	namespaces []string
 	workloads  []string
+	output     string
 
 	hostNamespace = "<host-namespace>"
 )
@@ -265,6 +266,15 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
+func printJSONTree(res *tetragon.GetProcessModelResponse) error {
+	out, err := res.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
+}
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -296,17 +306,24 @@ func NewConnectedModelClient() ConnectedModelClient {
 	c.Client = tetragon.NewProcessModelServiceClient(c.conn)
 	return c
 }
-func printGrpcTree() {
+func printGrpcTree() error {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
 	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{})
 	if err != nil || res == nil {
 		logger.GetLogger().WithError(err).Warn("failed to list tracing policies:")
-		return
+		return err
 	}
 
-	printTree(res)
+	switch output {
+	case "tree":
+		return printTree(res)
+	case "json":
+		return printJSONTree(res)
+	default:
+		return fmt.Errorf("invalid output format: %s", output)
+	}
 }
 
 func New() *cobra.Command {
@@ -317,8 +334,8 @@ func New() *cobra.Command {
 		Short:        "Print process tree",
 		Hidden:       false,
 		SilenceUsage: false,
-		Run: func(_ *cobra.Command, _ []string) {
-			printGrpcTree()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return printGrpcTree()
 		},
 	}
 
@@ -326,6 +343,7 @@ func New() *cobra.Command {
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
 	flags.StringSliceVar(&namespaces, "namespaces", nil, "Get tree by Kubernetes namespaces")
 	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json")
 	flags.BoolVar(&host, "host", false, "Include the tree for host")
 	viper.BindPFlags(flags)
 

@@ -4,6 +4,7 @@
 package model
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -292,12 +293,15 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			logger.GetLogger().WithError(err).Warn("Could not map self UUID to Path")
 			continue
 		}
-		selfStr := fmt.Sprintf("%s", uidValue.Path)
+		// uidValue.Path is a fixed size byte array. Trim trailing null bytes.
+		n := bytes.IndexByte(uidValue.Path[:], 0)
+		selfStr := fmt.Sprintf("%s", uidValue.Path[:n])
 
 		parentPath := ""
 		err = uidMap.Lookup(&key.Parent, &uidValue)
 		if err == nil {
-			parentPath = fmt.Sprintf("%s", uidValue.Path)
+			n = bytes.IndexByte(uidValue.Path[:], 0)
+			parentPath = fmt.Sprintf("%s", uidValue.Path[:n])
 		}
 
 		var dest []*tetragon.Destination
