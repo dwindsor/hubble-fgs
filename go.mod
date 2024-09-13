@@ -26,7 +26,7 @@ require (
 	github.com/miekg/dns v1.1.51
 	github.com/operator-framework/api v0.26.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.0
-	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/client_golang v1.20.3
 	github.com/prometheus/client_model v0.6.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
@@ -42,7 +42,7 @@ require (
 	golang.org/x/sys v0.25.0
 	golang.org/x/time v0.6.0
 	google.golang.org/api v0.196.0
-	google.golang.org/grpc v1.66.0
+	google.golang.org/grpc v1.66.2
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.30.4
@@ -110,7 +110,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
-	github.com/isovalent/metricstool v0.1.0 // indirect
+	github.com/isovalent/metricstool v0.1.1 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -163,7 +163,7 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	k8s.io/apiserver v0.30.4 // indirect
 	k8s.io/component-base v0.30.4 // indirect
-	k8s.io/cri-api v0.30.4 // indirect
+	k8s.io/cri-api v0.30.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 )
 
