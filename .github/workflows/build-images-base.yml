@@ -7,6 +7,10 @@ on:
         required: true
       QUAY_PASSWORD:
         required: true
+      QUAY_CHARTS_USERNAME:
+        required: true
+      QUAY_CHARTS_PASSWORD:
+        required: true
     inputs:
       # Used to checkout the source code and as a tag for non-release images.
       sha:
@@ -142,3 +146,46 @@ jobs:
         shell: bash
         run: |
           find digests/ -type f | sort | xargs -d '\n' cat
+
+  helm-chart:
+    if: ${{ success() }}
+    name: Push OCI Helm Chart
+    runs-on: ubuntu-22.04
+    needs: build-and-push
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ inputs.sha }}
+          submodules: true
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Get chart version
+        id: version
+        run: |
+          echo "chart_version=$(make chart-version)" >> $GITHUB_OUTPUT
+
+      - name: Push OCI Helm dev chart
+        uses: cilium/reusable-workflows/.github/actions/push-helm-chart@6ae27958f2f37545bf48e44106b73df05b1f6d12 # v0.1.0
+        with:
+          name: tetragon
+          path: install/kubernetes/tetragon
+          version: ${{ steps.version.outputs.chart_version }}
+          values_file_changes: |
+            {
+              "tetragon.image.repository": "quay.io/isovalent-dev/tetragon-ci",
+              "tetragon.image.tag": "${{ inputs.sha }}",
+              "tetragonOperator.image.repository": "quay.io/isovalent-dev/tetragon-operator-ci",
+              "tetragonOperator.image.tag": "${{ inputs.sha }}",
+            }
+          registry: quay.io
+          registry_namespace: isovalent-charts-dev
+          registry_username: ${{ secrets.QUAY_CHARTS_USERNAME }}
+          registry_password: ${{ secrets.QUAY_CHARTS_PASSWORD }}
+
+      - name: Print helm command
+        run: |
+          echo "Example commands:"
+          echo helm template -n tetragon oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm install tetragon -n tetragon oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.chart_version }}

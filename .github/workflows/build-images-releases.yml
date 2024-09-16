@@ -22,6 +22,8 @@ jobs:
     secrets:
       QUAY_USERNAME: ${{ secrets.QUAY_USER }}
       QUAY_PASSWORD: ${{ secrets.QUAY_TOKEN }}
+      QUAY_CHARTS_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
+      QUAY_CHARTS_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
 
   # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
   # produced during these builds.

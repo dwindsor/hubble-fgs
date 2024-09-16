@@ -550,6 +550,9 @@ oss-update: ## Pull in latest OSS code and update everything (codegen, go module
 help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well-documented-makefiles/
 	$(call print_help_from_comments)
 
-.PHONY: version
+.PHONY: version chart-version
 version: ## Print Tetragon version.
 	@echo $(VERSION)
+
+chart-version: ## Print Tetragon OCI Helm chart version.
+	@echo $(VERSION) | sed 's/^v\(.*\)/\1/'
