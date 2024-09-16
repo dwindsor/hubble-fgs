@@ -248,7 +248,10 @@ func GetPrefixMatch(path string) ([]string, error) {
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		// the directory does not exist, so return that (and not an error).
+		// The next function will walk that to add it's componets to the
+		// appropriate maps.
+		return []string{dir}, nil
 	}
 
 	var result []string
