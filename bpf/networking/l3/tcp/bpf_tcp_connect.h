@@ -39,6 +39,23 @@ struct {
 	__uint(max_entries, 1);
 } tcp_connect_event_map SEC(".maps");
 
+static inline __attribute__((always_inline)) struct tcpsocketmap_value init_tcpsocketmap_value(struct msg_ip_event *val, struct msg_execve_key *key, u16 family)
+{
+	struct tcpsocketmap_value v = { 0 };
+
+	v.key.pid = key->pid;
+	v.key.ktime = key->ktime;
+	v.create_time = val->common.ktime;
+	v.last_time = v.create_time;
+	v.socket_flags = SOCKFLAGS_TYPE_CONNECT;
+	v.sent = 0;
+	v.received = 0;
+	v.ipv6 = (family == AF_INET6);
+	v.version = val->version;
+
+	return v;
+}
+
 static inline __attribute__((always_inline)) int
 __event_tcp_connect(struct pt_regs *ctx)
 {
@@ -128,16 +145,7 @@ __event_tcp_connect(struct pt_regs *ctx)
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
-	struct tcpsocketmap_value v = { 0 };
-	v.key.pid = key->pid;
-	v.key.ktime = key->ktime;
-	v.create_time = val->common.ktime;
-	v.last_time = v.create_time;
-	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
-	v.sent = 0;
-	v.received = 0;
-	v.ipv6 = (family == AF_INET6);
-	v.version = val->version;
+	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, family);
 
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
@@ -215,16 +223,7 @@ __event_tcp_connect_sockops(struct bpf_sock_ops *skops)
 		perf_event_output_metric(skops, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 
-	struct tcpsocketmap_value v = { 0 };
-	v.key.pid = key->pid;
-	v.key.ktime = key->ktime;
-	v.create_time = val->common.ktime;
-	v.last_time = v.create_time;
-	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
-	v.sent = 0;
-	v.received = 0;
-	v.ipv6 = (skops->family == AF_INET6);
-	v.version = val->version;
+	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, skops->family);
 
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
