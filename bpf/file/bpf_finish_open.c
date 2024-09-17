@@ -34,7 +34,7 @@ int BPF_KPROBE(finish_open, struct file *file, struct dentry *dentry,
 			goto finish_open_error;
 		}
 	} else {
-		probe_read(&f_mode, sizeof(f_mode), _(&file->f_mode));
+		probe_read_kernel(&f_mode, sizeof(f_mode), _(&file->f_mode));
 		if ((f_mode & FMODE_CREATED) == 0)
 			return 0; // no file created
 	}

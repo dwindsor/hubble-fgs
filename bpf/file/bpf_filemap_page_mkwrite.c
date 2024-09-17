@@ -11,18 +11,18 @@ int BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 	struct file *file;
 	int err = 0;
 
-	probe_read(&vma, sizeof(vma), _(&vmf->vma));
+	probe_read_kernel(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma) {
 		err = -FILE_ERR_VMA_FROM_VMF;
 		goto filemap_page_mkwrite_error;
 	}
 
-	probe_read(&flags, sizeof(flags), _(&vma->vm_flags));
+	probe_read_kernel(&flags, sizeof(flags), _(&vma->vm_flags));
 
 	if (!(flags & VM_SHARED)) // we care only for writes in shared mappings
 		return 0;
 
-	probe_read(&file, sizeof(file), _(&vma->vm_file));
+	probe_read_kernel(&file, sizeof(file), _(&vma->vm_file));
 	if (!file) {
 		err = -FILE_ERR_FILE_FROM_VMA;
 		goto filemap_page_mkwrite_error;

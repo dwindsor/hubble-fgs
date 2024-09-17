@@ -22,14 +22,14 @@ FUNC_LOCAL char *get_combined_path(struct msg_file_split_path *path, __u32 *path
 		return 0;
 
 	path->dir_size &= 0x1ff;
-	probe_read(p, path->dir_size, path->dir);
+	probe_read_kernel(p, path->dir_size, path->dir);
 
 	path->dir_size &= 0x1ff;
-	probe_read(p + path->dir_size, 1, &sl);
+	probe_read_kernel(p + path->dir_size, 1, &sl);
 
 	path->dir_size &= 0x1ff;
 	path->name_size &= 0x1ff;
-	probe_read(p + path->dir_size + 1, path->name_size, path->name);
+	probe_read_kernel(p + path->dir_size + 1, path->name_size, path->name);
 
 	if (path_size)
 		*path_size = path->dir_size + 1 + path->name_size;

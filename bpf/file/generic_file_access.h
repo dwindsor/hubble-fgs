@@ -40,19 +40,19 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	}
 
 	// get current inode and fs info
-	probe_read(&inode, sizeof(inode), _(&file->f_inode));
+	probe_read_kernel(&inode, sizeof(inode), _(&file->f_inode));
 	if (!inode)
 		return -FILE_ERR_INODE_FROM_FILE;
 
 	// get parent inode and fs info
-	probe_read(&path, sizeof(path), _(&file->f_path));
+	probe_read_kernel(&path, sizeof(path), _(&file->f_path));
 	if (!path.dentry)
 		return -FILE_ERR_DENTRY_FROM_FILE;
 
 	dentry = path.dentry;
 	get_ino_fs(msg, inode, dentry);
 
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 

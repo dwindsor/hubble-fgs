@@ -45,7 +45,7 @@ file_open(void *ctx, struct file *file)
 	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 
@@ -97,7 +97,7 @@ check_dir:
 #ifdef __LARGE_BPF_PROG
 	// append (deleted) at the file name in a similar way to d_path
 	if (d_unlinked(dentry) && msg->path.size < (MAX_FILEPATH_SIZE - DELETED_LEN)) {
-		probe_read(msg->path.str + msg->path.size, DELETED_LEN, DELETED_STR);
+		probe_read_kernel(msg->path.str + msg->path.size, DELETED_LEN, DELETED_STR);
 		msg->path.size += DELETED_LEN;
 	}
 #endif

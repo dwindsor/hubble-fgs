@@ -104,34 +104,34 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	init_rename_msg(&v->msg);
 
 	// get current inode and fs info for src (old)
-	probe_read(&d_inode, sizeof(d_inode), _(&old_dentry->d_inode));
-	probe_read(&(v->msg.src.ino), sizeof(v->msg.src.ino),
-		   _(&d_inode->i_ino));
-	probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
+	probe_read_kernel(&d_inode, sizeof(d_inode), _(&old_dentry->d_inode));
+	probe_read_kernel(&(v->msg.src.ino), sizeof(v->msg.src.ino),
+			  _(&d_inode->i_ino));
+	probe_read_kernel(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
 	get_fs_info(&(v->msg.src.fs), &(v->msg.src.ino), d_inode, old_dentry);
 	v->msg.flags |= get_rename_src_flags(i_mode);
 
 	// get parent inode and fs info for src (old)
-	probe_read(&(v->msg.src.parent_ino), sizeof(v->msg.src.parent_ino),
-		   _(&old_dir->i_ino));
+	probe_read_kernel(&(v->msg.src.parent_ino), sizeof(v->msg.src.parent_ino),
+			  _(&old_dir->i_ino));
 	get_fs_info(&(v->msg.src.parent_fs), &(v->msg.src.parent_ino), old_dir, old_dentry);
 
 	// get current inode and fs info for dst (new)
-	probe_read(&d_inode, sizeof(d_inode), _(&new_dentry->d_inode));
+	probe_read_kernel(&d_inode, sizeof(d_inode), _(&new_dentry->d_inode));
 	if (d_inode == 0) {
 		v->msg.dst.ino = 0;
 		v->msg.flags |= DST_NOT_EXISTS;
 	} else {
-		probe_read(&(v->msg.dst.ino), sizeof(v->msg.dst.ino),
-			   _(&d_inode->i_ino));
-		probe_read(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
+		probe_read_kernel(&(v->msg.dst.ino), sizeof(v->msg.dst.ino),
+				  _(&d_inode->i_ino));
+		probe_read_kernel(&i_mode, sizeof(i_mode), _(&d_inode->i_mode));
 		get_fs_info(&(v->msg.dst.fs), &(v->msg.dst.ino), d_inode, new_dentry);
 		v->msg.flags |= get_rename_dst_flags(i_mode);
 	}
 
 	// get parent inode and fs info for dst (new)
-	probe_read(&(v->msg.dst.parent_ino), sizeof(v->msg.dst.parent_ino),
-		   _(&new_dir->i_ino));
+	probe_read_kernel(&(v->msg.dst.parent_ino), sizeof(v->msg.dst.parent_ino),
+			  _(&new_dir->i_ino));
 	get_fs_info(&(v->msg.dst.parent_fs), &(v->msg.dst.parent_ino), new_dir, new_dentry);
 
 	// check if we care about src and get path for src (old)
@@ -354,7 +354,7 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 	dir_size = dir_val->size;
 	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
 		     :);
-	probe_read(buf, dir_size, dir_val->path);
+	probe_read_kernel(buf, dir_size, dir_val->path);
 	file_val->size = dir_size;
 	file_val->mode = HASH_MAP_FILE_MODE_FILE;
 
@@ -366,7 +366,7 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 		     :);
 	asm volatile("%[dir_size] &= 0xbf;\n" ::[dir_size] "+r"(dir_size)
 		     :);
-	probe_read(buf + dir_size, name_size, name->path.name);
+	probe_read_kernel(buf + dir_size, name_size, name->path.name);
 	file_val->size += name_size;
 
 	return file_val;

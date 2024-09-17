@@ -509,7 +509,7 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 			// prepare the key on the stack to perform lookup in the LPM_TRIE
 			memset(prefix_key, 0, sizeof(struct string_prefix_lpm_trie));
 			prefix_key->prefixlen = current->bin.path_length * 8; // prefixlen is in bits
-			ret = probe_read(prefix_key->data, current->bin.path_length & (STRING_PREFIX_MAX_LENGTH - 1), current->bin.path);
+			ret = probe_read_kernel(prefix_key->data, current->bin.path_length & (STRING_PREFIX_MAX_LENGTH - 1), current->bin.path);
 			if (ret < 0)
 				return 0;
 			found_key = map_lookup_elem(path_map, prefix_key);
@@ -1031,7 +1031,7 @@ static inline __attribute__((always_inline)) struct execve_map_value *event_find
 	struct execve_map_value *value = 0;
 	int pid, i;
 
-	probe_read(&pid, sizeof(pid), _(&task->tgid));
+	probe_read_kernel(&pid, sizeof(pid), _(&task->tgid));
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
@@ -1039,10 +1039,10 @@ static inline __attribute__((always_inline)) struct execve_map_value *event_find
 		if (value && value->key.ktime != 0)
 			break;
 		value = 0;
-		probe_read(&task, sizeof(task), _(&task->real_parent));
+		probe_read_kernel(&task, sizeof(task), _(&task->real_parent));
 		if (!task)
 			break;
-		probe_read(&pid, sizeof(pid), _(&task->tgid));
+		probe_read_kernel(&pid, sizeof(pid), _(&task->tgid));
 	}
 	return value;
 }
@@ -1100,9 +1100,9 @@ static inline __attribute__((always_inline)) void get_mnt_ns(__u32 *mnt_ns)
 	struct nsproxy nsp;
 
 	task = (struct task_struct *)get_current_task();
-	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
-	probe_read(&nsp, sizeof(nsp), _(nsproxy));
-	probe_read(mnt_ns, sizeof(*mnt_ns), _(&nsp.mnt_ns->ns.inum));
+	probe_read_kernel(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
+	probe_read_kernel(&nsp, sizeof(nsp), _(nsproxy));
+	probe_read_kernel(mnt_ns, sizeof(*mnt_ns), _(&nsp.mnt_ns->ns.inum));
 }
 
 /*
@@ -1135,9 +1135,9 @@ get_fs_info(struct msg_fs_info *msg, __u64 *ino, struct inode *inode, struct den
 
 	msg->dev = BPF_CORE_READ(sb, s_dev);
 	msg->pad = 0;
-	probe_read(msg->id, MSG_FS_INFO_ID_LEN * sizeof(char), _(&(sb->s_id[0])));
+	probe_read_kernel(msg->id, MSG_FS_INFO_ID_LEN * sizeof(char), _(&(sb->s_id[0])));
 	probe_read_str(msg->name, MSG_FS_INFO_NAME_LEN * sizeof(char), BPF_CORE_READ(sb, s_type, name));
-	probe_read(msg->uuid, MSG_FS_INFO_UUID_LEN * sizeof(char), _(&sb->s_uuid));
+	probe_read_kernel(msg->uuid, MSG_FS_INFO_UUID_LEN * sizeof(char), _(&sb->s_uuid));
 
 #ifdef __LARGE_BPF_PROG
 	if (bpf_core_type_exists(struct ovl_entry))
@@ -1335,12 +1335,12 @@ static inline __attribute__((always_inline)) int generate_new_file_path(struct d
 		return -FILE_ERR_GET_BUFFER_HEAP;
 
 	// first write the dentry name
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	probe_read_kernel(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
 	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
 		     :);
 	dlen_offset = MAX_FILEPATH_SIZE;
-	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
+	probe_read_kernel(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
 
 	// then write the directory name
@@ -1351,13 +1351,13 @@ static inline __attribute__((always_inline)) int generate_new_file_path(struct d
 	dir_offset = MAX_FILEPATH_SIZE - dir_size;
 	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
 		     :);
-	probe_read(buffer + dir_offset, dir_size, file_val->path);
+	probe_read_kernel(buffer + dir_offset, dir_size, file_val->path);
 	path_size += dir_size;
 
 	// set the filepath inside msg
 	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
 		     :);
-	probe_read(msg->path.str, path_size, buffer + dir_offset);
+	probe_read_kernel(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
 	if (file_val->location_flags == CONTAINER_FILE) {
@@ -1384,7 +1384,7 @@ __generate_path(struct path *path, char *buf, __u32 bufsz, __u32 *sz, __u32 *fla
 		if (!error) {
 			asm volatile("%[buflen] &= 0xff;\n" ::[buflen] "+r"(buflen)
 				     :);
-			probe_read(buf, buflen, p);
+			probe_read_kernel(buf, buflen, p);
 			*sz = buflen;
 		}
 	}
@@ -1552,9 +1552,9 @@ static inline __attribute__((always_inline)) void generate_path_mixed(struct msg
 	path_size++;
 
 	// at the end write the dentry name
-	probe_read(&d_name, sizeof(d_name), _(&new_dentry->d_name));
+	probe_read_kernel(&d_name, sizeof(d_name), _(&new_dentry->d_name));
 	dlen_size = d_name.len &= 0x3f;
-	probe_read(msg->path.str + path_size, dlen_size, (const char *)d_name.name);
+	probe_read_kernel(msg->path.str + path_size, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
 
 	msg->path.size = path_size;
@@ -1567,11 +1567,11 @@ rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
 	struct qstr d_name;
 	__u32 dlen_size = 0;
 
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	probe_read_kernel(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
 	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
 		     :);
-	probe_read(pth->path.name, dlen_size, (const char *)d_name.name);
+	probe_read_kernel(pth->path.name, dlen_size, (const char *)d_name.name);
 	pth->path.name_size = dlen_size;
 }
 

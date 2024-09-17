@@ -30,7 +30,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 		return -FILE_ERR_LOOKUP_CONFIG_MAP;
 
 	// get current inode and fs info
-	probe_read(&old_inode, sizeof(struct inode *), _(&old_dentry->d_inode));
+	probe_read_kernel(&old_inode, sizeof(struct inode *), _(&old_dentry->d_inode));
 	if (!old_inode)
 		return -FILE_ERR_INODE_FROM_DENTRY;
 
@@ -45,7 +45,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 		return 0;
 
 	// get parent inode and fs info
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 

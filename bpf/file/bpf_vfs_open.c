@@ -11,7 +11,7 @@ int BPF_KPROBE(vfs_open, const struct path *path, struct file *file)
 	__u32 f_mode;
 	struct file_config_map_value *conf;
 
-	probe_read(&dentry, sizeof(struct dentry *), _(&path->dentry));
+	probe_read_kernel(&dentry, sizeof(struct dentry *), _(&path->dentry));
 	if (!dentry) {
 		err = FILE_ERR_DENTRY_FROM_PATH;
 		goto vfs_open_error;
@@ -40,7 +40,7 @@ int BPF_KPROBE(vfs_open, const struct path *path, struct file *file)
 			goto vfs_open_error;
 		}
 	} else {
-		probe_read(&f_mode, sizeof(f_mode), _(&file->f_mode));
+		probe_read_kernel(&f_mode, sizeof(f_mode), _(&file->f_mode));
 		if ((f_mode & FMODE_CREATED) == 0)
 			return 0; // no file created
 	}

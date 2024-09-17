@@ -67,8 +67,8 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get parent inode and fs info
-	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
-		   _(&inode->i_ino));
+	probe_read_kernel(&(msg->parent_ino), sizeof(msg->parent_ino),
+			  _(&inode->i_ino));
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), inode, dentry);
 
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
@@ -85,12 +85,12 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 		return -FILE_ERR_GET_BUFFER_HEAP;
 
 	// first write the dentry name
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	probe_read_kernel(&d_name, sizeof(d_name), _(&dentry->d_name));
 	dlen_size = d_name.len;
 	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size)
 		     :);
 	dlen_offset = 256;
-	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
+	probe_read_kernel(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
 
 	// now write a "/" after the dentry name
@@ -104,12 +104,12 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	dir_offset = 256 - dir_size;
 	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
 		     :);
-	probe_read(buffer + dir_offset, dir_size, file_val->path);
+	probe_read_kernel(buffer + dir_offset, dir_size, file_val->path);
 	path_size += dir_size;
 
 	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
 		     :);
-	probe_read(msg->path.str, path_size, buffer + dir_offset);
+	probe_read_kernel(msg->path.str, path_size, buffer + dir_offset);
 	msg->path.size = path_size;
 	msg->path.flags = 0;
 
@@ -245,7 +245,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	// get current inode and fs info
 	// we know that at the kretprobe hook
-	probe_read(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
+	probe_read_kernel(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
 	if (!d_inode) {
 		err = -FILE_ERR_INODE_FROM_DENTRY;
 		goto vfs_mkdir_exit_error;
@@ -269,7 +269,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	path_size = msg->path.size;
 	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size)
 		     :);
-	probe_read(file_val->path, path_size, msg->path.str);
+	probe_read_kernel(file_val->path, path_size, msg->path.str);
 
 	if (msg->path.flags & CONTAINER_FILE) {
 		file_val->location_flags = CONTAINER_FILE;

@@ -28,7 +28,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 		return -FILE_ERR_LOOKUP_CONFIG_MAP;
 
 	// get parent inode and fs info
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 

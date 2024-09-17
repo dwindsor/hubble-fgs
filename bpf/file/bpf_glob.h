@@ -131,7 +131,7 @@ static long loop_cb(u32 index, struct loop_ctx *ctx)
 	if (index >= ctx->len)
 		return 1;
 
-	probe_read(&ctx->c, 1, ctx->path + (index & 255));
+	probe_read_kernel(&ctx->c, 1, ctx->path + (index & 255));
 	if (!(ctx->c))
 		return 1;
 

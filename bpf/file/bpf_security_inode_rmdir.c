@@ -22,14 +22,14 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
-	probe_read(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
+	probe_read_kernel(&d_inode, sizeof(d_inode), _(&dentry->d_inode));
 	if (!d_inode)
 		return -FILE_ERR_INODE_FROM_DENTRY;
 
 	get_ino_fs(msg, d_inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
+	probe_read_kernel(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
 	get_fs_info(&(msg->parent_fs), &(msg->parent_ino), dir, dentry);
 
 	// check if we care about this directory

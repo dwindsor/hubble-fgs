@@ -25,16 +25,16 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
-	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
+	probe_read_kernel(&inode, sizeof(inode), _(&dentry->d_inode));
 	if (!inode)
 		return -FILE_ERR_INODE_FROM_DENTRY;
 
 	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
+	probe_read_kernel(&(msg->parent_ino), sizeof(msg->parent_ino), _(&dir->i_ino));
 
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 
@@ -42,7 +42,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 
 	// If inode->i_nlink == 1 (i.e. last link) we should also remove that
 	// from hash_map_inode_alloc.
-	probe_read(&i_nlink, sizeof(i_nlink), _(&inode->i_nlink));
+	probe_read_kernel(&i_nlink, sizeof(i_nlink), _(&inode->i_nlink));
 	remove_entry = (i_nlink == 1);
 
 	// find this file inside the file inode map

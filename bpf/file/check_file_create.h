@@ -27,11 +27,11 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 		return -FILE_ERR_GET_MSG_HEAP;
 
 	// get current inode and fs info
-	probe_read(&inode, sizeof(struct inode *), _(&dentry->d_inode));
+	probe_read_kernel(&inode, sizeof(struct inode *), _(&dentry->d_inode));
 	get_ino_fs(msg, inode, dentry);
 
 	// get parent inode and fs info
-	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 
@@ -91,9 +91,9 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 		return operation;
 	/* operation cannot be FILE_OP_BLOCK here */
 
-	probe_read(&(msg->imode[0]), sizeof(msg->imode[0]), _(&inode->i_mode));
-	probe_read(&(msg->uid[0]), sizeof(msg->uid[0]), _(&inode->i_uid));
-	probe_read(&(msg->gid[0]), sizeof(msg->gid[0]), _(&inode->i_gid));
+	probe_read_kernel(&(msg->imode[0]), sizeof(msg->imode[0]), _(&inode->i_mode));
+	probe_read_kernel(&(msg->uid[0]), sizeof(msg->uid[0]), _(&inode->i_uid));
+	probe_read_kernel(&(msg->gid[0]), sizeof(msg->gid[0]), _(&inode->i_gid));
 
 	msg->action = action_create;
 	msg->hook = hook;

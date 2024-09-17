@@ -21,13 +21,13 @@ static inline __attribute__((always_inline)) struct mm_struct *get_mm_struct(str
 		struct io_ring_ctx___pre58 *ctx = (struct io_ring_ctx___pre58 *)arg;
 		struct mm_struct *mm;
 
-		probe_read(&mm, sizeof(mm), _(&ctx->sqo_mm));
+		probe_read_kernel(&mm, sizeof(mm), _(&ctx->sqo_mm));
 		return mm;
 	} else {
 		struct io_ring_ctx___post58 *ctx = (struct io_ring_ctx___post58 *)arg;
 		struct mm_struct *mm;
 
-		probe_read(&mm, sizeof(mm), _(&ctx->mm_account));
+		probe_read_kernel(&mm, sizeof(mm), _(&ctx->mm_account));
 		return mm;
 	}
 }
@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) struct task_struct *io_uring_get_ta
 	struct mm_struct *mm;
 	struct task_struct *task;
 
-	probe_read(&io_ctx, sizeof(io_ctx), _(&req->ctx));
+	probe_read_kernel(&io_ctx, sizeof(io_ctx), _(&req->ctx));
 	if (!io_ctx)
 		return 0;
 
@@ -46,7 +46,7 @@ static inline __attribute__((always_inline)) struct task_struct *io_uring_get_ta
 	if (!mm)
 		return 0;
 
-	probe_read(&task, sizeof(task), _(&mm->owner));
+	probe_read_kernel(&task, sizeof(task), _(&mm->owner));
 	return task;
 }
 
@@ -64,7 +64,7 @@ static inline __attribute__((always_inline)) int handle_entry(struct io_kiocb *r
 	if (!task)
 		return -FILE_ERR_IOURING_TASK;
 
-	probe_read(&file, sizeof(file), _(&req->file));
+	probe_read_kernel(&file, sizeof(file), _(&req->file));
 
 	key.file_ptr = (__u64)file;
 	key.pid_tgid = get_current_pid_tgid();
@@ -85,7 +85,7 @@ static inline __attribute__((always_inline)) int handle_exit(struct io_kiocb *re
 	if (!req)
 		return 0; // the reason for that is already reported in handle_kretprobe()
 
-	probe_read(&file, sizeof(file), _(&req->file));
+	probe_read_kernel(&file, sizeof(file), _(&req->file));
 	key.file_ptr = (__u64)file;
 	key.pid_tgid = get_current_pid_tgid();
 
@@ -332,7 +332,7 @@ int BPF_KPROBE(io_issue_sqe_entry, struct io_kiocb *req, unsigned int issue_flag
 	if (!bpf_core_field_exists(req->opcode)) // kernel < 5.5
 		return 0;
 
-	probe_read(&opcode, sizeof(opcode), _(&req->opcode));
+	probe_read_kernel(&opcode, sizeof(opcode), _(&req->opcode));
 	is_rw = (opcode == IORING_OP_READV || opcode == IORING_OP_READ_FIXED || opcode == IORING_OP_READ ||
 		 opcode == IORING_OP_WRITEV || opcode == IORING_OP_WRITE_FIXED || opcode == IORING_OP_WRITE);
 	if (!is_rw)
@@ -358,7 +358,7 @@ int BPF_KRETPROBE(io_issue_sqe_exit, long ret)
 	if (!bpf_core_field_exists(req->opcode)) // kernel < 5.5
 		return 0;
 
-	probe_read(&opcode, sizeof(opcode), _(&req->opcode));
+	probe_read_kernel(&opcode, sizeof(opcode), _(&req->opcode));
 	is_rw = (opcode == IORING_OP_READV || opcode == IORING_OP_READ_FIXED || opcode == IORING_OP_READ ||
 		 opcode == IORING_OP_WRITEV || opcode == IORING_OP_WRITE_FIXED || opcode == IORING_OP_WRITE);
 	if (!is_rw)
