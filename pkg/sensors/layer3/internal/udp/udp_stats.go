@@ -267,6 +267,16 @@ var (
 	deleteLastKey *api.UdpInfoKey
 )
 
+func deleteLast(m *ebpf.Map) {
+	if deleteLastKey != nil {
+		if err := m.Delete(deleteLastKey); err != nil {
+			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
+			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
+		}
+		deleteLastKey = nil
+	}
+}
+
 func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 	// Access to TypeTotalRetrieve metrics is serialized by UdpGC.
 	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTotalRetrieve)
@@ -275,13 +285,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 	// next key and the result is we start walking from the first element
 	// again. Giving us something like O(n!) for walking a list with lots
 	// of deletes.
-	if deleteLastKey != nil {
-		if err := m.Delete(deleteLastKey); err != nil {
-			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
-			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
-		}
-		deleteLastKey = nil
-	}
+	deleteLast(m)
 
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
@@ -357,4 +361,6 @@ func runUdpGC() {
 	for iter.Next(&key, &val) {
 		udpGcCb(m, &key, &val)
 	}
+	// Check if the last key needed deleting
+	deleteLast(m)
 }
