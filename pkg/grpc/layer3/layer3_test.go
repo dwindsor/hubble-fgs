@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/server"
@@ -358,7 +359,7 @@ func TestGrpcL3CloseFirst(t *testing.T) {
 		execOSS.AllEvents = append(execOSS.AllEvents, e)
 	}
 
-	time.Sleep(time.Millisecond * ((eventcache.CacheStrikes + 4) * execOSS.CacheTimerMs)) // wait for cache to do it's work
+	time.Sleep(time.Millisecond * time.Duration((option.Config.EventCacheNumRetries+4)*execOSS.CacheTimerMs)) // wait for cache to do it's work
 
 	assert.Equal(t, len(execOSS.AllEvents), 8)
 

@@ -1060,6 +1060,9 @@ func execute() error {
 
 	flags.String(option.KeyPprofAddr, "", "Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default")
 
+	flags.Int(KeyEventCacheRetries, defaults.DefaultEventCacheNumRetries, "Number of retries for event cache")
+	flags.Int(KeyEventCacheRetryDelay, defaults.DefaultEventCacheRetryDelay, "Delay in seconds between event cache retries")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

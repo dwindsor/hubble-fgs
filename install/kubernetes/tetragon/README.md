@@ -33,7 +33,7 @@ Helm chart for Tetragon Enterprise
 | podLabelsOverride | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | priorityClassName | string | `""` |  |
-| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","image":{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.3"},"installDir":"/opt/tetragon","interface":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"podSecurityContext":{"privileged":true},"priorityClassName":"","resources":{},"serviceAccount":{"name":""}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
+| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","image":{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.3"},"installDir":"/opt/tetragon","interface":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"podSecurityContext":{},"priorityClassName":"","resources":{},"serviceAccount":{"name":""}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
 | rthooks.annotations | object | `{}` | Annotations for the Tetragon rthooks daemonset |
 | rthooks.enabled | bool | `false` | Enable the Tetragon rthooks daemonset |
 | rthooks.extraHookArgs | object | `{}` | extra args to pass to tetragon-oci-hook |
@@ -48,7 +48,7 @@ Helm chart for Tetragon Enterprise
 | rthooks.ociHooks | object | `{"hooksPath":"/usr/share/containers/oci/hooks.d"}` | configuration for "oci-hooks" interface |
 | rthooks.ociHooks.hooksPath | string | `"/usr/share/containers/oci/hooks.d"` | directory to install .json file for running the hook |
 | rthooks.podAnnotations | object | `{}` | Pod annotations for the Tetrargon rthooks pod |
-| rthooks.podSecurityContext | object | `{"privileged":true}` | security context for the Tetrargon rthooks pod |
+| rthooks.podSecurityContext | object | `{}` | security context for the Tetrargon rthooks pod |
 | rthooks.priorityClassName | string | `""` | priorityClassName for the Tetrargon rthooks pod |
 | rthooks.resources | object | `{}` | resources for the the oci-hook-setup init container |
 | rthooks.serviceAccount | object | `{"name":""}` | rthooks service account. |
@@ -71,6 +71,8 @@ Helm chart for Tetragon Enterprise
 | tetragon.enableProcessTree | bool | `false` | Enable process tree. |
 | tetragon.enableSandboxpolicies | bool | `true` | Enable sandboxpolicies. |
 | tetragon.enabled | bool | `true` |  |
+| tetragon.eventCacheRetries | int | `15` | Configure the number of retries in tetragon's event cache. |
+| tetragon.eventCacheRetryDelay | int | `2` | Configure the delay (in seconds) between retires in tetragon's event cache. |
 | tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_CONNECT\", \"PROCESS_EXEC\", \"PROCESS_FILE\", \"PROCESS_HTTP\", \"PROCESS_KPROBE\", \"PROCESS_LISTEN\", \"PROCESS_SANDBOX_SYSCALL\", \"PROCESS_TLS\"]}"` | Allowlist for JSON export. For example, to export only process_connect events from the default namespace:  exportAllowList: |   {"namespace":["default"],"event_set":["PROCESS_EXEC"]} |
 | tetragon.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` | Denylist for JSON export. For example, to exclude exec events that look similar to Kubernetes health checks and all the events from kube-system namespace and the host:  exportDenyList: |   {"health_check":true}   {"namespace":["kube-system",""]}  |
 | tetragon.exportFileCompress | bool | `false` | Compress rotated JSON export files. |

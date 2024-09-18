@@ -15,7 +15,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
-	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/sirupsen/logrus"
@@ -23,7 +22,7 @@ import (
 
 var (
 	Retries    = 13
-	RetryDelay = eventcache.EventRetryTimer + (1 * time.Second)
+	RetryDelay = 3 * time.Second
 )
 
 // DebugError is an error that will create a debug output message

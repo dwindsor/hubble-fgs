@@ -100,6 +100,9 @@ const (
 	KeyHealthTimeInterval  = "health-server-interval"
 
 	KeyKeepSensorsOnExit = "keep-sensors-on-exit"
+
+	KeyEventCacheRetries    = "event-cache-retries"
+	KeyEventCacheRetryDelay = "event-cache-retry-delay"
 )
 
 func readAndSetFlags() error {
@@ -208,6 +211,9 @@ func readAndSetFlags() error {
 	option.Config.EnableCgIDmapDebug = viper.GetBool(option.KeyEnableCgIDmapDebug)
 
 	option.Config.PprofAddr = viper.GetString(option.KeyPprofAddr)
+
+	option.Config.EventCacheNumRetries = viper.GetInt(KeyEventCacheRetries)
+	option.Config.EventCacheRetryDelay = viper.GetInt(KeyEventCacheRetryDelay)
 
 	return nil
 }

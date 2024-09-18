@@ -232,6 +232,10 @@ tetragon:
     extraVolumeMounts: []
     # -- resources for the the oci-hook-setup init container
     resources: {}
+  # -- Configure the number of retries in tetragon's event cache.
+  eventCacheRetries: 15
+  # -- Configure the delay (in seconds) between retires in tetragon's event cache.
+  eventCacheRetryDelay: 2
   metadata:
     enabled: false
     image:
@@ -386,8 +390,7 @@ rthooks:
   # -- priorityClassName for the Tetrargon rthooks pod
   priorityClassName: ""
   # -- security context for the Tetrargon rthooks pod
-  podSecurityContext:
-    privileged: true
+  podSecurityContext: {}
   # -- installDir is the host location where the tetragon-oci-hook binary will be installed
   installDir: "/opt/tetragon"
   # -- Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent.
