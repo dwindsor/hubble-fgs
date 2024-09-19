@@ -128,6 +128,30 @@ int insert_process_tree(void)
 
 uint64_t glbl_bpf_endpoint_id = 1;
 
+__u64 tg_sockops_get_current_cgroup_id(void)
+{
+	int zero = 0, subsys_idx = 0;
+	struct tetragon_conf *conf;
+	struct task_struct *task;
+	struct cgroup *cgrp;
+	__u32 error_flags;
+
+	conf = map_lookup_elem(&tg_conf_map, &zero);
+	if (conf) {
+		/* Select which cgroup version */
+		subsys_idx = conf->tg_cgrp_subsys_idx;
+	}
+
+	task = (struct task_struct *)get_current_task();
+
+	// NB: error_flags are ignored for now
+	cgrp = get_task_cgroup(task, subsys_idx, &error_flags);
+	if (!cgrp)
+		return 0;
+
+	return get_cgroup_id(cgrp);
+}
+
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
@@ -201,7 +225,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	destkey.process_id.parent = *parent_uid;
 	destkey.port = tuple->dport;
 
-	cgid = tg_get_current_cgroup_id();
+	cgid = tg_sockops_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 	if (nsid)
 		destkey.process_id.nsid = *nsid;
