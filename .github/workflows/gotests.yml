@@ -32,6 +32,13 @@ jobs:
           sudo apt-get -y install libc6-dev-i386
         fi
 
+    - name: Install dependencies ARM
+      run: |
+        if [ "$RUNNER_ARCH" == "ARM64" ]; then
+          sudo apt-get update
+          sudo apt-get -y install gcc-arm-linux-gnueabihf
+        fi
+
     - name: Run go tests
       env:
         GOPATH: ${{ env.GITHUB_WORKSPACE }}/go
