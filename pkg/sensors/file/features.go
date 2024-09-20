@@ -31,7 +31,6 @@ import (
 )
 
 var probeImaFileHashHelper = sync.OnceValue(_probeImaFileHashHelper)
-var probeOverlayModule = sync.OnceValue(_probeOverlayModule)
 var probeDpathSecurityFilePermission = sync.OnceValue(func() error {
 	return _probeProg("probe_security_file_permission.o", "fmod_security_file_permission", func(prog *ebpf.Program) (link.Link, error) {
 		return link.AttachTracing(link.TracingOptions{Program: prog})
@@ -120,7 +119,7 @@ func SupportDigests() bool {
 	return utils.SupportLSM() && (probeImaFileHashHelper() == nil)
 }
 
-func _probeOverlayModule() *btf.Spec {
+func probeOverlayModule() *btf.Spec {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil

@@ -1024,6 +1024,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		maxSelectors = fm.MaxFimGlobSelectors
 	}
 
+	ovlSpec := probeOverlayModule()
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
@@ -1039,7 +1040,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			s:  sel,
 			tp: h.tp,
 		})
-		if ovlSpec := probeOverlayModule(); ovlSpec != nil {
+		if ovlSpec != nil {
 			load.KernelTypes = ovlSpec
 		}
 
