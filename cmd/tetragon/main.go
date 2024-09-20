@@ -407,9 +407,12 @@ func hubbleFGSExecute() error {
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
 		if option.Config.EnablePodInfo {
-			k8sWatcher = enterpriseWatcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
+			k8sWatcher, err = enterpriseWatcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
 		} else {
-			k8sWatcher = enterpriseWatcher.NewK8sWatcher(k8sClient, 60*time.Second)
+			k8sWatcher, err = enterpriseWatcher.NewK8sWatcher(k8sClient, 60*time.Second)
+		}
+		if err != nil {
+			return err
 		}
 	} else {
 		log.Info("Disabling Kubernetes API")

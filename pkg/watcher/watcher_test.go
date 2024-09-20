@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	fakeTetragon "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -26,7 +27,8 @@ import (
 func TestFindServiceByIP(t *testing.T) {
 	ctx := context.Background()
 	k8sClient := fake.NewSimpleClientset()
-	watcher := NewK8sWatcher(k8sClient, 60*time.Second)
+	watcher, err := NewK8sWatcher(k8sClient, 60*time.Second)
+	require.NoError(t, err)
 	watcher.Start()
 	svc1 := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "svc1"},
@@ -40,7 +42,7 @@ func TestFindServiceByIP(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "svc3"},
 		Spec:       v1.ServiceSpec{ClusterIPs: []string{"3.3.3.3", "4.4.4.4"}},
 	}
-	_, err := k8sClient.CoreV1().Services("my-ns").Create(ctx, &svc1, metav1.CreateOptions{})
+	_, err = k8sClient.CoreV1().Services("my-ns").Create(ctx, &svc1, metav1.CreateOptions{})
 	assert.NoError(t, err)
 	_, err = k8sClient.CoreV1().Services("my-ns").Create(ctx, &svc2, metav1.CreateOptions{})
 	assert.NoError(t, err)
@@ -63,7 +65,8 @@ func TestPodInfoByIP(t *testing.T) {
 	ctx := context.Background()
 	k8sClient := fake.NewSimpleClientset()
 	tetragonClient := fakeTetragon.NewSimpleClientset()
-	watcher := NewK8sWatcherWithTetragonClient(k8sClient, tetragonClient, 0)
+	watcher, err := NewK8sWatcherWithTetragonClient(k8sClient, tetragonClient, 0)
+	require.NoError(t, err)
 	watcher.Start()
 	pod1 := v1alpha1.PodInfo{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
@@ -77,7 +80,7 @@ func TestPodInfoByIP(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "pod3"},
 		Status:     v1alpha1.PodInfoStatus{PodIPs: []v1alpha1.PodIP{{IP: "3.3.3.3"}, {IP: "4.4.4.4"}}},
 	}
-	_, err := tetragonClient.CiliumV1alpha1().PodInfo("my-ns").Create(ctx, &pod1, metav1.CreateOptions{})
+	_, err = tetragonClient.CiliumV1alpha1().PodInfo("my-ns").Create(ctx, &pod1, metav1.CreateOptions{})
 	assert.NoError(t, err)
 	_, err = tetragonClient.CiliumV1alpha1().PodInfo("my-ns").Create(ctx, &pod2, metav1.CreateOptions{})
 	assert.NoError(t, err)

@@ -66,13 +66,16 @@ func podInfoIPIndexFunc(obj interface{}) ([]string, error) {
 }
 
 // NewK8sWatcher returns a pointer to an initialized K8sWatcher struct.
-func NewK8sWatcher(k8sClient kubernetes.Interface, stateSyncIntervalSec time.Duration) *oss.K8sWatcher {
+func NewK8sWatcher(k8sClient kubernetes.Interface, stateSyncIntervalSec time.Duration) (*oss.K8sWatcher, error) {
 	return NewK8sWatcherWithTetragonClient(k8sClient, fake.NewSimpleClientset(), stateSyncIntervalSec)
 }
 
 // NewK8sWatcherWithTetragonClient returns a pointer to an initialized K8sWatcher struct.
-func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonClient versioned.Interface, stateSyncIntervalSec time.Duration) *oss.K8sWatcher {
-	k8sWatcher := oss.NewK8sWatcher(k8sClient, stateSyncIntervalSec)
+func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonClient versioned.Interface, stateSyncIntervalSec time.Duration) (*oss.K8sWatcher, error) {
+	k8sWatcher, err := oss.NewK8sWatcher(k8sClient, stateSyncIntervalSec)
+	if err != nil {
+		return nil, err
+	}
 
 	serviceInformerFactory := informers.NewSharedInformerFactory(k8sClient, stateSyncIntervalSec)
 	serviceInformer := serviceInformerFactory.Core().V1().Services().Informer()
@@ -127,7 +130,7 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 		},
 	})
 
-	return k8sWatcher
+	return k8sWatcher, nil
 }
 
 func FindServiceByIP(watcher oss.K8sResourceWatcher, ip string) ([]*corev1.Service, error) {
