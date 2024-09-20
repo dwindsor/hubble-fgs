@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/syscallinfo"
+	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ func TestIDs(t *testing.T) {
 			if s.X64 != nil {
 				id = int(*s.X64)
 			}
-			ossid := syscallinfo.GetSyscallID(name)
+			ossid, _ := tracing.SyscallVal(name).ID()
 			if ossid == -1 && ossid != id {
 				t.Logf("oss syscallinfo seems to be missing for x64/%s", name)
 				continue
@@ -36,12 +36,15 @@ func TestIDs(t *testing.T) {
 			if s.IA32 != nil {
 				id32 = int(*s.IA32)
 			}
-			ossid32 := syscallinfo.GetSyscallID32(name)
+			ossid32, _ := tracing.SyscallVal("i386/" + name).ID()
 			if ossid32 == -1 && ossid32 != id32 {
 				t.Logf("oss syscallinfo seems to be missing for ia32/%s", name)
 				continue
 			}
-			require.Equal(t, ossid32, id32, name)
+			if ossid32 != -1 {
+				ossid32 &= ^tracing.Is32Bit
+			}
+			require.Equal(t, ossid32, id32, "i386/"+name)
 		}
 	}
 }

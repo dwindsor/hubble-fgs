@@ -15,11 +15,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/cilium/tetragon/pkg/arch"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
-	"github.com/cilium/tetragon/pkg/syscallinfo"
 	eesyscallinfo "github.com/isovalent/hubble-fgs/pkg/syscallinfo"
 )
 
@@ -46,7 +44,6 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, erro
 
 	ids := []uint32{}
 	for _, call := range calls {
-		var id int
 		if runtime.GOARCH == "amd64" {
 			x86ids := eesyscallinfo.GetX86IDs(call)
 			if x86ids == nil {
@@ -60,21 +57,10 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, erro
 				ids = append(ids, tracing.Is32Bit|uint32(*x86ids.X64))
 			}
 		} else {
-			sc, is32 := arch.CutSyscallPrefix(call)
-			sc = strings.TrimPrefix(sc, "sys_")
-			if is32 {
-				id = syscallinfo.GetSyscallID32(sc)
-			} else {
-				id = syscallinfo.GetSyscallID(sc)
-			}
-
-			if id == -1 {
-				logger.GetLogger().WithField("syscall", call).Info("missing syscall id, skipping")
+			id, err := tracing.SyscallVal(call).ID()
+			if err != nil {
+				logger.GetLogger().WithField("syscall", call).Warn("missing syscall id, skipping")
 				continue
-			}
-
-			if is32 {
-				id |= tracing.Is32Bit
 			}
 			ids = append(ids, uint32(id))
 		}
