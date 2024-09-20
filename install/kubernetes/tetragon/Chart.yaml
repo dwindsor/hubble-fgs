@@ -20,3 +20,15 @@ version: "0.0.0-dev"
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 appVersion: "0.0.0-dev"
+dependencies:
+  # EXPERIMENTAL: kube-prometheus-stack is required by an experimental feature
+  # and might be removed at any time.
+  # TODO: Renovate it, but we need to be a bit more careful with updates,
+  # because we rely on some specific templates details and we want to avoid
+  # installing unnecessary resources. Ideally all should be covered by CI.
+  # Also on every update we need to persist the Chart.lock file e.g. by
+  # copying it back to the enterprise directory.
+  - name: kube-prometheus-stack
+    version: "62.7.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: observabilityStack.enabled

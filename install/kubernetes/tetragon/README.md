@@ -4,6 +4,12 @@
 
 Helm chart for Tetragon Enterprise
 
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 62.7.0 |
+
 ## Values
 
 | Key | Type | Default | Description |

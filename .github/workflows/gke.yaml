@@ -115,6 +115,16 @@ jobs:
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
 
+      - name: Fetch Helm subcharts
+        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3.0.0
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            cd hubble-fgs
+            make -C install/kubernetes tetragon/charts
+
       - name: Run end-to-end tests
         timeout-minutes: 30
         run: |
