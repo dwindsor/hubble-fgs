@@ -34,6 +34,7 @@ Helm chart for Tetragon Enterprise
 | imagePullPolicy | string | `"IfNotPresent"` |  |
 | imagePullSecrets | list | `[]` |  |
 | nodeSelector | object | `{}` |  |
+| observabilityStack | object | `{"enabled":false}` | EXPERIMENTAL: Install observability stack including Grafana, Prometheus, Prometheus Operator, kube-state-metrics, ServiceMonitors and dashboards. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. |
 | podAnnotations | object | `{}` |  |
 | podLabels | object | `{}` |  |
 | podLabelsOverride | object | `{}` |  |
