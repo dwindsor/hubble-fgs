@@ -141,7 +141,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		event := p.colorer.Blue.Sprintf("📁 %-7s", "file")
 		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, file.Process)
 		processFileAction := p.colorer.Cyan.Sprint(file.Action)
-		functionHook := p.colorer.Cyan.Sprintf(file.Hook)
+		functionHook := p.colorer.Cyan.Sprint(file.Hook)
 		args := p.colorer.Cyan.Sprint(file.Process.Arguments)
 		arg := file.GetArgs().Arg
 		switch v := arg.(type) {

@@ -178,7 +178,7 @@ func validatePolicy(
 
 	v, ok := validatorMap[kind]
 	if !ok {
-		return nil, nil, fmt.Errorf("could not find validator for: " + kind.String())
+		return nil, nil, fmt.Errorf("could not find validator for: %s", kind.String())
 	}
 
 	specErrors := v.validator.Validate(policy)
