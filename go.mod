@@ -260,7 +260,7 @@ replace (
 	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
-	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.15
+	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.16
 
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
 	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
