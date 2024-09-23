@@ -22,6 +22,7 @@ import (
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
@@ -114,7 +115,8 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 		return nil, fmt.Errorf("failed to check or mount cgroup2")
 	}
 
-	obs, err := enterpriseoth.GetDefaultObserverWithFile(t, ctx.Ctx, configFilePath, runner.Conf().TetragonLib)
+	b := base.GetInitialSensor()
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx.Ctx, b, configFilePath, runner.Conf().TetragonLib)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen for events: %w", err)
 	}
