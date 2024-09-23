@@ -73,9 +73,28 @@ static inline __attribute__((always_inline)) struct msg_ip_event init_msg_ip_eve
 }
 
 static inline __attribute__((always_inline)) int
-__event_tcp_connect(struct pt_regs *ctx)
+event_post_connect(void *ctx, struct msg_ip_event *val)
 {
 	struct tcp_event_disable_config *event_cfg;
+	int zero = 0;
+
+	event_cfg = (struct tcp_event_disable_config *)
+		map_lookup_elem(&tg_event_disable_config, &zero);
+
+	if (!event_cfg)
+		return 0;
+
+	if (!event_cfg->disableConnect) {
+		uint64_t size = sizeof(struct msg_ip_event);
+
+		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
+	return 0;
+}
+
+static inline __attribute__((always_inline)) int
+__event_tcp_connect(struct pt_regs *ctx)
+{
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
 	struct msg_execve_key *key;
@@ -83,7 +102,6 @@ __event_tcp_connect(struct pt_regs *ctx)
 	__u32 ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
-	uint64_t size;
 	u16 family;
 	u64 cookie;
 
@@ -138,19 +156,9 @@ __event_tcp_connect(struct pt_regs *ctx)
 				  _(&(skp->__sk_common.skc_v6_daddr)));
 	}
 
-	event_cfg = (struct tcp_event_disable_config *)
-		map_lookup_elem(&tg_event_disable_config, &zero);
-
-	if (!event_cfg)
-		return 0;
-
-	if (!event_cfg->disableConnect) {
-		size = sizeof(struct msg_ip_event);
-		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
-	}
+	event_post_connect(ctx, val);
 
 	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, family);
-
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
 #endif
@@ -161,12 +169,10 @@ __event_tcp_connect(struct pt_regs *ctx)
 static inline __attribute__((always_inline)) int
 __event_tcp_connect_sockops(struct bpf_sock_ops *skops)
 {
-	struct tcp_event_disable_config *event_cfg;
 	struct socketmap_value *socket = 0;
 	struct msg_execve_key *key;
 	struct msg_ip_event *val;
 	__u32 zero = 0;
-	uint64_t size;
 	u64 cookie;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
@@ -204,19 +210,9 @@ __event_tcp_connect_sockops(struct bpf_sock_ops *skops)
 				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_daddr)));
 	}
 
-	event_cfg = (struct tcp_event_disable_config *)
-		map_lookup_elem(&tg_event_disable_config, &zero);
-
-	if (!event_cfg)
-		return 0;
-
-	if (!event_cfg->disableConnect) {
-		size = sizeof(struct msg_ip_event);
-		perf_event_output_metric(skops, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
-	}
+	event_post_connect(skops, val);
 
 	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, skops->family);
-
 #ifdef KERNEL_5_15
 	process_socketmap_add(&v, &(val->tuple));
 #endif
