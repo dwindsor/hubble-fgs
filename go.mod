@@ -45,11 +45,11 @@ require (
 	google.golang.org/grpc v1.66.2
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.30.4
-	k8s.io/apiextensions-apiserver v0.30.4
-	k8s.io/apimachinery v0.30.4
-	k8s.io/client-go v0.30.4
-	k8s.io/code-generator v0.30.4
+	k8s.io/api v0.30.5
+	k8s.io/apiextensions-apiserver v0.30.5
+	k8s.io/apimachinery v0.30.5
+	k8s.io/client-go v0.30.5
+	k8s.io/code-generator v0.30.5
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20240521193020-835d969ad83a
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
@@ -161,8 +161,8 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	k8s.io/apiserver v0.30.4 // indirect
-	k8s.io/component-base v0.30.4 // indirect
+	k8s.io/apiserver v0.30.5 // indirect
+	k8s.io/component-base v0.30.5 // indirect
 	k8s.io/cri-api v0.30.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 )
