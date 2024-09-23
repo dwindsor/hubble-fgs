@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -180,9 +181,10 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	b := base.GetInitialSensor()
+	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
 	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true)

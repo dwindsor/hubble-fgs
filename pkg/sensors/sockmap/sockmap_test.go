@@ -251,9 +251,10 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	b := base.GetInitialSensor()
+	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
 	// If we base all indices into the progs map from "ni" then we can add extra programs
@@ -332,9 +333,10 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	b := base.GetInitialSensor()
+	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
 	// If we base all indices into the progs map from "ni" then we can add extra programs

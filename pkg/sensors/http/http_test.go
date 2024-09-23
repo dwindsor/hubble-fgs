@@ -398,9 +398,10 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	sens, err := observertesthelper.GetDefaultSensorsWithFile(t, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	b := base.GetInitialSensor()
+	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
 	sensorProgs, sensorMaps := layer3Testutil.ProgsAndMaps(false, false, false)
