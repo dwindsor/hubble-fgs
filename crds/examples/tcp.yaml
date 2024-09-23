@@ -9,50 +9,9 @@ spec:
       cgroup: true
       statsInterval: 10
       deleteIdleSocketInterval: 60
-      watermarks:
-        enable: true
-        windowSize: 1000
-        burstTriggerPercent: 50
-        dipTriggerPercent: 20
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [9956]
-        min: 0
-        max: 10000
-        clockCheckInterval: 1
-        clockMaxSkew: 5
-        interfaces: ["lo"]
-        maxPacketSize: 1500
-        interfacesCheckInterval: 1
-      disableEvents:
-        disableListen: true
     tcp:
       enable: true
       statsInterval: 10
-      watermarks:
-        enable: true
-        windowSize: 1000
-        burstTriggerPercent: 50
-        dipTriggerPercent: 20
-      histogram:
-        enable: true
-        min: 0
-        max: 4000
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [9955]
-        min: 0
-        max: 10000
-        clockCheckInterval: 1
-        clockMaxSkew: 5
-        interfaces: ["lo"]
-        maxPacketSize: 1500
-        interfacesCheckInterval: 1
-    networkWatermarksExitGen:
-      enable: true
-      interval: 1000
     dns:
       enable: true
     heartbeat:
