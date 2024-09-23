@@ -150,12 +150,12 @@ var (
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
 
 	// Endpoint Models
-	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", TcpSockops515)
-	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", TcpSockops515)
-	ProcessTreeMap           = program.MapBuilder("process_tree_map", TcpSockops515)
-	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", TcpSockops515)
-	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", TcpSockops515)
-	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", TcpSockops515)
+	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
+	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", TcpSockops515)
+	ProcessTreeMap           = program.MapUser("process_tree_map", TcpSockops515)
+	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", TcpSockops515)
+	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", TcpSockops515)
+	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", TcpSockops515)
 
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
@@ -210,25 +210,6 @@ func processModelMapsEnable() []*program.Map {
 		ProcessTreeUUIDBinaryMap,
 		DestinationEndpointMap,
 	}
-
-	if !enterpriseOption.Config.EnableProcessTree {
-		return maps
-	}
-
-	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeBinaryUUIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
-	EndpointIdMap.PinState.RefInc()
-	BpfEndpointIdMap.PinState.RefInc()
-	ProcessTreeMap.PinState.RefInc()
-	ProcessTreeBinaryUUIDMap.PinState.RefInc()
-	ProcessTreeUUIDBinaryMap.PinState.RefInc()
-	DestinationEndpointMap.PinState.RefInc()
-
 	return maps
 }
 

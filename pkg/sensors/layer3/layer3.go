@@ -28,7 +28,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -178,14 +177,14 @@ var (
 	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
 
 	// Process Tree maps
-	DestinationEndpointEgressMap    = program.MapBuilder("destination_endpoint_map", EgressDispatcher)
-	DestinationEndpointIngressMap   = program.MapBuilder("destination_endpoint_map", IngressDispatcher)
-	ProcessTreeBinaryUUIDEgressMap  = program.MapBuilder("process_tree_binary_uid_map", EgressDispatcher)
-	ProcessTreeBinaryUUIDIngressMap = program.MapBuilder("process_tree_binary_uid_map", IngressDispatcher)
-	BpfEndpointIdEgressMap          = program.MapBuilder("tg_bpf_endpoint_id_map", EgressDispatcher)
-	BpfEndpointIdIngressMap         = program.MapBuilder("tg_bpf_endpoint_id_map", IngressDispatcher)
-	EndpointIdEgressMap             = program.MapBuilder("tg_endpoint_id_map", EgressDispatcher)
-	EndpointIdIngressMap            = program.MapBuilder("tg_endpoint_id_map", IngressDispatcher)
+	DestinationEndpointEgressMap    = program.MapUser("destination_endpoint_map", EgressDispatcher)
+	DestinationEndpointIngressMap   = program.MapUser("destination_endpoint_map", IngressDispatcher)
+	ProcessTreeBinaryUUIDEgressMap  = program.MapUser("process_tree_binary_uid_map", EgressDispatcher)
+	ProcessTreeBinaryUUIDIngressMap = program.MapUser("process_tree_binary_uid_map", IngressDispatcher)
+	BpfEndpointIdEgressMap          = program.MapUser("tg_bpf_endpoint_id_map", EgressDispatcher)
+	BpfEndpointIdIngressMap         = program.MapUser("tg_bpf_endpoint_id_map", IngressDispatcher)
+	EndpointIdEgressMap             = program.MapUser("tg_endpoint_id_map", EgressDispatcher)
+	EndpointIdIngressMap            = program.MapUser("tg_endpoint_id_map", IngressDispatcher)
 
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
@@ -202,32 +201,6 @@ var (
 	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
 )
-
-func processModelMapsEnable() {
-	if !enterpriseOption.Config.EnableProcessTree {
-		return
-	}
-	DestinationEndpointEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DestinationEndpointIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
-	ProcessTreeBinaryUUIDEgressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeBinaryUUIDIngressMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
-	BpfEndpointIdEgressMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-	BpfEndpointIdIngressMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-
-	EndpointIdEgressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-	EndpointIdIngressMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-
-	DestinationEndpointEgressMap.PinState.RefInc()
-	DestinationEndpointIngressMap.PinState.RefInc()
-	ProcessTreeBinaryUUIDEgressMap.PinState.RefInc()
-	ProcessTreeBinaryUUIDIngressMap.PinState.RefInc()
-	BpfEndpointIdEgressMap.PinState.RefInc()
-	BpfEndpointIdIngressMap.PinState.RefInc()
-	EndpointIdEgressMap.PinState.RefInc()
-	EndpointIdIngressMap.PinState.RefInc()
-}
 
 func EnableLayer3(policy string, tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
@@ -278,7 +251,6 @@ func EnableLayer3(policy string, tcpTimestampEnable, cgroup, udpTimestampEnable 
 				} else {
 					progs = append(progs, dispatcherProgs...)
 					maps = append(maps, dispatcherMaps...)
-					processModelMapsEnable()
 				}
 			}
 		} else {
