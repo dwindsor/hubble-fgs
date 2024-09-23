@@ -86,14 +86,10 @@ var (
 	).SetPolicy(basePolicy)
 
 	/* Event Ring map */
-	TCPMonMap    = program.MapBuilder("tcpmon_map", Execve)
-	TCPMonMapV53 = program.MapBuilder("tcpmon_map", ExecveV53)
-	TCPMonMapV61 = program.MapBuilder("tcpmon_map", ExecveV61)
+	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV61)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve)
-	ExecveMapV53                = program.MapBuilder("execve_map", ExecveV53)
-	ExecveMapV61                = program.MapBuilder("execve_map", ExecveV61)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV61)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrack.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrack.SocketStatsName, Exit)
@@ -108,14 +104,10 @@ var (
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
 	/* Tetragon runtime configuration */
-	TetragonConfMap    = program.MapBuilder("tg_conf_map", Execve)
-	TetragonConfMapV53 = program.MapBuilder("tg_conf_map", ExecveV53)
-	TetragonConfMapV61 = program.MapBuilder("tg_conf_map", ExecveV61)
+	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV61)
 
 	/* Internal statistics for debugging */
-	ExecveStats          = program.MapBuilder("execve_map_stats", Execve)
-	ExecveStatsV53       = program.MapBuilder("execve_map_stats", ExecveV53)
-	ExecveStatsV61       = program.MapBuilder("execve_map_stats", ExecveV61)
+	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV61)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
@@ -125,33 +117,14 @@ var (
 	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
 
 	/* In BPF memory aggregated data */
-	ProcessTreeMap    = program.MapBuilder("process_tree_map", Execve)
-	ProcessTreeMapV53 = program.MapBuilder("process_tree_map", ExecveV53)
-	ProcessTreeMapV61 = program.MapBuilder("process_tree_map", ExecveV61)
-
-	ProcessTreeBinaryUUIDMap    = program.MapBuilder("process_tree_binary_uid_map", Execve)
-	ProcessTreeBinaryUUIDMapV53 = program.MapBuilder("process_tree_binary_uid_map", ExecveV53)
-	ProcessTreeBinaryUUIDMapV61 = program.MapBuilder("process_tree_binary_uid_map", ExecveV61)
-
-	ProcessTreeUUIDBinaryMap    = program.MapBuilder("process_tree_uid_binary_map", Execve)
-	ProcessTreeUUIDBinaryMapV53 = program.MapBuilder("process_tree_uid_binary_map", ExecveV53)
-	ProcessTreeUUIDBinaryMapV61 = program.MapBuilder("process_tree_uid_binary_map", ExecveV61)
-
-	EndpointIdMap    = program.MapBuilder("tg_endpoint_id_map", Execve)
-	EndpointIdMapV53 = program.MapBuilder("tg_endpoint_id_map", ExecveV53)
-	EndpointIdMapV61 = program.MapBuilder("tg_endpoint_id_map", ExecveV61)
-
-	DestinationEndpointMap    = program.MapBuilder("destination_endpoint_map", Execve)
-	DestinationEndpointMapV53 = program.MapBuilder("destination_endpoint_map", ExecveV53)
-	DestinationEndpointMapV61 = program.MapBuilder("destination_endpoint_map", ExecveV61)
-
-	BpfEndpointIdMap    = program.MapBuilder("tg_bpf_endpoint_id_map", Execve)
-	BpfEndpointIdMapV53 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV53)
-	BpfEndpointIdMapV61 = program.MapBuilder("tg_bpf_endpoint_id_map", ExecveV61)
-
-	PorcessTreeConfigMap = program.MapBuilder("tg_process_tree_config_map", Execve)
-
-	MatchBinariesSetMap = program.MapBuilder(mbset.MapName, Execve)
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV61)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV61)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV61)
+	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV61)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV61)
+	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61)
+	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
+	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
 
 	sensor = sensors.Sensor{
 		Name: basePolicy,
@@ -185,29 +158,14 @@ func setupPrograms() {
 }
 
 func GetExecveMap() *program.Map {
-	if kernels.EnableV61Progs() {
-		return ExecveMapV61
-	}
-	if kernels.EnableLargeProgs() {
-		return ExecveMapV53
-	}
 	return ExecveMap
 }
 
 func GetExecveMapStats() *program.Map {
-	if kernels.EnableLargeProgs() {
-		return ExecveStatsV53
-	}
 	return ExecveStats
 }
 
 func GetTetragonConfMap() *program.Map {
-	if kernels.EnableV61Progs() {
-		return TetragonConfMapV61
-	}
-	if kernels.EnableLargeProgs() {
-		return TetragonConfMapV53
-	}
 	return TetragonConfMap
 }
 
@@ -243,54 +201,22 @@ func GetDefaultMaps() []*program.Map {
 		CfgMap,
 		ExecveJoinMap,
 		ExecveJoinMapStats,
+		ExecveMap,
+		ExecveStats,
+		ExecveTailCallsMap,
 		StatsMap,
 		PorcessTreeConfigMap,
 		MatchBinariesSetMap,
+		TetragonConfMap,
+		TCPMonMap,
+		ProcessTreeMap,
+		ProcessTreeBinaryUUIDMap,
+		ProcessTreeUUIDBinaryMap,
+		EndpointIdMap,
+		DestinationEndpointMap,
+		BpfEndpointIdMap,
 	}
 
-	if kernels.EnableV61Progs() {
-		maps = append(maps,
-			ExecveMapV61,
-			ExecveStatsV61,
-			ExecveTailCallsMap,
-			TCPMonMapV61,
-			TetragonConfMapV61,
-			EndpointIdMapV61,
-			BpfEndpointIdMapV61,
-			ProcessTreeMapV61,
-			ProcessTreeBinaryUUIDMapV61,
-			ProcessTreeUUIDBinaryMapV61,
-			DestinationEndpointMapV61,
-		)
-	} else if kernels.EnableLargeProgs() {
-		maps = append(maps,
-			ExecveMapV53,
-			ExecveStatsV53,
-			ExecveTailCallsMap,
-			TCPMonMapV53,
-			TetragonConfMapV53,
-			EndpointIdMapV53,
-			BpfEndpointIdMapV53,
-			ProcessTreeMapV53,
-			ProcessTreeBinaryUUIDMapV53,
-			ProcessTreeUUIDBinaryMapV53,
-			DestinationEndpointMapV53,
-		)
-	} else {
-		maps = append(maps,
-			ExecveMap,
-			ExecveStats,
-			ExecveTailCallsMap,
-			TCPMonMap,
-			TetragonConfMap,
-			EndpointIdMap,
-			BpfEndpointIdMap,
-			ProcessTreeMap,
-			ProcessTreeBinaryUUIDMap,
-			ProcessTreeUUIDBinaryMap,
-			DestinationEndpointMap,
-		)
-	}
 	if option.CgroupRateEnabled() {
 		maps = append(maps, CgroupRateMap, CgroupRateOptionsMap)
 	}
@@ -331,26 +257,9 @@ func ConfigureMapSizes() {
 	}
 
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-	EndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-	EndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
-
 	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-	BpfEndpointIdMapV53.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-	BpfEndpointIdMapV61.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
-
 	ProcessTreeBinaryUUIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeBinaryUUIDMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeBinaryUUIDMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeUUIDBinaryMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeUUIDBinaryMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	ProcessTreeMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DestinationEndpointMapV53.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DestinationEndpointMapV61.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 }
