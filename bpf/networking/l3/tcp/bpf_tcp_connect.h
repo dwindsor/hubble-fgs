@@ -56,6 +56,22 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value init_tcps
 	return v;
 }
 
+static inline __attribute__((always_inline)) struct msg_ip_event init_msg_ip_event(struct msg_execve_key *key, u64 cookie)
+{
+	return (struct msg_ip_event){
+		.common.op = ISO_MSG_OP_TCPCONNECTRET,
+		.common.ktime = ktime_get_ns(),
+		.common.size = sizeof(struct msg_ip_event),
+		.key.pid = key->pid,
+		.key.ktime = key->ktime,
+		.socket_cookie = cookie,
+		.socket_flags = 0,
+		.version = 0,
+		.create_time = 0,
+		.close_time = 0,
+	};
+}
+
 static inline __attribute__((always_inline)) int
 __event_tcp_connect(struct pt_regs *ctx)
 {
@@ -94,19 +110,7 @@ __event_tcp_connect(struct pt_regs *ctx)
 		return 0;
 	}
 
-	*val = (struct msg_ip_event){
-		.common.op = ISO_MSG_OP_TCPCONNECTRET,
-		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ip_event),
-		.key.pid = key->pid,
-		.key.ktime = key->ktime,
-		.socket_cookie = cookie,
-		.socket_flags = 0,
-		.version = 0,
-		.create_time = 0,
-		.close_time = 0,
-	};
-
+	*val = init_msg_ip_event(key, cookie);
 	if (socket)
 		val->version = socket->version;
 
@@ -178,19 +182,7 @@ __event_tcp_connect_sockops(struct bpf_sock_ops *skops)
 		return 0;
 	}
 
-	*val = (struct msg_ip_event){
-		.common.op = ISO_MSG_OP_TCPCONNECTRET,
-		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ip_event),
-		.key.pid = key->pid,
-		.key.ktime = key->ktime,
-		.socket_cookie = cookie,
-		.socket_flags = 0,
-		.version = 0,
-		.create_time = 0,
-		.close_time = 0,
-	};
-
+	*val = init_msg_ip_event(key, cookie);
 	val->version = socket->version;
 	val->tuple.sport = skops->local_port;
 
