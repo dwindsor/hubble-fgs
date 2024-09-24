@@ -10,8 +10,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: PathPrefix
         path_prefix:
@@ -35,8 +35,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: PathPrefix
         path_prefix:
@@ -67,8 +67,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: PathPrefix
         path_prefix:
@@ -103,8 +103,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: FilePrefixSuffix
         file_prefix_suffix:
@@ -175,8 +175,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: FilePrefixSuffix
         file_prefix_suffix:
@@ -265,8 +265,8 @@ spec:
   file:
     file_config:
       watchedInodeMapSizePolicy: "auto" # watchedInodeMapSize = (watchedInodeMapSizeMultiplier * number_of_inodes) + watchedInodeMapSizeConstant
-      watchedInodeMapSizeMultiplier: "1"
-      watchedInodeMapSizeConstant: "131072"
+      watchedInodeMapSizeMultiplier: "2"
+      watchedInodeMapSizeConstant: "8192"
     file_paths_patterns:
       - type: PathPrefix
         path_prefix:
