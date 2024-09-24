@@ -11,11 +11,10 @@
 package filemetrics
 
 import (
-	"path"
+	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	"github.com/prometheus/client_golang/prometheus"
@@ -125,7 +124,7 @@ func (c *bpfErrorCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *bpfErrorCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, tp := range pol.FileMonitoringTable.GetValuesFIM() {
-		filePinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "file_errors_map"))
+		filePinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "file_errors_map")
 		fileMapHandle, err := ebpf.LoadPinnedMap(filePinPath, nil)
 		if err != nil {
 			return

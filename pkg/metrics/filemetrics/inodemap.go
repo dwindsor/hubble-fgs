@@ -11,11 +11,10 @@
 package filemetrics
 
 import (
-	"path"
+	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,7 +45,7 @@ func countInodeMapEnties(handle *ebpf.Map) uint64 {
 
 func (c *bpfInodeMapCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, tp := range pol.FileMonitoringTable.GetValuesFIM() {
-		inodePinPath := path.Join(option.Config.BpfDir, sensors.PathJoin(tp.PinPath, "hash_map_inode_alloc"))
+		inodePinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "hash_map_inode_alloc")
 		inodeMapHandle, err := ebpf.LoadPinnedMap(inodePinPath, nil)
 		if err != nil {
 			return
