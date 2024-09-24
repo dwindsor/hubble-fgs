@@ -11,6 +11,7 @@
 
 #define KERNEL_5_15
 #include "bpf_tcp_connect.h"
+#include "bpf_tcp_state.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {

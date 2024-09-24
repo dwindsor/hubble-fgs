@@ -25,6 +25,13 @@ struct {
 	__uint(max_entries, 1);
 } tcp_close_event_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct tcpsocketmap_value);
+	__uint(max_entries, 1);
+} tg_sockops_tcpsocket_map SEC(".maps");
+
 static inline int
 tcp_set_fin(void *ctx, u64 *cookie)
 {
@@ -46,5 +53,27 @@ tcp_set_fin(void *ctx, u64 *cookie)
 	*/
 	socket->fin_rx = 1;
 	return 0;
+}
+
+static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(struct msg_ip_event *val, struct msg_execve_key *key, u16 family)
+{
+	struct tcpsocketmap_value *v;
+	int zero = 0;
+
+	v = map_lookup_elem(&tg_sockops_tcpsocket_map, &zero);
+	if (!v)
+		return 0;
+
+	v->key.pid = key->pid;
+	v->key.ktime = key->ktime;
+	v->create_time = val->common.ktime;
+	v->last_time = v->create_time;
+	v->socket_flags = SOCKFLAGS_TYPE_CONNECT;
+	v->sent = 0;
+	v->received = 0;
+	v->ipv6 = (family == AF_INET6);
+	v->version = val->version;
+
+	return v;
 }
 #endif // __BPF_TCP_STATE_H__

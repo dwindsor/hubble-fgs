@@ -23,6 +23,7 @@
 #include "bpf_tcp_network_event_config.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tcp_state.h"
 
 #include "process/process_tree.h"
 
@@ -38,23 +39,6 @@ struct {
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
 } tcp_connect_event_map SEC(".maps");
-
-static inline __attribute__((always_inline)) struct tcpsocketmap_value init_tcpsocketmap_value(struct msg_ip_event *val, struct msg_execve_key *key, u16 family)
-{
-	struct tcpsocketmap_value v = { 0 };
-
-	v.key.pid = key->pid;
-	v.key.ktime = key->ktime;
-	v.create_time = val->common.ktime;
-	v.last_time = v.create_time;
-	v.socket_flags = SOCKFLAGS_TYPE_CONNECT;
-	v.sent = 0;
-	v.received = 0;
-	v.ipv6 = (family == AF_INET6);
-	v.version = val->version;
-
-	return v;
-}
 
 static inline __attribute__((always_inline)) struct msg_ip_event init_msg_ip_event(struct msg_execve_key *key, u64 cookie)
 {
@@ -158,11 +142,12 @@ __event_tcp_connect(struct pt_regs *ctx)
 
 	event_post_connect(ctx, val);
 
-	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, family);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(val, key, family);
 #ifdef KERNEL_5_15
-	process_socketmap_add(&v, &(val->tuple));
+	process_socketmap_add(v, &(val->tuple));
 #endif
-	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
+	if (v)
+		add_tcpsocketmap(&cookie, v, &val->tuple, true);
 	return 1;
 }
 
@@ -212,10 +197,14 @@ __event_tcp_connect_sockops(struct bpf_sock_ops *skops)
 
 	event_post_connect(skops, val);
 
-	struct tcpsocketmap_value v = init_tcpsocketmap_value(val, key, skops->family);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(val, key, skops->family);
+
+	if (!v)
+		return 0;
+
 #ifdef KERNEL_5_15
-	process_socketmap_add(&v, &(val->tuple));
+	process_socketmap_add(v, &(val->tuple));
 #endif
-	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
+	add_tcpsocketmap(&cookie, v, &val->tuple, true);
 	return 0;
 }
