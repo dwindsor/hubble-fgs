@@ -187,12 +187,12 @@ var (
 	VerOpsMap       = program.MapBuilder("tg_ver_map", TcpSockops515)
 
 	// Parser maps
-	HTTPContext    = program.MapBuilder("tg_http_map", CloseAndAccept)
-	TLSContext     = program.MapBuilder("tg_tls_map", CloseAndAccept)
+	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops515)
+	TLSContext     = program.MapBuilder("tg_tls_map", TcpSockops515)
 	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", Connect)
 	TLSOpsMapStats = program.MapBuilder("tg_tls_map_stats", TcpSockops515)
-	TLSBottles     = program.MapBuilder("tg_bottles", CloseAndAccept)
-	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", CloseAndAccept)
+	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops515)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops515)
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
@@ -241,12 +241,7 @@ func processModelMapsEnable() []*program.Map {
 func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	TimestampEnabled = false
 
-	progs := []*program.Program{
-		CloseAndAccept,
-		Listen,
-		Accept,
-		AcceptRet,
-	}
+	progs := []*program.Program{}
 
 	mapsOps := []*program.Map{
 		SocketOpsMap,
@@ -288,11 +283,23 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	// for connect maps. The main issue is lack of atomic operations to
 	// support multiple cores accessing the map.
 	if !kernels.MinKernelVersion("5.14.0") {
-		progs = append(progs, Connect)
+		progs = append(progs, []*program.Program{
+			Connect,
+			CloseAndAccept,
+			Listen,
+			Accept,
+			AcceptRet,
+		}...)
 		maps = append(maps, mapsConnect...)
 	} else {
 		if runtime.GOARCH != "amd64" {
-			progs = append(progs, Connect)
+			progs = append(progs, []*program.Program{
+				Connect,
+				CloseAndAccept,
+				Listen,
+				Accept,
+				AcceptRet,
+			}...)
 			maps = append(maps, mapsConnect...)
 		} else {
 			progs = append(progs, TcpSockops515, SecurityAccept, SecurityGraft)
