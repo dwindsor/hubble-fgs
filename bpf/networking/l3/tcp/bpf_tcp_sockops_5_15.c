@@ -138,6 +138,44 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	return 0;
 }
 
+int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
+{
+	struct socketmap_value *socket = 0;
+	struct msg_execve_key *key;
+	struct msg_ip_event *val;
+	__u32 zero = 0;
+	u64 cookie;
+
+	/* In TCP we use the struct sock address as the socket cookie. */
+	cookie = (__u64)skops->sk;
+	socket = lookup_socketmap(&cookie);
+	if (!socket) {
+		emit_ip_error_event(skops, 0, &cookie, skops->family == AF_INET6, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
+		return 0;
+	}
+
+	key = &socket->key;
+	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
+						     &zero);
+	if (!val)
+		return 0;
+
+	val->common.op = ISO_MSG_OP_TCPCONNECTRET;
+	skops_socket(cookie, val, socket);
+	skops_tuple(cookie, val, skops);
+
+	event_post_connect(skops, val);
+
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(val, key, skops->family);
+	if (!v)
+		return 0;
+#ifdef KERNEL_5_15
+	process_socketmap_add(v, &(val->tuple));
+#endif
+	add_tcpsocketmap(&cookie, v, &val->tuple, true);
+	return 0;
+}
+
 __attribute__((section("sockops/tcp_sockops"), used)) int
 tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 {
@@ -148,7 +186,8 @@ tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 
 	switch (skops->op) {
 	case BPF_SOCK_OPS_TCP_CONNECT_CB:
-		__event_tcp_connect_sockops(skops);
+		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
+		event_tcp_sockops_connect(skops);
 		break;
 	case BPF_SOCK_OPS_TCP_LISTEN_CB:
 		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
