@@ -179,6 +179,72 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	return 0;
 }
 
+int event_tcp_close_sockops(struct bpf_sock_ops *skops)
+{
+	struct tcp_event_disable_config *event_cfg;
+	struct msg_ip_with_stats_event *val;
+	struct tcpsocketmap_value *socket;
+	int old_state, state;
+	u32 zero = 0;
+	size_t size;
+	u64 cookie;
+
+	/* In TCP we use the struct sock address as the socket cookie. */
+	cookie = (u64)skops->sk;
+
+	old_state = skops->args[0];
+	state = skops->args[1];
+
+	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING ||
+	    (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) ||
+	    (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT))
+		return tcp_set_fin(skops, &cookie);
+
+	if (state != TCP_CLOSE)
+		return 0;
+
+	socket = lookup_tcpsocketmap(&cookie);
+	if (!socket) {
+		emit_ip_error_event(skops, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
+		return 0;
+	}
+
+	/* We don't need to account further if the socket has already been closed. */
+	if (socket->closed)
+		return 0;
+
+	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tcp_close_event_map, &zero);
+	if (!val)
+		return 0;
+
+	val->common.op = ISO_MSG_OP_TCPCLOSE;
+	skops_socket_with_stats(cookie, val, socket);
+	skops_tuple_with_stats(cookie, val, skops);
+	get_socket_stats((struct sock *)cookie, socket, &val->stats);
+	val->close_time = ktime_get_ns();
+	val->stats.bytes_received -= socket->fin_rx;
+	socket->closed = 1;
+
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return 0;
+
+	size = sizeof(struct msg_ip_with_stats_event);
+	if (!event_cfg->disableClose) {
+		perf_event_output_metric(skops, ISO_MSG_OP_TCPCLOSE, &tcpmon_map,
+					 BPF_F_CURRENT_CPU, val, size);
+	}
+
+	if (!socket->ipv6) {
+		del_tlsmap(&cookie);
+		map_delete_elem(&tg_http_map, &cookie);
+		bottle_drop(&cookie);
+	}
+
+	return 0;
+}
+
 __attribute__((section("sockops/tcp_sockops"), used)) int
 tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 {
@@ -191,6 +257,9 @@ tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 	case BPF_SOCK_OPS_TCP_CONNECT_CB:
 		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
 		event_tcp_sockops_connect(skops);
+		break;
+	case BPF_SOCK_OPS_STATE_CB:
+		event_tcp_close_sockops(skops);
 		break;
 	case BPF_SOCK_OPS_TCP_LISTEN_CB:
 		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
