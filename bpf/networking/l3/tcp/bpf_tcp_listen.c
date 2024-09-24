@@ -22,19 +22,13 @@
 #include "lib/address_family.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tcp_listen.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tcp_listen_event_map SEC(".maps");
 
 __attribute__((section("kprobe/__inet_hash"), used)) int
 tg_event_sys_listen(struct pt_regs *ctx)

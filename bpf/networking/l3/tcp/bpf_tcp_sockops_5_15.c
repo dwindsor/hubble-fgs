@@ -12,6 +12,7 @@
 #define KERNEL_5_15
 #include "bpf_tcp_connect.h"
 #include "bpf_tcp_state.h"
+#include "bpf_tcp_listen.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {
@@ -81,6 +82,62 @@ int skops_tuple_with_stats(u64 cookie, struct msg_ip_with_stats_event *val, stru
 	return skops_tuple(cookie, (struct msg_ip_event *)val, skops);
 }
 
+int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
+{
+	struct tcp_event_disable_config *event_cfg;
+	struct socketmap_value *socket = 0;
+	struct tcpsocketmap_value *v;
+	u64 cookie, now;
+	struct msg_ip_event *val;
+	u32 zero = 0;
+
+	/* In TCP we use the struct sock address as the socket cookie. */
+	cookie = (u64)skops->sk;
+	socket = lookup_socketmap(&cookie);
+	if (!socket)
+		return 0;
+
+	val = (struct msg_ip_event *)map_lookup_elem(&tcp_listen_event_map,
+						     &zero);
+	if (!val)
+		return 0;
+
+	val->common.op = ISO_MSG_OP_LISTEN;
+	skops_socket(cookie, val, socket);
+	skops_tuple(cookie, val, skops);
+
+	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return 0;
+
+	if (!event_cfg->disableListen) {
+		perf_event_output_metric(skops, ISO_MSG_OP_LISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+					 sizeof(struct msg_ip_event));
+	}
+
+	v = map_lookup_elem(&tg_sockops_tcpsocket_map, &zero);
+	if (!v)
+		return 0;
+
+	now = ktime_get_ns();
+
+	v->key.pid = val->key.pid;
+	v->key.ktime = val->key.ktime;
+	v->create_time = now;
+	v->last_time = now;
+	v->zero_window = 0;
+	v->socket_flags = SOCKFLAGS_TYPE_LISTEN;
+	v->sent = 0;
+	v->received = 0;
+	v->ipv6 = (skops->family == AF_INET6);
+	v->version = val->version;
+
+	add_tcpsocketmap(&cookie, v, &val->tuple, true);
+
+	return 0;
+}
+
 __attribute__((section("sockops/tcp_sockops"), used)) int
 tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 {
@@ -92,6 +149,10 @@ tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 	switch (skops->op) {
 	case BPF_SOCK_OPS_TCP_CONNECT_CB:
 		__event_tcp_connect_sockops(skops);
+		break;
+	case BPF_SOCK_OPS_TCP_LISTEN_CB:
+		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
+		event_tcp_sockops_listen(skops);
 		break;
 	default:
 		break;
