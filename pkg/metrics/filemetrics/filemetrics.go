@@ -48,6 +48,8 @@ const (
 	GrpcOpGtOne
 	GrpcNotValidOp
 	GrpcEventcacheRetry
+	MetricsInodeMap
+	MetricsKernelErrorsMap
 )
 
 var fileErrorLabelValues = map[FileError]string{
@@ -72,6 +74,8 @@ var fileErrorLabelValues = map[FileError]string{
 	GrpcOpGtOne:                       "grpc_op_gt_one",
 	GrpcNotValidOp:                    "grpc_not_valid_op",
 	GrpcEventcacheRetry:               "grpc_eventcache_retry",
+	MetricsInodeMap:                   "metrics_inode_map",
+	MetricsKernelErrorsMap:            "metrics_kernel_errors_map",
 }
 
 func (e FileError) String() string {

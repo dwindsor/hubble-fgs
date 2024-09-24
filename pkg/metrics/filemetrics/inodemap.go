@@ -48,6 +48,7 @@ func (c *bpfInodeMapCollector) Collect(ch chan<- prometheus.Metric) {
 		inodePinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "hash_map_inode_alloc")
 		inodeMapHandle, err := ebpf.LoadPinnedMap(inodePinPath, nil)
 		if err != nil {
+			FileTotalErrorsInc(MetricsInodeMap)
 			return
 		}
 		defer inodeMapHandle.Close()

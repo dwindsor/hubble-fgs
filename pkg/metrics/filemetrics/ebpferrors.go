@@ -127,6 +127,7 @@ func (c *bpfErrorCollector) Collect(ch chan<- prometheus.Metric) {
 		filePinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "file_errors_map")
 		fileMapHandle, err := ebpf.LoadPinnedMap(filePinPath, nil)
 		if err != nil {
+			FileTotalErrorsInc(MetricsKernelErrorsMap)
 			return
 		}
 		defer fileMapHandle.Close()
