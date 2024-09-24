@@ -24,42 +24,13 @@
 #include "parsers/bottle.h"
 #include "bpf_tcp_network_event_config.h"
 #include "bpf_tcp_accept.h"
+#include "bpf_tcp_state.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_with_stats_event);
-	__uint(max_entries, 1);
-} tcp_close_event_map SEC(".maps");
-
-static inline int
-tcp_set_fin(void *ctx, u64 *cookie)
-{
-	struct tcpsocketmap_value *socket;
-
-	socket = lookup_tcpsocketmap(cookie);
-	if (!socket) {
-		emit_ip_error_event(ctx, 0, cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
-		return 0;
-	}
-
-	/* When a socket is closing, it may have received a FIN(/ACK) segment.
-	* Unfortunately, a FIN(/ACK) increases the received sequence counter
-	* by 1 (in order to maintain appropriate state). We use the received
-	* sequence counter to indicate the number of bytes received, so if
-	* we have received a FIN(/ACK) then our counter will be 1 greater than
-	* it should be. Mark the socket so that stats calculations can take
-	* this into account.
-	*/
-	socket->fin_rx = 1;
-	return 0;
-}
 
 __attribute__((section("kprobe/tcp_set_state"), used)) int
 tg_event_tcp_close_and_accept(struct pt_regs *ctx)
