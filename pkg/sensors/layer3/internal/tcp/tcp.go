@@ -165,8 +165,8 @@ var (
 	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
 
-	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept);
-	SecurityGraftMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityGraft);
+	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
+	SecurityGraftMap  = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityGraft)
 
 	// Endpoint Models
 	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
