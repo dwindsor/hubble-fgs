@@ -11,59 +11,131 @@
 package sandboxpolicy
 
 import (
-	"errors"
+	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/arch"
+	"github.com/cilium/tetragon/pkg/ftrace"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
-	eesyscallinfo "github.com/isovalent/hubble-fgs/pkg/syscallinfo"
+	"github.com/isovalent/hubble-fgs/pkg/abicalls"
 )
 
+// Using ftrace, retrieve a call of available syscall entries
+func ftraceAvailEntries() (map[string]struct{}, error) {
+	list, err := ftrace.ReadAvailFuncs("sys_")
+	if err != nil {
+		return nil, err
+	}
+
+	availMap := make(map[string]struct{}, len(list))
+	for _, x := range list {
+		availMap[x] = struct{}{}
+	}
+	return availMap, err
+}
+
+// getEIsFn returns the architecture-dependent function for retrieving ids and entries
+func getEIsFn() (func(n string) ([]string, []uint32), error) {
+	switch a := runtime.GOARCH; a {
+	case "amd64":
+		return func(n string) (entries []string, ids []uint32) {
+			calls, ok := abicalls.CallsX86_64[n]
+			if !ok {
+				return
+			}
+			if c := calls.X64; c != nil {
+				ids = append(ids, uint32(c.ID))
+				entries = append(entries, c.Symbols...)
+			}
+			if c := calls.IA32; c != nil {
+				ids = append(ids, uint32(c.ID)|tracing.Is32Bit)
+				entries = append(entries, c.Symbols...)
+			}
+			return
+		}, nil
+	case "arm64":
+		return func(n string) (entries []string, ids []uint32) {
+			calls, ok := abicalls.CallsARM64[n]
+			if !ok {
+				return
+			}
+			if c := calls.ARM64; c != nil {
+				ids = append(ids, uint32(c.ID))
+				entries = append(entries, c.Symbols...)
+			}
+			if c := calls.ARM32; c != nil {
+				ids = append(ids, uint32(c.ID)|tracing.Is32Bit)
+				entries = append(entries, c.Symbols...)
+			}
+			return
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported arch: %s", a)
+	}
+}
+
 // generateSyscalls generates a list:
-//   - entries to enforce to
-//   - syscall ids to check
+//   - syscall entries to hook into for enforcement
+//   - syscall ids to check to filter
 func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, error) {
 
-	var calls []string
-	for _, s := range l {
-		calls = append(calls, s.Name)
-	}
-
-	entries, err := eesyscallinfo.SyscallNamesToEntries(calls)
+	// function to get entries and ids from the abicalls tables
+	// For now we add both the 32- and 64- bit ABIs. Future work might extend the
+	// SandboxSyscallItem to include ABI information.
+	getEIs, err := getEIsFn()
 	if err != nil {
-		var e *eesyscallinfo.MissingSyscalls
-		if errors.As(err, &e) {
-			logger.GetLogger().WithField("syscalls", strings.Join(e.Calls, ",")).Info("missing syscalls")
-		} else {
-			return nil, nil, err
-		}
+		return nil, nil, err
 	}
-	logger.GetLogger().WithField("entries", strings.Join(entries, ",")).Debug("monitored entries")
 
+	entries := []string{}
 	ids := []uint32{}
-	for _, call := range calls {
-		if runtime.GOARCH == "amd64" {
-			x86ids := eesyscallinfo.GetX86IDs(call)
-			if x86ids == nil {
-				logger.GetLogger().WithField("syscall", call).Info("missing x86 syscall ids, skipping")
-				continue
-			}
-			if x86ids.X64 != nil {
-				ids = append(ids, uint32(*x86ids.X64))
-			}
-			if x86ids.IA32 != nil {
-				ids = append(ids, tracing.Is32Bit|uint32(*x86ids.X64))
-			}
-		} else {
-			id, err := tracing.SyscallVal(call).ID()
-			if err != nil {
-				logger.GetLogger().WithField("syscall", call).Warn("missing syscall id, skipping")
-				continue
-			}
-			ids = append(ids, uint32(id))
+	missingSyscalls := []string{} // syscalls for which we do not have information in abicalls
+	missingEntries := []string{}  // syscalls for which we were not able to find entries
+	availEntries, err := ftraceAvailEntries()
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get ftrace entries: %w", err)
+	}
+
+	for _, s := range l {
+		name := strings.TrimPrefix(s.Name, "sys_")
+		xes, xids := getEIs(name)
+		if len(xids) == 0 {
+			missingSyscalls = append(missingSyscalls, s.Name)
+			continue
 		}
+
+		// add the default entry if it does not exist in the list
+		if e, err := arch.AddSyscallPrefix(s.Name); err == nil {
+			if !slices.Contains(xes, e) {
+				xes = append(xes, e)
+			}
+		}
+		// filter based on available entries
+		xes = slices.DeleteFunc(xes, func(e string) bool {
+			_, exists := availEntries[e]
+			return !exists
+		})
+		if len(xes) == 0 {
+			missingEntries = append(missingEntries, s.Name)
+		}
+
+		entries = append(entries, xes...)
+		ids = append(ids, xids...)
+	}
+
+	if len(missingSyscalls) > 0 || len(missingEntries) > 0 {
+		logger.GetLogger().
+			WithField("missing-ids", missingSyscalls).
+			WithField("missing-entries", missingEntries).
+			Warn("missing syscall information")
+	}
+
+	if len(ids) == 0 {
+		return nil, nil, fmt.Errorf("no syscalls selected by policy, bailing out")
 	}
 
 	return entries, ids, nil
