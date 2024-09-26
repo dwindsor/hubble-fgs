@@ -85,7 +85,7 @@ func TestGrpcL3InOrder(t *testing.T) {
 
 	execOSS.AllEvents = nil
 	watcher := watcher.NewFakeK8sWatcher(nil)
-	cancel := execOSS.InitEnv[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](t, &cancelWg, watcher)
+	cancel, _ := execOSS.InitEnv[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](t, &cancelWg, watcher)
 	defer func() {
 		cancel()
 		cancelWg.Wait()
