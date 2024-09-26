@@ -24,6 +24,25 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/abicalls"
 )
 
+var deprecatedSyscalls = (func() map[string]struct{} {
+	ret := map[string]struct{}{
+		// system calls that are older than what tetragon supports (4.19)
+		"nfsservctl":      struct{}{}, // removed in 3.1
+		"query_module":    struct{}{}, // removed in 2.6
+		"create_module":   struct{}{}, // removed in 2.6
+		"get_kernel_syms": struct{}{}, // removed in 2.6
+	}
+
+	// These syscalls are only suported on 32-bit kernels.
+	// Tetragon does not support native i386 currently, but adding a check for clarity.
+	if runtime.GOARCH != "386" {
+		ret["vm86"] = struct{}{}
+		ret["vm86old"] = struct{}{}
+	}
+
+	return ret
+})()
+
 // if we need to block (enforcement) retrieve a list of symbols we can inject errors in
 // Otherwise, retrieve a call of available syscall entries
 func availEntries(needBlock bool) (map[string]struct{}, error) {
@@ -100,6 +119,7 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string
 	ids := []uint32{}
 	missingSyscalls := []string{} // syscalls for which we do not have information in abicalls
 	missingEntries := []string{}  // syscalls for which we were not able to find entries
+	deprecated := []string{}      // syscalls that are deprecated and we ignore them
 	availEntries, err := availEntries(needBlock)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get ftrace entries: %w", err)
@@ -109,7 +129,11 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string
 		name := strings.TrimPrefix(s.Name, "sys_")
 		xes, xids := getEIs(name)
 		if len(xids) == 0 {
-			missingSyscalls = append(missingSyscalls, s.Name)
+			if _, ok := deprecatedSyscalls[name]; ok {
+				deprecated = append(deprecated, s.Name)
+			} else {
+				missingSyscalls = append(missingSyscalls, s.Name)
+			}
 			continue
 		}
 
@@ -130,6 +154,12 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string
 
 		entries = append(entries, xes...)
 		ids = append(ids, xids...)
+	}
+
+	if len(deprecated) > 0 {
+		logger.GetLogger().
+			WithField("syscalls", deprecated).
+			Info("ignored deprecated (not supported by kernel) syscalls")
 	}
 
 	if len(missingSyscalls) > 0 || len(missingEntries) > 0 {
