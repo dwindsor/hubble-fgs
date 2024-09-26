@@ -11,11 +11,10 @@
 package syscallentries
 
 import (
-	"errors"
 	"fmt"
 	"log"
 
-	"github.com/isovalent/hubble-fgs/pkg/syscallinfo"
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/spf13/cobra"
 )
 
@@ -26,17 +25,12 @@ func New() *cobra.Command {
 		Long:    "",
 		PreRunE: nil,
 		RunE: func(_ *cobra.Command, args []string) error {
-			var e *syscallinfo.MissingSyscalls
-			entries, err := syscallinfo.SyscallNamesToEntries(args)
-
-			if err != nil && !errors.As(err, &e) {
+			entries, err := sandboxpolicy.SyscallNamesToEntries(args)
+			if err != nil {
 				log.Fatal(err)
 			}
 			for _, e := range entries {
 				fmt.Println(e)
-			}
-			if err != nil {
-				fmt.Printf("error: %s\n", err)
 			}
 			return nil
 

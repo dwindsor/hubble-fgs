@@ -102,6 +102,16 @@ func getEIsFn() (func(n string) ([]string, []uint32), error) {
 	}
 }
 
+func SyscallNamesToEntries(syscalls []string) ([]string, error) {
+	l := make([]v1alpha1.SandboxSyscallItem, 0, len(syscalls))
+	for _, s := range syscalls {
+		l = append(l, v1alpha1.SandboxSyscallItem{Name: s})
+	}
+
+	ret, _, err := generateSyscalls(l, false)
+	return ret, err
+}
+
 // generateSyscalls generates a list:
 //   - syscall entries to hook into for enforcement
 //   - syscall ids to check to filter
