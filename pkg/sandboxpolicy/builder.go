@@ -103,13 +103,14 @@ func (b *tpBuilder) addSyscallSpec(
 		})
 	}
 
-	entries, ids, err := generateSyscalls(spec.List)
+	haveBlock := actionsHaveBlock(spec.Actions)
+	haveSignal := actionsHaveSignal(spec.Actions)
+
+	entries, ids, err := generateSyscalls(spec.List, haveBlock)
 	if err != nil {
 		return err
 	}
 
-	haveBlock := actionsHaveBlock(spec.Actions)
-	haveSignal := actionsHaveSignal(spec.Actions)
 	if haveBlock || haveSignal {
 		if spec.Op == "NotIn" {
 			return fmt.Errorf("NotIn operator is currently not supported with enforcement")

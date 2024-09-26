@@ -24,8 +24,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/abicalls"
 )
 
-// Using ftrace, retrieve a call of available syscall entries
-func ftraceAvailEntries() (map[string]struct{}, error) {
+// if we need to block (enforcement) retrieve a list of symbols we can inject errors in
+// Otherwise, retrieve a call of available syscall entries
+func availEntries(needBlock bool) (map[string]struct{}, error) {
+	if needBlock {
+		return errorInjectionEntries()
+	}
+
 	list, err := ftrace.ReadAvailFuncs("sys_")
 	if err != nil {
 		return nil, err
@@ -81,7 +86,7 @@ func getEIsFn() (func(n string) ([]string, []uint32), error) {
 // generateSyscalls generates a list:
 //   - syscall entries to hook into for enforcement
 //   - syscall ids to check to filter
-func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, error) {
+func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string, []uint32, error) {
 
 	// function to get entries and ids from the abicalls tables
 	// For now we add both the 32- and 64- bit ABIs. Future work might extend the
@@ -95,7 +100,7 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem) ([]string, []uint32, erro
 	ids := []uint32{}
 	missingSyscalls := []string{} // syscalls for which we do not have information in abicalls
 	missingEntries := []string{}  // syscalls for which we were not able to find entries
-	availEntries, err := ftraceAvailEntries()
+	availEntries, err := availEntries(needBlock)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get ftrace entries: %w", err)
 	}
