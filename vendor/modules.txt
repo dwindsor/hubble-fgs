@@ -301,6 +301,7 @@ github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/common
 github.com/cilium/tetragon/cmd/tetra/dump
 github.com/cilium/tetragon/cmd/tetra/getevents
+github.com/cilium/tetragon/cmd/tetra/loglevel
 github.com/cilium/tetragon/cmd/tetra/policyfilter
 github.com/cilium/tetragon/cmd/tetra/probe
 github.com/cilium/tetragon/cmd/tetra/rthooks

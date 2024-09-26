@@ -13,6 +13,7 @@ package main
 import (
 	"github.com/cilium/tetragon/cmd/tetra/bugtool"
 	"github.com/cilium/tetragon/cmd/tetra/dump"
+	"github.com/cilium/tetragon/cmd/tetra/loglevel"
 	"github.com/cilium/tetragon/cmd/tetra/policyfilter"
 	"github.com/cilium/tetragon/cmd/tetra/probe"
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
@@ -36,4 +37,5 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(syscallentries.New())
 	rootCmd.AddCommand(exec.New())
 	rootCmd.AddCommand(dump.New())
+	rootCmd.AddCommand(loglevel.New())
 }
