@@ -29,9 +29,12 @@ import (
 )
 
 var (
-	gcTimer    = timer.NewPeriodicTimer("TCP GC Timer", runTcpGC, true)
+	gcTimer    = timer.NewPeriodicTimer("TCP GC Timer", getRunTcpGC(emitSocketStatsEvent), true)
 	TcpMapName = "tg_tcpsocket_map"
 )
+
+type collectKeyFn func(*networkapi.TcpBpfKey, *networkapi.TcpValue)
+type emitStatsFn func(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats)
 
 type SockStatKey struct {
 	Zero uint32
@@ -66,7 +69,7 @@ func (v *SockStatValue) String() string {
 		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 
-func emitStatEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
+func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) *grpc.MsgIPWithStatsEventUnix {
 	unix := grpc.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
@@ -86,55 +89,64 @@ func emitStatEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networka
 	unix.Msg.SocketStats = *stats
 	unix.Duration = 0
 
-	observer.AllListeners(&unix)
+	return &unix
 }
 
-func tcpGcCb(_ *ebpf.Map, key *networkapi.TcpBpfKey, value *networkapi.TcpValue) {
-	// We don't need to account further if the socket has already been closed.
-	if value.Closed != 0 {
-		return
-	}
-	tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
-	tcpStats := ToMsgSocketStatsUnix(value)
-	statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
+func emitSocketStatsEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
+	observer.AllListeners(socketStatsToIPWithStatsEventUnix(k, v, tuple, stats))
+}
 
-	last, ok := stats.Get(statsKey)
-	if ok {
-		// If Ktime is the same as last read then nothing has changed.
-		if tcpStats.Ktime != last.Ktime {
-			diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
-			// Store the stats from the BPF map into the cache
-			stats.Add(statsKey, *tcpStats)
-			if err == nil {
-				emitStatEvent(&statsKey, value, tuple, &diffValue)
-			} else {
-				logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
-			}
+func getTCPGCCallback(emitStats emitStatsFn) collectKeyFn {
+	return func(key *networkapi.TcpBpfKey, value *networkapi.TcpValue) {
+		// We don't need to account further if the socket has already been closed.
+		if value.Closed != 0 {
+			return
 		}
-	} else {
-		emitStatEvent(&statsKey, value, tuple, tcpStats)
-		stats.Add(statsKey, *tcpStats)
+		tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
+		tcpStats := ToMsgSocketStatsUnix(value)
+		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
+
+		last, ok := stats.Get(statsKey)
+		if ok {
+			// If Ktime is the same as last read then nothing has changed.
+			if tcpStats.Ktime != last.Ktime {
+				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
+				// Store the stats from the BPF map into the cache
+				stats.Add(statsKey, *tcpStats)
+				if err == nil {
+					emitStats(&statsKey, value, tuple, &diffValue)
+				} else {
+					logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
+				}
+			}
+		} else {
+			emitStats(&statsKey, value, tuple, tcpStats)
+			stats.Add(statsKey, *tcpStats)
+		}
 	}
 }
 
-func runTcpGC() {
-	file := filepath.Join(bpf.MapPrefixPath(), TcpMapName)
+func getRunTcpGC(emitStats emitStatsFn) func() {
+	callback := getTCPGCCallback(emitStats)
+	return func() {
+		file := filepath.Join(bpf.MapPrefixPath(), TcpMapName)
 
-	m, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("TCP GC failed to open file")
-		return
-	}
-	defer m.Close()
+		m, err := ebpf.LoadPinnedMap(file, nil)
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("file", file).Warn("TCP GC failed to open file")
+			return
+		}
+		defer m.Close()
 
-	var (
-		key networkapi.TcpBpfKey
-		val networkapi.TcpValue
-	)
+		var (
+			key networkapi.TcpBpfKey
+			val networkapi.TcpValue
+		)
 
-	iter := m.Iterate()
-	for iter.Next(&key, &val) {
-		tcpGcCb(m, &key, &val)
+		iter := m.Iterate()
+		for iter.Next(&key, &val) {
+			callback(&key, &val)
+		}
 	}
 }
 
