@@ -299,7 +299,7 @@ github.com/cilium/proxy/pkg/policy/api/kafka
 ## explicit; go 1.22.1
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/common
-github.com/cilium/tetragon/cmd/tetra/dump
+github.com/cilium/tetragon/cmd/tetra/debug
 github.com/cilium/tetragon/cmd/tetra/getevents
 github.com/cilium/tetragon/cmd/tetra/loglevel
 github.com/cilium/tetragon/cmd/tetra/policyfilter
