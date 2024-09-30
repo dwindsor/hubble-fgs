@@ -10,7 +10,16 @@
 
 package file
 
-import "github.com/cilium/tetragon/api/v1/tetragon"
+import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"fmt"
+	"hash"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+)
 
 const (
 	IMA_MAX_DIGEST_SIZE = 64
@@ -63,3 +72,25 @@ var (
 		"streebog512": tetragon.DigestAlgo_HASH_ALGO_STREEBOG_512,
 	}
 )
+
+func GetHashAlgo(algo int32) (hash.Hash, error) {
+	var h hash.Hash
+	switch tetragon.DigestAlgo(algo) {
+	case tetragon.DigestAlgo_HASH_ALGO_SHA1:
+		h = sha1.New()
+	case tetragon.DigestAlgo_HASH_ALGO_SHA224:
+		h = sha256.New224()
+	case tetragon.DigestAlgo_HASH_ALGO_SHA256:
+		h = sha256.New()
+	case tetragon.DigestAlgo_HASH_ALGO_SHA384:
+		h = sha512.New384()
+	case tetragon.DigestAlgo_HASH_ALGO_SHA512:
+		h = sha512.New()
+	case tetragon.DigestAlgo_HASH_ALGO_MD5:
+		h = md5.New()
+	default:
+		return h, fmt.Errorf("tracingPolicyFileDigests: Unsupported digest algo: %d", algo)
+	}
+
+	return h, nil
+}

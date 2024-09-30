@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -35,6 +36,7 @@ func New() *cobra.Command {
 		printInodeMapCmd(),
 		printLpmMapCmd(),
 		supportEnforcementCmd(),
+		supportDigestsCmd(),
 	)
 
 	return ret
@@ -117,4 +119,33 @@ func supportEnforcementCmd() *cobra.Command {
 			}
 		},
 	}
+}
+
+func supportDigestsCmd() *cobra.Command {
+	objDir := ""
+
+	ret := &cobra.Command{
+		Use:   "support-digests",
+		Short: "the algorith name if digests are supported, NONE otherwise",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			if objDir == "" {
+				return fmt.Errorf("command line argument --objdir is required")
+			}
+
+			algo, err := file.ProbeImaEnabledAlgo(objDir, args[0], args[1:]...)
+			if err != nil {
+				fmt.Println("NONE")
+				return err
+			}
+			fmt.Println(algo)
+			return nil
+		},
+	}
+
+	flags := ret.Flags()
+	flags.StringVar(&objDir, "objdir", objDir, "directory that contains all the eBPF object files")
+	viper.BindPFlags(flags)
+
+	return ret
 }

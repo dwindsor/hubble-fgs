@@ -1629,6 +1629,9 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
 	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
 
+	algo, err := probeImaEnabled()
+	logger.GetLogger().WithError(err).WithField("algo", algo).Infof("probeImaEnabled()")
+
 	supportBpfLoop := (probeBpfLoop() == nil)
 	logger.GetLogger().Infof("probeBpfLoop() = %t", supportBpfLoop)
 
