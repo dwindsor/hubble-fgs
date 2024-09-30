@@ -146,10 +146,6 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s.BytesReceived = t.Recv - uint64(t.FinRx)
 	s.SegsIn = t.SegsIn
 	s.SegsOut = t.SegsOut
-	s.BytesSubmitted = 0
-	s.BytesConsumed = 0
-	s.SegsConsumed = 0
-	s.SegsSubmitted = 0
 	s.SRtt = t.Srtt
 	s.RetransmitSegs = t.RetransmitSegs
 	s.RetransmitBytes = t.RetransmitBytes
@@ -263,13 +259,9 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 	}
 	return networkapi.MsgSocketStats{
 		Ktime:            curr.Ktime,
-		BytesSubmitted:   0,
 		BytesSent:        curr.BytesSent - last.BytesSent,
-		BytesConsumed:    0,
 		BytesReceived:    curr.BytesReceived - last.BytesReceived,
-		SegsConsumed:     0,
 		SegsIn:           curr.SegsIn - last.SegsIn,
-		SegsSubmitted:    0,
 		SegsOut:          curr.SegsOut - last.SegsOut,
 		SRtt:             curr.SRtt,
 		RetransmitSegs:   curr.RetransmitSegs - last.RetransmitSegs,

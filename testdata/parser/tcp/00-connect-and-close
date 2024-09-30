@@ -89,7 +89,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 368        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -125,10 +125,6 @@ EVENT TCPCLOSE
   h8 5 # bytes received
   NZ 4 # segs in
   NZ 4 # segs out
-  ? 8  # bytes submitted
-  ? 8  # bytes consumed
-  ? 4  # segs consumed
-  ? 4  # segs submitted
   ? 4  # srtt
   h4 0 # retransmitted segs
   h8 0 # retransmitted bytes
@@ -164,7 +160,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 368        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -200,10 +196,6 @@ EVENT TCPCLOSE
   NZ 8 # bytes received (fluctuates between 3 and 4 (if FIN was counted))
   NZ 4 # segs in
   NZ 4 # segs out
-  ? 8  # bytes submitted
-  ? 8  # bytes consumed
-  ? 4  # segs consumed
-  ? 4  # segs submitted
   ? 4  # srtt
   h4 0 # retransmitted segs
   h8 0 # retransmitted bytes
@@ -238,7 +230,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 368        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -274,10 +266,6 @@ EVENT TCPCLOSE
   h8 0 # bytes received
   h4 0 # segs in
   h4 0 # segs out
-  ? 8  # bytes submitted
-  ? 8  # bytes consumed
-  ? 4  # segs consumed
-  ? 4  # segs submitted
   ? 4  # srtt
   h4 0 # retransmitted segs
   h8 0 # retransmitted bytes

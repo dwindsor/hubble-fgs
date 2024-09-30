@@ -138,13 +138,13 @@ func GetSocketStats(stats *api.MsgSocketStats) *tetragon.SocketStats {
 	}
 
 	return &tetragon.SocketStats{
-		BytesSubmitted:   stats.BytesSubmitted,
-		BytesConsumed:    stats.BytesConsumed,
+		BytesSubmitted:   stats.BytesSent,
+		BytesConsumed:    stats.BytesReceived,
 		BytesSent:        stats.BytesSent,
 		BytesReceived:    stats.BytesReceived,
-		SegsConsumed:     stats.SegsConsumed,
+		SegsConsumed:     stats.SegsIn,
 		SegsIn:           stats.SegsIn,
-		SegsSubmitted:    stats.SegsSubmitted,
+		SegsSubmitted:    stats.SegsOut,
 		SegsOut:          stats.SegsOut,
 		Srtt:             stats.SRtt,
 		RetransmitsBytes: stats.RetransmitBytes,

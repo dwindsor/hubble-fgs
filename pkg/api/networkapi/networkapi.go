@@ -182,10 +182,6 @@ type MsgSocketStats struct {
 	BytesReceived    uint64
 	SegsIn           uint32
 	SegsOut          uint32
-	BytesSubmitted   uint64
-	BytesConsumed    uint64
-	SegsConsumed     uint32
-	SegsSubmitted    uint32
 	SRtt             uint32
 	RetransmitSegs   uint32
 	RetransmitBytes  uint64

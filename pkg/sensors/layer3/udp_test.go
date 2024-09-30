@@ -835,9 +835,7 @@ func TestUdpConnectEvent4(t *testing.T) {
 	// keep a cumulative count of the stats we have seen and compare them to expected
 	// totals.
 	var clientBytesSent uint64
-	var clientBytesSubmitted uint64
 	var clientSegsOut uint32
-	var clientSegsSubmitted uint32
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
@@ -853,9 +851,7 @@ func TestUdpConnectEvent4(t *testing.T) {
 
 			if clientStatsChecker.Check(event) == nil {
 				clientBytesSent += event.Stats.BytesSent
-				clientBytesSubmitted += event.Stats.BytesSubmitted
 				clientSegsOut += event.Stats.SegsOut
-				clientSegsSubmitted += event.Stats.SegsSubmitted
 				return false, nil
 			}
 
@@ -870,9 +866,7 @@ func TestUdpConnectEvent4(t *testing.T) {
 		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
-				clientBytesSubmitted = 0
 				clientSegsOut = 0
-				clientSegsSubmitted = 0
 				serverBytesReceived = 0
 				serverSegsIn = 0
 			}()
@@ -881,16 +875,8 @@ func TestUdpConnectEvent4(t *testing.T) {
 				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
 			}
 
-			if clientBytesSubmitted != 5 {
-				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
-			}
-
 			if clientSegsOut != 1 {
 				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
-			}
-
-			if clientSegsSubmitted != 1 {
-				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
 			}
 
 			if serverBytesReceived != 5 {
@@ -1086,9 +1072,7 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 				WithDestinationPort(8081)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesSent(5).
-				WithBytesSubmitted(5).
-				WithSegsOut(1).
-				WithSegsSubmitted(1)),
+				WithSegsOut(1)),
 		// Check server sock stats
 		ec.NewProcessSockStatsChecker("serverStats").
 			WithProcess(ncSrvChecker).
@@ -1366,9 +1350,7 @@ func TestUdpConnectEvent6(t *testing.T) {
 	// keep a cumulative count of the stats we have seen and compare them to expected
 	// totals.
 	var clientBytesSent uint64
-	var clientBytesSubmitted uint64
 	var clientSegsOut uint32
-	var clientSegsSubmitted uint32
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
@@ -1384,9 +1366,7 @@ func TestUdpConnectEvent6(t *testing.T) {
 
 			if clientStatsChecker.Check(event) == nil {
 				clientBytesSent += event.Stats.BytesSent
-				clientBytesSubmitted += event.Stats.BytesSubmitted
 				clientSegsOut += event.Stats.SegsOut
-				clientSegsSubmitted += event.Stats.SegsSubmitted
 				return false, nil
 			}
 
@@ -1401,9 +1381,7 @@ func TestUdpConnectEvent6(t *testing.T) {
 		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
-				clientBytesSubmitted = 0
 				clientSegsOut = 0
-				clientSegsSubmitted = 0
 				serverBytesReceived = 0
 				serverSegsIn = 0
 			}()
@@ -1412,16 +1390,8 @@ func TestUdpConnectEvent6(t *testing.T) {
 				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
 			}
 
-			if clientBytesSubmitted != 5 {
-				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
-			}
-
 			if clientSegsOut != 1 {
 				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
-			}
-
-			if clientSegsSubmitted != 1 {
-				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
 			}
 
 			if serverBytesReceived != 5 {
@@ -1558,9 +1528,7 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 				WithDestinationPort(8081)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesSent(5).
-				WithBytesSubmitted(5).
-				WithSegsOut(1).
-				WithSegsSubmitted(1)),
+				WithSegsOut(1)),
 		// Check server sock stats
 		ec.NewProcessSockStatsChecker("clientStats").
 			WithProcess(ncSrvChecker).
@@ -2013,21 +1981,13 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	// keep a cumulative count of the stats we have seen and compare them to expected
 	// totals.
 	var clientBytesSent uint64
-	var clientBytesSubmitted uint64
 	var clientBytesReceived uint64
-	var clientBytesConsumed uint64
 	var clientSegsOut uint32
-	var clientSegsSubmitted uint32
 	var clientSegsIn uint32
-	var clientSegsConsumed uint32
 	var serverBytesSent uint64
-	var serverBytesSubmitted uint64
 	var serverBytesReceived uint64
-	var serverBytesConsumed uint64
 	var serverSegsOut uint32
-	var serverSegsSubmitted uint32
 	var serverSegsIn uint32
-	var serverSegsConsumed uint32
 
 	statsChecker := &ec.FnEventChecker{
 		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
@@ -2042,25 +2002,17 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 
 			if clientStatsChecker.Check(event) == nil {
 				clientBytesSent += event.Stats.BytesSent
-				clientBytesSubmitted += event.Stats.BytesSubmitted
 				clientBytesReceived += event.Stats.BytesReceived
-				clientBytesConsumed += event.Stats.BytesConsumed
 				clientSegsIn += event.Stats.SegsIn
-				clientSegsConsumed += event.Stats.SegsConsumed
 				clientSegsOut += event.Stats.SegsOut
-				clientSegsSubmitted += event.Stats.SegsSubmitted
 				return false, nil
 			}
 
 			if serverStatsChecker.Check(event) == nil {
 				serverBytesSent += event.Stats.BytesSent
-				serverBytesSubmitted += event.Stats.BytesSubmitted
 				serverBytesReceived += event.Stats.BytesReceived
-				serverBytesConsumed += event.Stats.BytesConsumed
 				serverSegsIn += event.Stats.SegsIn
-				serverSegsConsumed += event.Stats.SegsConsumed
 				serverSegsOut += event.Stats.SegsOut
-				serverSegsSubmitted += event.Stats.SegsSubmitted
 				return false, nil
 			}
 
@@ -2069,85 +2021,45 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 		FinalCheckFn: func(_ *logrus.Logger) error {
 			defer func() {
 				clientBytesSent = 0
-				clientBytesSubmitted = 0
 				clientBytesReceived = 0
-				clientBytesConsumed = 0
 				clientSegsIn = 0
-				clientSegsConsumed = 0
 				clientSegsOut = 0
-				clientSegsSubmitted = 0
 				serverBytesSent = 0
-				serverBytesSubmitted = 0
 				serverBytesReceived = 0
-				serverBytesConsumed = 0
 				serverSegsIn = 0
-				serverSegsConsumed = 0
 				serverSegsOut = 0
-				serverSegsSubmitted = 0
 			}()
 
 			if clientBytesSent != 5 {
 				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
 			}
 
-			if clientBytesSubmitted != 5 {
-				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
-			}
-
 			if clientBytesReceived != 5 {
 				return fmt.Errorf("Unexecpected clientBytesReceived, wanted 5, got %d", clientBytesReceived)
-			}
-
-			if clientBytesConsumed != 5 {
-				return fmt.Errorf("Unexecpected clientBytesConsumed, wanted 5, got %d", clientBytesConsumed)
 			}
 
 			if clientSegsIn != 1 {
 				return fmt.Errorf("Unexecpected clientSegsIn, wanted 1, got %d", clientSegsIn)
 			}
 
-			if clientSegsConsumed != 1 {
-				return fmt.Errorf("Unexecpected clientSegsConsumed, wanted 1, got %d", clientSegsConsumed)
-			}
-
 			if clientSegsOut != 1 {
 				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
-			}
-
-			if clientSegsSubmitted != 1 {
-				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
 			}
 
 			if serverBytesSent != 5 {
 				return fmt.Errorf("Unexecpected serverBytesSent, wanted 5, got %d", serverBytesSent)
 			}
 
-			if serverBytesSubmitted != 5 {
-				return fmt.Errorf("Unexecpected serverBytesSubmitted, wanted 5, got %d", serverBytesSubmitted)
-			}
-
 			if serverBytesReceived != 5 {
 				return fmt.Errorf("Unexecpected serverBytesReceived, wanted 5, got %d", serverBytesReceived)
-			}
-
-			if serverBytesConsumed != 5 {
-				return fmt.Errorf("Unexecpected serverBytesConsumed, wanted 5, got %d", serverBytesConsumed)
 			}
 
 			if serverSegsIn != 1 {
 				return fmt.Errorf("Unexecpected serverSegsIn, wanted 1, got %d", serverSegsIn)
 			}
 
-			if serverSegsConsumed != 1 {
-				return fmt.Errorf("Unexecpected serverSegsConsumed, wanted 1, got %d", serverSegsConsumed)
-			}
-
 			if serverSegsOut != 1 {
 				return fmt.Errorf("Unexecpected serverSegsOut, wanted 1, got %d", serverSegsOut)
-			}
-
-			if serverSegsSubmitted != 1 {
-				return fmt.Errorf("Unexecpected serverSegsSubmitted, wanted 1, got %d", serverSegsSubmitted)
 			}
 
 			return nil

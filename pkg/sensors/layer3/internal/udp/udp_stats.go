@@ -89,13 +89,9 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		Ktime: v.PidKtime,
 	}
 	unix.Msg.SocketStats = api.MsgSocketStats{
-		BytesSubmitted:   v.TXBytes,
-		BytesConsumed:    v.RXBytes,
 		BytesSent:        v.TXBytes,
 		BytesReceived:    v.RXBytes,
-		SegsConsumed:     uint32(v.SegsIn),
 		SegsIn:           uint32(v.SegsIn),
-		SegsSubmitted:    uint32(v.SegsOut),
 		SegsOut:          uint32(v.SegsOut),
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
