@@ -1,0 +1,97 @@
+#define __V61_BPF_PROG
+#define __ENABLE_GLOB_SUPPORT
+#include "bpf_file.h"
+
+char _license[] __attribute__((section("license"), used)) = "GPL";
+
+SEC("lsm.s/bprm_check_security")
+int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
+{
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+	__u32 s_magic, operation, rule_id;
+	struct digest_key *digest = 0;
+	struct msg_file_ops *msg;
+	struct dentry *dentry;
+	struct file *file;
+	int err;
+
+	msg = get_msg_init();
+	if (!msg) {
+		err = -FILE_ERR_GET_MSG_HEAP;
+		goto lsm_bprm_check_security_error;
+	}
+
+	file = _(bprm->file);
+	if (!file) {
+		err = -FILE_ERR_FILE_FROM_BPRM;
+		goto lsm_bprm_check_security_error;
+	}
+
+	dentry = BPF_CORE_READ(file, f_path.dentry);
+	if (!dentry) {
+		err = -FILE_ERR_DENTRY_FROM_FILE;
+		goto lsm_bprm_check_security_error;
+	}
+
+	err = generate_inode_metadata(msg, dentry);
+	if (err < 0)
+		goto lsm_bprm_check_security_error;
+
+	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
+	rule_id = run_matcher(s_magic);
+	if (rule_id == INVALID_RULE_ID)
+		return 0;
+
+	generate_path(msg, _(&file->f_path));
+
+	msg->digest.ok = 1;
+	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	digest = &msg->digest;
+
+	operation = eval_selectors(action_exec, 0, digest, msg->path.str, msg->path.size);
+	if (!(operation & FILE_OP_POST))
+		return operation;
+
+	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
+
+	// Getting a file digest requires a sleepable LSM program.
+	// Sleepable programs can only use array, hash, ringbuf and local storage maps.
+	// To overcome this limitation we use an fexit program to call perf_event_output
+	// and send the event to the user-space. Fexit program always runs after
+	// the lsm.s program and they communicate through the exec_retprobe_map map.
+	err = map_update_elem(&exec_retprobe_map, &key, msg, 0);
+	if (err != 0) {
+		err = -FILE_ERR_UPDATE_EXEC_RETPROBE_MAP;
+		goto lsm_bprm_check_security_error;
+	}
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
+
+lsm_bprm_check_security_error:
+	inc_error(hook_security_bprm_check, -err);
+	return 0;
+}
+
+SEC("fexit/security_bprm_check")
+int BPF_PROG(security_bprm_check_fexit, struct linux_binprm *bprm)
+{
+	struct msg_file_ops *msg;
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+
+	msg = map_lookup_elem(&exec_retprobe_map, &key);
+	if (!msg)
+		return 0;
+
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+	// after sending the message we can delete the map entry
+	map_delete_elem(&exec_retprobe_map, &key);
+
+	return 0;
+}

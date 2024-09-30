@@ -126,7 +126,6 @@ var (
 		// Use probeDpathSecurityFileOpen to check support for that.
 		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open"}}},
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file"}}},
-		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security"}}},
 		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
 		// Use probeDpathSecurityPathTruncate to check support for that.
 		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link"}}},
@@ -137,6 +136,13 @@ var (
 		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_setattr.o", "path_chmod"}}},
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_setattr.o", "path_chown"}}},
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename"}}},
+	}
+
+	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security"}}}
+
+	FimPathBasedHooksExecDigests = [...]FimHook{
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security"}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check"}}},
 	}
 
 	FimHooksObserve = [...]FimHook{
@@ -1049,7 +1055,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			checkReWrite = probeDpathSecurityFilePermission
 		} else if h.progName == "lsm_security_kernel_read_file.o" {
 			checkReWrite = probeDpathSecurityKernelReadFile
-		} else if h.progName == "lsm_security_file_open.o" || h.progName == "lsm_security_mmap_file.o" || h.progName == "lsm_security_bprm_check.o" {
+		} else if h.progName == "lsm_security_file_open.o" || h.progName == "lsm_security_mmap_file.o" || h.progName == "lsm_security_bprm_check.o" || h.progName == "lsm_security_bprm_check_digests.o" {
 			checkReWrite = probeDpathSecurityFileOpen
 		} else if h.progName == "lsm_security_path_link.o" || h.progName == "lsm_security_path_mkdir.o" || h.progName == "lsm_security_path_rmdir.o" || h.progName == "lsm_security_path_unlink.o" || h.progName == "lsm_security_path_setattr.o" || h.progName == "lsm_security_path_rename.o" {
 			checkReWrite = probeDpathSecurityPathTruncate
@@ -1311,7 +1317,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 
 		// only for exec events when digests are enabled
-		if h.name == "security_bprm_check" && h.progName == "bpf_security_bprm_check_enforce_lsm_digest.o" {
+		if h.name == "security_bprm_check" && (h.progName == "bpf_security_bprm_check_enforce_lsm_digest.o" || h.progName == "lsm_security_bprm_check_digests.o") {
 			m := "exec_retprobe_map"
 			maps = append(
 				maps,
@@ -1519,6 +1525,14 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 	if mode == PathBased {
 		hooks = FimPathBasedHooks[:]
 		m = "path-based"
+		if digestSupport {
+			for _, h := range FimPathBasedHooksExecDigests {
+				hooks = append(hooks, h)
+			}
+			m += " with exec digests"
+		} else {
+			hooks = append(hooks, FimPathBasedHooksExec)
+		}
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == Observe {
 		hooks = FimHooksObserve[:]
