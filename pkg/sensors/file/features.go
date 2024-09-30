@@ -12,7 +12,6 @@ package file
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -20,17 +19,19 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"golang.org/x/sys/unix"
 )
 
-var probeImaFileHashHelper = sync.OnceValue(_probeImaFileHashHelper)
+var probeImaFileHashHelper = sync.OnceValue(func() error {
+	return _probeProg("probe_bpf_ima_file_hash.o", "bprm_check", func(prog *ebpf.Program) (link.Link, error) {
+		return link.AttachLSM(link.LSMOptions{Program: prog})
+	})
+})
 var probeDpathSecurityFilePermission = sync.OnceValue(func() error {
 	return _probeProg("probe_security_file_permission.o", "fmod_security_file_permission", func(prog *ebpf.Program) (link.Link, error) {
 		return link.AttachTracing(link.TracingOptions{Program: prog})
@@ -61,56 +62,6 @@ var probeForEachMapElem = sync.OnceValue(func() error {
 		return link.AttachLSM(link.LSMOptions{Program: prog})
 	})
 })
-
-//	int BPF_PROG(bprm_check, struct linux_binprm *bprm) {
-//	    __u64 data;
-//	    bpf_ima_file_hash(bprm->file, &data, sizeof(__u64));
-//	    return 0;
-//	}
-//
-// Binary code for the previous program
-var testImaFileHashHelper = []byte{
-	0x79, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 0)
-	0x79, 0x11, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // r1 = *(u64 *)(r1 + 64)
-	0xbf, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r2 = r10
-	0x07, 0x02, 0x00, 0x00, 0xf8, 0xff, 0xff, 0xff, // r2 += -8
-	0xb7, 0x03, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, // r3 = 8
-	0x85, 0x00, 0x00, 0x00, 0xc1, 0x00, 0x00, 0x00, // call 193
-	0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // r0 = 0
-	0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // exit
-}
-
-func _probeImaFileHashHelper() error {
-	r := bytes.NewReader(testImaFileHashHelper)
-
-	var insns asm.Instructions
-	if err := insns.Unmarshal(r, binary.LittleEndian); err != nil {
-		return fmt.Errorf("probeImaFileHashHelper: Cannot Unmarshal instructions: %w", err)
-	}
-
-	spec := &ebpf.ProgramSpec{
-		Type:         ebpf.LSM,
-		AttachType:   ebpf.AttachLSMMac,
-		AttachTo:     "bprm_creds_for_exec",
-		License:      "GPL",
-		Flags:        unix.BPF_F_SLEEPABLE,
-		Instructions: insns,
-	}
-
-	var prog *ebpf.Program
-	var lnk link.Link
-	var err error
-	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
-		LogDisabled: true,
-	})
-	if err == nil {
-		if lnk, err = link.AttachLSM(link.LSMOptions{Program: prog}); err == nil {
-			lnk.Close()
-		}
-		prog.Close()
-	}
-	return err
-}
 
 func SupportDigests() bool {
 	// In order to support digests we need 2 things:
