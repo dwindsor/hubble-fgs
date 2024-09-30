@@ -205,10 +205,14 @@ type FileOpenFlagsTypeSelector struct {
 type GlobPattern = string
 
 type FilePathGlobSelector struct {
-	// +kubebuilder:validation:Enum=InPattern
-	// Filter operation.
+	// +kubebuilder:validation:Enum=InPattern;InFileWithDigest
+	// Filter operation. Possible values:
+	// - InPattern: Match the filename against the glob pattern.
+	// - InFileWithDigest: Match the filename against the filename and the digest.
+	//                     In that case, we only support exact file match and
+	//                     glob pattern is not supported.
 	Operator string `json:"operator"`
-	// Glob patterns to compare the argument against.
+	// Glob patterns (when operator is InPattern) or filenames (when operator is InFileWithDigest) to compare the argument against.
 	Values []GlobPattern `json:"values,omitempty"`
 }
 
