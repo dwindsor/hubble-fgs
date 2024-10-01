@@ -406,7 +406,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 						statsEvent := createStatEvent(&udpKey, &diffValue)
 						if DisableStatsEvents {
 							layer3.CreateProcessSockStats(statsEvent, false)
-						} else {
+						} else if udpStatsEnable {
 							closeEvents = append(closeEvents, statsEvent)
 						}
 					} else {
@@ -422,7 +422,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				statsEvent := createStatEvent(&udpKey, &udpValue)
 				if DisableStatsEvents {
 					layer3.CreateProcessSockStats(statsEvent, false)
-				} else {
+				} else if udpStatsEnable {
 					closeEvents = append(closeEvents, statsEvent)
 				}
 				if !DisableCloseEvents {
