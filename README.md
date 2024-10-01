@@ -109,22 +109,22 @@ sudo apt install libelf-dev libcap-dev libaio-dev liburing-dev
 
 #### Build and run
 
-Build the BPF programs with `hubble-bpf`, the userland agent with `hubble-fgs`
-and the hubble enterprise CLI with `hubble-enterprise`:
+Build the BPF programs with `tetragon-bpf`, the userland agent with `tetragon`
+and the Tetragon enterprise CLI with `tetra`:
 ```
-make hubble-bpf hubble-fgs hubble-enterprise
-```
-
-Run FGS locally:
-```
-sudo ./hubble-fgs --bpf-lib bpf/objs
+make tetragon-bpf tetragon tetra
 ```
 
-Once the agent (`hubble-fgs`) is running, events can be observed using the
-`hubble-enterprise` CLI:
+Run Tetragon Enterprise locally:
+```
+sudo ./tetragon --bpf-lib bpf/objs
+```
+
+Once the agent (`tetragon`) is running, events can be observed using the
+`tetra` CLI:
 
 ```
-./hubble-enterprise getevents
+./tetra getevents
 ```
 
 The output should be similar to:
