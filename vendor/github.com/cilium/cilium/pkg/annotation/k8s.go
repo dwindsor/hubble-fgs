@@ -31,6 +31,15 @@ const (
 	// IPAMPrefix is the common prefix for IPAM related annotations.
 	IPAMPrefix = "ipam.cilium.io"
 
+	// LBIPAMPrefix is the common prefix for LB IPAM related annotations.
+	LBIPAMPrefix = "lbipam.cilium.io"
+
+	// CNIPrefix is the common prefix for CNI related annotations.
+	CNIPrefix = "cni.cilium.io"
+
+	// PodAnnotationMAC is used to store the MAC address of the Pod.
+	PodAnnotationMAC = CNIPrefix + "/mac-address"
+
 	// PolicyName / PolicyNameAlias is an optional annotation to the NetworkPolicy
 	// resource which specifies the name of the policy node to which all
 	// rules should be applied to.
@@ -84,6 +93,10 @@ const (
 	GlobalService      = ServicePrefix + "/global"
 	GlobalServiceAlias = Prefix + "/global-service"
 
+	// GlobalServiceSyncEndpointSlice if set to true, marks a service to
+	// synchronize remote clusters endpoint slices to the local Kubernetes API
+	GlobalServiceSyncEndpointSlices = ServicePrefix + "/global-sync-endpoint-slices"
+
 	// SharedService / SharedServiceAlias if set to false, prevents a service
 	// from being shared, the default is true if GlobalService is set, otherwise
 	// false. Setting the annotation SharedService to false while setting
@@ -103,6 +116,11 @@ const (
 	//		no preference. Default behavior if this annotation does not exist
 	ServiceAffinity      = ServicePrefix + "/affinity"
 	ServiceAffinityAlias = Prefix + "/service-affinity"
+
+	// ServiceNodeExposure is the label name used to mark a service to only a
+	// subset of the nodes which match the same value. For all other nodes, this
+	// service is ignored and not installed into their datapath.
+	ServiceNodeExposure = ServicePrefix + "/node"
 
 	// ProxyVisibility / ProxyVisibilityAlias is the annotation name used to
 	// indicate whether proxy visibility should be enabled for a given pod (i.e.,
@@ -138,6 +156,14 @@ const (
 	// IPAMIPv6PoolKey is the annotation name used to store the IPAM IPv6 pool name from
 	// which workloads should allocate their IP from
 	IPAMIPv6PoolKey = IPAMPrefix + "/ipv6-pool"
+
+	LBIPAMIPsKey     = LBIPAMPrefix + "/ips"
+	LBIPAMIPKeyAlias = Prefix + "/lb-ipam-ips"
+
+	LBIPAMSharingKey                  = LBIPAMPrefix + "/sharing-key"
+	LBIPAMSharingKeyAlias             = Prefix + "/lb-ipam-sharing-key"
+	LBIPAMSharingAcrossNamespace      = LBIPAMPrefix + "/sharing-cross-namespace"
+	LBIPAMSharingAcrossNamespaceAlias = Prefix + "/lb-ipam-sharing-cross-namespace"
 )
 
 var (

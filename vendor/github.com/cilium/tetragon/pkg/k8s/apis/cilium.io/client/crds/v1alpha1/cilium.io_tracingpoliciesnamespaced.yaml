@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.16.4-0.20240923084800-3b70a40398f4
   name: tracingpoliciesnamespaced.cilium.io
 spec:
   group: cilium.io
@@ -20,14 +19,19 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -35,28 +39,28 @@ spec:
             description: Tracing policy specification.
             properties:
               containerSelector:
-                description: ContainerSelector selects containers that this policy
-                  applies to. A map of container fields will be constructed in the
-                  same way as a map of labels. The name of the field represents the
-                  label "key", and the value of the field - label "value". Currently,
-                  only the "name" field is supported.
+                description: |-
+                  ContainerSelector selects containers that this policy applies to.
+                  A map of container fields will be constructed in the same way as a map of labels.
+                  The name of the field represents the label "key", and the value of the field - label "value".
+                  Currently, only the "name" field is supported.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           enum:
                           - In
                           - NotIn
@@ -64,19 +68,21 @@ spec:
                           - DoesNotExist
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       required:
                       - key
                       - operator
                       type: object
                     type: array
+                    x-kubernetes-list-type: atomic
                   matchLabels:
                     additionalProperties:
                       description: MatchLabelsValue represents the value from the
@@ -84,13 +90,13 @@ spec:
                       maxLength: 63
                       pattern: ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               enforcers:
                 description: A enforcer spec.
                 items:
@@ -301,6 +307,8 @@ spec:
                               maxLength: 256
                               pattern: \/.*
                               type: string
+                          required:
+                          - path
                           type: object
                         file_prefix_suffix:
                           description: Should be defined in the case of type=FilePrefixSuffix.
@@ -317,6 +325,8 @@ spec:
                                 length is 128 characters.
                               maxLength: 128
                               type: string
+                          required:
+                          - prefix
                           type: object
                         file_system_type:
                           description: Should be defined in the case of type=FileSystemType.
@@ -364,15 +374,15 @@ spec:
                               minLength: 1
                               pattern: \/.*
                               type: string
+                          required:
+                          - prefix
                           type: object
                         type:
-                          description: FilePrefixSuffix can be used to match only
-                            files that have a specific prefix and optionally a suffix.
-                            PathPrefix has the same semantics as file_paths. This
-                            can be used for all files and directories that match a
-                            specific prefix. FileExactMatch can be used to match only
-                            files that have a specific name. FileSystemType can be
-                            used to specify operation only on a specific type.
+                          description: |-
+                            FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
+                            PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
+                            FileExactMatch can be used to match only files that have a specific name.
+                            FileSystemType can be used to specify operation only on a specific type.
                           enum:
                           - FilePrefixSuffix
                           - PathPrefix
@@ -396,26 +406,26 @@ spec:
                     description: Do monitoring on host files
                     type: boolean
                   podSelector:
-                    description: This is a label selector which selects Pods. This
-                      field follows standard label selector semantics; if present
-                      but empty, it selects all pods.
+                    description: |-
+                      This is a label selector which selects Pods. This field follows standard label
+                      selector semantics; if present but empty, it selects all pods.
                     properties:
                       matchExpressions:
                         description: matchExpressions is a list of label selector
                           requirements. The requirements are ANDed.
                         items:
-                          description: A label selector requirement is a selector
-                            that contains values, a key, and an operator that relates
-                            the key and values.
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
                           properties:
                             key:
                               description: key is the label key that the selector
                                 applies to.
                               type: string
                             operator:
-                              description: operator represents a key's relationship
-                                to a set of values. Valid operators are In, NotIn,
-                                Exists and DoesNotExist.
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
                               enum:
                               - In
                               - NotIn
@@ -423,19 +433,21 @@ spec:
                               - DoesNotExist
                               type: string
                             values:
-                              description: values is an array of string values. If
-                                the operator is In or NotIn, the values array must
-                                be non-empty. If the operator is Exists or DoesNotExist,
-                                the values array must be empty. This array is replaced
-                                during a strategic merge patch.
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: atomic
                           required:
                           - key
                           - operator
                           type: object
                         type: array
+                        x-kubernetes-list-type: atomic
                       matchLabels:
                         additionalProperties:
                           description: MatchLabelsValue represents the value from
@@ -443,13 +455,13 @@ spec:
                           maxLength: 63
                           pattern: ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$
                           type: string
-                        description: matchLabels is a map of {key,value} pairs. A
-                          single {key,value} in the matchLabels map is equivalent
-                          to an element of matchExpressions, whose key field is "key",
-                          the operator is "In", and the values array contains only
-                          "value". The requirements are ANDed.
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
                         type: object
                     type: object
+                    x-kubernetes-map-type: atomic
                   selectors:
                     description: Selectors to apply before producing trace output.
                       Selectors are ORed.
@@ -733,27 +745,25 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data (currently 327360).
-                              This field is only used for char_buff data. When this
-                              value is false (default), the bpf program will fetch
-                              at most 4096 bytes. In later kernels (>=5.4) tetragon
-                              supports fetching up to 327360 bytes if this flag is
-                              turned on
+                            description: |-
+                              Read maximum possible data (currently 327360). This field is only used
+                              for char_buff data. When this value is false (default), the bpf program
+                              will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
                           returnCopy:
                             default: false
-                            description: This field is used only for char_buf and
-                              char_iovec types. It indicates that this argument should
-                              be read later (when the kretprobe for the symbol is
-                              triggered) because it might not be populated when the
-                              kprobe is triggered at the entrance of the function.
-                              For example, a buffer supplied to read(2) won't have
-                              content until kretprobe is triggered.
+                            description: |-
+                              This field is used only for char_buf and char_iovec types. It indicates
+                              that this argument should be read later (when the kretprobe for the
+                              symbol is triggered) because it might not be populated when the kprobe
+                              is triggered at the entrance of the function. For example, a buffer
+                              supplied to read(2) won't have content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
-                            description: Specifies the position of the corresponding
-                              size argument for this argument. This field is used
-                              only for char_buf and char_iovec types.
+                            description: |-
+                              Specifies the position of the corresponding size argument for this argument.
+                              This field is used only for char_buf and char_iovec types.
                             format: int32
                             minimum: 0
                             type: integer
@@ -811,9 +821,9 @@ spec:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
                     message:
-                      description: A short message of 256 characters max that will
-                        be included in the event output to inform users what is going
-                        on.
+                      description: |-
+                        A short message of 256 characters max that will be included
+                        in the event output to inform users what is going on.
                       type: string
                     return:
                       default: false
@@ -833,26 +843,25 @@ spec:
                           type: string
                         maxData:
                           default: false
-                          description: Read maximum possible data (currently 327360).
-                            This field is only used for char_buff data. When this
-                            value is false (default), the bpf program will fetch at
-                            most 4096 bytes. In later kernels (>=5.4) tetragon supports
-                            fetching up to 327360 bytes if this flag is turned on
+                          description: |-
+                            Read maximum possible data (currently 327360). This field is only used
+                            for char_buff data. When this value is false (default), the bpf program
+                            will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+                            supports fetching up to 327360 bytes if this flag is turned on
                           type: boolean
                         returnCopy:
                           default: false
-                          description: This field is used only for char_buf and char_iovec
-                            types. It indicates that this argument should be read
-                            later (when the kretprobe for the symbol is triggered)
-                            because it might not be populated when the kprobe is triggered
-                            at the entrance of the function. For example, a buffer
-                            supplied to read(2) won't have content until kretprobe
-                            is triggered.
+                          description: |-
+                            This field is used only for char_buf and char_iovec types. It indicates
+                            that this argument should be read later (when the kretprobe for the
+                            symbol is triggered) because it might not be populated when the kprobe
+                            is triggered at the entrance of the function. For example, a buffer
+                            supplied to read(2) won't have content until kretprobe is triggered.
                           type: boolean
                         sizeArgIndex:
-                          description: Specifies the position of the corresponding
-                            size argument for this argument. This field is used only
-                            for char_buf and char_iovec types.
+                          description: |-
+                            Specifies the position of the corresponding size argument for this argument.
+                            This field is used only for char_buf and char_iovec types.
                           format: int32
                           minimum: 0
                           type: integer
@@ -906,16 +915,17 @@ spec:
                       - type
                       type: object
                     returnArgAction:
-                      description: 'An action to perform on the return argument. Available
-                        actions are: Post;TrackSock;UntrackSock'
+                      description: |-
+                        An action to perform on the return argument.
+                        Available actions are: Post;TrackSock;UntrackSock
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
                       items:
-                        description: KProbeSelector selects function calls for kprobe
-                          based on PIDs and function arguments. The results of MatchPIDs
-                          and MatchArgs are ANDed.
+                        description: |-
+                          KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
+                          results of MatchPIDs and MatchArgs are ANDed.
                         properties:
                           matchActions:
                             description: A list of actions to execute when this selector
@@ -974,22 +984,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -1293,22 +1300,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -1378,8 +1382,9 @@ spec:
                       description: Indicates whether the traced function is a syscall.
                       type: boolean
                     tags:
-                      description: Tags to categorize the event, will be include in
-                        the event output. Maximum of 16 Tags are supported.
+                      description: |-
+                        Tags to categorize the event, will be include in the event output.
+                        Maximum of 16 Tags are supported.
                       items:
                         type: string
                       maxItems: 16
@@ -1439,27 +1444,25 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data (currently 327360).
-                              This field is only used for char_buff data. When this
-                              value is false (default), the bpf program will fetch
-                              at most 4096 bytes. In later kernels (>=5.4) tetragon
-                              supports fetching up to 327360 bytes if this flag is
-                              turned on
+                            description: |-
+                              Read maximum possible data (currently 327360). This field is only used
+                              for char_buff data. When this value is false (default), the bpf program
+                              will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
                           returnCopy:
                             default: false
-                            description: This field is used only for char_buf and
-                              char_iovec types. It indicates that this argument should
-                              be read later (when the kretprobe for the symbol is
-                              triggered) because it might not be populated when the
-                              kprobe is triggered at the entrance of the function.
-                              For example, a buffer supplied to read(2) won't have
-                              content until kretprobe is triggered.
+                            description: |-
+                              This field is used only for char_buf and char_iovec types. It indicates
+                              that this argument should be read later (when the kretprobe for the
+                              symbol is triggered) because it might not be populated when the kprobe
+                              is triggered at the entrance of the function. For example, a buffer
+                              supplied to read(2) won't have content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
-                            description: Specifies the position of the corresponding
-                              size argument for this argument. This field is used
-                              only for char_buf and char_iovec types.
+                            description: |-
+                              Specifies the position of the corresponding size argument for this argument.
+                              This field is used only for char_buf and char_iovec types.
                             format: int32
                             minimum: 0
                             type: integer
@@ -1517,17 +1520,17 @@ spec:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
                     message:
-                      description: A short message of 256 characters max that will
-                        be included in the event output to inform users what is going
-                        on.
+                      description: |-
+                        A short message of 256 characters max that will be included
+                        in the event output to inform users what is going on.
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
                       items:
-                        description: KProbeSelector selects function calls for kprobe
-                          based on PIDs and function arguments. The results of MatchPIDs
-                          and MatchArgs are ANDed.
+                        description: |-
+                          KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
+                          results of MatchPIDs and MatchArgs are ANDed.
                         properties:
                           matchActions:
                             description: A list of actions to execute when this selector
@@ -1586,22 +1589,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -1905,22 +1905,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -1986,8 +1983,9 @@ spec:
                         type: object
                       type: array
                     tags:
-                      description: Tags to categorize the event, will be include in
-                        the event output. Maximum of 16 Tags are supported.
+                      description: |-
+                        Tags to categorize the event, will be include in the event output.
+                        Maximum of 16 Tags are supported.
                       items:
                         type: string
                       maxItems: 16
@@ -2034,17 +2032,19 @@ spec:
                         description: DNS enable parser
                         type: boolean
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2091,18 +2091,19 @@ spec:
                         description: Enable HTTP2 parser
                         type: boolean
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary, dstnamespace, dstworkload,
-                          dstpod, dstdns, host'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, host
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2217,17 +2218,19 @@ spec:
                         description: Enable raw socket observability
                         type: boolean
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2361,18 +2364,19 @@ spec:
                             type: integer
                         type: object
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary, dstnamespace, dstworkload,
-                          dstpod, dstdns, dstip'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2462,17 +2466,19 @@ spec:
                         description: TLS enable parser
                         type: boolean
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2505,8 +2511,9 @@ spec:
                     description: UDP policy specification
                     properties:
                       burst:
-                        description: Network policy specification kubebuilder:deprecatedversion:warning="burst
-                          is deprecated. Use watermarks instead"
+                        description: |-
+                          Network policy specification
+                          kubebuilder:deprecatedversion:warning="burst is deprecated. Use watermarks instead"
                         properties:
                           burstTriggerPercent:
                             default: 100
@@ -2538,10 +2545,10 @@ spec:
                         type: object
                       cgroup:
                         default: true
-                        description: UDP has two modes one for newer kernels (cgroup)
-                          and then an older fallback mode for kprobe use cases. Allow
-                          running older kprobe version on newer kernels by setting
-                          cgroup knob to false.
+                        description: |-
+                          UDP has two modes one for newer kernels (cgroup) and then an
+                          older fallback mode for kprobe use cases. Allow running older
+                          kprobe version on newer kernels by setting cgroup knob to false.
                         type: boolean
                       deleteIdleSocketInterval:
                         description: Configure socket idle time to delete sockets
@@ -2620,18 +2627,19 @@ spec:
                             type: integer
                         type: object
                       metrics:
-                        description: 'Metrics Configuration. Configurable labels:
-                          namespace, workload, pod, binary, dstnamespace, dstworkload,
-                          dstpod, dstdns, dstip, srcmcast, dstmcast'
+                        description: |-
+                          Metrics Configuration.
+                          Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
                         properties:
                           enable:
                             default: true
                             type: boolean
                           labelFilter:
-                            description: List of enabled metrics labels. It can be
-                              used to control the metrics cardinality. Null value
-                              means the default label set. Empty list disables all
-                              configurable labels. Unknown labels are ignored.
+                            description: |-
+                              List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              Null value means the default label set.
+                              Empty list disables all configurable labels.
+                              Unknown labels are ignored.
                             items:
                               type: string
                             type: array
@@ -2699,18 +2707,18 @@ spec:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           enum:
                           - In
                           - NotIn
@@ -2718,19 +2726,21 @@ spec:
                           - DoesNotExist
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       required:
                       - key
                       - operator
                       type: object
                     type: array
+                    x-kubernetes-list-type: atomic
                   matchLabels:
                     additionalProperties:
                       description: MatchLabelsValue represents the value from the
@@ -2738,13 +2748,13 @@ spec:
                       maxLength: 63
                       pattern: ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               tracepoints:
                 description: A list of tracepoint specs.
                 items:
@@ -2764,27 +2774,25 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data (currently 327360).
-                              This field is only used for char_buff data. When this
-                              value is false (default), the bpf program will fetch
-                              at most 4096 bytes. In later kernels (>=5.4) tetragon
-                              supports fetching up to 327360 bytes if this flag is
-                              turned on
+                            description: |-
+                              Read maximum possible data (currently 327360). This field is only used
+                              for char_buff data. When this value is false (default), the bpf program
+                              will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
                           returnCopy:
                             default: false
-                            description: This field is used only for char_buf and
-                              char_iovec types. It indicates that this argument should
-                              be read later (when the kretprobe for the symbol is
-                              triggered) because it might not be populated when the
-                              kprobe is triggered at the entrance of the function.
-                              For example, a buffer supplied to read(2) won't have
-                              content until kretprobe is triggered.
+                            description: |-
+                              This field is used only for char_buf and char_iovec types. It indicates
+                              that this argument should be read later (when the kretprobe for the
+                              symbol is triggered) because it might not be populated when the kprobe
+                              is triggered at the entrance of the function. For example, a buffer
+                              supplied to read(2) won't have content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
-                            description: Specifies the position of the corresponding
-                              size argument for this argument. This field is used
-                              only for char_buf and char_iovec types.
+                            description: |-
+                              Specifies the position of the corresponding size argument for this argument.
+                              This field is used only for char_buf and char_iovec types.
                             format: int32
                             minimum: 0
                             type: integer
@@ -2842,17 +2850,17 @@ spec:
                       description: Tracepoint event
                       type: string
                     message:
-                      description: A short message of 256 characters max that will
-                        be included in the event output to inform users what is going
-                        on.
+                      description: |-
+                        A short message of 256 characters max that will be included
+                        in the event output to inform users what is going on.
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
                       items:
-                        description: KProbeSelector selects function calls for kprobe
-                          based on PIDs and function arguments. The results of MatchPIDs
-                          and MatchArgs are ANDed.
+                        description: |-
+                          KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
+                          results of MatchPIDs and MatchArgs are ANDed.
                         properties:
                           matchActions:
                             description: A list of actions to execute when this selector
@@ -2911,22 +2919,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -3230,22 +3235,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -3314,8 +3316,9 @@ spec:
                       description: Tracepoint subsystem
                       type: string
                     tags:
-                      description: Tags to categorize the event, will be include in
-                        the event output. Maximum of 16 Tags are supported.
+                      description: |-
+                        Tags to categorize the event, will be include in the event output.
+                        Maximum of 16 Tags are supported.
                       items:
                         type: string
                       maxItems: 16
@@ -3344,27 +3347,25 @@ spec:
                             type: string
                           maxData:
                             default: false
-                            description: Read maximum possible data (currently 327360).
-                              This field is only used for char_buff data. When this
-                              value is false (default), the bpf program will fetch
-                              at most 4096 bytes. In later kernels (>=5.4) tetragon
-                              supports fetching up to 327360 bytes if this flag is
-                              turned on
+                            description: |-
+                              Read maximum possible data (currently 327360). This field is only used
+                              for char_buff data. When this value is false (default), the bpf program
+                              will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
+                              supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
                           returnCopy:
                             default: false
-                            description: This field is used only for char_buf and
-                              char_iovec types. It indicates that this argument should
-                              be read later (when the kretprobe for the symbol is
-                              triggered) because it might not be populated when the
-                              kprobe is triggered at the entrance of the function.
-                              For example, a buffer supplied to read(2) won't have
-                              content until kretprobe is triggered.
+                            description: |-
+                              This field is used only for char_buf and char_iovec types. It indicates
+                              that this argument should be read later (when the kretprobe for the
+                              symbol is triggered) because it might not be populated when the kprobe
+                              is triggered at the entrance of the function. For example, a buffer
+                              supplied to read(2) won't have content until kretprobe is triggered.
                             type: boolean
                           sizeArgIndex:
-                            description: Specifies the position of the corresponding
-                              size argument for this argument. This field is used
-                              only for char_buf and char_iovec types.
+                            description: |-
+                              Specifies the position of the corresponding size argument for this argument.
+                              This field is used only for char_buf and char_iovec types.
                             format: int32
                             minimum: 0
                             type: integer
@@ -3419,9 +3420,9 @@ spec:
                         type: object
                       type: array
                     message:
-                      description: A short message of 256 characters max that will
-                        be included in the event output to inform users what is going
-                        on.
+                      description: |-
+                        A short message of 256 characters max that will be included
+                        in the event output to inform users what is going on.
                       type: string
                     path:
                       description: Name of the traced binary
@@ -3430,9 +3431,9 @@ spec:
                       description: Selectors to apply before producing trace output.
                         Selectors are ORed.
                       items:
-                        description: KProbeSelector selects function calls for kprobe
-                          based on PIDs and function arguments. The results of MatchPIDs
-                          and MatchArgs are ANDed.
+                        description: |-
+                          KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
+                          results of MatchPIDs and MatchArgs are ANDed.
                         properties:
                           matchActions:
                             description: A list of actions to execute when this selector
@@ -3491,22 +3492,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -3810,22 +3808,19 @@ spec:
                                     valid with the post action.
                                   type: boolean
                                 rateLimit:
-                                  description: A time period within which repeated
-                                    messages will not be posted. Can be specified
-                                    in seconds (default or with 's' suffix), minutes
-                                    ('m' suffix) or hours ('h' suffix). Only valid
-                                    with the post action.
+                                  description: |-
+                                    A time period within which repeated messages will not be posted. Can be
+                                    specified in seconds (default or with 's' suffix), minutes ('m' suffix)
+                                    or hours ('h' suffix). Only valid with the post action.
                                   type: string
                                 rateLimitScope:
-                                  description: The scope of the provided rate limit
-                                    argument. Can be "thread" (default), "process"
-                                    (all threads for the same process), or "global".
-                                    If "thread" is selected then rate limiting applies
-                                    per thread; if "process" is selected then rate
-                                    limiting applies per process; if "global" is selected
-                                    then rate limiting applies regardless of which
-                                    process or thread caused the action. Only valid
-                                    with the post action and with a rateLimit specified.
+                                  description: |-
+                                    The scope of the provided rate limit argument. Can be "thread" (default),
+                                    "process" (all threads for the same process), or "global". If "thread" is
+                                    selected then rate limiting applies per thread; if "process" is selected
+                                    then rate limiting applies per process; if "global" is selected then rate
+                                    limiting applies regardless of which process or thread caused the action.
+                                    Only valid with the post action and with a rateLimit specified.
                                   type: string
                                 userStackTrace:
                                   description: Enable user stack trace export. Only
@@ -3896,8 +3891,9 @@ spec:
                         type: string
                       type: array
                     tags:
-                      description: Tags to categorize the event, will be include in
-                        the event output. Maximum of 16 Tags are supported.
+                      description: |-
+                        Tags to categorize the event, will be include in the event output.
+                        Maximum of 16 Tags are supported.
                       items:
                         type: string
                       maxItems: 16
@@ -3914,9 +3910,3 @@ spec:
         type: object
     served: true
     storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

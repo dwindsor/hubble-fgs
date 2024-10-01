@@ -39,7 +39,6 @@ func DefaultSockPath() string {
 		e = defaults.SockPath
 	}
 	return "unix://" + e
-
 }
 
 func configureTransport(tr *http.Transport, proto, addr string) *http.Transport {
@@ -128,43 +127,56 @@ func WithBasePath(basePath string) func(options *runtimeOptions) {
 	}
 }
 
+func NewTransport(host string) (*http.Transport, error) {
+	if host == "" {
+		host = DefaultSockPath()
+	}
+	schema, host, found := strings.Cut(host, "://")
+	if !found {
+		return nil, fmt.Errorf("invalid host format '%s'", host)
+	}
+	switch schema {
+	case "tcp":
+		if _, err := url.Parse("tcp://" + host); err != nil {
+			return nil, err
+		}
+		host = "http://" + host
+	case "unix":
+	}
+	return configureTransport(nil, schema, host), nil
+}
+
 func NewRuntime(opts ...func(options *runtimeOptions)) (*runtime_client.Runtime, error) {
 	r := runtimeOptions{}
 	for _, opt := range opts {
 		opt(&r)
 	}
 
-	host := r.host
-	if host == "" {
-		host = DefaultSockPath()
-	}
 	basePath := r.basePath
 	if basePath == "" {
 		basePath = clientapi.DefaultBasePath
 	}
 
-	tmp := strings.SplitN(host, "://", 2)
-	if len(tmp) != 2 {
-		return nil, fmt.Errorf("invalid host format '%s'", host)
+	host := r.host
+	if host == "" {
+		host = DefaultSockPath()
 	}
 
-	hostHeader := tmp[1]
-
-	switch tmp[0] {
-	case "tcp":
-		if _, err := url.Parse("tcp://" + tmp[1]); err != nil {
-			return nil, err
-		}
-		host = "http://" + tmp[1]
-	case "unix":
-		host = tmp[1]
+	_, hostHeader, found := strings.Cut(host, "://")
+	if !found {
+		return nil, fmt.Errorf("invalid host format '%s'", host)
+	}
+	if strings.HasPrefix(host, "unix") {
 		// For local communication (unix domain sockets), the hostname is not used. Leave
 		// Host header empty because otherwise it would be rejected by net/http client-side
 		// sanitization, see https://go.dev/issue/60374.
 		hostHeader = "localhost"
 	}
 
-	transport := configureTransport(nil, tmp[0], host)
+	transport, err := NewTransport(host)
+	if err != nil {
+		return nil, err
+	}
 	httpClient := &http.Client{Transport: transport}
 	clientTrans := runtime_client.NewWithClient(hostHeader, basePath,
 		clientapi.DefaultSchemes, httpClient)
@@ -325,7 +337,7 @@ func FormatStatusResponse(w io.Writer, sr *models.StatusResponse, sd StatusDetai
 	}
 	if sr.KubeProxyReplacement != nil {
 		devices := ""
-		if sr.KubeProxyReplacement.Mode != models.KubeProxyReplacementModeDisabled {
+		if sr.KubeProxyReplacement.Mode != models.KubeProxyReplacementModeFalse {
 			for i, dev := range sr.KubeProxyReplacement.DeviceList {
 				kubeProxyDevices += fmt.Sprintf("%s %s", dev.Name, strings.Join(dev.IP, " "))
 				if dev.Name == sr.KubeProxyReplacement.DirectRoutingDevice {
@@ -471,8 +483,34 @@ func FormatStatusResponse(w io.Writer, sr *models.StatusResponse, sd StatusDetai
 		fmt.Fprintf(w, "BandwidthManager:\t%s\n", status)
 	}
 
-	if sr.HostRouting != nil {
-		fmt.Fprintf(w, "Host Routing:\t%s\n", sr.HostRouting.Mode)
+	if sr.Routing != nil {
+		status := "Network: " + sr.Routing.InterHostRoutingMode
+		if sr.Routing.InterHostRoutingMode == models.RoutingInterHostRoutingModeTunnel {
+			status = status + " [" + sr.Routing.TunnelProtocol + "]"
+		}
+		status = status + "\tHost: " + sr.Routing.IntraHostRoutingMode
+
+		fmt.Fprintf(w, "Routing:\t%s\n", status)
+	}
+
+	if sr.AttachMode != "" {
+		status := "Legacy TC"
+		if sr.AttachMode == models.AttachModeTcx {
+			status = "TCX"
+		}
+		fmt.Fprintf(w, "Attach Mode:\t%s\n", status)
+	}
+
+	if sr.DatapathMode != "" {
+		status := "?"
+		if sr.DatapathMode == models.DatapathModeVeth {
+			status = "veth"
+		} else if sr.DatapathMode == models.DatapathModeNetkitDashL2 {
+			status = "netkit-l2"
+		} else if sr.DatapathMode == models.DatapathModeNetkit {
+			status = "netkit"
+		}
+		fmt.Fprintf(w, "Device Mode:\t%s\n", status)
 	}
 
 	if sr.Masquerading != nil {
@@ -790,9 +828,9 @@ const (
 func FormatStatusResponseRemoteClusters(w io.Writer, clusters []*models.RemoteCluster, verbosity RemoteClustersStatusVerbosity) {
 	for _, cluster := range clusters {
 		if verbosity != RemoteClustersStatusNotReadyOnly || !cluster.Ready {
-			fmt.Fprintf(w, "   %s: %s, %d nodes, %d endpoints, %d identities, %d services, %d reconnections (last: %s)\n",
+			fmt.Fprintf(w, "   %s: %s, %d nodes, %d endpoints, %d identities, %d services, %d MCS-API service exports, %d reconnections (last: %s)\n",
 				cluster.Name, clusterReadiness(cluster), cluster.NumNodes,
-				cluster.NumEndpoints, cluster.NumIdentities, cluster.NumSharedServices,
+				cluster.NumEndpoints, cluster.NumIdentities, cluster.NumSharedServices, cluster.NumServiceExports,
 				cluster.NumFailures, timeSince(time.Time(cluster.LastFailure)))
 
 			if verbosity == RemoteClustersStatusBrief && cluster.Ready {
@@ -804,9 +842,17 @@ func FormatStatusResponseRemoteClusters(w io.Writer, clusters []*models.RemoteCl
 			fmt.Fprint(w, "   └  remote configuration: ")
 			if cluster.Config != nil {
 				fmt.Fprintf(w, "expected=%t, retrieved=%t", cluster.Config.Required, cluster.Config.Retrieved)
+				serviceExportsConfig := "unsupported"
+				if cluster.Config.ServiceExportsEnabled != nil {
+					if *cluster.Config.ServiceExportsEnabled {
+						serviceExportsConfig = "enabled"
+					} else {
+						serviceExportsConfig = "disabled"
+					}
+				}
 				if cluster.Config.Retrieved {
-					fmt.Fprintf(w, ", cluster-id=%d, kvstoremesh=%t, sync-canaries=%t",
-						cluster.Config.ClusterID, cluster.Config.Kvstoremesh, cluster.Config.SyncCanaries)
+					fmt.Fprintf(w, ", cluster-id=%d, kvstoremesh=%t, sync-canaries=%t, service-exports=%s",
+						cluster.Config.ClusterID, cluster.Config.Kvstoremesh, cluster.Config.SyncCanaries, serviceExportsConfig)
 				}
 			} else {
 				fmt.Fprint(w, "expected=unknown, retrieved=unknown")
@@ -814,8 +860,12 @@ func FormatStatusResponseRemoteClusters(w io.Writer, clusters []*models.RemoteCl
 			fmt.Fprint(w, "\n")
 
 			if cluster.Synced != nil {
-				fmt.Fprintf(w, "   └  synchronization status: nodes=%v, endpoints=%v, identities=%v, services=%v\n",
+				fmt.Fprintf(w, "   └  synchronization status: nodes=%v, endpoints=%v, identities=%v, services=%v",
 					cluster.Synced.Nodes, cluster.Synced.Endpoints, cluster.Synced.Identities, cluster.Synced.Services)
+				if cluster.Synced.ServiceExports != nil {
+					fmt.Fprintf(w, ", service-exports=%v", *cluster.Synced.ServiceExports)
+				}
+				fmt.Fprintln(w)
 			}
 		}
 	}

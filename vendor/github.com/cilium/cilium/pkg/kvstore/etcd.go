@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/url"
+	"math/rand/v2"
 	"os"
 	"strconv"
 	"strings"
@@ -18,7 +18,6 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpcErrors "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	client "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	clientyaml "go.etcd.io/etcd/client/v3/yaml"
@@ -31,8 +30,8 @@ import (
 	"github.com/cilium/cilium/pkg/defaults"
 	"github.com/cilium/cilium/pkg/inctimer"
 	"github.com/cilium/cilium/pkg/lock"
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/option"
-	"github.com/cilium/cilium/pkg/rand"
 	ciliumrate "github.com/cilium/cilium/pkg/rate"
 	ciliumratemetrics "github.com/cilium/cilium/pkg/rate/metrics"
 	"github.com/cilium/cilium/pkg/spanstat"
@@ -44,13 +43,16 @@ const (
 	EtcdBackendName = "etcd"
 
 	EtcdAddrOption               = "etcd.address"
-	isEtcdOperatorOption         = "etcd.operator"
 	EtcdOptionConfig             = "etcd.config"
 	EtcdOptionKeepAliveHeartbeat = "etcd.keepaliveHeartbeat"
 	EtcdOptionKeepAliveTimeout   = "etcd.keepaliveTimeout"
 
 	// EtcdRateLimitOption specifies maximum kv operations per second
 	EtcdRateLimitOption = "etcd.qps"
+
+	// EtcdBootstrapRateLimitOption specifies maximum kv operations per second
+	// during bootstrapping
+	EtcdBootstrapRateLimitOption = "etcd.bootstrapQps"
 
 	// EtcdMaxInflightOption specifies maximum inflight concurrent kv store operations
 	EtcdMaxInflightOption = "etcd.maxInflight"
@@ -63,13 +65,9 @@ const (
 	etcdMaxKeysPerLease = 1000
 )
 
-var (
-	// ErrLockLeaseExpired is an error whenever the lease of the lock does not
-	// exist or it was expired.
-	ErrLockLeaseExpired = errors.New("transaction did not succeed: lock lease expired")
-
-	randGen = rand.NewSafeRand(time.Now().UnixNano())
-)
+// ErrLockLeaseExpired is an error whenever the lease of the lock does not
+// exist or it was expired.
+var ErrLockLeaseExpired = errors.New("transaction did not succeed: lock lease expired")
 
 type etcdModule struct {
 	opts   backendOptions
@@ -85,9 +83,6 @@ var (
 	// the etcd server
 	initialConnectionTimeout = 15 * time.Minute
 
-	// etcdDummyAddress can be overwritten from test invokers using ldflags
-	etcdDummyAddress = "http://127.0.0.1:4002"
-
 	etcdInstance = newEtcdModule()
 
 	// etcd3ClientLogger is the logger used for the underlying etcd clients. We
@@ -96,16 +91,9 @@ var (
 	etcd3ClientLogger *zap.Logger
 )
 
-func EtcdDummyAddress() string {
-	return etcdDummyAddress
-}
-
 func newEtcdModule() backendModule {
 	return &etcdModule{
 		opts: backendOptions{
-			isEtcdOperatorOption: &backendOption{
-				description: "if the configuration is setting up an etcd-operator",
-			},
 			EtcdAddrOption: &backendOption{
 				description: "Addresses of etcd cluster",
 			},
@@ -128,6 +116,13 @@ func newEtcdModule() backendModule {
 			},
 			EtcdRateLimitOption: &backendOption{
 				description: "Rate limit in kv store operations per second",
+				validate: func(v string) error {
+					_, err := strconv.Atoi(v)
+					return err
+				},
+			},
+			EtcdBootstrapRateLimitOption: &backendOption{
+				description: "Rate limit in kv store operations per second during bootstrapping",
 				validate: func(v string) error {
 					_, err := strconv.Atoi(v)
 					return err
@@ -159,11 +154,6 @@ func (e *etcdModule) getName() string {
 	return EtcdBackendName
 }
 
-func (e *etcdModule) setConfigDummy() {
-	e.config = &client.Config{}
-	e.config.Endpoints = []string{etcdDummyAddress}
-}
-
 func (e *etcdModule) setConfig(opts map[string]string) error {
 	return setOpts(opts, e.opts)
 }
@@ -181,7 +171,7 @@ func (e *etcdModule) getConfig() map[string]string {
 }
 
 func shuffleEndpoints(endpoints []string) {
-	randGen.Shuffle(len(endpoints), func(i, j int) {
+	rand.Shuffle(len(endpoints), func(i, j int) {
 		endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
 	})
 }
@@ -190,6 +180,7 @@ type clientOptions struct {
 	KeepAliveHeartbeat time.Duration
 	KeepAliveTimeout   time.Duration
 	RateLimit          int
+	BootstrapRateLimit int
 	MaxInflight        int
 	ListBatchSize      int
 }
@@ -206,6 +197,10 @@ func (e *etcdModule) newClient(ctx context.Context, opts *ExtraOptions) (Backend
 
 	if o, ok := e.opts[EtcdRateLimitOption]; ok && o.value != "" {
 		clientOptions.RateLimit, _ = strconv.Atoi(o.value)
+	}
+
+	if o, ok := e.opts[EtcdBootstrapRateLimitOption]; ok && o.value != "" {
+		clientOptions.BootstrapRateLimit, _ = strconv.Atoi(o.value)
 	}
 
 	if o, ok := e.opts[EtcdMaxInflightOption]; ok && o.value != "" {
@@ -399,44 +394,32 @@ func (e *etcdClient) StatusCheckErrors() <-chan error {
 	return e.statusCheckErrors
 }
 
-func (e *etcdClient) waitForInitLock(ctx context.Context) <-chan error {
-	initLockSucceeded := make(chan error)
-
-	go func() {
-		for {
-			select {
-			case <-e.client.Ctx().Done():
-				initLockSucceeded <- fmt.Errorf("client context ended: %w", e.client.Ctx().Err())
-				close(initLockSucceeded)
-				return
-			case <-ctx.Done():
-				initLockSucceeded <- fmt.Errorf("caller context ended: %w", ctx.Err())
-				close(initLockSucceeded)
-				return
-			default:
-			}
-
-			if e.extraOptions != nil && e.extraOptions.NoLockQuorumCheck {
-				close(initLockSucceeded)
-				return
-			}
-
-			// Generate a random number so that we can acquire a lock even
-			// if other agents are killed while locking this path.
-			randNumber := strconv.FormatUint(randGen.Uint64(), 16)
-			locker, err := e.LockPath(ctx, InitLockPath+"/"+randNumber)
-			if err == nil {
-				locker.Unlock(context.Background())
-				close(initLockSucceeded)
-				e.logger.Debug("Distributed lock successful, etcd has quorum")
-				return
-			}
-
-			time.Sleep(100 * time.Millisecond)
+func (e *etcdClient) maybeWaitForInitLock(ctx context.Context) error {
+	if e.extraOptions != nil && e.extraOptions.NoLockQuorumCheck {
+		return nil
+	}
+	limiter := newExpBackoffRateLimiter(e, "etcd-client-init-lock")
+	defer limiter.Reset()
+	for {
+		select {
+		case <-e.client.Ctx().Done():
+			return fmt.Errorf("client context ended: %w", e.client.Ctx().Err())
+		case <-ctx.Done():
+			return fmt.Errorf("caller context ended: %w", ctx.Err())
+		default:
 		}
-	}()
 
-	return initLockSucceeded
+		// Generate a random number so that we can acquire a lock even
+		// if other agents are killed while locking this path.
+		randNumber := strconv.FormatUint(rand.Uint64(), 16)
+		locker, err := e.LockPath(ctx, InitLockPath+"/"+randNumber)
+		if err == nil {
+			locker.Unlock(context.Background())
+			e.logger.Debug("Distributed lock successful, etcd has quorum")
+			return nil
+		}
+		limiter.Wait(ctx)
+	}
 }
 
 func (e *etcdClient) isConnectedAndHasQuorum(ctx context.Context) error {
@@ -444,7 +427,7 @@ func (e *etcdClient) isConnectedAndHasQuorum(ctx context.Context) error {
 	defer cancel()
 
 	select {
-	// Wait for the the initial connection to be established
+	// Wait for the initial connection to be established
 	case <-e.firstSession:
 		if err := e.sessionError(); err != nil {
 			return err
@@ -458,8 +441,7 @@ func (e *etcdClient) isConnectedAndHasQuorum(ctx context.Context) error {
 		return fmt.Errorf("timeout while waiting for initial connection")
 	}
 
-	initLockSucceeded := e.waitForInitLock(ctxTimeout)
-	if err := <-initLockSucceeded; err != nil {
+	if err := e.maybeWaitForInitLock(ctxTimeout); err != nil {
 		recordQuorumError("lock timeout")
 		return fmt.Errorf("unable to acquire lock: %w", err)
 	}
@@ -473,6 +455,8 @@ func (e *etcdClient) isConnectedAndHasQuorum(ctx context.Context) error {
 func (e *etcdClient) Connected(ctx context.Context) <-chan error {
 	out := make(chan error)
 	go func() {
+		limiter := newExpBackoffRateLimiter(e, "etcd-client-connected")
+		defer limiter.Reset()
 		defer close(out)
 		for {
 			select {
@@ -487,7 +471,7 @@ func (e *etcdClient) Connected(ctx context.Context) <-chan error {
 			if e.isConnectedAndHasQuorum(ctx) == nil {
 				return
 			}
-			time.Sleep(100 * time.Millisecond)
+			limiter.Wait(ctx)
 		}
 	}()
 	return out
@@ -498,7 +482,8 @@ func (e *etcdClient) Connected(ctx context.Context) <-chan error {
 // connected with the kvstore.
 func (e *etcdClient) Disconnected() <-chan struct{} {
 	<-e.firstSession
-
+	limiter := newExpBackoffRateLimiter(e, "etcd-client-disconnected")
+	defer limiter.Reset()
 	for {
 		session, err := e.lockLeaseManager.GetSession(context.Background(), InitLockPath)
 		if err == nil {
@@ -506,13 +491,13 @@ func (e *etcdClient) Disconnected() <-chan struct{} {
 		}
 
 		e.logger.WithError(err).Warning("Failed to acquire lock session")
-		time.Sleep(100 * time.Millisecond)
+		limiter.Wait(context.TODO())
 	}
 }
 
 func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath string, errChan chan error, clientOptions clientOptions, opts *ExtraOptions) (BackendOperations, error) {
 	if cfgPath != "" {
-		cfg, err := newConfig(cfgPath)
+		cfg, err := clientyaml.NewConfig(cfgPath)
 		if err != nil {
 			return nil, err
 		}
@@ -553,14 +538,6 @@ func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath strin
 		return nil, err
 	}
 
-	errorChan := make(chan error)
-
-	limiter := ciliumrate.NewAPILimiter(makeSessionName("etcd", opts), ciliumrate.APILimiterParameters{
-		RateLimit:        rate.Limit(clientOptions.RateLimit),
-		RateBurst:        clientOptions.RateLimit,
-		ParallelRequests: clientOptions.MaxInflight,
-	}, ciliumratemetrics.APILimiterObserver())
-
 	ec := &etcdClient{
 		client:               c,
 		config:               config,
@@ -569,7 +546,6 @@ func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath strin
 		latestStatusSnapshot: "Waiting for initial connection to be established",
 		stopStatusChecker:    make(chan struct{}),
 		extraOptions:         opts,
-		limiter:              limiter,
 		listBatchSize:        clientOptions.ListBatchSize,
 		statusCheckErrors:    make(chan error, 128),
 		logger: log.WithFields(logrus.Fields{
@@ -577,6 +553,29 @@ func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath strin
 			"config":    cfgPath,
 		}),
 	}
+
+	initialLimit := clientOptions.RateLimit
+	// If BootstrapRateLimit and BootstrapComplete are provided, set the
+	// initial rate limit to BootstrapRateLimit and apply the standard rate limit
+	// once the caller has signaled that bootstrap is complete by closing the channel.
+	if clientOptions.BootstrapRateLimit > 0 && opts != nil && opts.BootstrapComplete != nil {
+		ec.logger.WithField(logfields.EtcdQPSLimit, clientOptions.BootstrapRateLimit).Info("Setting client QPS limit for bootstrap")
+		initialLimit = clientOptions.BootstrapRateLimit
+		go func() {
+			select {
+			case <-ec.client.Ctx().Done():
+			case <-opts.BootstrapComplete:
+				ec.logger.WithField(logfields.EtcdQPSLimit, clientOptions.RateLimit).Info("Bootstrap complete, updating client QPS limit")
+				ec.limiter.SetRateLimit(rate.Limit(clientOptions.RateLimit))
+			}
+		}()
+	}
+
+	ec.limiter = ciliumrate.NewAPILimiter(makeSessionName("etcd", opts), ciliumrate.APILimiterParameters{
+		RateLimit:        rate.Limit(initialLimit),
+		RateBurst:        clientOptions.RateLimit,
+		ParallelRequests: clientOptions.MaxInflight,
+	}, ciliumratemetrics.APILimiterObserver())
 
 	ec.logger.Info("Connecting to etcd server...")
 
@@ -588,91 +587,101 @@ func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath strin
 	ec.leaseManager = newEtcdLeaseManager(c, leaseTTL, etcdMaxKeysPerLease, ec.expiredLeaseObserver, ec.logger)
 	ec.lockLeaseManager = newEtcdLeaseManager(c, defaults.LockLeaseTTL, etcdMaxKeysPerLease, nil, ec.logger)
 
-	// create session in parallel as this is a blocking operation
-	go func() {
-		ls, err := ec.lockLeaseManager.GetSession(ctx, InitLockPath)
-		if err != nil {
-			errorChan <- err
-			close(errorChan)
-			return
-		}
-
-		log.Infof("Got lock lease ID %x", ls.Lease())
-		close(errorChan)
-	}()
-
-	handleSessionError := func(err error) {
-		ec.RWMutex.Lock()
-		ec.sessionErr = err
-		ec.RWMutex.Unlock()
-
-		ec.statusLock.Lock()
-		ec.latestStatusSnapshot = "Failed to establish initial connection"
-		ec.latestErrorStatus = err
-		ec.statusLock.Unlock()
-
-		errChan <- err
-		ec.statusCheckErrors <- err
-	}
-
-	// wait for session to be created also in parallel
-	go func() {
-		err := func() (err error) {
-			select {
-			case err = <-errorChan:
-				if err != nil {
-					return err
-				}
-			case <-time.After(initialConnectionTimeout):
-				return fmt.Errorf("timed out while waiting for etcd session. Ensure that etcd is running on %s", config.Endpoints)
-			}
-
-			ec.logger.Info("Initial etcd session established")
-
-			return nil
-		}()
-
-		if err != nil {
-			handleSessionError(err)
-			close(errChan)
-			close(ec.firstSession)
-			close(ec.statusCheckErrors)
-			return
-		}
-
-		close(errChan)
-		close(ec.firstSession)
-
-		go ec.statusChecker()
-
-		watcher := ec.ListAndWatch(ctx, HeartbeatPath, 128)
-
-		for {
-			select {
-			case _, ok := <-watcher.Events:
-				if !ok {
-					log.Debug("Stopping heartbeat watcher")
-					watcher.Stop()
-					return
-				}
-
-				// It is tempting to compare against the
-				// heartbeat value stored in the key. However,
-				// this would require the time on all nodes to
-				// be synchronized. Instead, assume current
-				// time and print the heartbeat value in debug
-				// messages for troubleshooting
-				ec.RWMutex.Lock()
-				ec.lastHeartbeat = time.Now()
-				ec.RWMutex.Unlock()
-				log.Debug("Received update notification of heartbeat")
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	go ec.asyncConnectEtcdClient(errChan)
 
 	return ec, nil
+}
+
+func (e *etcdClient) asyncConnectEtcdClient(errChan chan<- error) {
+	var (
+		ctx      = e.client.Ctx()
+		listDone = make(chan struct{})
+	)
+
+	propagateError := func(err error) {
+		e.statusLock.Lock()
+		e.latestStatusSnapshot = "Failed to establish initial connection"
+		e.latestErrorStatus = err
+		e.statusLock.Unlock()
+
+		errChan <- err
+		close(errChan)
+
+		e.statusCheckErrors <- err
+		close(e.statusCheckErrors)
+	}
+
+	wctx, wcancel := context.WithTimeout(ctx, initialConnectionTimeout)
+
+	// Don't create a session when running with lock quorum check disabled
+	// (i.e., for clustermesh clients), to not introduce unnecessary overhead
+	// on the target etcd instance, considering that the session would never
+	// be used again. Instead, we'll just rely on the successful synchronization
+	// of the heartbeat watcher as a signal that we successfully connected.
+	if e.extraOptions == nil || !e.extraOptions.NoLockQuorumCheck {
+		_, err := e.lockLeaseManager.GetSession(wctx, InitLockPath)
+		if err != nil {
+			wcancel()
+			if errors.Is(err, context.DeadlineExceeded) {
+				err = fmt.Errorf("timed out while waiting for etcd connection. Ensure that etcd is running on %s", e.config.Endpoints)
+			}
+
+			e.RWMutex.Lock()
+			e.sessionErr = err
+			e.RWMutex.Unlock()
+
+			propagateError(err)
+			close(e.firstSession)
+			return
+		}
+	}
+
+	// This channel needs to be closed here to allow starting the heartbeat
+	// ListAndWatch operation below.
+	close(e.firstSession)
+
+	go func() {
+		// Report connection established to the caller and start the status
+		// checker only after successfully starting the heatbeat watcher, as
+		// additional sanity check. This also guarantees that there's already
+		// been an interaction with the target etcd instance at that point,
+		// and its corresponding cluster ID has been retrieved if using the
+		// "clusterLock" interceptors.
+		select {
+		case <-wctx.Done():
+			propagateError(fmt.Errorf("timed out while starting the heartbeat watcher. Ensure that etcd is running on %s", e.config.Endpoints))
+			return
+		case <-listDone:
+			e.logger.Info("Initial etcd connection established")
+			close(errChan)
+		}
+
+		wcancel()
+		e.statusChecker()
+	}()
+
+	watcher := e.ListAndWatch(ctx, HeartbeatPath, 0)
+	for event := range watcher.Events {
+		switch event.Typ {
+		case EventTypeDelete:
+			// A deletion event is not an heartbeat signal
+			continue
+
+		case EventTypeListDone:
+			// A list done event signals the initial connection, but
+			// is also not an heartbeat signal.
+			close(listDone)
+			continue
+		}
+
+		// It is tempting to compare against the heartbeat value stored in
+		// the key. However, this would require the time on all nodes to
+		// be synchronized. Instead, let's just assume current time.
+		e.RWMutex.Lock()
+		e.lastHeartbeat = time.Now()
+		e.RWMutex.Unlock()
+		e.logger.Debug("Received update notification of heartbeat")
+	}
 }
 
 // makeSessionName builds up a session/locksession controller name
@@ -682,6 +691,19 @@ func makeSessionName(sessionPrefix string, opts *ExtraOptions) string {
 		return sessionPrefix + "-" + opts.ClusterName
 	}
 	return sessionPrefix
+}
+
+func newExpBackoffRateLimiter(e *etcdClient, name string) backoff.Exponential {
+	errLimiter := backoff.Exponential{
+		Name: name,
+		Min:  50 * time.Millisecond,
+		Max:  1 * time.Minute,
+	}
+
+	if e != nil && e.extraOptions != nil {
+		errLimiter.NodeManager = backoff.NewNodeManager(e.extraOptions.ClusterSizeDependantInterval)
+	}
+	return errLimiter
 }
 
 func (e *etcdClient) sessionError() (err error) {
@@ -737,8 +759,9 @@ func (e *etcdClient) DeletePrefix(ctx context.Context, path string) (err error) 
 	return Hint(err)
 }
 
-// Watch starts watching for changes in a prefix
-func (e *etcdClient) Watch(ctx context.Context, w *Watcher) {
+// watch starts watching for changes in a prefix
+func (e *etcdClient) watch(ctx context.Context, w *Watcher) {
+	scope := GetScopeFromKey(strings.TrimRight(w.Prefix, "/"))
 	localCache := watcherCache{}
 	listSignalSent := false
 
@@ -768,15 +791,7 @@ func (e *etcdClient) Watch(ctx context.Context, w *Watcher) {
 	// errLimiter is used to rate limit the retry of the first Get request in case an error
 	// has occurred, to prevent overloading the etcd server due to the more aggressive
 	// default rate limiter.
-	errLimiter := backoff.Exponential{
-		Name: "etcd-list-before-watch-error",
-		Min:  50 * time.Millisecond,
-		Max:  1 * time.Minute,
-	}
-
-	if e.extraOptions != nil {
-		errLimiter.NodeManager = backoff.NewNodeManager(e.extraOptions.ClusterSizeDependantInterval)
-	}
+	errLimiter := newExpBackoffRateLimiter(e, "etcd-list-before-watch-error")
 
 reList:
 	for {
@@ -820,7 +835,7 @@ reList:
 				Value: key.Value,
 				Typ:   t,
 			}
-			trackEventQueued(string(key.Key), t, queueStart.End(true).Total())
+			trackEventQueued(scope, t, queueStart.End(true).Total())
 		}
 
 		nextRev := revision + 1
@@ -840,7 +855,7 @@ reList:
 
 			queueStart := spanstat.Start()
 			w.Events <- event
-			trackEventQueued(k, EventTypeDelete, queueStart.End(true).Total())
+			trackEventQueued(scope, EventTypeDelete, queueStart.End(true).Total())
 		})
 
 		// Only send the list signal once
@@ -930,7 +945,7 @@ reList:
 
 					queueStart := spanstat.Start()
 					w.Events <- event
-					trackEventQueued(string(ev.Kv.Key), event.Typ, queueStart.End(true).Total())
+					trackEventQueued(scope, event.Typ, queueStart.End(true).Total())
 				}
 			}
 		}
@@ -1004,32 +1019,50 @@ func (e *etcdClient) statusChecker() {
 	statusTimer, statusTimerDone := inctimer.New()
 	defer statusTimerDone()
 
+	e.RWMutex.Lock()
+	// Ensure that lastHearbeat is always set to a non-zero value when starting
+	// the status checker, to guarantee that we can correctly compute the time
+	// difference even in case we don't receive any heartbeat event. Indeed, we
+	// want to consider that as an heartbeat failure after the usual timeout.
+	if e.lastHeartbeat.IsZero() {
+		e.lastHeartbeat = time.Now()
+	}
+	e.RWMutex.Unlock()
+
 	for {
 		newStatus := []string{}
 		ok := 0
 
 		quorumError := e.isConnectedAndHasQuorum(ctx)
 
-		endpoints := e.client.Endpoints()
-		for _, ep := range endpoints {
-			st, err := e.determineEndpointStatus(ctx, ep)
-			if err == nil {
-				ok++
-			}
-
-			newStatus = append(newStatus, st)
-		}
-
-		allConnected := len(endpoints) == ok
-
 		e.RWMutex.RLock()
 		lastHeartbeat := e.lastHeartbeat
 		e.RWMutex.RUnlock()
 
-		if heartbeatDelta := time.Since(lastHeartbeat); !lastHeartbeat.IsZero() && heartbeatDelta > 2*HeartbeatWriteInterval {
+		if heartbeatDelta := time.Since(lastHeartbeat); heartbeatDelta > 2*HeartbeatWriteInterval {
 			recordQuorumError("no event received")
 			quorumError = fmt.Errorf("%s since last heartbeat update has been received", heartbeatDelta)
 		}
+
+		endpoints := e.client.Endpoints()
+		if e.extraOptions != nil && e.extraOptions.NoEndpointStatusChecks {
+			newStatus = append(newStatus, "endpoint status checks are disabled")
+
+			if quorumError == nil {
+				ok = len(endpoints)
+			}
+		} else {
+			for _, ep := range endpoints {
+				st, err := e.determineEndpointStatus(ctx, ep)
+				if err == nil {
+					ok++
+				}
+
+				newStatus = append(newStatus, st)
+			}
+		}
+
+		allConnected := len(endpoints) == ok
 
 		quorumString := "true"
 		if quorumError != nil {
@@ -1143,85 +1176,6 @@ func (e *etcdClient) Get(ctx context.Context, key string) (bv []byte, err error)
 	return getR.Kvs[0].Value, nil
 }
 
-// GetPrefixIfLocked returns the first key which matches the prefix and its value if the client is still holding the given lock.
-func (e *etcdClient) GetPrefixIfLocked(ctx context.Context, prefix string, lock KVLocker) (k string, bv []byte, err error) {
-	defer func() {
-		Trace("GetPrefixIfLocked", err, logrus.Fields{fieldPrefix: prefix, fieldKey: k, fieldValue: string(bv)})
-	}()
-	lr, err := e.limiter.Wait(ctx)
-	if err != nil {
-		return "", nil, Hint(err)
-	}
-	defer func(duration *spanstat.SpanStat) {
-		increaseMetric(prefix, metricRead, "GetPrefixLocked", duration.EndError(err).Total(), err)
-	}(spanstat.Start())
-
-	opGet := client.OpGet(prefix, client.WithPrefix(), client.WithLimit(1))
-	cmp := lock.Comparator().(client.Cmp)
-	txnReply, err := e.client.Txn(ctx).If(cmp).Then(opGet).Commit()
-	if err == nil && !txnReply.Succeeded {
-		err = ErrLockLeaseExpired
-	}
-
-	if err != nil {
-		lr.Error(err, -1)
-		return "", nil, Hint(err)
-	}
-	lr.Done()
-
-	getR := txnReply.Responses[0].GetResponseRange()
-
-	if getR.Count == 0 {
-		return "", nil, nil
-	}
-	return string(getR.Kvs[0].Key), getR.Kvs[0].Value, nil
-}
-
-// GetPrefix returns the first key which matches the prefix and its value
-func (e *etcdClient) GetPrefix(ctx context.Context, prefix string) (k string, bv []byte, err error) {
-	defer func() {
-		Trace("GetPrefix", err, logrus.Fields{fieldPrefix: prefix, fieldKey: k, fieldValue: string(bv)})
-	}()
-	lr, err := e.limiter.Wait(ctx)
-	if err != nil {
-		return "", nil, Hint(err)
-	}
-	defer func(duration *spanstat.SpanStat) {
-		increaseMetric(prefix, metricRead, "GetPrefix", duration.EndError(err).Total(), err)
-	}(spanstat.Start())
-
-	getR, err := e.client.Get(ctx, prefix, client.WithPrefix(), client.WithLimit(1))
-	if err != nil {
-		lr.Error(err, -1)
-		return "", nil, Hint(err)
-	}
-	lr.Done()
-
-	if getR.Count == 0 {
-		return "", nil, nil
-	}
-	return string(getR.Kvs[0].Key), getR.Kvs[0].Value, nil
-}
-
-// Set sets value of key
-func (e *etcdClient) Set(ctx context.Context, key string, value []byte) (err error) {
-	defer func() {
-		Trace("Set", err, logrus.Fields{fieldKey: key, fieldValue: string(value)})
-	}()
-	lr, err := e.limiter.Wait(ctx)
-	if err != nil {
-		return Hint(err)
-	}
-	defer func(duration *spanstat.SpanStat) {
-		increaseMetric(key, metricSet, "Set", duration.EndError(err).Total(), err)
-	}(spanstat.Start())
-
-	_, err = e.client.Put(ctx, key, string(value))
-	// Using lr.Error for convenience, as it matches lr.Done() when err is nil
-	lr.Error(err, -1)
-	return Hint(err)
-}
-
 // DeleteIfLocked deletes a key if the client is still holding the given lock.
 func (e *etcdClient) DeleteIfLocked(ctx context.Context, key string, lock KVLocker) (err error) {
 	defer func() {
@@ -1272,16 +1226,6 @@ func (e *etcdClient) Delete(ctx context.Context, key string) (err error) {
 	}
 
 	return Hint(err)
-}
-
-func (e *etcdClient) createOpPut(key string, value []byte, leaseID client.LeaseID) *client.Op {
-	if leaseID != 0 {
-		op := client.OpPut(key, string(value), client.WithLease(leaseID))
-		return &op
-	}
-
-	op := client.OpPut(key, string(value))
-	return &op
 }
 
 // UpdateIfLocked updates a key if the client is still holding the given lock.
@@ -1437,7 +1381,7 @@ func (e *etcdClient) CreateOnlyIfLocked(ctx context.Context, key string, value [
 	}
 	duration := spanstat.Start()
 
-	req := e.createOpPut(key, value, leaseID)
+	req := client.OpPut(key, string(value), client.WithLease(leaseID))
 	cnds := []client.Cmp{
 		client.Compare(client.Version(key), "=", 0),
 		lock.Comparator().(client.Cmp),
@@ -1448,7 +1392,7 @@ func (e *etcdClient) CreateOnlyIfLocked(ctx context.Context, key string, value [
 	opGets := []client.Op{
 		client.OpGet(key),
 	}
-	txnresp, err := e.client.Txn(ctx).If(cnds...).Then(*req).Else(opGets...).Commit()
+	txnresp, err := e.client.Txn(ctx).If(cnds...).Then(req).Else(opGets...).Commit()
 	increaseMetric(key, metricSet, "CreateOnlyLocked", duration.EndError(err).Total(), err)
 	if err != nil {
 		lr.Error(err, -1)
@@ -1504,10 +1448,10 @@ func (e *etcdClient) CreateOnly(ctx context.Context, key string, value []byte, l
 		increaseMetric(key, metricSet, "CreateOnly", duration.EndError(err).Total(), err)
 	}(spanstat.Start())
 
-	req := e.createOpPut(key, value, leaseID)
+	req := client.OpPut(key, string(value), client.WithLease(leaseID))
 	cond := client.Compare(client.Version(key), "=", 0)
 
-	txnresp, err := e.client.Txn(ctx).If(cond).Then(*req).Commit()
+	txnresp, err := e.client.Txn(ctx).If(cond).Then(req).Commit()
 
 	if err != nil {
 		lr.Error(err, -1)
@@ -1518,62 +1462,6 @@ func (e *etcdClient) CreateOnly(ctx context.Context, key string, value []byte, l
 	lr.Done()
 	return txnresp.Succeeded, nil
 }
-
-// CreateIfExists creates a key with the value only if key condKey exists
-func (e *etcdClient) CreateIfExists(ctx context.Context, condKey, key string, value []byte, lease bool) (err error) {
-	defer func() {
-		Trace("CreateIfExists", err, logrus.Fields{fieldKey: key, fieldValue: string(value), fieldCondition: condKey, fieldAttachLease: lease})
-	}()
-	var leaseID client.LeaseID
-	if lease {
-		leaseID, err = e.leaseManager.GetLeaseID(ctx, key)
-		if err != nil {
-			return Hint(err)
-		}
-	}
-	lr, err := e.limiter.Wait(ctx)
-	if err != nil {
-		return Hint(err)
-	}
-	duration := spanstat.Start()
-
-	req := e.createOpPut(key, value, leaseID)
-	cond := client.Compare(client.Version(condKey), "!=", 0)
-	txnresp, err := e.client.Txn(ctx).If(cond).Then(*req).Commit()
-
-	increaseMetric(key, metricSet, "CreateIfExists", duration.EndError(err).Total(), err)
-	if err != nil {
-		lr.Error(err, -1)
-		e.leaseManager.CancelIfExpired(err, leaseID)
-		return Hint(err)
-	}
-	lr.Done()
-
-	if !txnresp.Succeeded {
-		return fmt.Errorf("create was unsuccessful")
-	}
-
-	return nil
-}
-
-// FIXME: When we rebase to etcd 3.3
-//
-// DeleteOnZeroCount deletes the key if no matching keys for prefix exist
-//func (e *etcdClient) DeleteOnZeroCount(key, prefix string) error {
-//	txnresp, err := e.client.Txn(ctx.TODO()).
-//		If(client.Compare(client.Version(prefix).WithPrefix(), "=", 0)).
-//		Then(client.OpDelete(key)).
-//		Commit()
-//	if err != nil {
-//		return err
-//	}
-//
-//	if txnresp.Succeeded == false {
-//		return fmt.Errorf("delete was unsuccessful")
-//	}
-//
-//	return nil
-//}
 
 // ListPrefixIfLocked returns a list of keys matching the prefix only if the client is still holding the given lock.
 func (e *etcdClient) ListPrefixIfLocked(ctx context.Context, prefix string, lock KVLocker) (v KeyValuePairs, err error) {
@@ -1647,7 +1535,7 @@ func (e *etcdClient) ListPrefix(ctx context.Context, prefix string) (v KeyValueP
 }
 
 // Close closes the etcd session
-func (e *etcdClient) Close(ctx context.Context) {
+func (e *etcdClient) Close() {
 	close(e.stopStatusChecker)
 
 	if err := e.client.Close(); err != nil {
@@ -1657,11 +1545,6 @@ func (e *etcdClient) Close(ctx context.Context) {
 	// Wait until all child goroutines spawned by the lease managers have terminated.
 	e.leaseManager.Wait()
 	e.lockLeaseManager.Wait()
-}
-
-// GetCapabilities returns the capabilities of the backend
-func (e *etcdClient) GetCapabilities() Capabilities {
-	return Capabilities(CapabilityCreateIfExists)
 }
 
 // Encode encodes a binary slice into a character set that the backend supports
@@ -1678,7 +1561,7 @@ func (e *etcdClient) Decode(in string) (out []byte, err error) {
 func (e *etcdClient) ListAndWatch(ctx context.Context, prefix string, chanSize int) *Watcher {
 	w := newWatcher(prefix, chanSize)
 
-	go e.Watch(ctx, w)
+	go e.watch(ctx, w)
 
 	return w
 }
@@ -1746,113 +1629,6 @@ func (e *etcdClient) UserEnforceAbsence(ctx context.Context, name string) error 
 	return nil
 }
 
-// SplitK8sServiceURL returns the service name and namespace for the given address.
-// If the given address is not parseable or it is not the format
-// '<protocol>://><name>.<namespace>[optional]', returns an error.
-func SplitK8sServiceURL(address string) (string, string, error) {
-	u, err := url.Parse(address)
-	if err != nil {
-		return "", "", err
-	}
-	// typical service name "cilium-etcd-client.kube-system.svc"
-	names := strings.Split(u.Hostname(), ".")
-	if len(names) >= 2 {
-		return names[0], names[1], nil
-	}
-	return "", "",
-		fmt.Errorf("invalid service name. expecting <protocol://><name>.<namespace>[optional], got: %s", address)
-}
-
-// IsEtcdOperator returns the service name if the configuration is setting up an
-// etcd-operator. If the configuration explicitly states it is configured
-// to connect to an etcd operator, e.g. with etcd.operator=true, the returned
-// service name is the first found within the configuration specified.
-func IsEtcdOperator(selectedBackend string, opts map[string]string, k8sNamespace string) (string, bool) {
-	if selectedBackend != EtcdBackendName {
-		return "", false
-	}
-
-	isEtcdOperator := strings.ToLower(opts[isEtcdOperatorOption]) == "true"
-
-	fqdnIsEtcdOperator := func(address string) bool {
-		svcName, ns, err := SplitK8sServiceURL(address)
-		return err == nil &&
-			svcName == "cilium-etcd-client" &&
-			ns == k8sNamespace
-	}
-
-	fqdn := opts[EtcdAddrOption]
-	if len(fqdn) != 0 {
-		if fqdnIsEtcdOperator(fqdn) || isEtcdOperator {
-			return fqdn, true
-		}
-		return "", false
-	}
-
-	bm := newEtcdModule()
-	err := bm.setConfig(opts)
-	if err != nil {
-		return "", false
-	}
-	etcdConfig := bm.getConfig()[EtcdOptionConfig]
-	if len(etcdConfig) == 0 {
-		return "", false
-	}
-
-	cfg, err := newConfig(etcdConfig)
-	if err != nil {
-		log.WithError(err).Error("Unable to read etcd configuration.")
-		return "", false
-	}
-	for _, endpoint := range cfg.Endpoints {
-		if fqdnIsEtcdOperator(endpoint) || isEtcdOperator {
-			return endpoint, true
-		}
-	}
-
-	return "", false
-}
-
-// newConfig is a wrapper of clientyaml.NewConfig. Since etcd has deprecated
-// the `ca-file` field from yamlConfig in v3.4, the clientyaml.NewConfig won't
-// read that field from the etcd configuration file making Cilium fail to
-// connect to a TLS-enabled etcd server. Since we should have deprecated the
-// usage of this field a long time ago, in this galaxy, we will have this
-// wrapper function as a workaround which will still use the `ca-file` field to
-// avoid users breaking their connectivity to etcd when upgrading Cilium.
-// TODO remove this wrapper in cilium >= 1.8
-func newConfig(fpath string) (*client.Config, error) {
-	cfg, err := clientyaml.NewConfig(fpath)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.TLS == nil || cfg.TLS.RootCAs != nil {
-		return cfg, nil
-	}
-
-	yc := &yamlConfig{}
-	b, err := os.ReadFile(fpath)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(b, yc)
-	if err != nil {
-		return nil, err
-	}
-	if yc.InsecureTransport {
-		return cfg, nil
-	}
-
-	if yc.CAfile != "" {
-		cp, err := tlsutil.NewCertPool([]string{yc.CAfile})
-		if err != nil {
-			return nil, err
-		}
-		cfg.TLS.RootCAs = cp
-	}
-	return cfg, nil
-}
-
 // reload on-disk certificate and key when needed
 func getClientCertificateReloader(fpath string) (func(*tls.CertificateRequestInfo) (*tls.Certificate, error), error) {
 	yc := &yamlKeyPairConfig{}
@@ -1880,20 +1656,4 @@ func getClientCertificateReloader(fpath string) (func(*tls.CertificateRequestInf
 type yamlKeyPairConfig struct {
 	Certfile string `json:"cert-file"`
 	Keyfile  string `json:"key-file"`
-}
-
-// copy of the internal structure in github.com/etcd-io/etcd/clientv3/yaml so we
-// can still use the `ca-file` field for one more release.
-type yamlConfig struct {
-	client.Config
-
-	InsecureTransport     bool   `json:"insecure-transport"`
-	InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
-	Certfile              string `json:"cert-file"`
-	Keyfile               string `json:"key-file"`
-	TrustedCAfile         string `json:"trusted-ca-file"`
-
-	// CAfile is being deprecated. Use 'TrustedCAfile' instead.
-	// TODO: deprecate this in v4
-	CAfile string `json:"ca-file"`
 }

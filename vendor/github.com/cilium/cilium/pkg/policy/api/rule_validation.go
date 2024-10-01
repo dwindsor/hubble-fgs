@@ -19,10 +19,27 @@ const (
 	maxICMPFields = 40
 )
 
+var (
+	ErrFromToNodesRequiresNodeSelectorOption = fmt.Errorf("FromNodes/ToNodes rules can only be applied when the %q flag is set", option.EnableNodeSelectorLabels)
+)
+
 // Sanitize validates and sanitizes a policy rule. Minor edits such as
 // capitalization of the protocol name are automatically fixed up. More
 // fundamental violations will cause an error to be returned.
-func (r Rule) Sanitize() error {
+func (r *Rule) Sanitize() error {
+	// Fill in the default traffic posture of this Rule.
+	// Default posture is per-direction (ingress or egress),
+	// if there is a peer selector for that direction, the
+	// default is deny, else allow.
+	if r.EnableDefaultDeny.Egress == nil {
+		x := len(r.Egress) > 0 || len(r.EgressDeny) > 0
+		r.EnableDefaultDeny.Egress = &x
+	}
+	if r.EnableDefaultDeny.Ingress == nil {
+		x := len(r.Ingress) > 0 || len(r.IngressDeny) > 0
+		r.EnableDefaultDeny.Ingress = &x
+	}
+
 	if r.EndpointSelector.LabelSelector == nil && r.NodeSelector.LabelSelector == nil {
 		return fmt.Errorf("rule must have one of EndpointSelector or NodeSelector")
 	}
@@ -45,24 +62,14 @@ func (r Rule) Sanitize() error {
 	}
 
 	for i := range r.Ingress {
-		if err := r.Ingress[i].sanitize(); err != nil {
+		if err := r.Ingress[i].sanitize(hostPolicy); err != nil {
 			return err
-		}
-		if hostPolicy {
-			if len(countL7Rules(r.Ingress[i].ToPorts)) > 0 {
-				return fmt.Errorf("host policies do not support L7 rules yet")
-			}
 		}
 	}
 
 	for i := range r.Egress {
-		if err := r.Egress[i].sanitize(); err != nil {
+		if err := r.Egress[i].sanitize(hostPolicy); err != nil {
 			return err
-		}
-		if hostPolicy {
-			if len(countL7Rules(r.Egress[i].ToPorts)) > 0 {
-				return fmt.Errorf("host policies do not support L7 rules yet")
-			}
 		}
 	}
 
@@ -81,18 +88,25 @@ func countL7Rules(ports []PortRule) map[string]int {
 	return result
 }
 
-func (i *IngressRule) sanitize() error {
+func (i *IngressRule) sanitize(hostPolicy bool) error {
+	var retErr error
+
 	l3Members := map[string]int{
 		"FromEndpoints": len(i.FromEndpoints),
 		"FromCIDR":      len(i.FromCIDR),
 		"FromCIDRSet":   len(i.FromCIDRSet),
 		"FromEntities":  len(i.FromEntities),
+		"FromNodes":     len(i.FromNodes),
+		"FromGroups":    len(i.FromGroups),
 	}
 	l7Members := countL7Rules(i.ToPorts)
 	l7IngressSupport := map[string]bool{
 		"DNS":   false,
 		"Kafka": true,
 		"HTTP":  true,
+	}
+	if hostPolicy && len(l7Members) > 0 {
+		return fmt.Errorf("L7 policy is not supported on host ingress yet")
 	}
 
 	for m1 := range l3Members {
@@ -120,6 +134,10 @@ func (i *IngressRule) sanitize() error {
 		return fmt.Errorf("The ICMPs block may only be present without ToPorts. Define a separate rule to use ToPorts.")
 	}
 
+	if len(i.FromNodes) > 0 && !option.Config.EnableNodeSelectorLabels {
+		retErr = ErrFromToNodesRequiresNodeSelectorOption
+	}
+
 	for _, es := range i.FromEndpoints {
 		if err := es.sanitize(); err != nil {
 			return err
@@ -140,6 +158,12 @@ func (i *IngressRule) sanitize() error {
 
 	for n := range i.ICMPs {
 		if err := i.ICMPs[n].verify(); err != nil {
+			return err
+		}
+	}
+
+	for _, ns := range i.FromNodes {
+		if err := ns.sanitize(); err != nil {
 			return err
 		}
 	}
@@ -165,18 +189,38 @@ func (i *IngressRule) sanitize() error {
 
 	i.SetAggregatedSelectors()
 
-	return nil
+	return retErr
 }
 
-func (e *EgressRule) sanitize() error {
+// countNonGeneratedRules counts the number of CIDRRule items which are not
+// `Generated`, i.e. were directly provided by the user.
+// The `Generated` field is currently only set by the `ToServices`
+// implementation, which extracts service endpoints and translates them as
+// ToCIDRSet rules before the CNP is passed to the policy repository.
+// Therefore, we want to allow the combination of ToCIDRSet and ToServices
+// rules, if (and only if) the ToCIDRSet only contains `Generated` entries.
+func countNonGeneratedCIDRRules(s CIDRRuleSlice) int {
+	n := 0
+	for _, c := range s {
+		if !c.Generated {
+			n++
+		}
+	}
+	return n
+}
+
+func (e *EgressRule) sanitize(hostPolicy bool) error {
+	var retErr error
+
 	l3Members := map[string]int{
 		"ToCIDR":      len(e.ToCIDR),
-		"ToCIDRSet":   len(e.ToCIDRSet),
+		"ToCIDRSet":   countNonGeneratedCIDRRules(e.ToCIDRSet),
 		"ToEndpoints": len(e.ToEndpoints),
 		"ToEntities":  len(e.ToEntities),
 		"ToServices":  len(e.ToServices),
 		"ToFQDNs":     len(e.ToFQDNs),
 		"ToGroups":    len(e.ToGroups),
+		"ToNodes":     len(e.ToNodes),
 	}
 	l3DependentL4Support := map[interface{}]bool{
 		"ToCIDR":      true,
@@ -186,12 +230,13 @@ func (e *EgressRule) sanitize() error {
 		"ToServices":  false, // see https://github.com/cilium/cilium/issues/20067
 		"ToFQDNs":     true,
 		"ToGroups":    true,
+		"ToNodes":     true,
 	}
 	l7Members := countL7Rules(e.ToPorts)
 	l7EgressSupport := map[string]bool{
 		"DNS":   true,
-		"Kafka": true,
-		"HTTP":  true,
+		"Kafka": !hostPolicy,
+		"HTTP":  !hostPolicy,
 	}
 
 	for m1 := range l3Members {
@@ -212,7 +257,11 @@ func (e *EgressRule) sanitize() error {
 	}
 	for member := range l7Members {
 		if l7Members[member] > 0 && !l7EgressSupport[member] {
-			return fmt.Errorf("L7 protocol %s is not supported on egress yet", member)
+			where := ""
+			if hostPolicy {
+				where = "host "
+			}
+			return fmt.Errorf("L7 protocol %s is not supported on %segress yet", member, where)
 		}
 	}
 
@@ -222,6 +271,10 @@ func (e *EgressRule) sanitize() error {
 
 	if len(e.ICMPs) > 0 && len(e.ToPorts) > 0 {
 		return fmt.Errorf("The ICMPs block may only be present without ToPorts. Define a separate rule to use ToPorts.")
+	}
+
+	if len(e.ToNodes) > 0 && !option.Config.EnableNodeSelectorLabels {
+		retErr = ErrFromToNodesRequiresNodeSelectorOption
 	}
 
 	for _, es := range e.ToEndpoints {
@@ -244,6 +297,12 @@ func (e *EgressRule) sanitize() error {
 
 	for n := range e.ICMPs {
 		if err := e.ICMPs[n].verify(); err != nil {
+			return err
+		}
+	}
+
+	for _, ns := range e.ToNodes {
+		if err := ns.sanitize(); err != nil {
 			return err
 		}
 	}
@@ -275,7 +334,7 @@ func (e *EgressRule) sanitize() error {
 
 	e.SetAggregatedSelectors()
 
-	return nil
+	return retErr
 }
 
 func (pr *L7Rules) sanitize(ports []PortProtocol) error {
@@ -332,6 +391,10 @@ func (pr *L7Rules) sanitize(ports []PortProtocol) error {
 	return nil
 }
 
+// It is not allowed to configure an ingress listener, but we still
+// have some unit tests relying on this. So, allow overriding this check in the unit tests.
+var TestAllowIngressListener = false
+
 func (pr *PortRule) sanitize(ingress bool) error {
 	hasDNSRules := pr.Rules != nil && len(pr.Rules.DNS) > 0
 	if ingress && hasDNSRules {
@@ -354,7 +417,7 @@ func (pr *PortRule) sanitize(ingress bool) error {
 	for i := range pr.Ports {
 		var isZero bool
 		var err error
-		if isZero, err = pr.Ports[i].sanitize(); err != nil {
+		if isZero, err = pr.Ports[i].sanitize(hasDNSRules); err != nil {
 			return err
 		}
 		if isZero {
@@ -374,7 +437,7 @@ func (pr *PortRule) sanitize(ingress bool) error {
 		// For now we have only tested custom listener support on the egress path.  TODO
 		// (jrajahalme): Lift this limitation in follow-up work once proper testing has been
 		// done on the ingress path.
-		if ingress {
+		if ingress && !TestAllowIngressListener {
 			return fmt.Errorf("Listener is not allowed on ingress (%s)", listener.Name)
 		}
 		// There is no quarantee that Listener will support Cilium policy enforcement.  Even
@@ -399,7 +462,7 @@ func (pr *PortRule) sanitize(ingress bool) error {
 	return nil
 }
 
-func (pp *PortProtocol) sanitize() (isZero bool, err error) {
+func (pp *PortProtocol) sanitize(hasDNSRules bool) (isZero bool, err error) {
 	if pp.Port == "" {
 		return isZero, fmt.Errorf("Port must be specified")
 	}
@@ -415,6 +478,9 @@ func (pp *PortProtocol) sanitize() (isZero bool, err error) {
 			return isZero, fmt.Errorf("Unable to parse port: %w", err)
 		}
 		isZero = p == 0
+		if hasDNSRules && pp.EndPort > int32(p) {
+			return isZero, errors.New("DNS rules do not support port ranges")
+		}
 	}
 
 	pp.Protocol, err = ParseL4Proto(string(pp.Protocol))
@@ -462,6 +528,10 @@ func (c CIDR) sanitize() error {
 // valid, and ensuring that all of the exception CIDR prefixes are contained
 // within the allowed CIDR prefix.
 func (c *CIDRRule) sanitize() error {
+	if c.CIDRGroupRef != "" {
+		// When a CIDRGroupRef is set, we don't need to validate the CIDR
+		return nil
+	}
 	// Only allow notation <IP address>/<prefix>. Note that this differs from
 	// the logic in api.CIDR.Sanitize().
 	prefix, err := netip.ParsePrefix(string(c.Cidr))

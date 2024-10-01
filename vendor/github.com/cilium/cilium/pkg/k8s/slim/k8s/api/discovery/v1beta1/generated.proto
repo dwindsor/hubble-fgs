@@ -30,6 +30,14 @@ message Endpoint {
   // conditions contains information about the current status of the endpoint.
   optional EndpointConditions conditions = 2;
 
+  // hostname of this endpoint. This field may be used by consumers of
+  // endpoints to distinguish endpoints from each other (e.g. in DNS names).
+  // Multiple endpoints which use the same hostname should be considered
+  // fungible (e.g. multiple A values in DNS). Must be lowercase and pass DNS
+  // Label (RFC 1123) validation.
+  // +optional
+  optional string hostname = 3;
+
   // topology contains arbitrary topology information associated with the
   // endpoint. These key/value pairs must conform with the label format.
   // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
@@ -112,7 +120,7 @@ message EndpointPort {
 message EndpointSlice {
   // Standard object's metadata.
   // +optional
-  optional github.com.cilium.cilium.pkg.k8s.slim.k8s.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .github.com.cilium.cilium.pkg.k8s.slim.k8s.apis.meta.v1.ObjectMeta metadata = 1;
 
   // addressType specifies the type of address carried by this EndpointSlice.
   // All addresses in this slice must be the same type. This field is
@@ -142,7 +150,7 @@ message EndpointSlice {
 message EndpointSliceList {
   // Standard list metadata.
   // +optional
-  optional github.com.cilium.cilium.pkg.k8s.slim.k8s.apis.meta.v1.ListMeta metadata = 1;
+  optional .github.com.cilium.cilium.pkg.k8s.slim.k8s.apis.meta.v1.ListMeta metadata = 1;
 
   // items is the list of endpoint slices
   repeated EndpointSlice items = 2;

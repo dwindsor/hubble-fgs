@@ -64,12 +64,16 @@ func (s *State) consumeLogRecordNotifyChannel() {
 			if ips == nil {
 				continue
 			}
+			netIPs := []net.IP{}
+			for _, ip := range ips {
+				netIPs = append(netIPs, ip.AsSlice())
+			}
 			lookupTime, err := time.Parse(time.RFC3339Nano, logRecord.Timestamp)
 			if err != nil {
 				s.log.WithError(err).Warn("Unable to parse timestamp of DNS lookup")
 				continue
 			}
-			s.fqdnCache.AddDNSLookup(epID, lookupTime, domainName, ips, logRecord.DNS.TTL)
+			s.fqdnCache.AddDNSLookup(epID, lookupTime, domainName, netIPs, logRecord.DNS.TTL)
 		}
 	}
 }

@@ -4,9 +4,9 @@
 package controller
 
 import (
+	"github.com/cilium/hive/cell"
 	"github.com/spf13/pflag"
 
-	"github.com/cilium/cilium/pkg/hive/cell"
 	"github.com/cilium/cilium/pkg/metrics"
 	"github.com/cilium/cilium/pkg/metrics/metric"
 )
@@ -31,8 +31,8 @@ var (
 var Cell = cell.Module(
 	"controller",
 	"Controllers and Controller Lifecycle management",
-	cell.Config(Config{}),
-	cell.Metric(NewMetrics),
+	cell.Config(defaultConfig),
+	metrics.Metric(NewMetrics),
 	cell.Invoke(Init),
 )
 
@@ -62,6 +62,10 @@ func (cfg Config) Flags(flags *pflag.FlagSet) {
 		"List of controller group names for which to to enable metrics. "+
 			"Accepts 'all' and 'none'. "+
 			"The set of controller group names available is not guaranteed to be stable between Cilium versions.")
+}
+
+var defaultConfig = Config{
+	ControllerGroupMetrics: []string{},
 }
 
 func Init(cfg Config, m Metrics) {

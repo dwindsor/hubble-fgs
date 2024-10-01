@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cilium/hive/cell"
+	"github.com/cilium/stream"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
@@ -20,13 +22,12 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	"github.com/cilium/cilium/pkg/hive/cell"
 	k8smetrics "github.com/cilium/cilium/pkg/k8s/metrics"
+	"github.com/cilium/cilium/pkg/k8s/synced"
 	"github.com/cilium/cilium/pkg/k8s/watchers/resources"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/metrics"
 	"github.com/cilium/cilium/pkg/promise"
-	"github.com/cilium/cilium/pkg/stream"
 )
 
 // Resource provides access to a Kubernetes resource through either
@@ -153,12 +154,13 @@ func New[T k8sRuntime.Object](lc cell.Lifecycle, lw cache.ListerWatcher, opts ..
 }
 
 type options struct {
-	transform   cache.TransformFunc      // if non-nil, the object is transformed with this function before storing
-	sourceObj   func() k8sRuntime.Object // prototype for the object before it is transformed
-	indexers    cache.Indexers           // map of the optional custom indexers to be added to the underlying resource informer
-	metricScope string                   // the scope label used when recording metrics for the resource
-	name        string                   // the name label used for the workqueue metrics
-	releasable  bool                     // if true, the underlying informer will be stopped when the last subscriber cancels its subscription
+	transform      cache.TransformFunc             // if non-nil, the object is transformed with this function before storing
+	sourceObj      func() k8sRuntime.Object        // prototype for the object before it is transformed
+	indexers       cache.Indexers                  // map of the optional custom indexers to be added to the underlying resource informer
+	metricScope    string                          // the scope label used when recording metrics for the resource
+	name           string                          // the name label used for the workqueue metrics
+	releasable     bool                            // if true, the underlying informer will be stopped when the last subscriber cancels its subscription
+	crdSyncPromise promise.Promise[synced.CRDSync] // optional promise to wait for
 }
 
 type ResourceOption func(o *options)
@@ -209,6 +211,12 @@ func WithIndexers(indexers cache.Indexers) ResourceOption {
 func WithName(name string) ResourceOption {
 	return func(o *options) {
 		o.name = name
+	}
+}
+
+func WithCRDSync(crdSyncPromise promise.Promise[synced.CRDSync]) ResourceOption {
+	return func(o *options) {
+		o.crdSyncPromise = crdSyncPromise
 	}
 }
 
@@ -352,6 +360,11 @@ func (r *resource[T]) startWhenNeeded() {
 	// Short-circuit if we're being stopped.
 	if r.ctx.Err() != nil {
 		return
+	}
+
+	// Wait for CRDs to have synced before trying to access (Cilium) k8s resources
+	if r.opts.crdSyncPromise != nil {
+		r.opts.crdSyncPromise.Await(r.ctx)
 	}
 
 	store, informer := r.newInformer()

@@ -4,8 +4,8 @@
 package tunnel
 
 import (
-	"github.com/cilium/cilium/pkg/defaults"
-	"github.com/cilium/cilium/pkg/hive/cell"
+	"github.com/cilium/hive/cell"
+
 	"github.com/cilium/cilium/pkg/option"
 )
 
@@ -15,7 +15,7 @@ var Cell = cell.Module(
 	"datapath-tunnel-config",
 	"Tunneling configurations",
 
-	cell.Config(userCfg{TunnelProtocol: defaults.TunnelProtocol}),
+	cell.Config(defaultConfig),
 
 	cell.Provide(
 		newConfig,
@@ -33,7 +33,6 @@ var Cell = cell.Module(
 		func(dcfg *option.DaemonConfig) EnablerOut {
 			return NewEnabler(
 				(dcfg.EnableNodePort ||
-					dcfg.KubeProxyReplacement == option.KubeProxyReplacementStrict ||
 					dcfg.KubeProxyReplacement == option.KubeProxyReplacementTrue) &&
 					dcfg.LoadBalancerUsesDSR() &&
 					dcfg.LoadBalancerDSRDispatch == option.DSRDispatchGeneve,

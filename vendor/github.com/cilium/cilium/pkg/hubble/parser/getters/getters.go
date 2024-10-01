@@ -6,13 +6,13 @@ package getters
 import (
 	"net/netip"
 
-	"k8s.io/client-go/tools/cache"
-
 	flowpb "github.com/cilium/cilium/api/v1/flow"
 	cgroupManager "github.com/cilium/cilium/pkg/cgroups/manager"
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/ipcache"
+	slim_corev1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/api/core/v1"
+	"github.com/cilium/cilium/pkg/labels"
+	policyTypes "github.com/cilium/cilium/pkg/policy/types"
 )
 
 // DNSGetter ...
@@ -26,9 +26,9 @@ type DNSGetter interface {
 // EndpointGetter ...
 type EndpointGetter interface {
 	// GetEndpointInfo looks up endpoint by IP address.
-	GetEndpointInfo(ip netip.Addr) (endpoint v1.EndpointInfo, ok bool)
+	GetEndpointInfo(ip netip.Addr) (endpoint EndpointInfo, ok bool)
 	// GetEndpointInfo looks up endpoint by id
-	GetEndpointInfoByID(id uint16) (endpoint v1.EndpointInfo, ok bool)
+	GetEndpointInfoByID(id uint16) (endpoint EndpointInfo, ok bool)
 }
 
 // IdentityGetter ...
@@ -51,16 +51,6 @@ type ServiceGetter interface {
 	GetServiceByAddr(ip netip.Addr, port uint16) *flowpb.Service
 }
 
-// StoreGetter ...
-type StoreGetter interface {
-	// GetK8sStore return the k8s watcher cache store for the given resource name.
-	// Currently only resource networkpolicy and namespace are supported.
-	// WARNING: the objects returned by these stores can't be used to create
-	// update objects into k8s as well as the objects returned by these stores
-	// should only be used for reading.
-	GetK8sStore(name string) cache.Store
-}
-
 // LinkGetter fetches local link information.
 type LinkGetter interface {
 	// GetIfNameCached returns the name of an interface (if it exists) by
@@ -78,4 +68,15 @@ type PodMetadataGetter interface {
 	// GetPodMetadataForContainer returns the pod metadata for the given container
 	// cgroup id.
 	GetPodMetadataForContainer(cgroupId uint64) *cgroupManager.PodMetadata
+}
+
+// EndpointInfo defines readable fields of a Cilium endpoint.
+type EndpointInfo interface {
+	GetID() uint64
+	GetIdentity() identity.NumericIdentity
+	GetK8sPodName() string
+	GetK8sNamespace() string
+	GetLabels() []string
+	GetPod() *slim_corev1.Pod
+	GetRealizedPolicyRuleLabelsForKey(key policyTypes.Key) (derivedFrom labels.LabelArrayList, revision uint64, ok bool)
 }

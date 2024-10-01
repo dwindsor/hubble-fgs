@@ -27,20 +27,22 @@ var sandboxpoliciesKind = v1alpha1.SchemeGroupVersion.WithKind("SandboxPolicy")
 
 // Get takes name of the sandboxPolicy, and returns the corresponding sandboxPolicy object, and an error if there is any.
 func (c *FakeSandboxPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.SandboxPolicy, err error) {
+	emptyResult := &v1alpha1.SandboxPolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(sandboxpoliciesResource, name), &v1alpha1.SandboxPolicy{})
+		Invokes(testing.NewRootGetActionWithOptions(sandboxpoliciesResource, name, options), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.SandboxPolicy), err
 }
 
 // List takes label and field selectors, and returns the list of SandboxPolicies that match those selectors.
 func (c *FakeSandboxPolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.SandboxPolicyList, err error) {
+	emptyResult := &v1alpha1.SandboxPolicyList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(sandboxpoliciesResource, sandboxpoliciesKind, opts), &v1alpha1.SandboxPolicyList{})
+		Invokes(testing.NewRootListActionWithOptions(sandboxpoliciesResource, sandboxpoliciesKind, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -59,25 +61,27 @@ func (c *FakeSandboxPolicies) List(ctx context.Context, opts v1.ListOptions) (re
 // Watch returns a watch.Interface that watches the requested sandboxPolicies.
 func (c *FakeSandboxPolicies) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(sandboxpoliciesResource, opts))
+		InvokesWatch(testing.NewRootWatchActionWithOptions(sandboxpoliciesResource, opts))
 }
 
 // Create takes the representation of a sandboxPolicy and creates it.  Returns the server's representation of the sandboxPolicy, and an error, if there is any.
 func (c *FakeSandboxPolicies) Create(ctx context.Context, sandboxPolicy *v1alpha1.SandboxPolicy, opts v1.CreateOptions) (result *v1alpha1.SandboxPolicy, err error) {
+	emptyResult := &v1alpha1.SandboxPolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(sandboxpoliciesResource, sandboxPolicy), &v1alpha1.SandboxPolicy{})
+		Invokes(testing.NewRootCreateActionWithOptions(sandboxpoliciesResource, sandboxPolicy, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.SandboxPolicy), err
 }
 
 // Update takes the representation of a sandboxPolicy and updates it. Returns the server's representation of the sandboxPolicy, and an error, if there is any.
 func (c *FakeSandboxPolicies) Update(ctx context.Context, sandboxPolicy *v1alpha1.SandboxPolicy, opts v1.UpdateOptions) (result *v1alpha1.SandboxPolicy, err error) {
+	emptyResult := &v1alpha1.SandboxPolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(sandboxpoliciesResource, sandboxPolicy), &v1alpha1.SandboxPolicy{})
+		Invokes(testing.NewRootUpdateActionWithOptions(sandboxpoliciesResource, sandboxPolicy, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.SandboxPolicy), err
 }
@@ -91,7 +95,7 @@ func (c *FakeSandboxPolicies) Delete(ctx context.Context, name string, opts v1.D
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeSandboxPolicies) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(sandboxpoliciesResource, listOpts)
+	action := testing.NewRootDeleteCollectionActionWithOptions(sandboxpoliciesResource, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.SandboxPolicyList{})
 	return err
@@ -99,10 +103,11 @@ func (c *FakeSandboxPolicies) DeleteCollection(ctx context.Context, opts v1.Dele
 
 // Patch applies the patch and returns the patched sandboxPolicy.
 func (c *FakeSandboxPolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.SandboxPolicy, err error) {
+	emptyResult := &v1alpha1.SandboxPolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(sandboxpoliciesResource, name, pt, data, subresources...), &v1alpha1.SandboxPolicy{})
+		Invokes(testing.NewRootPatchSubresourceActionWithOptions(sandboxpoliciesResource, name, pt, data, opts, subresources...), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.SandboxPolicy), err
 }
