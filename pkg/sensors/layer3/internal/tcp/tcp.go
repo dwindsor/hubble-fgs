@@ -197,6 +197,12 @@ func UnloadSensor() error {
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
+	tcpconfig.MetricsEnabled = false
+	if StatsEnabled && Interval > 0 {
+		gcTimer.Stop()
+	}
+	StatsEnabled = false
+	Interval = 0
 	tcpCache.StopGc()
 	return model.ClearDnsQuota()
 }
