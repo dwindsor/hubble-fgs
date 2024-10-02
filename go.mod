@@ -27,7 +27,7 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.62
 	github.com/operator-framework/api v0.26.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.77.1
 	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/client_model v0.6.1
 	github.com/sirupsen/logrus v1.9.3
@@ -54,7 +54,7 @@ require (
 	k8s.io/code-generator v0.31.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20240521193020-835d969ad83a
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	sigs.k8s.io/controller-runtime v0.19.0
 	sigs.k8s.io/controller-tools v0.16.4-0.20240923084800-3b70a40398f4
 	sigs.k8s.io/e2e-framework v0.2.0
