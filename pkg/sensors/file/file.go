@@ -406,6 +406,47 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 	return reply, nil
 }
 
+func TracingPolicyPathDigestsFsScanner(s v1alpha1.FileSpec, sel *fm.KernelSelectorState) (map[string]string, error) {
+	// no need to send a message to fs-scanner for inode-based policies
+	if m, _, err := GetTpMode(&s); err == nil && m != PathBasedTpMode {
+		return make(map[string]string), nil
+	}
+
+	// no need to send a message to fs-scanner if there are no file that we need digests
+	paths := sel.GetDigestPaths()
+	if len(paths) == 0 {
+		return make(map[string]string), nil
+	}
+
+	algo, err := probeImaEnabled()
+	if err != nil {
+		return nil, fmt.Errorf("failed to probe IMA: %w", err)
+	}
+
+	algoNum, ok := tetragon.DigestAlgo_value[algo]
+	if !ok {
+		return nil, fmt.Errorf("invalid digest algorithm: %s", algo)
+	}
+
+	f := fm.FsScannerDigests{
+		Algo:  algoNum,
+		Files: paths,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitHost)
+		return nil, fmt.Errorf("failed filemetrics.FileTotalErrorsInc: %w", err)
+	}
+	defer client.Close()
+
+	reply := make(map[string]string)
+	if err := client.Call("FsScannerRpc.TracingPolicyFileDigests", &f, &reply); err != nil {
+		return nil, fmt.Errorf("failed FsScannerRpc.TracingPolicyFileDigests: %w", err)
+	}
+	return reply, nil
+}
+
 func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.FileSpec, flags uint32) error {
 	// no need to send a message to fs-scanner for path-based policies
 	if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
@@ -921,6 +962,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	allInodes := make(map[fileapi.InodeKey]fileapi.InodeVal)
+	allDigestMaps := make(map[string]string)
 
 	if kprobes.MonitorHostFiles {
 		hostInodes, err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix, false)
@@ -929,6 +971,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 		} else {
 			mapHelpers.Copy(allInodes, hostInodes)
+		}
+
+		digestMap, err := TracingPolicyPathDigestsFsScanner(kprobes, sel)
+		if err != nil {
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
+			l.WithError(err).Warnf("TracingPolicyPathDigestsFsScanner failed!")
+		} else {
+			mapHelpers.Copy(allDigestMaps, digestMap)
 		}
 	}
 	numHostInodes := len(allInodes)
@@ -1314,6 +1364,38 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return nil
 				},
 			})
+
+			load.MapLoad = append(load.MapLoad, &program.MapLoad{
+				Index: 0,
+				Name:  "filename_ops_map",
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+					return fm.GenerateFilenameOpsMap(m, sel)
+				},
+			})
+
+			load.MapLoad = append(load.MapLoad, &program.MapLoad{
+				Index: 0,
+				Name:  "filename_path_map",
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+					return fm.GeneratePathsMap(m, sel, e.PinPathPrefix)
+				},
+			})
+
+			load.MapLoad = append(load.MapLoad, &program.MapLoad{
+				Index: 0,
+				Name:  "filename_digest_map",
+				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+					algo, err := probeImaEnabled()
+					if err != nil {
+						return fmt.Errorf("failed to probe IMA: %w", err)
+					}
+					algoNum, ok := tetragon.DigestAlgo_value[algo]
+					if !ok {
+						return fmt.Errorf("invalid digest algorithm: %s", algo)
+					}
+					return fm.GenerateDigestsMap(m, sel, e.PinPathPrefix, allDigestMaps, algoNum)
+				},
+			})
 		}
 
 		// only for exec events when digests are enabled
@@ -1381,6 +1463,30 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
 			m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
 			maps = append(maps, m)
+
+			mapName = "filename_ops_map"
+			m = program.MapBuilderPolicy(mapName, load)
+			m.SetMaxEntries(fm.GetNumFilenameSelectors(sel))
+			maps = append(maps, m)
+
+			mapName = "filename_path_map"
+			m = program.MapBuilderPolicy(mapName, load)
+			m.SetMaxEntries(maxSelectors)
+			m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPathMap(sel))
+			maps = append(maps, m)
+
+			mapName = "filename_digest_map"
+			m = program.MapBuilderPolicy(mapName, load)
+			m.SetMaxEntries(maxSelectors)
+			// how many digests can we have per path
+			// i.e. /usr/bin/ls can have 1 digest in the host
+			// and 1 digest each container that the policy matches
+			// We choose to multiply the number of paths by 32 which
+			// should be enough for most cases.
+			// TODO: make this configurable
+			m.SetInnerMaxEntries((fm.GetMaxInnerEntriesPathMap(sel) * 32))
+			maps = append(maps, m)
+
 		}
 
 		for _, m := range SharedMaps {

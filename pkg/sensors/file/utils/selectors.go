@@ -36,6 +36,9 @@ const (
 
 	MaxFimSelectors     = 6 // should match MAX_FIM_SELECTORS in bpf/file/bpf_file.h
 	MaxFimGlobSelectors = 128
+
+	MatchFilenameInPattern        = 0
+	MatchFilenameInFileWithDigest = 1
 )
 
 const (
@@ -140,7 +143,9 @@ type OpenFlagsOps struct {
 }
 
 type MatchFilenameOps struct {
-	fsm []*GlobFSM
+	op    uint32
+	fsm   []*GlobFSM        // when op == MatchFilenameInPattern
+	paths map[string]uint32 // when op == MatchFilenameInFileWithDigest
 }
 
 type KernelSelectorState struct {
@@ -241,7 +246,9 @@ func (k *KernelSelectorState) InitOrGetPatterns(selIdx uint32) *MatchFilenameOps
 	if ok {
 		return val
 	}
-	inner := &MatchFilenameOps{}
+	inner := &MatchFilenameOps{
+		paths: make(map[string]uint32),
+	}
 	k.patterns[selIdx] = inner
 	return inner
 }
@@ -578,6 +585,140 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 type patternKey struct {
 	selIdx     uint32
 	patternIdx uint32
+}
+
+func GenerateFilenameOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, entry := range sel.patterns {
+		if err := m.Update(idx, entry.op, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetNumFilenameSelectors(sel *KernelSelectorState) int {
+	sz := len(sel.patterns)
+	if sz == 0 {
+		sz++
+	}
+	return sz
+}
+
+func GetMaxInnerEntriesPathMap(sel *KernelSelectorState) int {
+	maxEntries := 0
+	for _, entry := range sel.patterns {
+		num := len(entry.paths)
+		if num > maxEntries {
+			maxEntries = num
+		}
+	}
+	if maxEntries == 0 {
+		maxEntries++
+	}
+	return maxEntries
+}
+
+func GeneratePathsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	for selID, entries := range sel.patterns {
+		innerName := fmt.Sprintf("filename_path_map_%d", selID)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Hash,
+			KeySize:    256, // path length
+			ValueSize:  4,   // uint32
+			MaxEntries: uint32(GetMaxInnerEntriesPathMap(sel)),
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
+
+		innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+		for path, pathIdx := range entries.paths {
+			var key [256]byte
+			copy(key[:], path)
+
+			if err := innerMap.Put(key, pathIdx); err != nil {
+				return fmt.Errorf("put failed: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(selID, uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
+		}
+	}
+	return nil
+}
+
+func GenerateDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string, digestMap map[string]string, algoNum int32) error {
+	for selID, entries := range sel.patterns {
+		innerName := fmt.Sprintf("filename_digest_map_%d", selID)
+		innerSpec := &ebpf.MapSpec{
+			Name:       innerName,
+			Type:       ebpf.Hash,
+			KeySize:    uint32(unsafe.Sizeof(fileapi.DigestKey{})),
+			ValueSize:  4, // uint32
+			MaxEntries: 32 * uint32(GetMaxInnerEntriesPathMap(sel)),
+		}
+		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+		})
+		if err != nil {
+			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+		}
+		defer innerMap.Close()
+
+		innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+		for path, pathIdx := range entries.paths {
+			digest, ok := digestMap[path]
+			if !ok {
+				continue // no digest for this path
+			}
+
+			key := fileapi.DigestKey{
+				Algo:   algoNum,
+				Digest: [64]uint8{},
+				Ok:     1,
+			}
+
+			// parse digest string
+			for i := 0; i < len(digest)/2; i++ {
+				d := digest[(i * 2) : (i*2)+2]
+				num, _ := strconv.ParseInt(d, 16, 64)
+				key.Digest[i] = uint8(num)
+			}
+
+			val := uint32(pathIdx)
+
+			if err := innerMap.Put(key, val); err != nil {
+				return fmt.Errorf("put failed: %w", err)
+			}
+		}
+
+		if err := outerMap.Update(selID, uint32(innerMap.FD()), 0); err != nil {
+			return fmt.Errorf("failed to insert %s: %w", innerName, err)
+		}
+	}
+	return nil
+}
+
+func (k *KernelSelectorState) GetDigestPaths() []string {
+	uniquePaths := map[string]struct{}{}
+	for _, entry := range k.patterns {
+		for key := range entry.paths {
+			uniquePaths[key] = struct{}{}
+		}
+	}
+	paths := make([]string, 0)
+	for key := range uniquePaths {
+		paths = append(paths, key)
+	}
+	return paths
 }
 
 func GeneratePatternsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
@@ -986,21 +1127,31 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 	}
 
 	for _, o := range op {
-		if o.Operator != "InPattern" {
-			return fmt.Errorf("only support op 'InPattern'")
-		}
-
-		if len(o.Values) > 256 {
-			return fmt.Errorf("only support up to 256 patterns")
+		if o.Operator != "InPattern" && o.Operator != "InFileWithDigest" {
+			return fmt.Errorf("only support op 'InPattern' and 'InFileWithDigest'")
 		}
 
 		val := k.InitOrGetPatterns(uint32(selIdx))
-		for _, p := range o.Values {
-			fsm, err := CompileGlob(p)
-			if err != nil {
-				return fmt.Errorf("failed to compile glob, pattern: %s error: %w", p, err)
+		if o.Operator == "InFileWithDigest" {
+			val.op = MatchFilenameInFileWithDigest
+
+			for idx, p := range o.Values {
+				val.paths[p] = uint32(idx)
 			}
-			val.fsm = append(val.fsm, fsm)
+		} else if o.Operator == "InPattern" {
+			if len(o.Values) > 256 {
+				return fmt.Errorf("only support up to 256 patterns")
+			}
+
+			val.op = MatchFilenameInPattern
+
+			for _, p := range o.Values {
+				fsm, err := CompileGlob(p)
+				if err != nil {
+					return fmt.Errorf("failed to compile glob, pattern: %s error: %w", p, err)
+				}
+				val.fsm = append(val.fsm, fsm)
+			}
 		}
 	}
 

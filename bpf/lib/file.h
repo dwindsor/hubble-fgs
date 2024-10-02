@@ -93,6 +93,11 @@ enum {
 	hook_max = 38,
 };
 
+enum {
+	match_filename_in_pattern = 0,
+	match_filename_in_file_with_digest = 1,
+};
+
 #define KRETPROBE_KEY 0
 #define LSM_FMOD_KEY  1
 

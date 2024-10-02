@@ -374,6 +374,53 @@ struct {
 	__type(value, struct file_sel_rename);
 } file_rename_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1); /* the user will setup this */
+	__type(key, __u32); /* selector id */
+	__type(value, __u32); /* match_filename_* */
+} filename_ops_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS); // max number of selectors -- to be set from the user-space
+	__type(key, __u32); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(key_size, MAX_FILEPATH_SIZE * sizeof(char));
+			__uint(value_size, sizeof(__u32));
+			__uint(max_entries, 1); // to be set from the user-space
+		});
+} filename_path_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct full_path);
+	__uint(max_entries, 1);
+} filename_heap_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS); // max number of selectors -- to be set from the user-space
+	__type(key, __u32); /* selector id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(key_size, sizeof(struct digest_key));
+			__uint(value_size, sizeof(__u32));
+			__uint(max_entries, 1); // to be set from the user-space
+		});
+} filename_digest_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct digest_key);
+	__uint(max_entries, 1);
+} digest_heap_map SEC(".maps");
+
 #define MAX_SELECTOR_OPEN_FLAGS 8
 
 // Need to declare the value of the inner map here otherwise we get the
@@ -567,6 +614,7 @@ static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_i
 		.ok = 0,
 	};
 	__u32 *op, *val;
+	__s32 algo;
 
 	// the event does not support digests yet, so accept
 	if (digest == 0)
@@ -577,7 +625,8 @@ static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_i
 		return 1;
 
 	// failed to get digest
-	if (digest->algo < 0)
+	probe_read_kernel(&algo, sizeof(algo), (__u8 *)digest + offsetof(struct digest_key, algo));
+	if (algo < 0)
 		return 0;
 
 	file_digests_map = map_lookup_elem(&file_digests_maps, &sel_idx);
@@ -586,7 +635,8 @@ static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_i
 
 	op = map_lookup_elem(file_digests_map, &op_key);
 	if (op) {
-		val = map_lookup_elem(file_digests_map, digest);
+		probe_read_kernel(&op_key, sizeof(op_key), digest);
+		val = map_lookup_elem(file_digests_map, &op_key);
 		if (*op == op_filter_in) {
 			if (!val)
 				return 0;
@@ -798,7 +848,7 @@ static long pattern_loop_cb(u32 index, void *_ctx)
 }
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_idx, char *path, __u32 len)
+static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_idx, char *path, __u32 len, struct digest_key *digest)
 {
 	struct pattern_loop_ctx ctx = {
 		.sel_idx = sel_idx,
@@ -806,13 +856,61 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 		.len = len,
 		.ret = 0,
 	};
+	__u32 sel = sel_idx, *op = 0;
 
 	if (!path) // no path in eval_selectors call, inode-based hooks do not support that
 		return 1;
 
-	loop(256, &pattern_loop_cb, &ctx, 0); // maximum 256 patterns per selector
+	op = map_lookup_elem(&filename_ops_map, &sel);
+	if (!op) // no matchFilename for this selector -- match
+		return 1;
 
-	return ctx.ret;
+	if (*op == match_filename_in_pattern) {
+		loop(256, &pattern_loop_cb, &ctx, 0); // maximum 256 patterns per selector
+		return ctx.ret;
+	} else if (*op == match_filename_in_file_with_digest) {
+		void *path_map, *digest_map, *tmp_digest;
+		struct full_path *tmp_path;
+		__u32 *path_idx, *digest_idx;
+		int zero = 0;
+
+		tmp_path = map_lookup_elem(&filename_heap_map, &zero);
+		if (!tmp_path)
+			return 0;
+
+		len &= (MAX_FILEPATH_SIZE - 1);
+		probe_read_kernel(tmp_path->path, len, path);
+
+		path_map = map_lookup_elem(&filename_path_map, &sel);
+		if (!path_map) // no matchFilename for this selector -- match
+			return 1;
+
+		path_idx = map_lookup_elem(path_map, tmp_path->path);
+		if (!path_idx) // no path in the allowed paths -- do no match
+			return 0;
+
+		if (!digest) // we have matched the path but no digest -- do not match
+			return 0;
+
+		digest_map = map_lookup_elem(&filename_digest_map, &sel);
+		if (!digest_map) // we have matched the path but digest does not exist for this selector-- do not match
+			return 0;
+
+		tmp_digest = map_lookup_elem(&digest_heap_map, &zero);
+		if (!tmp_digest)
+			return 0;
+
+		probe_read_kernel(tmp_digest, sizeof(struct digest_key), digest);
+
+		digest_idx = map_lookup_elem(digest_map, tmp_digest);
+		if (!digest_idx) // no digest in the allowed digests -- do no match
+			return 0;
+
+		// if both (path and digest) exist and the value is the same then match
+		return (*path_idx == *digest_idx);
+	}
+
+	return 0;
 }
 #endif /* __ENABLE_GLOB_SUPPORT */
 
@@ -836,7 +934,7 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *di
 		return 0;
 #endif
 #ifdef __ENABLE_GLOB_SUPPORT
-	if (!check_match_filename(sel_idx, path, len))
+	if (!check_match_filename(sel_idx, path, len, digest))
 		return 0;
 #endif
 	if (!check_match_rename(sel_idx, action, flags))
@@ -856,6 +954,7 @@ struct selectors_ctx {
 	__u32 action;
 	__u32 flags;
 	__u32 num_selectors;
+	struct digest_key *digest;
 };
 
 struct {
@@ -887,7 +986,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	 */
 	execve = event_find_curr(&zero, &walker);
 
-	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, 0, execve, ctx->path, ctx->len);
+	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, ctx->digest, execve, ctx->path, ctx->len);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -933,6 +1032,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	ctx->len = len;
 	ctx->retval = 0;
 	ctx->num_selectors = conf->num_selectors;
+	ctx->digest = digest;
 
 	loop(128, &selectors_cb, 0, 0);
 	if (ctx->retval)

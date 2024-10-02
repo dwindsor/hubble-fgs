@@ -13,6 +13,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -54,6 +55,39 @@ type rpcRunner interface {
 var runnerChan chan rpcRunner
 
 type FsScannerRpc struct{}
+
+type rpcDigests struct {
+	arg   *fm.FsScannerDigests
+	reply *map[string]string
+	done  chan error
+}
+
+func (r rpcDigests) Run() {
+	err := tracingPolicyFileDigests(r.arg, r.reply)
+	if r.done != nil {
+		r.done <- err
+	}
+}
+
+func (f *FsScannerRpc) TracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]string) error {
+	r := rpcDigests{
+		arg:   args,
+		reply: reply,
+		done:  make(chan error),
+	}
+
+	select {
+	case runnerChan <- r:
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op TracingPolicyFileDigests timed out")
+		}
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
 
 type rpcInit struct {
 	arg   *fm.FsScannerInit
@@ -228,6 +262,31 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		} else {
 			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded host files/directories")
 		}
+	}
+
+	return nil
+}
+
+func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]string) error {
+	h, err := fm.GetHashAlgo(args.Algo)
+	if err != nil {
+		return fmt.Errorf("tracingPolicyFileDigests: fm.GetHashAlgo: %w", err)
+	}
+
+	for _, path := range args.Files {
+		f, err := os.Open(path)
+		if err != nil {
+			// file does not exist, skip that
+			continue
+		}
+		defer f.Close()
+
+		if _, err := io.Copy(h, f); err != nil {
+			return fmt.Errorf("tracingPolicyFileDigests: io.Copy: %w", err)
+		}
+		digest := fmt.Sprintf("%x", h.Sum(nil))
+
+		(*reply)[path] = digest
 	}
 
 	return nil

@@ -64,6 +64,11 @@ type FsScannerInit struct {
 	AddToMaps  bool
 }
 
+type FsScannerDigests struct {
+	Algo  int32
+	Files []string
+}
+
 type FsScannerRename struct {
 	PolicyName  string
 	Spec        v1alpha1.FileSpec
