@@ -6,13 +6,21 @@ generated from:
 2. Enterprise extensions (`enterprise` directory)
 3. Enterprise CRDs overwriting the OSS ones
 
-## Generate & validate the chart
+## Generate the chart
 
-To generate Tetragon Enterprise Helm chart, run:
+To generate the chart, run:
 
     make
 
-The default Makefile target will also generate docs and validate the chart.
+The default Makefile target will also generate the chart docs (`README.md`).
+
+## Validate the chart
+
+To validate the chart, run:
+
+    make validation
+
+This will lint the chart and validate the default ruleset policies.
 
 ## Add enterprise-only functionality
 
