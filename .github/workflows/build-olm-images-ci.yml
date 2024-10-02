@@ -15,7 +15,7 @@ on:
 
 jobs:
   build-and-push-prs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU

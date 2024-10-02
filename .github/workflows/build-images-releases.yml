@@ -33,7 +33,7 @@ jobs:
   bundle-build-and-push:
     if: ${{ startsWith(github.ref_name, 'v1.11') || startsWith(github.ref_name, 'v1.12') }}
     needs: build-and-push
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Getting image tag
         id: tag
@@ -139,7 +139,7 @@ jobs:
     name: Create Release
     if: github.repository == 'isovalent/hubble-fgs' && !contains(github.ref_name, '-')
     environment: release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
