@@ -1383,6 +1383,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			switch {
 			case m.Name == "tg_mb_paths":
 				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
+				m.SetMaxEntries(maxSelectors)
+			case m.Name == "tg_mb_sel_opts":
+				m.SetMaxEntries(maxSelectors)
 			case m.Name == "file_ops_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
 				m.SetMaxEntries(maxSelectors)
