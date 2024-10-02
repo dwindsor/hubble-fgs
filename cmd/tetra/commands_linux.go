@@ -36,6 +36,7 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(sandboxpolicy.New())
 	rootCmd.AddCommand(syscallentries.New())
 	rootCmd.AddCommand(exec.New())
+	rootCmd.AddCommand(exec.NewMonitor())
 	rootCmd.AddCommand(debug.New())
 	rootCmd.AddCommand(debug.NewDumpAlias())
 	rootCmd.AddCommand(loglevel.New())
