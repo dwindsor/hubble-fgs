@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,8 +42,6 @@ var (
 	namespaces []string
 	workloads  []string
 	output     string
-
-	hostNamespace = "<host-namespace>"
 )
 
 type ConnectedModelClient struct {
@@ -168,7 +167,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 	}
 
 	if host {
-		nsPrintList[hostNamespace] = true
+		nsPrintList[model.HostNamespace] = true
 	}
 
 	nsKeys := make([]string, 0, len(nsCollections))
@@ -185,7 +184,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		r := nsCollections[k]
 
 		if n == "" {
-			nsStr = hostNamespace
+			nsStr = model.HostNamespace
 		} else {
 			nsStr = n
 		}

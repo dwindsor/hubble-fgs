@@ -29,6 +29,7 @@ const (
 	processTreeMap         = "process_tree_map"
 	processTreeUUIDMap     = "process_tree_uid_binary_map"
 	destinationEndpointMap = "destination_endpoint_map"
+	HostNamespace          = "<host-namespace>"
 )
 
 type binary struct {
@@ -256,7 +257,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			wlPath = nsId.Workload
 			kind = nsId.Kind
 		} else {
-			nsPath = "<host-namespace>"
+			nsPath = HostNamespace
 			wlPath = "<host-workload>"
 			kind = "<host-kind>"
 		}
@@ -283,7 +284,7 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			wl = nsId.Workload
 			kind = nsId.Kind
 		} else {
-			ns = "<host-namespace>"
+			ns = HostNamespace
 			wl = "<host-workload>"
 			kind = "<host-kind>"
 		}
