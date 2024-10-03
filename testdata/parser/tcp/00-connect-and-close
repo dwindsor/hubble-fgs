@@ -40,7 +40,7 @@ EVENT TCPACCEPT
   ? 8
 
   ## create time
-  $ 00 00 00 00 00 00 00 00
+  ? 8
   ## close time
   $ 00 00 00 00 00 00 00 00
 
@@ -76,7 +76,7 @@ EVENT TCPCONNECTRET
   ? 8
 
   ## create time
-  $ 00 00 00 00 00 00 00 00
+  ? 8
   ## close time
   $ 00 00 00 00 00 00 00 00
 
