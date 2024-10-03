@@ -95,6 +95,22 @@ var (
 		"kprobe",
 	)
 
+	SecurityAccept = program.Builder(
+		"bpf_tcp_security_accept.o",
+		"security_socket_accept",
+		"fentry/security_socket_accept",
+		"tg_tcp_security_accept",
+		"tcp_fentry",
+	)
+
+	SecurityGraft = program.Builder(
+		"bpf_tcp_security_accept.o",
+		"security_sock_graft",
+		"fentry/security_sock_graft",
+		"tg_tcp_security_graft",
+		"tcp_fentry",
+	)
+
 	Accept = program.Builder(
 		"bpf_tcp_accept.o",
 		"tcp_create_openreq_child",
@@ -148,6 +164,9 @@ var (
 	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops515)
 	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
+
+	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept);
+	SecurityGraftMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityGraft);
 
 	// Endpoint Models
 	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
@@ -276,9 +295,10 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			progs = append(progs, Connect)
 			maps = append(maps, mapsConnect...)
 		} else {
-			progs = append(progs, TcpSockops515)
+			progs = append(progs, TcpSockops515, SecurityAccept, SecurityGraft)
 			maps = append(maps, mapsOps...)
 			maps = append(maps, processModelMapsEnable()...)
+			maps = append(maps, SecurityAcceptMap, SecurityGraftMap)
 		}
 	}
 

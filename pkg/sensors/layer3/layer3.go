@@ -470,6 +470,12 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			logger.GetLogger().WithError(err).Warn("TC_EGRESS")
 			return err
 		}
+	case "tcp_fentry":
+		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("FENTRY")
+			return err
+		}
 	case "layer3_sensor":
 		if tcp.StatsEnabled {
 			tcp.ConfigureSockStatSampler(tcp.Interval,
@@ -569,6 +575,7 @@ func AddLayer3() {
 	sensors.RegisterProbeType("cgrp_inet6_bind", l3)
 	sensors.RegisterProbeType("udp_tc_egress", l3)
 	sensors.RegisterProbeType("tcp_tc_egress", l3)
+	sensors.RegisterProbeType("tcp_fentry", l3)
 
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 }

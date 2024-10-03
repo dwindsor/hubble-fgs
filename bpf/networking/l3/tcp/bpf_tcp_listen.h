@@ -19,4 +19,11 @@ struct {
 	__uint(max_entries, 1);
 } tcp_listen_event_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, __u64);
+	__uint(max_entries, 32000);
+} tg_tcp_accept_socket_to_sk_map SEC(".maps");
+
 #endif //__BPF_TCP_LISTEN_H__

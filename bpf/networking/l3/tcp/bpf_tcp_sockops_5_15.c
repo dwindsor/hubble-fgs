@@ -13,6 +13,9 @@
 #include "bpf_tcp_connect.h"
 #include "bpf_tcp_state.h"
 #include "bpf_tcp_listen.h"
+#include "bpf_tcp_accept.h"
+#include "parsers/http/http_parser.h"
+#include "parsers/bottle.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {
