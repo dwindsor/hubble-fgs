@@ -31,7 +31,7 @@ EVENT TCPACCEPT
   ? 8                   # socket cookie
 
   ## socket flags
-  h4 0x00
+  h4 0x02
 
   ## pad
   h4 0x00 # pad
