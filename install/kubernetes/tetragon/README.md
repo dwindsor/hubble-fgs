@@ -98,6 +98,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.flowExportFileMaxSizeMB | int | `10` |  |
 | tetragon.flowExportFilename | string | `""` | EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON. |
 | tetragon.gops.address | string | `"localhost"` | The address at which to expose gops. |
+| tetragon.gops.enabled | bool | `true` | Whether to enable exposing gops server. |
 | tetragon.gops.port | int | `8118` | The port at which to expose gops. |
 | tetragon.grpc.address | string | `"localhost:54321"` | The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/cilum/tetragon/tetragon.sock |
 | tetragon.grpc.enabled | bool | `true` | Whether to enable exposing Tetragon gRPC. |
