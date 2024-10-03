@@ -216,12 +216,16 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
 		if (!tcp_stats)
 			return 0;
+		if ((1 << config->state) & TCPF_LISTEN)
+			tcp_stats->socket_flags = SOCKFLAGS_TYPE_LISTEN;
+		else
+			tcp_stats->socket_flags = 0;
+
 		tcp_stats->sent = 0;
 		tcp_stats->segs_out = 0;
 		tcp_stats->retransbytes = 0;
 		tcp_stats->sk_drops = 0;
 		tcp_stats->zero_window = 0;
-		tcp_stats->socket_flags = 0;
 		tcp_stats->rtt_sum = 0;
 		tcp_stats->latency_sum = 0;
 		tcp_stats->fin_rx = 0;
