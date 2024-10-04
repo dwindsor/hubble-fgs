@@ -139,7 +139,7 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		.common.ktime = ktime_get_ns(),
 		.common.op = ISO_MSG_OP_TCPACCEPT,
 		.socket_cookie = cookie,
-		.socket_flags = 0,
+		.socket_flags = SOCKFLAGS_TYPE_ACCEPT,
 		.version = 0,
 		.create_time = 0,
 		.close_time = 0,
