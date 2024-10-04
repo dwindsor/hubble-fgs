@@ -17,6 +17,7 @@ syntax = "proto3";
 package tetragon;
 
 import "tetragon/tetragon.proto";
+import "google/protobuf/timestamp.proto";
 
 message GetProcessModelRequest { }
 
@@ -30,6 +31,9 @@ message DestinationStats {
 	uint64 RxBytes = 2;
 	uint64 TxDrops = 3;
 	uint64 TxLimit = 4;
+	uint64 TxQuota = 5;
+	google.protobuf.Timestamp KtimeLastReset = 6;
+	google.protobuf.Timestamp KtimeTxReset = 7;
 }
 
 message Destination {

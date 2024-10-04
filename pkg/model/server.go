@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -153,10 +154,13 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 		}
 
 		stats := &tetragon.DestinationStats{
-			TxBytes: dstVal.TxBytes,
-			RxBytes: dstVal.RxBytes,
-			TxDrops: dstVal.TxDrops,
-			TxLimit: dstVal.TxLimit,
+			TxBytes:        dstVal.TxBytes,
+			RxBytes:        dstVal.RxBytes,
+			TxDrops:        dstVal.TxDrops,
+			TxLimit:        dstVal.TxLimit,
+			TxQuota:        dstVal.TxQuota,
+			KtimeLastReset: ktime.ToProto(dstVal.KtimeLastReset),
+			KtimeTxReset:   ktime.ToProto(dstVal.KtimeTxReset),
 		}
 
 		switch ep.Type {
