@@ -979,6 +979,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -1295,6 +1300,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -1584,6 +1594,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -1900,6 +1915,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -2914,6 +2934,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -3230,6 +3255,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -3487,6 +3517,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.
@@ -3803,6 +3838,11 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                imaHash:
+                                  description: |-
+                                    Enable collection of file hashes from integrity subsystem.
+                                    Only valid with the post action.
+                                  type: boolean
                                 kernelStackTrace:
                                   description: Enable kernel stack trace export. Only
                                     valid with the post action.

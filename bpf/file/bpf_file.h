@@ -149,7 +149,6 @@ static inline gid_t __kgid_val(kgid_t gid)
 	return gid.val;
 }
 
-static long BPF_FUNC(ima_file_hash, struct file *file, void *dst, u32 size);
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
 // re-write this in user-space to enable bpf_d_path helper

@@ -43,7 +43,7 @@ type EnterpriseEncoder struct {
 // NewEnterpriseEncoder initializes and returns a pointer to CompactEncoder.
 func NewEnterpriseEncoder(w io.Writer, colorMode encoder.ColorMode, timestamps bool) *EnterpriseEncoder {
 	return &EnterpriseEncoder{
-		inner:   encoder.NewCompactEncoder(w, colorMode, timestamps, false),
+		inner:   encoder.NewCompactEncoder(w, colorMode, timestamps, false, false),
 		colorer: *newColorer(colorMode),
 	}
 }

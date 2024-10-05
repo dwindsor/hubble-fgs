@@ -63,17 +63,47 @@ func LoadConfig(bpfDir string, sens []*Sensor) error {
 	return nil
 }
 
-func (s *Sensor) setupProgsPinPath(bpfDir string) {
+func (s *Sensor) createDirs(bpfDir string) {
 	for _, p := range s.Progs {
 		// setup sensor based program pin path
 		p.PinPath = filepath.Join(sanitize(s.Policy), s.Name, p.PinName)
 		// and make the path
-		os.MkdirAll(filepath.Join(bpfDir, p.PinPath), os.ModeDir)
+		if err := os.MkdirAll(filepath.Join(bpfDir, p.PinPath), os.ModeDir); err != nil {
+			logger.GetLogger().WithError(err).
+				WithField("prog", p.PinName).
+				WithField("dir", p.PinPath).
+				Warn("Failed to create program dir")
+		}
 	}
+	s.BpfDir = bpfDir
+}
+
+func (s *Sensor) removeDirs() {
+	// Remove all the program dirs
+	for _, p := range s.Progs {
+		if err := os.Remove(filepath.Join(s.BpfDir, p.PinPath)); err != nil {
+			logger.GetLogger().WithError(err).
+				WithField("prog", p.PinName).
+				WithField("dir", p.PinPath).
+				Warn("Failed to remove program dir")
+		}
+	}
+	// Remove sensor dir
+	if err := os.Remove(filepath.Join(s.BpfDir, sanitize(s.Policy), s.Name)); err != nil {
+		logger.GetLogger().WithError(err).
+			WithField("sensor", s.Name).
+			WithField("dir", filepath.Join(sanitize(s.Policy), s.Name)).
+			Warn("Failed to remove sensor dir")
+	}
+
+	// For policy dir the last one switches off the light.. there still
+	// might be other sensors in the policy, so the last sensors removed
+	// will succeed in removal policy dir.
+	os.Remove(filepath.Join(s.BpfDir, sanitize(s.Policy)))
 }
 
 // Load loads the sensor, by loading all the BPF programs and maps.
-func (s *Sensor) Load(bpfDir string) error {
+func (s *Sensor) Load(bpfDir string) (err error) {
 	if s == nil {
 		return nil
 	}
@@ -83,11 +113,27 @@ func (s *Sensor) Load(bpfDir string) error {
 	}
 
 	logger.GetLogger().WithField("metadata", cachedbtf.GetCachedBTFFile()).Info("BTF file: using metadata file")
-	if _, err := observerMinReqs(); err != nil {
+	if _, err = observerMinReqs(); err != nil {
 		return fmt.Errorf("tetragon, aborting minimum requirements not met: %w", err)
 	}
 
-	s.setupProgsPinPath(bpfDir)
+	var (
+		loadedMaps  []*program.Map
+		loadedProgs []*program.Program
+	)
+
+	s.createDirs(bpfDir)
+	defer func() {
+		if err != nil {
+			for _, m := range loadedMaps {
+				m.Unload()
+			}
+			for _, p := range loadedProgs {
+				unloadProgram(p)
+			}
+			s.removeDirs()
+		}
+	}()
 
 	l := logger.GetLogger()
 
@@ -99,12 +145,15 @@ func (s *Sensor) Load(bpfDir string) error {
 	_, verStr, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
 	l.Infof("Loading kernel version %s", verStr)
 
-	if err := s.FindPrograms(); err != nil {
+	if err = s.FindPrograms(); err != nil {
 		return fmt.Errorf("tetragon, aborting could not find BPF programs: %w", err)
 	}
 
-	if err := s.loadMaps(bpfDir); err != nil {
-		return fmt.Errorf("tetragon, aborting could not load sensor BPF maps: %w", err)
+	for _, m := range s.Maps {
+		if err = s.loadMap(bpfDir, m); err != nil {
+			return fmt.Errorf("tetragon, aborting could not load sensor BPF maps: %w", err)
+		}
+		loadedMaps = append(loadedMaps, m)
 	}
 
 	for _, p := range s.Progs {
@@ -114,10 +163,11 @@ func (s *Sensor) Load(bpfDir string) error {
 			continue
 		}
 
-		if err := observerLoadInstance(bpfDir, p); err != nil {
+		if err = observerLoadInstance(bpfDir, p); err != nil {
 			return err
 		}
 		p.LoadState.RefInc()
+		loadedProgs = append(loadedProgs, p)
 		l.WithField("prog", p.Name).WithField("label", p.Label).Debugf("BPF prog was loaded")
 	}
 
@@ -154,6 +204,8 @@ func (s *Sensor) Unload() error {
 			logger.GetLogger().WithError(err).WithField("map", s.Name).Warn("Failed to unload map")
 		}
 	}
+
+	s.removeDirs()
 
 	s.Loaded = false
 
@@ -236,75 +288,73 @@ func (s *Sensor) setMapPinPath(m *program.Map) {
 	}
 }
 
-// loadMaps loads all the BPF maps in the sensor.
-func (s *Sensor) loadMaps(bpfDir string) error {
+// loadMap loads BPF map in the sensor.
+func (s *Sensor) loadMap(bpfDir string, m *program.Map) error {
 	l := logger.GetLogger()
-	for _, m := range s.Maps {
-		if m.PinState.IsLoaded() {
-			l.WithFields(logrus.Fields{
-				"sensor": s.Name,
-				"map":    m.Name,
-			}).Info("map is already loaded, incrementing reference count")
-			m.PinState.RefInc()
-			continue
-		}
-
-		spec, err := ebpf.LoadCollectionSpec(m.Prog.Name)
-		if err != nil {
-			return fmt.Errorf("failed to open collection '%s': %w", m.Prog.Name, err)
-		}
-		mapSpec, ok := spec.Maps[m.Name]
-		if !ok {
-			return fmt.Errorf("map '%s' not found from '%s'", m.Name, m.Prog.Name)
-		}
-
-		s.setMapPinPath(m)
-		pinPath := filepath.Join(bpfDir, m.PinPath)
-
-		if m.IsOwner() {
-			// If map is the owner we set configured max entries
-			// directly to map spec.
-			if max, ok := m.GetMaxEntries(); ok {
-				mapSpec.MaxEntries = max
-			}
-
-			if innerMax, ok := m.GetMaxInnerEntries(); ok {
-				if innerMs := mapSpec.InnerMap; innerMs != nil {
-					mapSpec.InnerMap.MaxEntries = innerMax
-				}
-			}
-		} else {
-			// If map is NOT the owner we follow the max entries
-			// of the pinned map and update the spec with that.
-			max, err := program.GetMaxEntriesPinnedMap(pinPath)
-			if err != nil {
-				return err
-			}
-			mapSpec.MaxEntries = max
-
-			// 'm' is not the owner but for some reason requires max
-			// entries setup, make sure it matches the pinned map.
-			if max, ok := m.GetMaxEntries(); ok {
-				if mapSpec.MaxEntries != max {
-					return fmt.Errorf("failed to load map '%s' max entries mismatch: %d %d",
-						m.Name, mapSpec.MaxEntries, max)
-				}
-			}
-
-			m.SetMaxEntries(int(max))
-		}
-
-		if err := m.LoadOrCreatePinnedMap(pinPath, mapSpec); err != nil {
-			return fmt.Errorf("failed to load map '%s' for sensor '%s': %w", m.Name, s.Name, err)
-		}
-
+	if m.PinState.IsLoaded() {
 		l.WithFields(logrus.Fields{
 			"sensor": s.Name,
 			"map":    m.Name,
-			"path":   pinPath,
-			"max":    m.Entries,
-		}).Info("tetragon, map loaded.")
+		}).Info("map is already loaded, incrementing reference count")
+		m.PinState.RefInc()
+		return nil
 	}
+
+	spec, err := ebpf.LoadCollectionSpec(m.Prog.Name)
+	if err != nil {
+		return fmt.Errorf("failed to open collection '%s': %w", m.Prog.Name, err)
+	}
+	mapSpec, ok := spec.Maps[m.Name]
+	if !ok {
+		return fmt.Errorf("map '%s' not found from '%s'", m.Name, m.Prog.Name)
+	}
+
+	s.setMapPinPath(m)
+	pinPath := filepath.Join(bpfDir, m.PinPath)
+
+	if m.IsOwner() {
+		// If map is the owner we set configured max entries
+		// directly to map spec.
+		if max, ok := m.GetMaxEntries(); ok {
+			mapSpec.MaxEntries = max
+		}
+
+		if innerMax, ok := m.GetMaxInnerEntries(); ok {
+			if innerMs := mapSpec.InnerMap; innerMs != nil {
+				mapSpec.InnerMap.MaxEntries = innerMax
+			}
+		}
+	} else {
+		// If map is NOT the owner we follow the max entries
+		// of the pinned map and update the spec with that.
+		max, err := program.GetMaxEntriesPinnedMap(pinPath)
+		if err != nil {
+			return err
+		}
+		mapSpec.MaxEntries = max
+
+		// 'm' is not the owner but for some reason requires max
+		// entries setup, make sure it matches the pinned map.
+		if max, ok := m.GetMaxEntries(); ok {
+			if mapSpec.MaxEntries != max {
+				return fmt.Errorf("failed to load map '%s' max entries mismatch: %d %d",
+					m.Name, mapSpec.MaxEntries, max)
+			}
+		}
+
+		m.SetMaxEntries(int(max))
+	}
+
+	if err := m.LoadOrCreatePinnedMap(pinPath, mapSpec); err != nil {
+		return fmt.Errorf("failed to load map '%s' for sensor '%s': %w", m.Name, s.Name, err)
+	}
+
+	l.WithFields(logrus.Fields{
+		"sensor": s.Name,
+		"map":    m.Name,
+		"path":   pinPath,
+		"max":    m.Entries,
+	}).Info("tetragon, map loaded.")
 
 	return nil
 }
