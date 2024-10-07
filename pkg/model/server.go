@@ -13,8 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -23,8 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
-
-	"github.com/cilium/tetragon/api/v1/tetragon"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -156,13 +157,17 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		}
 
 		stats := &tetragon.DestinationStats{
-			TxBytes:        dstVal.TxBytes,
-			RxBytes:        dstVal.RxBytes,
-			TxDrops:        dstVal.TxDrops,
-			TxLimit:        dstVal.TxLimit,
-			TxQuota:        dstVal.TxQuota,
-			KtimeLastReset: ktime.ToProto(dstVal.KtimeLastReset),
-			KtimeTxReset:   ktime.ToProto(dstVal.KtimeTxReset),
+			TxBytes: dstVal.TxBytes,
+			RxBytes: dstVal.RxBytes,
+		}
+		// Report quota-related stats if TxLimit is set.
+		if dstVal.TxLimit != 0 {
+			stats.TxDrops = dstVal.TxDrops
+			stats.TxLimit = dstVal.TxLimit
+			stats.TxQuota = dstVal.TxQuota
+			stats.KtimeLastReset = ktime.ToProto(dstVal.KtimeLastReset)
+			lastReset := stats.KtimeLastReset.AsTime()
+			stats.KtimeTxReset = timestamppb.New(lastReset.Add(time.Duration(dstVal.KtimeTxReset)))
 		}
 
 		switch ep.Type {
