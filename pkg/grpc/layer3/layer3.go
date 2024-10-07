@@ -540,9 +540,17 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 		refAction = refDec
 	}
 
+	// This is a workaround/bugfix for BPF side generating a
+	// LISTEN event on BIND. It is important to avoid reference
+	// counting here because unlike listen() the bind() call is
+	// not paired with a connect(). A proper bind() op will be
+	// added, this is a temporary fix to remove worst of the
+	// trouble.
+	skipRefCnt := (opStr == "listen") && (opToProtocol(op) == tetragon.SocketProtocol_UDP)
+
 	if parent != nil {
 		ev.SetParent(parent.UnsafeGetProcess())
-		if !refCntDone[exec.ParentRefCnt] {
+		if !refCntDone[exec.ParentRefCnt] && !skipRefCnt {
 			if refAction == refInc {
 				parent.RefInc(fmt.Sprintf("cache-parent-%s", opStr))
 			} else if refAction == refDec {
@@ -556,7 +564,7 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 	}
 
 	if process != nil {
-		if !refCntDone[exec.ProcessRefCnt] {
+		if !refCntDone[exec.ProcessRefCnt] && !skipRefCnt {
 			if refAction == refInc {
 				process.RefInc(fmt.Sprintf("cache-process-%s", opStr))
 			} else if refAction == refDec {
