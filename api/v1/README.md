@@ -3401,6 +3401,11 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [string](#string) | repeated | Namespaces to list processes from. Specify &#34;&lt;host-namespace&gt;&#34; to list host processes. Leave it empty to list all processes. |
+
+
 
 
 

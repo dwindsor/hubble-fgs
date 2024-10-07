@@ -146,7 +146,6 @@ func printStats(d *tetragon.Destination) string {
 func printTree(res *tetragon.GetProcessModelResponse) error {
 	// Create namespaces collections
 	nsCollections := make(map[string][]*tetragon.ProcessModel)
-	nsPrintList := make(map[string]bool)
 	wlPrintList := make(map[string]bool)
 
 	for _, p := range res.Processes {
@@ -158,16 +157,8 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 		}
 	}
 
-	for _, n := range namespaces {
-		nsPrintList[n] = true
-	}
-
 	for _, wl := range workloads {
 		wlPrintList[wl] = true
-	}
-
-	if host {
-		nsPrintList[model.HostNamespace] = true
 	}
 
 	nsKeys := make([]string, 0, len(nsCollections))
@@ -187,10 +178,6 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			nsStr = model.HostNamespace
 		} else {
 			nsStr = n
-		}
-
-		if _, ok := nsPrintList[n]; !ok && len(namespaces) > 0 {
-			continue
 		}
 
 		nsTree := tree.AddBranch(nsStr)
@@ -309,7 +296,10 @@ func printGrpcTree() error {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{})
+	if host {
+		namespaces = append(namespaces, model.HostNamespace)
+	}
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
 	if err != nil || res == nil {
 		logger.GetLogger().WithError(err).Warn("failed to list tracing policies:")
 		return err
@@ -340,7 +330,8 @@ func New() *cobra.Command {
 
 	flags := ret.Flags()
 	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
-	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil, "Get tree by Kubernetes namespaces")
+	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
+		"List processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
 	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
 	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json")
 	flags.BoolVar(&host, "host", false, "Include the tree for host")

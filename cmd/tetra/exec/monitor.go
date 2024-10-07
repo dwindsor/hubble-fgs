@@ -21,11 +21,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-func monitor(interval time.Duration) error {
+func monitor(interval time.Duration, namespaces []string) error {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{})
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 		return err
@@ -36,7 +36,7 @@ func monitor(interval time.Duration) error {
 	for {
 		select {
 		case <-ticker.C:
-			res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{})
+			res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 				return err
@@ -59,12 +59,19 @@ func NewMonitor() *cobra.Command {
 		Hidden: true, // Still under development. Keep it hidden.
 		RunE: func(_ *cobra.Command, _ []string) error {
 			interval := viper.GetDuration("interval")
-			return monitor(interval)
+			namespaces := viper.GetStringSlice("namespaces")
+			if viper.GetBool("host") {
+				namespaces = append(namespaces, model.HostNamespace)
+			}
+			return monitor(interval, namespaces)
 		},
 	}
 
 	flags := ret.Flags()
 	flags.DurationP("interval", "i", 5*time.Second, "Monitor interval")
+	flags.StringSliceP("namespaces", "n", nil, "Monitor processes in specific namespaces")
+	flags.Bool("host", false, "Monitor host processes")
+
 	viper.BindPFlags(flags)
 	return ret
 }

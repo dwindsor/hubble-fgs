@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,11 +86,12 @@ type DestinationEndpointValue struct {
 type Server struct {
 }
 
-func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
 	model := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	namespaces := req.GetNamespaces()
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
@@ -265,6 +267,9 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			wlPath = "<host-workload>"
 			kind = "<host-kind>"
 		}
+		if len(namespaces) > 0 && !slices.Contains(namespaces, nsPath) {
+			continue
+		}
 
 		model = append(model, &tetragon.ProcessModel{
 			Binary:    "",
@@ -291,6 +296,9 @@ func (s *Server) GetProcessModel(_ context.Context, _ *tetragon.GetProcessModelR
 			ns = HostNamespace
 			wl = "<host-workload>"
 			kind = "<host-kind>"
+		}
+		if len(namespaces) > 0 && !slices.Contains(namespaces, ns) {
+			continue
 		}
 
 		err := uidMap.Lookup(&key.Self, &uidValue)
