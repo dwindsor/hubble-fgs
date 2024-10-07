@@ -226,6 +226,9 @@ options:
     - name: process-cache-size
       default_value: "65536"
       usage: Size of the process cache
+    - name: process-cache-stale-interval
+      default_value: 1h0m0s
+      usage: Interval between stale process cache checks
     - name: process-tree-cache-size
       default_value: "1024"
       usage: |

@@ -103,6 +103,8 @@ const (
 
 	KeyEventCacheRetries    = "event-cache-retries"
 	KeyEventCacheRetryDelay = "event-cache-retry-delay"
+
+	keyProcessCacheStaleInterval = "process-cache-stale-interval"
 )
 
 func readAndSetFlags() error {
@@ -216,6 +218,8 @@ func readAndSetFlags() error {
 	option.Config.EventCacheRetryDelay = viper.GetInt(KeyEventCacheRetryDelay)
 
 	option.Config.CompatibilitySyscall64SizeType = viper.GetBool(option.KeyCompatibilitySyscall64SizeType)
+
+	enterpriseOption.Config.ProcessCacheStaleInterval = viper.GetDuration(keyProcessCacheStaleInterval)
 
 	return nil
 }

@@ -35,6 +35,8 @@ type config struct {
 	EnableCilium             bool
 
 	DebugX []string
+
+	ProcessCacheStaleInterval time.Duration
 }
 
 var (
@@ -55,5 +57,6 @@ var (
 		EnableDnsDebug:            false,
 		EnableIcmpTracking:        false,
 		EnableCilium:              false,
+		ProcessCacheStaleInterval: time.Duration(60 * time.Minute),
 	}
 )

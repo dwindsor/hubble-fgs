@@ -1075,6 +1075,8 @@ func execute() error {
 
 	flags.Bool(option.KeyCompatibilitySyscall64SizeType, false, "syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)")
 
+	flags.Duration(keyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }
