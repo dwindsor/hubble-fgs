@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
+	processcachecleanmetrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
@@ -150,6 +151,14 @@ func InitSandboxMetricsForDocs(registry *prometheus.Registry) {
 	sandboxmetrics.InitEventsMetricsForDocs(registry)
 }
 
+func initAllProcessCacheCleanMetrics(registry *prometheus.Registry) {
+	processcachecleanmetrics.InitEventsMetrics(registry)
+}
+
+func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
+	processcachecleanmetrics.InitEventsMetricsForDocs(registry)
+}
+
 func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllDNSHealthMetrics(registry)
 	initAllDNSEventsMetrics(registry)
@@ -166,6 +175,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllTLSHealthMetrics(registry)
 	initAllTLSEventsMetrics(registry)
 	initAllSandboxMetrics(registry)
+	initAllProcessCacheCleanMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {

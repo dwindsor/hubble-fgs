@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/svcinfo"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -514,6 +515,12 @@ func hubbleFGSExecute() error {
 	defer func() {
 		observer.RemoveSensors(ctx)
 	}()
+	// start the process cache cleaner
+	if enterpriseOption.Config.ProcessCacheStaleInterval.Nanoseconds() <= 0 {
+		return fmt.Errorf("process-cache-state-interval must be > 0")
+	}
+	processcacheclean.Start()
+	defer processcacheclean.Stop()
 
 	err = loadTpFromDir(ctx, option.Config.TracingPolicyDir)
 	if err != nil {

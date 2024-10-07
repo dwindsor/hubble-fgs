@@ -25,24 +25,25 @@ import (
 
 func main() {
 	targets := map[string]string{
-		"health":         "Tetragon Health",
-		"resources":      "Tetragon Resources",
-		"health-dns":     "Tetragon DNS Sensor Health",
-		"health-file":    "Tetragon File Sensor Health",
-		"health-http":    "Tetragon HTTP Sensor Health",
-		"health-network": "Tetragon Network Sensors Health",
-		"health-tls":     "Tetragon TLS Sensor Health",
-		"events":         "Tetragon Events",
-		"dns":            "Tetragon DNS",
-		"file":           "Tetragon File",
-		"http":           "Tetragon HTTP",
-		"icmp":           "Tetragon ICMP",
-		"interface":      "Tetragon Interface",
-		"tcp":            "Tetragon TCP",
-		"udp":            "Tetragon UDP",
-		"rawsocket":      "Tetragon Raw Socket",
-		"tls":            "Tetragon TLS",
-		"sandbox":        "Tetragon SandboxPolicy metrics",
+		"health":              "Tetragon Health",
+		"resources":           "Tetragon Resources",
+		"health-dns":          "Tetragon DNS Sensor Health",
+		"health-file":         "Tetragon File Sensor Health",
+		"health-http":         "Tetragon HTTP Sensor Health",
+		"health-network":      "Tetragon Network Sensors Health",
+		"health-tls":          "Tetragon TLS Sensor Health",
+		"events":              "Tetragon Events",
+		"dns":                 "Tetragon DNS",
+		"file":                "Tetragon File",
+		"http":                "Tetragon HTTP",
+		"icmp":                "Tetragon ICMP",
+		"interface":           "Tetragon Interface",
+		"tcp":                 "Tetragon TCP",
+		"udp":                 "Tetragon UDP",
+		"rawsocket":           "Tetragon Raw Socket",
+		"tls":                 "Tetragon TLS",
+		"sandbox":             "Tetragon SandboxPolicy metrics",
+		"process-cache-clean": "Tetragon Process Cache Clean metrics",
 	}
 
 	if err := metricsmd.New(targets, initMetrics).Execute(); err != nil {
@@ -88,6 +89,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitRawSocketEventsMetricsForDocs(reg)
 	case "tls":
 		enterpriseMetricsConfig.InitTLSEventsMetricsForDocs(reg)
+	case "process-cache-clean":
+		enterpriseMetricsConfig.InitProcessCacheCleanMetricsForDocs(reg)
 	}
 	return nil
 }
