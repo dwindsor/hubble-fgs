@@ -26,6 +26,7 @@ struct fd_lookup_config {
 	uint32_t pid;
 	uint32_t fd;
 	uint64_t sockaddr;
+	uint64_t sockversion;
 	struct msg_ip_tuple tuple;
 	uint8_t state;
 	uint8_t signal_hit;
@@ -67,7 +68,7 @@ static inline __attribute__((always_inline)) int
 __kprobe_proc_task_name(struct pt_regs *ctx)
 {
 	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
-	struct socketmap_value sockmap_process = { 0 };
+	struct socketmap_value *socket, sockmap_process = { 0 };
 	struct tcpsocketmap_value *tcp_stats;
 	struct fd_lookup_config *config;
 	struct execve_map_value *value;
@@ -199,18 +200,30 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 				  _(&(sk->__sk_common.skc_v6_daddr)));
 	}
 
-	sockmap_process.key.pid = value->key.pid;
-	sockmap_process.key.ktime = value->key.ktime;
-	// Store the create time as the current time (e.g. Tetragon start up time).
-	// This is far from perfect, but at least the discovered flag will indicate
-	// how we found this create time in case we want to exclude these.
-	sockmap_process.create_time = ktime_get_ns();
-	sockmap_process.protocol = required_protocol;
+	/* Store the socket if we do not already have a reference for it, even
+	 * if family or protocol couldn't be read.
+	 */
+	socket = lookup_socketmap(&cookie);
+	if (!socket) {
+		sockmap_process.key.pid = value->key.pid;
+		sockmap_process.key.ktime = value->key.ktime;
+		// Store the create time as the current time (e.g. Tetragon start up time).
+		// This is far from perfect, but at least the discovered flag will indicate
+		// how we found this create time in case we want to exclude these.
+		sockmap_process.create_time = ktime_get_ns();
+		sockmap_process.protocol = required_protocol;
+		sockmap_process.version = cookie_inc_version();
+		config->sockversion = sockmap_process.version;
 
-	sockmap_process.version = cookie_inc_version();
-
-	/* Store the socket even if family or protocol couldn't be read. */
-	add_socketmap(&cookie, &sockmap_process, &config->tuple, true);
+		add_socketmap(&cookie, &sockmap_process, &config->tuple, true);
+		socket = &sockmap_process;
+	} else {
+		socket->key.pid = value->key.pid;
+		socket->key.ktime = value->key.ktime;
+		socket->create_time = ktime_get_ns();
+		socket->protocol = required_protocol;
+		config->sockversion = socket->version;
+	}
 
 	if (required_protocol == IPPROTO_TCP) {
 		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
@@ -242,11 +255,11 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		memset(&tcp_stats->dst_key, 0, sizeof(tcp_stats->dst_key));
 
 		tcp_stats->key = value->key;
-		tcp_stats->create_time = sockmap_process.create_time;
-		tcp_stats->last_time = sockmap_process.create_time;
+		tcp_stats->create_time = socket->create_time;
+		tcp_stats->last_time = socket->create_time;
 		tcp_stats->ipv6 = (family == AF_INET6);
-		tcp_stats->version = sockmap_process.version;
-		add_tcpsocketmap(&cookie, tcp_stats, 0, false);
+		tcp_stats->version = socket->version;
+		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);
 	}
 
 	return 0;

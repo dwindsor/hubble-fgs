@@ -45,15 +45,16 @@ type FdLookupKey struct {
 }
 
 type FdLookupValue struct {
-	Pid       uint32
-	Fd        uint32
-	Sockaddr  uint64
-	Tuple     networkapi.MsgIPTuple
-	State     uint8
-	SignalHit uint8
-	Family    uint16
-	Protocol  uint16
-	Pad       uint16
+	Pid         uint32
+	Fd          uint32
+	Sockaddr    uint64
+	SockVersion uint64
+	Tuple       networkapi.MsgIPTuple
+	State       uint8
+	SignalHit   uint8
+	Family      uint16
+	Protocol    uint16
+	Pad         uint16
 }
 
 type FdCallback func(*FdLookupValue, uint32)

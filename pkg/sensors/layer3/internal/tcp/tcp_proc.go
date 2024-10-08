@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,7 +42,7 @@ var (
 func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
 	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr, "SockVersion": socket.SockVersion}).Debug("Discovered TCP Socket")
 
 	if socket.State == 0 {
 		return
@@ -73,11 +74,23 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Msg.Tuple.SPort = socket.Tuple.SPort
 	tcp.Msg.Tuple.Proto = 2
 	tcp.Msg.SockCookie = socket.Sockaddr
+	tcp.Msg.Version = socket.SockVersion
 
 	if socket.State == TCP_PROC_STATE_LISTEN {
 		tcp.Msg.Common.Op = ops.MSG_OP_LISTEN
 	} else {
 		tcp.Msg.Common.Op = ops.MSG_OP_TCPCONNECTRET
+	}
+
+	tcpTuples, err := tcpCache.GetCache()
+	if err == nil {
+		socketId := networkapi.MsgSocketId{
+			Cookie:  tcp.Msg.SockCookie,
+			Version: tcp.Msg.Version,
+		}
+		tcpTuples.Add(socketId, &tcp.Msg.Tuple)
+	} else {
+		logger.GetLogger().WithError(err).Warn("fdCallback: GetCache failed")
 	}
 
 	if _pushEvents {
