@@ -13,12 +13,13 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
 )
 
-type NetworkMonitorKey struct {
+type NetworkKey struct {
 	SourceNamespace    string
 	SourceWorkloadKind string
 	SourceWorkloadName string
@@ -26,14 +27,18 @@ type NetworkMonitorKey struct {
 	DestinationPort    uint64
 }
 
-func (nmk NetworkMonitorKey) String() string {
-	var source string
-	if nmk.SourceNamespace == HostNamespace {
+func (nk NetworkKey) String() string {
+	var source, destination string
+	if nk.SourceNamespace == HostNamespace {
 		source = "host"
 	} else {
-		source = fmt.Sprintf("%s/%s:%s", nmk.SourceNamespace, nmk.SourceWorkloadKind, nmk.SourceWorkloadName)
+		source = fmt.Sprintf("%s/%s:%s", nk.SourceNamespace, nk.SourceWorkloadKind, nk.SourceWorkloadName)
 	}
-	destination := fmt.Sprintf("%s:%d", nmk.DestinationName, nmk.DestinationPort)
+	if nk.DestinationPort == 0 {
+		destination = nk.DestinationName
+	} else {
+		destination = fmt.Sprintf("%s:%d", nk.DestinationName, nk.DestinationPort)
+	}
 	return fmt.Sprintf("%s > %s", source, destination)
 }
 
@@ -56,7 +61,32 @@ func (nmv NetworkMonitorValue) String() string {
 	return fmt.Sprintf("%s sent %s received", getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes))
 }
 
-type NetworkMonitorData map[NetworkMonitorKey]NetworkMonitorValue
+type NetworkQuotaValue struct {
+	TXBytes uint64
+	RXBytes uint64
+	TXDrops uint64
+	TXQuota uint64
+	TXUsage uint64
+	Reset   time.Time
+}
+
+func (nqv NetworkQuotaValue) String() string {
+	now := time.Now()
+	var reset string
+	if now.Before(nqv.Reset) {
+		reset = fmt.Sprintf("reset in %s", nqv.Reset.Sub(now).Truncate(time.Second))
+	} else {
+		reset = "reset on next send"
+	}
+	return fmt.Sprintf("quota %s of %s (%.2f%%) used %s dropped %s",
+		getByteSize(nqv.TXUsage), getByteSize(nqv.TXQuota),
+		100*float64(nqv.TXUsage)/float64(nqv.TXQuota),
+		getByteSize(nqv.TXDrops), reset,
+	)
+}
+
+type NetworkMonitorData map[NetworkKey]NetworkMonitorValue
+type NetworkQuotaData map[NetworkKey]NetworkQuotaValue
 
 func (nmd NetworkMonitorData) Print() {
 	for key, val := range nmd {
@@ -64,27 +94,57 @@ func (nmd NetworkMonitorData) Print() {
 	}
 }
 
-func ConvertToNetworkMonitorData(res *tetragon.GetProcessModelResponse) NetworkMonitorData {
+func (nqd NetworkQuotaData) Print() {
+	for key, val := range nqd {
+		fmt.Println(key, val)
+	}
+}
+
+func getDestinationName(dst *tetragon.Destination) string {
+	dstName := "unknown"
+	if len(dst.GetDestinationNames()) > 0 {
+		dstName = strings.TrimSuffix(dst.GetDestinationNames()[0], ".")
+	} else if dst.GetDestinationPod() != nil {
+		dstName = fmt.Sprintf("%s/%s:%s",
+			dst.GetDestinationPod().GetNamespace(),
+			dst.GetDestinationPod().GetWorkloadKind(),
+			dst.GetDestinationPod().GetWorkload())
+	}
+	return dstName
+}
+
+func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destination) NetworkKey {
+	dstName := getDestinationName(dst)
+	return NetworkKey{
+		SourceNamespace:    process.GetNamespace(),
+		SourceWorkloadName: process.GetWorkload().GetName(),
+		SourceWorkloadKind: process.GetWorkload().GetKind(),
+		DestinationName:    dstName,
+		DestinationPort:    dst.GetPort(),
+	}
+}
+
+func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
+	return NetworkQuotaValue{
+		TXBytes: dst.GetStats().GetTxBytes(),
+		RXBytes: dst.GetStats().GetRxBytes(),
+		TXDrops: dst.GetStats().GetTxDrops(),
+		TXQuota: dst.GetStats().GetTxLimit(),
+		TXUsage: dst.GetStats().GetTxQuota(),
+		Reset:   dst.GetStats().GetKtimeTxReset().AsTime(),
+	}
+}
+
+func ConvertToNetworkData(res *tetragon.GetProcessModelResponse) (NetworkMonitorData, NetworkQuotaData) {
 	result := NetworkMonitorData{}
+	quota := NetworkQuotaData{}
 	for _, process := range res.GetProcesses() {
 		for _, dst := range process.GetDest() {
+			if dst.GetStats() == nil {
+				continue
+			}
+			key := getNetworkMonitorKey(process, dst)
 			if dst.GetPort() != 0 {
-				dstName := "unknown"
-				if len(dst.GetDestinationNames()) > 0 {
-					dstName = strings.TrimSuffix(dst.GetDestinationNames()[0], ".")
-				} else if dst.GetDestinationPod() != nil {
-					dstName = fmt.Sprintf("%s/%s:%s",
-						dst.GetDestinationPod().GetNamespace(),
-						dst.GetDestinationPod().GetWorkloadKind(),
-						dst.GetDestinationPod().GetWorkload())
-				}
-				key := NetworkMonitorKey{
-					SourceNamespace:    process.GetNamespace(),
-					SourceWorkloadName: process.GetWorkload().GetName(),
-					SourceWorkloadKind: process.GetWorkload().GetKind(),
-					DestinationName:    dstName,
-					DestinationPort:    dst.GetPort(),
-				}
 				if _, ok := result[key]; !ok {
 					result[key] = NetworkMonitorValue{}
 				}
@@ -92,10 +152,13 @@ func ConvertToNetworkMonitorData(res *tetragon.GetProcessModelResponse) NetworkM
 				currentValue.TXBytes += dst.GetStats().GetTxBytes()
 				currentValue.RXBytes += dst.GetStats().GetRxBytes()
 				result[key] = currentValue
+			} else if process.GetBinary() == "" && dst.GetStats().GetTxLimit() > 0 {
+				// This is quota-related stats.
+				quota[key] = getNetworkQuotaValue(dst)
 			}
 		}
 	}
-	return result
+	return result, quota
 }
 
 func Diff(current, new NetworkMonitorData) NetworkMonitorData {

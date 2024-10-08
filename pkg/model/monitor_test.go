@@ -12,13 +12,15 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestNetworkMonitorKey_String(t *testing.T) {
-	key := NetworkMonitorKey{
+	key := NetworkKey{
 		SourceNamespace: HostNamespace,
 		DestinationName: "cisco.com",
 		DestinationPort: 443,
@@ -89,11 +91,34 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 						Stats: &tetragon.DestinationStats{TxBytes: 200, RxBytes: 400},
 					},
 				},
-			}},
+			},
+			// This is quota
+			{
+				Namespace: "client",
+				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
+				Dest: []*tetragon.Destination{
+					{
+						DestinationPod: &tetragon.Pod{
+							Namespace:    "server",
+							WorkloadKind: "Deployment",
+							Workload:     "nginx",
+						},
+						Stats: &tetragon.DestinationStats{
+							TxBytes:      200,
+							RxBytes:      400,
+							TxDrops:      600,
+							TxLimit:      800,
+							TxQuota:      1000,
+							KtimeTxReset: &timestamppb.Timestamp{Seconds: 1200, Nanos: 1400},
+						},
+					},
+				},
+			},
+		},
 	}
-	data := ConvertToNetworkMonitorData(&res)
+	data, quota := ConvertToNetworkData(&res)
 	expected := NetworkMonitorData{
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace: HostNamespace,
 			DestinationName: "cisco.com",
 			DestinationPort: 443,
@@ -101,7 +126,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			TXBytes: 40,
 			RXBytes: 60,
 		},
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace: HostNamespace,
 			DestinationName: "cisco.com",
 			DestinationPort: 80,
@@ -109,7 +134,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			TXBytes: 100,
 			RXBytes: 200,
 		},
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "my-app",
@@ -120,12 +145,28 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			RXBytes: 400,
 		},
 	}
+	expectedQuota := NetworkQuotaData{
+		NetworkKey{
+			SourceNamespace:    "client",
+			SourceWorkloadKind: "Deployment",
+			SourceWorkloadName: "my-app",
+			DestinationName:    "server/Deployment:nginx",
+		}: NetworkQuotaValue{
+			TXBytes: 200,
+			RXBytes: 400,
+			TXDrops: 600,
+			TXQuota: 800,
+			TXUsage: 1000,
+			Reset:   time.Unix(1200, 1400).UTC(),
+		},
+	}
 	assert.Equal(t, expected, data)
+	assert.Equal(t, expectedQuota, quota)
 }
 
 func TestDiff(t *testing.T) {
 	currentData := NetworkMonitorData{
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace: HostNamespace,
 			DestinationName: "cisco.com",
 			DestinationPort: 443,
@@ -133,7 +174,7 @@ func TestDiff(t *testing.T) {
 			TXBytes: 10,
 			RXBytes: 20,
 		},
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "my-app",
@@ -146,7 +187,7 @@ func TestDiff(t *testing.T) {
 	}
 	newData := NetworkMonitorData{
 		// no change
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace: HostNamespace,
 			DestinationName: "cisco.com",
 			DestinationPort: 443,
@@ -155,7 +196,7 @@ func TestDiff(t *testing.T) {
 			RXBytes: 20,
 		},
 		// an existing entry with updated stats
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "my-app",
@@ -166,7 +207,7 @@ func TestDiff(t *testing.T) {
 			RXBytes: 2000,
 		},
 		// new entry
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "another-app",
@@ -179,7 +220,7 @@ func TestDiff(t *testing.T) {
 	}
 	diff := Diff(currentData, newData)
 	assert.Equal(t, NetworkMonitorData{
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "my-app",
@@ -189,7 +230,7 @@ func TestDiff(t *testing.T) {
 			TXBytes: 900,
 			RXBytes: 1800,
 		},
-		NetworkMonitorKey{
+		NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "another-app",
