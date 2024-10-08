@@ -331,6 +331,34 @@ func (msg *MsgCloneEventUnix) Cast(o interface{}) notify.Message {
 	return &MsgCloneEventUnix{MsgCloneEvent: t}
 }
 
+// MaybeParentRefDec -- If we have RefDec'd a process, we may need to RefDec its parent.
+// This function checks if that's the case and does the RefDec if so. It then cascades
+// this effect to its parent and so on until we hit a process without a zero ref count.
+// It returns true if it did RefDec the parent and false otherwise.
+func MaybeParentRefDec(child, parent *process.ProcessInternal) bool {
+	// If we don't have a parent, we can't RefDec it.
+	if parent == nil {
+		return false
+	}
+	// If we have a process and the ref count is not zero, keep the parent.
+	if child != nil && child.RefGet() != 0 {
+		return false
+	}
+	// Either process == nil || process.RefGet() == 0 – remove parent refcnt.
+	parent.RefDec("parent")
+	// If the parent ref count is now zero, cascade until we hit a process where ref count != 0
+	for parent.RefGet() == 0 {
+		var err error
+		parent, err = process.Get(parent.UnsafeGetProcess().ParentExecId)
+		if err != nil {
+			// Missing parent so nothing more to do.
+			return true
+		}
+		parent.RefDec("parent")
+	}
+	return true
+}
+
 // GetProcessExit returns Exit protobuf message for a given process.
 func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	var fgsProcess, fgsParent *tetragon.Process
@@ -393,12 +421,10 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		ec.Add(nil, fgsEvent, event.Common.Ktime, event.ProcessKey.Ktime, event)
 		return nil
 	}
-	if parent != nil {
-		parent.RefDec("parent")
-	}
 	if process != nil {
 		process.RefDec("process")
 	}
+	MaybeParentRefDec(process, parent)
 	return fgsEvent
 }
 
@@ -414,18 +440,7 @@ func (msg *MsgExitEventUnix) Notify() bool {
 func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	internal, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
-	var err error
-
-	if parent != nil {
-		ev.SetParent(parent.UnsafeGetProcess())
-		if !msg.RefCntDone[ParentRefCnt] {
-			parent.RefDec("parent")
-			msg.RefCntDone[ParentRefCnt] = true
-		}
-	} else {
-		eventcache.CacheRetries(eventcache.ParentInfo).Inc()
-		err = eventcache.ErrFailedToGetParentInfo
-	}
+	var err, parentErr error
 
 	if internal != nil {
 		ev.SetProcess(internal.UnsafeGetProcess())
@@ -438,10 +453,26 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
-	if err == nil {
-		return internal, err
+	if parent != nil {
+		ev.SetParent(parent.UnsafeGetProcess())
+		if !msg.RefCntDone[ParentRefCnt] {
+			if MaybeParentRefDec(internal, parent) {
+				msg.RefCntDone[ParentRefCnt] = true
+			}
+		}
+	} else {
+		eventcache.CacheRetries(eventcache.ParentInfo).Inc()
+		parentErr = eventcache.ErrFailedToGetParentInfo
 	}
-	return nil, err
+
+	if err != nil {
+		return nil, err
+	}
+	if parentErr != nil {
+		return nil, parentErr
+	}
+
+	return internal, nil
 }
 
 func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -483,16 +514,7 @@ func (msg *MsgProcessCleanupEventUnix) Notify() bool {
 
 func (msg *MsgProcessCleanupEventUnix) RetryInternal(_ notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	internal, parent := process.GetParentProcessInternal(msg.PID, timestamp)
-	var err error
-
-	if parent != nil {
-		if !msg.RefCntDone[ParentRefCnt] {
-			parent.RefDec("parent")
-			msg.RefCntDone[ParentRefCnt] = true
-		}
-	} else {
-		err = eventcache.ErrFailedToGetParentInfo
-	}
+	var err, parentErr error
 
 	if internal != nil {
 		if !msg.RefCntDone[ProcessRefCnt] {
@@ -503,10 +525,24 @@ func (msg *MsgProcessCleanupEventUnix) RetryInternal(_ notify.Event, timestamp u
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
-	if err == nil {
-		return internal, err
+	if parent != nil {
+		if !msg.RefCntDone[ParentRefCnt] {
+			if MaybeParentRefDec(internal, parent) {
+				msg.RefCntDone[ParentRefCnt] = true
+			}
+		}
+	} else {
+		parentErr = eventcache.ErrFailedToGetParentInfo
 	}
-	return nil, err
+
+	if err != nil {
+		return nil, err
+	}
+	if parentErr != nil {
+		return nil, parentErr
+	}
+
+	return internal, nil
 }
 
 func (msg *MsgProcessCleanupEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) error {
@@ -516,8 +552,8 @@ func (msg *MsgProcessCleanupEventUnix) Retry(_ *process.ProcessInternal, _ notif
 func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	msg.RefCntDone = [2]bool{false, false}
 	if process, parent := process.GetParentProcessInternal(msg.PID, msg.Ktime); process != nil && parent != nil {
-		parent.RefDec("parent")
 		process.RefDec("process")
+		MaybeParentRefDec(process, parent)
 	} else {
 		if ec := eventcache.Get(); ec != nil {
 			ec.Add(nil, nil, msg.Ktime, msg.Ktime, msg)

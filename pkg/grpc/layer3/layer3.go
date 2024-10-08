@@ -232,6 +232,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 	}
 	if parent != nil {
 		parent.RefDec(fmt.Sprintf("parent-close-%s", SocketFlagsToType(event.Msg.SocketFlags)))
+		exec.MaybeParentRefDec(process, parent)
 	}
 	return fgsEvent
 }
@@ -451,6 +452,7 @@ func GetProcessRawsockClose(event *MsgIPEventUnix) *tetragon.ProcessRawsockClose
 	}
 	if parent != nil {
 		parent.RefDec("parent-rawsock-close")
+		exec.MaybeParentRefDec(process, parent)
 	}
 
 	eventmetrics.HandleRawsockCloseEvent(fgsEvent)
@@ -510,7 +512,7 @@ func GetProcessSockStats(event *MsgIPWithStatsEventUnix) *tetragon.ProcessSockSt
 func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
-	var err error
+	var err, parentErr error
 
 	opStr := "unknown"
 	refAction := refNothing
@@ -543,21 +545,6 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 	// trouble.
 	skipRefCnt := (opStr == "listen") && (opToProtocol(op) == tetragon.SocketProtocol_UDP)
 
-	if parent != nil {
-		ev.SetParent(parent.UnsafeGetProcess())
-		if !refCntDone[exec.ParentRefCnt] && !skipRefCnt {
-			if refAction == refInc {
-				parent.RefInc(fmt.Sprintf("cache-parent-%s", opStr))
-			} else if refAction == refDec {
-				parent.RefDec(fmt.Sprintf("cache-parent-%s", opStr))
-			}
-			refCntDone[exec.ParentRefCnt] = true
-		}
-	} else {
-		eventcache.CacheRetries(eventcache.ParentInfo).Inc()
-		err = eventcache.ErrFailedToGetParentInfo
-	}
-
 	if process != nil {
 		if !refCntDone[exec.ProcessRefCnt] && !skipRefCnt {
 			if refAction == refInc {
@@ -572,10 +559,29 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
-	if err == nil {
-		return process, err
+	if parent != nil {
+		ev.SetParent(parent.UnsafeGetProcess())
+		if !refCntDone[exec.ParentRefCnt] && !skipRefCnt {
+			if refAction == refInc {
+				parent.RefInc(fmt.Sprintf("cache-parent-%s", opStr))
+			} else if refAction == refDec {
+				parent.RefDec(fmt.Sprintf("cache-parent-%s", opStr))
+				exec.MaybeParentRefDec(process, parent)
+			}
+			refCntDone[exec.ParentRefCnt] = true
+		}
+	} else {
+		eventcache.CacheRetries(eventcache.ParentInfo).Inc()
+		parentErr = eventcache.ErrFailedToGetParentInfo
 	}
-	return nil, err
+
+	if err != nil {
+		return nil, err
+	}
+	if parentErr != nil {
+		return nil, parentErr
+	}
+	return process, nil
 }
 
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
