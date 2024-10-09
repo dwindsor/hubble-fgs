@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 128        # size
+  h4 136        # size
   ? 8           # ktime
 
   ## tuple
@@ -39,6 +39,9 @@ EVENT TCPACCEPT
   ## version
   ? 8
 
+  ## pseudo-socket version (UDP only)
+  h8 0
+
   ## create time
   ? 8
   ## close time
@@ -51,7 +54,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 128        # size
+  h4 136        # size
   ? 8           # ktime
 
   ## tuple
@@ -75,6 +78,9 @@ EVENT TCPCONNECTRET
   ## version
   ? 8
 
+  ## pseudo-socket version (UDP only)
+  h8 0
+
   ## create time
   ? 8
   ## close time
@@ -89,7 +95,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -112,6 +118,9 @@ EVENT TCPCLOSE
 
   ## version
   ? 8
+
+  ## pseudo-socket version (UDP only)
+  h8 0
 
   ## create time
   ? 8
@@ -158,7 +167,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -181,6 +190,9 @@ EVENT TCPCLOSE
 
   ## version
   ? 8
+
+  ## pseudo-socket version (UDP only)
+  h8 0
 
   ## create time
   ? 8
@@ -226,7 +238,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 344        # size
   ? 8           # ktime
 
   ## tuple
@@ -249,6 +261,9 @@ EVENT TCPCLOSE
 
   ## version
   ? 8
+
+  ## pseudo-socket version (UDP only)
+  h8 0
 
   ## create time
   ? 8

@@ -40,11 +40,12 @@ const (
 )
 
 type udpPseudoSocket struct {
-	SAddr [2]uint64
-	SPort uint16
-	DAddr [2]uint64
-	DPort uint16
-	IPv6  uint8
+	SAddr     [2]uint64
+	SPort     uint16
+	DAddr     [2]uint64
+	DPort     uint16
+	IPv6      uint8
+	PsVersion uint64
 }
 
 type cookieVer struct {
@@ -52,11 +53,18 @@ type cookieVer struct {
 	Version uint64
 }
 
+type udpStatsKey struct {
+	Cookie    uint64
+	Tuple     api.MsgIPTuple
+	Version   uint64
+	PsVersion uint64
+}
+
 var (
 	UdpDeleteInterval = time.Duration(600 * time.Second)
 	udpStatsEnable    = false
 
-	stats *lru.Cache[api.UdpInfoKey, api.UdpInfoValue]
+	stats *lru.Cache[udpStatsKey, api.UdpInfoValue]
 
 	gcTimer = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 
@@ -264,7 +272,7 @@ var (
 func deleteLast(m *ebpf.Map) {
 	if deleteLastKey != nil {
 		if err := m.Delete(deleteLastKey); err != nil {
-			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("delete key failed.")
+			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("UDP delete key failed.")
 			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
 		}
 		deleteLastKey = nil
@@ -288,6 +296,14 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		return
 	}
 
+	// Create a stats key that is the udpKey plus the pseudo-socket version.
+	udpStatsKey := udpStatsKey{
+		Cookie:    udpKey.Cookie,
+		Tuple:     udpKey.Tuple,
+		Version:   udpKey.Version,
+		PsVersion: udpValue.PsVersion,
+	}
+
 	// This case handles kernels <5.10 where map will have udp stats
 	// that are not yet associated to a process between IP stack and
 	// socket handling of the UDP data.
@@ -295,39 +311,37 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypePidIsZero)
 	} else {
 		if udpStatsEnable {
-			last, ok := stats.Get(*udpKey)
+			last, ok := stats.Get(udpStatsKey)
 			if ok {
 				if *udpValue != last {
 					diffValue, err := udpDiffValues(udpKey, &last, udpValue)
 					if err == nil {
-						stats.Add(*udpKey, *udpValue)
+						stats.Add(udpStatsKey, *udpValue)
 						emitStatEvent(udpKey, &diffValue)
 					} else {
 						socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailureGC)
 					}
 				}
 			} else {
-				stats.Add(*udpKey, *udpValue)
+				stats.Add(udpStatsKey, *udpValue)
 				emitStatEvent(udpKey, udpValue)
 			}
 		}
 	}
 
 	if t > UdpDeleteInterval {
-		if udpValue.Pid != 0 {
-			if !DisableCloseEvents {
-				emitCloseEvent(udpKey, udpValue)
-			}
+		if udpValue.Pid != 0 && !DisableCloseEvents {
+			emitCloseEvent(udpKey, udpValue)
 		}
-		stats.Remove(*udpKey)
+		stats.Remove(udpStatsKey)
 		pseudoSocketsUpdate.Lock()
 		pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
 		if pseudoSockets[pseudoKey] != nil {
-			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort, DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6})
+			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort,
+				DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion})
 		}
 		pseudoSocketsUpdate.Unlock()
-		deleteLastKey = &api.UdpInfoKey{}
-		*deleteLastKey = *udpKey
+		deleteLastKey = udpKey.Copy()
 	}
 }
 

@@ -112,6 +112,7 @@ var (
 	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", SkUdpBind)
 	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
 	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBind)
+	PsVerMap           = program.MapBuilder("tg_psver_map", SkUdpBind)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
@@ -255,6 +256,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			UdpPayloadLazyMapKprobe,
 			SocketCookieMap,
 			LatencyConfigMapLazyKprobe,
+			PsVerMap,
 		}
 		dns.LazyDns = true
 	} else {
@@ -274,6 +276,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			SocketTupleRevMap,
 			SocketTupleHintMap,
 			CfgMap,
+			PsVerMap,
 		}
 	}
 
@@ -350,13 +353,15 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		if pseudoSockList == nil {
 			pseudoSockets[pseudoKey] = make(map[udpPseudoSocket]bool)
 		}
-		pseudoSockets[pseudoKey][udpPseudoSocket{SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6}] = true
+		pseudoSockets[pseudoKey][udpPseudoSocket{SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr,
+			DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, PsVersion: m.PsVersion}] = true
 		pseudoSocketsUpdate.Unlock()
-		// If there is an existing cache entry for this pseudosocket then it must be stale, so remove it.
-		udpKey := api.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
-			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6,
-		}}
-		stats.Remove(udpKey)
+		// If there is an existing cache entry for this pseudo-socket then it must be stale, so remove it.
+		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
+			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6},
+			PsVersion: m.PsVersion,
+		}
+		stats.Remove(udpStatsKey)
 		if DisableConnectEvents {
 			return []observer.Event{}, nil
 		}
@@ -397,7 +402,10 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				continue
 			}
 
-			entry, ok := stats.Get(udpKey)
+			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
+				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP},
+				PsVersion: psock.PsVersion}
+			entry, ok := stats.Get(udpStatsKey)
 			if ok {
 				// Send stats event for the difference from the last one
 				if udpValue != entry {
@@ -416,7 +424,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				if !DisableCloseEvents {
 					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &udpValue, m.CloseTime))
 				}
-				stats.Remove(udpKey)
+				stats.Remove(udpStatsKey)
 			} else {
 				// Send stats event – no stats event previously sent
 				statsEvent := createStatEvent(&udpKey, &udpValue)
@@ -463,7 +471,7 @@ func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	var err error
 
-	stats, err = lru.New[api.UdpInfoKey, api.UdpInfoValue](udpStatsCacheSize)
+	stats, err = lru.New[udpStatsKey, api.UdpInfoValue](udpStatsCacheSize)
 	if err != nil {
 		return err
 	}

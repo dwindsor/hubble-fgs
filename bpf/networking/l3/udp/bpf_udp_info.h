@@ -29,6 +29,29 @@ struct {
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
 } tg_udp_map SEC(".maps");
 
+/* Store the latest pseudo-socket version number. Each pseudo-socket receives a
+ * new global version number, unique to each pseudo-socket.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, u32);
+	__type(value, u64);
+	__uint(max_entries, 1);
+} tg_psver_map SEC(".maps");
+
+static inline __attribute__((always_inline)) u64
+pseudo_socket_inc_version()
+{
+	u64 *version;
+	u32 zero = 0;
+
+	version = (u64 *)map_lookup_elem(&tg_psver_map, &zero);
+	if (!version)
+		return 0;
+	__sync_fetch_and_add(version, 1);
+	return *version;
+}
+
 struct udp_info_key {
 	u64 cookie;
 	struct msg_ip_tuple tuple;
@@ -47,6 +70,7 @@ struct udp_info_value {
 	u64 buckets[8];
 	u64 latency_sum;
 	u64 create_time;
+	u64 ps_version; // pseudo-socket version
 }; // All fields aligned so no 'packed' attribute.
 
 struct {
@@ -123,6 +147,7 @@ udp_info_init(struct udp_info_value *v)
 		v->buckets[i] = 0;
 	}
 	v->latency_sum = 0;
+	v->ps_version = pseudo_socket_inc_version();
 }
 
 static inline __attribute__((always_inline)) void

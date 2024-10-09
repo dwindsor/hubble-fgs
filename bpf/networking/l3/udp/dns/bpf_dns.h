@@ -56,7 +56,7 @@ udp_dns(struct __sk_buff *skb,
 		 * later to sat verifier constraint that skb_load_bytes
 		 * must be nonzero.
 		 */
-		emit_udp_payload_event(skb, ip, cookie, cookie_ver,
+		emit_udp_payload_event(skb, ip, cookie, cookie_ver, value->ps_version,
 				       ipv6, key, value, payload_off,
 				       payload_sz - 1);
 		store = false;
@@ -73,7 +73,7 @@ udp_dns(struct __sk_buff *skb,
 	if (store && payload_off != -1) {
 		// Check payload offset is valid.
 		store_udp_payload_event(
-			skb, ip, cookie, cookie_ver, ipv6,
+			skb, ip, cookie, cookie_ver, value->ps_version, ipv6,
 			skb_head, key, value, payload_off,
 			payload_sz - 1);
 	}

@@ -140,6 +140,7 @@ type MsgIPEvent struct {
 	SocketFlags uint32                  `align:"socket_flags"`
 	Pad         uint32                  `align:"pad"`
 	Version     uint64                  `align:"version"`
+	PsVersion   uint64                  `align:"ps_version"`
 	CreateTime  uint64                  `align:"create_time"`
 	CloseTime   uint64                  `align:"close_time"`
 }
@@ -314,6 +315,7 @@ type UdpInfoValue struct {
 	Buckets    [8]uint64 `align:"buckets"`
 	LatencySum uint64    `align:"latency_sum"`
 	CreateTime uint64    `align:"create_time"`
+	PsVersion  uint64    `align:"ps_version"`
 }
 
 func (k *UdpInfoKey) String() string {
@@ -322,6 +324,12 @@ func (k *UdpInfoKey) String() string {
 	return fmt.Sprintf("Cookie=%d:%d\n"+
 		"SAddr=%s:%d\n"+
 		"DAddr=%s:%d\n", k.Version, k.Cookie, ipSrc, k.Tuple.SPort, ipDst, k.Tuple.DPort)
+}
+
+func (k *UdpInfoKey) Copy() *UdpInfoKey {
+	newKey := &UdpInfoKey{}
+	*newKey = *k
+	return newKey
 }
 
 func (v *UdpInfoValue) String() string {
@@ -334,4 +342,10 @@ func (v *UdpInfoValue) String() string {
 		v.TXBytes, v.RXBytes,
 		v.SegsOut, v.SegsIn,
 		v.SkDrops)
+}
+
+func (v *UdpInfoValue) Copy() *UdpInfoValue {
+	newValue := &UdpInfoValue{}
+	*newValue = *v
+	return newValue
 }

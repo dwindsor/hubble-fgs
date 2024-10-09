@@ -64,6 +64,7 @@ struct msg_ip_event {
 	__u32 socket_flags;
 	__u32 pad;
 	__u64 version;
+	__u64 ps_version; // pseudo-socket version (used in UDP).
 	__u64 create_time; // only used on close events.
 	__u64 close_time; // only used on close events.
 }; // All fields aligned so no 'packed' attribute.
@@ -77,6 +78,7 @@ struct msg_ip_with_stats_event {
 	__u32 socket_flags;
 	__u32 pad;
 	__u64 version;
+	__u64 ps_version; // pseudo-socket version (used in UDP).
 	__u64 create_time; // only used on close events.
 	__u64 close_time; // only used on close events.
 	struct msg_socket_stats stats;
