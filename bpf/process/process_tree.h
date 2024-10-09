@@ -48,10 +48,9 @@ static int atomic_xchg(__u64 *cnt, __u64 val)
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
 }
 
-int insert_process_tree(void)
+int __insert_process_tree(__u32 pid)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
-	__u32 pid = (get_current_pid_tgid() >> 32);
 	struct execve_map_value *parent;
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
@@ -64,7 +63,6 @@ int insert_process_tree(void)
 	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
-	pid = get_current_pid_tgid();
 	curr = execve_map_get_noinit(pid);
 	if (!curr)
 		return 0;
@@ -126,6 +124,13 @@ int insert_process_tree(void)
 	return 0;
 }
 
+int insert_process_tree(void)
+{
+	__u32 pid = get_current_pid_tgid();
+
+	return __insert_process_tree(pid);
+}
+
 uint64_t glbl_bpf_endpoint_id = 1;
 
 __u64 tg_sockops_get_current_cgroup_id(void)
@@ -152,7 +157,7 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 	return get_cgroup_id(cgrp);
 }
 
-static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
+int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
@@ -166,6 +171,9 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
+
+	if (!tuple)
+		return 0;
 
 	if (!v)
 		return 0;

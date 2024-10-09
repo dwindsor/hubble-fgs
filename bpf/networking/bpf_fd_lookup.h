@@ -18,6 +18,7 @@
 #include "../lib/address_family.h"
 #include "bpf_tracing.h"
 #include "bpf_network_helpers.h"
+#include "process/process_tree.h"
 
 #define S_IFMT	 00170000
 #define S_IFSOCK 0140000
@@ -260,6 +261,10 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_stats->ipv6 = (family == AF_INET6);
 		tcp_stats->version = socket->version;
 		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);
+		if (tcp_stats->socket_flags != SOCKFLAGS_TYPE_LISTEN) {
+			__insert_process_tree(value->key.pid);
+			process_socketmap_add(tcp_stats, &config->tuple);
+		}
 	}
 
 	return 0;

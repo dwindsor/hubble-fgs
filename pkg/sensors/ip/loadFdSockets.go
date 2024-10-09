@@ -78,6 +78,14 @@ var (
 	// Socket lookup config map
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 
+	// Endpoint Models
+	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", FdLookup)
+	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", FdLookup)
+	ProcessTreeMap           = program.MapUser("process_tree_map", FdLookup)
+	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", FdLookup)
+	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", FdLookup)
+	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", FdLookup)
+
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
 	SocketCookieStats = program.MapBuilder(SocketMapStatsName, FdLookup)
@@ -167,6 +175,14 @@ func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
 	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap)
+	maps = append(maps, []*program.Map{
+		EndpointIdMap,
+		BpfEndpointIdMap,
+		ProcessTreeMap,
+		ProcessTreeBinaryUUIDMap,
+		ProcessTreeUUIDBinaryMap,
+		DestinationEndpointMap,
+	}...)
 
 	return maps
 }
