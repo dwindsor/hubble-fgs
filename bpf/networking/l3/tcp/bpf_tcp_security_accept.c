@@ -191,7 +191,7 @@ int BPF_PROG(tg_security_sock_graft, struct sock *sk, struct socket *parent)
 		event->common.ktime = now;
 		event->socket_cookie = newcookie;
 		event->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-		event->version = listen_process->version;
+		event->version = cookie_version;
 		event->create_time = now;
 		event->close_time = 0;
 
