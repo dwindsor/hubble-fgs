@@ -21,28 +21,29 @@ import (
 )
 
 const (
-	KeyHubbleLib                = "hubble-lib"
-	KeyFlowExportFilename       = "flow-export-filename"
-	KeyFlowExportFileMaxSizeMB  = "flow-export-file-max-size-mb"
-	KeyFlowExportFileMaxBackups = "flow-export-file-max-backups"
-	KeyFlowExportFileCompress   = "flow-export-file-compress"
-	KeyFimFifoPath              = "fim-fifo-path"
-	KeyFimRuntimeEndpoint       = "fim-runtime-endpoint"
-	KeyDnsCacheSize             = "dns-cache-size"
-	KeyEndpointCacheSize        = "endpoint-cache-size"
-	KeyBpfEndpointCacheSize     = "bpf-endpoint-cache-size"
-	KeyProcessTreeSize          = "process-tree-cache-size"
-	KeyTlsCacheSize             = "tls-cache-size"
-	KeyTcpCacheSize             = "tcp-cache-size"
-	KeyNetNsCacheSize           = "net-ns-cache-size"
-	KeyDetatchOldBPF            = "detach-old-bpf"
-	KeyEnableProcessAncestors   = "enable-process-ancestors"
-	KeyEnableProcessTree        = "enable-process-tree"
-	keyEnableIcmpTracking       = "enable-icmp-tracking"
-	keyEnableSandboxPolicies    = "enable-sandboxpolicies"
-	keyEnableSandboxPoliciesCRD = "enable-sandboxpolicies-crd"
-	keySandboxPolicy            = "sandbox-policy"
-	keyDebugX                   = "debugx"
+	KeyHubbleLib                 = "hubble-lib"
+	KeyFlowExportFilename        = "flow-export-filename"
+	KeyFlowExportFileMaxSizeMB   = "flow-export-file-max-size-mb"
+	KeyFlowExportFileMaxBackups  = "flow-export-file-max-backups"
+	KeyFlowExportFileCompress    = "flow-export-file-compress"
+	KeyFimFifoPath               = "fim-fifo-path"
+	KeyFimRuntimeEndpoint        = "fim-runtime-endpoint"
+	KeyDnsCacheSize              = "dns-cache-size"
+	KeyEndpointCacheSize         = "endpoint-cache-size"
+	KeyBpfEndpointCacheSize      = "bpf-endpoint-cache-size"
+	KeyProcessTreeSize           = "process-tree-cache-size"
+	KeyTlsCacheSize              = "tls-cache-size"
+	KeyTcpCacheSize              = "tcp-cache-size"
+	KeyNetNsCacheSize            = "net-ns-cache-size"
+	KeyDetatchOldBPF             = "detach-old-bpf"
+	KeyEnableProcessAncestors    = "enable-process-ancestors"
+	KeyEnableProcessTree         = "enable-process-tree"
+	KeyProcessTreeExportInterval = "process-tree-export-interval"
+	keyEnableIcmpTracking        = "enable-icmp-tracking"
+	keyEnableSandboxPolicies     = "enable-sandboxpolicies"
+	keyEnableSandboxPoliciesCRD  = "enable-sandboxpolicies-crd"
+	keySandboxPolicy             = "sandbox-policy"
+	keyDebugX                    = "debugx"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -55,6 +56,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
 	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.Bool(KeyEnableProcessTree, false, "Include BPF process tree in memory")
+	// An experimental flag to periodically export process model to export JSON file.
+	flags.Duration(KeyProcessTreeExportInterval, 0, "Interval at which to export process tree as JSON.")
+	flags.MarkHidden(KeyProcessTreeExportInterval)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(KeyProcessTreeSize, 1024, "Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(KeyEndpointCacheSize, 1024, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
@@ -83,6 +87,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 func ReadAndSetEnterpriseFlags() {
 	Config.EnableProcessAncestors = viper.GetBool(KeyEnableProcessAncestors)
 	Config.EnableProcessTree = viper.GetBool(KeyEnableProcessTree)
+	Config.ProcessTreeExportInterval = viper.GetDuration(KeyProcessTreeExportInterval)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
 	Config.ProcessTreeCacheSize = viper.GetInt(KeyProcessTreeSize)

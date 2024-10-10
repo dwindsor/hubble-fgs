@@ -472,7 +472,7 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if option.Config.ExportFilename != "" {
-		if err = startExporter(ctx, pm.Server); err != nil {
+		if err = startExporter(ctx, pm.Server, modelServer); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
@@ -754,7 +754,7 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	return writer, nil
 }
 
-func startExporter(ctx context.Context, server *server.Server) error {
+func startExporter(ctx context.Context, server *server.Server, modelServer *model.Server) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
 		return err
@@ -822,6 +822,10 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	log.WithFields(logrus.Fields{"logger": writer, "request": &req}).Info("Starting JSON exporter")
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 	exporter.Start()
+
+	if modelServer != nil && enterpriseOption.Config.ProcessTreeExportInterval != 0 {
+		go model.ExportProcessModel(ctx, modelServer, writer, enterpriseOption.Config.ProcessTreeExportInterval)
+	}
 	return nil
 }
 
