@@ -27,5 +27,6 @@ func init() {
 		&DnsNamesRegexFilter{},
 		&HostRegexFilter{},
 		&ProtocolFilter{},
+		&DestinationNamespaceRegexFilter{},
 	}...)
 }

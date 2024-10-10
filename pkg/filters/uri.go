@@ -76,6 +76,22 @@ func (f *DestinationPodRegexFilter) OnBuildFilter(_ context.Context, ff *tetrago
 	return fs, nil
 }
 
+type DestinationNamespaceRegexFilter struct{}
+
+func (f *DestinationNamespaceRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
+	var fs []hubbleFilters.FilterFunc
+
+	if ff.DestinationNamespaceRegex != nil {
+		filter, err := filterByURIRegex(ff.DestinationNamespaceRegex, f)
+		if err != nil {
+			return nil, err
+		}
+		fs = append(fs, filter)
+	}
+
+	return fs, nil
+}
+
 type DnsNamesRegexFilter struct{}
 
 func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
@@ -165,6 +181,13 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 				return false
 			}
 			URIStrings = append(URIStrings, request.Host)
+		case *DestinationNamespaceRegexFilter:
+			ns, ok := getDestinationNamespace(ev)
+			if !ok {
+				// Event has no DestinationNamespace field
+				return false
+			}
+			URIStrings = append(URIStrings, ns)
 		default:
 			logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported URI / Pod filter type")
 			return false
@@ -279,6 +302,38 @@ func getDestinationPod(event *v1.Event) (string, bool) {
 		return "", false
 	}
 	return pod.Name, true
+}
+
+func getDestinationNamespace(event *v1.Event) (string, bool) {
+	if event == nil {
+		return "", false
+	}
+	response, ok := event.Event.(*tetragon.GetEventsResponse)
+	if !ok {
+		return "", false
+	}
+
+	// If the event has socket info, use that instead
+	if _, ok := tetragon.UnwrapGetEventsResponse(response).(GetSocket); ok {
+		sockInfo, ok := getSockInfo(event)
+		if !ok {
+			return "", false
+		}
+		if sockInfo.DestinationPod == nil {
+			return "", false
+		}
+		return sockInfo.DestinationPod.Namespace, ok
+	}
+
+	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetDestinationPod)
+	if !ok {
+		return "", false
+	}
+	pod := ev.GetDestinationPod()
+	if pod == nil {
+		return "", false
+	}
+	return pod.Namespace, true
 }
 
 func getDnsNames(event *v1.Event) ([]string, bool) {

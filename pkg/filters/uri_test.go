@@ -370,3 +370,29 @@ func TestFilterByHost(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ff(ev), "filter should pass")
 }
+
+func TestFilterByDestinationNamespace(t *testing.T) {
+	ev := &v1.Event{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &tetragon.ProcessConnect{
+					DestinationPod: &tetragon.Pod{
+						Namespace: "example",
+					},
+				},
+			},
+		},
+	}
+
+	ff, err := filterByURIRegex([]string{"example"}, &DestinationNamespaceRegexFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	ff, err = filterByURIRegex([]string{"^ex.*$"}, &DestinationNamespaceRegexFilter{})
+	require.NoError(t, err)
+	assert.True(t, ff(ev), "filter should pass")
+
+	ff, err = filterByURIRegex([]string{"^ex.*2$"}, &DestinationNamespaceRegexFilter{})
+	require.NoError(t, err)
+	assert.False(t, ff(ev), "filter should fail")
+}

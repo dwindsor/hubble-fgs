@@ -128,6 +128,9 @@ message Filter {
     // matches any of the protocols listed here. Note that events without a
     // protocol field will never match.
     repeated SocketProtocol protocol = 1009;
+    // Filter by destination k8s namespace using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string destination_namespace_regex = 1010;
 }
  
  // Filter over a set of Linux process capabilities. See `message Capabilities`
