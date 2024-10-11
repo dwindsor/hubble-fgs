@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -22,6 +21,8 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
@@ -78,9 +79,9 @@ type DestinationEndpointValue struct {
 	TxBytes        uint64
 	RxBytes        uint64
 	Pad0           uint64
-	Pad1           uint64
+	IPv6           uint64
 	KtimeCreate    uint64
-	AddrCreate     [16]byte
+	AddrCreate     [2]uint64
 	Port           uint64
 }
 
@@ -117,12 +118,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var ep endpoint.Endpoint
 
 		if dstKey.DestinationSource == DestinationSourceBpf {
-			ip := make(net.IP, 4)
-			ip[0] = dstVal.AddrCreate[0]
-			ip[1] = dstVal.AddrCreate[1]
-			ip[2] = dstVal.AddrCreate[2]
-			ip[3] = dstVal.AddrCreate[3]
-
+			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
 			// If the IP has resolved to a DNS or K8s object lets
 			// omit the duplicate individual IP. This can happen
 			// when the connect races with the watchers and/or DNS
@@ -449,7 +445,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 }
 
 func addSingleDnsQuota(src *ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset uint64) error {
-	var addr [16]byte
+	var addr [2]uint64
 
 	c := endpoint.Get()
 	dst, err := c.AddEndpoint(*ep)
@@ -473,7 +469,7 @@ func addSingleDnsQuota(src *ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.
 		TxBytes:        0,
 		RxBytes:        0,
 		Pad0:           0,
-		Pad1:           0,
+		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
 		Port:           0,

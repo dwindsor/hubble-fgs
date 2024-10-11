@@ -260,6 +260,7 @@ int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tup
 		destvalue->ktime_create = ktime_get_ns();
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
+		destvalue->ipv6 = tuple->ipv6;
 		destvalue->port = tuple->dport;
 		destvalue->tx_quota = destvalue->tx_limit = 0;
 		destvalue->tx_bytes = destvalue->rx_bytes = 0;
