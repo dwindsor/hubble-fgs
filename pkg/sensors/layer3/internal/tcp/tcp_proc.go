@@ -82,6 +82,9 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 		tcp.Msg.Common.Op = ops.MSG_OP_TCPCONNECTRET
 	}
 
+	// Entries populated through proc must populate the tcpCache. This is
+	// used by model code and TCP events to map sockets={cookie,version} to
+	// human readable IPs.
 	tcpTuples, err := tcpCache.GetCache()
 	if err == nil {
 		socketId := networkapi.MsgSocketId{
