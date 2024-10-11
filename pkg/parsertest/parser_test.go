@@ -226,7 +226,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	for _, s := range sis {
 		parserSensors = append(parserSensors, s.(*sensors.Sensor))
 	}
-	parserSensor := sensors.SensorCombine("test", "parser", parserSensors...)
+	parserSensor := sensors.SensorCombine(&tp, "parser", parserSensors...)
 
 	err = parserSensor.Load(bpf.MapPrefixPath())
 	if err != nil {

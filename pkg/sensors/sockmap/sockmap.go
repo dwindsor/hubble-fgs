@@ -194,7 +194,7 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }
 
-func enableTLSParser(policy string, tls, cg bool) *sensors.Sensor {
+func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -303,7 +303,7 @@ func (tls *tlsSensor) PolicyHandler(
 		tlsconfig.MetricsLabelFilter = option.DefaultLabelFilter()
 	}
 
-	return enableTLSParser(policy.TpName(), enableTLS, enableTLSCG), nil
+	return enableTLSParser(policy, enableTLS, enableTLSCG), nil
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {

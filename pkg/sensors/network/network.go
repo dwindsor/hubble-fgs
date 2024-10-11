@@ -325,7 +325,7 @@ var (
 	NetworkMap = program.MapBuilder(NetworkMapName, DevQueueXmit)
 )
 
-func EnableNetworkParser(policy string, statInterval uint32) *sensors.Sensor {
+func EnableNetworkParser(policy tracingpolicy.TracingPolicy, statInterval uint32) *sensors.Sensor {
 	var defaultCBInterval time.Duration
 	var progs []*program.Program
 	var maps []*program.Map
@@ -380,7 +380,7 @@ func (net *networkSensor) PolicyHandler(
 	}
 
 	bpfEnabled = spec.Parser.Interface.Packet
-	return EnableNetworkParser(policy.TpName(), spec.Parser.Interface.StatsInterval), nil
+	return EnableNetworkParser(policy, spec.Parser.Interface.StatsInterval), nil
 }
 
 type MsgNetNsExitEvent struct {

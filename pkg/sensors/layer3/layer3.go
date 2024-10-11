@@ -202,7 +202,8 @@ var (
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
 )
 
-func EnableLayer3(policy string, tcpTimestampEnable, cgroup, udpTimestampEnable bool, udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
+func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup, udpTimestampEnable bool,
+	udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
@@ -340,7 +341,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return EnableLayer3(policy.TpName(), tcpTimestampEnable,
+	return EnableLayer3(policy, tcpTimestampEnable,
 		udpCgroup, udpTimestampEnable, udpInterval, reportRawClose), nil
 }
 

@@ -60,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(policy, name string) (*sensors.Sensor, error) {
+func builder(policy tracingpolicy.TracingPolicy, name string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -98,7 +98,7 @@ func (*sockopsSensor) PolicyHandler(
 			return nil, fmt.Errorf("sockops sensor does not implement policy filtering")
 		}
 
-		return builder(policy.TpName(), "__sockops_sensors__")
+		return builder(policy, "__sockops_sensors__")
 	}
 	return nil, nil
 }

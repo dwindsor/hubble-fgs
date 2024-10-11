@@ -98,7 +98,7 @@ func (nop *sensor) PolicyHandler(
 		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
 	}
 
-	return EnableNopParser(policy.TpName()), nil
+	return EnableNopParser(policy), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -144,7 +144,7 @@ func AddNop() {
 }
 
 /* Add sensor from CRD */
-func EnableNopParser(policy string) *sensors.Sensor {
+func EnableNopParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
 	logger.GetLogger().Infof("Enable NOP")
 
 	progs := []*program.Program{

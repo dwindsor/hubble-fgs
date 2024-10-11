@@ -226,7 +226,7 @@ func (hb *heartbeatSensor) PolicyHandler(
 		udpPort = spec.Parser.Heartbeat.UdpPort
 	}
 
-	hbSensor := sensors.SensorBuilder(policy.TpName(), versionStr, nil, nil)
+	hbSensor := sensors.SensorBuilder(policy, versionStr, nil, nil)
 	hbSensor.PreUnloadHook = unloadHeartbeatSensor
 
 	start(interval, udpPort, tcpPort)

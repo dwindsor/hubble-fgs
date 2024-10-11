@@ -179,7 +179,7 @@ func (http *httpSensor) PolicyHandler(
 		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
 	}
 
-	return EnableHTTPParser(policy.TpName()), nil
+	return EnableHTTPParser(policy), nil
 }
 
 type skSkbVerdictSensor struct {
@@ -248,7 +248,7 @@ func init() {
 }
 
 /* Add sensor from CRD */
-func EnableHTTPParser(policy string) *sensors.Sensor {
+func EnableHTTPParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
 	logger.GetLogger().Infof("Enable HTTP")
 
 	progs := []*program.Program{
