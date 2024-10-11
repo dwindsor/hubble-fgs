@@ -1073,6 +1073,8 @@ func execute() error {
 	flags.Int(KeyEventCacheRetries, defaults.DefaultEventCacheNumRetries, "Number of retries for event cache")
 	flags.Int(KeyEventCacheRetryDelay, defaults.DefaultEventCacheRetryDelay, "Delay in seconds between event cache retries")
 
+	flags.Bool(option.KeyCompatibilitySyscall64SizeType, false, "syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)")
+
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }

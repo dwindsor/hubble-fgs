@@ -53,6 +53,10 @@ options:
       default_value: "false"
       usage: |
         Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache
+    - name: enable-compatibility-syscall64-size-type
+      default_value: "false"
+      usage: |
+        syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)
     - name: enable-cri
       default_value: "false"
       usage: enable CRI client for tetragon

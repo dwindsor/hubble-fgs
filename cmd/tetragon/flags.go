@@ -215,5 +215,7 @@ func readAndSetFlags() error {
 	option.Config.EventCacheNumRetries = viper.GetInt(KeyEventCacheRetries)
 	option.Config.EventCacheRetryDelay = viper.GetInt(KeyEventCacheRetryDelay)
 
+	option.Config.CompatibilitySyscall64SizeType = viper.GetBool(option.KeyCompatibilitySyscall64SizeType)
+
 	return nil
 }
