@@ -21,7 +21,7 @@ RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
 # - tetragon
 # - tetra
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.2@sha256:adee809c2d0009a4199a11a1b2618990b244c6515149fe609e2788ddf164bd10 AS tetragon-builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.2@sha256:a7f2fc9834049c1f5df787690026a53738e55fc097cd8a4a93faa3e06c67ee32 AS tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
 RUN apt-get update
