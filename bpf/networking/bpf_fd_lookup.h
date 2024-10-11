@@ -230,10 +230,13 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
 		if (!tcp_stats)
 			return 0;
+
 		if ((1 << config->state) & TCPF_LISTEN)
 			tcp_stats->socket_flags = SOCKFLAGS_TYPE_LISTEN;
-		else
+		else if ((1 << config->state) & TCPF_ESTABLISHED)
 			tcp_stats->socket_flags = 0;
+		else
+			return 0;
 
 		tcp_stats->sent = 0;
 		tcp_stats->segs_out = 0;
