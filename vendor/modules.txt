@@ -438,7 +438,9 @@ github.com/cilium/tetragon/pkg/server
 github.com/cilium/tetragon/pkg/strutils
 github.com/cilium/tetragon/pkg/syscallinfo
 github.com/cilium/tetragon/pkg/syscallinfo/arm32
+github.com/cilium/tetragon/pkg/syscallinfo/arm64
 github.com/cilium/tetragon/pkg/syscallinfo/i386
+github.com/cilium/tetragon/pkg/syscallinfo/x64
 github.com/cilium/tetragon/pkg/testutils
 github.com/cilium/tetragon/pkg/testutils/perfring
 github.com/cilium/tetragon/pkg/testutils/sensors
@@ -1291,7 +1293,7 @@ golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-# golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+# golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6
 ## explicit; go 1.22.0
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
@@ -1379,12 +1381,13 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.7.0
 ## explicit; go 1.18
 golang.org/x/time/rate
-# golang.org/x/tools v0.25.0
+# golang.org/x/tools v0.26.0
 ## explicit; go 1.22.0
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
+golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/aliases
 golang.org/x/tools/internal/event
@@ -1398,7 +1401,7 @@ golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/pkgbits
 golang.org/x/tools/internal/stdlib
-golang.org/x/tools/internal/tokeninternal
+golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
 # gomodules.xyz/jsonpatch/v2 v2.4.0
