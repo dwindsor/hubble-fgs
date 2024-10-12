@@ -18,6 +18,7 @@ spec:
           workloadKind: "Pod"
           destination:
             dns: ["isovalent.com.", "cilium.io"]
+            port: [80,443]
           quota: "1024"
       statsInterval: 10
     dns:
