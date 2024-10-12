@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -72,6 +74,14 @@ var (
 		"kprobe",
 	)
 
+	FdLookup_5_15 = program.Builder(
+		"bpf_fd_lookup_5_15.o",
+		"proc_task_name",
+		"kprobe/proc_task_name",
+		"kprobe_proc_task_name",
+		"kprobe",
+	)
+
 	// All the FdLookup sensor maps below are accessed from other sensors,
 	// so they need to stay global as is expected by its users.
 
@@ -79,12 +89,12 @@ var (
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 
 	// Endpoint Models
-	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", FdLookup)
-	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", FdLookup)
-	ProcessTreeMap           = program.MapUser("process_tree_map", FdLookup)
-	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", FdLookup)
-	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", FdLookup)
-	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", FdLookup)
+	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", FdLookup_5_15)
+	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", FdLookup_5_15)
+	ProcessTreeMap           = program.MapUser("process_tree_map", FdLookup_5_15)
+	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", FdLookup_5_15)
+	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", FdLookup_5_15)
+	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", FdLookup_5_15)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
@@ -166,7 +176,15 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 func getFdLookupPrograms() []*program.Program {
 	var progs []*program.Program
 
-	progs = append(progs, FdLookup)
+	if !kernels.MinKernelVersion("5.15.0") {
+		progs = append(progs, FdLookup)
+	} else {
+		if runtime.GOARCH != "amd64" {
+			progs = append(progs, FdLookup)
+		} else {
+			progs = append(progs, FdLookup_5_15)
+		}
+	}
 
 	return progs
 }
@@ -175,14 +193,18 @@ func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
 	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap)
-	maps = append(maps, []*program.Map{
-		EndpointIdMap,
-		BpfEndpointIdMap,
-		ProcessTreeMap,
-		ProcessTreeBinaryUUIDMap,
-		ProcessTreeUUIDBinaryMap,
-		DestinationEndpointMap,
-	}...)
+	if kernels.MinKernelVersion("5.14.0") {
+		if runtime.GOARCH == "amd64" {
+			maps = append(maps, []*program.Map{
+				EndpointIdMap,
+				BpfEndpointIdMap,
+				ProcessTreeMap,
+				ProcessTreeBinaryUUIDMap,
+				ProcessTreeUUIDBinaryMap,
+				DestinationEndpointMap,
+			}...)
+		}
+	}
 
 	return maps
 }

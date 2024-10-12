@@ -264,10 +264,12 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		tcp_stats->ipv6 = (family == AF_INET6);
 		tcp_stats->version = socket->version;
 		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);
+#ifdef KERNEL_5_15
 		if (tcp_stats->socket_flags != SOCKFLAGS_TYPE_LISTEN) {
 			__insert_process_tree(value->key.pid);
 			process_socketmap_add(tcp_stats, &config->tuple);
 		}
+#endif
 	}
 
 	return 0;
