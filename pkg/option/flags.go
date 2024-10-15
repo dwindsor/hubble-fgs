@@ -44,6 +44,8 @@ const (
 	keyEnableSandboxPoliciesCRD  = "enable-sandboxpolicies-crd"
 	keySandboxPolicy             = "sandbox-policy"
 	keyDebugX                    = "debugx"
+	keyEnableAWSSonar            = "enable-aws-sonar"
+	keyAWSSonarRegion            = "aws-sonar-region"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -116,4 +118,6 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableSandboxPoliciesCRD = viper.GetBool(keyEnableSandboxPoliciesCRD)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
+	Config.EnableAWSSonar = viper.GetBool(keyEnableAWSSonar)
+	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)
 }

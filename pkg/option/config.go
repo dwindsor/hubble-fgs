@@ -37,6 +37,9 @@ type config struct {
 	DebugX []string
 
 	ProcessCacheStaleInterval time.Duration
+
+	EnableAWSSonar bool
+	AWSSonarRegion string
 }
 
 var (

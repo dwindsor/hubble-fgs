@@ -71,6 +71,7 @@ import (
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
@@ -393,6 +394,15 @@ func hubbleFGSExecute() error {
 		go enterpriseMetrics.StartPodDeleteHandler()
 		// Handler must be registered before the watcher is started
 		metrics.RegisterPodDeleteHandler()
+	}
+
+	if enterpriseOption.Config.EnableAWSSonar {
+		if enterpriseOption.Config.AWSSonarRegion == "" {
+			log.Info("AWS Sonar enabled, but region not set, skipping. To publish metrics to Sonar, set --aws-sonar-region.")
+		} else {
+			// TODO: Create a TCP policy for Sonar automatically.
+			go layer3.InitSonar(ctx)
+		}
 	}
 
 	// Probe runtime configuration and do not fail on errors

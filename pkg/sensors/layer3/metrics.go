@@ -11,10 +11,17 @@
 package layer3
 
 import (
+	"context"
+
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 func InitUDPHealthMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(udp.NewCacheCollector())
+}
+
+func InitSonar(ctx context.Context) {
+	tcp.InitSonar(ctx)
 }
