@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
+	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
@@ -224,7 +225,7 @@ func UnloadSensor() error {
 	StatsEnabled = false
 	Interval = 0
 	tcpCache.StopGc()
-	return model.ClearDnsQuota()
+	return policy.ClearDnsQuota()
 }
 
 func processModelMapsEnable() []*program.Map {
