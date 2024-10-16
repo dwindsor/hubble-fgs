@@ -95,10 +95,20 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	queueWlLock.Lock()
 	qp, ok := queueWl[wl]
 	if !ok {
-		queueWlLock.Unlock()
-		return nil
+		/* Check for Namespace policy */
+		nswl := policyfilter.NSID{
+			Namespace: wl.Namespace,
+			Kind:      "",
+			Workload:  "",
+		}
+		qp, ok = queueWl[nswl]
+		if !ok {
+			queueWlLock.Unlock()
+			return nil
+		}
+	} else {
+		delete(queueWl, wl)
 	}
-	delete(queueWl, wl)
 	queueWlLock.Unlock()
 	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
 }
