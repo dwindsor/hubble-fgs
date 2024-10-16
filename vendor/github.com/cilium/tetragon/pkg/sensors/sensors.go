@@ -4,7 +4,9 @@
 package sensors
 
 import (
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -67,6 +69,20 @@ type Sensor struct {
 	// when removing the sensor, sensor cannot be loaded again after this hook
 	// being triggered and must be recreated.
 	DestroyHook SensorHook
+}
+
+func (s *Sensor) AddPostUnloadHook(hook SensorHook) {
+	if s.PostUnloadHook == nil {
+		s.PostUnloadHook = hook
+		return
+	}
+
+	oldUnloadHook := s.PostUnloadHook
+	s.PostUnloadHook = func() error {
+		err1 := oldUnloadHook()
+		err2 := hook()
+		return errors.Join(err1, err2)
+	}
 }
 
 func sanitize(name string) string {
@@ -240,4 +256,19 @@ func progsCleanup() {
 
 func AllPrograms() []*program.Program {
 	return append([]*program.Program{}, allPrograms...)
+}
+
+// sortSensors sort the sensors to enforce orderging constrains
+func sortSensors(sensors []SensorIface) {
+	sort.Slice(sensors, func(i, j int) bool {
+		iName := sensors[i].GetName()
+		if iName == "__enforcer__" {
+			return true
+		}
+		jName := sensors[j].GetName()
+		if jName == "__enforcer__" {
+			return false
+		}
+		return iName < jName
+	})
 }

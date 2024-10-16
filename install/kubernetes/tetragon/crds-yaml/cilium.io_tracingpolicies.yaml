@@ -948,6 +948,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1269,6 +1270,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1563,6 +1565,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1884,6 +1887,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -2903,6 +2907,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3224,6 +3229,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3486,6 +3492,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3807,6 +3814,7 @@ spec:
                                   - TrackSock
                                   - UntrackSock
                                   - NotifyEnforcer
+                                  - CleanupEnforcerNotification
                                   type: string
                                 argError:
                                   description: error value for override action

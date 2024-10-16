@@ -483,6 +483,7 @@ github.com/cilium/tetragon/pkg/mbset
 github.com/cilium/tetragon/pkg/metrics
 github.com/cilium/tetragon/pkg/metrics/cgroupratemetrics
 github.com/cilium/tetragon/pkg/metrics/consts
+github.com/cilium/tetragon/pkg/metrics/enforcermetrics
 github.com/cilium/tetragon/pkg/metrics/errormetrics
 github.com/cilium/tetragon/pkg/metrics/eventmetrics
 github.com/cilium/tetragon/pkg/metrics/kprobemetrics
