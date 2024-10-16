@@ -27,7 +27,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/model"
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -352,7 +351,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 func configureQos(qos *v1alpha1.QosPolicySpec) error {
 	for _, p := range qos.QuotaPolicySpec {
 		if len(p.Destination.Dns) > 0 {
-			err := dns.AddDnsQuota(p.Namespace,
+			err := policy.AddDnsQuotaPolicy(p.Namespace,
 				p.Workload, p.WorkloadKind,
 				p.Destination.Dns,
 				p.Quota, qos.QuotaResetLimits,

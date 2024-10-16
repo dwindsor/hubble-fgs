@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/watcher"
 	coreV1 "k8s.io/api/core/v1"
@@ -71,4 +72,8 @@ func GetProbes(pod *coreV1.Pod, containerStatus *coreV1.ContainerStatus) ([]stri
 		}
 	}
 	return nil, nil
+}
+
+func GetPodInfoOfNS(namespace string) ([]*v1alpha1.PodInfo, error) {
+	return enterpriseWatcher.FindPodInfoByNS(k8sResourceWatcher, namespace)
 }

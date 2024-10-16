@@ -178,3 +178,21 @@ func FindPodInfoByIP(watcher oss.K8sResourceWatcher, ip string) ([]*v1alpha1.Pod
 	}
 	return podInfo, nil
 }
+
+func FindPodInfoByNS(watcher oss.K8sResourceWatcher, ns string) ([]*v1alpha1.PodInfo, error) {
+	var nsPods []*v1alpha1.PodInfo
+
+	podInfoInformer := watcher.GetInformer(podInfoInformerName)
+	if podInfoInformer == nil {
+		return nil, fmt.Errorf("pod informer not initialized")
+	}
+	allPods := podInfoInformer.GetStore().List()
+	for i := range allPods {
+		if pod, ok := allPods[i].(*v1alpha1.PodInfo); ok {
+			if pod.ObjectMeta.Namespace == ns {
+				nsPods = append(nsPods, pod)
+			}
+		}
+	}
+	return nsPods, nil
+}

@@ -73,7 +73,7 @@ func addSingleDnsQuota(src *model.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 	return nil
 }
 
-func queueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string) {
+func QueueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string) {
 	qp := quotaPolicy{
 		dns:   dns,
 		quota: quota,
@@ -202,7 +202,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 			Workload:  wl,
 			Kind:      kind,
 		}
-		queueWorkloadQuotaPolicy(workload, dns, reset, quota)
+		QueueWorkloadQuotaPolicy(workload, dns, reset, quota)
 		return nil
 	}
 
