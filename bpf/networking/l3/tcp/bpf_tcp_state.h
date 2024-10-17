@@ -67,10 +67,10 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->key.pid = key->pid;
 	v->key.ktime = key->ktime;
 	v->create_time = val->common.ktime;
-	v->last_time = v->create_time;
+	v->ktime = v->create_time;
 	v->socket_flags = SOCKFLAGS_TYPE_CONNECT;
-	v->sent = 0;
-	v->received = 0;
+	v->bytes_sent = 0;
+	v->bytes_received = 0;
 	v->ipv6 = (family == AF_INET6);
 	v->version = val->version;
 

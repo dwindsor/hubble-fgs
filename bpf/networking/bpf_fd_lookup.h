@@ -238,8 +238,10 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		else
 			return 0;
 
-		tcp_stats->sent = 0;
+		tcp_stats->bytes_sent = 0;
+		tcp_stats->bytes_received = 0;
 		tcp_stats->segs_out = 0;
+		tcp_stats->segs_in = 0;
 		tcp_stats->retransbytes = 0;
 		tcp_stats->sk_drops = 0;
 		tcp_stats->zero_window = 0;
@@ -260,7 +262,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 
 		tcp_stats->key = value->key;
 		tcp_stats->create_time = socket->create_time;
-		tcp_stats->last_time = socket->create_time;
+		tcp_stats->ktime = socket->create_time;
 		tcp_stats->ipv6 = (family == AF_INET6);
 		tcp_stats->version = socket->version;
 		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);

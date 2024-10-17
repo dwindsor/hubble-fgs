@@ -27,9 +27,9 @@ struct tcpsocketmap_value {
 	__u64 create_time;
 	__u32 zero_window;
 	__u32 socket_flags;
-	__u64 last_time;
-	__u64 sent;
-	__u64 received;
+	__u64 ktime;
+	__u64 bytes_sent;
+	__u64 bytes_received;
 	__u32 segs_out;
 	__u32 segs_in;
 	__u64 retransbytes;

@@ -282,9 +282,9 @@ type TcpValue struct {
 	CreateTime      uint64                  `align:"create_time"`
 	ZeroWindow      uint32                  `align:"zero_window"`
 	SocketFlags     uint32                  `align:"socket_flags"`
-	LastTime        uint64                  `align:"last_time"`
-	Sent            uint64                  `align:"sent"`
-	Recv            uint64                  `align:"received"`
+	LastTime        uint64                  `align:"ktime"`
+	Sent            uint64                  `align:"bytes_sent"`
+	Recv            uint64                  `align:"bytes_received"`
 	SegsOut         uint32                  `align:"segs_out"`
 	SegsIn          uint32                  `align:"segs_in"`
 	RetransmitBytes uint64                  `align:"retransbytes"`

@@ -124,18 +124,18 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			.dip_trigger_mult =
 				cfg->watermarksDipTriggerMult,
 		};
-		if (tcp_bytes_sent > socket->sent) {
+		if (tcp_bytes_sent > socket->bytes_sent) {
 			process_network_watermarks(
 				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->sent,
+				tcp_bytes_sent - socket->bytes_sent,
 				&c);
 		}
-		if (tcp_bytes_received > socket->received) {
+		if (tcp_bytes_received > socket->bytes_received) {
 			process_network_watermarks(
 				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->received,
+				tcp_bytes_received - socket->bytes_received,
 				&c);
 		}
 	}

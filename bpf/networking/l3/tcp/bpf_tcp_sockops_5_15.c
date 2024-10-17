@@ -128,11 +128,11 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	v->key.pid = val->key.pid;
 	v->key.ktime = val->key.ktime;
 	v->create_time = now;
-	v->last_time = now;
+	v->ktime = now;
 	v->zero_window = 0;
 	v->socket_flags = SOCKFLAGS_TYPE_LISTEN;
-	v->sent = 0;
-	v->received = 0;
+	v->bytes_sent = 0;
+	v->bytes_received = 0;
 	v->ipv6 = (skops->family == AF_INET6);
 	v->version = val->version;
 

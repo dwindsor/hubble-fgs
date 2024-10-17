@@ -39,7 +39,7 @@ struct msg_ip_tuple {
 
 struct msg_socket_stats {
 	__u64 ktime;
-	__u64 create_ktime;
+	__u64 create_time;
 	__u64 bytes_sent;
 	__u64 bytes_received;
 	__u32 segs_in;
@@ -47,7 +47,7 @@ struct msg_socket_stats {
 	__u32 srtt;
 	__u32 retranssegs;
 	__u64 retransbytes;
-	__u32 tozerowin;
+	__u32 zero_window;
 	__u32 sk_drops;
 	__u32 skb_consume_misses;
 	__u32 pad;

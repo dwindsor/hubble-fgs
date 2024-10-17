@@ -194,9 +194,9 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 
 	socket->create_time = val->common.ktime;
 	socket->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-	socket->last_time = socket->create_time;
-	socket->received = 0;
-	socket->sent = 0;
+	socket->ktime = socket->create_time;
+	socket->bytes_received = 0;
+	socket->bytes_sent = 0;
 	socket->zero_window = 0;
 	socket->fin_rx = 0;
 	socket->ipv6 = (family == AF_INET6);

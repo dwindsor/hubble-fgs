@@ -98,23 +98,20 @@ static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct
 		return SK_PASS;
 	skp = (struct sock *)tcp;
 
-	v->last_time = ktime_get_ns();
+	v->ktime = ktime_get_ns();
 
 	if (bpf_core_field_exists(tcp->bytes_sent))
-		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
-	if (bpf_core_field_exists(tcp->bytes_sent))
-		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+		probe_read_kernel(&v->bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	if (bpf_core_field_exists(tcp->segs_out))
 		probe_read_kernel(&v->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
 	if (bpf_core_field_exists(tcp->bytes_retrans))
 		probe_read_kernel(&v->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
-
 	if (bpf_core_field_exists(skp->sk_drops))
 		probe_read_kernel(&v->sk_drops, sizeof(__u32), _(&(skp->sk_drops)));
 
 	/* These statistics are known to exist back to 4.12 kernels.
 	 */
-	probe_read_kernel(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&v->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read_kernel(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read_kernel(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	v->srtt = v->srtt / 8; // SRTT is reported <<3 in us.
@@ -129,13 +126,13 @@ tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 
 	/* Set the time the stats were obtained to allow checking of event ordering */
-	v->last_time = ktime_get_ns();
+	v->ktime = ktime_get_ns();
 
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
 	 */
 	if (bpf_core_field_exists(tcp->bytes_sent))
-		probe_read_kernel(&v->sent, sizeof(__u64), _(&(tcp->bytes_sent)));
+		probe_read_kernel(&v->bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	if (bpf_core_field_exists(tcp->segs_out))
 		probe_read_kernel(&v->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
 	if (bpf_core_field_exists(tcp->bytes_retrans))
@@ -145,7 +142,7 @@ tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 
 	/* These statistics are known to exist back to 4.12 kernels.
 	 */
-	probe_read_kernel(&v->received, sizeof(__u64), _(&(tcp->bytes_received)));
+	probe_read_kernel(&v->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read_kernel(&v->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read_kernel(&v->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	v->srtt = v->srtt / 8; // SRTT is reported <<3 in us.
@@ -164,7 +161,7 @@ get_socket_stats(struct sock *sk,
 	stats->ktime = ktime_get_ns();
 
 	/* Copy the create time so that user space can match up the stats. */
-	stats->create_ktime = socket->create_time;
+	stats->create_time = socket->create_time;
 
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
@@ -192,7 +189,7 @@ get_socket_stats(struct sock *sk,
 			  _(&(tcp->total_retrans)));
 
 	//stats->tozerowin populated in-band TCP hook watching for zero window
-	stats->tozerowin = socket->zero_window;
+	stats->zero_window = socket->zero_window;
 #pragma unroll
 	for (i = 0; i < 8; i++) {
 		stats->rtt_buckets[i] = socket->rtt_buckets[i];

@@ -134,18 +134,18 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 				cfg->watermarksDipTriggerMult,
 		};
 
-		if (tcp_bytes_sent > socket->sent) {
+		if (tcp_bytes_sent > socket->bytes_sent) {
 			process_network_watermarks(
 				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->sent,
+				tcp_bytes_sent - socket->bytes_sent,
 				&c);
 		}
-		if (tcp_bytes_received > socket->received) {
+		if (tcp_bytes_received > socket->bytes_received) {
 			process_network_watermarks(
 				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->received,
+				tcp_bytes_received - socket->bytes_received,
 				&c);
 		}
 	}
