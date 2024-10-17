@@ -12,10 +12,16 @@
 // Layer 3
 struct msg_ip_event _msg_ip_event;
 struct msg_ip_with_stats_event _msg_ip_with_stats_event;
+struct tcpsocketmap_value _tcpsocketmap_value;
+struct udp_info_key _udp_info_key;
+struct udp_info_value _udp_info_value;
+struct msg_socket_stats _msg_socket_stats;
 
 // Layer 7
 struct __msg_http_event _msg_http_event;
+struct __msg_http _msg_http;
 struct msg_tls_event _msg_tls_event;
+struct msg_tls _msg_tls;
 struct __http_state_stats _http_state_stats;
 
 // FIM

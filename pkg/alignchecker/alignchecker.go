@@ -24,10 +24,12 @@ import (
 func CheckStructAlignments(pathToObj string) error {
 	alignments := map[string][]any{
 		// Layer 3
-		"msg_ip_event":       {networkapi.MsgIPEvent{}},
-		"tcpsocketmap_value": {networkapi.TcpValue{}},
-		"udp_info_key":       {networkapi.UdpInfoKey{}},
-		"udp_info_value":     {networkapi.UdpInfoValue{}},
+		"msg_ip_event":            {networkapi.MsgIPEvent{}},
+		"msg_ip_with_stats_event": {networkapi.MsgIPWithStatsEvent{}},
+		"tcpsocketmap_value":      {networkapi.TcpValue{}},
+		"udp_info_key":            {networkapi.UdpInfoKey{}},
+		"udp_info_value":          {networkapi.UdpInfoValue{}},
+		"msg_socket_stats":        {networkapi.MsgSocketStats{}},
 
 		// Layer 7
 		"__msg_http_event":   {httpapi.MsgHttpEvent{}},

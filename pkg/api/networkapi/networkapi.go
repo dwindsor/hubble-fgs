@@ -176,19 +176,19 @@ func (m *MsgSocketStats) String() string {
 }
 
 type MsgSocketStats struct {
-	Ktime           uint64
-	CreateTime      uint64
-	BytesSent       uint64
-	BytesReceived   uint64
-	SegsIn          uint32
-	SegsOut         uint32
-	Srtt            uint32
-	RetransmitSegs  uint32
-	RetransmitBytes uint64
-	ZeroWindow      uint32
-	SkDrops         uint32
-	Rtt             Histogram
-	Latency         Histogram
+	Ktime           uint64    `align:"ktime"`
+	CreateTime      uint64    `align:"create_time"`
+	BytesSent       uint64    `align:"bytes_sent"`
+	BytesReceived   uint64    `align:"bytes_received"`
+	SegsIn          uint32    `align:"segs_in"`
+	SegsOut         uint32    `align:"segs_out"`
+	Srtt            uint32    `align:"srtt"`
+	RetransmitSegs  uint32    `align:"retranssegs"`
+	RetransmitBytes uint64    `align:"retransbytes"`
+	ZeroWindow      uint32    `align:"zero_window"`
+	SkDrops         uint32    `align:"sk_drops"`
+	Rtt             Histogram `align:"rtt_buckets"`
+	Latency         Histogram `align:"latency_buckets"`
 }
 
 type Histogram struct {
