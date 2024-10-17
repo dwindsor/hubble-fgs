@@ -12,6 +12,10 @@ enable-cilium-api: "true"
 {{- end }}
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
 enable-process-tree: {{ .Values.tetragon.enableProcessTree | quote }}
+{{- if .Values.tetragon.awsSonar.enabled }}
+enable-aws-sonar: "true"
+aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
+{{- end }}
 {{- end }}
 
 {{- define "volumes.extra" -}}
@@ -19,12 +23,23 @@ enable-process-tree: {{ .Values.tetragon.enableProcessTree | quote }}
 - emptyDir: {}
   name: metadata-files
 {{- end }}
+# Data sent to Sonar must contain EC2 instance id - Tetragon reads it from a file.
+{{- if .Values.tetragon.awsSonar.enabled }}
+- name: cloud-data
+  hostPath:
+    path: /var/lib/cloud/data
+    type: Directory
+{{- end }}
 {{- end }}
 
 {{- define "tetragon.volumemounts.extra" -}}
 {{- if .Values.tetragon.metadata.enabled }}
 - mountPath: /var/lib/tetragon/metadata
   name: metadata-files
+{{- end }}
+{{- if .Values.tetragon.awsSonar.enabled }}
+- mountPath: /var/lib/cloud/data
+  name: cloud-data
 {{- end }}
 {{- end }}
 

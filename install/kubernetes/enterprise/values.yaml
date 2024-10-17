@@ -45,6 +45,11 @@ tetragon:
   enableSandboxpolicies: true
   # -- Enable process tree.
   enableProcessTree: false
+  # EXPERIMENTAL: Publish metrics to AWS Sonar.
+  # @ignored
+  awsSonar:
+    enabled: false
+    region: ""
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator

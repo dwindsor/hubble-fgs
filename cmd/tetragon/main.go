@@ -398,7 +398,7 @@ func hubbleFGSExecute() error {
 
 	if enterpriseOption.Config.EnableAWSSonar {
 		if enterpriseOption.Config.AWSSonarRegion == "" {
-			log.Info("AWS Sonar enabled, but region not set, skipping. To publish metrics to Sonar, set --aws-sonar-region.")
+			log.Info("AWS Sonar enabled, but region not set, skipping. To publish metrics to Sonar, set aws-sonar-region.")
 		} else {
 			// TODO: Create a TCP policy for Sonar automatically.
 			go layer3.InitSonar(ctx)
