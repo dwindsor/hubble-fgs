@@ -60,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(policy tracingpolicy.TracingPolicy, name string) (*sensors.Sensor, error) {
+func builder(policy tracingpolicy.TracingPolicy, name string) (sensors.SensorIface, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
