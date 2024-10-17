@@ -275,37 +275,25 @@ type DestinationEndpointKey struct {
 }
 
 type TcpValue struct {
-	Key             processapi.MsgExecveKey `align:"key"`
-	DstKey          DestinationEndpointKey  `align:"dst_key"`
-	CreateTime      uint64                  `align:"create_time"`
-	ZeroWindow      uint32                  `align:"zero_window"`
-	SocketFlags     uint32                  `align:"socket_flags"`
-	Ktime           uint64                  `align:"ktime"`
-	BytesSent       uint64                  `align:"bytes_sent"`
-	BytesRecv       uint64                  `align:"bytes_received"`
-	SegsOut         uint32                  `align:"segs_out"`
-	SegsIn          uint32                  `align:"segs_in"`
-	RetransmitBytes uint64                  `align:"retransbytes"`
-	RetransmitSegs  uint32                  `align:"retranssegs"`
-	SkDrops         uint32                  `align:"sk_drops"`
-	Version         uint64                  `align:"version"`
-	Rtt             Histogram               `align:"rtt_buckets"`
-	Latency         Histogram               `align:"latency_buckets"`
-	Srtt            uint32                  `align:"srtt"`
-	Ipv6            uint8                   `align:"ipv6"`
-	FinRx           uint8                   `align:"fin_rx"`
-	Protocol        uint8                   `align:"protocol"`
-	Closed          uint8                   `align:"closed"`
+	Key         processapi.MsgExecveKey `align:"key"`
+	DstKey      DestinationEndpointKey  `align:"dst_key"`
+	Version     uint64                  `align:"version"`
+	SocketFlags uint32                  `align:"socket_flags"`
+	Ipv6        uint8                   `align:"ipv6"`
+	FinRx       uint8                   `align:"fin_rx"`
+	Protocol    uint8                   `align:"protocol"`
+	Closed      uint8                   `align:"closed"`
+	Stats       MsgSocketStats          `align:"stats"`
 }
 
 func (t *TcpValue) String() string {
 	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
 		t.Key.Pid,
-		t.CreateTime, t.Ktime,
-		t.BytesSent, t.SegsOut, t.BytesRecv-uint64(t.FinRx), t.SegsIn,
-		t.ZeroWindow,
-		t.RetransmitBytes, t.RetransmitSegs,
-		t.SkDrops, t.Srtt)
+		t.Stats.CreateTime, t.Stats.Ktime,
+		t.Stats.BytesSent, t.Stats.SegsOut, t.Stats.BytesReceived-uint64(t.FinRx), t.Stats.SegsIn,
+		t.Stats.ZeroWindow,
+		t.Stats.RetransmitBytes, t.Stats.RetransmitSegs,
+		t.Stats.SkDrops, t.Stats.Srtt)
 }
 
 type UdpInfoKey struct {

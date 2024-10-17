@@ -238,22 +238,22 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		else
 			return 0;
 
-		tcp_stats->bytes_sent = 0;
-		tcp_stats->bytes_received = 0;
-		tcp_stats->segs_out = 0;
-		tcp_stats->segs_in = 0;
-		tcp_stats->retransbytes = 0;
-		tcp_stats->sk_drops = 0;
-		tcp_stats->zero_window = 0;
-		tcp_stats->rtt_sum = 0;
-		tcp_stats->latency_sum = 0;
+		tcp_stats->stats.bytes_sent = 0;
+		tcp_stats->stats.bytes_received = 0;
+		tcp_stats->stats.segs_out = 0;
+		tcp_stats->stats.segs_in = 0;
+		tcp_stats->stats.retransbytes = 0;
+		tcp_stats->stats.sk_drops = 0;
+		tcp_stats->stats.zero_window = 0;
+		tcp_stats->stats.rtt_sum = 0;
+		tcp_stats->stats.latency_sum = 0;
 		tcp_stats->fin_rx = 0;
 		tcp_stats->protocol = 0;
 
 #pragma unroll
 		for (int i = 0; i < 8; i++) {
-			tcp_stats->rtt_buckets[i] = 0;
-			tcp_stats->latency_buckets[i] = 0;
+			tcp_stats->stats.rtt_buckets[i] = 0;
+			tcp_stats->stats.latency_buckets[i] = 0;
 		}
 
 		tcp_socketmap_stats(sk, tcp_stats);
@@ -261,8 +261,8 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		memset(&tcp_stats->dst_key, 0, sizeof(tcp_stats->dst_key));
 
 		tcp_stats->key = value->key;
-		tcp_stats->create_time = socket->create_time;
-		tcp_stats->ktime = socket->create_time;
+		tcp_stats->stats.create_time = socket->create_time;
+		tcp_stats->stats.ktime = socket->create_time;
 		tcp_stats->ipv6 = (family == AF_INET6);
 		tcp_stats->version = socket->version;
 		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);

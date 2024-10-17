@@ -62,7 +62,7 @@ check_timestamp(void *ctx, struct timestamp_option *ts_opt, u64 *cookie)
 			       bpf_ntohl(ts_opt->timestamp_high));
 	tcp_latency = &latency_config->tcp;
 
-	add_latency(tcp_latency, socket->latency_buckets, &socket->latency_sum, latency);
+	add_latency(tcp_latency, socket->stats.latency_buckets, &socket->stats.latency_sum, latency);
 
 	return SK_PASS;
 }
@@ -115,7 +115,7 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 
 	if (!rcv_wnd && state == TCP_ESTABLISHED)
-		socket->zero_window++;
+		socket->stats.zero_window++;
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
 	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
@@ -134,18 +134,18 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 				cfg->watermarksDipTriggerMult,
 		};
 
-		if (tcp_bytes_sent > socket->bytes_sent) {
+		if (tcp_bytes_sent > socket->stats.bytes_sent) {
 			process_network_watermarks(
 				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->bytes_sent,
+				tcp_bytes_sent - socket->stats.bytes_sent,
 				&c);
 		}
-		if (tcp_bytes_received > socket->bytes_received) {
+		if (tcp_bytes_received > socket->stats.bytes_received) {
 			process_network_watermarks(
 				skb, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->bytes_received,
+				tcp_bytes_received - socket->stats.bytes_received,
 				&c);
 		}
 	}

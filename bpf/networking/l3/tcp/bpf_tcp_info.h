@@ -24,27 +24,13 @@
 struct tcpsocketmap_value {
 	struct msg_execve_key key;
 	struct destination_endpoint_key dst_key;
-	__u64 create_time;
-	__u32 zero_window;
-	__u32 socket_flags;
-	__u64 ktime;
-	__u64 bytes_sent;
-	__u64 bytes_received;
-	__u32 segs_out;
-	__u32 segs_in;
-	__u64 retransbytes;
-	__u32 retranssegs;
-	__u32 sk_drops;
 	__u64 version;
-	__u64 rtt_buckets[8];
-	__u64 rtt_sum;
-	__u64 latency_buckets[8];
-	__u64 latency_sum;
-	__u32 srtt;
+	__u32 socket_flags;
 	__u8 ipv6;
 	__u8 fin_rx;
 	__u8 protocol;
 	__u8 closed;
+	struct msg_socket_stats stats;
 };
 
 struct {

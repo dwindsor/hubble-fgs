@@ -114,12 +114,12 @@ tg_event_sys_listen(struct pt_regs *ctx)
 
 	v.key.pid = key->pid;
 	v.key.ktime = key->ktime;
-	v.create_time = val->common.ktime;
-	v.ktime = v.create_time;
-	v.zero_window = 0;
+	v.stats.create_time = val->common.ktime;
+	v.stats.ktime = v.stats.create_time;
+	v.stats.zero_window = 0;
 	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
-	v.bytes_sent = 0;
-	v.bytes_received = 0;
+	v.stats.bytes_sent = 0;
+	v.stats.bytes_received = 0;
 	v.ipv6 = (family == AF_INET6);
 	v.version = val->version;
 

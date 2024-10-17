@@ -102,14 +102,14 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 */
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 	if (!rcv_wnd)
-		socket->zero_window++;
+		socket->stats.zero_window++;
 
 	u64 tcp_bytes_sent, tcp_bytes_received;
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
-	process.create_time = socket->create_time;
+	process.create_time = socket->stats.create_time;
 	process.key = socket->key;
 	process.protocol = socket->protocol;
 	process.version = socket->version;
@@ -124,18 +124,18 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 			.dip_trigger_mult =
 				cfg->watermarksDipTriggerMult,
 		};
-		if (tcp_bytes_sent > socket->bytes_sent) {
+		if (tcp_bytes_sent > socket->stats.bytes_sent) {
 			process_network_watermarks(
 				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->bytes_sent,
+				tcp_bytes_sent - socket->stats.bytes_sent,
 				&c);
 		}
-		if (tcp_bytes_received > socket->bytes_received) {
+		if (tcp_bytes_received > socket->stats.bytes_received) {
 			process_network_watermarks(
 				ctx, &process, IPPROTO_TCP,
 				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->bytes_received,
+				tcp_bytes_received - socket->stats.bytes_received,
 				&c);
 		}
 	}

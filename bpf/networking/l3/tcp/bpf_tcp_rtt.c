@@ -92,23 +92,23 @@ tg_tcp_ack_update_rtt(struct pt_regs *ctx)
 	}
 
 	if (cfg->bucket00 > rtt_us)
-		socket->rtt_buckets[0]++;
+		socket->stats.rtt_buckets[0]++;
 	else if (cfg->bucket01 > rtt_us)
-		socket->rtt_buckets[1]++;
+		socket->stats.rtt_buckets[1]++;
 	else if (cfg->bucket10 > rtt_us)
-		socket->rtt_buckets[2]++;
+		socket->stats.rtt_buckets[2]++;
 	else if (cfg->bucket25 > rtt_us)
-		socket->rtt_buckets[3]++;
+		socket->stats.rtt_buckets[3]++;
 	else if (cfg->bucket50 > rtt_us)
-		socket->rtt_buckets[4]++;
+		socket->stats.rtt_buckets[4]++;
 	else if (cfg->bucket75 > rtt_us)
-		socket->rtt_buckets[5]++;
+		socket->stats.rtt_buckets[5]++;
 	else if (cfg->bucket90 > rtt_us)
-		socket->rtt_buckets[6]++;
+		socket->stats.rtt_buckets[6]++;
 	else
-		socket->rtt_buckets[7]++;
+		socket->stats.rtt_buckets[7]++;
 
-	socket->rtt_sum += rtt_us;
+	socket->stats.rtt_sum += rtt_us;
 
 	return 0;
 }

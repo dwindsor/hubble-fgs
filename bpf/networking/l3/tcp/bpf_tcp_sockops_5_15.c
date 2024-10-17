@@ -40,7 +40,7 @@ int skops_tcpsocket(u64 cookie, struct msg_ip_event *val, struct tcpsocketmap_va
 	val->version = socket->version;
 	val->key.pid = socket->key.pid;
 	val->key.ktime = socket->key.ktime;
-	val->create_time = socket->create_time;
+	val->create_time = socket->stats.create_time;
 	val->socket_flags = socket->socket_flags;
 
 	return 0;
@@ -127,12 +127,12 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 
 	v->key.pid = val->key.pid;
 	v->key.ktime = val->key.ktime;
-	v->create_time = now;
-	v->ktime = now;
-	v->zero_window = 0;
+	v->stats.create_time = now;
+	v->stats.ktime = now;
+	v->stats.zero_window = 0;
 	v->socket_flags = SOCKFLAGS_TYPE_LISTEN;
-	v->bytes_sent = 0;
-	v->bytes_received = 0;
+	v->stats.bytes_sent = 0;
+	v->stats.bytes_received = 0;
 	v->ipv6 = (skops->family == AF_INET6);
 	v->version = val->version;
 

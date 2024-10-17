@@ -105,7 +105,7 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 	if (listen_socket) {
 		struct tcpsocketmap_value accept_socket = *listen_socket;
 		accept_socket.version = cookie_version;
-		accept_socket.create_time = now;
+		accept_socket.stats.create_time = now;
 		add_tcpsocketmap(&accept_cookie, &accept_socket, &tuple, true);
 	}
 	return 1;
@@ -192,12 +192,12 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 		return 0;
 	}
 
-	socket->create_time = val->common.ktime;
+	socket->stats.create_time = val->common.ktime;
 	socket->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-	socket->ktime = socket->create_time;
-	socket->bytes_received = 0;
-	socket->bytes_sent = 0;
-	socket->zero_window = 0;
+	socket->stats.ktime = socket->stats.create_time;
+	socket->stats.bytes_received = 0;
+	socket->stats.bytes_sent = 0;
+	socket->stats.zero_window = 0;
 	socket->fin_rx = 0;
 	socket->ipv6 = (family == AF_INET6);
 

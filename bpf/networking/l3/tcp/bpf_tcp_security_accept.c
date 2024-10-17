@@ -169,7 +169,7 @@ int BPF_PROG(tg_security_sock_graft, struct sock *sk, struct socket *parent)
 		struct tcpsocketmap_value accept_socket = *listen_socket;
 
 		accept_socket.version = cookie_version;
-		accept_socket.create_time = now;
+		accept_socket.stats.create_time = now;
 		accept_socket.socket_flags = SOCKFLAGS_TYPE_ACCEPT;
 		add_tcpsocketmap(&newcookie, &accept_socket, &tuple, true);
 	}

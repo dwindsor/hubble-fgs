@@ -104,7 +104,7 @@ func getTCPGCCallback(emitStats emitStatsFn) collectKeyFn {
 		}
 		tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
 		tcpStats := ToMsgSocketStatsUnix(value)
-		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.CreateTime}
+		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.Stats.CreateTime}
 
 		last, ok := stats.Get(statsKey)
 		if ok {
@@ -152,20 +152,20 @@ func getRunTcpGC(emitStats emitStatsFn) func() {
 
 func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s := &networkapi.MsgSocketStats{}
-	s.Ktime = t.Ktime
-	s.CreateTime = t.CreateTime
-	s.BytesSent = t.BytesSent
-	s.BytesReceived = t.BytesRecv - uint64(t.FinRx)
-	s.SegsIn = t.SegsIn
-	s.SegsOut = t.SegsOut
-	s.Srtt = t.Srtt
-	s.RetransmitSegs = t.RetransmitSegs
-	s.RetransmitBytes = t.RetransmitBytes
-	s.ZeroWindow = t.ZeroWindow
-	s.SkDrops = t.SkDrops
+	s.Ktime = t.Stats.Ktime
+	s.CreateTime = t.Stats.CreateTime
+	s.BytesSent = t.Stats.BytesSent
+	s.BytesReceived = t.Stats.BytesReceived - uint64(t.FinRx)
+	s.SegsIn = t.Stats.SegsIn
+	s.SegsOut = t.Stats.SegsOut
+	s.Srtt = t.Stats.Srtt
+	s.RetransmitSegs = t.Stats.RetransmitSegs
+	s.RetransmitBytes = t.Stats.RetransmitBytes
+	s.ZeroWindow = t.Stats.ZeroWindow
+	s.SkDrops = t.Stats.SkDrops
 
-	s.Rtt = t.Rtt
-	s.Latency = t.Latency
+	s.Rtt = t.Stats.Rtt
+	s.Latency = t.Stats.Latency
 
 	return s
 }
