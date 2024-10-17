@@ -478,8 +478,8 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	case "layer3_sensor":
-		if tcp.StatsEnabled {
-			tcp.ConfigureSockStatSampler(tcp.Interval,
+		if tcp.StatsEnabled() {
+			tcp.ConfigureSockStatSampler(tcp.StatsInterval,
 				tcp.WatermarksEnable,
 				tcp.WatermarksWindowSize,
 				tcp.WatermarksBurstTriggerMult,

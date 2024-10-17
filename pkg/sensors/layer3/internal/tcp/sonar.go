@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sigv4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
+	lru "github.com/hashicorp/golang-lru/v2"
 	colmpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	cpb "go.opentelemetry.io/proto/otlp/common/v1"
 	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
@@ -33,7 +34,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/timer"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -48,6 +48,7 @@ const (
 var (
 	sonarInterval = 30 * time.Second
 	sonarJitter   = 5 * time.Second
+	sonarStats    statsManager
 
 	scopeMetricsList []*mpb.ScopeMetrics
 
@@ -448,27 +449,30 @@ func postMetrics(ctx context.Context) error {
 
 func InitSonar(ctx context.Context) {
 	// defined here to capture ctx
-	sonarCollect := func() {
-		sleep := time.Duration(rand.Int63n(2*sonarJitter.Milliseconds())) * time.Millisecond
-		time.Sleep(sleep)
+	sonarStats.getCollect = func(cache *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) collectFn {
+		return func() {
+			sleep := time.Duration(rand.Int63n(2*sonarJitter.Milliseconds())) * time.Millisecond
+			time.Sleep(sleep)
 
-		// reset the metrics list
-		scopeMetricsList = []*mpb.ScopeMetrics{}
-		// set collection timestamp
-		currentTs = uint64(time.Now().UnixNano())
+			// reset the metrics list
+			scopeMetricsList = []*mpb.ScopeMetrics{}
+			// set collection timestamp
+			currentTs = uint64(time.Now().UnixNano())
 
-		getRunTcpGC(addTCPMetricsForSocket)()
+			getRunTcpGC(addTCPMetricsForSocket, cache)()
 
-		err := postMetrics(ctx)
-		if err != nil {
-			logger.GetLogger().WithError(err).Error("Failed to post metrics to Sonar")
+			err := postMetrics(ctx)
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to post metrics to Sonar")
+			}
+
+			// update last collection timestamp
+			lastCollectTs = currentTs
 		}
-
-		// update last collection timestamp
-		lastCollectTs = currentTs
 	}
 
-	sonarTimer := timer.NewPeriodicTimer("Sonar Timer", sonarCollect, false)
-	logger.GetLogger().Info("Starting posting metrics to Sonar")
-	sonarTimer.Start(sonarInterval - sonarJitter)
+	logger.GetLogger().Info("Enabling Sonar metrics push")
+	if err := sonarStats.enable(sonarInterval - sonarJitter); err != nil {
+		logger.GetLogger().WithError(err).Error("Failed to enable Sonar metrics push")
+	}
 }

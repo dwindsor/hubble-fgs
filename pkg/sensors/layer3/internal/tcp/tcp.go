@@ -40,20 +40,16 @@ import (
 )
 
 var (
-	// There is no TCP stats interval default. Building a reasonable
-	// default for random env is very difficult and users expected
-	// setting the interval to zero would disable it.
-	//TcpIntervalDefault            = time.Duration(60 * time.Second)
-	Interval                   time.Duration
-	StatsEnabled               bool
+	StatsInterval time.Duration // 0 means disabled
+	stats         = statsManager{getCollect: func(cache *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) collectFn {
+		return getRunTcpGC(emitSocketStatsEvent, cache)
+	}}
+
 	WatermarksEnable           bool
 	WatermarksWindowSize       uint64
 	WatermarksBurstTriggerMult uint64
 	WatermarksDipTriggerMult   uint64
 	WatermarksEnabled          = false
-
-	stats          *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]
-	statsCacheSize = 32000
 
 	TimestampEnabled = false
 
@@ -62,6 +58,10 @@ var (
 	DisableAccept  = false
 	DisableListen  = false
 )
+
+func StatsEnabled() bool {
+	return StatsInterval > 0
+}
 
 var (
 	Connect = program.Builder(
@@ -218,11 +218,10 @@ func UnloadSensor() error {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
 	tcpconfig.MetricsEnabled = false
-	if StatsEnabled && Interval > 0 {
-		gcTimer.Stop()
+	if StatsEnabled() {
+		stats.disable()
+		StatsInterval = 0
 	}
-	StatsEnabled = false
-	Interval = 0
 	tcpCache.StopGc()
 	return policy.ClearDnsQuota()
 }
@@ -337,7 +336,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
-		"statsInterval":              Interval,
+		"statsInterval":              StatsInterval,
 		"watermarksEnable":           WatermarksEnable,
 		"watermarksWindowSize":       WatermarksWindowSize,
 		"watermarksBurstTriggerMult": WatermarksBurstTriggerMult,
@@ -386,10 +385,10 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	}
 
 	if spec.Parser.Tcp.StatsInterval > 0 {
-		Interval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
-		StatsEnabled = true
+		StatsInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	} else {
-		StatsEnabled = false
+		stats.disable()
+		StatsInterval = 0
 	}
 	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		WatermarksEnabled = true
@@ -436,16 +435,18 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	tcp := ip.MsgToIPWithStatsUnix(&m)
-	if StatsEnabled {
+	if StatsEnabled() {
 		cp := *tcp
-		c, err := correctedStatsEvent(cp)
+		c, err := stats.correctedStatsEvent(cp)
 		if err != nil {
 			return []observer.Event{tcp}, nil
 		}
 		// Convert to a TCPStats event by simply setting op code
 		c.Msg.Common.Op = ops.MSG_OP_TCPSTATS
 		statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateTime}
-		stats.Remove(statsKey)
+		if stats.cache != nil {
+			stats.cache.Remove(statsKey)
+		}
 		return []observer.Event{tcp, &c}, nil
 	}
 
@@ -478,13 +479,6 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func Init() error {
-	var err error
-
-	stats, err = lru.New[networkapi.TcpKey, networkapi.MsgSocketStats](statsCacheSize)
-	if err != nil {
-		return err
-	}
-
 	/* Core set of TCP events */
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)

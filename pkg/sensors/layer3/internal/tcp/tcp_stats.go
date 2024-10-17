@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -28,13 +29,49 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	gcTimer    = timer.NewPeriodicTimer("TCP GC Timer", getRunTcpGC(emitSocketStatsEvent), true)
-	TcpMapName = "tg_tcpsocket_map"
+const (
+	TcpMapName     = "tg_tcpsocket_map"
+	statsCacheSize = 32000
 )
 
+type collectFn func()
 type collectKeyFn func(*networkapi.TcpBpfKey, *networkapi.TcpValue)
 type emitStatsFn func(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats)
+
+type statsManager struct {
+	// getCollect returns a function that will be executed on a timer,
+	// for capturing cache.
+	getCollect func(*lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) collectFn
+	cache      *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]
+	timer      *timer.PeriodicTimer
+}
+
+func (s statsManager) enable(interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("interval must be > 0, got %v", interval)
+	}
+
+	var err error
+	s.cache, err = lru.New[networkapi.TcpKey, networkapi.MsgSocketStats](statsCacheSize)
+	if err != nil || s.cache == nil {
+		return fmt.Errorf("failed to create a cache: %w", err)
+	}
+
+	s.timer = timer.NewPeriodicTimer("TCP stats timer", s.getCollect(s.cache), false)
+	s.timer.Start(interval)
+
+	return nil
+}
+
+func (s statsManager) disable() {
+	if s.timer != nil {
+		s.timer.Stop()
+	}
+	//nolint:staticcheck // ignore SA4005: ineffective assignment
+	s.timer = nil
+	//nolint:staticcheck // ignore SA4005: ineffective assignment
+	s.cache = nil
+}
 
 type SockStatKey struct {
 	Zero uint32
@@ -95,7 +132,7 @@ func emitSocketStatsEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *n
 	observer.AllListeners(socketStatsToIPWithStatsEventUnix(k, v, tuple, stats))
 }
 
-func getTCPGCCallback(emitStats emitStatsFn) collectKeyFn {
+func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) collectKeyFn {
 	return func(key *networkapi.TcpBpfKey, value *networkapi.TcpValue) {
 		// We don't need to account further if the socket has already been closed.
 		if value.Closed != 0 {
@@ -105,13 +142,13 @@ func getTCPGCCallback(emitStats emitStatsFn) collectKeyFn {
 		tcpStats := ToMsgSocketStatsUnix(value)
 		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.Stats.CreateTime}
 
-		last, ok := stats.Get(statsKey)
+		last, ok := cache.Get(statsKey)
 		if ok {
 			// If Ktime is the same as last read then nothing has changed.
 			if tcpStats.Ktime != last.Ktime {
 				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
 				// Store the stats from the BPF map into the cache
-				stats.Add(statsKey, *tcpStats)
+				cache.Add(statsKey, *tcpStats)
 				if err == nil {
 					emitStats(&statsKey, value, tuple, &diffValue)
 				} else {
@@ -120,13 +157,13 @@ func getTCPGCCallback(emitStats emitStatsFn) collectKeyFn {
 			}
 		} else {
 			emitStats(&statsKey, value, tuple, tcpStats)
-			stats.Add(statsKey, *tcpStats)
+			cache.Add(statsKey, *tcpStats)
 		}
 	}
 }
 
-func getRunTcpGC(emitStats emitStatsFn) func() {
-	callback := getTCPGCCallback(emitStats)
+func getRunTcpGC(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) func() {
+	callback := getTCPGCCallback(emitStats, cache)
 	return func() {
 		file := filepath.Join(bpf.MapPrefixPath(), TcpMapName)
 
@@ -275,12 +312,17 @@ func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithSt
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
-	statsKey := networkapi.TcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateTime}
-	last, ok := stats.Get(statsKey)
-	if !ok {
-		return copyMsgIpWithStatsEvent(&tcp), nil
+func (s statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
+	newTcp := copyMsgIpWithStatsEvent(&tcp)
+	if s.cache == nil {
+		return newTcp, nil
 	}
+	statsKey := networkapi.TcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateTime}
+	last, ok := s.cache.Get(statsKey)
+	if !ok {
+		return newTcp, nil
+	}
+
 	if tcp.Msg.SocketStats.Ktime < last.Ktime {
 		// Current stats message is older than last stats message.
 		// This indicates the race has occurred, so we discard.
@@ -296,8 +338,8 @@ func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsE
 	if err != nil {
 		return grpc.MsgIPWithStatsEventUnix{}, err
 	}
-	newTcp := copyMsgIpWithStatsEvent(&tcp)
-	stats.Add(statsKey, tcp.Msg.SocketStats)
+
+	s.cache.Add(statsKey, tcp.Msg.SocketStats)
 	newTcp.Msg.SocketStats = tmpSocketStats
 	return newTcp, nil
 }
@@ -313,7 +355,6 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	key := &SockStatKey{
 		Zero: uint32(0),
 	}
-
 	watermarksEnableVar := uint64(0)
 	if watermarksEnable {
 		watermarksEnableVar = 1
@@ -357,7 +398,9 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	// Configure the TCP stats collector that walks the TCP BPF map every
 	// time.Durations and post statistics about that connections. This is
 	// to ensure long lived connections get metrics and SIEM updates.
-	gcTimer.Start(sampleRate)
+	if err := stats.enable(sampleRate); err != nil {
+		return fmt.Errorf("failed to enable TCP stats events: %w", err)
+	}
 
 	return nil
 }
