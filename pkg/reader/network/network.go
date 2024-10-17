@@ -151,7 +151,6 @@ func GetSocketStats(stats *api.MsgSocketStats) *tetragon.SocketStats {
 		RetransmitsSegs:  stats.RetransmitSegs,
 		ToZeroWindow:     stats.ZeroWindow,
 		SkDrop:           stats.SkDrops,
-		SkbConsumeMisses: stats.SkbConsumeMisses,
 		Rtt:              rttHist,
 		Latency:          latencyHist,
 	}

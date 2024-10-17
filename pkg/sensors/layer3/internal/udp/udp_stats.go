@@ -89,12 +89,11 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		Ktime: v.PidKtime,
 	}
 	unix.Msg.SocketStats = api.MsgSocketStats{
-		BytesSent:        v.TXBytes,
-		BytesReceived:    v.RXBytes,
-		SegsIn:           uint32(v.SegsIn),
-		SegsOut:          uint32(v.SegsOut),
-		SkDrops:          v.SkDrops,
-		SkbConsumeMisses: v.SkbConsumeMisses,
+		BytesSent:     v.TXBytes,
+		BytesReceived: v.RXBytes,
+		SegsIn:        uint32(v.SegsIn),
+		SegsOut:       uint32(v.SegsOut),
+		SkDrops:       v.SkDrops,
 		Latency: api.Histogram{
 			B00: v.Buckets[0],
 			B01: v.Buckets[1],
@@ -245,17 +244,16 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 	}
 
 	return api.UdpInfoValue{
-		TXBytes:          curr.TXBytes - last.TXBytes,
-		RXBytes:          curr.RXBytes - last.RXBytes,
-		SegsIn:           curr.SegsIn - last.SegsIn,
-		SegsOut:          curr.SegsOut - last.SegsOut,
-		SkDrops:          curr.SkDrops - last.SkDrops,
-		SkbConsumeMisses: curr.SkbConsumeMisses - last.SkbConsumeMisses,
-		Ktime:            curr.Ktime,
-		PidKtime:         curr.PidKtime,
-		Pid:              curr.Pid,
-		Buckets:          udpDiffLatency(&last.Buckets, &curr.Buckets),
-		LatencySum:       curr.LatencySum - last.LatencySum,
+		TXBytes:    curr.TXBytes - last.TXBytes,
+		RXBytes:    curr.RXBytes - last.RXBytes,
+		SegsIn:     curr.SegsIn - last.SegsIn,
+		SegsOut:    curr.SegsOut - last.SegsOut,
+		SkDrops:    curr.SkDrops - last.SkDrops,
+		Ktime:      curr.Ktime,
+		PidKtime:   curr.PidKtime,
+		Pid:        curr.Pid,
+		Buckets:    udpDiffLatency(&last.Buckets, &curr.Buckets),
+		LatencySum: curr.LatencySum - last.LatencySum,
 	}, nil
 }
 

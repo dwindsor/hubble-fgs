@@ -89,7 +89,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple
@@ -130,8 +130,6 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
-  h4 0 # skbconsumemisses
-  h4 0 # pad
   $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -160,7 +158,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple
@@ -201,8 +199,6 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
-  h4 0 # skbconsumemisses
-  h4 0 # pad
   $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -230,7 +226,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple
@@ -271,8 +267,6 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
-  h4 0 # skbconsumemisses
-  h4 0 # pad
   $ 00 00 00 00 00 00 00 00 # rtt buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00

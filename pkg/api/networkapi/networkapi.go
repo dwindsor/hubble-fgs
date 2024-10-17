@@ -176,21 +176,19 @@ func (m *MsgSocketStats) String() string {
 }
 
 type MsgSocketStats struct {
-	Ktime            uint64
-	CreateTime       uint64
-	BytesSent        uint64
-	BytesReceived    uint64
-	SegsIn           uint32
-	SegsOut          uint32
-	Srtt             uint32
-	RetransmitSegs   uint32
-	RetransmitBytes  uint64
-	ZeroWindow       uint32
-	SkDrops          uint32
-	SkbConsumeMisses uint32
-	Pad              uint32
-	Rtt              Histogram
-	Latency          Histogram
+	Ktime           uint64
+	CreateTime      uint64
+	BytesSent       uint64
+	BytesReceived   uint64
+	SegsIn          uint32
+	SegsOut         uint32
+	Srtt            uint32
+	RetransmitSegs  uint32
+	RetransmitBytes uint64
+	ZeroWindow      uint32
+	SkDrops         uint32
+	Rtt             Histogram
+	Latency         Histogram
 }
 
 type Histogram struct {
@@ -317,19 +315,17 @@ type UdpInfoKey struct {
 }
 
 type UdpInfoValue struct {
-	TXBytes          uint64    `align:"tx_bytes"`
-	RXBytes          uint64    `align:"rx_bytes"`
-	SegsIn           uint64    `align:"segs_in"`
-	SegsOut          uint64    `align:"segs_out"`
-	Ktime            uint64    `align:"ktime"`
-	PidKtime         uint64    `align:"pid_ktime"`
-	Pid              uint32    `align:"pid"`
-	SkDrops          uint32    `align:"sk_drops"`
-	SkbConsumeMisses uint32    `align:"skb_consume_misses"`
-	Padding          uint32    `align:"padding"`
-	Buckets          [8]uint64 `align:"buckets"`
-	LatencySum       uint64    `align:"latency_sum"`
-	CreateTime       uint64    `align:"create_time"`
+	TXBytes    uint64    `align:"tx_bytes"`
+	RXBytes    uint64    `align:"rx_bytes"`
+	SegsIn     uint64    `align:"segs_in"`
+	SegsOut    uint64    `align:"segs_out"`
+	Ktime      uint64    `align:"ktime"`
+	PidKtime   uint64    `align:"pid_ktime"`
+	Pid        uint32    `align:"pid"`
+	SkDrops    uint32    `align:"sk_drops"`
+	Buckets    [8]uint64 `align:"buckets"`
+	LatencySum uint64    `align:"latency_sum"`
+	CreateTime uint64    `align:"create_time"`
 }
 
 func (k *UdpInfoKey) String() string {
@@ -345,10 +341,9 @@ func (v *UdpInfoValue) String() string {
 		"Pid: %d Ktime %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
-			"SkDrops: %d\n"+
-			"SkbConsumeMisses: %d\n",
+			"SkDrops: %d\n",
 		v.Pid, v.Ktime,
 		v.TXBytes, v.RXBytes,
 		v.SegsOut, v.SegsIn,
-		v.SkDrops, v.SkbConsumeMisses)
+		v.SkDrops)
 }

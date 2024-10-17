@@ -163,7 +163,6 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s.RetransmitBytes = t.RetransmitBytes
 	s.ZeroWindow = t.ZeroWindow
 	s.SkDrops = t.SkDrops
-	s.SkbConsumeMisses = 0
 
 	s.Rtt = t.Rtt
 	s.Latency = t.Latency
@@ -249,20 +248,19 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		return *last, err
 	}
 	return networkapi.MsgSocketStats{
-		Ktime:            curr.Ktime,
-		BytesSent:        curr.BytesSent - last.BytesSent,
-		BytesReceived:    curr.BytesReceived - last.BytesReceived,
-		SegsIn:           curr.SegsIn - last.SegsIn,
-		SegsOut:          curr.SegsOut - last.SegsOut,
-		Srtt:             curr.Srtt,
-		RetransmitSegs:   curr.RetransmitSegs - last.RetransmitSegs,
-		RetransmitBytes:  curr.RetransmitBytes - last.RetransmitBytes,
-		ZeroWindow:       curr.ZeroWindow - last.ZeroWindow,
-		SkDrops:          curr.SkDrops - last.SkDrops,
-		SkbConsumeMisses: 0,
-		Rtt:              rttHist,
-		Latency:          latencyHist,
-		CreateTime:       curr.CreateTime,
+		Ktime:           curr.Ktime,
+		BytesSent:       curr.BytesSent - last.BytesSent,
+		BytesReceived:   curr.BytesReceived - last.BytesReceived,
+		SegsIn:          curr.SegsIn - last.SegsIn,
+		SegsOut:         curr.SegsOut - last.SegsOut,
+		Srtt:            curr.Srtt,
+		RetransmitSegs:  curr.RetransmitSegs - last.RetransmitSegs,
+		RetransmitBytes: curr.RetransmitBytes - last.RetransmitBytes,
+		ZeroWindow:      curr.ZeroWindow - last.ZeroWindow,
+		SkDrops:         curr.SkDrops - last.SkDrops,
+		Rtt:             rttHist,
+		Latency:         latencyHist,
+		CreateTime:      curr.CreateTime,
 	}, nil
 }
 

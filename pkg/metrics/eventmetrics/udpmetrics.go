@@ -43,9 +43,6 @@ func postUDPSocketStats(socketLabels *socketmetrics.SocketLabels, s *tetragon.So
 	c = float64(s.SkDrop)
 	socketmetrics.SocketStatsUDPDrops.WithLabelValues(socketLabels).Add(c)
 
-	c = float64(s.SkbConsumeMisses)
-	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(socketLabels).Add(c)
-
 	// Post UDP Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
 	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
@@ -104,9 +101,6 @@ func postUDPMulticastSocketStats(res *tetragon.ProcessSockStats) {
 
 	c = float64(s.SkDrop)
 	socketmetrics.SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels).Add(c)
-
-	c = float64(s.SkbConsumeMisses)
-	socketmetrics.SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels).Add(c)
 
 	// Post UDP Multicast Latency numbers
 	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.

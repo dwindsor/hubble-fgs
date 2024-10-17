@@ -49,8 +49,6 @@ struct msg_socket_stats {
 	__u64 retransbytes;
 	__u32 zero_window;
 	__u32 sk_drops;
-	__u32 skb_consume_misses;
-	__u32 pad;
 	__u64 rtt_buckets[8];
 	__u64 rtt_sum;
 	__u64 latency_buckets[8];

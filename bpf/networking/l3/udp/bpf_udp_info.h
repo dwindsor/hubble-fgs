@@ -44,8 +44,6 @@ struct udp_info_value {
 	u64 pid_ktime;
 	u32 pid;
 	u32 sk_drops;
-	u32 skb_consume_misses;
-	u32 padding;
 	u64 buckets[8];
 	u64 latency_sum;
 	u64 create_time;
@@ -118,7 +116,6 @@ udp_info_init(struct udp_info_value *v)
 	v->pid = 0;
 	v->pid_ktime = 0;
 	v->sk_drops = 0;
-	v->skb_consume_misses = 0;
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 	v->create_time = 0;
 #pragma unroll
