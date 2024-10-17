@@ -177,16 +177,16 @@ func (m *MsgSocketStats) String() string {
 
 type MsgSocketStats struct {
 	Ktime            uint64
-	CreateKtime      uint64
+	CreateTime       uint64
 	BytesSent        uint64
 	BytesReceived    uint64
 	SegsIn           uint32
 	SegsOut          uint32
-	SRtt             uint32
+	Srtt             uint32
 	RetransmitSegs   uint32
 	RetransmitBytes  uint64
-	ToZeroWindow     uint32
-	SkDrop           uint32
+	ZeroWindow       uint32
+	SkDrops          uint32
 	SkbConsumeMisses uint32
 	Pad              uint32
 	Rtt              Histogram
@@ -282,19 +282,17 @@ type TcpValue struct {
 	CreateTime      uint64                  `align:"create_time"`
 	ZeroWindow      uint32                  `align:"zero_window"`
 	SocketFlags     uint32                  `align:"socket_flags"`
-	LastTime        uint64                  `align:"ktime"`
-	Sent            uint64                  `align:"bytes_sent"`
-	Recv            uint64                  `align:"bytes_received"`
+	Ktime           uint64                  `align:"ktime"`
+	BytesSent       uint64                  `align:"bytes_sent"`
+	BytesRecv       uint64                  `align:"bytes_received"`
 	SegsOut         uint32                  `align:"segs_out"`
 	SegsIn          uint32                  `align:"segs_in"`
 	RetransmitBytes uint64                  `align:"retransbytes"`
 	RetransmitSegs  uint32                  `align:"retranssegs"`
 	SkDrops         uint32                  `align:"sk_drops"`
 	Version         uint64                  `align:"version"`
-	RttBuckets      [8]uint64               `align:"rtt_buckets"`
-	RttSum          uint64                  `align:"rtt_sum"`
-	LatencyBuckets  [8]uint64               `align:"latency_buckets"`
-	LatencySum      uint64                  `align:"latency_sum"`
+	Rtt             Histogram               `align:"rtt_buckets"`
+	Latency         Histogram               `align:"latency_buckets"`
 	Srtt            uint32                  `align:"srtt"`
 	Ipv6            uint8                   `align:"ipv6"`
 	FinRx           uint8                   `align:"fin_rx"`
@@ -305,8 +303,8 @@ type TcpValue struct {
 func (t *TcpValue) String() string {
 	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
 		t.Key.Pid,
-		t.CreateTime, t.LastTime,
-		t.Sent, t.SegsOut, t.Recv-uint64(t.FinRx), t.SegsIn,
+		t.CreateTime, t.Ktime,
+		t.BytesSent, t.SegsOut, t.BytesRecv-uint64(t.FinRx), t.SegsIn,
 		t.ZeroWindow,
 		t.RetransmitBytes, t.RetransmitSegs,
 		t.SkDrops, t.Srtt)

@@ -93,7 +93,7 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		BytesReceived:    v.RXBytes,
 		SegsIn:           uint32(v.SegsIn),
 		SegsOut:          uint32(v.SegsOut),
-		SkDrop:           v.SkDrops,
+		SkDrops:          v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
 		Latency: api.Histogram{
 			B00: v.Buckets[0],

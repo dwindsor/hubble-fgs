@@ -152,42 +152,21 @@ func getRunTcpGC(emitStats emitStatsFn) func() {
 
 func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s := &networkapi.MsgSocketStats{}
-	s.Ktime = t.LastTime
-	s.CreateKtime = t.CreateTime
-	s.BytesSent = t.Sent
-	s.BytesReceived = t.Recv - uint64(t.FinRx)
+	s.Ktime = t.Ktime
+	s.CreateTime = t.CreateTime
+	s.BytesSent = t.BytesSent
+	s.BytesReceived = t.BytesRecv - uint64(t.FinRx)
 	s.SegsIn = t.SegsIn
 	s.SegsOut = t.SegsOut
-	s.SRtt = t.Srtt
+	s.Srtt = t.Srtt
 	s.RetransmitSegs = t.RetransmitSegs
 	s.RetransmitBytes = t.RetransmitBytes
-	s.ToZeroWindow = t.ZeroWindow
-	s.SkDrop = t.SkDrops
+	s.ZeroWindow = t.ZeroWindow
+	s.SkDrops = t.SkDrops
 	s.SkbConsumeMisses = 0
 
-	s.Rtt = networkapi.Histogram{
-		B00: t.RttBuckets[0],
-		B01: t.RttBuckets[1],
-		B10: t.RttBuckets[2],
-		B25: t.RttBuckets[3],
-		B50: t.RttBuckets[4],
-		B75: t.RttBuckets[5],
-		B90: t.RttBuckets[6],
-		B99: t.RttBuckets[7],
-		Sum: t.RttSum,
-	}
-
-	s.Latency = networkapi.Histogram{
-		B00: t.LatencyBuckets[0],
-		B01: t.LatencyBuckets[1],
-		B10: t.LatencyBuckets[2],
-		B25: t.LatencyBuckets[3],
-		B50: t.LatencyBuckets[4],
-		B75: t.LatencyBuckets[5],
-		B90: t.LatencyBuckets[6],
-		B99: t.LatencyBuckets[7],
-		Sum: t.LatencySum,
-	}
+	s.Rtt = t.Rtt
+	s.Latency = t.Latency
 
 	return s
 }
@@ -252,7 +231,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		}).Warnf("TX TCP stats SegsOut underflow")
 		return *last, fmt.Errorf("TCP SegsOut stats invalid diff operation")
 	}
-	if curr.SkDrop < last.SkDrop {
+	if curr.SkDrops < last.SkDrops {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"tuple": tuple,
 			"curr":  curr,
@@ -275,15 +254,15 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgI
 		BytesReceived:    curr.BytesReceived - last.BytesReceived,
 		SegsIn:           curr.SegsIn - last.SegsIn,
 		SegsOut:          curr.SegsOut - last.SegsOut,
-		SRtt:             curr.SRtt,
+		Srtt:             curr.Srtt,
 		RetransmitSegs:   curr.RetransmitSegs - last.RetransmitSegs,
 		RetransmitBytes:  curr.RetransmitBytes - last.RetransmitBytes,
-		ToZeroWindow:     curr.ToZeroWindow - last.ToZeroWindow,
-		SkDrop:           curr.SkDrop - last.SkDrop,
+		ZeroWindow:       curr.ZeroWindow - last.ZeroWindow,
+		SkDrops:          curr.SkDrops - last.SkDrops,
 		SkbConsumeMisses: 0,
 		Rtt:              rttHist,
 		Latency:          latencyHist,
-		CreateKtime:      curr.CreateKtime,
+		CreateTime:       curr.CreateTime,
 	}, nil
 }
 
@@ -300,7 +279,7 @@ func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithSt
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
 func correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
-	statsKey := networkapi.TcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateKtime}
+	statsKey := networkapi.TcpKey{SockCookie: tcp.Msg.SockCookie, CreateTime: tcp.Msg.SocketStats.CreateTime}
 	last, ok := stats.Get(statsKey)
 	if !ok {
 		return copyMsgIpWithStatsEvent(&tcp), nil
