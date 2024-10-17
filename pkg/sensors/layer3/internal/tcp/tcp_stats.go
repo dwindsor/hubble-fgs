@@ -43,7 +43,6 @@ type SockStatKey struct {
 func (k *SockStatKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type SockStatValue struct {
-	KTime                      uint64
 	WatermarksEnable           uint64
 	WatermarksAvgWindowSize    uint64
 	WatermarksWindowSizeNs     uint64
@@ -60,13 +59,13 @@ type SockStatValue struct {
 }
 
 func (v *SockStatValue) String() string {
-	return fmt.Sprintf("Sample Time: %d, "+
+	return fmt.Sprintf(
 		"WatermarksEnable: %d, "+
-		"WatermarksAvgWindowSize: %d, "+
-		"WatermarksWindowSizeNs: %d, "+
-		"WatermarksBurstTriggerMult: %d, "+
-		"WatermarksDipTriggerMult: %d",
-		v.KTime, v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
+			"WatermarksAvgWindowSize: %d, "+
+			"WatermarksWindowSizeNs: %d, "+
+			"WatermarksBurstTriggerMult: %d, "+
+			"WatermarksDipTriggerMult: %d",
+		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 
 func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) *grpc.MsgIPWithStatsEventUnix {
@@ -314,7 +313,7 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	key := &SockStatKey{
 		Zero: uint32(0),
 	}
-	interval := uint64(sampleRate)
+
 	watermarksEnableVar := uint64(0)
 	if watermarksEnable {
 		watermarksEnableVar = 1
@@ -323,9 +322,7 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	rttRange := float64(rttMax - rttMin)
 	fRttMin := float64(rttMin)
 
-	/* Convert sample rate from seconds into ns */
 	value := &SockStatValue{
-		KTime:                      interval,
 		WatermarksEnable:           watermarksEnableVar,
 		WatermarksAvgWindowSize:    watermarksAvgWindowSize,
 		WatermarksWindowSizeNs:     (watermarksAvgWindowSize * 2 * 1000000) / 3,

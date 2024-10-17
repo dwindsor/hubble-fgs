@@ -24,7 +24,6 @@
 #include "bpf_tcp_info.h"
 
 struct tcp_send_check_sample_cfg {
-	__u64 ktime;
 	__u64 watermarksEnable;
 	__u64 watermarksAvgWindowSize;
 	__u64 watermarksWindowSizeNs;
