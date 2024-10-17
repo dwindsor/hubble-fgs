@@ -438,7 +438,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	tcp := ip.MsgToIPWithStatsUnix(&m)
 	events := []observer.Event{tcp}
-	if StatsEnabled() {
+	if StatsEnabled() || enterpriseOption.Config.EnableAWSSonar {
 		var c layer3.MsgIPWithStatsEventUnix
 		c, err = stats.correctedStatsEvent(*tcp)
 		if err == nil {
@@ -447,6 +447,9 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 			statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateTime}
 			if stats.cache != nil {
 				stats.cache.Remove(statsKey)
+			}
+			if sonarStats.cache != nil {
+				sonarStats.cache.Remove(statsKey)
 			}
 			events = append(events, &c)
 		}
