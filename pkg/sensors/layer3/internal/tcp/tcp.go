@@ -26,6 +26,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -430,30 +431,31 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	m := networkapi.MsgIPWithStatsEvent{}
-	err := binary.Read(r, binary.LittleEndian, &m)
+	var err error
+	err = binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
 	tcp := ip.MsgToIPWithStatsUnix(&m)
+	events := []observer.Event{tcp}
 	if StatsEnabled() {
-		cp := *tcp
-		c, err := stats.correctedStatsEvent(cp)
-		if err != nil {
-			return []observer.Event{tcp}, nil
+		var c layer3.MsgIPWithStatsEventUnix
+		c, err = stats.correctedStatsEvent(*tcp)
+		if err == nil {
+			// Convert to a TCPStats event by simply setting op code
+			c.Msg.Common.Op = ops.MSG_OP_TCPSTATS
+			statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateTime}
+			if stats.cache != nil {
+				stats.cache.Remove(statsKey)
+			}
+			events = append(events, &c)
 		}
-		// Convert to a TCPStats event by simply setting op code
-		c.Msg.Common.Op = ops.MSG_OP_TCPSTATS
-		statsKey := networkapi.TcpKey{SockCookie: c.Msg.SockCookie, CreateTime: c.Msg.SocketStats.CreateTime}
-		if stats.cache != nil {
-			stats.cache.Remove(statsKey)
-		}
-		return []observer.Event{tcp, &c}, nil
 	}
 
 	// Remove tuple from the cache.
 	tcpCache.RemoveTuple(m.SockCookie, m.Version)
 
-	return []observer.Event{tcp}, nil
+	return events, err
 }
 
 func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
