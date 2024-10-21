@@ -241,9 +241,12 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 						continue
 					}
 					endptName, dstStr := printDestination(d)
-					stats := printStats(d)
-					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
-					zeroDests[endptName].AddBranch(compact)
+					val, ok := zeroDests[endptName]
+					if ok {
+						stats := printStats(d)
+						compact := fmt.Sprintf("%s[%s]", dstStr, stats)
+						val.AddBranch(compact)
+					}
 				}
 			}
 		}
