@@ -507,7 +507,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		health.StartHealthServer(ctx, option.Config.HealthServerAddress, option.Config.HealthServerInterval)
 	}
 
-	log.WithField("enabled", option.Config.ExportFilename != "").WithField("fileName", option.Config.ExportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
 	if option.Config.EnableK8s {
