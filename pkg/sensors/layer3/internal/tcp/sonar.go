@@ -204,7 +204,7 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 			// 	Data:        nil,
 			// },
 			// {
-			//  Name:        "connect_ms_max",
+			//  Name:        "connect_max_us",
 			//  Description: "The max time to complete an outbound connection",
 			//  Unit:        "1",
 			//  Data:        nil,
@@ -235,7 +235,7 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 			},
 			{
 				Name:        "retrans_total",
-				Description: "The number of retransmissions",
+				Description: "The number of retransmissions sent and received",
 				Unit:        "1",
 				Data:        getDataHistogram(float64(fgsSocketStats.RetransmitsSegs)),
 			},
@@ -310,17 +310,17 @@ func createExportRequest() *colmpb.ExportMetricsServiceRequest {
 					// 			Data: nil,
 					// 		},
 					// 		{
-					// 			Name: "sockets_invalid",
+					// 			Name: "sockets_added",
+					// 			Unit: "1",
+					// 			Data: nil,
+					// 		},
+					// 		{
+					// 			Name: "sockets_aggregated",
 					// 			Unit: "1",
 					// 			Data: nil,
 					// 		},
 					// 		{
 					// 			Name: "sockets_stale",
-					// 			Unit: "1",
-					// 			Data: nil,
-					// 		},
-					// 		{
-					// 			Name: "socket_eviction_errors",
 					// 			Unit: "1",
 					// 			Data: nil,
 					// 		},
@@ -334,12 +334,7 @@ func createExportRequest() *colmpb.ExportMetricsServiceRequest {
 					// 	},
 					// 	Metrics: []*mpb.Metric{
 					// 		{
-					// 			Name: "cpu_active",
-					// 			Unit: "1",
-					// 			Data: nil,
-					// 		},
-					// 		{
-					// 			Name: "cpu_overall",
+					// 			Name: "cpu_util",
 					// 			Unit: "1",
 					// 			Data: nil,
 					// 		},
@@ -355,6 +350,16 @@ func createExportRequest() *colmpb.ExportMetricsServiceRequest {
 					// 		},
 					// 		{
 					// 			Name: "sockets_tracked",
+					// 			Unit: "1",
+					// 			Data: nil,
+					// 		},
+					// 		{
+					// 			Name: "publish_report_failed",
+					// 			Unit: "1",
+					// 			Data: nil,
+					// 		},
+					// 		{
+					// 			Name: "restarts",
 					// 			Unit: "1",
 					// 			Data: nil,
 					// 		},
@@ -389,12 +394,20 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 			// 	},
 			// },
 			// {
-			// 	Key: "agent_version", Value: &cpb.AnyValue{
+			// 	Key: "service.name", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
 			// {
-			// 	Key: "service_version", Value: &cpb.AnyValue{
+			// 	Key: "service.version", Value: &cpb.AnyValue{
+			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
+			// 	},
+			// },
+			// 	Key: "agent.build_ts", Value: &cpb.AnyValue{
+			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
+			// 	},
+			// },
+			// 	Key: "report.version", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
@@ -403,6 +416,14 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 					Value: &cpb.AnyValue_StringValue{StringValue: node.GetNodeNameForExport()},
 				},
 			},
+			// 	Key: "k8s_cluster_name", Value: &cpb.AnyValue{
+			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
+			// 	},
+			// },
+			// 	Key: "interface-id", Value: &cpb.AnyValue{
+			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
+			// 	},
+			// },
 		},
 	}
 
