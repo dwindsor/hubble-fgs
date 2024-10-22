@@ -1,5 +1,4 @@
 include Makefile.defs
-include $(OSS_DIR)/Makefile.defs
 
 GO := go
 INSTALL = $(QUIET)install
@@ -547,6 +546,11 @@ oss-update: ## Pull in latest OSS code and update everything (codegen, go module
 	make vendor
 
 ##@ Documentation
+
+$(OSS_DIR)/Makefile.defs:
+	test -e $(OSS_DIR)/Makefile.defs || git submodule update --init $(OSS_DIR)
+
+include $(OSS_DIR)/Makefile.defs
 
 .PHONY: help
 help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well-documented-makefiles/
