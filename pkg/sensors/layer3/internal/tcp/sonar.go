@@ -196,13 +196,14 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 				Unit:        "1",
 				Data:        getDataHistogram(float64(fgsSocketStats.BytesReceived)),
 			},
-			// Tetragon collects only bytes_sent, this should be bytes_acked.
-			// {
-			// 	Name:        "bytes_delivered",
-			// 	Description: "Bytes acknowledged by the remote endpoint",
-			// 	Unit:        "1",
-			// 	Data:        nil,
-			// },
+			// Sonar expects bytes_acked, but Tetragon collects only bytes_sent.
+			// To avoid collecting two similar metrics let's just hope they're close enough.
+			{
+				Name:        "bytes_delivered",
+				Description: "Bytes acknowledged by the remote endpoint",
+				Unit:        "1",
+				Data:        getDataHistogram(float64(fgsSocketStats.BytesSent)),
+			},
 			// {
 			//  Name:        "connect_max_us",
 			//  Description: "The max time to complete an outbound connection",
