@@ -193,13 +193,7 @@ func rawSyscallTracepointTranslate(
 }
 
 func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
-	// NB(kkourt): The multi-kprobe enforcer fails to load. Will have to investigate in OSS side.
-	// One thing to note is that if multi-kprobes and bpf_override_return() is supported, we do
-	// not really need to use the enforcer. We can translate into tracing policies that hook
-	// directly into kprobes rather than the generic syscall tracepoint.
-	b.tpSpec.Options = []v1alpha1.OptionSpec{
-		{Name: "disable-kprobe-multi", Value: "1"},
-	}
+	b.finalizeSpec()
 	return &SandboxTracingPolicy{
 		tracingpolicy.GenericTracingPolicy{
 			TypeMeta: k8sv1.TypeMeta{
@@ -217,13 +211,7 @@ func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
 }
 
 func (b *tpBuilder) NamespacedPolicy(namespace string) (*SandboxTracingPolicyNamespaced, error) {
-	// NB(kkourt): The multi-kprobe enforcer fails to load. Will have to investigate in OSS side.
-	// One thing to note is that if multi-kprobes and bpf_override_return() is supported, we do
-	// not really need to use the enforcer. We can translate into tracing policies that hook
-	// directly into kprobes rather than the generic syscall tracepoint.
-	b.tpSpec.Options = []v1alpha1.OptionSpec{
-		{Name: "disable-kprobe-multi", Value: "1"},
-	}
+	b.finalizeSpec()
 	return &SandboxTracingPolicyNamespaced{
 		tracingpolicy.GenericTracingPolicyNamespaced{
 			TypeMeta: k8sv1.TypeMeta{
@@ -239,4 +227,14 @@ func (b *tpBuilder) NamespacedPolicy(namespace string) (*SandboxTracingPolicyNam
 		nil,
 		rawSyscallTracepointTranslate,
 	}, nil
+}
+
+func (b *tpBuilder) finalizeSpec() {
+	// NB(kkourt): The multi-kprobe enforcer fails to load. Will have to investigate in OSS side.
+	// One thing to note is that if multi-kprobes and bpf_override_return() is supported, we do
+	// not really need to use the enforcer. We can translate into tracing policies that hook
+	// directly into kprobes rather than the generic syscall tracepoint.
+	b.tpSpec.Options = []v1alpha1.OptionSpec{
+		{Name: "disable-kprobe-multi", Value: "1"},
+	}
 }
