@@ -22,8 +22,7 @@ import (
 
 // ProcessManager maintains a cache of processes from tetragon exec events.
 type ProcessManager struct {
-	nodeName string
-	Server   *server.Server
+	Server *server.Server
 	// synchronize access to the listeners map.
 	mux       sync.Mutex
 	listeners map[server.Listener]struct{}
@@ -37,14 +36,13 @@ func NewProcessManager(
 	hookRunner *rthooks.Runner,
 ) (*ProcessManager, error) {
 	pm := &ProcessManager{
-		nodeName:  node.GetNodeNameForExport(),
 		listeners: make(map[server.Listener]struct{}),
 	}
 
 	pm.Server = server.NewServer(ctx, wg, pm, manager, hookRunner)
 
 	// Exec cache is always needed to ensure events have an associated Process{}
-	eventcache.New(pm.Server)
+	eventcache.New(pm)
 
 	logger.GetLogger().WithFields(logrus.Fields{
 		"enableK8s":         option.Config.EnableK8s,
@@ -85,6 +83,7 @@ func (pm *ProcessManager) RemoveListener(listener server.Listener) {
 func (pm *ProcessManager) NotifyListener(original interface{}, processed *tetragon.GetEventsResponse) {
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
+	node.SetCommonFields(processed)
 	for l := range pm.listeners {
 		l.Notify(processed)
 	}

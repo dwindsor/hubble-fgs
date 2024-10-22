@@ -12,7 +12,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/server"
 )
@@ -25,8 +24,7 @@ const (
 )
 
 var (
-	cache    *Cache
-	nodeName string
+	cache *Cache
 )
 
 type CacheObj struct {
@@ -42,7 +40,7 @@ type Cache struct {
 	objsChan chan CacheObj
 	done     chan bool
 	cache    []CacheObj
-	server   *server.Server
+	notifier server.Notifier
 	dur      time.Duration
 }
 
@@ -145,12 +143,11 @@ func (ec *Cache) handleEvents() {
 
 		if event.msg.Notify() {
 			processedEvent := &tetragon.GetEventsResponse{
-				Event:    event.event.Encapsulate(),
-				NodeName: nodeName,
-				Time:     ktime.ToProto(event.timestamp),
+				Event: event.event.Encapsulate(),
+				Time:  ktime.ToProto(event.timestamp),
 			}
 
-			ec.server.NotifyListeners(event.msg, processedEvent)
+			ec.notifier.NotifyListener(event.msg, processedEvent)
 		}
 	}
 	ec.cache = tmp
@@ -217,7 +214,7 @@ func (ec *Cache) Add(internal *process.ProcessInternal,
 	ec.objsChan <- CacheObj{internal: internal, event: e, timestamp: t, startTime: s, msg: msg}
 }
 
-func NewWithTimer(s *server.Server, dur time.Duration) *Cache {
+func NewWithTimer(n server.Notifier, dur time.Duration) *Cache {
 	if cache != nil {
 		cache.done <- true
 	}
@@ -228,16 +225,15 @@ func NewWithTimer(s *server.Server, dur time.Duration) *Cache {
 		objsChan: make(chan CacheObj),
 		done:     make(chan bool),
 		cache:    make([]CacheObj, 0),
-		server:   s,
+		notifier: n,
 		dur:      dur,
 	}
-	nodeName = node.GetNodeNameForExport()
 	go cache.loop()
 	return cache
 }
 
-func New(s *server.Server) *Cache {
-	return NewWithTimer(s, time.Second*time.Duration(option.Config.EventCacheRetryDelay))
+func New(n server.Notifier) *Cache {
+	return NewWithTimer(n, time.Second*time.Duration(option.Config.EventCacheRetryDelay))
 }
 
 func Get() *Cache {
