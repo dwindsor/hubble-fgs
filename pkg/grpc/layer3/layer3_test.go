@@ -8,7 +8,6 @@ package layer3
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -81,15 +79,9 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 }
 
 func TestGrpcL3InOrder(t *testing.T) {
-	var cancelWg sync.WaitGroup
-
 	execOSS.AllEvents = nil
 	watcher := watcher.NewFakeK8sWatcher(nil)
-	cancel, _ := execOSS.InitEnv[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](t, &cancelWg, watcher)
-	defer func() {
-		cancel()
-		cancelWg.Wait()
-	}()
+	execOSS.InitEnv[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](t, watcher)
 
 	parentPid := atomic.AddUint32(&execOSS.BasePid, 1)
 	currentPid := atomic.AddUint32(&execOSS.BasePid, 1)
@@ -268,7 +260,7 @@ func (n DummyNotifier) NotifyListener(original interface{}, processed *tetragon.
 	}
 }
 
-func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResourceWatcher) context.CancelFunc {
+func initEnv(t *testing.T, watcher watcher.K8sResourceWatcher) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	_, err := cilium.InitCiliumState(ctx, false)
@@ -285,25 +277,19 @@ func initEnv(t *testing.T, cancelWg *sync.WaitGroup, watcher watcher.K8sResource
 	}
 
 	dn := DummyNotifier{t}
-	do := &server.FakeObserver{}
-	dr := rthooks.DummyHookRunner{}
-	lServer := server.NewServer(ctx, cancelWg, dn, do, dr)
 
 	// Exec cache is always needed to ensure events have an associated Process{}
-	eventcache.NewWithTimer(lServer, time.Millisecond*execOSS.CacheTimerMs)
+	eventcache.NewWithTimer(dn, time.Millisecond*execOSS.CacheTimerMs)
 
 	return cancel
 }
 
 func TestGrpcL3CloseFirst(t *testing.T) {
-	var cancelWg sync.WaitGroup
-
 	execOSS.AllEvents = nil
 	watcher := watcher.NewFakeK8sWatcher(nil)
-	cancel := initEnv(t, &cancelWg, watcher)
+	cancel := initEnv(t, watcher)
 	defer func() {
 		cancel()
-		cancelWg.Wait()
 	}()
 
 	parentPid := atomic.AddUint32(&execOSS.BasePid, 1)

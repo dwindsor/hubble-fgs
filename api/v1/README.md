@@ -2156,6 +2156,7 @@ Note that currently only process_accept and process_connect events are aggregate
 
 For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
 | aggregation_info | [AggregationInfo](#tetragon-AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
+| cluster_name | [string](#string) |  | Name of the cluster where this event was observed. |
 
 
 
