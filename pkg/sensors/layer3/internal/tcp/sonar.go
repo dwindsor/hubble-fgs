@@ -31,9 +31,13 @@ import (
 	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	rpb "go.opentelemetry.io/proto/otlp/resource/v1"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -90,6 +94,16 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 	event := socketStatsToIPWithStatsEventUnix(k, v, tuple, stats)
 
 	// see also pkg/grpc/layer3/layer3.go:CreateProcessSockStats
+	var fgsProcess *tetragon.Process
+	p, _ := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
+	if p == nil {
+		fgsProcess = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = p.UnsafeGetProcess()
+	}
 	fgsTuple := sockinfo.GetTuple(&event.Msg.Tuple, event.Msg.SockCookie, event.Msg.Common.Op)
 	fgsSocketStats := reader.GetSocketStats(&event.Msg.SocketStats)
 
@@ -114,6 +128,40 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 		attributes = append(attributes, &cpb.KeyValue{
 			Key: "remote_port", Value: &cpb.AnyValue{
 				Value: &cpb.AnyValue_IntValue{IntValue: int64(fgsTuple.DestinationPort.Value)},
+			},
+		})
+	}
+	if fgsProcess.Pod != nil {
+		attributes = append(attributes, &cpb.KeyValue{
+			Key: "local_pod_name", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsProcess.Pod.Name},
+			},
+		}, &cpb.KeyValue{
+			// Send workload name as service. It might be not what Sonar
+			// expects, but it might as well be close enough.
+			Key: "local_pod_service", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsProcess.Pod.Workload},
+			},
+		}, &cpb.KeyValue{
+			Key: "local_pod_namespace", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsProcess.Pod.Namespace},
+			},
+		})
+	}
+	if fgsTuple.DestinationPod != nil {
+		attributes = append(attributes, &cpb.KeyValue{
+			Key: "remote_pod_name", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsTuple.DestinationPod.Name},
+			},
+		}, &cpb.KeyValue{
+			// Send workload name as service. It might be not what Sonar
+			// expects, but it might as well be close enough.
+			Key: "remote_pod_service", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsTuple.DestinationPod.Workload},
+			},
+		}, &cpb.KeyValue{
+			Key: "remote_pod_namespace", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_StringValue{StringValue: fgsTuple.DestinationPod.Namespace},
 			},
 		})
 	}
@@ -350,6 +398,11 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
+			{
+				Key: "k8s_node_name", Value: &cpb.AnyValue{
+					Value: &cpb.AnyValue_StringValue{StringValue: node.GetNodeNameForExport()},
+				},
+			},
 		},
 	}
 
