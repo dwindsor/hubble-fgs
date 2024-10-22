@@ -237,4 +237,20 @@ func (b *tpBuilder) finalizeSpec() {
 	b.tpSpec.Options = []v1alpha1.OptionSpec{
 		{Name: "disable-kprobe-multi", Value: "1"},
 	}
+
+	if len(b.tpSpec.Enforcers) > 0 {
+		b.tpSpec.Tracepoints = append(b.tpSpec.Tracepoints,
+			v1alpha1.TracepointSpec{
+				Subsystem: "raw_syscalls",
+				Event:     "sys_exit",
+				Selectors: []v1alpha1.KProbeSelector{{
+					MatchActions: []v1alpha1.ActionSelector{
+						{Action: "CleanupEnforcerNotification"},
+						{Action: "NoPost"},
+					},
+				}},
+			},
+		)
+	}
+
 }
