@@ -200,15 +200,15 @@ func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaul
 	readConfigDir(defaultConfDropIn)
 
 	// Read now the passed key --config-dir
-	if viper.IsSet(keyConfigDir) {
-		configDir := viper.GetString(keyConfigDir)
+	if viper.IsSet(option.KeyConfigDir) {
+		configDir := viper.GetString(option.KeyConfigDir)
 		// viper.IsSet could return true on an empty string reset
 		if configDir != "" {
 			err := readConfigDir(configDir)
 			if err != nil {
-				log.WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
+				log.WithField(option.KeyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
 			} else {
-				log.WithField(keyConfigDir, configDir).Info("Loaded config from directory")
+				log.WithField(option.KeyConfigDir, configDir).Info("Loaded config from directory")
 			}
 		}
 	}
