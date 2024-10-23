@@ -9,16 +9,11 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 func statsToHistogram(h api.Histogram) *tetragon.Histogram {
@@ -128,9 +123,8 @@ func (msg *MsgInterfaceEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		stats := msg.getInterfaceStats()
 		if stats != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
+				Time:  ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

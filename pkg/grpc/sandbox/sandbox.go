@@ -17,7 +17,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 
@@ -25,10 +24,6 @@ import (
 )
 
 // implement the Message interface for sandbox events
-
-var (
-	nodeName = node.GetNodeNameForExport()
-)
 
 type MsgRawSyscall struct {
 	// tpMsg is the original message
@@ -120,9 +115,8 @@ func (msg *MsgRawSyscall) HandleMessage() *tetragon.GetEventsResponse {
 
 	sandboxmetrics.HandleEvent(tetragonEvent)
 	return &tetragon.GetEventsResponse{
-		Event:    &tetragon.GetEventsResponse_ProcessSandboxSyscall{ProcessSandboxSyscall: tetragonEvent},
-		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.tpMsg.Msg.Common.Ktime),
+		Event: &tetragon.GetEventsResponse_ProcessSandboxSyscall{ProcessSandboxSyscall: tetragonEvent},
+		Time:  ktime.ToProto(msg.tpMsg.Msg.Common.Ktime),
 	}
 }
 

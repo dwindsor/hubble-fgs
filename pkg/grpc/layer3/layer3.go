@@ -21,7 +21,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -38,10 +37,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/svcinfo"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 const (
@@ -639,9 +634,8 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		cnct := GetProcessConnect(msg)
 		if cnct != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_LISTEN,
@@ -649,45 +643,40 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		l := GetProcessListen(msg)
 		if l != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessListen{ProcessListen: l},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessListen{ProcessListen: l},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_ACCEPT:
 		a := GetProcessAccept(msg)
 		if a != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessAccept{ProcessAccept: a},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessAccept{ProcessAccept: a},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_RAWSOCK_CREATE:
 		r := GetProcessRawsockCreate(msg)
 		if r != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessRawsockCreate{ProcessRawsockCreate: r},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessRawsockCreate{ProcessRawsockCreate: r},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_RAWSOCK_CLOSE:
 		r := GetProcessRawsockClose(msg)
 		if r != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessRawsockClose{ProcessRawsockClose: r},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessRawsockClose{ProcessRawsockClose: r},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_IP_ERROR:
 		s := GetProcessIPError(msg)
 		if s != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessIpError{ProcessIpError: s},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessIpError{ProcessIpError: s},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 
@@ -706,18 +695,16 @@ func (msg *MsgIPWithStatsEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 		c := GetProcessClose(msg)
 		if c != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessClose{ProcessClose: c},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessClose{ProcessClose: c},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
 		s := GetProcessSockStats(msg)
 		if s != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

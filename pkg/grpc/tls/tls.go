@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -16,10 +15,6 @@ import (
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 // Translate internal uint32 error codes into gRPC visible error codes
@@ -164,9 +159,8 @@ func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		t := getTLS(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_Tls{Tls: t},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_Tls{Tls: t},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

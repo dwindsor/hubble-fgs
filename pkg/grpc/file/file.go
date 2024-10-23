@@ -36,8 +36,6 @@ const (
 )
 
 var (
-	nodeName = node.GetNodeNameForExport()
-
 	// this should match the enum in bpf/lib/file.h
 	fileHookMap = map[uint32]string{
 		0:  "undef",
@@ -347,7 +345,7 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName, tp
 	}
 
 	filemetrics.FileTotalActionEventsInc(
-		nodeName,
+		node.GetNodeNameForExport(),
 		namespace,
 		workload,
 		pod,
@@ -382,7 +380,7 @@ func handleFileExecTotalActionEvents(tetragonEvent *tetragon.ProcessFileExec, ex
 	}
 
 	filemetrics.FileExecTotalActionEventsInc(
-		nodeName,
+		node.GetNodeNameForExport(),
 		namespace,
 		workload,
 		pod,
@@ -598,9 +596,8 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			return nil
 		}
 		return &tetragon.GetEventsResponse{
-			Event:    &tetragon.GetEventsResponse_ProcessFileExec{ProcessFileExec: f},
-			NodeName: nodeName,
-			Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+			Event: &tetragon.GetEventsResponse_ProcessFileExec{ProcessFileExec: f},
+			Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 		}
 	}
 	f := GetProcessFile(msg)
@@ -608,9 +605,8 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		return nil
 	}
 	return &tetragon.GetEventsResponse{
-		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
-		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+		Event: &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
+		Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 
@@ -766,9 +762,8 @@ func (msg *MsgFileRenameEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		return nil
 	}
 	return &tetragon.GetEventsResponse{
-		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
-		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+		Event: &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
+		Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 	}
 }
 

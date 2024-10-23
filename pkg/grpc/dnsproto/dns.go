@@ -9,7 +9,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	ossEventmetrics "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -26,10 +25,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/dns/dnsmessage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 type MsgDnsUnix struct {
@@ -174,9 +169,8 @@ func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 		t := get(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessDns{ProcessDns: t},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessDns{ProcessDns: t},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	default:

@@ -9,7 +9,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -24,10 +23,6 @@ const (
 	WATERMARKS_START   = 1
 	WATERMARKS_BURST   = 0
 	WATERMARKS_DIP     = 1
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 type MsgProcessNetworkWatermarksEventUnix struct {
@@ -71,18 +66,16 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) HandleMessage() *tetragon.GetEv
 		b := getProcessNetworkWatermarks(msg)
 		if b != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessNetworkWatermark{ProcessNetworkWatermark: b},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessNetworkWatermark{ProcessNetworkWatermark: b},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 	case ops.MSG_OP_PROCESS_NETWORK_BURST:
 		b := getProcessNetworkBurst(msg)
 		if b != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
 

@@ -20,7 +20,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -31,10 +30,6 @@ import (
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 type MsgICMPEventUnix struct {
@@ -73,9 +68,8 @@ func (msg *MsgICMPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	b := GetProcessIcmp(msg)
 	if b != nil {
 		res = &tetragon.GetEventsResponse{
-			Event:    &tetragon.GetEventsResponse_ProcessIcmp{ProcessIcmp: b},
-			NodeName: nodeName,
-			Time:     ktime.ToProto(msg.Msg.Common.Ktime),
+			Event: &tetragon.GetEventsResponse_ProcessIcmp{ProcessIcmp: b},
+			Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 		}
 	}
 	return res

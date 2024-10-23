@@ -12,7 +12,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	readerexec "github.com/cilium/tetragon/pkg/reader/exec"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
@@ -20,10 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-var (
-	nodeName = node.GetNodeNameForExport()
 )
 
 const (
@@ -270,9 +265,8 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	case ops.MSG_OP_EXECVE:
 		if e := GetProcessExec(msg); e != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: e},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Unix.Msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessExec{ProcessExec: e},
+				Time:  ktime.ToProto(msg.Unix.Msg.Common.Ktime),
 			}
 		}
 	default:
@@ -463,9 +457,8 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		e := GetProcessExit(msg)
 		if e != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessExit{ProcessExit: e},
-				NodeName: nodeName,
-				Time:     ktime.ToProto(msg.Common.Ktime),
+				Event: &tetragon.GetEventsResponse_ProcessExit{ProcessExit: e},
+				Time:  ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:
