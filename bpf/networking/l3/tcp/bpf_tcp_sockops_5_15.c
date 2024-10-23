@@ -139,6 +139,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	v->fin_rx = 0;
 	v->ipv6 = (skops->family == AF_INET6);
 	v->version = val->version;
+	v->fin_rx = 0;
 
 	add_tcpsocketmap(&cookie, v, &val->tuple, true);
 

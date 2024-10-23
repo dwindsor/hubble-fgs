@@ -78,6 +78,7 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->fin_rx = 0;
 	v->ipv6 = (family == AF_INET6);
 	v->version = val->version;
+	v->fin_rx = 0;
 
 	return v;
 }
