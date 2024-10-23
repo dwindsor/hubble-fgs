@@ -34,6 +34,7 @@ struct fd_lookup_config {
 	uint16_t family;
 	uint16_t protocol;
 	uint16_t pad;
+	uint64_t cgrpid;
 } __attribute__((packed));
 
 struct {
@@ -268,7 +269,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);
 #ifdef KERNEL_5_15
 		if (tcp_stats->socket_flags != SOCKFLAGS_TYPE_LISTEN) {
-			__insert_process_tree(value->key.pid);
+			__insert_process_tree(value->key.pid, config->cgrpid);
 			process_socketmap_add(tcp_stats, &config->tuple);
 		}
 #endif

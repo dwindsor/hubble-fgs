@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -57,6 +58,7 @@ type FdLookupValue struct {
 	Family      uint16
 	Protocol    uint16
 	Pad         uint16
+	CgrpId      uint64
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -493,12 +495,14 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 
 	numIterations := 10
 	for pid, fds := range procSocketFds {
+		cgid, _ := cgroups.CgroupIDFromPID(pid)
 		for _, fd := range fds {
 			k := &FdLookupKey{Zero: 0}
 			v := &FdLookupValue{
 				Pid:       pid,
 				Fd:        fd,
 				Protocol:  protocol,
+				CgrpId:    cgid,
 				SignalHit: 0,
 			}
 			m.Put(k, v)

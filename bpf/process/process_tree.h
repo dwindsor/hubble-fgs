@@ -48,7 +48,7 @@ static int atomic_xchg(__u64 *cnt, __u64 val)
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
 }
 
-int __insert_process_tree(__u32 pid)
+int __insert_process_tree(__u32 pid, __u64 cgid)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct execve_map_value *parent;
@@ -56,8 +56,8 @@ int __insert_process_tree(__u32 pid)
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
 	struct process_tree_key *k;
-	__u64 cgid, *nsid;
 	__u32 zero = 0;
+	__u64 *nsid;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
 	if (!cfg || !cfg->enableProcessTree)
@@ -99,7 +99,6 @@ int __insert_process_tree(__u32 pid)
 	k->parent = *parent_uid;
 	k->self = *self_uid;
 
-	cgid = tg_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 	if (nsid)
 		k->nsid = *nsid;
@@ -127,8 +126,9 @@ int __insert_process_tree(__u32 pid)
 int insert_process_tree(void)
 {
 	__u32 pid = get_current_pid_tgid();
+	__u64 cgid = tg_get_current_cgroup_id();
 
-	return __insert_process_tree(pid);
+	return __insert_process_tree(pid, cgid);
 }
 
 uint64_t glbl_bpf_endpoint_id = 1;
