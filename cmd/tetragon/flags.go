@@ -115,6 +115,7 @@ func readAndSetFlags() error {
 	option.Config.Verbosity = viper.GetInt(keyVerbosity)
 	option.Config.ForceSmallProgs = viper.GetBool(keyForceSmallProgs)
 	option.Config.Debug = viper.GetBool(keyDebug)
+	option.Config.ClusterName = viper.GetString(option.KeyClusterName)
 
 	option.Config.EnableProcessCred = viper.GetBool(keyEnableProcessCred)
 	option.Config.EnableProcessNs = viper.GetBool(keyEnableProcessNs)

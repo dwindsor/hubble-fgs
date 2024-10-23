@@ -988,6 +988,7 @@ func execute() error {
 	flags.BoolP(keyDebug, "d", false, "Enable debug messages. Equivalent to '--log-level=debug'")
 	flags.String(option.KeyHubbleLib, defaults.DefaultTetragonLib, "Location of hubble libs (btf and bpf files)")
 	flags.String(keyBTF, "", "Location of btf")
+	flags.String(option.KeyClusterName, "", "Name of the cluster where Tetragon is installed")
 
 	flags.String(keyProcFS, "/proc/", "Location of procfs to consume existing PIDs")
 	flags.String(keyKernelVersion, "", "Kernel version")
