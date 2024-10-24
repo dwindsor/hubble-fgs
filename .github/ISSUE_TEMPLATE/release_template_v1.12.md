@@ -112,10 +112,10 @@ Issues found when validating the release in tetragon-dev might not block the rel
      .. toctree::
        :maxdepth: 1
 
-    +  v1.9.3
-       v1.9.2
-       v1.9.1
-       v1.9.0
+    +  v1.12.6
+       v1.12.5
+       v1.12.4
+       v1.12.3
     ```
    - [ ] Create a new file `docs/operations-guide/releases/release-notes/tetragon/$RELEASE.md`. Use the release notes you generated for the GitHub release as a basis for what goes into the file. You can use the following as a template:
      ```markdown
@@ -154,8 +154,8 @@ Issues found when validating the release in tetragon-dev might not block the rel
        image:
          override: ~
          repository: quay.io/isovalent/hubble-enterprise
-    -    tag: v1.8.5
-    +    tag: v1.9.0
+    -    tag: v1.12.5
+    +    tag: v1.12.6
        metadataImage:
          override: ~
          repository: quay.io/isovalent/hubble-enterprise-metadata
@@ -163,8 +163,8 @@ Issues found when validating the release in tetragon-dev might not block the rel
        image:
          override: ~
          repository: quay.io/isovalent/hubble-enterprise-operator
-    -    tag: v1.8.5
-    +    tag: v1.9.0
+    -    tag: v1.12.5
+    +    tag: v1.12.6
          # hubble-enterprise-operator image-digest
          suffix: ""
     ```
@@ -181,6 +181,37 @@ Issues found when validating the release in tetragon-dev might not block the rel
     - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version, so don't worry if they don't match
     - [ ] Click "publish release"
 
+  - [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Hubble Enterprise.
+    Check out a new release branch:
+    ```
+    git checkout main && git pull origin main
+    git checkout -b pr/document-hubble-enterprise-$RELEASE
+    ```
+  - Add release notes to the docs
+    - [ ] NOTE: The hubble-enterprise-chart version is not strictly in lockstep with the Tetragon Enterprise version. In practice, the versions will not match.
+    - [ ] Edit `docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst` to add a new entry for the new version of Hubble Enterprise. Example diff:
+      ```diff
+      diff --git a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+      index 98284b7..92a1d34 100644
+      --- a/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+      +++ b/docs/operations-guide/releases/release-notes/hubble-enterprise/index.rst
+      @@ -4,6 +4,7 @@ Release Notes - Hubble Enterprise
+       .. toctree::
+         :maxdepth: 1
+
+      +  v1.12.7
+         v1.12.6
+         v1.12.5
+         v1.12.4
+      ```
+     - [ ] Create a new file `docs/operations-guide/releases/release-notes/hubble-enterprise/$RELEASE.md`. The `$RELEASE` is the chart version, and the version linked is the Tetragon version released.t
+       ```markdown
+        # v1.12.7 (2024-07-11)
+
+        ## What's Changed
+
+        * Update [Tetragon to v1.12.6](../tetragon/v1.12.6.md)
+       ```
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
 [releases page]: https://github.com/isovalent/hubble-fgs/releases
