@@ -935,7 +935,7 @@ func execute() error {
 				}
 				return
 			}
-			if err := readAndSetFlags(); err != nil {
+			if err := option.ReadAndSetFlags(); err != nil {
 				log.WithError(err).Fatal("Failed to parse command line flags")
 			}
 
