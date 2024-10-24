@@ -157,7 +157,7 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 	return get_cgroup_id(cgrp);
 }
 
-int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
+int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
@@ -166,8 +166,8 @@ int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tup
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
-	__u64 cgid, *nsid;
 	int zero = 0;
+	__u64 *nsid;
 
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
@@ -233,7 +233,6 @@ int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tup
 	destkey.process_id.parent = *parent_uid;
 	destkey.port = tuple->dport;
 
-	cgid = tg_sockops_get_current_cgroup_id();
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 	if (nsid)
 		destkey.process_id.nsid = *nsid;
@@ -285,6 +284,14 @@ int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tup
 	}
 
 	return 0;
+}
+
+int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
+{
+	__u64 cgid;
+
+	cgid = tg_sockops_get_current_cgroup_id();
+	return __process_socketmap_add(v, tuple, cgid);
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_rekey(struct destination_endpoint_key *key, struct __sk_buff *skb)

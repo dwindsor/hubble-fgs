@@ -270,7 +270,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 #ifdef KERNEL_5_15
 		if (tcp_stats->socket_flags != SOCKFLAGS_TYPE_LISTEN) {
 			__insert_process_tree(value->key.pid, config->cgrpid);
-			process_socketmap_add(tcp_stats, &config->tuple);
+			__process_socketmap_add(tcp_stats, &config->tuple, config->cgrpid);
 		}
 #endif
 	}
