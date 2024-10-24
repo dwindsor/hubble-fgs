@@ -239,9 +239,6 @@ options:
     - name: procfs
       default_value: /proc/
       usage: Location of procfs to consume existing PIDs
-    - name: protocol-shift
-      default_value: auto
-      usage: (deprecated)
     - name: rb-queue-size
       default_value: "65535"
       usage: |

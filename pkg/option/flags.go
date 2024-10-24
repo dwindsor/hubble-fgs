@@ -48,7 +48,6 @@ const (
 	keyEnableAWSSonar            = "enable-aws-sonar"
 	keyAWSSonarRegion            = "aws-sonar-region"
 	KeyEnableCiliumAPI           = "enable-cilium-api"
-	KeyProtocolShift             = "protocol-shift"
 	KeyEnableDnsDebug            = "enable-dns-debug"
 	KeyProcessCacheStaleInterval = "process-cache-stale-interval"
 )
@@ -91,7 +90,6 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
-	flags.String(KeyProtocolShift, "auto", "(deprecated)")
 	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 }
 
