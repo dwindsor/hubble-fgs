@@ -19,8 +19,6 @@ options:
       usage: Name of the cluster where Tetragon is installed
     - name: config-dir
       usage: Configuration directory that contains a file for each option
-    - name: config-file
-      usage: Configuration file to load from
     - name: cri-endpoint
       usage: CRI endpoint
     - name: data-cache-size

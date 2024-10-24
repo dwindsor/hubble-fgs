@@ -23,8 +23,6 @@ import (
 const (
 	keyEnableCiliumAPI = "enable-cilium-api"
 
-	keyConfigFile = "config-file"
-
 	keyProtocolShift = "protocol-shift"
 
 	keyEnableDnsDebug = "enable-dns-debug"
@@ -97,22 +95,10 @@ func readAndSetFlags() error {
 
 	option.Config.TracingPolicyDir = viper.GetString(option.KeyTracingPolicyDir)
 
-	// deprecation timeline: deprecated -> v1.12.0
-	// manually handle the deprecation of --config-file
-	if viper.IsSet(keyConfigFile) {
-		log.Warnf("Flag --%s has been deprecated, please use --%s instead", keyConfigFile, option.KeyTracingPolicy)
-		option.Config.TracingPolicy = viper.GetString(keyConfigFile)
-	}
-
 	option.Config.EnablePodInfo = viper.GetBool(option.KeyEnablePodInfo)
 	option.Config.EnableTracingPolicyCRD = viper.GetBool(option.KeyEnableTracingPolicyCRD)
 
 	option.Config.K8sKubeConfigPath = viper.GetString(option.KeyK8sKubeConfigPath)
-
-	// if both --config-file and --tracing-policy are set, the latter takes priority
-	if viper.IsSet(option.KeyTracingPolicy) {
-		option.Config.TracingPolicy = viper.GetString(option.KeyTracingPolicy)
-	}
 
 	switch o := viper.GetString(option.KeyUsernameMetadata); o {
 	case "unix":

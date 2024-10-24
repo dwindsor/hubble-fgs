@@ -1018,9 +1018,6 @@ func execute() error {
 
 	// Tracing Policy files
 	flags.String(option.KeyTracingPolicy, "", "Tracing policy file to load at startup")
-	// --config-file is the deprecated flag for the new --tracing-policy
-	flags.String(keyConfigFile, "", "Configuration file to load from")
-	flags.MarkHidden(keyConfigFile)
 
 	flags.String(option.KeyTracingPolicyDir, defaults.DefaultTpDir, "Directory from where to load Tracing Policies")
 
