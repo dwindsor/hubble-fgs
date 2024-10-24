@@ -12,6 +12,7 @@ package option
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -46,6 +47,10 @@ const (
 	keyDebugX                    = "debugx"
 	keyEnableAWSSonar            = "enable-aws-sonar"
 	keyAWSSonarRegion            = "aws-sonar-region"
+	KeyEnableCiliumAPI           = "enable-cilium-api"
+	KeyProtocolShift             = "protocol-shift"
+	KeyEnableDnsDebug            = "enable-dns-debug"
+	KeyProcessCacheStaleInterval = "process-cache-stale-interval"
 )
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -84,6 +89,10 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableSandboxPoliciesCRD, true, "Enable SandboxPolicy and SanboxPolicyNamespaced custom resources")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
+	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
+	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
+	flags.String(KeyProtocolShift, "auto", "(deprecated)")
+	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -120,4 +129,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
 	Config.EnableAWSSonar = viper.GetBool(keyEnableAWSSonar)
 	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)
+	Config.EnableDnsDebug = viper.GetBool(KeyEnableDnsDebug)
+	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
+	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 }

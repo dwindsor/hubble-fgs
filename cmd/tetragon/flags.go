@@ -16,18 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/strutils"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/spf13/viper"
-)
-
-const (
-	keyEnableCiliumAPI = "enable-cilium-api"
-
-	keyProtocolShift = "protocol-shift"
-
-	keyEnableDnsDebug = "enable-dns-debug"
-
-	keyProcessCacheStaleInterval = "process-cache-stale-interval"
 )
 
 func readAndSetFlags() error {
@@ -43,7 +32,6 @@ func readAndSetFlags() error {
 	option.Config.EnableProcessCred = viper.GetBool(option.KeyEnableProcessCred)
 	option.Config.EnableProcessNs = viper.GetBool(option.KeyEnableProcessNs)
 	option.Config.EnableK8s = viper.GetBool(option.KeyEnableK8sAPI)
-	enterpriseOption.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
 
 	option.Config.GopsAddr = viper.GetString(option.KeyGopsAddr)
 
@@ -89,8 +77,6 @@ func readAndSetFlags() error {
 	option.Config.EnablePolicyFilter = viper.GetBool(option.KeyEnablePolicyFilter)
 	option.Config.EnablePolicyFilterDebug = viper.GetBool(option.KeyEnablePolicyFilterDebug)
 
-	enterpriseOption.Config.EnableDnsDebug = viper.GetBool(keyEnableDnsDebug)
-
 	option.Config.EnablePidSetFilter = viper.GetBool(option.KeyEnablePidSetFilter)
 
 	option.Config.TracingPolicyDir = viper.GetString(option.KeyTracingPolicyDir)
@@ -130,8 +116,6 @@ func readAndSetFlags() error {
 	option.Config.EventCacheRetryDelay = viper.GetInt(option.KeyEventCacheRetryDelay)
 
 	option.Config.CompatibilitySyscall64SizeType = viper.GetBool(option.KeyCompatibilitySyscall64SizeType)
-
-	enterpriseOption.Config.ProcessCacheStaleInterval = viper.GetDuration(keyProcessCacheStaleInterval)
 
 	return nil
 }

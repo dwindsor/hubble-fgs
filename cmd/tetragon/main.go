@@ -1007,14 +1007,12 @@ func execute() error {
 	flags.String(option.KeyLogLevel, "info", "Set log level")
 	flags.String(option.KeyLogFormat, "text", "Set log format")
 	flags.Bool(option.KeyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
-	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 	flags.String(option.KeyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(option.KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')")
 	flags.String(option.KeyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
 	flags.Bool(option.KeyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(option.KeyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(option.KeyEventQueueSize, 10000, "Set the size of the internal event queue.")
-	flags.String(keyProtocolShift, "auto", "(deprecated)")
 
 	// Tracing Policy files
 	flags.String(option.KeyTracingPolicy, "", "Tracing policy file to load at startup")
@@ -1056,8 +1054,6 @@ func execute() error {
 	flags.Bool(option.KeyEnablePodInfo, false, "Enable getting additional Kubernetes metadata from PodInfo custom resources")
 	flags.Bool(option.KeyEnableTracingPolicyCRD, true, "Enable TracingPolicy and TracingPolicyNamespaced custom resources")
 
-	flags.Bool(keyEnableDnsDebug, false, "Enable DNS debug messages")
-
 	enterpriseOption.AddEnterpriseFlags(flags)
 
 	flags.String(option.KeyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
@@ -1089,8 +1085,6 @@ func execute() error {
 	flags.Int(option.KeyEventCacheRetryDelay, defaults.DefaultEventCacheRetryDelay, "Delay in seconds between event cache retries")
 
 	flags.Bool(option.KeyCompatibilitySyscall64SizeType, false, "syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)")
-
-	flags.Duration(keyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
