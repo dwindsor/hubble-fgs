@@ -3,13 +3,16 @@ synopsis: |
     Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
 usage: tetragon [flags]
 options:
+    - name: bpf-dir
+      default_value: tetragon
+      usage: Set tetragon bpf directory (default 'tetragon')
     - name: bpf-endpoint-cache-size
       default_value: "1024"
       usage: |
         Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: bpf-lib
       default_value: /var/lib/tetragon/
-      usage: Location of hubble libs (btf and bpf files)
+      usage: Location of Tetragon libs (btf and bpf files)
     - name: btf
       usage: Location of btf
     - name: cgroup-rate
@@ -19,6 +22,8 @@ options:
       usage: Name of the cluster where Tetragon is installed
     - name: config-dir
       usage: Configuration directory that contains a file for each option
+    - name: cpuprofile
+      usage: Store CPU profile into provided file
     - name: cri-endpoint
       usage: CRI endpoint
     - name: data-cache-size
@@ -48,7 +53,7 @@ options:
       usage: enable pod resolution via cgroup ids
     - name: enable-cgidmap-debug
       default_value: "false"
-      usage: enable cgidmap deubgging info
+      usage: enable cgidmap debugging info
     - name: enable-cilium-api
       default_value: "false"
       usage: |
@@ -76,13 +81,16 @@ options:
     - name: enable-msg-handling-latency
       default_value: "false"
       usage: Enable metrics for message handling latency
-    - name: enable-pod-info
+    - name: enable-pid-set-filter
       default_value: "false"
       usage: |
-        Enable getting additional Kubernetes metadata from PodInfo custom resources
+        Enable pidSet export filters. Not recommended for production use
+    - name: enable-pod-info
+      default_value: "false"
+      usage: Enable PodInfo custom resource
     - name: enable-policy-filter
       default_value: "false"
-      usage: Enable policy filter (beta) code
+      usage: Enable policy filter code (beta)
     - name: enable-policy-filter-debug
       default_value: "false"
       usage: Enable policy filter debug messages
@@ -155,6 +163,9 @@ options:
       default_value: "-1"
       usage: |
         Rate limit (per minute) for event export. Set to -1 to disable
+    - name: expose-stack-addresses
+      default_value: "false"
+      usage: Expose real linear addresses in events stack traces
     - name: field-filters
       usage: Field filters for event exports
     - name: fim-fifo-path
@@ -175,6 +186,10 @@ options:
       usage: Size in MB for rotating flow JSON export files
     - name: flow-export-filename
       usage: Filename for flow JSON export. Disabled by default
+    - name: force-large-progs
+      default_value: "false"
+      usage: |
+        Force loading large programs, even in kernels with < 5.3 versions
     - name: force-small-progs
       default_value: "false"
       usage: |
@@ -211,6 +226,12 @@ options:
     - name: log-level
       default_value: info
       usage: Set log level
+    - name: memprofile
+      usage: Store MEM profile into provided file
+    - name: metrics-label-filter
+      default_value: namespace,workload,pod,binary
+      usage: |
+        Comma-separated list of enabled metrics labels. Unknown labels will be ignored.
     - name: metrics-server
       usage: Metrics server address (e.g. ':2112'). Disabled by default
     - name: net-ns-cache-size
@@ -263,7 +284,7 @@ options:
     - name: server-address
       default_value: localhost:54321
       usage: |
-        gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock')
+        gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server
     - name: tcp-cache-size
       default_value: "32768"
       usage: |
@@ -283,4 +304,5 @@ options:
         Resolve UIDs to user names for processes running in host namespace
     - name: verbose
       default_value: "0"
-      usage: set verbosity level
+      usage: |
+        set verbosity level for eBPF verifier dumps. Pass 0 for silent, 1 for truncated logs, 2 for a full dump

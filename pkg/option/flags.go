@@ -52,6 +52,11 @@ const (
 	KeyProcessCacheStaleInterval = "process-cache-stale-interval"
 )
 
+func FixUpOSSFlags(flags *pflag.FlagSet) {
+	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
+		"syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)"
+}
+
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(KeyHubbleLib, defaults.DefaultTetragonLib, "Location of hubble libs (btf and bpf files)")
 	// TODO(michi) Remove after branching v1.12.
