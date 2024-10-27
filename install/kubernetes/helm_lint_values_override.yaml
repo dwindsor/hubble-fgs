@@ -5,3 +5,5 @@ export:
 tracingPolicies:
   default:
     enabled: true
+observabilityStack:
+  enabled: true
