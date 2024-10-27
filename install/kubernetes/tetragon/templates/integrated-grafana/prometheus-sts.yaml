@@ -1,4 +1,4 @@
-{{- if .Values.observabilityStack.enabled }}
+{{- if .Values.integratedGrafana.enabled }}
 # This template was created by following the steps:
 # 1. Configure and deploy kube-prometheus-stack Helm chart
 # 2. Use kubectl to retrieve YAML for Prometheus StatefulSet

@@ -34,8 +34,8 @@ Helm chart for Tetragon Enterprise
 | hostNetwork | bool | `true` |  |
 | imagePullPolicy | string | `"IfNotPresent"` |  |
 | imagePullSecrets | list | `[]` |  |
+| integratedGrafana | object | `{"enabled":false}` | Install Grafana with dashboards and lightweight Prometheus datasource. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. |
 | nodeSelector | object | `{}` |  |
-| observabilityStack | object | `{"enabled":false}` | Install Grafana with dashboards and lightweight Prometheus datasource. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. |
 | podAnnotations | object | `{}` |  |
 | podLabels | object | `{}` |  |
 | podLabelsOverride | object | `{}` |  |

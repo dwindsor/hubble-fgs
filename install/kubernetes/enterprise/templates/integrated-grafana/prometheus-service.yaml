@@ -1,4 +1,4 @@
-{{- if .Values.observabilityStack.enabled }}
+{{- if .Values.integratedGrafana.enabled }}
 # Prometheus Operator creates also a headless service, but since we install
 # only one Prometheus instance, we don't need it.
 apiVersion: v1

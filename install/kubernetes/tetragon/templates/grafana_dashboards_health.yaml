@@ -1,4 +1,4 @@
-{{- if or .Values.dashboards.health.enabled .Values.observabilityStack.enabled }}
+{{- if or .Values.dashboards.health.enabled .Values.integratedGrafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

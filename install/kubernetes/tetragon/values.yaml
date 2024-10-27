@@ -472,9 +472,9 @@ dashboards:
 # -- Install Grafana with dashboards and lightweight Prometheus datasource.
 # It's intended to quickly set up Tetragon monitoring and/or get value out of
 # Tetragon without setting up a custom data pipeline.
-observabilityStack:
+integratedGrafana:
   enabled: false
-# Values for grafana subchart, used when observabilityStack.enabled is true.
+# Values for grafana subchart, used when integratedGrafana.enabled is true.
 # TODO:
 # resources requests & limits
 # pin image and allow overwriting it
@@ -512,11 +512,11 @@ grafana:
     # installed in the same namespace as Tetragon (see dashboards.namespace
     # value). If required, we can lift this limitation by installing two
     # configmaps in case both dashboards.namespace is set and
-    # observabilityStack.enabled is set to true.
+    # integratedGrafana.enabled is set to true.
     tetragon-health: "{{ .Release.Name }}-dashboards-health"
   testFramework:
     enabled: false
-# Values for kube-state-metrics subchart, used when observabilityStack.enabled is true.
+# Values for kube-state-metrics subchart, used when integratedGrafana.enabled is true.
 # TODO:
 # resources requests & limits
 # pin image and allow overwriting it

@@ -1,4 +1,4 @@
-{{- if .Values.observabilityStack.enabled }}
+{{- if .Values.integratedGrafana.enabled }}
 # This has to be a ClusterRole, not just a Role, so that Prometheus can scrape
 # kubelet (cadvisor) for memory & CPU metrics.
 #

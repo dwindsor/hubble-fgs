@@ -1,4 +1,4 @@
-{{- if .Values.observabilityStack.enabled }}
+{{- if .Values.integratedGrafana.enabled }}
 apiVersion: v1
 kind: ServiceAccount
 automountServiceAccountToken: true
