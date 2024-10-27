@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Chart.Name }}-dashboards-health
+  name: {{ .Release.Name }}-dashboards-health
   namespace: {{ .Values.dashboards.namespace | default .Release.Namespace }}
   labels:
     {{- with .Values.dashboards.labels }}
