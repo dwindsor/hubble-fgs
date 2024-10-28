@@ -12,8 +12,10 @@ package file
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 
@@ -26,6 +28,71 @@ func actToStr(act uint32) string {
 		return fmt.Sprintf("monitor(%d)", act)
 	}
 	return fmt.Sprintf("unknown(%d)", act)
+}
+
+func PrintFilenameDigestMaps(policyDir string) error {
+	filenameMapPath := path.Join(policyDir, FilenamePathMapName)
+	filenameHandle, err := ebpf.LoadPinnedMap(filenameMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", filenameMapPath)
+	}
+	defer filenameHandle.Close()
+
+	fmt.Println("-------- Printing", filenameMapPath, "contents --------")
+
+	filenameMapIter := filenameHandle.Iterate()
+	var selIdx uint32
+	var innerMapID ebpf.MapID
+	for filenameMapIter.Next(&selIdx, &innerMapID) {
+		innerMap, err := ebpf.NewMapFromID(innerMapID)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Selector ID:", selIdx)
+
+		innerIter := innerMap.Iterate()
+		var path [256]byte
+		var pathIdx uint32
+		for innerIter.Next(&path, &pathIdx) {
+			fmt.Printf("    path:[%s],pathID:[%d]\n", string(path[:]), pathIdx)
+		}
+	}
+
+	digestsMapPath := path.Join(policyDir, FilenameDigestMapName)
+	digestsHandle, err := ebpf.LoadPinnedMap(digestsMapPath, nil)
+	if err != nil {
+		return fmt.Errorf("cannot open pinned map %s", digestsMapPath)
+	}
+	defer digestsHandle.Close()
+
+	fmt.Println("-------- Printing", digestsMapPath, "contents --------")
+
+	digestsMapIter := digestsHandle.Iterate()
+	for digestsMapIter.Next(&selIdx, &innerMapID) {
+		innerMap, err := ebpf.NewMapFromID(innerMapID)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Selector ID:", selIdx)
+
+		innerIter := innerMap.Iterate()
+		var digest fileapi.DigestKey
+		var digestIdx uint32
+		for innerIter.Next(&digest, &digestIdx) {
+			digestLen := IMA_MAX_DIGEST_SIZE
+			if dlen, ok := HashAlgoLen[tetragon.DigestAlgo(digest.Algo)]; ok {
+				digestLen = dlen
+			}
+			var digestStr string
+			for i := 0; i < digestLen; i++ {
+				digestStr += fmt.Sprintf("%02x", digest.Digest[i])
+			}
+			fmt.Printf("    digest:[%d, %d, %s],digestID:[%d]\n", digest.Ok, digest.Algo, digestStr, digestIdx)
+		}
+	}
+	return nil
 }
 
 func PrintInodeMap(path string, filter func(key *fileapi.InodeKey, val *fileapi.InodeVal) bool) error {

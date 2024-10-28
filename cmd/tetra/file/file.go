@@ -35,11 +35,23 @@ func New() *cobra.Command {
 	ret.AddCommand(
 		printInodeMapCmd(),
 		printLpmMapCmd(),
+		printFilenameDigestMapCmd(),
 		supportEnforcementCmd(),
 		supportDigestsCmd(),
 	)
 
 	return ret
+}
+
+func printFilenameDigestMapCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "filename-digest-map [policy-map-directory]",
+		Short: "dump matchFilename map contents",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			return fm.PrintFilenameDigestMaps(args[0])
+		},
+	}
 }
 
 func printInodeMapCmd() *cobra.Command {
