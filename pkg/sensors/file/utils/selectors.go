@@ -654,7 +654,24 @@ func GeneratePathsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefi
 	return nil
 }
 
-func GenerateDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string, digestMap map[string]string, algoNum int32) error {
+func CreateDigestKey(digest string, algoNum int32) fileapi.DigestKey {
+	key := fileapi.DigestKey{
+		Algo:   algoNum,
+		Digest: [64]uint8{},
+		Ok:     1,
+	}
+
+	// parse digest string
+	for i := 0; i < len(digest)/2; i++ {
+		d := digest[(i * 2) : (i*2)+2]
+		num, _ := strconv.ParseInt(d, 16, 64)
+		key.Digest[i] = uint8(num)
+	}
+
+	return key
+}
+
+func GenerateDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string, digestMap map[string][]string, algoNum int32) error {
 	for selID, entries := range sel.patterns {
 		innerName := fmt.Sprintf("filename_digest_map_%d", selID)
 		innerSpec := &ebpf.MapSpec{
@@ -675,28 +692,15 @@ func GenerateDigestsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPre
 		innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
 
 		for path, pathIdx := range entries.paths {
-			digest, ok := digestMap[path]
+			digests, ok := digestMap[path]
 			if !ok {
 				continue // no digest for this path
 			}
 
-			key := fileapi.DigestKey{
-				Algo:   algoNum,
-				Digest: [64]uint8{},
-				Ok:     1,
-			}
-
-			// parse digest string
-			for i := 0; i < len(digest)/2; i++ {
-				d := digest[(i * 2) : (i*2)+2]
-				num, _ := strconv.ParseInt(d, 16, 64)
-				key.Digest[i] = uint8(num)
-			}
-
-			val := uint32(pathIdx)
-
-			if err := innerMap.Put(key, val); err != nil {
-				return fmt.Errorf("put failed: %w", err)
+			for _, digest := range digests {
+				if err := innerMap.Put(CreateDigestKey(digest, algoNum), pathIdx); err != nil {
+					return fmt.Errorf("put failed: %w", err)
+				}
 			}
 		}
 
@@ -719,6 +723,25 @@ func (k *KernelSelectorState) GetDigestPaths() []string {
 		paths = append(paths, key)
 	}
 	return paths
+}
+
+func (k *KernelSelectorState) GetPathMetadata() map[string][]DigestPathMetadata {
+	pathMetadata := make(map[string][]DigestPathMetadata)
+	for selIdx, entry := range k.patterns {
+		for path, pathIdx := range entry.paths {
+			m := DigestPathMetadata{
+				PathIdx: pathIdx,
+				SelIdx:  selIdx,
+			}
+			if _, ok := pathMetadata[path]; !ok {
+				pathMetadata[path] = []DigestPathMetadata{m}
+			} else {
+				pathMetadata[path] = append(pathMetadata[path], m)
+			}
+		}
+	}
+	return pathMetadata
+
 }
 
 func GeneratePatternsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {

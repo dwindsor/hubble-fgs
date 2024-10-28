@@ -447,6 +447,65 @@ func TracingPolicyPathDigestsFsScanner(s v1alpha1.FileSpec, sel *fm.KernelSelect
 	return reply, nil
 }
 
+func TracingPolicyPathDigestsContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string, addToMaps bool) (map[string]string, error) {
+	if len(specPath) == 1 {
+		spec := specPath[0].Spec
+		// no need to send a message to fs-scanner for inode-based policies
+		if m, _, err := GetTpMode(&spec); err == nil && m != PathBasedTpMode {
+			return make(map[string]string), nil
+		}
+	} else if len(specPath) == 0 {
+		for _, s := range pol.FileMonitoringTable.GetValuesFIM() {
+			if m, _, err := GetTpMode(&s.Spec); err == nil && m != PathBasedTpMode {
+				continue
+			}
+			// no need to send a message to fs-scanner if there are no file that we need digests
+			if len(s.DigestPaths) == 0 {
+				continue
+			}
+			specPath = append(specPath, s)
+		}
+		// none of the tracing policies are path-based, no need to send a message to fs-scanner
+		if len(specPath) == 0 {
+			return make(map[string]string), nil
+		}
+	}
+
+	algo, err := probeImaEnabled()
+	if err != nil {
+		return nil, fmt.Errorf("failed to probe IMA: %w", err)
+	}
+
+	algoNum, ok := tetragon.DigestAlgo_value[algo]
+	if !ok {
+		return nil, fmt.Errorf("invalid digest algorithm: %s", algo)
+	}
+
+	f := fm.FsScannerContainerDigests{
+		Algo:        algoNum,
+		Tp:          specPath,
+		ContainerID: containerID,
+		MapDir:      option.Config.BpfDir,
+		PodNs:       podNs,
+		PodName:     podName,
+		RootDir:     rootDir,
+		AddToMaps:   addToMaps,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileRPCInitCont)
+		return nil, fmt.Errorf("failed filemetrics.FileTotalErrorsInc: %w", err)
+	}
+	defer client.Close()
+
+	reply := make(map[string]string)
+	if err := client.Call("FsScannerRpc.TracingPolicyContainerFileDigests", &f, &reply); err != nil {
+		return nil, fmt.Errorf("failed FsScannerRpc.TracingPolicyContainerFileDigests: %w", err)
+	}
+	return reply, nil
+}
+
 func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.FileSpec, flags uint32) error {
 	// no need to send a message to fs-scanner for path-based policies
 	if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
@@ -474,7 +533,13 @@ func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.F
 }
 
 func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID, podNs, podName, rootDir string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
-	if len(specPath) == 0 {
+	if len(specPath) == 1 {
+		spec := specPath[0].Spec
+		// no need to send a message to fs-scanner for path-based policies
+		if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
+			return make(map[fileapi.InodeKey]fileapi.InodeVal), nil
+		}
+	} else if len(specPath) == 0 {
 		for _, s := range pol.FileMonitoringTable.GetValuesFIM() {
 			if m, _, err := GetTpMode(&s.Spec); err == nil && m == InodeBasedTpMode {
 				specPath = append(specPath, s)
@@ -940,6 +1005,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		TpName:        policy.TpName(),
 		TpRules:       make(map[int]string),
 		Config:        &config,
+		DigestPaths:   sel.GetDigestPaths(),
+		PathMetadata:  sel.GetPathMetadata(),
 	}
 	// Add rules from file_paths with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
@@ -962,7 +1029,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	allInodes := make(map[fileapi.InodeKey]fileapi.InodeVal)
-	allDigestMaps := make(map[string]string)
+	allDigestMaps := make(map[string][]string) // map from path to list of acceptable digests
 
 	if kprobes.MonitorHostFiles {
 		hostInodes, err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix, false)
@@ -978,7 +1045,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
 			l.WithError(err).Warnf("TracingPolicyPathDigestsFsScanner failed!")
 		} else {
-			mapHelpers.Copy(allDigestMaps, digestMap)
+			for k, v := range digestMap {
+				if _, ok := allDigestMaps[k]; !ok {
+					allDigestMaps[k] = []string{v}
+				} else {
+					allDigestMaps[k] = append(allDigestMaps[k], v)
+				}
+			}
 		}
 	}
 	numHostInodes := len(allInodes)
@@ -998,21 +1071,34 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
-		// no need to send a message to fs-scanner for path-based policies
-		if m, _, err := GetTpMode(&kprobes); err == nil && m != InodeBasedTpMode {
-			continue
-		}
 		s := fm.SpecPinPath{
 			PolicyName: policy.TpName(),
 			PinPath:    e.PinPathPrefix,
 			Spec:       kprobes,
 		}
+
 		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
 			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
 		} else {
 			mapHelpers.Copy(allInodes, containerInodes)
+		}
+
+		s.DigestPaths = sel.GetDigestPaths()
+		s.PathMetadata = sel.GetPathMetadata()
+		digestMap, err := TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
+		if err != nil {
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
+			l.WithError(err).Warnf("TracingPolicyPathDigestsContainerFsScanner failed!")
+		} else {
+			for k, v := range digestMap {
+				if _, ok := allDigestMaps[k]; !ok {
+					allDigestMaps[k] = []string{v}
+				} else {
+					allDigestMaps[k] = append(allDigestMaps[k], v)
+				}
+			}
 		}
 	}
 

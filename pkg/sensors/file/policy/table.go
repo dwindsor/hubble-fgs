@@ -42,6 +42,8 @@ type FileMonitoring struct {
 	TpName        string
 	TpRules       map[int]string
 	Config        *fileapi.FileConfigMapValue
+	DigestPaths   []string
+	PathMetadata  map[string][]fm.DigestPathMetadata
 }
 
 type FimTable struct {
@@ -112,9 +114,11 @@ func (t *FimTable) GetValuesFIM() []fm.SpecPinPath {
 	defer t.mu.Unlock()
 	for _, elem := range t.mp {
 		vals = append(vals, fm.SpecPinPath{
-			PolicyName: elem.TpName,
-			PinPath:    elem.PinPathPrefix,
-			Spec:       *elem.Spec,
+			PolicyName:   elem.TpName,
+			PinPath:      elem.PinPathPrefix,
+			Spec:         *elem.Spec,
+			DigestPaths:  elem.DigestPaths,
+			PathMetadata: elem.PathMetadata,
 		})
 	}
 	return vals

@@ -89,6 +89,39 @@ func (f *FsScannerRpc) TracingPolicyFileDigests(args *fm.FsScannerDigests, reply
 	}
 }
 
+type rpcContainerDigests struct {
+	arg   *fm.FsScannerContainerDigests
+	reply *map[string]string
+	done  chan error
+}
+
+func (r rpcContainerDigests) Run() {
+	err := tracingPolicyContainerFileDigests(r.arg, r.reply)
+	if r.done != nil {
+		r.done <- err
+	}
+}
+
+func (f *FsScannerRpc) TracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply *map[string]string) error {
+	r := rpcContainerDigests{
+		arg:   args,
+		reply: reply,
+		done:  make(chan error),
+	}
+
+	select {
+	case runnerChan <- r:
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op TracingPolicyContainerFileDigests timed out")
+		}
+	default:
+		return fmt.Errorf("runnerChan is full")
+	}
+}
+
 type rpcInit struct {
 	arg   *fm.FsScannerInit
 	reply *map[fileapi.InodeKey]fileapi.InodeVal
@@ -287,6 +320,90 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 		digest := fmt.Sprintf("%x", h.Sum(nil))
 
 		(*reply)[path] = digest
+	}
+
+	return nil
+}
+
+func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply *map[string]string) error {
+	h, err := fm.GetHashAlgo(args.Algo)
+	if err != nil {
+		return err
+	}
+
+	for _, tp := range args.Tp {
+		// check if we care about this namespace
+		if !fm.MatchPodSelector(tp.Spec.PodSelector, args.PodNs, args.PodName) {
+			continue
+		}
+
+		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Debug("fim: Adding digests for files")
+
+		rootDir := args.RootDir
+		if rootDir == "" {
+			rootDir, err = fm.ContainerIdToRootFs(args.ContainerID, containerRuntimeEndpoint)
+			if err != nil {
+				return fmt.Errorf("failed to resolve container rootDir: %w", err)
+			}
+		}
+
+		var handle *ebpf.Map
+		if args.AddToMaps {
+			handle, err = ebpf.LoadPinnedMap(program.PolicyMapPath(args.MapDir, tp.PolicyName, fm.FilenameDigestMapName), nil)
+			if err != nil {
+				return err
+			}
+			defer handle.Close()
+		}
+
+		// enter chroot
+		exit, err := chroot(rootDir)
+		if err != nil {
+			return fmt.Errorf("chroot to %s: %w", rootDir, err)
+		}
+
+		for _, path := range tp.DigestPaths {
+			f, err := os.Open(path)
+			if err != nil {
+				continue // file does not exist, skip that
+			}
+			defer f.Close()
+
+			if _, err := io.Copy(h, f); err != nil {
+				return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
+			}
+			digest := fmt.Sprintf("%x", h.Sum(nil))
+
+			if args.AddToMaps {
+				meta, ok := tp.PathMetadata[path]
+				if !ok {
+					continue // nothing needs to be set here
+				}
+
+				for _, m := range meta {
+					var innerMapID ebpf.MapID
+					if err := handle.Lookup(m.SelIdx, &innerMapID); err != nil {
+						continue
+					}
+
+					var innerMap *ebpf.Map
+					if innerMap, err = ebpf.NewMapFromID(innerMapID); err != nil {
+						return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.NewMapFromID: %w", err)
+					}
+
+					if err := innerMap.Put(fm.CreateDigestKey(digest, args.Algo), m.PathIdx); err != nil {
+						return fmt.Errorf("tracingPolicyContainerFileDigests: innerMap.Put: %w", err)
+					}
+				}
+			} else {
+				(*reply)[path] = digest
+			}
+		}
+
+		// exit from the chroot
+		if err := exit(); err != nil {
+			return fmt.Errorf("exit from chroot: %w", err)
+		}
 	}
 
 	return nil

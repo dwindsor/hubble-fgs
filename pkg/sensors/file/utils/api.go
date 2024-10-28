@@ -13,8 +13,9 @@ package file
 import "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 const (
-	InodeMapName = "hash_map_inode_alloc"
-	LpmMapName   = "lpm_trie_map_alloc"
+	InodeMapName          = "hash_map_inode_alloc"
+	LpmMapName            = "lpm_trie_map_alloc"
+	FilenameDigestMapName = "filename_digest_map"
 
 	ScannerFifoName      = "fs_scanner.sock" // this is used for tetragon-fs-scanner <-> file-sensor communication
 	LocalScannerFifoPath = "/var/run"
@@ -69,6 +70,17 @@ type FsScannerDigests struct {
 	Files []string
 }
 
+type FsScannerContainerDigests struct {
+	Algo        int32
+	Tp          []SpecPinPath
+	MapDir      string
+	ContainerID string
+	PodNs       string
+	PodName     string
+	RootDir     string
+	AddToMaps   bool
+}
+
 type FsScannerRename struct {
 	PolicyName  string
 	Spec        v1alpha1.FileSpec
@@ -80,10 +92,17 @@ type FsScannerRename struct {
 	Flags       uint32
 }
 
+type DigestPathMetadata struct {
+	SelIdx  uint32
+	PathIdx uint32
+}
+
 type SpecPinPath struct {
-	PolicyName string
-	PinPath    string
-	Spec       v1alpha1.FileSpec
+	PolicyName   string
+	PinPath      string
+	Spec         v1alpha1.FileSpec
+	DigestPaths  []string
+	PathMetadata map[string][]DigestPathMetadata
 }
 
 type FsScannerContainerInit struct {
