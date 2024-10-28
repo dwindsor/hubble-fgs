@@ -492,3 +492,105 @@ func TestFileGlobMatch(t *testing.T) {
 
 	assert.Equal(t, capturedEvents, 6, "we expect to have 6 events")
 }
+
+func TestFileDigestMatch(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	_, imaSupport := probeImaEnabled()
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) || (imaSupport != nil) {
+		t.Skip("File monitoring digests type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers and IMA to be enabled")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tus.GetTestSensorManager(ctx, t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-path-digest",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				Config: map[string]string{
+					"enableExecDigests": "true",
+				},
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_EXEC",
+								},
+							},
+						},
+						MatchFilename: []v1alpha1.FilePathGlobSelector{
+							{
+								Operator: "InFileWithDigest",
+								Values: []v1alpha1.GlobPattern{
+									"/usr/bin/touch",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	execFn := func(bin string, args ...string) {
+		cmd := exec.Command(bin, args...)
+		assert.NoError(t, cmd.Run())
+	}
+
+	ops := func() {
+		a := filepath.Join(testDir, "a.txt")
+		execFn("/usr/bin/touch", a) // match
+		execFn("/usr/bin/rm", a)    // no-match
+	}
+
+	events := perfring.RunTestEvents(t, ctx, ops)
+
+	assert.Greater(t, len(events), 0, "we expect to have some events")
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	capturedEvents := 0
+	eventPath := ""
+	for _, ev := range events {
+		if e, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			eventPath = e.Path
+			capturedEvents++
+		}
+	}
+
+	assert.Equal(t, capturedEvents, 1, "we expect to have 1 event")
+	assert.Equal(t, eventPath, "/usr/bin/touch", "we expect the event to be for /usr/bin/touch")
+}
