@@ -1,0 +1,21 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-pattern"
+spec:
+  file:
+    file_config:
+      enableExecDigests: "true" # We need to enable explicitly the digests for exec events
+    file_paths_patterns:
+    - type: AllFileOps
+    selectors:
+    - matchOperations:
+      - operator: "In"
+        values:
+        - "FILE_EXEC" # operator InFileWithDigest works only in exec events so filter out the rest
+      matchFilename:
+      - operator: "InFileWithDigest" # this operator supports only full match
+        values: 
+        - "/usr/bin/ls" # we will get the digest for this executable and then we will compare both the name and the digest
+    monitorHostFiles: true # we enable this in host files
+    podSelector: {} # and in all pods
