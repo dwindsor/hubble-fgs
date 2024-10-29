@@ -116,7 +116,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			},
 		},
 	}
-	data, quota := ConvertToNetworkData(&res)
+	data, quota := ConvertToNetworkData(&res, false)
 	expected := NetworkMonitorData{
 		NetworkKey{
 			SourceNamespace: HostNamespace,

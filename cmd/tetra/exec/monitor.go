@@ -30,7 +30,7 @@ func monitor(interval time.Duration, namespaces []string) error {
 		logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 		return err
 	}
-	currentData, _ := model.ConvertToNetworkData(res)
+	currentData, _ := model.ConvertToNetworkData(res, false)
 
 	ticker := time.NewTicker(interval)
 	for {
@@ -41,7 +41,7 @@ func monitor(interval time.Duration, namespaces []string) error {
 				logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 				return err
 			}
-			newData, quota := model.ConvertToNetworkData(res)
+			newData, quota := model.ConvertToNetworkData(res, false)
 			diff := model.Diff(currentData, newData)
 			quota.Print()
 			diff.Print()

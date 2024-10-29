@@ -23,6 +23,7 @@ type NetworkKey struct {
 	SourceNamespace    string
 	SourceWorkloadKind string
 	SourceWorkloadName string
+	SourceProcessName  string
 	DestinationName    string
 	DestinationPort    uint64
 }
@@ -70,6 +71,27 @@ type NetworkQuotaValue struct {
 	Reset   time.Time
 }
 
+type byteCounter interface {
+	BytesSent() uint64
+	BytesReceived() uint64
+}
+
+func (nmv NetworkMonitorValue) BytesSent() uint64 {
+	return nmv.TXBytes
+}
+
+func (nmv NetworkMonitorValue) BytesReceived() uint64 {
+	return nmv.RXBytes
+}
+
+func (nqv NetworkQuotaValue) BytesSent() uint64 {
+	return nqv.TXBytes
+}
+
+func (nqv NetworkQuotaValue) BytesReceived() uint64 {
+	return nqv.RXBytes
+}
+
 func (nqv NetworkQuotaValue) String() string {
 	now := time.Now()
 	var reset string
@@ -113,15 +135,19 @@ func getDestinationName(dst *tetragon.Destination) string {
 	return dstName
 }
 
-func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destination) NetworkKey {
+func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destination, includeProcess bool) NetworkKey {
 	dstName := getDestinationName(dst)
-	return NetworkKey{
+	nwKey := NetworkKey{
 		SourceNamespace:    process.GetNamespace(),
 		SourceWorkloadName: process.GetWorkload().GetName(),
 		SourceWorkloadKind: process.GetWorkload().GetKind(),
 		DestinationName:    dstName,
 		DestinationPort:    dst.GetPort(),
 	}
+	if includeProcess {
+		nwKey.SourceProcessName = process.GetBinary()
+	}
+	return nwKey
 }
 
 func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
@@ -135,7 +161,7 @@ func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	}
 }
 
-func ConvertToNetworkData(res *tetragon.GetProcessModelResponse) (NetworkMonitorData, NetworkQuotaData) {
+func ConvertToNetworkData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData) {
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
 	for _, process := range res.GetProcesses() {
@@ -143,7 +169,7 @@ func ConvertToNetworkData(res *tetragon.GetProcessModelResponse) (NetworkMonitor
 			if dst.GetStats() == nil {
 				continue
 			}
-			key := getNetworkMonitorKey(process, dst)
+			key := getNetworkMonitorKey(process, dst, includeProcess)
 			if dst.GetPort() != 0 {
 				if _, ok := result[key]; !ok {
 					result[key] = NetworkMonitorValue{}

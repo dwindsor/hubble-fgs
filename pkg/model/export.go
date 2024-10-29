@@ -32,8 +32,9 @@ func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, i
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return
 			}
-			if err := encoder.Encode(res); err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to encode process model as JSON")
+			appModel := ProcessModelToApplicationModel(res)
+			if err := encoder.Encode(appModel); err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to encode application model as JSON")
 				return
 			}
 		case <-ctx.Done():
