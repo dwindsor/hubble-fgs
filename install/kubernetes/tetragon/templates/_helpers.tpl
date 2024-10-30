@@ -1,42 +1,27 @@
 {{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "tetragon.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- define "tetragon-operator.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- define "tetragon-rthooks.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
 Common labels
 */}}
-{{- define "tetragon.labels" -}}
-helm.sh/chart: {{ include "tetragon.chart" . }}
-{{ include "tetragon.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
+{{- define "commonLabels" -}}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: {{ .Chart.Name }}
+{{- end }}
+
+{{- define "tetragon.labels" -}}
+{{ include "tetragon.selectorLabels" . }}
+{{ include "commonLabels" . }}
+app.kubernetes.io/component: agent
 {{- end }}
 {{- define "tetragon-operator.labels" -}}
-helm.sh/chart: {{ include "tetragon-operator.chart" . }}
 {{ include "tetragon-operator.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "commonLabels" . }}
+app.kubernetes.io/component: operator
 {{- end }}
 {{- define "tetragon-rthooks.labels" -}}
-helm.sh/chart: {{ include "tetragon-rthooks.chart" . }}
 {{ include "tetragon-rthooks.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "commonLabels" . }}
+app.kubernetes.io/component: rthooks
 {{- end }}
 
 {{/*
