@@ -116,60 +116,59 @@ dashboards:
     grafana_dashboard: "1"
   # -- Annotations to add to the dashboards ConfigMaps.
   annotations: {}
-# -- EXPERIMENTAL: Install observability stack including Grafana, Prometheus,
-# Prometheus Operator, kube-state-metrics, ServiceMonitors and dashboards. It's
-# intended to quickly set up Tetragon monitoring and/or get value out of
+# -- Install Grafana with dashboards and lightweight Prometheus datasource.
+# It's intended to quickly set up Tetragon monitoring and/or get value out of
 # Tetragon without setting up a custom data pipeline.
 observabilityStack:
   enabled: false
-# Configuration for kube-prometheus-stack subchart, used when observabilityStack.enabled is true.
-# Must not be changed by users - the observability stack is designed as
-# an out-of-the-box solution only.
+# Values for grafana subchart, used when observabilityStack.enabled is true.
 # TODO:
-# Prometheus CRDs installation
 # resources requests & limits
-# use a different dashboards selector to avoid a mix up
-# network tracingpolicy & dashboards + validation that default network policy is disabled
-# review RBAC, e.g. clusterroles shouldn't be needed
-# operator admission webhook shouldn't be needed (but see also https://github.com/prometheus-community/helm-charts/issues/2742)
+# pin image and allow overwriting it
 # @ignored
-kube-prometheus-stack:
-  nameOverride: tetragon-observability
-  defaultRules:
-    create: false
-  alertmanager:
+grafana:
+  # Password for the admin user. Grafana subchart defaults to "admin", but then
+  # Grafana prompts you to change it on the first login because it's insecure.
+  # "tetragon" is a very secure password though, so Grafana is fine with it.
+  adminPassword: tetragon
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
+        # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_config.tpl#L45
+        url: http://{{ include "prometheus.name" . }}:9090
+        access: proxy
+        isDefault: true
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: tetragon-health
+        folder: Tetragon Health
+        disableDeletion: true
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards/tetragon-health
+  dashboardsConfigMaps:
+    # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
+    # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_pod.tpl#L1195
+    # NOTE: Dashboards configmap will be mounted correctly only if it's
+    # installed in the same namespace as Tetragon (see dashboards.namespace
+    # value). If required, we can lift this limitation by installing two
+    # configmaps in case both dashboards.namespace is set and
+    # observabilityStack.enabled is set to true.
+    tetragon-health: "{{ .Release.Name }}-dashboards-health"
+  testFramework:
     enabled: false
-  grafana:
-    defaultDashboardsEnabled: false
-    adminPassword: tetragon
-    serviceMonitor:
-      enabled: false
-  kubernetesServiceMonitors: # we need only cAdvisor metrics
-    enabled: false
-  kube-state-metrics:
-    prometheus:
-      monitor:
-        metricRelabelings:
-          - action: keep
-            # keep only metrics used in dashboards
-            regex: kube_pod_(status_phase|container_status_waiting_reason|container_status_running|container_status_restarts_total)
-            sourceLabels:
-            - __name__
-          - action: keep
-            regex: tetragon.* # keep only metrics about Tetragon
-            sourceLabels:
-            - pod
-  nodeExporter:
-    enabled: false
-  prometheusOperator:
-    serviceMonitor:
-      selfMonitor: false
-  prometheus:
-    serviceMonitor:
-      selfMonitor: false
-    prometheusSpec:
-      storageSpec:
-        emptyDir:
-          sizeLimit: 5Gi
-      retention: 24h
-      retentionSize: 4GiB
+# Values for kube-state-metrics subchart, used when observabilityStack.enabled is true.
+# TODO:
+# resources requests & limits
+# pin image and allow overwriting it
+# @ignored
+kube-state-metrics:
+  # Enable only collectors needed by Tetragon dashboards.
+  collectors:
+    - pods

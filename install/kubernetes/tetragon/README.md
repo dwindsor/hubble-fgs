@@ -8,7 +8,8 @@ Helm chart for Tetragon Enterprise
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 62.7.0 |
+| https://grafana.github.io/helm-charts | grafana | 8.5.* |
+| https://prometheus-community.github.io/helm-charts | kube-state-metrics | 5.25.* |
 
 ## Values
 
@@ -34,7 +35,7 @@ Helm chart for Tetragon Enterprise
 | imagePullPolicy | string | `"IfNotPresent"` |  |
 | imagePullSecrets | list | `[]` |  |
 | nodeSelector | object | `{}` |  |
-| observabilityStack | object | `{"enabled":false}` | EXPERIMENTAL: Install observability stack including Grafana, Prometheus, Prometheus Operator, kube-state-metrics, ServiceMonitors and dashboards. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. |
+| observabilityStack | object | `{"enabled":false}` | Install Grafana with dashboards and lightweight Prometheus datasource. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. |
 | podAnnotations | object | `{}` |  |
 | podLabels | object | `{}` |  |
 | podLabelsOverride | object | `{}` |  |

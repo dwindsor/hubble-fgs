@@ -1,0 +1,10 @@
+{{- if .Values.observabilityStack.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+automountServiceAccountToken: true
+metadata:
+  name: {{ include "prometheus.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+{{- end }}

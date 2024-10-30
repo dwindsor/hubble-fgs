@@ -21,14 +21,13 @@ version: "0.0.0-dev"
 # follow Semantic Versioning. They should reflect the version the application is using.
 appVersion: "0.0.0-dev"
 dependencies:
-  # EXPERIMENTAL: kube-prometheus-stack is required by an experimental feature
-  # and might be removed at any time.
-  # TODO: Renovate it, but we need to be a bit more careful with updates,
-  # because we rely on some specific templates details and we want to avoid
-  # installing unnecessary resources. Ideally all should be covered by CI.
-  # Also on every update we need to persist the Chart.lock file e.g. by
-  # copying it back to the enterprise directory.
-  - name: kube-prometheus-stack
-    version: "62.7.0"
+  # TODO: Renovate, but first we need to sort out how we manage Helm
+  # dependencies. See tetragon/charts Makefile target.
+  - name: grafana
+    version: "8.5.*"
+    repository: https://grafana.github.io/helm-charts
+    condition: observabilityStack.enabled
+  - name: kube-state-metrics
+    version: "5.25.*"
     repository: https://prometheus-community.github.io/helm-charts
     condition: observabilityStack.enabled

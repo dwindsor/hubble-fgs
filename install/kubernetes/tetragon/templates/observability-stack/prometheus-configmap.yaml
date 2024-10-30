@@ -1,0 +1,14 @@
+{{- if .Values.observabilityStack.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prometheus.name" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+data:
+  # config file passed to Prometheus container as --config.file
+  # template it with tpl so that we can use {{ .Release.Name }} etc
+  prometheus.yaml: |
+{{ tpl (.Files.Get "files/prometheus-config.yaml") . | indent 4 }}
+{{- end }}

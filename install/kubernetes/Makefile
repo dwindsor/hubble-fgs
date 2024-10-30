@@ -90,8 +90,6 @@ oss-override: $(OSS_CHART) clean ## Copy Tetragon OSS bits to the EE chart base 
 .PHONY: tetragon/Chart.yaml
 tetragon/Chart.yaml: ## Merge Chart.yaml from OSS and EE
 	$(call merge_yamls,$(CHART_YAML_FILES),$@)
-	# Chart.lock file is manually copied back from tetragon to enterprise directory for now.
-	cp -f $(EE_PATCHES)/Chart.lock $(EE_CHART)/Chart.lock
 
 .PHONY: tetragon/values.yaml
 tetragon/values.yaml: ## Merge values.yaml from OSS and EE
@@ -102,13 +100,25 @@ tetragon/templates: $(CRDS) $(EE_PATCHES) ## Copy EE specific patched into the E
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
 	cp -rf $(EE_PATCHES)/dashboards/. $(EE_CHART)/dashboards
+	cp -rf $(EE_PATCHES)/files/. $(EE_CHART)/files
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
 .PHONY: tetragon/charts
+# TODO: Fix how we manage Chart.lock file. It was manually copied back from
+# tetragon to enterprise directory after the initial `helm dependency update`,
+# and now this target copies it from enterprise to tetragon directory after
+# fetching subcharts, to avoid updates on every `make` run. This means subchart
+# version updates are manual for the time being.
+# TODO: Fetching charts on every `make` run seems an overkill and sometimes
+# fails due to network randomness. We can persist the cache between builds
+# instead. We can also add a retry.
 tetragon/charts: ## Fetch and update the dependency Helm charts
 	$(HELM) repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	$(HELM) repo update prometheus-community
+	$(HELM) repo add grafana https://grafana.github.io/helm-charts
+	$(HELM) repo update grafana
 	$(HELM) dependency update
+	cp -f $(EE_PATCHES)/Chart.lock $(EE_CHART)/Chart.lock
 
 .PHONY: docs
 docs: ## Generate Helm docs for the README.md

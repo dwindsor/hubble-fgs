@@ -1,0 +1,145 @@
+# This configuration was created by following the steps:
+# 1. Configure and deploy kube-prometheus-stack Helm chart
+# 2. Deploy relevant ServiceMonitors
+# 3. Access Prometheus UI (/config) to retrieve Prometheus config
+# 4. Remove unnecessary scrape configs and relabelings
+# 5. Template resources metadata - names, namespaces, labels
+# 6. Final cleanup and comments
+global:
+  evaluation_interval: 30s
+  scrape_interval: 30s
+scrape_configs:
+# Tetragon - scrape health and events metrics
+# TODO: keep only metrics used in dashboards
+- job_name: tetragon
+  honor_labels: true
+  kubernetes_sd_configs:
+  - role: endpoints
+    namespaces:
+      names:
+      - {{ .Release.Namespace }}
+  metrics_path: /metrics
+  relabel_configs:
+  # selector labels: app.kubernetes.io/name and /instance
+  # See: tetragon.selectorLabels in install/kubernetes/tetragon/templates/_helpers.tpl in cilium/tetragon repo.
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_service_label_app_kubernetes_io_name
+    - __meta_kubernetes_service_labelpresent_app_kubernetes_io_name
+    regex: ({{ .Chart.Name }});true
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_service_label_app_kubernetes_io_instance
+    - __meta_kubernetes_service_labelpresent_app_kubernetes_io_instance
+    regex: ({{ .Release.Name }});true
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_endpoint_port_name
+    regex: metrics
+  # keep namespace and pod labels
+  # For health metrics, they will retain Tetragon namespace and pod. For events
+  # metrics though they will be overwritten by labels from the metrics
+  # themselves, i.e. namespace and pod of the observed process.
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  # keep tetragon_pod label
+  # For health metrics it will just duplicate the pod label, but for events
+  # metrics it will retain the Tetragon pod.
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: tetragon_pod
+  # keep node label
+  - source_labels:
+    - __meta_kubernetes_pod_node_name
+    target_label: node
+
+# kube-state-metrics - scrape Kubernetes uptime metrics
+- job_name: kube-state-metrics
+  honor_labels: true
+  kubernetes_sd_configs:
+  - role: endpoints
+    namespaces:
+      names:
+      - {{ .Release.Namespace }}
+  metrics_path: /metrics
+  relabel_configs:
+  # selector labels: app.kubernetes.io/name and /instance
+  # See: https://github.com/prometheus-community/helm-charts/blob/cffb7587030663cfca8872ef8c97e7daa18a0c91/charts/kube-state-metrics/templates/_helpers.tpl#L83-L84
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_service_label_app_kubernetes_io_name
+    - __meta_kubernetes_service_labelpresent_app_kubernetes_io_name
+    regex: (kube-state-metrics);true # name from Chart.yaml
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_service_label_app_kubernetes_io_instance
+    - __meta_kubernetes_service_labelpresent_app_kubernetes_io_instance
+    regex: ({{ .Release.Name }});true
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_endpoint_port_name
+    regex: http
+  # keep node label
+  - source_labels:
+    - __meta_kubernetes_pod_node_name
+    target_label: node
+  metric_relabel_configs:
+  # keep only metrics used in dashboards
+  - action: keep
+    source_labels:
+    - __name__
+    regex: kube_pod_(status_phase|container_status_waiting_reason|container_status_running|container_status_restarts_total|container_resource_requests|container_resource_limits)
+  # keep only metrics about Tetragon
+  # NOTE: In dashboards we hardcode "tetragon" as the pod prefix, so we do it
+  # here too. It would be more correct to use "{{ .Release.Name }}" though.
+  - action: keep
+    source_labels:
+    - pod
+    regex: tetragon.*
+
+# cadvisor (part of kubelet) - memory & CPU metrics
+- job_name: cadvisor
+  honor_labels: true
+  scheme: https
+  tls_config:
+    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    insecure_skip_verify: true
+  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  kubernetes_sd_configs:
+  - role: node
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_node_name]
+    regex: (.+)
+    target_label: __metrics_path__
+    replacement: metrics/cadvisor
+  # keep node label
+  - source_labels:
+    - __meta_kubernetes_node_name
+    target_label: node
+  metric_relabel_configs:
+  # keep only metrics used in dashboards
+  - action: keep
+    source_labels:
+    - __name__
+    regex: container_(memory_working_set_bytes|cpu_usage_seconds_total)
+  # keep only metrics about Tetragon
+  # NOTE: In dashboards we hardcode "tetragon" as the pod prefix, so we do it
+  # here too. It would be more correct to use "{{ .Release.Name }}" though.
+  - action: keep
+    source_labels:
+    - pod
+    regex: tetragon.*
+  # keep only totals for all containers
+  - action: keep
+    source_labels:
+    - container
+    regex: ""
+  # keep only totals for all CPUs
+  - action: keep
+    source_labels:
+    - cpu
+    regex: (|total)
