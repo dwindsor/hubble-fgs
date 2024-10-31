@@ -80,6 +80,7 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 	u16 family = 0;
 	int sk_err = 0;
 	int zero = 0;
+	u16 protocol;
 	uint32_t pid;
 	bool walked;
 	u64 cookie;
@@ -201,6 +202,12 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		probe_read_kernel(config->tuple.daddr, sizeof(config->tuple.daddr),
 				  _(&(sk->__sk_common.skc_v6_daddr)));
 	}
+
+	probe_read_kernel(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
+	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
+		protocol >>= 8;
+	}
+	config->tuple.proto = protocol;
 
 	/* Store the socket if we do not already have a reference for it, even
 	 * if family or protocol couldn't be read.
