@@ -299,7 +299,7 @@ static inline __attribute__((always_inline)) int process_socketmap_rekey(struct 
 	struct endpoint_id_value *value;
 	struct endpoint_id_key idkey;
 
-	if (skb->family != AF_INET6) {
+	if (skb->protocol != bpf_htons(ETH_P_IPV6)) {
 		idkey.addr[0] = skb->remote_ip4;
 		idkey.addr[1] = 0;
 	} else {
