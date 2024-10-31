@@ -257,7 +257,7 @@ spec:
                 - name: EXPORT_IMAGE
                   value: "quay.io/isovalent/hubble-export-stdout:v1.0.4"
                 - name: TETRAGON_RTHOOKS_IMAGE
-                  value: "quay.io/cilium/tetragon-rthooks:v0.3"
+                  value: "quay.io/cilium/tetragon-rthooks:v0.4"
                 - name: TETRAGON_METADATA_IMAGE
                   value: "quay.io/isovalent/hubble-enterprise-metadata:current"
                 - name: TETRAGON_OPERATOR_MANAGE_AGENT
