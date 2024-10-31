@@ -23,6 +23,7 @@ message GetProcessModelRequest {
 	// Namespaces to list processes from. Specify "<host-namespace>" to list
 	// host processes. Leave it empty to list all processes.
 	repeated string namespaces = 1;
+	bool debug = 2;
 }
 
 message Workload {

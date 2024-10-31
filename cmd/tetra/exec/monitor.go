@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/spf13/cobra"
@@ -25,7 +26,10 @@ func monitor(interval time.Duration, namespaces []string) error {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+		Namespaces: namespaces,
+		Debug:      common.Debug,
+	})
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 		return err

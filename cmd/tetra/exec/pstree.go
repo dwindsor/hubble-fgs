@@ -302,7 +302,10 @@ func printGrpcTree() error {
 	if host {
 		namespaces = append(namespaces, model.HostNamespace)
 	}
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+		Namespaces: namespaces,
+		Debug:      common.Debug,
+	})
 	if err != nil || res == nil {
 		logger.GetLogger().WithError(err).Warn("failed to list tracing policies:")
 		return err

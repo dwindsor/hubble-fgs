@@ -126,7 +126,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				if !ok {
 					continue
 				}
-				if ep.Type == endpoint.DnsType {
+				if ep.Type == endpoint.DnsType && req.GetDebug() {
 					ep.Dns = ep.Dns + "<promoted>"
 				}
 
