@@ -76,6 +76,9 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 	__u32 operation = 0;
 	int err = 0;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = generic_chattr(dentry, &err);
 	if (!msg)
 		return err;

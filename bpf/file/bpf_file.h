@@ -995,6 +995,19 @@ static long selectors_cb(u32 index, void *ununsed)
 }
 #endif
 
+// return true if the policy_filter check matche the policy_id
+static inline __attribute__((always_inline)) bool policy_filter_match()
+{
+	struct file_config_map_value *conf;
+	__u32 zero = 0;
+
+	conf = map_lookup_elem(&file_config_map, &zero);
+	if (!conf)
+		return false;
+
+	return policy_filter_check(conf->policy_id);
+}
+
 static inline __attribute__((always_inline)) __u32
 eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len)
 {
@@ -1010,11 +1023,6 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
-		return 0;
-
-	// first check whether the policy is subject (or not) to
-	// the policy filter
-	if (!policy_filter_check(conf->policy_id))
 		return 0;
 
 	// no selectors, post all events
@@ -1586,6 +1594,9 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
+
+	if (!policy_filter_match())
+		return 0;
 
 	if (!file)
 		return -FILE_ERR_FILE_ARG;

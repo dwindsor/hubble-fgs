@@ -25,6 +25,9 @@ file_open(void *ctx, struct file *file)
 	struct dentry *dentry;
 	__u32 open_flags;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

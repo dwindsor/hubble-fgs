@@ -62,6 +62,9 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	__u32 operation = 0, rule_id = 0;
 	struct qstr d_name;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

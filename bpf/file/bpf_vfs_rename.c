@@ -69,6 +69,9 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	__u32 zero = 0;
 	umode_t i_mode;
 
+	if (!policy_filter_match())
+		return 0;
+
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
 		return -FILE_ERR_LOOKUP_CONFIG_MAP;

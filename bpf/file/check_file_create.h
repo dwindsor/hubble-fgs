@@ -18,6 +18,9 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	__u32 operation = 0, rule_id = 0;
 	struct file_config_map_value *conf = 0;
 
+	if (!policy_filter_match())
+		return 0;
+
 	conf = map_lookup_elem(&file_config_map, &zero);
 	if (!conf)
 		return -FILE_ERR_LOOKUP_CONFIG_MAP;

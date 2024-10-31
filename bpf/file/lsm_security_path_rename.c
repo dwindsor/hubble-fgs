@@ -48,6 +48,9 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	int zero = 0;
 	char *path;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = map_lookup_elem(&file_rename_heap_map, &zero);
 	if (!msg)
 		return 0;

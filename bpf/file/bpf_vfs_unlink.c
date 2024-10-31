@@ -20,6 +20,9 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	bool remove_entry = false;
 	__u32 operation = 0;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

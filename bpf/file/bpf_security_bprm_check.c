@@ -25,6 +25,9 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	};
 #endif
 
+	if (!policy_filter_match())
+		return 0;
+
 	file = BPF_CORE_READ(bprm, file);
 	if (!file)
 		return -FILE_ERR_FILE_FROM_BPRM;

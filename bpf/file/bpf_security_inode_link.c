@@ -21,6 +21,9 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	struct inode *old_inode;
 	struct inode_key file_key;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

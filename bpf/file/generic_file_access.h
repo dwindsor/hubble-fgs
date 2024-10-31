@@ -23,6 +23,9 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	};
 	struct io_uring_op_val *val;
 
+	if (!policy_filter_match())
+		return 0;
+
 	if (!file)
 		return -FILE_ERR_FILE_ARG;
 

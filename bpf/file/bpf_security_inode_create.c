@@ -19,6 +19,9 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	__u32 operation = 0, rule_id = 0;
 	struct file_config_map_value *conf;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

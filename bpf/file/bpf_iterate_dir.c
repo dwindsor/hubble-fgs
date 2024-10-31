@@ -17,6 +17,9 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	struct inode_val *file_val = 0;
 	__u32 operation = 0;
 
+	if (!policy_filter_match())
+		return 0;
+
 	if (!file)
 		return -FILE_ERR_FILE_ARG;
 

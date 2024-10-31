@@ -11,6 +11,9 @@ static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const 
 	struct msg_file_ops *msg;
 	struct inode *inode;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;

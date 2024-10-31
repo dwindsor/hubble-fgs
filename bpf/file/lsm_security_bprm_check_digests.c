@@ -18,6 +18,9 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	struct file *file;
 	int err;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg) {
 		err = -FILE_ERR_GET_MSG_HEAP;

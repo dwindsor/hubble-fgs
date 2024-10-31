@@ -11,6 +11,9 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	struct dentry *dentry;
 	int err;
 
+	if (!policy_filter_match())
+		return 0;
+
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;
