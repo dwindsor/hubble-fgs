@@ -61,4 +61,8 @@ git add install/kubernetes/tetragon
 make metrics-docs || echo "Metrics docs generation failed. Please fix the enterprise code and run 'make metrics-docs'."
 git add docs/metrics
 
+# Generate flags docs
+make generate-flags
+git add docs/configuration/tetragon_flags.yaml
+
 git commit -s -F $outf
