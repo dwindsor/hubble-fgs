@@ -879,6 +879,7 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 			return 0;
 
 		len &= (MAX_FILEPATH_SIZE - 1);
+		memset(tmp_path->path, 0, MAX_FILEPATH_SIZE);
 		probe_read_kernel(tmp_path->path, len, path);
 
 		path_map = map_lookup_elem(&filename_path_map, &sel);
