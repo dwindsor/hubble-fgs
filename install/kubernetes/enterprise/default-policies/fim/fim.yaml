@@ -222,6 +222,53 @@ spec:
         file_prefix_suffix:
           prefix: "/home/"
           suffix: "/.zshrc"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.config/fish/config.fish"
+      - type: FilePrefixSuffix
+        file_prefix_suffix:
+          prefix: "/home/"
+          suffix: "/.local/share/fish/fish_history"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.bashrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.bash_profile"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.bash_history"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.inputrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.profile"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.cshrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.history"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.tcshrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.zshenv"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.zprofile"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.zshrc"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.config/fish/config.fish"
+      - type: FileExactMatch
+        file_exact_match:
+          path: "/root/.local/share/fish/fish_history"
       - type: FileExactMatch
         file_exact_match:
           path: "/etc/profile"
@@ -240,6 +287,11 @@ spec:
       - matchBinaries:
           - operator: "NotIn"
             values:
+              - "/bin/ash"
+              - "/bin/bash"
+              - "/bin/sh"
+              - "/bin/tcsh"
+              - "/bin/zsh"
               - "/usr/bin/ash"
               - "/usr/bin/bash"
               - "/usr/bin/csh"
@@ -248,6 +300,7 @@ spec:
               - "/usr/bin/tcsh"
               - "/usr/bin/zsh"
               - "/usr/bin/dash"
+              - "/usr/bin/fish"
         matchOperations:
           - operator: "In"
             values:
