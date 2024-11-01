@@ -55,8 +55,10 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	digest = &msg->digest;
 
 	operation = eval_selectors(action_exec, 0, digest, msg->path.str, msg->path.size);
-	if (!(operation & FILE_OP_POST))
-		return operation;
+	if (!(operation & FILE_OP_POST)) {
+		err = operation;
+		goto lsm_bprm_check_security_ret;
+	}
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
 
@@ -71,6 +73,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		goto lsm_bprm_check_security_error;
 	}
 
+lsm_bprm_check_security_ret:
 	return err & FILE_OP_BLOCK ? -EPERM : 0;
 
 lsm_bprm_check_security_error:
