@@ -109,6 +109,16 @@ func (nqv NetworkQuotaValue) String() string {
 
 type NetworkMonitorData map[NetworkKey]NetworkMonitorValue
 type NetworkQuotaData map[NetworkKey]NetworkQuotaValue
+type ProcessMonitorData map[ProcessKey]ProcessValue
+
+type ProcessKey struct {
+	Namespace    string
+	WorkloadKind string
+	WorkloadName string
+	Name         string
+}
+
+type ProcessValue struct{}
 
 func (nmd NetworkMonitorData) Print() {
 	for key, val := range nmd {
@@ -150,6 +160,15 @@ func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destinat
 	return nwKey
 }
 
+func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
+	return ProcessKey{
+		Namespace:    process.GetNamespace(),
+		WorkloadName: process.GetWorkload().GetName(),
+		WorkloadKind: process.GetWorkload().GetKind(),
+		Name:         process.GetBinary(),
+	}
+}
+
 func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	return NetworkQuotaValue{
 		TXBytes: dst.GetStats().GetTxBytes(),
@@ -161,10 +180,16 @@ func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	}
 }
 
-func ConvertToNetworkData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData) {
+func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
+	proc := ProcessMonitorData{}
 	for _, process := range res.GetProcesses() {
+		if len(process.GetDest()) == 0 {
+			processKey := getProcessMonitorKey(process)
+			proc[processKey] = ProcessValue{}
+			continue
+		}
 		for _, dst := range process.GetDest() {
 			if dst.GetStats() == nil {
 				continue
@@ -184,7 +209,7 @@ func ConvertToNetworkData(res *tetragon.GetProcessModelResponse, includeProcess 
 			}
 		}
 	}
-	return result, quota
+	return result, quota, proc
 }
 
 func Diff(current, new NetworkMonitorData) NetworkMonitorData {

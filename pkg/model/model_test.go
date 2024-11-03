@@ -45,6 +45,10 @@ func TestProcessModelToApplicationModel(t *testing.T) {
 				},
 			},
 			{
+				Namespace: HostNamespace,
+				Binary:    "cat",
+			},
+			{
 				Binary:    "wget",
 				Namespace: "client",
 				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
@@ -98,6 +102,11 @@ func TestProcessModelToApplicationModel(t *testing.T) {
 					},
 				},
 			},
+			{
+				Binary:    "ls",
+				Namespace: "client-a",
+				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
+			},
 		},
 	}
 	appModel := ProcessModelToApplicationModel(&res)
@@ -147,6 +156,9 @@ func TestProcessModelToApplicationModel(t *testing.T) {
           "kind": "Deployment",
           "processes": [
             {
+              "name": "ls"
+            },
+            {
               "name": "nc",
               "connections": [
                 {
@@ -164,6 +176,9 @@ func TestProcessModelToApplicationModel(t *testing.T) {
   ],
   "host": {
     "processes": [
+      {
+        "name": "cat"
+      },
       {
         "name": "curl",
         "connections": [

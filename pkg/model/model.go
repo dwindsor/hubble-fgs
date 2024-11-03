@@ -110,6 +110,21 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 }
 
+func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
+	nsKey := namespaceKey{name: pk.Namespace}
+	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
+	pskey := processKey{name: pk.Name}
+	if _, ok := nsMap[nsKey]; !ok {
+		nsMap[nsKey] = make(workloadMap)
+	}
+	if _, ok := nsMap[nsKey][wlkey]; !ok {
+		nsMap[nsKey][wlkey] = make(processMap)
+	}
+	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
+		nsMap[nsKey][wlkey][pskey] = make(connectionMap)
+	}
+}
+
 func sortNamespace(a, b ApplicationNamespace) int {
 	return strings.Compare(a.Name, b.Name)
 }
@@ -195,10 +210,13 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) ApplicationModelEvent {
 
 func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) ApplicationModelEvent {
 	// Ignore quota info for now.
-	monitor, _ := ConvertToNetworkData(res, true)
+	monitor, _, processes := ConvertToMonitorData(res, true)
 	nsMap := make(namespaceMap)
 	for key, val := range monitor {
 		handleNetworkEvent(nsMap, key, val)
+	}
+	for key, val := range processes {
+		handleProcessEvent(nsMap, key, val)
 	}
 	return namespaceMapToApplicationModel(nsMap)
 }
