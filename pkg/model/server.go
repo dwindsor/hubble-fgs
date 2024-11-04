@@ -88,6 +88,9 @@ type Server struct {
 }
 
 func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+	if !option.Config.EnableProcessTree {
+		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
+	}
 	model := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
