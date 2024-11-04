@@ -1,0 +1,24 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "monitor-bpf-maps"
+  annotations:
+    author: "Isovalent"
+spec:
+  kprobes:
+    # Audit BPF maps Access
+    #
+    # Called during bpf map create
+    # int security_bpf_map_create(struct bpf_map *map)
+    - call: "security_bpf_map_create"
+      syscall: false
+      args:
+        - index: 0
+          type: "bpf_map"
+    # Called during BPF map Access  READ, Write or Delete
+    # int security_bpf_map(struct bpf_map *map, fmode_t fmode)
+    - call: "security_bpf_map"
+      syscall: false
+      args:
+        - index: 0
+          type: "bpf_map"
