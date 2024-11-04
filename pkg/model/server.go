@@ -30,6 +30,9 @@ const (
 	processTreeUUIDMap     = "process_tree_uid_binary_map"
 	destinationEndpointMap = "destination_endpoint_map"
 	HostNamespace          = "<host-namespace>"
+	HostWorkload           = "<host-workload>"
+	WorkloadDestinations   = "<wl-destinations>"
+	HostKind               = "<host-kind>"
 )
 
 type binary struct {
@@ -261,8 +264,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			kind = nsId.Kind
 		} else {
 			nsPath = HostNamespace
-			wlPath = "<host-workload>"
-			kind = "<host-kind>"
+			wlPath = HostWorkload
+			kind = HostKind
 		}
 		if len(namespaces) > 0 && !slices.Contains(namespaces, nsPath) {
 			continue
@@ -291,8 +294,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			kind = nsId.Kind
 		} else {
 			ns = HostNamespace
-			wl = "<host-workload>"
-			kind = "<host-kind>"
+			wl = HostWorkload
+			kind = HostKind
 		}
 		if len(namespaces) > 0 && !slices.Contains(namespaces, ns) {
 			continue

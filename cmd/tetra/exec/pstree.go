@@ -210,7 +210,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			wlProcesses := wlCollections[key]
 
 			if wlStr == "" {
-				wlStr = "<host-workload>"
+				wlStr = model.HostWorkload
 			}
 
 			wlTree := nsTree.AddBranch(wlStr)
@@ -220,7 +220,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 				if p.Binary != "" {
 					path = fmt.Sprintf("%s:%s", p.Parent, p.Binary)
 				} else {
-					path = fmt.Sprintf("<wl-destinations>")
+					path = fmt.Sprintf(model.WorkloadDestinations)
 				}
 				binaryBranch := wlTree.AddBranch(path)
 
