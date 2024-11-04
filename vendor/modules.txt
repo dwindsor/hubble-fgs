@@ -715,7 +715,7 @@ github.com/containerd/typeurl/v2
 # github.com/containernetworking/plugins v1.6.0
 ## explicit; go 1.23
 github.com/containernetworking/plugins/pkg/ns
-# github.com/containers/storage v1.55.0
+# github.com/containers/storage v1.55.1-0.20241015045236-02f1845caa18
 ## explicit; go 1.21
 github.com/containers/storage/pkg/fileutils
 github.com/containers/storage/pkg/idtools
@@ -731,7 +731,7 @@ github.com/coreos/go-systemd/v22/journal
 # github.com/cpuguy83/go-md2man/v2 v2.0.4
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/cri-o/cri-o v1.31.1
+# github.com/cri-o/cri-o v1.31.2
 ## explicit; go 1.22.0
 github.com/cri-o/cri-o/pkg/types
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
