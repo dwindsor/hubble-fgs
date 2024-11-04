@@ -1,0 +1,33 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "monitor-bpf-programs"
+  annotations:
+    author: "Isovalent"
+spec:
+  kprobes:
+    #
+    # Audit BPF Programs Access
+    #
+    # Bpf verifier check during program loads
+    # int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
+    - call: "bpf_check"
+      syscall: false
+      args:
+        - index: 1
+          type: "bpf_attr"
+    # Attach BPF programs and Dettach BPF programs
+    - call: "security_bpf"
+      syscall: false
+      args:
+        - index: 0
+          type: "bpf_cmd"
+        - index: 1
+          type: "bpf_attr"
+      selectors:
+      - matchArgs:
+        - index: 0
+          operator: "Equal"
+          values:
+          - "8" # BPF_PROG_ATTACH
+          - "9" # BPF_PROG_DETACH
