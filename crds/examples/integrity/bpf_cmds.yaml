@@ -1,0 +1,14 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "monitor-bpf-commands"
+  annotations:
+    author: "Isovalent"
+spec:
+  kprobes:
+    # Audit all BPF commands
+    - call: "security_bpf"
+      syscall: false
+      args:
+        - index: 0
+          type: "bpf_cmd"
