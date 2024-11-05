@@ -17,6 +17,7 @@ syntax = "proto3";
 package tetragon;
 
 import "tetragon/tetragon.proto";
+import "tetragon/fgs.proto";
 import "google/protobuf/timestamp.proto";
 
 message GetProcessModelRequest {
@@ -46,6 +47,7 @@ message Destination {
 	tetragon.Pod destination_pod = 2;
 	uint64 Port = 3;
 	DestinationStats stats = 4;
+	tetragon.Service destination_service = 5;
 }
 
 message ProcessModel {
