@@ -26,6 +26,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 )
 
+const (
+	cgroupRateMaxEntries = 32768 // this value could be fine tuned
+)
+
 var (
 	basePolicy = "__base__"
 
@@ -113,7 +117,7 @@ var (
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* Cgroup rate data, attached to execve sensor */
-	CgroupRateMap        = program.MapBuilder("cgroup_rate_map", Execve)
+	CgroupRateMap        = program.MapBuilder("cgroup_rate_map", Execve, ExecveV53, ExecveV61, Exit, Fork, CgroupRmdir)
 	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
 
 	/* In BPF memory aggregated data */
@@ -262,4 +266,12 @@ func ConfigureMapSizes() {
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+}
+
+func ConfigCgroupRate(opts *option.CgroupRate) {
+	if opts.Events == 0 || opts.Interval == 0 {
+		return
+	}
+
+	CgroupRateMap.SetMaxEntries(cgroupRateMaxEntries)
 }

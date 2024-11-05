@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
-	ossBase "github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -201,7 +200,7 @@ func deleteOldBpfDir(path string) {
 }
 
 func loadInitialSensor(ctx context.Context) error {
-	ossBase.ConfigCgroupRate(&option.Config.CgroupRate)
+	base.ConfigCgroupRate(&option.Config.CgroupRate)
 	mgr := observer.GetSensorManager()
 	initialSensor := base.GetInitialSensor()
 	if err := mgr.AddSensor(ctx, initialSensor.Name, initialSensor); err != nil {
