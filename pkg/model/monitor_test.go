@@ -241,3 +241,61 @@ func TestDiff(t *testing.T) {
 			RXBytes: 20000,
 		}}, diff)
 }
+
+func Test_sortNetworkKeys(t *testing.T) {
+	a := NetworkKey{
+		SourceNamespace:    "a",
+		SourceWorkloadKind: "a",
+		SourceWorkloadName: "a",
+		SourceProcessName:  "a",
+		DestinationName:    "a",
+		DestinationPort:    1234,
+	}
+	b := a
+	// namespace
+	assert.Zero(t, sortNetworkKeys(a, b))
+	b.SourceNamespace = "b"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.SourceNamespace = "A"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.SourceNamespace = a.SourceNamespace
+
+	// workload kind
+	b.SourceWorkloadKind = "b"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.SourceWorkloadKind = "A"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.SourceWorkloadKind = a.SourceWorkloadKind
+
+	// workload name
+	b.SourceWorkloadName = "b"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.SourceWorkloadName = "A"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.SourceWorkloadName = a.SourceWorkloadName
+
+	// process name
+	b.SourceProcessName = "b"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.SourceProcessName = "A"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.SourceProcessName = a.SourceProcessName
+
+	// destination name
+	b.DestinationName = "b"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.DestinationName = "A"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.DestinationName = "9.9.9.9"
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	a.DestinationName = "10.10.10.10"
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.DestinationName = a.DestinationName
+
+	// destination port
+	b.DestinationPort = 1235
+	assert.Less(t, sortNetworkKeys(a, b), 0)
+	b.DestinationPort = 1233
+	assert.Greater(t, sortNetworkKeys(a, b), 0)
+	b.DestinationPort = a.DestinationPort
+}

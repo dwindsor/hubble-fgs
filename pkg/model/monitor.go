@@ -12,6 +12,9 @@ package model
 
 import (
 	"fmt"
+	"maps"
+	"net/netip"
+	"slices"
 	"strings"
 	"time"
 
@@ -120,9 +123,45 @@ type ProcessKey struct {
 
 type ProcessValue struct{}
 
+func sortNetworkKeys(a, b NetworkKey) int {
+	if result := strings.Compare(a.SourceNamespace, b.SourceNamespace); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceWorkloadKind, b.SourceWorkloadKind); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
+		return result
+	}
+	ipA, errA := netip.ParseAddr(a.DestinationName)
+	ipB, errB := netip.ParseAddr(b.DestinationName)
+	if errA == nil && errB == nil {
+		if result := ipA.Compare(ipB); result != 0 {
+			return result
+		}
+	} else if errA != nil && errB == nil {
+		return -1
+	} else if errA == nil {
+		return 1
+	} else {
+		if result := strings.Compare(a.DestinationName, b.DestinationName); result != 0 {
+			return result
+		}
+	}
+	if a.DestinationPort >= b.DestinationPort {
+		return int(a.DestinationPort - b.DestinationPort)
+	}
+	return -1
+}
+
 func (nmd NetworkMonitorData) Print() {
-	for key, val := range nmd {
-		fmt.Println(key, val)
+	keys := slices.Collect(maps.Keys(nmd))
+	slices.SortFunc(keys, sortNetworkKeys)
+	for _, key := range keys {
+		fmt.Println(key, nmd[key])
 	}
 }
 
