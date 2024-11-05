@@ -264,6 +264,16 @@ func printJSONTree(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
+func printModel(res *tetragon.GetProcessModelResponse) error {
+	appModel := model.ProcessModelToApplicationModel(res)
+	out, err := json.Marshal(appModel)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
+}
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -316,6 +326,8 @@ func printGrpcTree() error {
 		return printTree(res)
 	case "json":
 		return printJSONTree(res)
+	case "model":
+		return printModel(res)
 	default:
 		return fmt.Errorf("invalid output format: %s", output)
 	}
@@ -339,7 +351,7 @@ func New() *cobra.Command {
 	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
 		"List processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
 	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
-	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json")
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
 	flags.BoolVar(&host, "host", false, "Include the tree for host")
 	viper.BindPFlags(flags)
 
