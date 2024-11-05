@@ -2396,5 +2396,4 @@ sigs.k8s.io/yaml/goyaml.v2
 # github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 # github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 # go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.16
-# gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 # go.universe.tf/metallb => github.com/cilium/metallb v0.1.1-0.20220829170633-5d7dfb1129f7

@@ -90,9 +90,6 @@ replace (
 	github.com/cilium/tetragon-oss/pkg/k8s => ../../modules/tetragon-oss/pkg/k8s
 	// Set EE pkg/k8s to be this module
 	github.com/cilium/tetragon/pkg/k8s => ./
-
-	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
-	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 )
 
 // This replace directive has to be in sync with with github.com/cilium/cilium
