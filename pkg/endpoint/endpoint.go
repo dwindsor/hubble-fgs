@@ -7,6 +7,8 @@ import (
 	"sync"
 	"unsafe"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -25,6 +27,7 @@ const (
 	DnsType     Type = 1
 	PodType     Type = 2
 	IpType      Type = 3
+	ServiceType Type = 4
 )
 
 type Endpoint struct {
@@ -154,6 +157,43 @@ func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
 		return 0, err
 	}
 	return value.Id, nil
+}
+
+func (c *Cache) AddIpServiceMap(epService *corev1.Service) {
+	var (
+		key   endpointKey
+		value endpointValue
+	)
+
+	ep := Endpoint{
+		Type:      ServiceType,
+		Namespace: epService.ObjectMeta.Namespace,
+		Name:      epService.ObjectMeta.Name,
+	}
+
+	// Notice pods may reuse IPs in this case we just update the
+	// ip->id entry. However we keep the ID->EP mapping for later
+	// use either from gRPC reporting and/or future Pod mappings.
+	if idExists, ok := c.revCache.Get(ep); ok {
+		value.Id = idExists
+	} else {
+		value.Id = c.insertNewEndpoint(ep)
+	}
+
+	// We could do external IPs as well if needed.
+	for _, ip := range epService.Spec.ClusterIPs {
+		ipEncoded4 := net.ParseIP(ip).To4()
+		if ipEncoded4 != nil {
+			key.Addr[0] = uint64(binary.LittleEndian.Uint32(ipEncoded4[0:]))
+			key.Addr[1] = 0
+		} else {
+			continue
+		}
+		if err := c.endpointMap.Update(key, value, 0); err != nil {
+			logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
+			continue
+		}
+	}
 }
 
 func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {

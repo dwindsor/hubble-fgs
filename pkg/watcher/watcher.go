@@ -97,6 +97,29 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 	// if feature is not enabled.
 	c := endpoint.Get()
 	if c != nil {
+		serviceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				switch s := obj.(type) {
+				case *corev1.Service:
+					c := endpoint.Get()
+					logger.GetLogger().Debug("Add Service: %v", s)
+					c.AddIpServiceMap(s)
+				}
+			},
+			UpdateFunc: func(old interface{}, _ interface{}) {
+				switch s := old.(type) {
+				case *corev1.Service:
+					logger.GetLogger().Debug("Update Service: %v", s)
+				}
+			},
+			DeleteFunc: func(old interface{}) {
+				switch s := old.(type) {
+				case *corev1.Service:
+					logger.GetLogger().Debug("Delete Service: %v", s)
+				}
+			},
+		})
+
 		podInfoInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				switch t := obj.(type) {

@@ -175,6 +175,15 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
+		case endpoint.ServiceType:
+			d = &tetragon.Destination{
+				DestinationService: &tetragon.Service{
+					Namespace: ep.Namespace,
+					Name:      ep.Name,
+				},
+				Port:  dstVal.Port,
+				Stats: stats,
+			}
 		case endpoint.PodType:
 			d = &tetragon.Destination{
 				DestinationPod: &tetragon.Pod{
