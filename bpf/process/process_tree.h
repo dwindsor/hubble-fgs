@@ -139,18 +139,20 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 	struct tetragon_conf *conf;
 	struct task_struct *task;
 	struct cgroup *cgrp;
+	__u64 cgrpfs_magic = 0;
 	__u32 error_flags;
 
 	conf = map_lookup_elem(&tg_conf_map, &zero);
 	if (conf) {
 		/* Select which cgroup version */
-		subsys_idx = conf->tg_cgrp_subsys_idx;
+		cgrpfs_magic = conf->cgrp_fs_magic;
+		subsys_idx = conf->tg_cgrpv1_subsys_idx;
 	}
 
 	task = (struct task_struct *)get_current_task();
 
 	// NB: error_flags are ignored for now
-	cgrp = get_task_cgroup(task, subsys_idx, &error_flags);
+	cgrp = get_task_cgroup(task, cgrpfs_magic, subsys_idx, &error_flags);
 	if (!cgrp)
 		return 0;
 

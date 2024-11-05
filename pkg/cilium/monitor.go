@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/defaults"
-	"github.com/cilium/cilium/pkg/inctimer"
 	"github.com/cilium/cilium/pkg/monitor"
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
 	"github.com/cilium/cilium/pkg/monitor/payload"
@@ -40,7 +39,7 @@ func handleMonitorSocket(ctx context.Context, log logrus.FieldLogger, ciliumStat
 
 // HandleMonitorSocket connects to the monitor socket and consumes monitor events.
 func HandleMonitorSocket(ctx context.Context, ciliumState *cilium.State) {
-	timer, timerDone := inctimer.New()
+	timer, timerDone := New()
 	defer timerDone()
 	t := 10 * time.Second
 	log := logger.GetLogger()

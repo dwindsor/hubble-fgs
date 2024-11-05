@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	ossBase "github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -199,6 +200,16 @@ func deleteOldBpfDir(path string) {
 	log.Infof("Removed bpf instance: %s", path)
 }
 
+func loadInitialSensor(ctx context.Context) error {
+	ossBase.ConfigCgroupRate(&option.Config.CgroupRate)
+	mgr := observer.GetSensorManager()
+	initialSensor := base.GetInitialSensor()
+	if err := mgr.AddSensor(ctx, initialSensor.Name, initialSensor); err != nil {
+		return err
+	}
+	return mgr.EnableSensor(ctx, initialSensor.Name)
+}
+
 func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -362,20 +373,7 @@ func hubbleFGSExecute() error {
 		}
 	}()
 
-	// start sensor manager, and have it wait on sensorMgWait until we load
-	// the base sensor. note that this means that calling methods on the
-	// manager will block so they will have to either be executed in a
-	// goroutine or after we close the sensorMgWait channel to avoid
-	// deadlock.
-	sensorMgWait := make(chan struct{})
-	defer func() {
-		// if we fail before closing the channel, close it so that
-		// the sensor manager routine is unblocked.
-		if sensorMgWait != nil {
-			close(sensorMgWait)
-		}
-	}()
-	if err := obs.InitSensorManager(sensorMgWait); err != nil {
+	if err := obs.InitSensorManager(); err != nil {
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
 
@@ -471,6 +469,16 @@ func hubbleFGSExecute() error {
 		return err
 	}
 
+	// Load initial sensor before we start the server,
+	// so it's there before we allow to load policies.
+	if err = loadInitialSensor(ctx); err != nil {
+		return err
+	}
+	observer.GetSensorManager().LogSensorsAndProbes(ctx)
+	defer func() {
+		observer.RemoveSensors(ctx)
+	}()
+
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
@@ -506,25 +514,9 @@ func hubbleFGSExecute() error {
 
 	obs.LogPinnedBpf(observerDir)
 
-	// Load default base sensors
-	initialSensor := base.GetInitialSensor()
-	if err := initialSensor.Load(observerDir); err != nil {
-		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
-	}
-	defer func() {
-		initialSensor.Unload()
-	}()
-
 	cgrouprate.NewCgroupRate(ctx, pm, base.CgroupRateMap, &option.Config.CgroupRate)
 	cgrouprate.Config(base.CgroupRateOptionsMap)
 
-	// now that the base sensor was loaded, we can start the sensor manager
-	close(sensorMgWait)
-	sensorMgWait = nil
-	observer.GetSensorManager().LogSensorsAndProbes(ctx)
-	defer func() {
-		observer.RemoveSensors(ctx)
-	}()
 	// start the process cache cleaner
 	if enterpriseOption.Config.ProcessCacheStaleInterval.Nanoseconds() <= 0 {
 		return fmt.Errorf("process-cache-state-interval must be > 0")

@@ -66,7 +66,7 @@ func TestFileSuffixPattern(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadSensor(t, base.GetInitialSensor())
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(ctx, t)
+	sm := tus.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -297,7 +297,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadSensor(t, base.GetInitialSensor())
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(ctx, t)
+	sm := tus.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -407,7 +407,7 @@ func TestFileGlobMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadSensor(t, base.GetInitialSensor())
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(ctx, t)
+	sm := tus.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -512,7 +512,7 @@ func TestFileDigestMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadSensor(t, base.GetInitialSensor())
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(ctx, t)
+	sm := tus.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)

@@ -358,7 +358,7 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 	processCacheSize := 32768
 	dataCacheSize := 1024
 
-	if err := obs.InitSensorManager(nil); err != nil {
+	if err := obs.InitSensorManager(); err != nil {
 		return err
 	}
 
@@ -366,7 +366,6 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 	// this up and remove/hide the global variable.
 	sensorManager := observer.GetSensorManager()
 	tb.Cleanup(func() {
-		sensorManager.StopSensorManager(ctx)
 		observer.ResetSensorManager()
 	})
 

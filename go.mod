@@ -7,9 +7,9 @@ toolchain go1.23.1
 require (
 	github.com/aws/aws-sdk-go-v2 v1.32.3
 	github.com/aws/aws-sdk-go-v2/config v1.28.1
-	github.com/cilium/cilium v1.17.0-pre.1
+	github.com/cilium/cilium v1.17.0-pre.2
 	github.com/cilium/ebpf v0.16.0
-	github.com/cilium/lumberjack/v2 v2.3.0
+	github.com/cilium/lumberjack/v2 v2.4.0
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
@@ -38,7 +38,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/sryoya/protorand v0.0.0-20240429201223-e7440656b2a4
 	github.com/stretchr/testify v1.9.0
-	github.com/vishvananda/netlink v1.3.0
+	github.com/vishvananda/netlink v1.3.1-0.20241022031324-976bd8de7d81
 	github.com/vishvananda/netns v0.0.4
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
@@ -87,9 +87,9 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bombsimon/logrusr/v4 v4.1.0 // indirect
 	github.com/cilium/dns v1.1.51-0.20240603182237-af788769786a // indirect
-	github.com/cilium/hive v0.0.0-20240926131619-aa37668760f2 // indirect
+	github.com/cilium/hive v0.0.0-20241021113747-bb8f3c0bede4 // indirect
 	github.com/cilium/proxy v0.0.0-20240909042906-ae435a5bef38 // indirect
-	github.com/cilium/statedb v0.3.0 // indirect
+	github.com/cilium/statedb v0.3.2 // indirect
 	github.com/cilium/stream v0.0.0-20240816054136-71321e385273 // indirect
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/cncf/xds/go v0.0.0-20240905190251-b4127c9b8d78 // indirect
@@ -127,6 +127,7 @@ require (
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mackerelio/go-osstat v0.2.5 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
@@ -152,10 +153,10 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 // indirect
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
-	go.opentelemetry.io/otel v1.30.0 // indirect
-	go.opentelemetry.io/otel/metric v1.30.0 // indirect
+	go.opentelemetry.io/otel v1.31.0 // indirect
+	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.30.0 // indirect
-	go.opentelemetry.io/otel/trace v1.30.0 // indirect
+	go.opentelemetry.io/otel/trace v1.31.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
@@ -163,7 +164,7 @@ require (
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
@@ -171,8 +172,8 @@ require (
 	k8s.io/component-base v0.31.2 // indirect
 	k8s.io/cri-api v0.31.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
-	sigs.k8s.io/gateway-api v1.2.0-rc1.0.20240923191000-5c5fc388829d // indirect
-	sigs.k8s.io/mcs-api v0.1.1-0.20240919125245-7bbb5990134a // indirect
+	sigs.k8s.io/gateway-api v1.2.0 // indirect
+	sigs.k8s.io/mcs-api v0.1.1-0.20241002142749-eff1ba8c3ab2 // indirect
 )
 
 require (
