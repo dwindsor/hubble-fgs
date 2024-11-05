@@ -1,7 +1,7 @@
 # cel.dev/expr v0.16.0
 ## explicit; go 1.18
 cel.dev/expr
-# cloud.google.com/go/auth v0.9.9
+# cloud.google.com/go/auth v0.10.0
 ## explicit; go 1.21
 cloud.google.com/go/auth
 cloud.google.com/go/auth/credentials
@@ -16,8 +16,8 @@ cloud.google.com/go/auth/internal/credsfile
 cloud.google.com/go/auth/internal/jwt
 cloud.google.com/go/auth/internal/transport
 cloud.google.com/go/auth/internal/transport/cert
-# cloud.google.com/go/auth/oauth2adapt v0.2.4
-## explicit; go 1.20
+# cloud.google.com/go/auth/oauth2adapt v0.2.5
+## explicit; go 1.21
 cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.5.2
 ## explicit; go 1.21
@@ -1528,7 +1528,7 @@ golang.org/x/tools/txtar
 # gomodules.xyz/jsonpatch/v2 v2.4.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.203.0
+# google.golang.org/api v0.204.0
 ## explicit; go 1.21
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
@@ -1542,10 +1542,10 @@ google.golang.org/api/option/internaloption
 google.golang.org/api/sheets/v4
 google.golang.org/api/transport/http
 google.golang.org/api/transport/http/internal/propagation
-# google.golang.org/genproto v0.0.0-20241015192408-796eee8c2d53
+# google.golang.org/genproto v0.0.0-20241021214115-324edc3d5d38
 ## explicit; go 1.21
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9
+# google.golang.org/genproto/googleapis/api v0.0.0-20241015192408-796eee8c2d53
 ## explicit; go 1.21
 google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
