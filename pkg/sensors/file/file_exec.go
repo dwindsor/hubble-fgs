@@ -72,7 +72,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 		if len(h.prog) != 1 {
 			return nil, fmt.Errorf("FileExecMonitoring has more than one function prototypes per hook")
 		}
-		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection})
+		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection, []MapInfo{}})
 	}
 
 	selState, err := fm.InitKernelExecSelectorState(spec.FileExecMonitoring.Selectors)

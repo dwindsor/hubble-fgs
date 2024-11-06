@@ -122,6 +122,7 @@ type FimHook struct {
 
 type FimProg struct {
 	tp, name, progName, progSection string
+	maps                            []MapInfo
 }
 
 var (
@@ -565,26 +566,6 @@ var (
 		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
 		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
 		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify", [][]MapInfo{{{"fsnotify_created_files_map", SharedMap}}, {{"file_errors_map", SharedMap}}}}}},
-	}
-
-	SharedMaps = [...]string{
-		"mkdir_retprobe_map",
-		"rename_retprobe_map",
-		"spr_retprobe_map",
-		"vr_retprobe_map",
-		"lpm_trie_map_alloc",
-		"hash_map_inode_alloc",
-		"tg_mb_sel_opts",
-		"tg_mb_paths",
-		"file_ops_maps",
-		"file_namespaces_map",
-		"file_capabilities_map",
-		"file_digests_maps",
-		"file_actions_map",
-		"file_config_map",
-		"file_errors_map",
-		"exact_match_map_alloc",
-		"file_system_type_map",
 	}
 )
 
@@ -1449,71 +1430,76 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				"PATH_BASED_MATCHER": uint32(pathMatcher),
 			}
 		}
-		isPathBased := checkReWrite != nil
 
 		progs = append(progs, load)
 
-		load.MapLoad = []*program.MapLoad{
-			{
-				Index: 0,
-				Name:  "lpm_trie_map_alloc",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					for _, str := range kprobes.PathsExclude {
-						if err := addFilters(m, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
-							return fmt.Errorf("failed to add ExcludePath: %w", err)
-						}
+		for _, m := range h.maps {
+			if m.tp == SkipMap || m.tp == PrivateMap || m.tp == BaseMap {
+				// nothing to do on those type of maps
+				continue
+			}
+
+			// shared maps here
+			m := program.MapBuilderPolicy(m.name, load)
+
+			// custom max entries setup
+			var loadMapFunc func(_ *ebpf.Map, _ string, _ uint32) error
+			switch {
+			case m.Name == "tg_mb_paths":
+				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(outerMap *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					return fm.PopulateMatchBinariesPathsMaps(sel, pinPathPrefix, outerMap)
+				}
+			case m.Name == "tg_mb_sel_opts":
+				m.SetMaxEntries(maxSelectors)
+				m.SetMaxEntries(int(config.MaxWatchedInodes))
+				loadMapFunc = func(outerMap *ebpf.Map, _ string, _ uint32) error {
+					return fm.PopulateMatchBinariesMaps(sel, outerMap)
+				}
+			case m.Name == "file_ops_maps":
+				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileOpsMap(m, sel, pinPathPrefix); err != nil {
+						return fmt.Errorf("file_ops_maps: %w", err)
 					}
-					for i, p := range kprobes.PathsPatterns {
-						if p.Type == "FilePrefixSuffix" {
-							if err := addFilters(m, p.FilePrefixSuffix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
-								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
-							}
-						} else if p.Type == "PathPrefix" {
-							if err := addFilters(m, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
-								return fmt.Errorf("failed to add WatchPath: %w", err)
-							}
-						} else if p.Type == "FileExactMatch" {
-							if err := addFilters(m, filepath.Dir(p.FileExactMatch.Path), fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
-								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
-							}
+					return nil
+				}
+			case m.Name == "file_digests_maps":
+				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(sel)))
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileDigestsMap(m, sel, pinPathPrefix); err != nil {
+						return fmt.Errorf("file_digests_maps: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "hash_map_inode_alloc":
+				m.SetMaxEntries(int(config.MaxWatchedInodes))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					for k, v := range allInodes {
+						if err := m.Update(k, v, 0); err != nil {
+							return err
 						}
 					}
 					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "patterns_map_alloc",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					for i, p := range kprobes.PathsPatterns {
-						if p.Type == "FilePrefixSuffix" {
-							key := uint32(i)
-							val := fileapi.PatternValue{
-								PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
-								SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
-								Action:    fm.FilterMatch,
-								Rule:      uint32(i),
-							}
-
-							if val.PrefixLen > 256 || val.SuffixLen > 128 {
-								return fmt.Errorf("max prefix size is 256 characters and max suffix size is 128 characters: prefix:[%s], suffix:[%s]", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
-							}
-
-							copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
-							copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
-
-							if err := m.Update(&key, &val, ebpf.UpdateAny); err != nil {
-								return fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
-							}
+				}
+			case m.Name == "exact_match_map_alloc":
+				m.SetMaxEntries(int(exactFilePathMatchSize))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					for k, v := range exactFilePathMatch {
+						key := fileapi.FullPath{}
+						copy(key.Path[:], []byte(k))
+						if err := m.Update(key, v, 0); err != nil {
+							return err
 						}
 					}
 					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_system_type_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "file_system_type_map":
+				m.SetMaxEntries(numFileSystemTypes)
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FileSystemType" {
 							for _, fsName := range p.FileSystemType.Names {
@@ -1529,143 +1515,43 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 						}
 					}
 					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "hash_map_inode_alloc",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					for k, v := range allInodes {
-						if err := m.Update(k, v, 0); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "exact_match_map_alloc",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					for k, v := range exactFilePathMatch {
-						key := fileapi.FullPath{}
-						copy(key.Path[:], []byte(k))
-						if err := m.Update(key, v, 0); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "tg_mb_sel_opts",
-				Load: func(outerMap *ebpf.Map, _ string, _ uint32) error {
-					return fm.PopulateMatchBinariesMaps(sel, outerMap)
-				},
-			},
-			{
-				Index: 0,
-				Name:  "tg_mb_paths",
-				Load: func(outerMap *ebpf.Map, pinPathPrefix string, _ uint32) error {
-					return fm.PopulateMatchBinariesPathsMaps(sel, pinPathPrefix, outerMap)
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_ops_maps",
-				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
-					if err := fm.GenerateFileOpsMap(m, sel, pinPathPrefix); err != nil {
-						return fmt.Errorf("file_ops_maps: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_digests_maps",
-				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
-					if err := fm.GenerateFileDigestsMap(m, sel, pinPathPrefix); err != nil {
-						return fmt.Errorf("file_digests_maps: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_namespaces_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					if err := fm.GenerateFileNamespacesMap(m, sel); err != nil {
-						return fmt.Errorf("file_namespaces_map: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_capabilities_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					if err := fm.GenerateFileCapabilitiesMap(m, sel); err != nil {
-						return fmt.Errorf("file_capabilities_map: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_rename_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
-						return fmt.Errorf("file_rename_map: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_open_flags_map",
-				Load: func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
-					if err := fm.GenerateFileOpenFlagsMap(m, sel, pinPathPrefix); err != nil {
-						return fmt.Errorf("file_open_flags_map: %w", err)
-					}
-					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_actions_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "file_actions_map":
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileActionsMap(m, sel); err != nil {
 						return fmt.Errorf("file_actions_map: %w", err)
 					}
 					return nil
-				},
-			},
-			{
-				Index: 0,
-				Name:  "file_config_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
-					return m.Update(uint32(0), config, ebpf.UpdateAny)
-				},
-			},
-		}
-
-		if isPathBased {
-			load.MapLoad = append(load.MapLoad, &program.MapLoad{
-				Index: 0,
-				Name:  "glob_patterns_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "file_namespaces_map":
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					if err := fm.GenerateFileNamespacesMap(m, sel); err != nil {
+						return fmt.Errorf("file_namespaces_map: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "file_capabilities_map":
+				m.SetMaxEntries(maxSelectors)
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					if err := fm.GenerateFileCapabilitiesMap(m, sel); err != nil {
+						return fmt.Errorf("file_capabilities_map: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "glob_patterns_map":
+				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GeneratePatternsMap(m, sel, e.PinPathPrefix); err != nil {
 						return fmt.Errorf("glob_patterns_map: %w", err)
 					}
 					return nil
-				},
-			})
-
-			load.MapLoad = append(load.MapLoad, &program.MapLoad{
-				Index: 0,
-				Name:  "glob_temp_maps",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "glob_temp_maps":
+				m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
+				m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					for i := range 2 * bpf.GetNumPossibleCPUs() {
 						innerName := fmt.Sprintf("glob_inner_%d", i)
 						innerSpec := &ebpf.MapSpec{
@@ -1689,29 +1575,28 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					}
 
 					return nil
-				},
-			})
-
-			load.MapLoad = append(load.MapLoad, &program.MapLoad{
-				Index: 0,
-				Name:  "filename_ops_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "filename_ops_map":
+				m.SetMaxEntries(fm.GetNumFilenameSelectors(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					return fm.GenerateFilenameOpsMap(m, sel)
-				},
-			})
-
-			load.MapLoad = append(load.MapLoad, &program.MapLoad{
-				Index: 0,
-				Name:  "filename_path_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "filename_path_map":
+				m.SetMaxEntries(maxSelectors)
+				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPathMap(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					return fm.GeneratePathsMap(m, sel, e.PinPathPrefix)
-				},
-			})
-
-			load.MapLoad = append(load.MapLoad, &program.MapLoad{
-				Index: 0,
-				Name:  "filename_digest_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				}
+			case m.Name == "filename_digest_map":
+				m.SetMaxEntries(maxSelectors)
+				// how many digests can we have per path
+				// i.e. /usr/bin/ls can have 1 digest in the host
+				// and 1 digest each container that the policy matches
+				// We choose to multiply the number of paths by 32 which
+				// should be enough for most cases.
+				// TODO: make this configurable
+				m.SetInnerMaxEntries((fm.GetMaxInnerEntriesPathMap(sel) * 32))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					algo, err := probeImaEnabled()
 					if err != nil {
 						return fmt.Errorf("failed to probe IMA: %w", err)
@@ -1721,129 +1606,87 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 						return fmt.Errorf("invalid digest algorithm: %s", algo)
 					}
 					return fm.GenerateDigestsMap(m, sel, e.PinPathPrefix, allDigestMaps, algoNum)
-				},
-			})
-		}
+				}
+			case m.Name == "lpm_trie_map_alloc":
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					for _, str := range kprobes.PathsExclude {
+						if err := addFilters(m, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
+							return fmt.Errorf("failed to add ExcludePath: %w", err)
+						}
+					}
+					for i, p := range kprobes.PathsPatterns {
+						if p.Type == "FilePrefixSuffix" {
+							if err := addFilters(m, p.FilePrefixSuffix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
+							}
+						} else if p.Type == "PathPrefix" {
+							if err := addFilters(m, p.PathPrefix.Prefix, fileapi.LPMMapValue{Action: fm.FilterMatch, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add WatchPath: %w", err)
+							}
+						} else if p.Type == "FileExactMatch" {
+							if err := addFilters(m, filepath.Dir(p.FileExactMatch.Path), fileapi.LPMMapValue{Action: fm.FilterMonitor, Rule: uint32(i)}); err != nil {
+								return fmt.Errorf("failed to add PathPattern in lpm_trie_map_alloc: %w", err)
+							}
+						}
+					}
+					return nil
+				}
+			case m.Name == "patterns_map_alloc":
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					for i, p := range kprobes.PathsPatterns {
+						if p.Type == "FilePrefixSuffix" {
+							key := uint32(i)
+							val := fileapi.PatternValue{
+								PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
+								SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
+								Action:    fm.FilterMatch,
+								Rule:      uint32(i),
+							}
 
-		// only for exec events when digests are enabled
-		if h.name == "security_bprm_check" && (h.progName == "bpf_security_bprm_check_enforce_lsm_digest.o" || h.progName == "lsm_security_bprm_check_digests.o") {
-			m := "exec_retprobe_map"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
+							if val.PrefixLen > 256 || val.SuffixLen > 128 {
+								return fmt.Errorf("max prefix size is 256 characters and max suffix size is 128 characters: prefix:[%s], suffix:[%s]", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
+							}
 
-		// only for io_uring hooks
-		if h.name == "io_read" || h.name == "io_write" || h.name == "io_issue_sqe" || h.name == "security_file_permission" {
-			m := "io_uring_map"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
+							copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
+							copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
 
-		// only for io_uring hooks
-		if h.name == "io_read" || h.name == "io_write" || h.name == "io_issue_sqe" {
-			m := "io_uring_retprobe_map"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
-
-		// only for fsnotify (kernels < 4.18, i.e. rhel8)
-		if h.name == "fsnotify" || h.name == "finish_open" || h.name == "vfs_open" {
-			m := "fsnotify_created_files_map"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
-
-		// only for hooks that add files into maps
-		if h.name == "finish_open" || h.name == "vfs_open" || h.name == "security_inode_create" || h.name == "vfs_rename" {
-			m := "patterns_map_alloc"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
-
-		// only for rename hooks
-		if h.name == "vfs_rename" {
-			m := "file_rename_map"
-			maps = append(
-				maps,
-				program.MapBuilderPolicy(m, load),
-			)
-		}
-
-		if isPathBased {
-			mapName := "glob_patterns_map"
-			m := program.MapBuilderPolicy(mapName, load)
-			m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
-			maps = append(maps, m)
-
-			mapName = "glob_temp_maps"
-			m = program.MapBuilderPolicy(mapName, load)
-			m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
-			m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
-			maps = append(maps, m)
-
-			mapName = "filename_ops_map"
-			m = program.MapBuilderPolicy(mapName, load)
-			m.SetMaxEntries(fm.GetNumFilenameSelectors(sel))
-			maps = append(maps, m)
-
-			mapName = "filename_path_map"
-			m = program.MapBuilderPolicy(mapName, load)
-			m.SetMaxEntries(maxSelectors)
-			m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPathMap(sel))
-			maps = append(maps, m)
-
-			mapName = "filename_digest_map"
-			m = program.MapBuilderPolicy(mapName, load)
-			m.SetMaxEntries(maxSelectors)
-			// how many digests can we have per path
-			// i.e. /usr/bin/ls can have 1 digest in the host
-			// and 1 digest each container that the policy matches
-			// We choose to multiply the number of paths by 32 which
-			// should be enough for most cases.
-			// TODO: make this configurable
-			m.SetInnerMaxEntries((fm.GetMaxInnerEntriesPathMap(sel) * 32))
-			maps = append(maps, m)
-
-		}
-
-		for _, m := range SharedMaps {
-			m := program.MapBuilderPolicy(m, load)
-			// custom max entries setup
-			switch {
-			case m.Name == "tg_mb_paths":
-				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "tg_mb_sel_opts":
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "file_ops_maps":
-				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "file_digests_maps":
-				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(sel)))
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "hash_map_inode_alloc":
-				m.SetMaxEntries(int(config.MaxWatchedInodes))
-			case m.Name == "exact_match_map_alloc":
-				m.SetMaxEntries(int(exactFilePathMatchSize))
-			case m.Name == "file_system_type_map":
-				m.SetMaxEntries(numFileSystemTypes)
-			case m.Name == "file_actions_map":
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "file_namespaces_map":
-				m.SetMaxEntries(maxSelectors)
-			case m.Name == "file_capabilities_map":
-				m.SetMaxEntries(maxSelectors)
+							if err := m.Update(&key, &val, ebpf.UpdateAny); err != nil {
+								return fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
+							}
+						}
+					}
+					return nil
+				}
+			case m.Name == "file_rename_map":
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
+						return fmt.Errorf("file_rename_map: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "file_open_flags_map":
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.GenerateFileOpenFlagsMap(m, sel, pinPathPrefix); err != nil {
+						return fmt.Errorf("file_open_flags_map: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "file_config_map":
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					return m.Update(uint32(0), config, ebpf.UpdateAny)
+				}
 			}
+
+			// use a load func if needed
+			if loadMapFunc != nil {
+				load.MapLoad = append(load.MapLoad, &program.MapLoad{
+					Index: 0,
+					Name:  m.Name,
+					Load:  loadMapFunc,
+				})
+			}
+
+			// add this map to the list of maps
 			maps = append(maps, m)
 		}
 	}
@@ -2020,7 +1863,13 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		// to attach that hook, fim will fail to load. The prototype of io_issue_sqe
 		// seems to be stable along all kernels that have this function.
 		if h.name == "io_issue_sqe" {
-			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection})
+			// generate the maps
+			maps := []MapInfo{}
+			for _, m := range h.prog[0].maps {
+				maps = append(maps, m...)
+			}
+
+			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, maps})
 			continue
 		}
 
@@ -2039,7 +1888,14 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		for _, f := range h.prog {
 			if f.proto == p {
 				progFound = true
-				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection})
+
+				// generate the maps
+				maps := []MapInfo{}
+				for _, m := range f.maps {
+					maps = append(maps, m...)
+				}
+
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection, maps})
 				break
 			}
 		}
