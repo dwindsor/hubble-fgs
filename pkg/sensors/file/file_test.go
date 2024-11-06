@@ -1013,13 +1013,13 @@ func TestLoadFileSensor(t *testing.T) {
 
 	if fm.SupportIoUring() {
 		ioUringMaps := []tus.SensorMap{
-			{Name: "io_uring_map", Progs: []uint{4, 20, 21, 22, 23}},
+			{Name: "io_uring_map", Progs: []uint{0, 1, 2, 3, 4, 20, 21, 22, 23}},
 			{Name: "io_uring_retprobe_map", Progs: []uint{20, 21, 22, 23}},
 		}
 		sensorMaps = append(sensorMaps, ioUringMaps...)
 	} else {
 		ioUringMaps := []tus.SensorMap{
-			{Name: "io_uring_map", Progs: []uint{4}},
+			{Name: "io_uring_map", Progs: []uint{0, 1, 2, 3, 4}},
 		}
 		sensorMaps = append(sensorMaps, ioUringMaps...)
 	}
