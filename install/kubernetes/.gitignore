@@ -1,2 +1,3 @@
-tetragon/.helm/
+enterprise/.helm/
+enterprise/charts/
 tetragon/charts/

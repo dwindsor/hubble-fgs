@@ -41,3 +41,17 @@ definition in the OSS chart, then adding an actual non-empty extension in
 For an example see:
 - OSS: https://github.com/cilium/tetragon/pull/1846
 - EE: https://github.com/isovalent/hubble-fgs/pull/3734/files#diff-5006d7667036b10df4d96135af0bf2c8fe779a3d658f648a729c171feddd32d0
+
+## Update dependencies (subcharts)
+
+Tetragon Enterprise Helm chart includes third-party charts as dependencies.
+To prevent unnecessarily fetching subcharts on every `make` run, they are
+cached in `enterprise/charts` directory and copied over to `tetragon/charts`
+when generating the chart - however, none of these directories are committed to
+the repository.
+
+The subchart versions are automatically updated by Renovate. After a version
+update, subcharts must be re-fetched by:
+
+    rm -rf enterprise/charts
+    make tetragon/charts

@@ -47,9 +47,13 @@ PYTHON := docker run --rm \
 		--workdir=/code/install/kubernetes \
 		-e FILENAME_FORMAT='{kind}-{fullgroup}' \
 		$(PYTHON_IMAGE)
-HELM := docker run --rm -u $(shell id -u):$(shell id -g) \
+HELM := docker run --rm \
 		-v $(CURDIR)/$(EE_CHART):/apps \
 		-v $(CURDIR)/$(HELM_VALUES_OVERRIDE):/$(HELM_VALUES_OVERRIDE) \
+		$(HELM_IMAGE)
+# Run Helm in enterprise directory - it's required to build dependecies.
+HELM_EE := docker run --rm -u $(shell id -u):$(shell id -g) \
+		-v $(CURDIR)/$(EE_PATCHES):/apps \
 		$(HELM_IMAGE) \
 		--registry-config "/apps/.helm/.config/registry/config.json" \
 		--repository-cache "/apps/.helm/.cache/repository" \
@@ -79,8 +83,8 @@ tetragon: $(OSS_CHART) $(EE_PATCHES) ## Generate and validate Tetragon Enterpris
 	$(MAKE) tetragon/Chart.yaml
 	$(MAKE) tetragon/values.yaml
 	$(MAKE) tetragon/templates
-	$(MAKE) tetragon/charts
 	$(MAKE) docs
+	$(MAKE) tetragon/charts
 
 .PHONY: oss-override
 oss-override: $(OSS_CHART) clean ## Copy Tetragon OSS bits to the EE chart base template
@@ -103,26 +107,25 @@ tetragon/templates: $(CRDS) $(EE_PATCHES) ## Copy EE specific patched into the E
 	cp -rf $(EE_PATCHES)/files/. $(EE_CHART)/files
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
 
-.PHONY: tetragon/charts
-# TODO: Fix how we manage Chart.lock file. It was manually copied back from
-# tetragon to enterprise directory after the initial `helm dependency update`,
-# and now this target copies it from enterprise to tetragon directory after
-# fetching subcharts, to avoid updates on every `make` run. This means subchart
-# version updates are manual for the time being.
-# TODO: Fetching charts on every `make` run seems an overkill and sometimes
-# fails due to network randomness. We can persist the cache between builds
-# instead. We can also add a retry.
-tetragon/charts: ## Fetch and update the dependency Helm charts
-	$(HELM) repo add prometheus-community https://prometheus-community.github.io/helm-charts
-	$(HELM) repo update prometheus-community
-	$(HELM) repo add grafana https://grafana.github.io/helm-charts
-	$(HELM) repo update grafana
-	$(HELM) dependency update
-	cp -f $(EE_PATCHES)/Chart.lock $(EE_CHART)/Chart.lock
-
 .PHONY: docs
 docs: ## Generate Helm docs for the README.md
 	docker run --rm -v $(CURDIR)/$(EE_CHART):/helm-docs -u $$(id -u) $(HELMDOCS_IMAGE)
+
+.PHONY: enterprise/charts
+enterprise/charts: ## Fetch Helm dependencies (subcharts)
+	$(HELM_EE) repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	$(HELM_EE) repo update prometheus-community
+	$(HELM_EE) repo add grafana https://grafana.github.io/helm-charts
+	$(HELM_EE) repo update grafana
+	$(HELM_EE) dependency build
+
+.PHONY: tetragon/charts
+tetragon/charts: ## Copy Helm dependencies (subcharts) into the EE Helm chart (fetch only if needed)
+	if [ ! -d $(EE_PATCHES)/charts ]; then \
+		$(MAKE) enterprise/charts; \
+	fi
+	cp -f $(EE_PATCHES)/Chart.lock $(EE_CHART)/Chart.lock
+	cp -rf $(EE_PATCHES)/charts $(EE_CHART)/charts
 
 ##@ Cleanup
 

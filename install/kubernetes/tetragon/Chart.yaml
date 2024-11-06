@@ -21,8 +21,6 @@ version: "0.0.0-dev"
 # follow Semantic Versioning. They should reflect the version the application is using.
 appVersion: "0.0.0-dev"
 dependencies:
-  # TODO: Renovate, but first we need to sort out how we manage Helm
-  # dependencies. See tetragon/charts Makefile target.
   - name: grafana
     version: "8.5.*"
     repository: https://grafana.github.io/helm-charts
