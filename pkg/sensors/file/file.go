@@ -1453,7 +1453,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case m.Name == "tg_mb_sel_opts":
 				m.SetMaxEntries(maxSelectors)
-				m.SetMaxEntries(int(config.MaxWatchedInodes))
 				loadMapFunc = func(outerMap *ebpf.Map, _ string, _ uint32) error {
 					return fm.PopulateMatchBinariesMaps(sel, outerMap)
 				}
