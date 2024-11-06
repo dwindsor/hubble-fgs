@@ -71,6 +71,29 @@ var (
 		"streebog256": tetragon.DigestAlgo_HASH_ALGO_STREEBOG_256,
 		"streebog512": tetragon.DigestAlgo_HASH_ALGO_STREEBOG_512,
 	}
+
+	HashAlgoName = map[tetragon.DigestAlgo]string{
+		tetragon.DigestAlgo_HASH_ALGO_MD4:          "md4",
+		tetragon.DigestAlgo_HASH_ALGO_MD5:          "md5",
+		tetragon.DigestAlgo_HASH_ALGO_SHA1:         "sha1",
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_160:  "rmd160",
+		tetragon.DigestAlgo_HASH_ALGO_SHA256:       "sha256",
+		tetragon.DigestAlgo_HASH_ALGO_SHA384:       "sha384",
+		tetragon.DigestAlgo_HASH_ALGO_SHA512:       "sha512",
+		tetragon.DigestAlgo_HASH_ALGO_SHA224:       "sha224",
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_128:  "rmd128",
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_256:  "rmd256",
+		tetragon.DigestAlgo_HASH_ALGO_RIPE_MD_320:  "rmd320",
+		tetragon.DigestAlgo_HASH_ALGO_WP_256:       "wp256",
+		tetragon.DigestAlgo_HASH_ALGO_WP_384:       "wp384",
+		tetragon.DigestAlgo_HASH_ALGO_WP_512:       "wp512",
+		tetragon.DigestAlgo_HASH_ALGO_TGR_128:      "tgr128",
+		tetragon.DigestAlgo_HASH_ALGO_TGR_160:      "tgr160",
+		tetragon.DigestAlgo_HASH_ALGO_TGR_192:      "tgr192",
+		tetragon.DigestAlgo_HASH_ALGO_SM3_256:      "sm3",
+		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_256: "streebog256",
+		tetragon.DigestAlgo_HASH_ALGO_STREEBOG_512: "streebog512",
+	}
 )
 
 func GetHashAlgo(algo int32) (hash.Hash, error) {

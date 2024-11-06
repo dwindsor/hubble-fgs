@@ -15,7 +15,6 @@ package file
 
 import (
 	"context"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"io"
@@ -2844,14 +2843,18 @@ func TestFileOps(t *testing.T) {
 	}
 }
 
-func getFileDigest(path string) (string, error) {
+func getFileDigest(path string, algo int32) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	hash := sha1.New()
+	hash, err := fm.GetHashAlgo(algo)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err := io.Copy(hash, file); err != nil {
 		return "", err
 	}
@@ -2862,6 +2865,16 @@ func getFileDigest(path string) (string, error) {
 func TestFileExecBasic(t *testing.T) {
 	if !SupportDigests() {
 		t.Skip("Kernel does not support file exec events")
+	}
+
+	algo, err := ProbeImaEnabledAlgo(runner.Conf().TetragonLib, "/bin/true")
+	if err != nil {
+		t.Skip("Kernel does not have IMA enabled")
+	}
+
+	algoNum, ok := tetragon.DigestAlgo_value[algo]
+	if !ok {
+		t.Fatalf("Unknown IMA digest algo: %s", algo)
 	}
 
 	specFile, err := testutils.GetSpecFromTemplate("file_exec_monitoring.yaml.tmpl", nil)
@@ -2899,7 +2912,7 @@ func TestFileExecBasic(t *testing.T) {
 		t.Fatalf("failed to run %s: err %s", catBin, err)
 	}
 
-	digest, err := getFileDigest(catBin)
+	digest, err := getFileDigest(catBin, algoNum)
 	if err != nil {
 		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
 	}
@@ -2909,7 +2922,7 @@ func TestFileExecBasic(t *testing.T) {
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(catBin)).WithInode(i)
-	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo(algoNum)).WithError(0).WithHash(sm.Full(digest))
 	o := ec.NewFileOperationListMatcher().
 		WithOperator(lm.Ordered).
 		WithValues(
@@ -2923,13 +2936,13 @@ func TestFileExecBasic(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func getFileExecChecker(t *testing.T, path, digest string, operation tetragon.FileOperation) *ec.ProcessFileExecChecker {
+func getFileExecChecker(t *testing.T, path, digest string, operation tetragon.FileOperation, algoNum int32) *ec.ProcessFileExecChecker {
 	ino, dev := getInodeInfo(t, path)
 
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(path)).WithInode(i)
-	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo(algoNum)).WithError(0).WithHash(sm.Full(digest))
 	o := ec.NewFileOperationListMatcher().
 		WithOperator(lm.Ordered).
 		WithValues(
@@ -2944,13 +2957,23 @@ func TestFileExecEnforcement(t *testing.T) {
 		t.Skip("Kernel does not support file exec events")
 	}
 
+	algo, err := ProbeImaEnabledAlgo(runner.Conf().TetragonLib, "/bin/true")
+	if err != nil {
+		t.Skip("Kernel does not have IMA enabled")
+	}
+
+	algoNum, ok := tetragon.DigestAlgo_value[algo]
+	if !ok {
+		t.Fatalf("Unknown IMA digest algo: %s", algo)
+	}
+
 	// check if /bin/cat is a symbolic link and follow that if needed
 	catBin, err := filepath.EvalSymlinks("/bin/cat")
 	if err != nil {
 		t.Fatalf("failed to evaluate symlink of executable: err %s", err)
 	}
 
-	catDigest, err := getFileDigest(catBin)
+	catDigest, err := getFileDigest(catBin, algoNum)
 	if err != nil {
 		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
 	}
@@ -2961,13 +2984,18 @@ func TestFileExecEnforcement(t *testing.T) {
 		t.Fatalf("failed to evaluate symlink of executable: err %s", err)
 	}
 
-	headDigest, err := getFileDigest(headBin)
+	headDigest, err := getFileDigest(headBin, algoNum)
 	if err != nil {
 		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
 	}
 
+	algoName, ok := fm.HashAlgoName[tetragon.DigestAlgo(algoNum)]
+	if !ok {
+		t.Fatalf("Unknown IMA digest algo: %d", algoNum)
+	}
+
 	specData := map[string]string{
-		"MatchedDigest": fmt.Sprintf("sha1:%s", catDigest),
+		"MatchedDigest": fmt.Sprintf("%s:%s", algoName, catDigest),
 	}
 	specFile, err := testutils.GetSpecFromTemplate("file_exec_monitoring_enforce.yaml.tmpl", specData)
 	if err != nil {
@@ -3005,8 +3033,8 @@ func TestFileExecEnforcement(t *testing.T) {
 	}
 
 	checker := ec.NewUnorderedEventChecker(
-		getFileExecChecker(t, catBin, catDigest, tetragon.FileOperation_FILE_OP_BLOCK),
-		getFileExecChecker(t, headBin, headDigest, tetragon.FileOperation_FILE_OP_POST),
+		getFileExecChecker(t, catBin, catDigest, tetragon.FileOperation_FILE_OP_BLOCK, algoNum),
+		getFileExecChecker(t, headBin, headDigest, tetragon.FileOperation_FILE_OP_POST, algoNum),
 	)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -3016,6 +3044,16 @@ func TestFileExecEnforcement(t *testing.T) {
 func TestFileExecSelectors(t *testing.T) {
 	if !SupportDigests() {
 		t.Skip("Kernel does not support file exec events")
+	}
+
+	algo, err := ProbeImaEnabledAlgo(runner.Conf().TetragonLib, "/bin/true")
+	if err != nil {
+		t.Skip("Kernel does not have IMA enabled")
+	}
+
+	algoNum, ok := tetragon.DigestAlgo_value[algo]
+	if !ok {
+		t.Fatalf("Unknown IMA digest algo: %s", algo)
 	}
 
 	// These tests normally run inside a VM, on the host mnt and pid namespace with CAP_SYS_ADMIN.
@@ -3055,7 +3093,7 @@ func TestFileExecSelectors(t *testing.T) {
 		t.Fatalf("failed to run %s: err %s", catBin, err)
 	}
 
-	digest, err := getFileDigest(catBin)
+	digest, err := getFileDigest(catBin, algoNum)
 	if err != nil {
 		t.Fatalf("failed to get the digest of %s: err %s", catBin, err)
 	}
@@ -3065,7 +3103,7 @@ func TestFileExecSelectors(t *testing.T) {
 	s := ec.NewFileSystemChecker().WithDev(sm.Full(dev))
 	i := ec.NewInodeChecker().WithNumber(ino).WithFs(s)
 	f := ec.NewFileDetailsChecker().WithStr(sm.Full(catBin)).WithInode(i)
-	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo_HASH_ALGO_SHA1).WithError(0).WithHash(sm.Full(digest))
+	d := ec.NewFileDigestChecker().WithAlgo(tetragon.DigestAlgo(algoNum)).WithError(0).WithHash(sm.Full(digest))
 	o := ec.NewFileOperationListMatcher().
 		WithOperator(lm.Ordered).
 		WithValues(
