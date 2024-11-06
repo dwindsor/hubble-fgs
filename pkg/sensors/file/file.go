@@ -95,8 +95,24 @@ var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
 
+type MapType uint32
+
+const (
+	UnknownMap MapType = iota
+	SkipMap
+	PrivateMap
+	SharedMap
+	BaseMap
+)
+
+type MapInfo struct {
+	name string
+	tp   MapType
+}
+
 type FimFunc struct {
 	proto, progName, progSection string
+	maps                         [][]MapInfo
 }
 
 type FimHook struct {
@@ -109,6 +125,205 @@ type FimProg struct {
 }
 
 var (
+	PathBasedSelectorMaps = []MapInfo{
+		{"selectors_ctx_heap", PrivateMap},   // for selectors with __V61_BPF_PROG
+		{"file_prefix_lpm_heap", PrivateMap}, // for matchBinaries
+		{"file_msg_caps_heap", PrivateMap},   // for matchLinuxCapabilities
+		{"file_msg_ns_heap", PrivateMap},     // for matchLinuxNamespaces
+		{"digest_heap_map", PrivateMap},      // for matchFilename InFileWithDigest operator
+		{"filename_heap_map", PrivateMap},    // for matchFilename InFileWithDigest operator
+		{"file_digests_maps", SharedMap},     // for matchDigests
+		{"file_ops_maps", SharedMap},         // for matchOperations
+		{"file_actions_map", SharedMap},      // for matchActions
+		{"file_capabilities_map", SharedMap}, // for matchLinuxCapabilities
+		{"file_namespaces_map", SharedMap},   // for matchLinuxNamespaces
+		{"file_open_flags_map", SharedMap},   // for matchOpenFlags
+		{"file_rename_map", SharedMap},       // for matchRenameSrcType
+		{"filename_ops_map", SharedMap},      // for matchFilename operator
+		{"filename_digest_map", SharedMap},   // for matchFilename InFileWithDigest operator
+		{"filename_path_map", SharedMap},     // for matchFilename InFileWithDigest operator
+		{"glob_patterns_map", SharedMap},     // for matchFilename InPattern operator
+		{"glob_temp_maps", SharedMap},        // for matchFilename InPattern operator
+		{"tg_mb_sel_opts", SharedMap},        // for matchBinaries operator
+		{"tg_mb_paths", SharedMap},           // for matchBinaries In/NotIn operator
+		{"string_prefix_maps", SharedMap},    // for matchBinaries Prefix/NoPrefix operator
+	}
+
+	InodeBasedSelectorMaps = []MapInfo{
+		{"file_msg_caps_heap", PrivateMap},   // for matchLinuxCapabilities
+		{"file_msg_ns_heap", PrivateMap},     // for matchLinuxNamespaces
+		{"file_prefix_lpm_heap", PrivateMap}, // for matchBinaries
+		{"file_actions_map", SharedMap},      // for matchActions
+		{"file_capabilities_map", SharedMap}, // for matchLinuxCapabilities
+		{"file_namespaces_map", SharedMap},   // for matchLinuxNamespaces
+		{"file_ops_maps", SharedMap},         // for matchOperations
+		{"string_prefix_maps", SharedMap},    // for matchBinaries Prefix/NoPrefix operator
+		{"tg_mb_sel_opts", SharedMap},        // for matchBinaries operator
+		{"tg_mb_paths", SharedMap},           // for matchBinaries In/NotIn operator
+	}
+
+	PathBasedMiscMaps = []MapInfo{
+		{"buffer_heap_map", PrivateMap},     // for d_path_local
+		{"file_config_map", SharedMap},      // for configuration options
+		{"file_errors_map", SharedMap},      // for eBPF errors
+		{"file_system_type_map", SharedMap}, // for FileSystemType type in file_paths_patterns
+	}
+
+	InodeBasedMiscMaps = []MapInfo{
+		{"file_config_map", SharedMap},      // for configuration options
+		{"file_errors_map", SharedMap},      // for eBPF errors
+		{"hash_map_inode_alloc", SharedMap}, // for all inodes
+	}
+
+	BaseMaps = []MapInfo{
+		{"tcpmon_map", BaseMap},
+		{"execve_map", BaseMap},
+		{"policy_filter_maps", BaseMap},
+		{"tg_conf_map", BaseMap},
+		{"tg_stats_map", BaseMap},
+	}
+
+	SkipMaps = []MapInfo{
+		{".rodata", SkipMap}, // possibly due to PATH_BASED_MATCHER and USE_BPF_D_PATH_HELPER
+	}
+
+	IoUringMaps = []MapInfo{
+		{"io_uring_map", SharedMap}, // for io_uring process information
+		{"io_uring_retprobe_map", SharedMap},
+		{"file_errors_map", SharedMap}, // for eBPF errors
+	}
+
+	KprobeMkdirMaps = []MapInfo{
+		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"execve_map", BaseMap},
+		{"policy_filter_maps", BaseMap},
+		{"buffer_heap_map", PrivateMap}, // for d_path_local
+		{"tg_conf_map", BaseMap},
+		{"vfs_mkdir_info_heap", PrivateMap},
+		{"mkdir_retprobe_map", SharedMap},
+	}
+
+	KretprobeMkdirMaps = []MapInfo{
+		{"tcpmon_map", BaseMap},
+		{"tg_stats_map", BaseMap},
+		{"mkdir_retprobe_map", SharedMap},
+		{"file_errors_map", SharedMap}, // for eBPF errors
+		{"file_heap_map", PrivateMap},  // for struct msg_file_ops
+		{"file_val_map", PrivateMap},
+		{"hash_map_inode_alloc", SharedMap}, // for all inodes
+	}
+
+	KprobeRenameMaps = []MapInfo{
+		{"file_rename_map", SharedMap},
+		{"execve_map", BaseMap},
+		{"policy_filter_maps", BaseMap},
+		{"buffer_heap_map", PrivateMap}, // for d_path_local
+		{"tg_conf_map", BaseMap},
+		{"vfs_rename_info_heap", PrivateMap},
+		{"vr_retprobe_map", SharedMap},
+		{"rename_retprobe_map", SharedMap},
+	}
+
+	KretprobeRenameMaps = []MapInfo{
+		{"tcpmon_map", BaseMap},
+		{"tg_stats_map", BaseMap},
+		{"file_rename_heap_map", PrivateMap},
+		{"file_errors_map", SharedMap}, // for eBPF errors
+		{"file_config_map", SharedMap},
+		{"file_val_map", PrivateMap},
+		{"hash_map_inode_alloc", SharedMap}, // for all inodes
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"patterns_map_alloc", SharedMap},
+		{"rename_retprobe_map", SharedMap},
+		{"vr_retprobe_map", SharedMap},
+		{"exact_match_map_alloc", SharedMap},
+	}
+
+	KprobeSecurityPathRenameMaps = []MapInfo{
+		{"file_errors_map", SharedMap}, // for eBPF errors
+		{"rename_retprobe_map", SharedMap},
+		{"spr_retprobe_map", SharedMap},
+		{"vfs_rename_info_heap", PrivateMap},
+	}
+
+	KretprobeSecurityPathRenameMaps = []MapInfo{
+		{"file_errors_map", SharedMap}, // for eBPF errors
+		{"rename_retprobe_map", SharedMap},
+		{"spr_retprobe_map", SharedMap},
+	}
+
+	RWMiscMaps = []MapInfo{
+		{"io_uring_map", SharedMap},   // for io_uring process information
+		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
+	}
+
+	MiscMaps = []MapInfo{
+		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
+	}
+
+	CreateInodeMiscMaps = []MapInfo{
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"patterns_map_alloc", SharedMap},
+		{"fsnotify_created_files_map", SharedMap},
+		{"exact_match_map_alloc", SharedMap},
+		{"buffer_heap_map", PrivateMap}, // for d_path_local
+		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
+		{"file_val_map", PrivateMap},
+	}
+
+	SecurityFileOpenMaps = []MapInfo{
+		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
+		{"buffer_heap_map", PrivateMap}, // for d_path_local
+		{"exact_match_map_alloc", SharedMap},
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"patterns_map_alloc", SharedMap},
+		{"file_open_flags_map", SharedMap}, // for matchOpenFlags
+		{".rodata.str1.1", SkipMap},
+	}
+
+	SecurityInodeLinkMaps = []MapInfo{
+		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
+		{"buffer_heap_map", PrivateMap}, // for d_path_local
+		{"exact_match_map_alloc", SharedMap},
+		{"file_val_map", PrivateMap},
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"patterns_map_alloc", SharedMap},
+	}
+
+	SecurityInodeCreateMaps = []MapInfo{
+		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
+		{"lpm_trie_heap_key", PrivateMap},
+		{"lpm_trie_map_alloc", SharedMap},
+		{"patterns_map_alloc", SharedMap},
+		{"exact_match_map_alloc", SharedMap},
+		{"hash_map_inode_alloc", SharedMap}, // for all inodes
+		{"file_config_map", SharedMap},      // for configuration options
+		{"buffer_heap_map", PrivateMap},     // for d_path_local
+	}
+
+	SecurityInodeRenameMaps = []MapInfo{
+		{"file_config_map", SharedMap},       // for configuration options
+		{"file_errors_map", SharedMap},       // for eBPF errors
+		{"file_rename_heap_map", PrivateMap}, // for struct msg_file_rename_ops
+		{"rename_retprobe_map", SharedMap},
+		{"tcpmon_map", BaseMap},
+		{"tg_stats_map", BaseMap},
+	}
+
+	SecurityInodeMkdirMaps = []MapInfo{
+		{"file_errors_map", SharedMap}, // for eBPF errors
+		{"file_heap_map", PrivateMap},  // for struct msg_file_ops
+		{"mkdir_retprobe_map", SharedMap},
+		{"tcpmon_map", BaseMap},
+		{"tg_stats_map", BaseMap},
+	}
+
 	// These programs are based on bpf_d_path helper to get the file path. bpf_d_path is introduced in kernel 5.10 (https://github.com/torvalds/linux/commit/6e22ab9da79343532cd3cde39df25e5a5478c692).
 	// On the other hand, support for bpf_d_path helper is not introduced in 5.10 for all the following programs. We try to use bpf_d_path when it is available otherwise, we use our d_path_local helper.
 	// For now we only support path-based hooks in kernels >= 5.17 (where bpf_loop helper is available https://github.com/torvalds/linux/commit/e6f2dd0f80674e9d5960337b3e9c2a242441b326) as in older kernels
@@ -118,212 +333,238 @@ var (
 		// This means that this is the only program where bpf_d_path helper is not supported in lsm. For this reason we use fmod_ret progs (and not fentry to provide enforcement).
 		// security_file_permission is part of the btf_allowlist_d_path since kernel 5.10 (https://github.com/torvalds/linux/commit/a8a717963fe5ecfd274eb93dd1285ee9428ffca7).
 		// Use probeDpathSecurityFilePermission to check support for that.
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission"}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
 		// security_kernel_read_file is part of sleepable_lsm_hooks since kernel 5.18 (https://github.com/torvalds/linux/commit/df6b3039fa112e17555776213cab7f07c0a8d98d).
 		// Use probeDpathSecurityKernelReadFile to check support for that.
-		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file"}}},
+		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
 		// security_file_open, security_mmap_file, and security_bprm_check are part of sleepable_lsm_hooks since kernel 5.11 (https://github.com/torvalds/linux/commit/423f16108c9d832bd96059d5c882c8ef6d76eb96).
 		// Use probeDpathSecurityFileOpen to check support for that.
-		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open"}}},
-		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file"}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
 		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
 		// Use probeDpathSecurityPathTruncate to check support for that.
-		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link"}}},
-		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir"}}},
-		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir"}}},
-		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink"}}},
-		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_setattr.o", "path_truncate"}}},
-		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_setattr.o", "path_chmod"}}},
-		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_setattr.o", "path_chown"}}},
-		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename"}}},
+		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_setattr.o", "path_truncate", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_setattr.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_setattr.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}}}}},
 	}
 
-	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security"}}}
+	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}}
 
 	FimPathBasedHooksExecDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security"}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check"}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security",
+			[][]MapInfo{
+				PathBasedSelectorMaps[:],
+				SkipMaps[:],
+				PathBasedMiscMaps[:],
+				MiscMaps[:],
+				{{"execve_map", BaseMap}},
+				{{"policy_filter_maps", BaseMap}},
+				{{"tg_conf_map", BaseMap}},
+				{{"exec_retprobe_map", SharedMap}},
+			},
+		}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check",
+			[][]MapInfo{
+				{{"tcpmon_map", BaseMap}},
+				{{"tg_stats_map", BaseMap}},
+				{{"exec_retprobe_map", SharedMap}},
+			},
+		}}},
 	}
 
 	FimHooksObserve = [...]FimHook{
-		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate"}}},
-		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault"}}},
-		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages"}}},
-		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite"}}},
-		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission"}}},
+		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
 		{"kprobe", "vfs_unlink", []FimFunc{
-			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419"},
-			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512"},
-			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63"},
+			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
 		}},
-		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir"}}},
+		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
 		}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
 		}},
-		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir"}}},
+		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"kprobe", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419"},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60"},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63"},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
 		}},
-		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link"}}},
-		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open"}}},
+		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:]}}}},
+		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check"}}}
+	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
 
 	FimHooksFmodRet = [...]FimHook{
-		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file"}}},
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_fmod.o", "security_file_permission"}}},
-		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_fmod.o", "security_inode_unlink"}}},
-		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_fmod.o", "security_inode_create"}}},
-		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_fmod.o", "security_inode_rmdir"}}},
+		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_fmod.o", "security_file_permission", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_fmod.o", "security_inode_unlink", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_fmod.o", "security_inode_create", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], SecurityInodeCreateMaps[:]}}}},
+		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_fmod.o", "security_inode_rmdir", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
 		}},
-		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir"}}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir", [][]MapInfo{SecurityInodeMkdirMaps[:]}}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
 		}},
-		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_fmod.o", "security_inode_rename"}}},
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_fmod.o", "security_file_permission"}}},
+		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_fmod.o", "security_inode_rename", [][]MapInfo{SecurityInodeRenameMaps[:]}}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_fmod.o", "security_file_permission", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"fmod_ret", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr"},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr"},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr"},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
 		}},
-		{"fmod_ret", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_fmod.o", "security_inode_link"}}},
-		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open"}}},
+		{"fmod_ret", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_fmod.o", "security_inode_link", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:]}}}},
+		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check"}}}
+	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
 
 	FimHooksLsm = [...]FimHook{
-		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file"}}},
-		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_lsm.o", "file_permission"}}},
-		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_lsm.o", "inode_unlink"}}},
-		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_lsm.o", "inode_create"}}},
-		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_lsm.o", "inode_rmdir"}}},
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_lsm.o", "file_permission", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_lsm.o", "inode_unlink", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_lsm.o", "inode_create", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], SecurityInodeCreateMaps[:]}}}},
+		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_lsm.o", "inode_rmdir", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419"},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512"},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63"},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir"},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", [][]MapInfo{KretprobeMkdirMaps[:]}},
 		}},
-		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir"}}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename"}}},
+		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir", [][]MapInfo{SecurityInodeMkdirMaps[:]}}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419"},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512"},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename"},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename"},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", [][]MapInfo{KretprobeRenameMaps[:]}},
 		}},
-		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_lsm.o", "inode_rename"}}},
-		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_lsm.o", "file_permission"}}},
+		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_lsm.o", "inode_rename", [][]MapInfo{SecurityInodeRenameMaps[:]}}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_lsm.o", "file_permission", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
 		{"lsm", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr"},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
 		}},
-		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link"}}},
-		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open"}}},
+		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:]}}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security"}}}
+	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
 
 	FimHooksLsmExecDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security"}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check"}}},
-	}
-
-	FileExecHooksLsmDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security"}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check"}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security", [][]MapInfo{
+			InodeBasedSelectorMaps[:],
+			InodeBasedMiscMaps[:],
+			MiscMaps[:],
+			{{"execve_map", BaseMap}},
+			{{"policy_filter_maps", BaseMap}},
+			{{"tg_conf_map", BaseMap}},
+			{{"exec_retprobe_map", SharedMap}},
+			{{"file_digests_maps", SharedMap}},
+		}}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", [][]MapInfo{
+			{{"tcpmon_map", BaseMap}},
+			{{"tg_stats_map", BaseMap}},
+			{{"exec_retprobe_map", SharedMap}},
+			{{"file_errors_map", SharedMap}},
+		}}}},
 	}
 
 	FimIoUringHooks = [...]FimHook{
 		{"kprobe", "io_read", []FimFunc{
-			{"io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read/510"},
-			{"io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read/59"},
-			{"io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read/57"},
-			{"io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read/55"},
-			{"io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read/51"},
+			{"io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read/510", [][]MapInfo{IoUringMaps[:]}},
+			{"io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read/59", [][]MapInfo{IoUringMaps[:]}},
+			{"io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read/57", [][]MapInfo{IoUringMaps[:]}},
+			{"io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read/55", [][]MapInfo{IoUringMaps[:]}},
+			{"io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read/51", [][]MapInfo{IoUringMaps[:]}},
 		}},
 		{"kretprobe", "io_read", []FimFunc{
-			{"int io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read"},
-			{"int io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read"},
-			{"int io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read"},
-			{"int io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read"},
-			{"int io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read"},
+			{"int io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read", [][]MapInfo{IoUringMaps[:]}},
 		}},
 		{"kprobe", "io_write", []FimFunc{
-			{"io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write/510"},
-			{"io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write/59"},
-			{"io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write/57"},
-			{"io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write/55"},
-			{"io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write/51"},
+			{"io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write/510", [][]MapInfo{IoUringMaps[:]}},
+			{"io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write/59", [][]MapInfo{IoUringMaps[:]}},
+			{"io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write/57", [][]MapInfo{IoUringMaps[:]}},
+			{"io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write/55", [][]MapInfo{IoUringMaps[:]}},
+			{"io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write/51", [][]MapInfo{IoUringMaps[:]}},
 		}},
 		{"kretprobe", "io_write", []FimFunc{
-			{"int io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write"},
-			{"int io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write"},
-			{"int io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write"},
-			{"int io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write"},
-			{"int io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write"},
+			{"int io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write", [][]MapInfo{IoUringMaps[:]}},
+			{"int io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write", [][]MapInfo{IoUringMaps[:]}},
 		}},
 	}
 
 	FimIoUringSingleHooks = [...]FimHook{
-		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
-		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe"}}},
+		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", [][]MapInfo{IoUringMaps[:]}}}},
+		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", [][]MapInfo{IoUringMaps[:]}}}},
 	}
 
 	FimHooksFileCreate = [...]FimHook{
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
 	}
 
 	FimHooksFileCreate418 = [...]FimHook{
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open"}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open"}}},
-		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:]}}}},
+		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify", [][]MapInfo{{{"fsnotify_created_files_map", SharedMap}}, {{"file_errors_map", SharedMap}}}}}},
 	}
 
 	SharedMaps = [...]string{

@@ -40,6 +40,13 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(fileExec.name, fileExec)
 }
 
+var (
+	FileExecHooksLsmDigests = [...]FimHook{
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security", [][]MapInfo{}}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check", [][]MapInfo{}}}},
+	}
+)
+
 func (k *observerFileExecSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,

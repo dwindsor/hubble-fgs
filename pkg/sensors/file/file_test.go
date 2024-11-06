@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -3313,11 +3314,59 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 }
 
 func TestBPFFilesExist(t *testing.T) {
-	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FileExecHooksLsmDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{FimPathBasedHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
 				assert.True(t, fileExists(t, objFile), "object file %s does not exist", objFile)
+			}
+		}
+	}
+}
+
+func TestBPFProgsMaps(t *testing.T) {
+	for _, hks := range [][]FimHook{FimPathBasedHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+		for _, hk := range hks {
+			for _, of := range hk.prog {
+				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
+				spec, err := ebpf.LoadCollectionSpec(objFile)
+				assert.NoError(t, err)
+
+				for _, oo := range spec.Programs {
+					// there may be multiple eBPF programs into a single object file
+					// skip for those that we don't care in that iteration
+					if oo.SectionName != strings.Join([]string{hk.tp, of.progSection}, "/") {
+						continue
+					}
+
+					// get all map references from the eBPF program
+					uniqueMaps := make(map[string]uint32)
+					for _, i := range oo.Instructions {
+						if i.IsLoadFromMap() {
+							uniqueMaps[i.Reference()] = uint32(0)
+						}
+					}
+
+					// convert the hash to an array and sort it to make it easier to compare
+					keys := []string{}
+					for k := range uniqueMaps {
+						keys = append(keys, k)
+					}
+					sort.Strings(keys)
+
+					// get the expected maps for this specific eBPF program and sort them to make it easier to compare
+					hooksMaps := []string{}
+					for _, m := range of.maps {
+						for _, mm := range m {
+							assert.NotEqual(t, UnknownMap, mm.tp, "map %s in %s has UnknownMap type", mm.name, of.progName)
+							hooksMaps = append(hooksMaps, mm.name)
+						}
+					}
+					sort.Strings(hooksMaps)
+
+					// compare the expected and the actual maps for a specific eBPF program
+					assert.Equal(t, keys, hooksMaps, "maps in %s %s", of.progName, strings.Join([]string{hk.tp, of.progSection}, "/"))
+				}
 			}
 		}
 	}
