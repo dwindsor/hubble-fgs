@@ -111,9 +111,6 @@ func cleanupFIMMaps(tc *pol.FileMonitoring) error {
 	if err := cleanupMap[uint32, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_ops_maps")); err != nil {
 		return err
 	}
-	if err := cleanupMap[fileapi.DigestKey, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_digests_maps")); err != nil {
-		return err
-	}
 	if err := cleanupMap[uint32, uint32](program.PolicyMapPath(mapDir, tc.TpName, "file_actions_map")); err != nil {
 		return err
 	}
@@ -203,17 +200,6 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 
 	if err := fm.GenerateFileOpsMap(selOpsHandle, sel, tc.PinPathPrefix); err != nil {
 		return fmt.Errorf("failed to populate file_ops_maps: %w", err)
-	}
-
-	selDigestsMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_digests_maps")
-	selDigestsHandle, err := ebpf.LoadPinnedMap(selDigestsMapPath, nil)
-	if err != nil {
-		return fmt.Errorf("cannot open pinned map %s", selOpsMapPath)
-	}
-	defer selDigestsHandle.Close()
-
-	if err := fm.GenerateFileDigestsMap(selDigestsHandle, sel, tc.PinPathPrefix); err != nil {
-		return fmt.Errorf("failed to populate file_digests_maps: %w", err)
 	}
 
 	selActionsMapPath := program.PolicyMapPath(mapDir, tc.TpName, "file_actions_map")
