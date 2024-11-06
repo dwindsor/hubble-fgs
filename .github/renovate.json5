@@ -61,5 +61,23 @@
         "v1.12",
       ]
     },
+    {
+      // Don't update Tetragon Helm chart directly as it's generated from the
+      // OSS chart and enterprise extensions.
+      "enabled": false,
+      "matchFileNames": [
+        "install/kubernetes/tetragon/**",
+      ],
+    },
+    {
+      "matchFileNames": [
+        "install/kubernetes/enterprise/**",
+      ],
+      // Generate Tetragon Helm chart
+      "postUpgradeTasks": {
+        "commands": ["make -C install/kubernetes"],
+        "executionMode": "branch",
+      },
+    },
   ]
 }
