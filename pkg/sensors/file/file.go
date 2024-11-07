@@ -1395,7 +1395,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			h.name,
+			fmt.Sprintf("%s_%s", h.tp, h.name),
 			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
