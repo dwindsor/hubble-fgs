@@ -21,7 +21,7 @@ RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
 # - tetragon
 # - tetra
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.2@sha256:ad5c126b5cf501a8caef751a243bb717ec204ab1aa56dc41dc11be089fafcb4f AS tetragon-builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.3@sha256:d56c3e08fe5b27729ee3834854ae8f7015af48fd651cd25d1e3bcf3c19830174 AS tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
 RUN apt-get update
@@ -35,7 +35,7 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     else make tetragon tetra tetragon-fs-scanner tetragon-oci-hook tetragon-oci-hook-setup TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.2-alpine@sha256:9dd2625a1ff2859b8d8b01d8f7822c0f528942fe56cfe7a1e7c38d3b8d72d679 AS gops
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.3-alpine@sha256:09742590377387b931261cbeb72ce56da1b0d750a27379f7385245b2b058b63a AS gops
 ARG TARGETARCH
 RUN apk add --no-cache binutils git \
  && git clone https://github.com/google/gops /go/src/github.com/google/gops \
