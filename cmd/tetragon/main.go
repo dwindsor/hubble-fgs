@@ -213,7 +213,10 @@ func loadInitialSensor(ctx context.Context) error {
 func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	return tetragonExecuteCtx(ctx, cancel, func() {})
+}
 
+func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready func()) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, tgsyscall.SIGRTMIN_20,
 		tgsyscall.SIGRTMIN_21, tgsyscall.SIGRTMIN_22)
@@ -565,7 +568,7 @@ func hubbleFGSExecute() error {
 		go logStatus(ctx, obs)
 	}
 
-	return obs.Start(ctx)
+	return obs.StartReady(ctx, ready)
 }
 
 func waitCRDs(config *rest.Config) error {
