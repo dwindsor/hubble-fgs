@@ -70,6 +70,7 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
@@ -512,6 +513,10 @@ func hubbleFGSExecute() error {
 	}
 
 	obs.LogPinnedBpf(observerDir)
+
+	if err = procevents.GetRunningProcs(); err != nil {
+		return err
+	}
 
 	cgrouprate.NewCgroupRate(ctx, pm, base.CgroupRateMap, &option.Config.CgroupRate)
 	cgrouprate.Config(base.CgroupRateOptionsMap)

@@ -32,7 +32,6 @@ import (
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/sandbox"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/perfring"
 	testprogs "github.com/isovalent/hubble-fgs/pkg/testutils/progs"
 
@@ -90,7 +89,7 @@ func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 		// enforcement policies will have two sensors: the tracepoint one and the enforcer
 		t.Fatalf("GetSensorsFromParserPolicy returned unexpected number of sensors (%d)", len(ret))
 	}
-	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	for i := range ret {
 		tus.LoadSensor(t, ret[i])

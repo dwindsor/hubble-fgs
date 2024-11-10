@@ -44,7 +44,6 @@ import (
 	"github.com/cilium/tetragon/pkg/testutils/perfring"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/file"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	v1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -64,7 +63,7 @@ func TestFileSuffixPattern(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tus.GetTestSensorManager(t)
 
@@ -295,7 +294,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tus.GetTestSensorManager(t)
 
@@ -405,7 +404,7 @@ func TestFileGlobMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tus.GetTestSensorManager(t)
 
@@ -510,7 +509,7 @@ func TestFileDigestMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
-	tus.LoadSensor(t, base.GetInitialSensor())
+	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tus.GetTestSensorManager(t)
 
