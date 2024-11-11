@@ -189,21 +189,15 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	struct tcp_event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
-	int old_state, state;
 	u32 zero = 0;
 	size_t size;
 	u64 cookie;
+	int state;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skops->sk;
 
-	old_state = skops->args[0];
 	state = skops->args[1];
-
-	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING ||
-	    (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) ||
-	    (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT))
-		return tcp_set_fin(skops, &cookie);
 
 	if (state != TCP_CLOSE)
 		return 0;
