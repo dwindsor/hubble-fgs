@@ -133,6 +133,10 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	v->socket_flags = SOCKFLAGS_TYPE_LISTEN;
 	v->stats.bytes_sent = 0;
 	v->stats.bytes_received = 0;
+	v->stats.segs_out = 0;
+	v->stats.segs_in = 0;
+	v->stats.sk_drops = 0;
+	v->fin_rx = 0;
 	v->ipv6 = (skops->family == AF_INET6);
 	v->version = val->version;
 

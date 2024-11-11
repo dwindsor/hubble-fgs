@@ -71,6 +71,11 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->socket_flags = SOCKFLAGS_TYPE_CONNECT;
 	v->stats.bytes_sent = 0;
 	v->stats.bytes_received = 0;
+	v->stats.segs_out = 0;
+	v->stats.segs_in = 0;
+	v->stats.sk_drops = 0;
+	v->stats.zero_window = 0;
+	v->fin_rx = 0;
 	v->ipv6 = (family == AF_INET6);
 	v->version = val->version;
 

@@ -197,6 +197,9 @@ __event_tcp_accept_state(void *ctx, struct sock *skp)
 	socket->stats.ktime = socket->stats.create_time;
 	socket->stats.bytes_received = 0;
 	socket->stats.bytes_sent = 0;
+	socket->stats.segs_out = 0;
+	socket->stats.segs_in = 0;
+	socket->stats.sk_drops = 0;
 	socket->stats.zero_window = 0;
 	socket->fin_rx = 0;
 	socket->ipv6 = (family == AF_INET6);
