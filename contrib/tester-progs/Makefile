@@ -12,6 +12,7 @@ all: $(PROGS)
 	make -C read_write/
 	make -C splice/
 	make -C mmap/
+	make -C net/
 
 sigkill-tester: sigkill-tester.c
 	$(GCC) -Wall -o sigkill-tester sigkill-tester.c

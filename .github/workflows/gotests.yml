@@ -46,7 +46,7 @@ jobs:
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
         sudo apt update -y
-        sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev
+        sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev iproute2 net-tools
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         cd ${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs

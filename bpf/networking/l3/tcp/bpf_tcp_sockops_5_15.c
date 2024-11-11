@@ -208,11 +208,6 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	old_state = skops->args[0];
 	state = skops->args[1];
 
-	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING ||
-	    (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) ||
-	    (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT))
-		return tcp_set_fin(skops, &cookie);
-
 	if (state != TCP_CLOSE)
 		return 0;
 

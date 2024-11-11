@@ -75,6 +75,7 @@
 #define IP_ERROR_TCP_RTT_CANNOT_READ_RX_OPT    55
 #define IP_ERROR_TCP_RTT_NO_TIMESTAMP	       56
 #define IP_ERROR_TCP_RTT_DELTA_TOO_BIG	       57
+#define IP_ERROR_INET_READ_TCP		       58
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
