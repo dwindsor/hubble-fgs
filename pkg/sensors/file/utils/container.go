@@ -21,7 +21,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/containerd"
+	containerdV2 "github.com/containerd/containerd/v2/client"
 	crTypes "github.com/cri-o/cri-o/pkg/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -47,7 +47,7 @@ func RemoveContainerIdPrefix(cId string) string {
 }
 
 // lists all containerd namespaces for a specific client
-func getContainedNamespaces(ctx context.Context, client *containerd.Client) ([]string, error) {
+func getContainedNamespaces(ctx context.Context, client *containerdV2.Client) ([]string, error) {
 	namespaces := client.NamespaceService()
 	return namespaces.List(ctx)
 }
@@ -55,8 +55,8 @@ func getContainedNamespaces(ctx context.Context, client *containerd.Client) ([]s
 // searches for a container at a specific containerd namespace
 // and returns the path to the root of this container
 func getContainerdRoot(ctx context.Context, address, namespace, cid string) (string, error) {
-	defaultNs := containerd.WithDefaultNamespace(namespace)
-	client, err := containerd.New(address, defaultNs)
+	defaultNs := containerdV2.WithDefaultNamespace(namespace)
+	client, err := containerdV2.New(address, defaultNs)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +80,7 @@ func getContainerdRoot(ctx context.Context, address, namespace, cid string) (str
 // similar to getContainerdRoot() but it search in a nested container setup (i.e. 2 levels)
 // this is only needed for e2e tests in KinD
 func getNestedContainerdRoot(ctx context.Context, address, cid string) (string, error) {
-	client, err := containerd.New(address)
+	client, err := containerdV2.New(address)
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +92,7 @@ func getNestedContainerdRoot(ctx context.Context, address, cid string) (string, 
 	}
 
 	for _, ns := range nss {
-		clientNs, err := containerd.New(address, containerd.WithDefaultNamespace(ns))
+		clientNs, err := containerdV2.New(address, containerdV2.WithDefaultNamespace(ns))
 		if err != nil {
 			return "", err
 		}
