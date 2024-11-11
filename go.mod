@@ -46,7 +46,7 @@ require (
 	golang.org/x/net v0.31.0
 	golang.org/x/sys v0.27.0
 	golang.org/x/time v0.8.0
-	google.golang.org/api v0.204.0
+	google.golang.org/api v0.205.0
 	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -66,7 +66,7 @@ require (
 
 require (
 	cel.dev/expr v0.16.1 // indirect
-	cloud.google.com/go/auth v0.10.0 // indirect
+	cloud.google.com/go/auth v0.10.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.5 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20231105174938-2b5cbb29f3e2 // indirect
