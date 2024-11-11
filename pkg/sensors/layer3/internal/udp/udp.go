@@ -395,16 +395,23 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			udpKey := api.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
 				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP,
 			}}
-			var udpValue api.UdpInfoValue
-			err := udpMap.Lookup(udpKey, &udpValue)
-			if err != nil {
-				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event")
-				continue
-			}
-
 			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
 				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP},
 				PsVersion: psock.PsVersion}
+			var udpValue api.UdpInfoValue
+			err := udpMap.Lookup(udpKey, &udpValue)
+			if err != nil {
+				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event. BPF UDP map might be too small?")
+				// Entry has been evicted from the BPF map (likely LRU overspill).
+				// We can still (and should) send a close event, although stats and duration will be 0.
+				if !DisableCloseEvents {
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &api.UdpInfoValue{}, 0))
+				}
+				// And we should remove the entry from our local stats cache.
+				stats.Remove(udpStatsKey)
+				continue
+			}
+
 			entry, ok := stats.Get(udpStatsKey)
 			if ok {
 				// Send stats event for the difference from the last one
