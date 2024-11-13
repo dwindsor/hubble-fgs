@@ -156,6 +156,21 @@ jobs:
           echo "localhost:8118" | sudo tee /etc/tetragon/tetragon.conf.d/gops-address
           sudo systemctl start tetragon-enterprise
 
+      - name: Wait for Tetragon EE service 2nd round
+        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3
+        with:
+          timeout_seconds: 30
+          max_attempts: 5
+          retry_wait_seconds: 5
+          retry_on: error
+          command: |
+            # Ensure that default native builds work
+            sudo systemctl is-active tetragon-enterprise
+            sudo tetra status
+
+      - name: Check Tetragon EE startup logs 2nd round
+        run: sudo journalctl -b -u tetragon-enterprise --no-pager
+
       - name: Test Tetragon EE with a different tracing-policy-dir
         uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e # v3
         with:
@@ -165,7 +180,6 @@ jobs:
           retry_on: error
           command: |
             sudo sync
-            sudo systemctl is-active tetragon-enterprise
             sudo tetra status
             sudo tetra tracingpolicy list | grep dns -
             sudo tetra bugtool
