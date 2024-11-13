@@ -22,21 +22,21 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'rhel8-20240404.144247'
+          - 'rhel8-20241107.001101'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20240618.013132'
+          - 'bpf-next-20241112.013249'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20240612.090637"
+          - "6.6-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20240612.090637"
+          - "6.1-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20240612.090637"
+          - "5.15-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20240612.090637"
+          - "5.10-20241107.001101"
           # FIXME: Update this tag and add renovate datasource back when systemd bug with 5.4 is fixed. See https://github.com/isovalent/hubble-fgs/issues/4677 for context.
           - "5.4-20240710.064909"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20240612.090637"
+          - "4.19-20241107.001101"
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
