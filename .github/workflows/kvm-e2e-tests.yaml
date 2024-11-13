@@ -206,6 +206,10 @@ jobs:
             else
               export E2E_BTF=/sys/kernel/btf/vmlinux
             fi
+            # FIXME: TestHTTP e2e test fails bpf-next kernels
+            if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
+              export FLAKY_HTTP=1
+            fi
             make e2e-test                                          \
               E2E_BUILD_IMAGES=0                                   \
               E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \

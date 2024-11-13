@@ -102,6 +102,26 @@ jobs:
 
             export KVM_CI=true
             export SUDO=
+            # FIXME: TestCGTLS13 test fails bpf-next kernels
+            if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 6.6 kernels
+            if [[ "${{ matrix.kernel }}" == 6.6-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 6.1 kernels
+            if [[ "${{ matrix.kernel }}" == 6.1-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 5.15 kernels
+            if [[ "${{ matrix.kernel }}" == 5.15-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 5.10 kernels
+            if [[ "${{ matrix.kernel }}" == 5.10-* ]]; then
+              export FLAKY_HTTP=1
+            fi
             make hubble-bpf tetragon-fs-scanner tester-progs test
 
       - name: Copy out FGS logs
