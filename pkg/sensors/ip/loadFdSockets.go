@@ -244,7 +244,7 @@ func unloadFdLookup(fdLoadSensor *sensors.Sensor, _ string) error {
 		return fmt.Errorf("hubble-fgs, could not unload BPF programs: fdLoadSensor")
 	}
 	fdLoadSensor.Maps = getOnlyFdLookupMaps()
-	if err := fdLoadSensor.Unload(); err != nil {
+	if err := fdLoadSensor.Unload(true); err != nil {
 		return fmt.Errorf("hubble-fgs, could not unload BPF programs: %w", err)
 	}
 	return nil

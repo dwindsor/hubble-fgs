@@ -92,6 +92,8 @@ message Filter {
     CapFilter capabilities = 11;
     // Filter parent process' binary using RE2 regular expression syntax.
     repeated string parent_binary_regex = 12;
+    // Filter using CEL expressions.
+    repeated string cel_expression = 13;
     // Filter by source_ip field using an address range specified using CIDR notation.
     //
     // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}

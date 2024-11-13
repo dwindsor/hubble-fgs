@@ -120,9 +120,6 @@ type Program struct {
 	Override        bool
 	OverrideFmodRet bool
 
-	// Needs attached link to be pinned
-	PinLink bool
-
 	// Type is the type of BPF program. For example, tc, skb, tracepoint,
 	// etc.
 	Type      string
@@ -192,15 +189,15 @@ func (p *Program) SetPolicy(policy string) *Program {
 	return p
 }
 
-func (p *Program) Unload() error {
+func (p *Program) Unload(unpin bool) error {
 	if p.unloader == nil {
 		return nil
 	}
-	if err := p.unloader.Unload(); err != nil {
+	if err := p.unloader.Unload(unpin); err != nil {
 		return fmt.Errorf("Failed to unload: %w", err)
 	}
 	if p.unloaderOverride != nil {
-		if err := p.unloaderOverride.Unload(); err != nil {
+		if err := p.unloaderOverride.Unload(unpin); err != nil {
 			return fmt.Errorf("Failed to unload override: %w", err)
 		}
 	}

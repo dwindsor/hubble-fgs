@@ -159,7 +159,7 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 		allAttached[attachment] = true
 	}
 	if err != nil {
-		if unloadErr := un.Unload(); unloadErr != nil {
+		if unloadErr := un.Unload(true); unloadErr != nil {
 			logger.GetLogger().Warnf("Failed to unload on TC program rewind: %s", unloadErr)
 		}
 		return err
@@ -230,7 +230,7 @@ func LoadTC(
 		}
 
 		chainUn := unloader.ChainUnloader{
-			unloader.PinUnloader{
+			unloader.ProgUnloader{
 				Prog: prog,
 			},
 			&un,

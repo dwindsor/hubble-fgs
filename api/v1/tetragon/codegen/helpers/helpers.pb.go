@@ -8,6 +8,7 @@ package helpers
 import (
 	fmt "fmt"
 	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // ResponseTypeString returns an event's type as a string
@@ -234,4 +235,76 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 
 	}
 	return nil
+}
+
+// ResponseTypeMap returns a map from event field names (e.g. "process_exec") to corresponding
+// protobuf messages (e.g. &tetragon.ProcessExec{}).
+func ResponseTypeMap() map[string]proto.Message {
+	return map[string]proto.Message{
+		"process_exec":                &tetragon.ProcessExec{},
+		"process_connect":             &tetragon.ProcessConnect{},
+		"process_listen":              &tetragon.ProcessListen{},
+		"tls":                         &tetragon.Tls{},
+		"process_exit":                &tetragon.ProcessExit{},
+		"process_close":               &tetragon.ProcessClose{},
+		"process_accept":              &tetragon.ProcessAccept{},
+		"process_kprobe":              &tetragon.ProcessKprobe{},
+		"process_tracepoint":          &tetragon.ProcessTracepoint{},
+		"process_sock_stats":          &tetragon.ProcessSockStats{},
+		"process_http":                &tetragon.ProcessHttp{},
+		"interface_stats":             &tetragon.InterfaceStats{},
+		"process_dns":                 &tetragon.ProcessDns{},
+		"process_network_burst":       &tetragon.ProcessNetworkBurst{},
+		"process_file":                &tetragon.ProcessFile{},
+		"process_ip_error":            &tetragon.ProcessIpError{},
+		"process_loader":              &tetragon.ProcessLoader{},
+		"process_network_watermark":   &tetragon.ProcessNetworkWatermark{},
+		"process_uprobe":              &tetragon.ProcessUprobe{},
+		"process_udp_seq_check_error": &tetragon.ProcessUdpSeqCheckError{},
+		"process_file_exec":           &tetragon.ProcessFileExec{},
+		"process_icmp":                &tetragon.ProcessIcmp{},
+		"process_rawsock_create":      &tetragon.ProcessRawsockCreate{},
+		"process_rawsock_close":       &tetragon.ProcessRawsockClose{},
+		"process_sandbox_syscall":     &tetragon.ProcessSandboxSyscall{},
+		"process_throttle":            &tetragon.ProcessThrottle{},
+		"process_lsm":                 &tetragon.ProcessLsm{},
+		"test":                        &tetragon.Test{},
+		"rate_limit_info":             &tetragon.RateLimitInfo{},
+	}
+}
+
+// ProcessEventMap returns a map from event field names (e.g. "process_exec") to corresponding
+// protobuf messages in a given tetragon.GetEventsResponse (e.g. response.GetProcessExec()).
+func ProcessEventMap(response *tetragon.GetEventsResponse) map[string]any {
+	return map[string]any{
+		"process_exec":                response.GetProcessExec(),
+		"process_connect":             response.GetProcessConnect(),
+		"process_listen":              response.GetProcessListen(),
+		"tls":                         response.GetTls(),
+		"process_exit":                response.GetProcessExit(),
+		"process_close":               response.GetProcessClose(),
+		"process_accept":              response.GetProcessAccept(),
+		"process_kprobe":              response.GetProcessKprobe(),
+		"process_tracepoint":          response.GetProcessTracepoint(),
+		"process_sock_stats":          response.GetProcessSockStats(),
+		"process_http":                response.GetProcessHttp(),
+		"interface_stats":             response.GetInterfaceStats(),
+		"process_dns":                 response.GetProcessDns(),
+		"process_network_burst":       response.GetProcessNetworkBurst(),
+		"process_file":                response.GetProcessFile(),
+		"process_ip_error":            response.GetProcessIpError(),
+		"process_loader":              response.GetProcessLoader(),
+		"process_network_watermark":   response.GetProcessNetworkWatermark(),
+		"process_uprobe":              response.GetProcessUprobe(),
+		"process_udp_seq_check_error": response.GetProcessUdpSeqCheckError(),
+		"process_file_exec":           response.GetProcessFileExec(),
+		"process_icmp":                response.GetProcessIcmp(),
+		"process_rawsock_create":      response.GetProcessRawsockCreate(),
+		"process_rawsock_close":       response.GetProcessRawsockClose(),
+		"process_sandbox_syscall":     response.GetProcessSandboxSyscall(),
+		"process_throttle":            response.GetProcessThrottle(),
+		"process_lsm":                 response.GetProcessLsm(),
+		"test":                        response.GetTest(),
+		"rate_limit_info":             response.GetRateLimitInfo(),
+	}
 }

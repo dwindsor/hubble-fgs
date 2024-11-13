@@ -2114,6 +2114,7 @@ Capability set to filter over. NOTE: you may specify only ONE set here.
 | policy_names | [string](#string) | repeated | Filter events by tracing policy names |
 | capabilities | [CapFilter](#tetragon-CapFilter) |  | Filter events by Linux process capability |
 | parent_binary_regex | [string](#string) | repeated | Filter parent process&#39; binary using RE2 regular expression syntax. |
+| cel_expression | [string](#string) | repeated | Filter using CEL expressions. |
 | source_ip_cidr | [string](#string) | repeated | Filter by source_ip field using an address range specified using CIDR notation.
 
 Example: {&#34;event_set&#34;: [&#34;PROCESS_ACCEPT&#34;], &#34;source_ip_cidr&#34;: [&#34;127.0.0.0/16&#34;]} |

@@ -105,8 +105,8 @@ func (h *SensorsHandle) Close(t *testing.T) {
 	h.cancel()
 
 	bpfDir := bpf.MapPrefixPath()
-	h.parserSensor.Unload()
-	h.initSensor.Unload()
+	h.parserSensor.Unload(true)
+	h.initSensor.Unload(true)
 
 	// Verify that all pins have been cleared.
 	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, _ error) error {

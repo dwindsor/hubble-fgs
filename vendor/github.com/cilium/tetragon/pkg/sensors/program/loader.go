@@ -16,7 +16,6 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	cachedbtf "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors/unloader"
 )
 
@@ -40,10 +39,6 @@ func linkPinPath(bpfDir string, load *Program, extra ...string) string {
 }
 
 func linkPin(lnk link.Link, bpfDir string, load *Program, extra ...string) error {
-	// pinned link is not configured
-	if !option.Config.KeepSensorsOnExit && !load.PinLink {
-		return nil
-	}
 	// pinned link is not supported
 	if !bpf.HasLinkPin() {
 		return nil
@@ -77,7 +72,7 @@ func RawAttachWithFlags(targetFD int, flags uint32) AttachFunc {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
 		return unloader.ChainUnloader{
-			unloader.PinUnloader{
+			unloader.ProgUnloader{
 				Prog: prog,
 			},
 			&unloader.RawDetachUnloader{
@@ -108,7 +103,7 @@ func TracepointAttach(load *Program, bpfDir string) AttachFunc {
 			return nil, err
 		}
 		return &unloader.RelinkUnloader{
-			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 			IsLinked:   true,
 			Link:       tpLink,
 			RelinkFn: func() (link.Link, error) {
@@ -137,7 +132,7 @@ func RawTracepointAttach(load *Program) AttachFunc {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
 		return unloader.ChainUnloader{
-			unloader.PinUnloader{
+			unloader.ProgUnloader{
 				Prog: prog,
 			},
 			unloader.LinkUnloader{
@@ -198,7 +193,7 @@ func kprobeAttach(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpec,
 	}
 	load.Link = lnk
 	return &unloader.RelinkUnloader{
-		UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+		UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 		IsLinked:   true,
 		Link:       lnk,
 		RelinkFn:   linkFn,
@@ -272,14 +267,14 @@ func fmodretAttachOverride(load *Program, bpfDir string,
 		return fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
 
-	err = linkPin(lnk, bpfDir, load)
+	err = linkPin(lnk, bpfDir, load, "override")
 	if err != nil {
 		lnk.Close()
 		return err
 	}
 
 	load.unloaderOverride = &unloader.RelinkUnloader{
-		UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+		UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 		IsLinked:   true,
 		Link:       lnk,
 		RelinkFn:   linkFn,
@@ -330,7 +325,7 @@ func UprobeAttach(load *Program) AttachFunc {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
 		return &unloader.RelinkUnloader{
-			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 			IsLinked:   true,
 			Link:       lnk,
 			RelinkFn:   linkFn,
@@ -372,7 +367,7 @@ func MultiUprobeAttach(load *Program) AttachFunc {
 
 		return &unloader.MultiRelinkUnloader{
 			UnloadProg: unloader.ChainUnloader{
-				unloader.PinUnloader{
+				unloader.ProgUnloader{
 					Prog: prog,
 				},
 			}.Unload,
@@ -387,7 +382,7 @@ func NoAttach() AttachFunc {
 	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
 		prog *ebpf.Program, _ *ebpf.ProgramSpec) (unloader.Unloader, error) {
 		return unloader.ChainUnloader{
-			unloader.PinUnloader{
+			unloader.ProgUnloader{
 				Prog: prog,
 			},
 		}, nil
@@ -407,7 +402,7 @@ func TracingAttach() AttachFunc {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
 		return &unloader.RelinkUnloader{
-			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 			IsLinked:   true,
 			Link:       lnk,
 			RelinkFn:   linkFn,
@@ -442,7 +437,7 @@ func LSMAttach() AttachFunc {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
 		return &unloader.RelinkUnloader{
-			UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+			UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 			IsLinked:   true,
 			Link:       lnk,
 			RelinkFn:   linkFn,
@@ -451,7 +446,8 @@ func LSMAttach() AttachFunc {
 }
 
 func multiKprobeAttach(load *Program, prog *ebpf.Program,
-	spec *ebpf.ProgramSpec, opts link.KprobeMultiOptions, bpfDir string) (unloader.Unloader, error) {
+	spec *ebpf.ProgramSpec, opts link.KprobeMultiOptions,
+	bpfDir string, extra ...string) (unloader.Unloader, error) {
 
 	var lnk link.Link
 	var err error
@@ -464,14 +460,14 @@ func multiKprobeAttach(load *Program, prog *ebpf.Program,
 	if err != nil {
 		return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
-	err = linkPin(lnk, bpfDir, load)
+	err = linkPin(lnk, bpfDir, load, extra...)
 	if err != nil {
 		lnk.Close()
 		return nil, err
 	}
 	load.Link = lnk
 	return unloader.ChainUnloader{
-		unloader.PinUnloader{
+		unloader.ProgUnloader{
 			Prog: prog,
 		},
 		unloader.LinkUnloader{
@@ -515,7 +511,7 @@ func MultiKprobeAttach(load *Program, bpfDir string) AttachFunc {
 				Symbols: data.Overrides,
 			}
 
-			load.unloaderOverride, err = multiKprobeAttach(load, progOverride, progOverrideSpec, opts, bpfDir)
+			load.unloaderOverride, err = multiKprobeAttach(load, progOverride, progOverrideSpec, opts, bpfDir, "override")
 			if err != nil {
 				logger.GetLogger().Warnf("Failed to attach override program: %w", err)
 			}
@@ -557,7 +553,7 @@ func KprobeAttachMany(load *Program, syms []string, bpfDir string) AttachFunc {
 		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 
 		unloader := unloader.ChainUnloader{
-			unloader.PinUnloader{
+			unloader.ProgUnloader{
 				Prog: prog,
 			},
 		}
@@ -614,7 +610,7 @@ func LoadFmodRetProgram(bpfDir string, load *Program, progName string, verbose i
 				return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 			}
 			return &unloader.RelinkUnloader{
-				UnloadProg: unloader.PinUnloader{Prog: prog}.Unload,
+				UnloadProg: unloader.ProgUnloader{Prog: prog}.Unload,
 				IsLinked:   true,
 				Link:       lnk,
 				RelinkFn:   linkFn,
