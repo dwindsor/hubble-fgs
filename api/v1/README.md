@@ -185,7 +185,7 @@
 - [tetragon/sandbox.proto](#tetragon_sandbox-proto)
     - [ProcessSandboxSyscall](#tetragon-ProcessSandboxSyscall)
   
-- [tetragon/model.proto](#tetragon_model-proto)
+- [tetragon/processmodel.proto](#tetragon_processmodel-proto)
     - [Destination](#tetragon-Destination)
     - [DestinationStats](#tetragon-DestinationStats)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
@@ -194,6 +194,15 @@
     - [Workload](#tetragon-Workload)
   
     - [ProcessModelService](#tetragon-ProcessModelService)
+  
+- [tetragon/appmodel.proto](#tetragon_appmodel-proto)
+    - [ApplicationConnection](#tetragon-ApplicationConnection)
+    - [ApplicationHost](#tetragon-ApplicationHost)
+    - [ApplicationModel](#tetragon-ApplicationModel)
+    - [ApplicationModelEvent](#tetragon-ApplicationModelEvent)
+    - [ApplicationNamespace](#tetragon-ApplicationNamespace)
+    - [ApplicationProcess](#tetragon-ApplicationProcess)
+    - [ApplicationWorkload](#tetragon-ApplicationWorkload)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -3416,10 +3425,10 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
-<a name="tetragon_model-proto"></a>
+<a name="tetragon_processmodel-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## tetragon/model.proto
+## tetragon/processmodel.proto
 
 
 
@@ -3543,6 +3552,138 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
+
+ 
+
+
+
+<a name="tetragon_appmodel-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/appmodel.proto
+
+
+
+<a name="tetragon-ApplicationConnection"></a>
+
+### ApplicationConnection
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| destination_name | [string](#string) |  |  |
+| destination_port | [uint64](#uint64) |  |  |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationHost"></a>
+
+### ApplicationHost
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processes | [ApplicationProcess](#tetragon-ApplicationProcess) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationModel"></a>
+
+### ApplicationModel
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [ApplicationNamespace](#tetragon-ApplicationNamespace) | repeated |  |
+| host | [ApplicationHost](#tetragon-ApplicationHost) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationModelEvent"></a>
+
+### ApplicationModelEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cluster_name | [string](#string) |  |  |
+| node_name | [string](#string) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| application_model | [ApplicationModel](#tetragon-ApplicationModel) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationNamespace"></a>
+
+### ApplicationNamespace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| workloads | [ApplicationWorkload](#tetragon-ApplicationWorkload) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationProcess"></a>
+
+### ApplicationProcess
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| connections | [ApplicationConnection](#tetragon-ApplicationConnection) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-ApplicationWorkload"></a>
+
+### ApplicationWorkload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| kind | [string](#string) |  |  |
+| processes | [ApplicationProcess](#tetragon-ApplicationProcess) | repeated |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 

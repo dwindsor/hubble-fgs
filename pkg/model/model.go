@@ -21,45 +21,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ApplicationModelEvent struct {
-	ClusterName      string                 `json:"cluster_name,omitempty"`
-	NodeName         string                 `json:"node_name,omitempty"`
-	Time             *timestamppb.Timestamp `json:"time,omitempty"`
-	ApplicationModel ApplicationModel       `json:"application_model,omitempty"`
-}
-
-type ApplicationModel struct {
-	Namespaces []ApplicationNamespace `json:"namespaces,omitempty"`
-	Host       ApplicationHost        `json:"host,omitempty"`
-}
-
-type ApplicationHost struct {
-	Processes []ApplicationProcess `json:"processes,omitempty"`
-}
-
-type ApplicationNamespace struct {
-	Name      string                `json:"name,omitempty"`
-	Workloads []ApplicationWorkload `json:"workloads,omitempty"`
-}
-
-type ApplicationWorkload struct {
-	Name      string               `json:"name,omitempty"`
-	Kind      string               `json:"kind,omitempty"`
-	Processes []ApplicationProcess `json:"processes,omitempty"`
-}
-
-type ApplicationProcess struct {
-	Name        string                  `json:"name,omitempty"`
-	Connections []ApplicationConnection `json:"connections,omitempty"`
-}
-
-type ApplicationConnection struct {
-	DestinationName string `json:"destination_name,omitempty"`
-	DestinationPort uint64 `json:"destination_port,omitempty"`
-	BytesSent       uint64 `json:"bytes_sent,omitempty"`
-	BytesReceived   uint64 `json:"bytes_received,omitempty"`
-}
-
 type namespaceKey struct {
 	name string
 }
@@ -78,7 +39,7 @@ type connectionKey struct {
 	destinationPort uint64
 }
 
-type connectionMap map[connectionKey]ApplicationConnection
+type connectionMap map[connectionKey]*tetragon.ApplicationConnection
 type processMap map[processKey]connectionMap
 type workloadMap map[workloadKey]processMap
 type namespaceMap map[namespaceKey]workloadMap
@@ -102,7 +63,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
 		nsMap[nsKey][wlkey][pskey] = make(connectionMap)
 	}
-	nsMap[nsKey][wlkey][pskey][connKey] = ApplicationConnection{
+	nsMap[nsKey][wlkey][pskey][connKey] = &tetragon.ApplicationConnection{
 		DestinationName: connKey.destinationName,
 		DestinationPort: connKey.destinationPort,
 		BytesSent:       bc.BytesSent(),
@@ -125,22 +86,22 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
 	}
 }
 
-func sortNamespace(a, b ApplicationNamespace) int {
+func sortNamespace(a, b *tetragon.ApplicationNamespace) int {
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortProcess(a, b ApplicationProcess) int {
+func sortProcess(a, b *tetragon.ApplicationProcess) int {
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortWorkload(a, b ApplicationWorkload) int {
+func sortWorkload(a, b *tetragon.ApplicationWorkload) int {
 	if kindComp := strings.Compare(a.Kind, b.Kind); kindComp != 0 {
 		return kindComp
 	}
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortConnection(a, b ApplicationConnection) int {
+func sortConnection(a, b *tetragon.ApplicationConnection) int {
 	if nameComp := strings.Compare(a.DestinationName, b.DestinationName); nameComp != 0 {
 		return nameComp
 	}
@@ -151,9 +112,10 @@ func sortConnection(a, b ApplicationConnection) int {
 	return -1
 }
 
-func namespaceMapToApplicationModel(nsMap namespaceMap) ApplicationModelEvent {
-	result := ApplicationModelEvent{}
-	result.ApplicationModel = ApplicationModel{}
+func namespaceMapToApplicationModel(nsMap namespaceMap) *tetragon.ApplicationModelEvent {
+	result := &tetragon.ApplicationModelEvent{}
+	result.ApplicationModel = &tetragon.ApplicationModel{}
+	result.ApplicationModel.Host = &tetragon.ApplicationHost{}
 	result.NodeName = node.GetNodeNameForExport()
 	result.ClusterName = option.Config.ClusterName
 	result.Time = timestamppb.Now()
@@ -162,7 +124,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) ApplicationModelEvent {
 			// There is no workload info for host processes.
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
-					ps := ApplicationProcess{
+					ps := &tetragon.ApplicationProcess{
 						Name:        pskey.name,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
@@ -170,16 +132,16 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) ApplicationModelEvent {
 				}
 			}
 		} else {
-			ns := ApplicationNamespace{
+			ns := &tetragon.ApplicationNamespace{
 				Name: key.name,
 			}
 			for wlkey, wlval := range val {
-				wl := ApplicationWorkload{
+				wl := &tetragon.ApplicationWorkload{
 					Name: wlkey.name,
 					Kind: wlkey.kind,
 				}
 				for pskey, psval := range wlval {
-					ps := ApplicationProcess{
+					ps := &tetragon.ApplicationProcess{
 						Name:        pskey.name,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
@@ -208,7 +170,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) ApplicationModelEvent {
 	return result
 }
 
-func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) ApplicationModelEvent {
+func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *tetragon.ApplicationModelEvent {
 	// Ignore quota info for now.
 	monitor, _, processes := ConvertToMonitorData(res, true)
 	nsMap := make(namespaceMap)

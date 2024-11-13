@@ -1,0 +1,58 @@
+// Copyright 2020 Authors of Hubble
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tetragon;
+
+import "google/protobuf/timestamp.proto";
+
+message ApplicationModelEvent {
+	string cluster_name = 1;
+	string node_name = 2;
+	google.protobuf.Timestamp time = 3;
+	ApplicationModel application_model = 4;
+}
+
+message ApplicationModel {
+	repeated ApplicationNamespace namespaces = 1;
+	ApplicationHost host = 2;
+}
+
+message ApplicationHost {
+	repeated ApplicationProcess processes = 1;
+}
+
+message ApplicationNamespace {
+	string name = 1;
+	repeated ApplicationWorkload workloads = 2;
+}
+
+message ApplicationWorkload {
+	string name = 1;
+	string kind = 2;
+	repeated ApplicationProcess processes = 3;
+}
+
+message ApplicationProcess {
+	string name = 1;
+	repeated ApplicationConnection connections = 2;
+}
+
+message ApplicationConnection {
+	string destination_name = 1;
+	uint64 destination_port = 2;
+	uint64 bytes_sent = 3;
+	uint64 bytes_received = 4;
+}

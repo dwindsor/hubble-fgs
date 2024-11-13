@@ -16,7 +16,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.24.0
-// source: tetragon/model.proto
+// source: tetragon/processmodel.proto
 
 package tetragon
 
@@ -117,5 +117,5 @@ var ProcessModelService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "tetragon/model.proto",
+	Metadata: "tetragon/processmodel.proto",
 }
