@@ -271,7 +271,7 @@ replace (
 	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
-	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.16
+	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.5.17
 
 // due to CRI-O, otherwise it fails to build hubble-fgs
 // TODO uncomment if replace directive below from cilium/cilium is removed
