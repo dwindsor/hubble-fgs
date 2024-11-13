@@ -334,8 +334,6 @@ func printGrpcTree() error {
 }
 
 func New() *cobra.Command {
-	verbose := uint32(math.MaxUint32)
-
 	ret := &cobra.Command{
 		Use:          "pstree",
 		Short:        "Print process tree",
@@ -347,7 +345,6 @@ func New() *cobra.Command {
 	}
 
 	flags := ret.Flags()
-	flags.Uint32Var(&verbose, "verbose", verbose, "verbose (0 slim, 1 networking)")
 	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
 		"List processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
 	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
