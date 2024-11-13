@@ -33,8 +33,8 @@ jobs:
           - "5.15-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.10-20241107.001101"
-          # FIXME: Update this tag and add renovate datasource back when systemd bug with 5.4 is fixed. See https://github.com/isovalent/hubble-fgs/issues/4677 for context.
-          - "5.4-20240710.064909"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "5.4-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "4.19-20241107.001101"
     steps:
