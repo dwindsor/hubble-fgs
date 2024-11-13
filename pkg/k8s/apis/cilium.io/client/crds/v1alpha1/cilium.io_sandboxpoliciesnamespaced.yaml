@@ -8,9 +8,13 @@ metadata:
 spec:
   group: cilium.io
   names:
+    categories:
+    - tetragon
     kind: SandboxPolicyNamespaced
     listKind: SandboxPolicyNamespacedList
     plural: sandboxpoliciesnamespaced
+    shortNames:
+    - tgspn
     singular: sandboxpolicynamespaced
   scope: Namespaced
   versions:

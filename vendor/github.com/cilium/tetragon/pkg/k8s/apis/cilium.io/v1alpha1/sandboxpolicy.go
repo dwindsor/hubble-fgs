@@ -26,7 +26,7 @@ type SandboxPolicyList struct {
 // +genclient:noStatus
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:singular="sandboxpolicy",path="sandboxpolicies",scope="Cluster",shortName={}
+// +kubebuilder:resource:categories={tetragon},singular="sandboxpolicy",path="sandboxpolicies",scope="Cluster",shortName={tgsp}
 type SandboxPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
@@ -44,7 +44,7 @@ type SandboxPolicyNamespacedList struct {
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:singular="sandboxpolicynamespaced",path="sandboxpoliciesnamespaced",scope="Namespaced",shortName={}
+// +kubebuilder:resource:categories={tetragon},singular="sandboxpolicynamespaced",path="sandboxpoliciesnamespaced",scope="Namespaced",shortName={tgspn}
 type SandboxPolicyNamespaced struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
