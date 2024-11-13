@@ -1,0 +1,157 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+
+package checker
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/google/cel-go/cel"
+	"google.golang.org/protobuf/encoding/protojson"
+)
+
+type ApplicationCheckerResult interface {
+	Ok() bool
+}
+
+// ResultPass represents a passing checker result.
+type ResultPass struct{}
+
+func (r *ResultPass) Ok() bool {
+	return true
+}
+
+// ResultFail represents a failing checker result.
+type ResultFail struct {
+	Failed []string
+}
+
+func (r *ResultFail) Ok() bool {
+	return false
+}
+
+func compile(env *cel.Env, expr string) (*cel.Ast, error) {
+	ast, iss := env.Compile(expr)
+	if iss.Err() != nil {
+		return nil, iss.Err()
+	}
+
+	// Type-check the expression for correctness.
+	checked, iss := env.Check(ast)
+	// Report semantic errors, if present.
+	if iss.Err() != nil {
+		return nil, iss.Err()
+	}
+
+	if checked.OutputType() != cel.BoolType {
+		return nil, fmt.Errorf("wanted return type %q, got %q", cel.BoolType, checked.OutputType())
+	}
+
+	return ast, nil
+}
+
+// ApplicationModelChecker checks an application model using CEL expressions.
+type ApplicationModelChecker struct {
+	env   *cel.Env
+	exprs []string
+}
+
+func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error) {
+	applicationModelEventName := string((&tetragon.ApplicationModelEvent{}).ProtoReflect().Descriptor().FullName())
+	applicationModelName := string((&tetragon.ApplicationModel{}).ProtoReflect().Descriptor().FullName())
+	options := []cel.EnvOption{
+		cel.Container("tetragon"),
+		cel.Variable("event", cel.ObjectType(applicationModelEventName)),
+		cel.Variable("model", cel.ObjectType(applicationModelName)),
+		cel.Variable("application_model", cel.ObjectType(applicationModelName)),
+		cel.Variable("cluster_name", cel.StringType),
+		cel.Variable("node_name", cel.StringType),
+		cel.Variable("time", cel.TimestampType),
+		cel.Types(
+			&tetragon.ApplicationModelEvent{},
+			&tetragon.ApplicationModel{},
+			&tetragon.ApplicationConnection{},
+			&tetragon.ApplicationProcess{},
+			&tetragon.ApplicationHost{},
+			&tetragon.ApplicationNamespace{},
+			&tetragon.ApplicationWorkload{},
+		),
+	}
+
+	celEnv, err := cel.NewEnv(options...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ApplicationModelChecker{
+		env:   celEnv,
+		exprs: exprs,
+	}, nil
+}
+
+// CheckApplicationModelEvent checks an application model.
+func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.Context, appModelEvent *tetragon.ApplicationModelEvent) (ApplicationCheckerResult, error) {
+	failed := []string{}
+
+	for _, expr := range checker.exprs {
+		ast, err := compile(checker.env, expr)
+		if err != nil {
+			return nil, fmt.Errorf("error compiling CEL expression: %w", err)
+		}
+
+		prg, err := checker.env.Program(ast)
+		if err != nil {
+			return nil, fmt.Errorf("error building CEL program: %w", err)
+		}
+
+		out, _, err := prg.ContextEval(ctx, map[string]any{
+			// Top-level accessor for event
+			"event": appModelEvent,
+			// Convenience helpers for unwrapping event fields
+			"cluster_name":      appModelEvent.ClusterName,
+			"node_name":         appModelEvent.NodeName,
+			"application_model": appModelEvent.ApplicationModel,
+			"model":             appModelEvent.ApplicationModel, // Convenience alias for application_model
+			"time":              appModelEvent.Time,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error executing CEL program: %w", err)
+		}
+
+		v, err := out.ConvertToNative(reflect.TypeOf(false))
+		if err != nil {
+			return nil, fmt.Errorf("bad conversion of result to bool: %w", err)
+		}
+
+		res := v.(bool)
+		if !res {
+			failed = append(failed, expr)
+		}
+	}
+	if len(failed) > 0 {
+		return &ResultFail{
+			failed,
+		}, nil
+	}
+	return &ResultPass{}, nil
+}
+
+// CheckApplicationModelEventJSON checks an application model's JSON representation.
+func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx context.Context, appModelEventJSON string) (ApplicationCheckerResult, error) {
+	appModel := &tetragon.ApplicationModelEvent{}
+	if err := protojson.Unmarshal([]byte(appModelEventJSON), appModel); err != nil {
+		return nil, err
+	}
+
+	return checker.CheckApplicationModelEvent(ctx, appModel)
+}

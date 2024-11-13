@@ -21,6 +21,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-logr/logr v1.4.2
 	github.com/golang/protobuf v1.5.4
+	github.com/google/cel-go v0.21.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
@@ -113,7 +114,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/google/cel-go v0.21.0 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/renameio/v2 v2.0.0 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
