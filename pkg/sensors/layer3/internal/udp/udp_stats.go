@@ -339,6 +339,9 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		if pseudoSockets[pseudoKey] != nil {
 			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort,
 				DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion})
+			if len(pseudoSockets[pseudoKey]) == 0 {
+				delete(pseudoSockets, pseudoKey)
+			}
 		}
 		pseudoSocketsUpdate.Unlock()
 		deleteLastKey = udpKey.Copy()
