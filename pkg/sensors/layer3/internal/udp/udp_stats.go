@@ -374,4 +374,38 @@ func runUdpGC() {
 	}
 	// Check if the last key needed deleting
 	deleteLast(m)
+
+	// Check if we have any stale entries
+	removeStaleEntries(m)
+}
+
+// The pseudosocket map contains an entry per pseudosocket observed in BPF.
+// As such, if we have any entries that don't have a corresponding entry in BPF
+// then this likely indicates that an entry in the BPF map was evicted. This
+// will cause the pseudosocket entry to go stale as we only remove them when
+// servicing the BPF map entries or when the socket closes. (Note that the BPF
+// socketmap may also have evicted our overarching socket meaning we never get
+// a close event.)
+func removeStaleEntries(m *ebpf.Map) {
+	pseudoSocketsUpdate.Lock()
+	defer pseudoSocketsUpdate.Unlock()
+
+	for k, tuplemap := range pseudoSockets {
+		for v := range tuplemap {
+			bpfKey := api.UdpInfoKey{Cookie: k.Cookie, Version: k.Version, Tuple: api.MsgIPTuple{
+				SAddr: v.SAddr, SPort: v.SPort, DAddr: v.DAddr, DPort: v.DPort, IPv6: v.IPv6, Proto: unix.IPPROTO_UDP,
+			}}
+			var bpfValue api.UdpInfoValue
+			err := m.Lookup(bpfKey, &bpfValue)
+			if err != nil {
+				// No BPF entry, so remove local entry
+				delete(pseudoSockets[k], v)
+				udpStatsKey := udpStatsKey{Cookie: k.Cookie, Version: k.Version, Tuple: bpfKey.Tuple, PsVersion: v.PsVersion}
+				stats.Remove(udpStatsKey)
+			}
+		}
+		if len(pseudoSockets[k]) == 0 {
+			delete(pseudoSockets, k)
+		}
+	}
 }
