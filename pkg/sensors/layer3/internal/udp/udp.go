@@ -358,7 +358,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Unlock()
 		// If there is an existing cache entry for this pseudo-socket then it must be stale, so remove it.
 		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
-			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6},
+			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: unix.IPPROTO_UDP},
 			PsVersion: m.PsVersion,
 		}
 		stats.Remove(udpStatsKey)
