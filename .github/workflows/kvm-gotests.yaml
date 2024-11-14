@@ -43,12 +43,6 @@ jobs:
         with:
           path: hubble-fgs
           submodules: true
-          
-      # FIXME: Remove this when we have the workaround in place upstream in our LVH images. See https://github.com/isovalent/hubble-fgs/issues/4677 and https://github.com/cilium/little-vm-helper-images/issues/603 for context.
-      - name: Build Workaround For 5.4
-        run: |
-          cd hubble-fgs/contrib/kvm
-          make workaround
 
       - name: Provision LVH VM
         uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
@@ -80,10 +74,6 @@ jobs:
               wget --spider -q -T 10  http://google.com && break
               sleep 10
             done
-
-            # FIXME: Remove this when we have the workaround in place upstream in our LVH images. See https://github.com/isovalent/hubble-fgs/issues/4677 and https://github.com/cilium/little-vm-helper-images/issues/603 for context.
-            cp contrib/kvm/systemd-pidfd-fix.so /systemd-pidfd-fix.so
-            echo /systemd-pidfd-fix.so > /etc/ld.so.preload
 
             # install test deps
             apt update -y
