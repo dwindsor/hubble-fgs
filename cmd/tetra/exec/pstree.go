@@ -17,7 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
+	"io"
 	"os"
 	"os/signal"
 	"sort"
@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,10 +39,13 @@ import (
 )
 
 var (
-	host       bool
-	namespaces []string
-	workloads  []string
-	output     string
+	host             bool
+	namespaces       []string
+	workloads        []string
+	output           string
+	celFiles         []string
+	celExprs         []string
+	appModelFilename string
 )
 
 type ConnectedModelClient struct {
@@ -305,7 +309,8 @@ func NewConnectedModelClient() ConnectedModelClient {
 	c.Client = tetragon.NewProcessModelServiceClient(c.conn)
 	return c
 }
-func printGrpcTree() error {
+
+func getProcessTreeGrpc() (*tetragon.GetProcessModelResponse, error) {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
@@ -317,7 +322,16 @@ func printGrpcTree() error {
 		Debug:      common.Debug,
 	})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to list tracing policies:")
+		logger.GetLogger().WithError(err).Warn("failed to get process tree")
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func printGrpcTree() error {
+	res, err := getProcessTreeGrpc()
+	if err != nil {
 		return err
 	}
 
@@ -344,12 +358,139 @@ func New() *cobra.Command {
 		},
 	}
 
-	flags := ret.Flags()
-	flags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
+	ret.AddCommand(NewCheck())
+
+	pflags := ret.PersistentFlags()
+	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
 		"List processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
-	flags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
-	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
-	flags.BoolVar(&host, "host", false, "Include the tree for host")
+	pflags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
+	pflags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
+	pflags.BoolVar(&host, "host", false, "Include the tree for host")
+	viper.BindPFlags(pflags)
+
+	return ret
+}
+
+func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
+	c := NewConnectedModelClient()
+	defer c.Close()
+
+	if host {
+		namespaces = append(namespaces, model.HostNamespace)
+	}
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+		Namespaces: namespaces,
+		Debug:      common.Debug,
+	})
+	if err != nil || res == nil {
+		return nil, err
+	}
+
+	appModel := model.ProcessModelToApplicationModel(res)
+
+	return chk.CheckApplicationModelEvent(ctx, appModel)
+}
+
+func checkProcessTreeReader(ctx context.Context, reader io.Reader, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read application model: %w", err)
+	}
+
+	return chk.CheckApplicationModelEventJSON(ctx, string(b))
+}
+
+func checkProcessTree() (checker.ApplicationCheckerResult, error) {
+	var appModelReader io.Reader
+	var err error
+	var chk *checker.ApplicationModelChecker
+
+	ctx := context.Background()
+
+	if len(celFiles) > 0 && len(celExprs) > 0 {
+		return nil, fmt.Errorf("provide one of --files or --expressions but not both")
+	}
+
+	if len(celFiles) > 0 {
+		exprs := []string{}
+		for _, file := range celFiles {
+			b, err := os.ReadFile(file)
+			if err != nil {
+				return nil, fmt.Errorf("error reading CEL file: %w", err)
+			}
+			exprs = append(exprs, string(b))
+		}
+		chk, err = checker.NewApplicationModelChecker(exprs)
+		if err != nil {
+			return nil, err
+		}
+	} else if len(celExprs) > 0 {
+		chk, err = checker.NewApplicationModelChecker(celExprs)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("provide one of --files or --expressions")
+	}
+
+	if appModelFilename == "" {
+		return checkProcessTreeGrpc(ctx, chk)
+	}
+
+	if appModelFilename == "-" {
+		appModelReader = os.Stdin
+	} else {
+		fr, err := os.Open(appModelFilename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open app model file: %w", err)
+		}
+		appModelReader = fr
+	}
+
+	return checkProcessTreeReader(ctx, appModelReader, chk)
+}
+
+func NewCheck() *cobra.Command {
+	ret := &cobra.Command{
+		Use:   "check [application model file]",
+		Short: "Check the process tree application model using CEL expressions",
+		Example: `  # Check model.json using CEL checkers defined in source.cel
+  tetra pstree check -f source.cel -m  model.json
+
+  # Check an application model provided over gRPC for the node name "foo" and a bash process in namepsace "bar"
+  tetra pstree check -e 'node_name == "foo" && model.namespaces.exists_one(n, n.name == "bar" && n.processes.exists_one(p, p.name.matches("/bash$")))'
+
+  # Check an application model provided via stdin for a host process with 1337 bytes sent to a specific IP
+  tetra pstree check -m - -e 'model.host.processes.exists_one(p, p.connections.exists(c, c.destination_name == "10.0.2.1" && c.bytes_sent == uint(1337)))'
+		`,
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			res, err := checkProcessTree()
+			if err != nil {
+				return err
+			}
+			switch v := res.(type) {
+			case *checker.ResultFail:
+				fmt.Printf("❌ application model checks failed:\n")
+				for i, failed := range v.Failed {
+					fmt.Printf("\tCheck %d: %q\n", i+1, failed)
+				}
+				os.Exit(-1)
+				panic("unreachable")
+			case *checker.ResultPass:
+				fmt.Printf("✅ application model checks passed!")
+				return nil
+			default:
+				panic("unhandled result")
+			}
+		},
+	}
+
+	flags := ret.Flags()
+	flags.StringArrayVarP(&celFiles, "files", "f", celFiles, "CEL source file(s)")
+	flags.StringArrayVarP(&celExprs, "expressions", "e", celFiles, "CEL expression(s)")
+	flags.StringVarP(&appModelFilename, "model", "m", appModelFilename, "Application model JSON file. Pass \"-\" to use stdin. If not provided, tetra will perform a gRPC query to get the application model.")
 	viper.BindPFlags(flags)
 
 	return ret
