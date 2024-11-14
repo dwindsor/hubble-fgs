@@ -347,30 +347,6 @@ func printGrpcTree() error {
 	}
 }
 
-func New() *cobra.Command {
-	ret := &cobra.Command{
-		Use:          "pstree",
-		Short:        "Print process tree",
-		Hidden:       false,
-		SilenceUsage: false,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return printGrpcTree()
-		},
-	}
-
-	ret.AddCommand(NewCheck())
-
-	pflags := ret.PersistentFlags()
-	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
-		"List processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
-	pflags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
-	pflags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
-	pflags.BoolVar(&host, "host", false, "Include the tree for host")
-	viper.BindPFlags(pflags)
-
-	return ret
-}
-
 func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
 	c := NewConnectedModelClient()
 	defer c.Close()
@@ -492,6 +468,48 @@ func NewCheck() *cobra.Command {
 	flags.StringArrayVarP(&celExprs, "expressions", "e", celFiles, "CEL expression(s)")
 	flags.StringVarP(&appModelFilename, "model", "m", appModelFilename, "Application model JSON file. Pass \"-\" to use stdin. If not provided, tetra will perform a gRPC query to get the application model.")
 	viper.BindPFlags(flags)
+
+	return ret
+}
+
+func NewShow() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "show",
+		Short:        "Show the process tree using a gRPC connection or application model JSON",
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return printGrpcTree()
+		},
+	}
+
+	flags := ret.Flags()
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
+	viper.BindPFlags(flags)
+
+	return ret
+}
+
+func New() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "pstree",
+		Short:        "Tetragon process tree",
+		Hidden:       false,
+		SilenceUsage: false,
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Help()
+		},
+	}
+
+	ret.AddCommand(NewShow())
+	ret.AddCommand(NewCheck())
+
+	pflags := ret.PersistentFlags()
+	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
+		"Get processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
+	pflags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
+	pflags.BoolVar(&host, "host", false, "Include the tree for host")
+	viper.BindPFlags(pflags)
 
 	return ret
 }
