@@ -116,6 +116,9 @@ func printDestination(d *tetragon.Destination) (string, string) {
 	if d.DestinationPod != nil {
 		endptName = d.DestinationPod.String()
 	}
+	if d.DestinationService != nil {
+		endptName = d.DestinationService.String()
+	}
 	if len(d.DestinationNames) > 0 {
 		if endptName != "" {
 			endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
