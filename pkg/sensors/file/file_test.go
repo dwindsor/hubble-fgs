@@ -59,6 +59,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
+	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
+
 	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
@@ -973,6 +975,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 19}},
+		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 19}},
 
 		// separate maps
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
@@ -1023,16 +1026,7 @@ func TestLoadFileSensor(t *testing.T) {
 		sensorMaps = append(sensorMaps, ioUringMaps...)
 	}
 
-	// merge base sensor extensions specific for EE
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
-	}...)
-	ni := uint(len(sensorProgs))
-	sensorMaps = append(sensorMaps, []tus.SensorMap{
-		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 19, ni - 1}},
-	}...)
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))
 	for _, s := range sens {
