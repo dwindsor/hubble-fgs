@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
 
 const (
@@ -288,14 +289,7 @@ spec:
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni + 2, ni + 3}},
 	}
 
-	// merge base sensor extensions specific for EE
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
-	}...)
-	confMap := tus.SensorMap{Name: "tg_conf_map", Progs: []uint{4}}
-	sensorMaps = append(sensorMaps, confMap)
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))
 	for _, s := range sens {
@@ -365,15 +359,7 @@ spec:
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni, ni + 1}},
 	}
 
-	// merge base sensor extensions specific for EE
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		tus.SensorProg{Name: "execve_send", Type: ebpf.TracePoint},
-	}...)
-	ni = uint(len(sensorProgs))
-	confMap := tus.SensorMap{Name: "tg_conf_map", Progs: []uint{ni - 1}}
-	sensorMaps = append(sensorMaps, confMap)
-
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))
 	for _, s := range sens {
