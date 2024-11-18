@@ -46,6 +46,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
 
 const (
@@ -426,7 +427,7 @@ func TestLoadHttpSensor(t *testing.T) {
 	// all but tg_sockmap
 	layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
 
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))
 	for _, s := range sens {

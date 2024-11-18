@@ -106,8 +106,6 @@ const (
 
 	rawsock4SkInitProg = "tg_rawsock_sk_init"
 	rawsock6SkInitProg = "tg_rawsockv6_init_sk"
-
-	execveSendProg = "execve_send"
 )
 
 func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
@@ -241,7 +239,7 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 
 	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 	confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		tcpSockopsProg, execveSendProg,
+		tcpSockopsProg,
 	})...)
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -490,19 +488,11 @@ func kprobeSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorPr
 
 	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 	if kernels.MinKernelVersion("5.14.0") {
-		if runtime.GOARCH != "amd64" {
+		if runtime.GOARCH == "amd64" {
 			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-				execveSendProg,
-			})...)
-		} else {
-			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-				tcpSockopsProg, execveSendProg, tcpSecurityAccept, tcpSecurityGraft,
+				tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft,
 			})...)
 		}
-	} else {
-		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			execveSendProg,
-		})...)
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -562,12 +552,6 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 	sockProgs, _ := socktrack.ProgsAndMaps()
 	sockProgsOffset := uint(len(sensorProgs))
 	sensorProgs = append(sensorProgs, sockProgs...)
-
-	// merge base sensor extensions specific for EE
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		{Name: execveSendProg, Type: ebpf.TracePoint},
-	}...)
-
 	return sensorProgs, sockProgsOffset
 }
 
@@ -649,12 +633,6 @@ func kprobeSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.
 	sockProgs, _ := socktrack.ProgsAndMaps()
 	sockProgsOffset := uint(len(sensorProgs))
 	sensorProgs = append(sensorProgs, sockProgs...)
-
-	// merge base sensor extensions specific for EE
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		{Name: execveSendProg, Type: ebpf.TracePoint},
-	}...)
-
 	return sensorProgs, sockProgsOffset
 }
 
