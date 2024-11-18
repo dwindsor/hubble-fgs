@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 
 	"golang.org/x/sys/unix"
 )
@@ -269,11 +270,19 @@ var (
 	deleteLastKey *api.UdpInfoKey
 )
 
+func decMapStats() {
+	udpconfig.UdpMapRemovesUpdate.Lock()
+	defer udpconfig.UdpMapRemovesUpdate.Unlock()
+	udpconfig.UdpMapRemoves++
+}
+
 func deleteLast(m *ebpf.Map) {
 	if deleteLastKey != nil {
 		if err := m.Delete(deleteLastKey); err != nil {
 			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("UDP delete key failed.")
 			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
+		} else {
+			decMapStats()
 		}
 		deleteLastKey = nil
 	}

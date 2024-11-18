@@ -100,6 +100,9 @@ func InitUDPHealthMetrics(registry *prometheus.Registry) {
 
 	// NOTES:
 	// * Rename count label (to e.g. error)?
+
+	// Register tg_udp_map entries metric
+	registry.MustRegister(NewUdpBPFCollector())
 }
 
 func InitUDPEventsMetrics(registry *prometheus.Registry) {

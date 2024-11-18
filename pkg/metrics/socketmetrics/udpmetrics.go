@@ -11,10 +11,15 @@
 package socketmetrics
 
 import (
+	"path/filepath"
 	"sync"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -146,6 +151,15 @@ var (
 	}, []string{"count"})
 )
 
+// UDP metrics BPF map size
+var (
+	UDPMapEntries = metrics.MustNewCustomGauge(metrics.NewOpts(
+		consts.MetricsNamespace, "", "udp_map_entries",
+		"The total number of in-use entries in the UDP socket map.",
+		nil, nil, nil,
+	))
+)
+
 // UDP Latency Histogram
 // It emulates an OpenMetrics histogram:
 //   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
@@ -242,4 +256,43 @@ func UDPGCMetricInc(ty UDPGCType) {
 
 func UDPGCMetricIncNoLock(ty UDPGCType) {
 	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
+}
+
+func NewUdpBPFCollector() metrics.CollectorWithInit {
+	return metrics.NewCustomCollector(
+		metrics.CustomMetrics{
+			UDPMapEntries,
+		},
+		collect,
+		collectForDocs,
+	)
+}
+
+func collect(ch chan<- prometheus.Metric) {
+	statsFile := filepath.Join(bpf.MapPrefixPath(), udpconfig.UdpMapStatsName)
+	mStats, err := ebpf.LoadPinnedMap(statsFile, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", statsFile).Warn("UDP map stats update failed to open file.")
+		return
+	}
+	defer mStats.Close()
+
+	key := int32(0)
+	var value []int64
+	err = mStats.Lookup(key, &value)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("UDP read map stats failed.")
+		return
+	}
+	udpconfig.UdpMapRemovesUpdate.Lock()
+	count := -udpconfig.UdpMapRemoves
+	udpconfig.UdpMapRemovesUpdate.Unlock()
+	for _, v := range value {
+		count += v
+	}
+	ch <- UDPMapEntries.MustMetric(float64(count))
+}
+
+func collectForDocs(ch chan<- prometheus.Metric) {
+	ch <- UDPMapEntries.MustMetric(0)
 }

@@ -116,6 +116,7 @@ var (
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpMapStatsLazyKprobe  = program.MapBuilder(udpconfig.UdpMapStatsName, InetSendRecvLazy)
 	UdpConfigLazyMapKprobe = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
 
 	// UDP maps
@@ -218,6 +219,7 @@ func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 
 func ConfigureSensor() error {
 	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP)
+	udpconfig.UdpMapRemoves = 0
 	return nil
 }
 
@@ -252,6 +254,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
+			UdpMapStatsLazyKprobe,
 			UdpConfigLazyMapKprobe,
 			UdpPayloadLazyMapKprobe,
 			SocketCookieMap,
@@ -387,6 +390,13 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			return nil, fmt.Errorf("failed to open udp info map")
 		}
 		defer udpMap.Close()
+		mapStatsFile := filepath.Join(bpf.MapPrefixPath(), udpconfig.UdpMapStatsName)
+		udpMapStats, err := ebpf.LoadPinnedMap(mapStatsFile, nil)
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("file", mapFile).Warn("UDP Close event failed to open map")
+			return nil, fmt.Errorf("failed to open udp info map stats")
+		}
+		defer udpMapStats.Close()
 
 		closeEvents := []observer.Event{}
 
@@ -447,6 +457,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			err = udpMap.Delete(udpKey)
 			if err != nil {
 				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map delete")
+			} else {
+				decMapStats()
 			}
 		}
 

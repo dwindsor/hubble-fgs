@@ -164,6 +164,10 @@ var (
 	udpMapSkbLoad   = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad)
 	udpMapSkbLoad54 = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad54)
 
+	udpMapStats          = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher)
+	udpMapStatsSkbLoad   = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherSkbLoad)
+	udpMapStatsSkbLoad54 = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherSkbLoad54)
+
 	udpConfigMap          = program.MapBuilder(udp.ConfigMapName, EgressDispatcher)
 	udpConfigSkbLoadMap   = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad)
 	udpConfigSkbLoad54Map = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad54)
@@ -172,9 +176,9 @@ var (
 	udpPayloadSkbLoadMap   = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad)
 	udpPayloadSkbLoad54Map = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad54)
 
-	udpMaps          = []*program.Map{udpMap, udpConfigMap, udpPayloadMap, latencyConfigMap}
-	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
-	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
+	udpMaps          = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap}
+	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpMapStatsSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
+	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpMapStatsSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
 
 	// Process Tree maps
 	DestinationEndpointEgressMap    = program.MapUser("destination_endpoint_map", EgressDispatcher)

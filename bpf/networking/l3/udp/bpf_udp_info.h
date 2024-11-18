@@ -29,6 +29,20 @@ struct {
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
 } tg_udp_map SEC(".maps");
 
+// We specifically do not use *_stats as the map name to hold the counts of tg_udp_map
+// usage because we increment from BPF but decrement from user space. If we did use
+// *_stats then we'd have a race condition where both BPF and user space update the
+// map at the same time. We avoid this by counting increments in a PERCPU map in BPF
+// and decrements in a int64 in user space and we add them together. We therefore don't
+// want to use *_stats as the map name as this would be automatically summed and
+// exported as a metric and it would be mostly meaningless.
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __s32);
+	__type(value, __s64);
+	__uint(max_entries, 1);
+} tg_udp_map_count SEC(".maps");
+
 /* Store the latest pseudo-socket version number. Each pseudo-socket receives a
  * new global version number, unique to each pseudo-socket.
  */
@@ -188,6 +202,19 @@ update_rx_value(struct udp_info_value *v, u32 len)
 	__sync_fetch_and_add(&v->rx_bytes, len);
 	__sync_fetch_and_add(&v->segs_in, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
+}
+
+static inline __attribute__((always_inline)) void
+add_udp_map(struct udp_info_key *key, struct udp_info_value *value)
+{
+	struct udp_info_value *existing = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
+	int zero = 0;
+	__s64 *cntr;
+	int err;
+
+	err = map_update_elem(&tg_udp_map, key, value, 0);
+	if (!err && !existing && (cntr = (__s64 *)map_lookup_elem(&tg_udp_map_count, &zero)))
+		*cntr = *cntr + 1;
 }
 
 #endif

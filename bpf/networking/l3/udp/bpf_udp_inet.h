@@ -138,7 +138,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 #endif
 	}
 
-	map_update_elem(&tg_udp_map, key, value, 0);
+	add_udp_map(key, value);
 	return value;
 }
 

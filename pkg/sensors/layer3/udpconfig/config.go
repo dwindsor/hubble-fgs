@@ -11,14 +11,23 @@
 package udpconfig
 
 import (
+	"sync"
+
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+)
+
+const (
+	UdpMapStatsName = "tg_udp_map_count"
 )
 
 var (
 	MetricsEnabled = false
 	LatencyConfig  networklatency.ProtocolConfig
 	CurrentLabels  = DefaultLabelFilter()
+
+	UdpMapRemoves       = int64(0)
+	UdpMapRemovesUpdate sync.Mutex
 )
 
 // Keys should be kept in sync with:
