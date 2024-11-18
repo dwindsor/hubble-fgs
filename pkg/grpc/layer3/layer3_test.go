@@ -185,8 +185,6 @@ func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uin
 				Ktime:  0,
 			},
 			Kube: tetragonAPI.MsgK8s{
-				NetNS:  4026531992,
-				Cid:    0,
 				Cgrpid: 0,
 			},
 			Parent: tetragonAPI.MsgExecveKey{
