@@ -22,7 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -189,7 +189,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 
 	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true)
 
-	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensi := make([]sensors.SensorIface, 0, len(sens))
 	for _, s := range sens {
