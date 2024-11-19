@@ -65,3 +65,36 @@ message GetProcessModelResponse {
 service ProcessModelService {
 rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
 }
+
+enum EndpointType {
+	Unknown = 0;
+	Dnstype = 1;
+	PodType = 2;
+	IpType = 3;
+	ServiceType = 4;
+}
+
+message Endpoint {
+	uint64 key = 1;
+	EndpointType type = 2;
+	string dns = 3;
+	string kind = 4;
+	string namespace = 5;
+	string name = 6;
+	string ip = 7;
+}
+
+message EndpointMap {
+	repeated Endpoint endpoints = 1;
+}
+
+message GetEndpointMapResponse {
+        EndpointMap map = 1;
+}
+
+message GetEndpointMapRequest {
+}
+
+service EndpointMapService {
+rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
+}

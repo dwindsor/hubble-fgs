@@ -119,3 +119,91 @@ var ProcessModelService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "tetragon/processmodel.proto",
 }
+
+const (
+	EndpointMapService_GetEndpointMap_FullMethodName = "/tetragon.EndpointMapService/GetEndpointMap"
+)
+
+// EndpointMapServiceClient is the client API for EndpointMapService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type EndpointMapServiceClient interface {
+	GetEndpointMap(ctx context.Context, in *GetEndpointMapRequest, opts ...grpc.CallOption) (*GetEndpointMapResponse, error)
+}
+
+type endpointMapServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewEndpointMapServiceClient(cc grpc.ClientConnInterface) EndpointMapServiceClient {
+	return &endpointMapServiceClient{cc}
+}
+
+func (c *endpointMapServiceClient) GetEndpointMap(ctx context.Context, in *GetEndpointMapRequest, opts ...grpc.CallOption) (*GetEndpointMapResponse, error) {
+	out := new(GetEndpointMapResponse)
+	err := c.cc.Invoke(ctx, EndpointMapService_GetEndpointMap_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// EndpointMapServiceServer is the server API for EndpointMapService service.
+// All implementations should embed UnimplementedEndpointMapServiceServer
+// for forward compatibility
+type EndpointMapServiceServer interface {
+	GetEndpointMap(context.Context, *GetEndpointMapRequest) (*GetEndpointMapResponse, error)
+}
+
+// UnimplementedEndpointMapServiceServer should be embedded to have forward compatible implementations.
+type UnimplementedEndpointMapServiceServer struct {
+}
+
+func (UnimplementedEndpointMapServiceServer) GetEndpointMap(context.Context, *GetEndpointMapRequest) (*GetEndpointMapResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEndpointMap not implemented")
+}
+
+// UnsafeEndpointMapServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to EndpointMapServiceServer will
+// result in compilation errors.
+type UnsafeEndpointMapServiceServer interface {
+	mustEmbedUnimplementedEndpointMapServiceServer()
+}
+
+func RegisterEndpointMapServiceServer(s grpc.ServiceRegistrar, srv EndpointMapServiceServer) {
+	s.RegisterService(&EndpointMapService_ServiceDesc, srv)
+}
+
+func _EndpointMapService_GetEndpointMap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEndpointMapRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EndpointMapServiceServer).GetEndpointMap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EndpointMapService_GetEndpointMap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EndpointMapServiceServer).GetEndpointMap(ctx, req.(*GetEndpointMapRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// EndpointMapService_ServiceDesc is the grpc.ServiceDesc for EndpointMapService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var EndpointMapService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tetragon.EndpointMapService",
+	HandlerType: (*EndpointMapServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetEndpointMap",
+			Handler:    _EndpointMapService_GetEndpointMap_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "tetragon/processmodel.proto",
+}

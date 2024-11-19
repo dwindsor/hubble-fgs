@@ -35,6 +35,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type EndpointType int32
+
+const (
+	EndpointType_Unknown     EndpointType = 0
+	EndpointType_Dnstype     EndpointType = 1
+	EndpointType_PodType     EndpointType = 2
+	EndpointType_IpType      EndpointType = 3
+	EndpointType_ServiceType EndpointType = 4
+)
+
+// Enum value maps for EndpointType.
+var (
+	EndpointType_name = map[int32]string{
+		0: "Unknown",
+		1: "Dnstype",
+		2: "PodType",
+		3: "IpType",
+		4: "ServiceType",
+	}
+	EndpointType_value = map[string]int32{
+		"Unknown":     0,
+		"Dnstype":     1,
+		"PodType":     2,
+		"IpType":      3,
+		"ServiceType": 4,
+	}
+)
+
+func (x EndpointType) Enum() *EndpointType {
+	p := new(EndpointType)
+	*p = x
+	return p
+}
+
+func (x EndpointType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EndpointType) Descriptor() protoreflect.EnumDescriptor {
+	return file_tetragon_processmodel_proto_enumTypes[0].Descriptor()
+}
+
+func (EndpointType) Type() protoreflect.EnumType {
+	return &file_tetragon_processmodel_proto_enumTypes[0]
+}
+
+func (x EndpointType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EndpointType.Descriptor instead.
+func (EndpointType) EnumDescriptor() ([]byte, []int) {
+	return file_tetragon_processmodel_proto_rawDescGZIP(), []int{0}
+}
+
 type GetProcessModelRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -447,6 +502,233 @@ func (x *GetProcessModelResponse) GetProcesses() []*ProcessModel {
 	return nil
 }
 
+type Endpoint struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key       uint64       `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"`
+	Type      EndpointType `protobuf:"varint,2,opt,name=type,proto3,enum=tetragon.EndpointType" json:"type,omitempty"`
+	Dns       string       `protobuf:"bytes,3,opt,name=dns,proto3" json:"dns,omitempty"`
+	Kind      string       `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	Namespace string       `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name      string       `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Ip        string       `protobuf:"bytes,7,opt,name=ip,proto3" json:"ip,omitempty"`
+}
+
+func (x *Endpoint) Reset() {
+	*x = Endpoint{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tetragon_processmodel_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Endpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Endpoint) ProtoMessage() {}
+
+func (x *Endpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_processmodel_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Endpoint.ProtoReflect.Descriptor instead.
+func (*Endpoint) Descriptor() ([]byte, []int) {
+	return file_tetragon_processmodel_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Endpoint) GetKey() uint64 {
+	if x != nil {
+		return x.Key
+	}
+	return 0
+}
+
+func (x *Endpoint) GetType() EndpointType {
+	if x != nil {
+		return x.Type
+	}
+	return EndpointType_Unknown
+}
+
+func (x *Endpoint) GetDns() string {
+	if x != nil {
+		return x.Dns
+	}
+	return ""
+}
+
+func (x *Endpoint) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *Endpoint) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *Endpoint) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Endpoint) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+type EndpointMap struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Endpoints []*Endpoint `protobuf:"bytes,1,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+}
+
+func (x *EndpointMap) Reset() {
+	*x = EndpointMap{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tetragon_processmodel_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EndpointMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointMap) ProtoMessage() {}
+
+func (x *EndpointMap) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_processmodel_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointMap.ProtoReflect.Descriptor instead.
+func (*EndpointMap) Descriptor() ([]byte, []int) {
+	return file_tetragon_processmodel_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EndpointMap) GetEndpoints() []*Endpoint {
+	if x != nil {
+		return x.Endpoints
+	}
+	return nil
+}
+
+type GetEndpointMapResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Map *EndpointMap `protobuf:"bytes,1,opt,name=map,proto3" json:"map,omitempty"`
+}
+
+func (x *GetEndpointMapResponse) Reset() {
+	*x = GetEndpointMapResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tetragon_processmodel_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetEndpointMapResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEndpointMapResponse) ProtoMessage() {}
+
+func (x *GetEndpointMapResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_processmodel_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEndpointMapResponse.ProtoReflect.Descriptor instead.
+func (*GetEndpointMapResponse) Descriptor() ([]byte, []int) {
+	return file_tetragon_processmodel_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetEndpointMapResponse) GetMap() *EndpointMap {
+	if x != nil {
+		return x.Map
+	}
+	return nil
+}
+
+type GetEndpointMapRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *GetEndpointMapRequest) Reset() {
+	*x = GetEndpointMapRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tetragon_processmodel_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetEndpointMapRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEndpointMapRequest) ProtoMessage() {}
+
+func (x *GetEndpointMapRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_processmodel_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEndpointMapRequest.ProtoReflect.Descriptor instead.
+func (*GetEndpointMapRequest) Descriptor() ([]byte, []int) {
+	return file_tetragon_processmodel_proto_rawDescGZIP(), []int{9}
+}
+
 var File_tetragon_processmodel_proto protoreflect.FileDescriptor
 
 var file_tetragon_processmodel_proto_rawDesc = []byte{
@@ -515,15 +797,48 @@ var file_tetragon_processmodel_proto_rawDesc = []byte{
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x09, 0x70, 0x72, 0x6f, 0x63,
 	0x65, 0x73, 0x73, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x74, 0x65,
 	0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f,
-	0x64, 0x65, 0x6c, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x73, 0x32, 0x6f,
-	0x0a, 0x13, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x53, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x58, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x63,
-	0x65, 0x73, 0x73, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x12, 0x20, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61,
-	0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f,
-	0x64, 0x65, 0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x74, 0x65, 0x74,
-	0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73,
-	0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x64, 0x65, 0x6c, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x73, 0x22, 0xb0,
+	0x01, 0x0a, 0x08, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b,
+	0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x2a, 0x0a,
+	0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x16, 0x2e, 0x74, 0x65,
+	0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x54,
+	0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x64, 0x6e, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x64, 0x6e, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6b,
+	0x69, 0x6e, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x12,
+	0x1c, 0x0a, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x12, 0x12, 0x0a,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d,
+	0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x70, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69,
+	0x70, 0x22, 0x3f, 0x0a, 0x0b, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x4d, 0x61, 0x70,
+	0x12, 0x30, 0x0a, 0x09, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x45,
+	0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x09, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
+	0x74, 0x73, 0x22, 0x41, 0x0a, 0x16, 0x47, 0x65, 0x74, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
+	0x74, 0x4d, 0x61, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x27, 0x0a, 0x03,
+	0x6d, 0x61, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x74, 0x65, 0x74, 0x72,
+	0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x4d, 0x61, 0x70,
+	0x52, 0x03, 0x6d, 0x61, 0x70, 0x22, 0x17, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x45, 0x6e, 0x64, 0x70,
+	0x6f, 0x69, 0x6e, 0x74, 0x4d, 0x61, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2a, 0x52,
+	0x0a, 0x0c, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0b,
+	0x0a, 0x07, 0x55, 0x6e, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x44,
+	0x6e, 0x73, 0x74, 0x79, 0x70, 0x65, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x50, 0x6f, 0x64, 0x54,
+	0x79, 0x70, 0x65, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x49, 0x70, 0x54, 0x79, 0x70, 0x65, 0x10,
+	0x03, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x54, 0x79, 0x70, 0x65,
+	0x10, 0x04, 0x32, 0x6f, 0x0a, 0x13, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f, 0x64,
+	0x65, 0x6c, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x58, 0x0a, 0x0f, 0x47, 0x65, 0x74,
+	0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x12, 0x20, 0x2e, 0x74,
+	0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x63, 0x65,
+	0x73, 0x73, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
+	0x2e, 0x74, 0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f,
+	0x63, 0x65, 0x73, 0x73, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x22, 0x00, 0x32, 0x6b, 0x0a, 0x12, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x4d,
+	0x61, 0x70, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x55, 0x0a, 0x0e, 0x47, 0x65, 0x74,
+	0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x4d, 0x61, 0x70, 0x12, 0x1f, 0x2e, 0x74, 0x65,
+	0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69,
+	0x6e, 0x74, 0x4d, 0x61, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x74,
+	0x65, 0x74, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x2e, 0x47, 0x65, 0x74, 0x45, 0x6e, 0x64, 0x70, 0x6f,
+	0x69, 0x6e, 0x74, 0x4d, 0x61, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -538,34 +853,45 @@ func file_tetragon_processmodel_proto_rawDescGZIP() []byte {
 	return file_tetragon_processmodel_proto_rawDescData
 }
 
-var file_tetragon_processmodel_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_tetragon_processmodel_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tetragon_processmodel_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_tetragon_processmodel_proto_goTypes = []interface{}{
-	(*GetProcessModelRequest)(nil),  // 0: tetragon.GetProcessModelRequest
-	(*Workload)(nil),                // 1: tetragon.Workload
-	(*DestinationStats)(nil),        // 2: tetragon.DestinationStats
-	(*Destination)(nil),             // 3: tetragon.Destination
-	(*ProcessModel)(nil),            // 4: tetragon.ProcessModel
-	(*GetProcessModelResponse)(nil), // 5: tetragon.GetProcessModelResponse
-	(*timestamppb.Timestamp)(nil),   // 6: google.protobuf.Timestamp
-	(*Pod)(nil),                     // 7: tetragon.Pod
-	(*Service)(nil),                 // 8: tetragon.Service
+	(EndpointType)(0),               // 0: tetragon.EndpointType
+	(*GetProcessModelRequest)(nil),  // 1: tetragon.GetProcessModelRequest
+	(*Workload)(nil),                // 2: tetragon.Workload
+	(*DestinationStats)(nil),        // 3: tetragon.DestinationStats
+	(*Destination)(nil),             // 4: tetragon.Destination
+	(*ProcessModel)(nil),            // 5: tetragon.ProcessModel
+	(*GetProcessModelResponse)(nil), // 6: tetragon.GetProcessModelResponse
+	(*Endpoint)(nil),                // 7: tetragon.Endpoint
+	(*EndpointMap)(nil),             // 8: tetragon.EndpointMap
+	(*GetEndpointMapResponse)(nil),  // 9: tetragon.GetEndpointMapResponse
+	(*GetEndpointMapRequest)(nil),   // 10: tetragon.GetEndpointMapRequest
+	(*timestamppb.Timestamp)(nil),   // 11: google.protobuf.Timestamp
+	(*Pod)(nil),                     // 12: tetragon.Pod
+	(*Service)(nil),                 // 13: tetragon.Service
 }
 var file_tetragon_processmodel_proto_depIdxs = []int32{
-	6, // 0: tetragon.DestinationStats.KtimeLastReset:type_name -> google.protobuf.Timestamp
-	6, // 1: tetragon.DestinationStats.KtimeTxReset:type_name -> google.protobuf.Timestamp
-	7, // 2: tetragon.Destination.destination_pod:type_name -> tetragon.Pod
-	2, // 3: tetragon.Destination.stats:type_name -> tetragon.DestinationStats
-	8, // 4: tetragon.Destination.destination_service:type_name -> tetragon.Service
-	1, // 5: tetragon.ProcessModel.workload:type_name -> tetragon.Workload
-	3, // 6: tetragon.ProcessModel.dest:type_name -> tetragon.Destination
-	4, // 7: tetragon.GetProcessModelResponse.processes:type_name -> tetragon.ProcessModel
-	0, // 8: tetragon.ProcessModelService.GetProcessModel:input_type -> tetragon.GetProcessModelRequest
-	5, // 9: tetragon.ProcessModelService.GetProcessModel:output_type -> tetragon.GetProcessModelResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	11, // 0: tetragon.DestinationStats.KtimeLastReset:type_name -> google.protobuf.Timestamp
+	11, // 1: tetragon.DestinationStats.KtimeTxReset:type_name -> google.protobuf.Timestamp
+	12, // 2: tetragon.Destination.destination_pod:type_name -> tetragon.Pod
+	3,  // 3: tetragon.Destination.stats:type_name -> tetragon.DestinationStats
+	13, // 4: tetragon.Destination.destination_service:type_name -> tetragon.Service
+	2,  // 5: tetragon.ProcessModel.workload:type_name -> tetragon.Workload
+	4,  // 6: tetragon.ProcessModel.dest:type_name -> tetragon.Destination
+	5,  // 7: tetragon.GetProcessModelResponse.processes:type_name -> tetragon.ProcessModel
+	0,  // 8: tetragon.Endpoint.type:type_name -> tetragon.EndpointType
+	7,  // 9: tetragon.EndpointMap.endpoints:type_name -> tetragon.Endpoint
+	8,  // 10: tetragon.GetEndpointMapResponse.map:type_name -> tetragon.EndpointMap
+	1,  // 11: tetragon.ProcessModelService.GetProcessModel:input_type -> tetragon.GetProcessModelRequest
+	10, // 12: tetragon.EndpointMapService.GetEndpointMap:input_type -> tetragon.GetEndpointMapRequest
+	6,  // 13: tetragon.ProcessModelService.GetProcessModel:output_type -> tetragon.GetProcessModelResponse
+	9,  // 14: tetragon.EndpointMapService.GetEndpointMap:output_type -> tetragon.GetEndpointMapResponse
+	13, // [13:15] is the sub-list for method output_type
+	11, // [11:13] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_processmodel_proto_init() }
@@ -648,19 +974,68 @@ func file_tetragon_processmodel_proto_init() {
 				return nil
 			}
 		}
+		file_tetragon_processmodel_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Endpoint); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_tetragon_processmodel_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EndpointMap); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_tetragon_processmodel_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetEndpointMapResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_tetragon_processmodel_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetEndpointMapRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_tetragon_processmodel_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   6,
+			NumEnums:      1,
+			NumMessages:   10,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_tetragon_processmodel_proto_goTypes,
 		DependencyIndexes: file_tetragon_processmodel_proto_depIdxs,
+		EnumInfos:         file_tetragon_processmodel_proto_enumTypes,
 		MessageInfos:      file_tetragon_processmodel_proto_msgTypes,
 	}.Build()
 	File_tetragon_processmodel_proto = out.File

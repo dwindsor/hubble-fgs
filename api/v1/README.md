@@ -188,11 +188,18 @@
 - [tetragon/processmodel.proto](#tetragon_processmodel-proto)
     - [Destination](#tetragon-Destination)
     - [DestinationStats](#tetragon-DestinationStats)
+    - [Endpoint](#tetragon-Endpoint)
+    - [EndpointMap](#tetragon-EndpointMap)
+    - [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest)
+    - [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
     - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
     - [ProcessModel](#tetragon-ProcessModel)
     - [Workload](#tetragon-Workload)
   
+    - [EndpointType](#tetragon-EndpointType)
+  
+    - [EndpointMapService](#tetragon-EndpointMapService)
     - [ProcessModelService](#tetragon-ProcessModelService)
   
 - [tetragon/appmodel.proto](#tetragon_appmodel-proto)
@@ -3473,6 +3480,67 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-Endpoint"></a>
+
+### Endpoint
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [uint64](#uint64) |  |  |
+| type | [EndpointType](#tetragon-EndpointType) |  |  |
+| dns | [string](#string) |  |  |
+| kind | [string](#string) |  |  |
+| namespace | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| ip | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-EndpointMap"></a>
+
+### EndpointMap
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| endpoints | [Endpoint](#tetragon-Endpoint) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-GetEndpointMapRequest"></a>
+
+### GetEndpointMapRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetEndpointMapResponse"></a>
+
+### GetEndpointMapResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| map | [EndpointMap](#tetragon-EndpointMap) |  |  |
+
+
+
+
+
+
 <a name="tetragon-GetProcessModelRequest"></a>
 
 ### GetProcessModelRequest
@@ -3540,9 +3608,34 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
  
 
+
+<a name="tetragon-EndpointType"></a>
+
+### EndpointType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| Dnstype | 1 |  |
+| PodType | 2 |  |
+| IpType | 3 |  |
+| ServiceType | 4 |  |
+
+
  
 
  
+
+
+<a name="tetragon-EndpointMapService"></a>
+
+### EndpointMapService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| GetEndpointMap | [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest) | [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse) |  |
 
 
 <a name="tetragon-ProcessModelService"></a>
