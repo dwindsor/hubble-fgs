@@ -493,6 +493,61 @@ func NewShow() *cobra.Command {
 	return ret
 }
 
+func getDebug() (*tetragon.GetEndpointMapResponse, error) {
+	c := NewConnectedModelClient()
+	defer c.Close()
+
+	res, err := c.Client.GetEndpointMap(c.Ctx, &tetragon.GetEndpointMapRequest{})
+	if err != nil || res == nil {
+		logger.GetLogger().WithError(err).Warn("failed to get process tree")
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
+	out, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
+}
+
+func printDebug() error {
+	res, err := getDebug()
+	if err != nil {
+		return err
+	}
+
+	switch output {
+	/* Default output is tree use json for debug */
+	case "json", "tree":
+		return printDebugJSON(res)
+	default:
+		return fmt.Errorf("invalid output format: %s", output)
+	}
+}
+
+func NewDebug() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "debug",
+		Short:        "Debug the application model state internal to the agent",
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return printDebug()
+		},
+	}
+
+	flags := ret.Flags()
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
+	viper.BindPFlags(flags)
+
+	return ret
+}
+
 func New() *cobra.Command {
 	ret := &cobra.Command{
 		Use:          "pstree",
@@ -506,6 +561,7 @@ func New() *cobra.Command {
 
 	ret.AddCommand(NewShow())
 	ret.AddCommand(NewCheck())
+	ret.AddCommand(NewDebug())
 
 	pflags := ret.PersistentFlags()
 	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
