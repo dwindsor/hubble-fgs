@@ -15,7 +15,7 @@ hostNetwork: true
 tetragon:
   image:
     repository: quay.io/isovalent/tetragon
-    tag: v1.14.0-rc6
+    tag: v1.15.0-pre.1
   metadata:
     enabled: false
     image:
@@ -53,7 +53,7 @@ tetragon:
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.14.0-rc6
+    tag: v1.15.0-pre.1
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
@@ -135,23 +135,23 @@ grafana:
     datasources.yaml:
       apiVersion: 1
       datasources:
-      - name: Prometheus
-        type: prometheus
-        # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
-        # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_config.tpl#L45
-        url: http://{{ include "prometheus.name" . }}:9090
-        access: proxy
-        isDefault: true
+        - name: Prometheus
+          type: prometheus
+          # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
+          # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_config.tpl#L45
+          url: http://{{ include "prometheus.name" . }}:9090
+          access: proxy
+          isDefault: true
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-      - name: tetragon-health
-        folder: Tetragon Health
-        disableDeletion: true
-        allowUiUpdates: false
-        options:
-          path: /var/lib/grafana/dashboards/tetragon-health
+        - name: tetragon-health
+          folder: Tetragon Health
+          disableDeletion: true
+          allowUiUpdates: false
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-health
   dashboardsConfigMaps:
     # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
     # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_pod.tpl#L1195

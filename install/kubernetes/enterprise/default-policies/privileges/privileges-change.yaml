@@ -11,7 +11,7 @@ metadata:
   annotations:
     author: "Isovalent"
   labels:
-    app.kubernetes.io/version: 1.14.0-pre.0
+    app.kubernetes.io/version: 1.15.0-pre.1
 spec:
   kprobes:
     # Monitor changing capabilities of current process.
@@ -66,61 +66,61 @@ spec:
               operator: NotIn
               values:
                 - "CAP_SYS_ADMIN"
-#
-# The following monitor processes trying to change their uids/gids.
-# If we want to reduce the noise we could match args to only post events
-# that return without errors or only post events that try to set git/uid root.
-# However we judge its interesting to know if failed attempts are done and/or
-# if processes are changing uid/gid even if not to root.
-#
-#  __sys_setuid
-#    - __x64_sys_setuid
-#    - __ia32_sys_setuid
-#    - __x64_sys_setuid16
-#    - __ia32_sys_setuid16
-#
-#  __sys_setgid
-#    - __x64_sys_setgid
-#    - __ia32_sys_setgid
-#    - __x64_sys_setgid16
-#    - __ia32_sys_setgid16
-#
-#  __sys_setreuid
-#    - __x64_sys_setreuid
-#    - __ia32_sys_setreuid
-#    - __x64_sys_setreuid16
-#    - __ia32_sys_setreuid16
-#
-#  __sys_setregid
-#    - __x64_sys_setregid
-#    - __ia32_sys_setregid
-#    - __x64_sys_setregid16
-#    - __ia32_sys_setregid16
-#
-# __sys_setresuid
-#    - __x64_sys_setresuid
-#    - __ia32_sys_setresuid
-#    - __x64_sys_setresuid16
-#    - __ia32_sys_setresuid16
-#
-# __sys_setresgid
-#    - __x64_sys_setresgid
-#    - __ia32_sys_setresgid
-#    - __x64_sys_setresgid16
-#    - __ia32_sys_setresgid16
-#
-# __sys_setfsuid
-#    - __x64_sys_setfsuid
-#    - __ia32_sys_setfsuid
-#    - __x64_sys_setfsuid16
-#    - __ia32_sys_setfsuid16
-#
-# __sys_setfsgid
-#    - __x64_sys_setfsgid
-#    - __ia32_sys_setfsgid
-#    - __x64_sys_setfsgid16
-#    - __ia32_sys_setfsgid16
-#
+                #
+                # The following monitor processes trying to change their uids/gids.
+                # If we want to reduce the noise we could match args to only post events
+                # that return without errors or only post events that try to set git/uid root.
+                # However we judge its interesting to know if failed attempts are done and/or
+                # if processes are changing uid/gid even if not to root.
+                #
+                #  __sys_setuid
+                #    - __x64_sys_setuid
+                #    - __ia32_sys_setuid
+                #    - __x64_sys_setuid16
+                #    - __ia32_sys_setuid16
+                #
+                #  __sys_setgid
+                #    - __x64_sys_setgid
+                #    - __ia32_sys_setgid
+                #    - __x64_sys_setgid16
+                #    - __ia32_sys_setgid16
+                #
+                #  __sys_setreuid
+                #    - __x64_sys_setreuid
+                #    - __ia32_sys_setreuid
+                #    - __x64_sys_setreuid16
+                #    - __ia32_sys_setreuid16
+                #
+                #  __sys_setregid
+                #    - __x64_sys_setregid
+                #    - __ia32_sys_setregid
+                #    - __x64_sys_setregid16
+                #    - __ia32_sys_setregid16
+                #
+                # __sys_setresuid
+                #    - __x64_sys_setresuid
+                #    - __ia32_sys_setresuid
+                #    - __x64_sys_setresuid16
+                #    - __ia32_sys_setresuid16
+                #
+                # __sys_setresgid
+                #    - __x64_sys_setresgid
+                #    - __ia32_sys_setresgid
+                #    - __x64_sys_setresgid16
+                #    - __ia32_sys_setresgid16
+                #
+                # __sys_setfsuid
+                #    - __x64_sys_setfsuid
+                #    - __ia32_sys_setfsuid
+                #    - __x64_sys_setfsuid16
+                #    - __ia32_sys_setfsuid16
+                #
+                # __sys_setfsgid
+                #    - __x64_sys_setfsgid
+                #    - __ia32_sys_setfsgid
+                #    - __x64_sys_setfsgid16
+                #    - __ia32_sys_setfsgid16
+                #
     - call: "__sys_setuid"
       syscall: false
       args:
