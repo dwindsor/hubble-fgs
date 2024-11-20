@@ -31,10 +31,13 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	"github.com/stretchr/testify/require"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -592,4 +595,107 @@ func TestFileDigestMatch(t *testing.T) {
 
 	assert.Equal(t, capturedEvents, 1, "we expect to have 1 event")
 	assert.Equal(t, eventPath, "/usr/bin/touch", "we expect the event to be for /usr/bin/touch")
+}
+
+func TestMatchBinariesFollowChildren(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	shPath, err := exec.LookPath("sh")
+	if err != nil {
+		t.Fatalf("failed to find 'sh' exec: %v", err)
+	}
+	tmpShPath, err := ossTestUtils.CopyFileToTmp(shPath)
+	if err != nil {
+		t.Fatalf("failed to copy 'sh' exec: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Remove(tmpShPath)
+	})
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tus.GetTestSensorManager(t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	tmpFile := filepath.Join(testDir, "a.txt")
+	createFileInDir(t, tmpFile)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-matchbinaries",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "PathPrefix",
+						PathPrefix: &v1alpha1.PathPrefixPattern{
+							Prefix: testDir,
+						},
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchBinaries: []v1alpha1.BinarySelector{{
+							Operator: "In",
+							Values: []string{
+								tmpShPath,
+							},
+							FollowChildren: true,
+						}},
+					},
+				},
+			},
+		},
+	}
+
+	err = sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	var numFileOpen, numFileRead, otherFileEvents int
+	eventFn := func(ev notify.Message) error {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if file.Path != tmpFile {
+				otherFileEvents++
+				return nil
+			}
+
+			if tetragon.FileAction(file.Msg.Action) == tetragon.FileAction_FILE_READ {
+				numFileRead++
+			} else if tetragon.FileAction(file.Msg.Action) == tetragon.FileAction_FILE_OPEN {
+				numFileOpen++
+			}
+		}
+		return nil
+	}
+
+	getPread64Bin := testutils.RepoRootPath("contrib/tester-progs/read_write/pread64")
+	ops := func() {
+		cmd := exec.Command(tmpShPath, "-c", fmt.Sprintf("%s $0", getPread64Bin), tmpFile)
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("failed to run command %s: %v", cmd, err)
+		}
+	}
+
+	perfring.RunTest(t, ctx, ops, eventFn)
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	require.Equal(t, 1, numFileOpen)     // we expect one open call
+	require.Equal(t, 1, numFileRead)     // we expect one read call
+	require.Equal(t, 0, otherFileEvents) // we don't expect any other FIM events
 }
