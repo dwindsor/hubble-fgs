@@ -19,15 +19,11 @@ import (
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/mbset"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
+	ossbase "github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
-)
-
-const (
-	cgroupRateMaxEntries = 32768 // this value could be fine tuned
 )
 
 var (
@@ -81,14 +77,6 @@ var (
 		"kprobe",
 	).SetPolicy(basePolicy)
 
-	CgroupRmdir = program.Builder(
-		"bpf_cgroup.o",
-		"cgroup/cgroup_rmdir",
-		"raw_tracepoint/cgroup_rmdir",
-		"tg_cgroup_rmdir",
-		"raw_tracepoint",
-	).SetPolicy(basePolicy)
-
 	/* Event Ring map */
 	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV61)
 
@@ -116,10 +104,6 @@ var (
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
-	/* Cgroup rate data, attached to execve sensor */
-	CgroupRateMap        = program.MapBuilder("cgroup_rate_map", Execve, ExecveV53, ExecveV61, Exit, Fork, CgroupRmdir)
-	CgroupRateOptionsMap = program.MapBuilder("cgroup_rate_options_map", Execve)
-
 	/* In BPF memory aggregated data */
 	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV61)
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV61)
@@ -129,11 +113,6 @@ var (
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61)
 	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
-
-	sensor = sensors.Sensor{
-		Name: basePolicy,
-	}
-	sensorInit sync.Once
 )
 
 func setupPrograms() {
@@ -186,9 +165,6 @@ func GetDefaultPrograms() []*program.Program {
 	} else {
 		progs = append(progs, Execve)
 	}
-	if option.CgroupRateEnabled() {
-		progs = append(progs, CgroupRmdir)
-	}
 	return progs
 }
 
@@ -221,24 +197,25 @@ func GetDefaultMaps() []*program.Map {
 		BpfEndpointIdMap,
 	}
 
-	if option.CgroupRateEnabled() {
-		maps = append(maps, CgroupRateMap, CgroupRateOptionsMap)
-	}
-
 	ConfigureMapSizes()
 	return maps
 }
 
-// GetInitialSensor returns the collection of Sensor that is loaded at
-// initialization time.
-func GetInitialSensor() *sensors.Sensor {
-	sensorInit.Do(func() {
-		setupPrograms()
-		sensor.Progs = GetDefaultPrograms()
-		sensor.Maps = GetDefaultMaps()
-	})
-	return &sensor
+func initBaseSensor() *sensors.Sensor {
+	sensor := sensors.Sensor{
+		Name: basePolicy,
+	}
+	setupPrograms()
+	sensor.Progs = GetDefaultPrograms()
+	sensor.Maps = GetDefaultMaps()
+	return ossbase.ApplyExtensions(&sensor)
 }
+
+var (
+	// GetInitialSensor returns the collection of Sensor that is loaded at
+	// initialization time.
+	GetInitialSensor = sync.OnceValue(initBaseSensor)
+)
 
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
@@ -266,12 +243,4 @@ func ConfigureMapSizes() {
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-}
-
-func ConfigCgroupRate(opts *option.CgroupRate) {
-	if opts.Events == 0 || opts.Interval == 0 {
-		return
-	}
-
-	CgroupRateMap.SetMaxEntries(cgroupRateMaxEntries)
 }

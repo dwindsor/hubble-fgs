@@ -201,7 +201,6 @@ func deleteOldBpfDir(path string) {
 }
 
 func loadInitialSensor(ctx context.Context) error {
-	base.ConfigCgroupRate(&option.Config.CgroupRate)
 	mgr := observer.GetSensorManager()
 	initialSensor := base.GetInitialSensor()
 	if err := mgr.AddSensor(ctx, initialSensor.Name, initialSensor); err != nil {
@@ -521,8 +520,10 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 
-	cgrouprate.NewCgroupRate(ctx, pm, base.CgroupRateMap, &option.Config.CgroupRate)
-	cgrouprate.Config(base.CgroupRateOptionsMap)
+	if err := cgrouprate.NewCgroupRate(ctx, pm, &option.Config.CgroupRate); err != nil {
+		return err
+	}
+	cgrouprate.Config()
 
 	// start the process cache cleaner
 	if enterpriseOption.Config.ProcessCacheStaleInterval.Nanoseconds() <= 0 {
