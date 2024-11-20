@@ -225,7 +225,7 @@ func getDefaultObserver(tb testing.TB, ctx context.Context, initialSensor *senso
 		return nil, err
 	}
 
-	cgrouprate.Config(base.CgroupRateOptionsMap)
+	cgrouprate.Config()
 
 	exportFname, err := testutils.GetExportFilename(tb)
 	if err != nil {
@@ -423,9 +423,7 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 		obs.RemoveListener(processManager)
 	})
 
-	cgrouprate.NewCgroupRate(ctx, processManager, base.CgroupRateMap, &option.Config.CgroupRate)
-	base.ConfigCgroupRate(&option.Config.CgroupRate)
-	return nil
+	return cgrouprate.NewCgroupRate(ctx, processManager, &option.Config.CgroupRate)
 }
 
 func loadObserver(tb testing.TB, ctx context.Context, base *sensors.Sensor,
@@ -628,7 +626,7 @@ func WriteConfigFile(fileName, config string) error {
 }
 
 func GetDefaultObserver(tb testing.TB, ctx context.Context, lib string, opts ...TestOption) (*observer.Observer, error) {
-	b := base.GetInitialSensorTest()
+	b := base.GetInitialSensorTest(tb)
 
 	opts = append(opts, WithLib(lib))
 

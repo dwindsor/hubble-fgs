@@ -1,5 +1,5 @@
-# cel.dev/expr v0.16.1
-## explicit; go 1.18
+# cel.dev/expr v0.18.0
+## explicit; go 1.21.1
 cel.dev/expr
 # cloud.google.com/go/auth v0.10.2
 ## explicit; go 1.21
@@ -393,7 +393,7 @@ github.com/cilium/hive/internal
 github.com/cilium/hive/job
 github.com/cilium/hive/script
 github.com/cilium/hive/script/internal/diff
-# github.com/cilium/lumberjack/v2 v2.4.0
+# github.com/cilium/lumberjack/v2 v2.4.1
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
 # github.com/cilium/proxy v0.0.0-20240909042906-ae435a5bef38
@@ -892,8 +892,8 @@ github.com/golang/groupcache/lru
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/google/cel-go v0.21.0
-## explicit; go 1.18
+# github.com/google/cel-go v0.22.0
+## explicit; go 1.21.1
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
 github.com/google/cel-go/checker/decls
@@ -2353,7 +2353,7 @@ sigs.k8s.io/controller-runtime/pkg/webhook/admission
 sigs.k8s.io/controller-runtime/pkg/webhook/admission/metrics
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
-# sigs.k8s.io/controller-tools v0.16.4-0.20240923084800-3b70a40398f4
+# sigs.k8s.io/controller-tools v0.16.5
 ## explicit; go 1.22.0
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/crd
