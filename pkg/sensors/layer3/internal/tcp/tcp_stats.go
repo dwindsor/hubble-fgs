@@ -152,7 +152,14 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 				if err == nil {
 					emitStats(&statsKey, value, tuple, &diffValue)
 				} else {
-					logger.GetLogger().WithError(err).Warn("TCP statistics tcpDiffValues")
+					logger.GetLogger().WithError(err).WithFields(logrus.Fields{
+						"tuple":       tuple,
+						"curr":        tcpStats,
+						"last":        last,
+						"cookie":      key.SockCookie,
+						"version":     value.Version,
+						"socketFlags": value.SocketFlags,
+					}).Warn("TCP statistics tcpDiffValues")
 				}
 			}
 		} else {
@@ -235,43 +242,18 @@ func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string)
 func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStats, error) {
 	source, dest := networkapi.TupleAddrString(tuple, ops.MSG_OP_TCPSTATS)
 	if curr.BytesReceived < last.BytesReceived {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"tuple": tuple,
-			"curr":  curr,
-			"last":  last,
-		}).Warnf("RX TCP stats received bytes underflow")
 		return *last, fmt.Errorf("TCP BytesReceived stats invalid diff operation")
 	}
 	if curr.BytesSent < last.BytesSent {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"tuple": tuple,
-			"curr":  curr,
-			"last":  last,
-		}).Warnf("TX TCP stats sent bytes underflow")
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
 	if curr.SegsIn < last.SegsIn {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"tuple": tuple,
-			"curr":  curr,
-			"last":  last,
-		}).Warnf("RX TCP stats SegsIn underflow")
 		return *last, fmt.Errorf("TCP SegsIn stats invalid diff operation")
 	}
 	if curr.SegsOut < last.SegsOut {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"tuple": tuple,
-			"curr":  curr,
-			"last":  last,
-		}).Warnf("TX TCP stats SegsOut underflow")
 		return *last, fmt.Errorf("TCP SegsOut stats invalid diff operation")
 	}
 	if curr.SkDrops < last.SkDrops {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"tuple": tuple,
-			"curr":  curr,
-			"last":  last,
-		}).Warnf("TX TCP stats SkDrop underflow")
 		return *last, fmt.Errorf("TCP SkDrop stats invalid diff operation")
 	}
 
