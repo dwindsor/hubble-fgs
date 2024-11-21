@@ -73,8 +73,13 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	}
 
 	if (pid < 1) {
-		emit_ip_error_event(ctx, 0, &cookie, false,
-				    0, 0, 0, IP_ERROR_SOCK_CREATE_PID_0);
+		// We are in kernel context so we can't attribute this socket to
+		// a user space process. This can happen because the kernel has
+		// created a kernel socket (which we don't track), or because a
+		// listening socket has spawned an accepted socket (which we deal
+		// with by updating the socketmap in the accept programs). All
+		// user space socket creations are via socket() which should be
+		// in the user process context. These are therefore not errors.
 		return 0;
 	}
 
