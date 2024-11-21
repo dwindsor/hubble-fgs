@@ -1,47 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "9.4.7"
-    },
-    {
-      "type": "panel",
-      "id": "heatmap",
-      "name": "Heatmap",
-      "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -64,7 +21,7 @@
       }
     ]
   },
-  "editable": false,
+  "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
@@ -87,7 +44,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -129,14 +86,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -153,7 +112,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -162,6 +121,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -175,6 +135,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -221,16 +182,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(rate(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__rate_interval]))",
@@ -245,7 +207,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -287,14 +249,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -311,7 +275,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -320,6 +284,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -333,6 +298,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -379,16 +345,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(rate(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__rate_interval]))",
@@ -403,7 +370,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -445,14 +412,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -469,7 +438,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -478,6 +447,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -491,6 +461,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -538,16 +509,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(rate(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__rate_interval]))",
@@ -562,7 +534,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -604,14 +576,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -628,7 +602,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -637,6 +611,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -650,6 +625,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -697,16 +673,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(rate(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__rate_interval]))",
@@ -721,7 +698,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -763,14 +740,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -787,7 +766,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -797,6 +776,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -810,6 +790,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -856,16 +837,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -883,7 +865,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -925,14 +907,16 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -949,7 +933,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
@@ -959,6 +943,7 @@
             "mode": "thresholds"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -972,6 +957,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1018,16 +1004,17 @@
           "showLegend": false
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1045,21 +1032,64 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "",
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": -1,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "seg/s"
         },
         "overrides": []
       },
@@ -1071,53 +1101,28 @@
       },
       "id": 144,
       "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "cellValues": {
-          "decimals": 0,
-          "unit": "pkt"
-        },
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "min": 0,
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "Cividis",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
         "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
         "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "hidden",
-          "reverse": false
+          "maxHeight": 600,
+          "mode": "single",
+          "sort": "none"
         }
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(5, sum(increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0)",
+          "expr": "sum(rate(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__rate_interval]))",
           "interval": "",
           "legendFormat": "__auto",
           "queryType": "randomWalk",
@@ -1125,8 +1130,8 @@
           "refId": "A"
         }
       ],
-      "title": "Socket Drops per $__interval",
-      "type": "heatmap"
+      "title": "Socket Drops",
+      "type": "timeseries"
     },
     {
       "collapsed": true,
@@ -1141,7 +1146,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1172,7 +1177,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 46
+            "y": 31
           },
           "id": 79,
           "options": {
@@ -1187,17 +1192,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1211,13 +1218,12 @@
             }
           ],
           "title": "Bytes Sent (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1249,7 +1255,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 46
+            "y": 31
           },
           "id": 80,
           "options": {
@@ -1264,17 +1270,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1288,13 +1296,12 @@
             }
           ],
           "title": "Segments Sent (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1316,7 +1323,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 64
+            "y": 49
           },
           "id": 83,
           "options": {
@@ -1348,7 +1355,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -1356,12 +1365,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1393,7 +1402,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1439,17 +1448,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1463,13 +1474,12 @@
             }
           ],
           "title": "Bytes Received (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1516,17 +1526,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1540,13 +1552,12 @@
             }
           ],
           "title": "Segments Received (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1600,7 +1611,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -1608,12 +1621,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1645,7 +1658,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1667,7 +1680,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 49
+            "y": 33
           },
           "id": 54,
           "options": {
@@ -1675,7 +1688,7 @@
             "cellGap": 1,
             "cellValues": {
               "decimals": 0,
-              "unit": "pkt"
+              "unit": "seg"
             },
             "color": {
               "exponent": 0.5,
@@ -1700,7 +1713,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -1708,16 +1723,16 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0)",
+              "expr": "topk(5, sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{namespace}}/{{workload}} > {{binary}}",
               "queryType": "randomWalk",
@@ -1726,6 +1741,15 @@
             }
           ],
           "title": "Socket Drops per $__interval",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^/ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -1745,7 +1769,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1776,7 +1800,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 63
           },
           "id": 133,
           "options": {
@@ -1791,17 +1815,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1815,13 +1841,12 @@
             }
           ],
           "title": "Bytes Sent (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1853,7 +1878,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 63
           },
           "id": 134,
           "options": {
@@ -1868,17 +1893,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1892,13 +1919,12 @@
             }
           ],
           "title": "Segments Sent (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1920,7 +1946,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 52
+            "y": 81
           },
           "id": 135,
           "options": {
@@ -1952,7 +1978,10 @@
               "layout": "auto"
             },
             "tooltip": {
+              "maxHeight": 600,
+              "mode": "single",
               "show": true,
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -1960,12 +1989,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1997,7 +2026,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2028,7 +2057,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 35
           },
           "id": 136,
           "options": {
@@ -2043,17 +2072,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2067,13 +2098,12 @@
             }
           ],
           "title": "Bytes Received (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2105,7 +2135,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 35
           },
           "id": 137,
           "options": {
@@ -2120,17 +2150,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2144,13 +2176,12 @@
             }
           ],
           "title": "Segments Received (top 5, avg over time)",
-          "transformations": [],
           "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2172,7 +2203,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 48
+            "y": 53
           },
           "id": 138,
           "options": {
@@ -2204,7 +2235,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -2212,12 +2245,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2249,7 +2282,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2271,7 +2304,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 51
+            "y": 36
           },
           "id": 141,
           "options": {
@@ -2279,7 +2312,7 @@
             "cellGap": 1,
             "cellValues": {
               "decimals": 0,
-              "unit": "pkt"
+              "unit": "seg"
             },
             "color": {
               "exponent": 0.5,
@@ -2304,7 +2337,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -2312,16 +2347,16 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, sum by (node, binary) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0)",
+              "expr": "topk(5, sum by (node, binary) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{node}} > {{binary}}",
               "queryType": "randomWalk",
@@ -2330,6 +2365,15 @@
             }
           ],
           "title": "Socket Drops per $__interval",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2349,7 +2393,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2380,7 +2424,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 32
+            "y": 37
           },
           "id": 104,
           "options": {
@@ -2395,17 +2439,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2433,7 +2479,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2465,7 +2511,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 32
+            "y": 37
           },
           "id": 106,
           "options": {
@@ -2480,17 +2526,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2518,7 +2566,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2540,7 +2588,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 50
+            "y": 55
           },
           "id": 108,
           "options": {
@@ -2572,7 +2620,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -2580,12 +2630,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2598,7 +2648,15 @@
             }
           ],
           "title": "Avg Sent Segment Size (top 5)",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "(Value)",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2618,7 +2676,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2649,7 +2707,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 33
+            "y": 38
           },
           "id": 112,
           "options": {
@@ -2664,17 +2722,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2702,7 +2762,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2734,7 +2794,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 33
+            "y": 38
           },
           "id": 114,
           "options": {
@@ -2749,17 +2809,19 @@
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {
               "titleSize": 12
             },
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2787,7 +2849,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2809,7 +2871,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 51
+            "y": 56
           },
           "id": 116,
           "options": {
@@ -2841,7 +2903,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -2849,12 +2913,12 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -2867,7 +2931,15 @@
             }
           ],
           "title": "Avg Received Segment Size (top 5)",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "(Value)",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2887,7 +2959,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -2909,7 +2981,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 54
+            "y": 39
           },
           "id": 124,
           "options": {
@@ -2917,7 +2989,7 @@
             "cellGap": 1,
             "cellValues": {
               "decimals": 0,
-              "unit": "pkt"
+              "unit": "seg"
             },
             "color": {
               "exponent": 0.5,
@@ -2942,7 +3014,9 @@
               "layout": "auto"
             },
             "tooltip": {
-              "show": true,
+              "maxHeight": 600,
+              "mode": "single",
+              "showColorScale": false,
               "yHistogram": false
             },
             "yAxis": {
@@ -2950,16 +3024,16 @@
               "reverse": false
             }
           },
-          "pluginVersion": "9.4.7",
+          "pluginVersion": "11.0.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, sum by (dstdns) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0)",
+              "expr": "topk(5, sum by (dstdns) (increase(tetragon_socket_stats_udp_drops_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{dstdns}}",
               "queryType": "randomWalk",
@@ -2968,7 +3042,15 @@
             }
           ],
           "title": "Socket Drops per $__interval",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "(Value)",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2978,8 +3060,7 @@
   ],
   "refresh": "1m",
   "revision": 1,
-  "schemaVersion": 38,
-  "style": "dark",
+  "schemaVersion": 39,
   "tags": [
     "Tetragon",
     "networking"
@@ -2987,11 +3068,33 @@
   "templating": {
     "list": [
       {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "datasource",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total, cluster)",
         "hide": 0,
@@ -3011,10 +3114,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\"}, namespace)",
         "description": "",
@@ -3035,10 +3142,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\"}, workload)",
         "description": "",
@@ -3059,10 +3170,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\"}, pod)",
         "description": "",
@@ -3083,10 +3198,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\"}, node)",
         "hide": 0,
@@ -3106,10 +3225,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\"}, binary)",
         "description": "",
@@ -3130,10 +3253,14 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
         "definition": "query_result(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"} or tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"})",
         "description": "",
@@ -3156,13 +3283,14 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
+  "timeRangeUpdatedDuringEditOrView": false,
   "timepicker": {},
   "timezone": "",
   "title": "Tetragon / UDP Throughput / Socket",
-  "uid": "D_BzG6nSz",
+  "uid": "ae4p9tsz10jk0b",
   "version": 1,
   "weekStart": ""
 }
