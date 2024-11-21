@@ -106,6 +106,7 @@ __event_tcp_accept_ret(struct pt_regs *ctx)
 		struct tcpsocketmap_value accept_socket = *listen_socket;
 		accept_socket.version = cookie_version;
 		accept_socket.stats.create_time = now;
+		accept_socket.stats.sk_drops = 0;
 		add_tcpsocketmap(&accept_cookie, &accept_socket, &tuple, true);
 	}
 	return 1;
