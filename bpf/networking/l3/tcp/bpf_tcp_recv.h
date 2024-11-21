@@ -89,13 +89,6 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 		return SK_PASS;
 	}
 
-	c = *cookie;
-	socket = lookup_tcpsocketmap(&c);
-	if (unlikely(!socket)) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
-		return SK_PASS;
-	}
-
 	skp = skb->sk;
 	if (!skp) {
 		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SK);
@@ -110,6 +103,16 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	}
 
 	probe_read_kernel(&state, sizeof(state), _((const void *)&(sk->__sk_common.skc_state)));
+
+	c = *cookie;
+	socket = lookup_tcpsocketmap(&c);
+	if (unlikely(!socket)) {
+		// Don't report an error here if the TCP socket isn't yet active.
+		if (tcp_active(state))
+			emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
+		return SK_PASS;
+	}
+
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));

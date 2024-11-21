@@ -72,19 +72,22 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	 * event will read zero window stats. If sampling we push event
 	 * to user space.
 	 */
+
+	/* Get the current socket TCP state. */
+	probe_read_kernel(&state, sizeof(state),
+			  _((const void *)&(skp->__sk_common.skc_state)));
+
 	socket = lookup_tcpsocketmap(&cookie);
 	if (unlikely(!socket)) {
-		emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
+		// Don't report an error here if the TCP socket isn't yet active.
+		if (tcp_active(state))
+			emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
 		return 0;
 	}
 
 	/* We don't need to account further if the socket has already been closed. */
 	if (socket->closed)
 		return 0;
-
-	/* Get the current socket TCP state. */
-	probe_read_kernel(&state, sizeof(state),
-			  _((const void *)&(skp->__sk_common.skc_state)));
 
 	/* Check if this socket is established. If it is in the handshake
 	 * then there will be no data to account; if it is closing, then

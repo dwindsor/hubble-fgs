@@ -98,4 +98,15 @@ lookup_tcpsocketmap(u64 *cookie)
 	return (struct tcpsocketmap_value *)map_lookup_elem(&tg_tcpsocket_map, cookie);
 }
 
+static inline __attribute__((always_inline)) bool
+tcp_active(u8 state)
+{
+	switch (state) {
+	case TCP_SYN_SENT:
+	case TCP_SYN_RECV:
+	case TCP_CLOSE:
+		return false;
+	}
+	return true;
+}
 #endif
