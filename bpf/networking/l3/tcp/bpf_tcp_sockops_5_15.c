@@ -209,7 +209,9 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 
 	socket = lookup_tcpsocketmap(&cookie);
 	if (!socket) {
-		emit_ip_error_event(skops, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
+		// Don't report an error here if the TCP socket isn't yet active.
+		if (tcp_active(old_state))
+			emit_ip_error_event(skops, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
 		return 0;
 	}
 

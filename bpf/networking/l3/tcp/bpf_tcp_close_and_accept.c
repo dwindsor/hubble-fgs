@@ -68,7 +68,9 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 
 	socket = lookup_tcpsocketmap(&cookie);
 	if (!socket) {
-		emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
+		// Don't report an error here if the TCP socket isn't yet active.
+		if (tcp_active(old_state))
+			emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
 		return 0;
 	}
 
