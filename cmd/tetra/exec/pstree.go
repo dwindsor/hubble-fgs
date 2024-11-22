@@ -506,6 +506,27 @@ func getDebug() (*tetragon.GetEndpointMapResponse, error) {
 	return res, nil
 }
 
+type sortableEndpoint struct {
+	e []*tetragon.Endpoint
+}
+
+func (s sortableEndpoint) Less(x, y int) bool {
+	if s.e[x].Key < s.e[y].Key {
+		return false
+	}
+	return true
+}
+
+func (s sortableEndpoint) Len() int {
+	return len(s.e)
+}
+
+func (s sortableEndpoint) Swap(x, y int) {
+	temp := s.e[x]
+	s.e[x] = s.e[y]
+	s.e[y] = temp
+}
+
 func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
 	out, err := json.Marshal(res)
 	if err != nil {
@@ -520,6 +541,12 @@ func printDebug() error {
 	if err != nil {
 		return err
 	}
+
+	s := sortableEndpoint{
+		e: res.Map.Endpoints,
+	}
+	sort.Sort(s)
+	res.Map.Endpoints = s.e
 
 	switch output {
 	/* Default output is tree use json for debug */
