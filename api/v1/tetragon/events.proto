@@ -94,6 +94,9 @@ message Filter {
     repeated string parent_binary_regex = 12;
     // Filter using CEL expressions.
     repeated string cel_expression = 13;
+    // Filter by process.parent.arguments field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string parent_arguments_regex = 14;
     // Filter by source_ip field using an address range specified using CIDR notation.
     //
     // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
