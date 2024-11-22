@@ -38,6 +38,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -123,6 +124,13 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 				Value: &cpb.AnyValue_StringValue{StringValue: fgsTuple.Protocol.String()},
 			},
 		},
+	}
+	if fgsTuple.SourcePort != nil {
+		attributes = append(attributes, &cpb.KeyValue{
+			Key: "local_port", Value: &cpb.AnyValue{
+				Value: &cpb.AnyValue_IntValue{IntValue: int64(fgsTuple.SourcePort.Value)},
+			},
+		})
 	}
 	if fgsTuple.DestinationPort != nil {
 		attributes = append(attributes, &cpb.KeyValue{
@@ -482,26 +490,26 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
-			// {
-			// 	Key: "service.name", Value: &cpb.AnyValue{
-			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
-			// 	},
-			// },
-			// {
-			// 	Key: "service.version", Value: &cpb.AnyValue{
-			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
-			// 	},
-			// },
+			{
+				Key: "service.name", Value: &cpb.AnyValue{
+					Value: &cpb.AnyValue_StringValue{StringValue: "Tetragon"},
+				},
+			},
+			{
+				Key: "service.version", Value: &cpb.AnyValue{
+					Value: &cpb.AnyValue_StringValue{StringValue: version.Version},
+				},
+			},
 			// {
 			// 	Key: "agent.build_ts", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
-			// {
-			// 	Key: "report.version", Value: &cpb.AnyValue{
-			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
-			// 	},
-			// },
+			{
+				Key: "report.version", Value: &cpb.AnyValue{
+					Value: &cpb.AnyValue_StringValue{StringValue: "1.0"},
+				},
+			},
 			{
 				Key: "k8s_node_name", Value: &cpb.AnyValue{
 					Value: &cpb.AnyValue_StringValue{StringValue: node.GetNodeNameForExport()},
