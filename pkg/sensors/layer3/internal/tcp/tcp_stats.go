@@ -67,10 +67,9 @@ func (s statsManager) disable() {
 	if s.timer != nil {
 		s.timer.Stop()
 	}
-	//nolint:staticcheck // ignore SA4005: ineffective assignment
-	s.timer = nil
-	//nolint:staticcheck // ignore SA4005: ineffective assignment
-	s.cache = nil
+	if s.cache != nil {
+		s.cache.Purge()
+	}
 }
 
 type SockStatKey struct {
