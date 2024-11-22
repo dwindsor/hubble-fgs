@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -153,7 +154,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	}
 
 	watcher := &raceK8sWatcher{}
-	if err := process.InitCache(watcher, processCacheSize); err != nil {
+	if err := process.InitCache(watcher, processCacheSize, defaults.DefaultProcessCacheGCInterval); err != nil {
 		return err
 	}
 

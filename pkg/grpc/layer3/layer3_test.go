@@ -14,6 +14,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	tetragonAPI "github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	execOSS "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -266,7 +267,7 @@ func initEnv(t *testing.T, watcher watcher.K8sResourceWatcher) context.CancelFun
 		t.Fatalf("failed to call cilium.InitCiliumState %s", err)
 	}
 
-	if err := process.InitCache(watcher, 65536); err != nil {
+	if err := process.InitCache(watcher, 65536, defaults.DefaultProcessCacheGCInterval); err != nil {
 		t.Fatalf("failed to call process.InitCache %s", err)
 	}
 

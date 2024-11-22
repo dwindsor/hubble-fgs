@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -240,7 +241,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}
 
 	fakeWatcher := watcher.NewFakeK8sWatcher(nil)
-	if err := process.InitCache(fakeWatcher, processCacheSize); err != nil {
+	if err := process.InitCache(fakeWatcher, processCacheSize, defaults.DefaultProcessCacheGCInterval); err != nil {
 		return err
 	}
 

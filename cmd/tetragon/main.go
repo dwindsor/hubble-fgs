@@ -438,7 +438,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
 
-	if err := process.InitCache(k8sWatcher, option.Config.ProcessCacheSize); err != nil {
+	pcGCInterval := option.Config.ProcessCacheGCInterval
+	if pcGCInterval <= 0 {
+		pcGCInterval = defaults.DefaultProcessCacheGCInterval
+	}
+
+	if err := process.InitCache(k8sWatcher, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 	podinfo.SetK8sResourceWatcher(k8sWatcher)

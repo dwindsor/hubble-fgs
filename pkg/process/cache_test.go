@@ -85,7 +85,7 @@ func TestProcessCacheAddAndRemove(t *testing.T) {
 	execveMap := createFakeExecveMap(t)
 	defer removeFakeExecveMap(execveMap)
 	// create the process cache
-	err := process.InitCache(nil, 10)
+	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
 	// add a process to the cache.
 	addFakeProcess(1234)
@@ -118,7 +118,7 @@ func TestProcessCacheProcessAndChildrenHaveExited(t *testing.T) {
 	execveMap := createFakeExecveMap(t)
 	defer removeFakeExecveMap(execveMap)
 	// create the process cache
-	err := process.InitCache(nil, 10)
+	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
 
 	addFakeProcess(123)
@@ -159,7 +159,7 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 	execveMap := createFakeExecveMap(t)
 	defer removeFakeExecveMap(execveMap)
 	// create the process cache
-	err := process.InitCache(nil, 10)
+	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
 
 	// add some processes to the cache.
