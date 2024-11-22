@@ -586,6 +586,7 @@ func postMetrics(ctx context.Context) error {
 		return fmt.Errorf("failed to make a request: %w", err)
 	}
 	defer resp.Body.Close()
+	logger.GetLogger().WithField("scopes-count", len(exportRequest.ResourceMetrics[0].ScopeMetrics)).Debug("Successfully posted metrics to Sonar.")
 
 	return nil
 }
