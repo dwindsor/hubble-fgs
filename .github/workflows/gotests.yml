@@ -2,7 +2,8 @@ name: HubbleFGS Go Test
 on:
   pull_request:
     paths-ignore:
-    - "**.md"
+      - "**.md"
+      - "contrib/grafana/**"
   push:
     branches:
       - master

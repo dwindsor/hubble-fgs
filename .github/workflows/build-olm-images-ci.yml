@@ -7,7 +7,8 @@ on:
       - v*
   pull_request:
     paths-ignore:
-    - "**.md"
+      - "**.md"
+      - "contrib/grafana/**"
     types:
       - opened
       - synchronize

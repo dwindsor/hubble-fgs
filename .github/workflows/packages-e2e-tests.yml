@@ -3,7 +3,8 @@ name: Packages e2e Tests
 on:
   pull_request:
     paths-ignore:
-    - "**.md"
+      - "**.md"
+      - "contrib/grafana/**"
 
 jobs:
   standalone-tarball-builds:

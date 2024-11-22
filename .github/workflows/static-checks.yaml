@@ -6,7 +6,8 @@ on:
       - v*
   pull_request:
     paths-ignore:
-    - "**.md"
+      - "**.md"
+      - "contrib/grafana/**"
 
 permissions:
   # For golangci/golangci-lint to have read access to pull request for `only-new-issues` option.
