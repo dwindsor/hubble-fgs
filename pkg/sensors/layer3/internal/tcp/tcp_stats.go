@@ -11,6 +11,7 @@
 package tcp
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -145,7 +146,7 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 		if ok {
 			// If Ktime is the same as last read then nothing has changed.
 			if tcpStats.Ktime != last.Ktime {
-				diffValue, err := tcpDiffValues(&last, tcpStats, tuple)
+				diffValue, err := tcpDiffValues(&last, tcpStats)
 				// Store the stats from the BPF map into the cache
 				cache.Add(statsKey, *tcpStats)
 				if err == nil {
@@ -158,7 +159,7 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 						"cookie":      key.SockCookie,
 						"version":     value.Version,
 						"socketFlags": value.SocketFlags,
-					}).Warn("TCP statistics tcpDiffValues")
+					}).Warn("Failed to compute diff for TCP stats")
 				}
 			}
 		} else {
@@ -212,7 +213,7 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	return s
 }
 
-func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string) (networkapi.Histogram, error) {
+func tcpDiffHistogram(last, curr *networkapi.Histogram, ty string) (networkapi.Histogram, error) {
 	if curr.B99 < last.B99 ||
 		curr.B90 < last.B90 ||
 		curr.B75 < last.B75 ||
@@ -222,8 +223,7 @@ func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string)
 		curr.B01 < last.B01 ||
 		curr.B00 < last.B00 ||
 		curr.Sum < last.Sum {
-		logger.GetLogger().WithFields(logrus.Fields{"source": source, "dest": dest, "curr": curr, "last": last}).Warnf("TCP %s stats underflow", ty)
-		return networkapi.Histogram{}, fmt.Errorf("TCP %s stats invalid diff operation", ty)
+		return networkapi.Histogram{}, fmt.Errorf("current %s histogram buckets < last", ty)
 	}
 	return networkapi.Histogram{
 		B99: curr.B99 - last.B99,
@@ -238,31 +238,35 @@ func tcpDiffHistogram(last, curr *networkapi.Histogram, ty, source, dest string)
 	}, nil
 }
 
-func tcpDiffValues(last, curr *networkapi.MsgSocketStats, tuple *networkapi.MsgIPTuple) (networkapi.MsgSocketStats, error) {
-	source, dest := networkapi.TupleAddrString(tuple, ops.MSG_OP_TCPSTATS)
+func tcpDiffValues(last, curr *networkapi.MsgSocketStats) (networkapi.MsgSocketStats, error) {
+	var joinedErr error
 	if curr.BytesReceived < last.BytesReceived {
-		return *last, fmt.Errorf("TCP BytesReceived stats invalid diff operation")
+		joinedErr = errors.Join(joinedErr, fmt.Errorf("current BytesReceived < last"))
 	}
 	if curr.BytesSent < last.BytesSent {
-		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
+		joinedErr = errors.Join(joinedErr, fmt.Errorf("current BytesSent < last"))
 	}
 	if curr.SegsIn < last.SegsIn {
-		return *last, fmt.Errorf("TCP SegsIn stats invalid diff operation")
+		joinedErr = errors.Join(joinedErr, fmt.Errorf("current SegsIn < last"))
 	}
 	if curr.SegsOut < last.SegsOut {
-		return *last, fmt.Errorf("TCP SegsOut stats invalid diff operation")
+		joinedErr = errors.Join(joinedErr, fmt.Errorf("current SegsOut < last"))
 	}
 	if curr.SkDrops < last.SkDrops {
-		return *last, fmt.Errorf("TCP SkDrop stats invalid diff operation")
+		joinedErr = errors.Join(joinedErr, fmt.Errorf("current SkDrops < last"))
 	}
 
-	rttHist, err := tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT", source, dest)
+	rttHist, err := tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT")
 	if err != nil {
-		return *last, err
+		joinedErr = errors.Join(joinedErr, err)
 	}
-	latencyHist, err := tcpDiffHistogram(&last.Latency, &curr.Latency, "Latency", source, dest)
+	latencyHist, err := tcpDiffHistogram(&last.Latency, &curr.Latency, "Latency")
 	if err != nil {
-		return *last, err
+		joinedErr = errors.Join(joinedErr, err)
+	}
+
+	if joinedErr != nil {
+		return *last, joinedErr
 	}
 	return networkapi.MsgSocketStats{
 		Ktime:           curr.Ktime,
@@ -315,7 +319,7 @@ func (s statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grp
 		return grpc.MsgIPWithStatsEventUnix{}, fmt.Errorf("TCP stats message duplicate")
 	}
 
-	tmpSocketStats, err := tcpDiffValues(&last, &tcp.Msg.SocketStats, &tcp.Msg.Tuple)
+	tmpSocketStats, err := tcpDiffValues(&last, &tcp.Msg.SocketStats)
 	if err != nil {
 		return grpc.MsgIPWithStatsEventUnix{}, err
 	}
