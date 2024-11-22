@@ -87,6 +87,36 @@ type DestinationEndpointValue struct {
 type Server struct {
 }
 
+func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapRequest) (*tetragon.GetEndpointMapResponse, error) {
+	c := endpoint.Get()
+	keys, endpoints := c.DebugEndpointMap()
+	tetragonEndpoints := make([]*tetragon.Endpoint, 0)
+
+	for i, e := range endpoints {
+		v := &tetragon.Endpoint{
+			Key:       keys[i],
+			Type:      tetragon.EndpointType(e.Type),
+			Dns:       e.Dns,
+			Kind:      e.Kind,
+			Namespace: e.Namespace,
+			Name:      e.Name,
+			Ip:        e.Ip,
+		}
+
+		tetragonEndpoints = append(tetragonEndpoints, v)
+	}
+
+	endpointMap := &tetragon.EndpointMap{
+		Endpoints: tetragonEndpoints,
+	}
+
+	resp := &tetragon.GetEndpointMapResponse{
+		Map: endpointMap,
+	}
+
+	return resp, nil
+}
+
 func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
 	if !option.Config.EnableProcessTree {
 		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")

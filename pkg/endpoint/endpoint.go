@@ -103,6 +103,17 @@ type endpointValue struct {
 	Id uint64
 }
 
+func (c *Cache) DebugEndpointMap() ([]uint64, []*Endpoint) {
+	keys := c.cache.Keys()
+	values := c.cache.Values()
+	endpoints := make([]*Endpoint, 0)
+
+	for _, v := range values {
+		endpoints = append(endpoints, &v)
+	}
+	return keys, endpoints
+}
+
 // Helper routine requires correct locking and should only be used from
 // insertNew and insertKnown.
 func (c *Cache) insertEndpoint(ep Endpoint, key uint64) {
