@@ -40,12 +40,7 @@ var colorStr = map[int]string{
 	deleted:       "deleted",
 }
 
-// garbage collection run interval
-const (
-	intervalGC = time.Second * 30
-)
-
-func (pc *Cache) cacheGarbageCollector() {
+func (pc *Cache) cacheGarbageCollector(intervalGC time.Duration) {
 	ticker := time.NewTicker(intervalGC)
 	pc.deleteChan = make(chan *ProcessInternal)
 	pc.stopChan = make(chan bool)
@@ -147,6 +142,7 @@ func (pc *Cache) purge() {
 
 func NewCache(
 	processCacheSize int,
+	GCInterval time.Duration,
 ) (*Cache, error) {
 	lruCache, err := lru.NewWithEvict(
 		processCacheSize,
@@ -161,7 +157,7 @@ func NewCache(
 		cache: lruCache,
 		size:  processCacheSize,
 	}
-	pm.cacheGarbageCollector()
+	pm.cacheGarbageCollector(GCInterval)
 	return pm, nil
 }
 
@@ -201,12 +197,16 @@ func (pc *Cache) len() int {
 
 func (pc *Cache) dump(opts *tetragon.DumpProcessCacheReqArgs) []*tetragon.ProcessInternal {
 	execveMapPath := filepath.Join(defaults.DefaultMapRoot, defaults.DefaultMapPrefix, "execve_map")
-	execveMap, err := ebpf.LoadPinnedMap(execveMapPath, &ebpf.LoadPinOptions{ReadOnly: true})
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to open execve_map")
-		return []*tetragon.ProcessInternal{}
+	var execveMap *ebpf.Map
+	var err error
+	if opts.ExcludeExecveMapProcesses {
+		execveMap, err = ebpf.LoadPinnedMap(execveMapPath, &ebpf.LoadPinOptions{ReadOnly: true})
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("failed to open execve_map")
+			return []*tetragon.ProcessInternal{}
+		}
+		defer execveMap.Close()
 	}
-	defer execveMap.Close()
 
 	var processes []*tetragon.ProcessInternal
 	for _, v := range pc.cache.Values() {
