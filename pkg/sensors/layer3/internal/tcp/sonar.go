@@ -172,6 +172,8 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 			Attributes: attributes,
 		},
 		Metrics: []*mpb.Metric{
+			// sockets_total, sockets_closed and sockets_ended_early were removed in report version
+			// 1.1 in favor of per-state socket counts.
 			// {
 			// 	Name:        "sockets_total",
 			// 	Description: "The number of currently active connections",
@@ -190,6 +192,51 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 			// 	Unit:        "1",
 			// 	Data:        nil,
 			// },
+
+			// Per-state socket counts were introduced in report version 1.1.
+			// {
+			// 	Name:        "sockets_connecting",
+			// 	Description: "The number of sockets currently connecting",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "sockets_established",
+			// 	Description: "The number of sockets currently established",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "sockets_closing",
+			// 	Description: "The number of sockets currently closed but still in memory",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "sockets_closed",
+			// 	Description: "The number of sockets currently closed",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "sockets_completed",
+			// 	Description: "The number of sockets completed during the prior window",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "severed_connect",
+			// 	Description: "The number of sockets severed while connecting",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "severed_establish",
+			// 	Description: "The number of sockets severed while established",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+
 			{
 				Name:        "bytes_received",
 				Description: "Bytes received",
@@ -234,6 +281,9 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 				Unit:        "1",
 				Data:        getDataHistogram(float64(fgsSocketStats.Srtt)),
 			},
+
+			// retrans_total and retrans_timeouts were removed in report version 1.1 in favor of
+			// per-flag retransmission metrics.
 			{
 				Name:        "retrans_total",
 				Description: "The number of retransmissions sent and received",
@@ -243,6 +293,44 @@ func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple 
 			// {
 			// 	Name:        "retrans_timeouts",
 			// 	Description: "The number of retransmission timeouts",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+
+			// Per-flag retransmission metrics were introduced in report version 1.1.
+			// {
+			// 	Name:        "retrans_syn",
+			// 	Description: "The number of retransmissions while connecting",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "retrans_est",
+			// 	Description: "The number of retransmissions while established",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "retrans_close",
+			// 	Description: "The number of retransmissions while closing",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "rtos_syn",
+			// 	Description: "The number of RTOs while connecting",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "rtos_est",
+			// 	Description: "The number of RTOs while connecting",
+			// 	Unit:        "1",
+			// 	Data:        nil,
+			// },
+			// {
+			// 	Name:        "rtos_close",
+			// 	Description: "The number of RTOs while closing",
 			// 	Unit:        "1",
 			// 	Data:        nil,
 			// },
@@ -404,10 +492,12 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
+			// {
 			// 	Key: "agent.build_ts", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
+			// {
 			// 	Key: "report.version", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
@@ -417,10 +507,12 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 					Value: &cpb.AnyValue_StringValue{StringValue: node.GetNodeNameForExport()},
 				},
 			},
+			// {
 			// 	Key: "k8s_cluster_name", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
 			// },
+			// {
 			// 	Key: "interface-id", Value: &cpb.AnyValue{
 			// 		Value: &cpb.AnyValue_StringValue{StringValue: "TODO"},
 			// 	},
@@ -439,38 +531,6 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 			Value: &cpb.AnyValue_StringValue{StringValue: instanceID},
 		},
 	})
-
-	// add subnet and VPC IDs
-	// ec2Client := ec2.NewFromConfig(cfg)
-	// ec2Input := &ec2.DescribeInstancesInput{
-	// 	InstanceIds: []string{instanceID},
-	// }
-	// ec2Instances, err := ec2Client.DescribeInstances(ctx, ec2Input)
-	// if err != nil {
-	// 	logger.GetLogger().WithError(err).Warn("failed to describe EC2 instances")
-	// 	return resource
-	// }
-	// var subnetID, vpcID string
-	// we expect exactly one instance in the response
-	// if ec2Instances != nil && len(ec2Instances.Reservations) > 0 && len(ec2Instances.Reservations[0].Instances) > 0 {
-	// 	instance := ec2Instances.Reservations[0].Instances[0]
-	// 	subnetID = aws.ToString(instance.SubnetId)
-	// 	vpcID = aws.ToString(instance.VpcId)
-	// }
-	// if subnetID != "" {
-	// 	resource.Attributes = append(resource.Attributes, &cpb.KeyValue{
-	// 		Key: "subnet_id", Value: &cpb.AnyValue{
-	// 			Value: &cpb.AnyValue_StringValue{StringValue: subnetID},
-	// 		},
-	// 	})
-	// }
-	// if vpcID != "" {
-	// 	resource.Attributes = append(resource.Attributes, &cpb.KeyValue{
-	// 		Key: "vpc_id", Value: &cpb.AnyValue{
-	// 			Value: &cpb.AnyValue_StringValue{StringValue: vpcID},
-	// 		},
-	// 	})
-	// }
 
 	return resource
 }
