@@ -536,6 +536,26 @@ func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
 	return nil
 }
 
+func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
+	fmt.Printf("EndpointId %4s EndpointValue\n", "")
+	fmt.Printf("--------------------------------\n")
+	for _, e := range res.Map.Endpoints {
+		switch e.Type {
+		case tetragon.EndpointType_Dnstype:
+			fmt.Printf("%d %14s %s\n", e.Key, "", e.Dns)
+		case tetragon.EndpointType_PodType:
+			fmt.Printf("%d %14s %s:%s %s\n", e.Key, "", e.Namespace, e.Name, e.Kind)
+		case tetragon.EndpointType_IpType:
+			fmt.Printf("%d %14s %s\n", e.Key, "", e.Ip)
+		case tetragon.EndpointType_ServiceType:
+			fmt.Printf("%d %14s %s:%s %s\n", e.Key, "", e.Namespace, e.Name, e.Kind)
+		default:
+			fmt.Printf("%d %14s unknownType\n", e.Key, "")
+		}
+	}
+	return nil
+}
+
 func printDebug() error {
 	res, err := getDebug()
 	if err != nil {
@@ -550,7 +570,9 @@ func printDebug() error {
 
 	switch output {
 	/* Default output is tree use json for debug */
-	case "json", "tree":
+	case "tree":
+		return printDebugCompact(res)
+	case "json":
 		return printDebugJSON(res)
 	default:
 		return fmt.Errorf("invalid output format: %s", output)
