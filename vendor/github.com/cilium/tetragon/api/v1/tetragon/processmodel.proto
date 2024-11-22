@@ -76,13 +76,14 @@ enum EndpointType {
 }
 
 message Endpoint {
-	uint64 key = 1;
-	EndpointType type = 2;
-	string dns = 3;
-	string kind = 4;
-	string namespace = 5;
-	string name = 6;
-	string ip = 7;
+	string srcIP = 1;
+	uint64 key = 2;
+	EndpointType type = 3;
+	string dns = 4;
+	string kind = 5;
+	string namespace = 6;
+	string name = 7;
+	string ip = 8;
 }
 
 message EndpointMap {

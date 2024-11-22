@@ -3488,6 +3488,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| srcIP | [string](#string) |  |  |
 | key | [uint64](#uint64) |  |  |
 | type | [EndpointType](#tetragon-EndpointType) |  |  |
 | dns | [string](#string) |  |  |
