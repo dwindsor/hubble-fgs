@@ -3646,6 +3646,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
+| GetEndpointMap | [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest) | [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse) |  |
 
  
 
