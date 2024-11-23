@@ -29,6 +29,7 @@ const (
 	processTreeMap         = "process_tree_map"
 	processTreeUUIDMap     = "process_tree_uid_binary_map"
 	destinationEndpointMap = "destination_endpoint_map"
+	endpointIdMap          = "tg_endpoint_id_map"
 	HostNamespace          = "<host-namespace>"
 	HostWorkload           = "<host-workload>"
 	WorkloadDestinations   = "<wl-destinations>"
@@ -84,6 +85,14 @@ type DestinationEndpointValue struct {
 	Port           uint64
 }
 
+type EndpointIdKey struct {
+	Addr [2]uint64
+}
+
+type EndpointIdValue struct {
+	Id uint64
+}
+
 type Server struct {
 }
 
@@ -91,10 +100,25 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	c := endpoint.Get()
 	keys, endpoints := c.DebugEndpointMap()
 	tetragonEndpoints := make([]*tetragon.Endpoint, 0)
+	endptToId := make(map[uint64]*tetragon.Endpoint)
+
+	endptIdMap := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
+	endpt, err := ebpf.LoadPinnedMap(endptIdMap, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", endptIdMap).Warn("Could not open destination endpoint map for EndpointDebugReq")
+		return nil, err
+	}
+	defer endpt.Close()
+
+	var (
+		endptIdKey   EndpointIdKey
+		endptIdValue EndpointIdValue
+	)
 
 	for i, e := range endpoints {
+		id := keys[i]
 		v := &tetragon.Endpoint{
-			Key:       keys[i],
+			Key:       id,
 			Type:      tetragon.EndpointType(e.Type),
 			Dns:       e.Dns,
 			Kind:      e.Kind,
@@ -103,7 +127,20 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 			Ip:        e.Ip,
 		}
 
+		endptToId[id] = v
 		tetragonEndpoints = append(tetragonEndpoints, v)
+	}
+
+	iter := endpt.Iterate()
+	for iter.Next(&endptIdKey, &endptIdValue) {
+		v, ok := endptToId[endptIdValue.Id]
+		if !ok {
+			continue
+		}
+
+		// tbd ipv6 support
+		ip := networkapi.GetIP(endptIdKey.Addr, 0, false)
+		v.SrcIP = ip.String()
 	}
 
 	endpointMap := &tetragon.EndpointMap{
