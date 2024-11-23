@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"sort"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -537,18 +538,22 @@ func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
 }
 
 func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
-	fmt.Printf("LocalIP %14s EndpointId %4s EndpointValue\n", "", "")
-	fmt.Printf("---------------------------------------------\n")
+	fmt.Printf("LocalIP %14s EndpointId %12s EndpointValue\n", "", "")
+	fmt.Printf("-------------------------------------------------------------\n")
 	for _, e := range res.Map.Endpoints {
+		ipLen := int(len(e.SrcIP))
+		spaces := 15 - ipLen + 14
+		keyStr := strconv.FormatUint(e.Key, 10)
+		idSpaces := 2 - len(keyStr) + 14
 		switch e.Type {
 		case tetragon.EndpointType_Dnstype:
-			fmt.Printf("%s %14s %d %14s %s\n", e.SrcIP, "", e.Key, "", e.Dns)
+			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Dns)
 		case tetragon.EndpointType_PodType:
-			fmt.Printf("%s %14s %d %14s %s:%s %s\n", e.SrcIP, "", e.Key, "", e.Namespace, e.Name, e.Kind)
+			fmt.Printf("%s%*c %d %*c %s:%s %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Namespace, e.Name, e.Kind)
 		case tetragon.EndpointType_IpType:
-			fmt.Printf("%s %14s %d %14s %s\n", e.SrcIP, "", e.Key, "", e.Ip)
+			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Ip)
 		case tetragon.EndpointType_ServiceType:
-			fmt.Printf("%s %14s %d %14s %s:%s %s\n", e.SrcIP, "", e.Key, "", e.Namespace, e.Name, e.Kind)
+			fmt.Printf("%s%*c %d %*c %s:%s %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Namespace, e.Name, e.Kind)
 		default:
 			fmt.Printf("%s %14s %d unknownType\n", e.SrcIP, "", e.Key)
 		}
