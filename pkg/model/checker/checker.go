@@ -18,6 +18,7 @@ import (
 	"github.com/google/cel-go/cel"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/encoding/protojson"
+	celk8s "k8s.io/apiserver/pkg/cel/library"
 )
 
 type ApplicationCheckerResult interface {
@@ -86,6 +87,9 @@ func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error
 			&appModelV1.ApplicationNamespace{},
 			&appModelV1.ApplicationWorkload{},
 		),
+		celk8s.IP(),
+		celk8s.CIDR(),
+		celk8s.Lists(),
 	}
 
 	celEnv, err := cel.NewEnv(options...)
