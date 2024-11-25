@@ -182,3 +182,87 @@ func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *tetr
 	}
 	return namespaceMapToApplicationModel(nsMap)
 }
+
+func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *tetragon.ApplicationModel) {
+	for _, ns := range app.GetNamespaces() {
+		for _, wl := range ns.GetWorkloads() {
+			for _, ps := range wl.GetProcesses() {
+				if len(ps.GetConnections()) == 0 {
+					pmk := ProcessKey{
+						Namespace:    ns.GetName(),
+						WorkloadKind: wl.GetKind(),
+						WorkloadName: wl.GetName(),
+						Name:         ps.GetName(),
+					}
+					pmd[pmk] = ProcessValue{}
+					continue
+				}
+				for _, conn := range ps.GetConnections() {
+					nmk := NetworkKey{
+						SourceNamespace:    ns.GetName(),
+						SourceWorkloadKind: wl.GetKind(),
+						SourceWorkloadName: wl.GetName(),
+						SourceProcessName:  ps.GetName(),
+						DestinationName:    conn.GetDestinationName(),
+						DestinationPort:    conn.GetDestinationPort(),
+					}
+					if val, ok := nmd[nmk]; ok {
+						val.TXBytes += conn.BytesSent
+						val.RXBytes += conn.BytesSent
+					} else {
+						nmd[nmk] = NetworkMonitorValue{
+							TXBytes: conn.GetBytesSent(),
+							RXBytes: conn.GetBytesReceived(),
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, ps := range app.GetHost().GetProcesses() {
+		if len(ps.GetConnections()) == 0 {
+			pmk := ProcessKey{
+				Namespace:    HostNamespace,
+				WorkloadKind: HostKind,
+				WorkloadName: HostWorkload,
+				Name:         ps.GetName(),
+			}
+			pmd[pmk] = ProcessValue{}
+			continue
+		}
+		for _, conn := range ps.GetConnections() {
+			nmk := NetworkKey{
+				SourceNamespace:    HostNamespace,
+				SourceWorkloadKind: HostKind,
+				SourceWorkloadName: HostWorkload,
+				SourceProcessName:  ps.GetName(),
+				DestinationName:    conn.GetDestinationName(),
+				DestinationPort:    conn.GetDestinationPort(),
+			}
+			if val, ok := nmd[nmk]; ok {
+				val.TXBytes += conn.BytesSent
+				val.RXBytes += conn.BytesSent
+			} else {
+				nmd[nmk] = NetworkMonitorValue{
+					TXBytes: conn.GetBytesSent(),
+					RXBytes: conn.GetBytesReceived(),
+				}
+			}
+		}
+	}
+}
+
+func Merge(m1, m2 *tetragon.ApplicationModel) *tetragon.ApplicationModel {
+	nmd := NetworkMonitorData{}
+	pmd := ProcessMonitorData{}
+	modelToMonitorData(nmd, pmd, m1)
+	modelToMonitorData(nmd, pmd, m2)
+	nsMap := make(namespaceMap)
+	for key, val := range nmd {
+		handleNetworkEvent(nsMap, key, val)
+	}
+	for key, val := range pmd {
+		handleProcessEvent(nsMap, key, val)
+	}
+	return namespaceMapToApplicationModel(nsMap).GetApplicationModel()
+}

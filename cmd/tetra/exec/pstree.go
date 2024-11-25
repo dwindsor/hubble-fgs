@@ -14,6 +14,7 @@ import (
 
 	// append enterprise filters
 
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -604,6 +605,45 @@ func NewDebug() *cobra.Command {
 	return ret
 }
 
+func NewSquash() *cobra.Command {
+	ret := &cobra.Command{
+		Use:   "squash",
+		Short: "Squash multiple application_model JSON inputs into one",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return squash()
+		},
+	}
+	return ret
+}
+
+func squash() error {
+	appModel := &tetragon.ApplicationModel{}
+	fi, _ := os.Stdin.Stat()
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+		for {
+			var ev tetragon.ApplicationModelEvent
+			err := decoder.Decode(&ev)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			appModel = model.Merge(appModel, ev.GetApplicationModel())
+		}
+		res := &tetragon.ApplicationModelEvent{
+			ApplicationModel: appModel,
+		}
+		appBytes, err := res.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(appBytes))
+	}
+	return nil
+}
+
 func New() *cobra.Command {
 	ret := &cobra.Command{
 		Use:          "pstree",
@@ -618,6 +658,7 @@ func New() *cobra.Command {
 	ret.AddCommand(NewShow())
 	ret.AddCommand(NewCheck())
 	ret.AddCommand(NewDebug())
+	ret.AddCommand(NewSquash())
 
 	pflags := ret.PersistentFlags()
 	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
