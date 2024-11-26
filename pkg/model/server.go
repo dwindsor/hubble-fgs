@@ -29,6 +29,7 @@ const (
 	processTreeMap         = "process_tree_map"
 	processTreeUUIDMap     = "process_tree_uid_binary_map"
 	destinationEndpointMap = "destination_endpoint_map"
+	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
 	HostNamespace          = "<host-namespace>"
 	HostWorkload           = "<host-workload>"
@@ -83,6 +84,21 @@ type DestinationEndpointValue struct {
 	KtimeCreate    uint64
 	AddrCreate     [2]uint64
 	Port           uint64
+}
+
+type ListenKey struct {
+	Addr [2]uint64
+	Nsid uint64
+	Port uint64
+}
+
+type ListenValue struct {
+	Self     ProcessExecveKey
+	Parent   ProcessExecveKey
+	Accepted uint64
+	TxBytes  uint64
+	RxBytes  uint64
+	Pad      uint64
 }
 
 type EndpointIdKey struct {
@@ -141,6 +157,31 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		// tbd ipv6 support
 		ip := networkapi.GetIP(endptIdKey.Addr, 0, false)
 		v.SrcIP = ip.String()
+	}
+
+	listenMap := filepath.Join(bpf.MapPrefixPath(), listenEndpointMap)
+	listen, err := ebpf.LoadPinnedMap(listenMap, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		listenKey   ListenKey
+		listenValue ListenValue
+	)
+
+	liter := listen.Iterate()
+	for liter.Next(&listenKey, &listenValue) {
+		ip6 := listenKey.Addr[1] != 0
+		ip := networkapi.GetIP(listenKey.Addr, 0, ip6)
+		port := fmt.Sprintf("%d", listenKey.Port)
+		v := &tetragon.Endpoint{
+			Key:  0,
+			Type: tetragon.EndpointType_ListenType,
+			Ip:   ip.String(),
+			Port: port,
+		}
+		tetragonEndpoints = append(tetragonEndpoints, v)
 	}
 
 	endpointMap := &tetragon.EndpointMap{
