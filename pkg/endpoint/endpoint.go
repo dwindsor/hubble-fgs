@@ -285,8 +285,10 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 					newNameSet = append(newNameSet, name)
 				}
 			}
-			ep.Dns = strings.Join(newNameSet, ",")
-			c.insertKnownEndpoint(ep, tmp.Id)
+			if len(newNameSet) != len(oldNameSet) {
+				ep.Dns = strings.Join(newNameSet, ",")
+				c.insertKnownEndpoint(ep, tmp.Id)
+			}
 		} else {
 			// Its possible this EP has a preconfigured ID from
 			// a QOS policy. In that case we need to map to that
