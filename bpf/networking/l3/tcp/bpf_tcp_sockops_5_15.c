@@ -192,14 +192,14 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	u32 zero = 0;
 	size_t size;
 	u64 cookie;
-	int state;
+	int old_state;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skops->sk;
 
-	state = skops->args[1];
+	old_state = skops->args[1];
 
-	if (state != TCP_CLOSE)
+	if (old_state != TCP_CLOSE)
 		return 0;
 
 	socket = lookup_tcpsocketmap(&cookie);
