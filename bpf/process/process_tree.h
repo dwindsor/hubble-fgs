@@ -361,6 +361,37 @@ int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tup
 	return __process_socketmap_add(v, tuple, cgid);
 }
 
+int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
+{
+	struct listen_endpoint_key key;
+	void *listen;
+	__u64 *nsid;
+
+	if (!tuple)
+		return 0;
+
+	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	if (nsid)
+		key.nsid = *nsid;
+	else
+		key.nsid = 0;
+
+	key.addr[0] = tuple->saddr[0];
+	key.addr[1] = tuple->saddr[1];
+	key.port = tuple->sport;
+
+	listen = map_lookup_elem(&listen_endpoint_map, &key);
+	if (!listen) {
+		key.addr[0] = 0;
+		key.addr[1] = 0;
+
+		listen = map_lookup_elem(&listen_endpoint_map, &key);
+		if (!listen)
+			return __process_socketmap_add(v, tuple, cgid);
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
