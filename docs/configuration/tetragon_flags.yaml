@@ -7,7 +7,7 @@ options:
       default_value: tetragon
       usage: Set tetragon bpf directory (default 'tetragon')
     - name: bpf-endpoint-cache-size
-      default_value: "1024"
+      default_value: "65536"
       usage: |
         Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: bpf-lib
@@ -119,7 +119,7 @@ options:
       usage: |
         Enable TracingPolicy and TracingPolicyNamespaced custom resources
     - name: endpoint-cache-size
-      default_value: "1024"
+      default_value: "65536"
       usage: |
         Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: event-cache-retries
@@ -254,7 +254,7 @@ options:
       default_value: 1h0m0s
       usage: Interval between stale process cache checks
     - name: process-tree-cache-size
-      default_value: "1024"
+      default_value: "65536"
       usage: |
         Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
     - name: process-tree-export-interval
