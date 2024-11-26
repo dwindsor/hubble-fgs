@@ -172,7 +172,6 @@ int BPF_PROG(tg_security_sock_graft, struct sock *sk, struct socket *parent)
 		accept_socket.stats.create_time = now;
 		accept_socket.socket_flags = SOCKFLAGS_TYPE_ACCEPT;
 		accept_socket.stats.sk_drops = 0;
-		accept_socket.fin_rx = 0;
 		add_tcpsocketmap(&newcookie, &accept_socket, &tuple, true);
 	}
 
