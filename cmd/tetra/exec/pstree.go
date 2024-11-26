@@ -554,6 +554,8 @@ func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Ip)
 		case tetragon.EndpointType_ServiceType:
 			fmt.Printf("%s%*c %d %*c %s:%s %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Namespace, e.Name, e.Kind)
+		case tetragon.EndpointType_ListenType:
+			fmt.Printf("%s%*c %d %*c %s:%s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Ip, e.Port)
 		default:
 			fmt.Printf("%s %14s %d unknownType\n", e.SrcIP, "", e.Key)
 		}
