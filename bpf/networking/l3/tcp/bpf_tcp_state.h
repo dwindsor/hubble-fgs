@@ -32,6 +32,29 @@ struct {
 	__uint(max_entries, 1);
 } tg_sockops_tcpsocket_map SEC(".maps");
 
+static inline int
+tcp_set_fin(void *ctx, u64 *cookie)
+{
+	struct tcpsocketmap_value *socket;
+
+	socket = lookup_tcpsocketmap(cookie);
+	if (!socket) {
+		emit_ip_error_event(ctx, 0, cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
+		return 0;
+	}
+
+	/* When a socket is closing, it may have received a FIN(/ACK) segment.
+	* Unfortunately, a FIN(/ACK) increases the received sequence counter
+	* by 1 (in order to maintain appropriate state). We use the received
+	* sequence counter to indicate the number of bytes received, so if
+	* we have received a FIN(/ACK) then our counter will be 1 greater than
+	* it should be. Mark the socket so that stats calculations can take
+	* this into account.
+	*/
+	socket->fin_rx = 1;
+	return 0;
+}
+
 static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(struct msg_ip_event *val, struct msg_execve_key *key, u16 family)
 {
 	struct tcpsocketmap_value *v;

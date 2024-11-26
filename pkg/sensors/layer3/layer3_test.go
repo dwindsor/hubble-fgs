@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"syscall"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -90,17 +89,6 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 	if cmd != nil {
 		if cmd.Process != nil {
 			cmd.Process.Kill()
-		} else {
-			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
-		}
-		_ = cmd.Wait()
-	}
-}
-
-func signalAndWaitCommand(t *testing.T, cmd *exec.Cmd, signal syscall.Signal) {
-	if cmd != nil {
-		if cmd.Process != nil {
-			syscall.Kill(cmd.Process.Pid, signal)
 		} else {
 			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
 		}

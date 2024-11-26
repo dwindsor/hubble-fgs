@@ -58,6 +58,11 @@ tg_event_tcp_close_and_accept(struct pt_regs *ctx)
 	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
 		return __event_tcp_accept_state(ctx, skp);
 
+	if (state == TCP_CLOSE_WAIT || state == TCP_CLOSING ||
+	    (old_state == TCP_FIN_WAIT2 && state == TCP_TIME_WAIT) ||
+	    (old_state == TCP_FIN_WAIT1 && state == TCP_TIME_WAIT))
+		return tcp_set_fin(ctx, &cookie);
+
 	if (state != TCP_CLOSE)
 		return 0;
 
