@@ -3496,6 +3496,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | namespace | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | ip | [string](#string) |  |  |
+| port | [string](#string) |  |  |
 
 
 
@@ -3622,6 +3623,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | PodType | 2 |  |
 | IpType | 3 |  |
 | ServiceType | 4 |  |
+| ListenType | 5 |  |
 
 
  

@@ -73,6 +73,7 @@ enum EndpointType {
 	PodType = 2;
 	IpType = 3;
 	ServiceType = 4;
+	ListenType = 5;
 }
 
 message Endpoint {
@@ -84,6 +85,7 @@ message Endpoint {
 	string namespace = 6;
 	string name = 7;
 	string ip = 8;
+	string port = 9;
 }
 
 message EndpointMap {
