@@ -97,6 +97,7 @@ var (
 	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", FdLookup_5_15)
 	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", FdLookup_5_15)
 	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", FdLookup_5_15)
+	ListenEndpointMap        = program.MapUser("listen_endpoint_map", FdLookup_5_15)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
@@ -204,6 +205,7 @@ func getFdLookupMaps() []*program.Map {
 				ProcessTreeBinaryUUIDMap,
 				ProcessTreeUUIDBinaryMap,
 				DestinationEndpointMap,
+				ListenEndpointMap,
 			}...)
 		}
 	}

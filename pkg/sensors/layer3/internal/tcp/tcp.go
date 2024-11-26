@@ -177,6 +177,7 @@ var (
 	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", TcpSockops515)
 	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", TcpSockops515)
 	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", TcpSockops515)
+	ListenEndpointMap        = program.MapUser("listen_endpoint_map", TcpSockops515)
 
 	// TCP Runtime maps
 	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
@@ -235,6 +236,7 @@ func processModelMapsEnable() []*program.Map {
 		ProcessTreeBinaryUUIDMap,
 		ProcessTreeUUIDBinaryMap,
 		DestinationEndpointMap,
+		ListenEndpointMap,
 	}
 	return maps
 }

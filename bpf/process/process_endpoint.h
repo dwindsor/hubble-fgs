@@ -167,4 +167,33 @@ struct {
 	__uint(value_size, sizeof(struct destination_endpoint_value));
 } destination_endpoint_heap SEC(".maps");
 
+struct listen_endpoint_key {
+	__u64 addr[2];
+	__u64 nsid;
+	__u64 port;
+};
+
+struct listen_endpoint_value {
+	struct msg_execve_key self;
+	struct msg_execve_key parent;
+	__u64 accepted;
+	__u64 tx_bytes;
+	__u64 rx_bytes;
+	__u64 pad0;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct listen_endpoint_value));
+} listen_endpoint_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 1); // will be resized by userspace
+	__uint(key_size, sizeof(struct listen_endpoint_key));
+	__uint(value_size, sizeof(struct listen_endpoint_value));
+} listen_endpoint_map SEC(".maps");
+
 #endif //__PROCESS_ENDPOINTS_H__

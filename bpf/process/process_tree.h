@@ -159,6 +159,71 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 	return get_cgroup_id(cgrp);
 }
 
+int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
+{
+	struct msg_execve_key *self_uid, *parent_uid;
+	struct execve_map_value *parent;
+	struct process_tree_config *cfg;
+	struct msg_execve_key zero_uid;
+	struct execve_map_value *curr;
+	int zero = 0;
+	__u64 *nsid;
+
+	struct listen_endpoint_key key;
+	struct listen_endpoint_value *value;
+
+	if (!tuple)
+		return 0;
+	if (!v)
+		return 0;
+
+	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
+	if (!cfg || !cfg->enableProcessTree)
+		return 0;
+
+	curr = execve_map_get_noinit(v->key.pid);
+	if (!curr)
+		return 0;
+
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, curr->bin.path);
+	if (!self_uid)
+		return 0;
+
+	zero_uid.pid = 0;
+	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
+	zero_uid.ktime = 0;
+
+	parent = event_find_parent();
+	if (!parent) {
+		parent_uid = &zero_uid;
+	} else {
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
+		if (!parent_uid)
+			parent_uid = &zero_uid;
+	}
+
+	key.addr[0] = tuple->saddr[0];
+	key.addr[1] = tuple->saddr[1];
+	key.port = tuple->sport;
+	key.nsid = 0;
+
+	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	if (nsid)
+		key.nsid = *nsid;
+
+	value = map_lookup_elem(&listen_endpoint_heap, &zero);
+	if (!value)
+		return 0;
+	value->self = *self_uid;
+	value->parent = *parent_uid;
+	value->accepted = 0;
+	value->tx_bytes = 0;
+	value->rx_bytes = 0;
+
+	map_update_elem(&listen_endpoint_map, &key, value, BPF_NOEXIST);
+	return 0;
+}
+
 int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct msg_execve_key *self_uid, *parent_uid;

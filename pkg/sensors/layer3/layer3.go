@@ -183,6 +183,8 @@ var (
 	// Process Tree maps
 	DestinationEndpointEgressMap    = program.MapUser("destination_endpoint_map", EgressDispatcher)
 	DestinationEndpointIngressMap   = program.MapUser("destination_endpoint_map", IngressDispatcher)
+	ListenEndpointEgressMap         = program.MapUser("listen_endpoint_map", EgressDispatcher)
+	ListenEndpointIngressMap        = program.MapUser("listen_endpoint_map", IngressDispatcher)
 	ProcessTreeBinaryUUIDEgressMap  = program.MapUser("process_tree_binary_uid_map", EgressDispatcher)
 	ProcessTreeBinaryUUIDIngressMap = program.MapUser("process_tree_binary_uid_map", IngressDispatcher)
 	BpfEndpointIdEgressMap          = program.MapUser("tg_bpf_endpoint_id_map", EgressDispatcher)
@@ -195,6 +197,8 @@ var (
 		[]*program.Map{protoCfgMap,
 			DestinationEndpointIngressMap,
 			DestinationEndpointEgressMap,
+			ListenEndpointIngressMap,
+			ListenEndpointEgressMap,
 			ProcessTreeBinaryUUIDEgressMap,
 			ProcessTreeBinaryUUIDIngressMap,
 			BpfEndpointIdEgressMap,

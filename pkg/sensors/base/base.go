@@ -119,6 +119,7 @@ var (
 	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
@@ -205,6 +206,7 @@ func GetDefaultMaps() []*program.Map {
 		ProcessTreeUUIDBinaryMap,
 		EndpointIdMap,
 		DestinationEndpointMap,
+		ListenEndpointMap,
 		BpfEndpointIdMap,
 	}
 
@@ -254,6 +256,7 @@ func ConfigureMapSizes() {
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	ListenEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 }
 
 func EnableV611Progs() bool {
