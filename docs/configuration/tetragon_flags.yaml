@@ -54,6 +54,10 @@ options:
     - name: enable-cgidmap-debug
       default_value: "false"
       usage: enable cgidmap debugging info
+    - name: enable-cgtrackerid
+      default_value: "true"
+      usage: |
+        enable cgroup tracker id (only used if 'enable-cgidmap' is set)
     - name: enable-cilium-api
       default_value: "false"
       usage: |
