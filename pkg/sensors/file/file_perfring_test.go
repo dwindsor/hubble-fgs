@@ -44,6 +44,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
+	tuo "github.com/cilium/tetragon/pkg/testutils/observer"
 	"github.com/cilium/tetragon/pkg/testutils/perfring"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/file"
@@ -68,7 +69,7 @@ func TestFileSuffixPattern(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(t)
+	sm := tuo.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -299,7 +300,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(t)
+	sm := tuo.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -409,7 +410,7 @@ func TestFileGlobMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(t)
+	sm := tuo.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -514,7 +515,7 @@ func TestFileDigestMatch(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(t)
+	sm := tuo.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
@@ -619,7 +620,7 @@ func TestMatchBinariesFollowChildren(t *testing.T) {
 	option.Config.BpfDir = bpf.MapPrefixPath()
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
-	sm := tus.GetTestSensorManager(t)
+	sm := tuo.GetTestSensorManager(t)
 
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
