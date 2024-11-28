@@ -100,6 +100,10 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	if (!socket)
 		return 0;
 
+	// Set the protocol here because it probably wasn't specified at the time of
+	// socket allocation.
+	socket->protocol = IPPROTO_TCP;
+
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_listen_event_map,
 						     &zero);
 	if (!val)
@@ -160,6 +164,10 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 		emit_ip_error_event(skops, 0, &cookie, skops->family == AF_INET6, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
 		return 0;
 	}
+
+	// Set the protocol here because it probably wasn't specified at the time of
+	// socket allocation.
+	socket->protocol = IPPROTO_TCP;
 
 	key = &socket->key;
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,

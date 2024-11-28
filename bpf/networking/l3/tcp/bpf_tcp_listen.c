@@ -53,6 +53,9 @@ tg_event_sys_listen(struct pt_regs *ctx)
 	socket = lookup_socketmap(&cookie);
 	if (socket) {
 		key = &socket->key;
+		// Set the protocol here because it probably wasn't specified at the time of
+		// socket allocation.
+		socket->protocol = IPPROTO_TCP;
 	} else {
 		process = event_find_curr(&ppid, &walker);
 		if (!process) {

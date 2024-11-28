@@ -364,13 +364,14 @@ del_socket_tuple_map(u64 *cookie)
 	if (!key)
 		return;
 
-	map_delete_elem(&tg_rev_tuple_map, &c);
 	err = map_delete_elem(&tg_socket_tuple_map, key);
 	if (!err) {
 		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
 			*cntr = *cntr - 1;
 		delete_tuple_hint(key);
 	}
+
+	map_delete_elem(&tg_rev_tuple_map, &c);
 }
 
 struct netns_ipv4___with_l3mdev {
