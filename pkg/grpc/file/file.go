@@ -292,9 +292,7 @@ func fileLocation(tetragonProcess *tetragon.Process, containerID string) *tetrag
 		} else {
 			l.Type = tetragon.FileScope_CONTAINER_FILE_REMOTE
 			if option.Config.EnableK8s {
-				// NB(kkourt): for now we pass 0 as the cgroup id but this will not
-				// work with cgidmap: https://github.com/isovalent/hubble-fgs/issues/4784
-				podInfo := process.GetPodInfo(0, containerID, "", "", 0)
+				podInfo := process.GetPodInfo(containerID, "", "", 0)
 				l.Pod = podInfo
 			}
 		}
