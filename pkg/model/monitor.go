@@ -180,6 +180,10 @@ func getDestinationName(dst *tetragon.Destination) string {
 			dst.GetDestinationPod().GetNamespace(),
 			dst.GetDestinationPod().GetWorkloadKind(),
 			dst.GetDestinationPod().GetWorkload())
+	} else if dst.GetDestinationService() != nil {
+		dstName = fmt.Sprintf("%s/Service:%s",
+			dst.GetDestinationService().GetNamespace(),
+			dst.GetDestinationService().GetName())
 	}
 	return dstName
 }

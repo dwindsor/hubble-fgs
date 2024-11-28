@@ -92,6 +92,21 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 					},
 				},
 			},
+			{
+				Binary:    "wget",
+				Namespace: "client",
+				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
+				Dest: []*tetragon.Destination{
+					{
+						DestinationService: &tetragon.Service{
+							Namespace: "default",
+							Name:      "kubernetes",
+						},
+						Port:  443,
+						Stats: &tetragon.DestinationStats{TxBytes: 300, RxBytes: 500},
+					},
+				},
+			},
 			// This is quota
 			{
 				Namespace: "client",
@@ -135,6 +150,15 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			RXBytes: 200,
 		},
 		NetworkKey{
+			SourceNamespace:    "client",
+			SourceWorkloadKind: "Deployment",
+			SourceWorkloadName: "my-app",
+			DestinationName:    "default/Service:kubernetes",
+			DestinationPort:    443,
+		}: NetworkMonitorValue{
+			TXBytes: 300,
+			RXBytes: 500,
+		}, NetworkKey{
 			SourceNamespace:    "client",
 			SourceWorkloadKind: "Deployment",
 			SourceWorkloadName: "my-app",
