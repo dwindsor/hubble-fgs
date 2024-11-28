@@ -13,6 +13,8 @@ jobs:
     name: Scan containers
     runs-on: ubuntu-24.04
     continue-on-error: true
+    outputs:
+      scan_result: ${{ steps.failure-flag.outputs.scan_result }}
     strategy:
       matrix:
         image: [hubble-enterprise-ci, hubble-enterprise-operator-ci, tetragon-ci, tetragon-operator-ci]
@@ -24,6 +26,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           sparse-checkout: |
+            .github/.grype.yaml
             .github/.openvex.json
           sparse-checkout-cone-mode: false
           path: vex
