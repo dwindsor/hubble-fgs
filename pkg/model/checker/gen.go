@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/reflect/protopath"
 	"google.golang.org/protobuf/reflect/protorange"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -285,7 +285,7 @@ func (gen *codegen) DoPop(p protopath.Values) error {
 }
 
 // GenerateChecker generates a new ApplicationModelChecker based on an input ApplicationModelEvent.
-func GenerateChecker(model *tetragon.ApplicationModelEvent) (*ApplicationModelChecker, error) {
+func GenerateChecker(model *appModelV1.ApplicationModelEvent) (*ApplicationModelChecker, error) {
 	celSource, err := GenerateCheckerCEL(model)
 	if err != nil {
 		return nil, fmt.Errorf("error generating checker: %w", err)
@@ -295,7 +295,7 @@ func GenerateChecker(model *tetragon.ApplicationModelEvent) (*ApplicationModelCh
 }
 
 // GenerateCheckerCEL generates CEL checker source based on an input ApplicationModelEvent.
-func GenerateCheckerCEL(model *tetragon.ApplicationModelEvent) (string, error) {
+func GenerateCheckerCEL(model *appModelV1.ApplicationModelEvent) (string, error) {
 	gen := newCodegen()
 
 	// protorange.Options.Range visits every field in a depth-first traversal.

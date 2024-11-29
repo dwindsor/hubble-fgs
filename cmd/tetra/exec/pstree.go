@@ -45,6 +45,7 @@ import (
 	"github.com/xlab/treeprint"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -609,6 +610,60 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	return checkProcessTreeReader(ctx, appModelReader, chk)
 }
 
+func generateChecker() (string, error) {
+	var appModelReader io.Reader
+
+	if appModelFilename == "" {
+		return generateCheckerGrpc()
+	}
+
+	if appModelFilename == "-" {
+		appModelReader = os.Stdin
+	} else {
+		fr, err := os.Open(appModelFilename)
+		if err != nil {
+			return "", fmt.Errorf("failed to open app model file: %w", err)
+		}
+		appModelReader = fr
+	}
+
+	return generateCheckerReader(appModelReader)
+}
+
+func generateCheckerGrpc() (string, error) {
+	c := NewConnectedModelClient()
+	defer c.Close()
+
+	if host {
+		namespaces = append(namespaces, model.HostNamespace)
+	}
+	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+		Namespaces: namespaces,
+		Debug:      common.Debug,
+	})
+	if err != nil || res == nil {
+		return "", err
+	}
+
+	appModel := model.ProcessModelToApplicationModel(res)
+
+	return checker.GenerateCheckerCEL(appModel)
+}
+
+func generateCheckerReader(reader io.Reader) (string, error) {
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read application model: %w", err)
+	}
+
+	appModel := &appModelV1.ApplicationModelEvent{}
+	if err := protojson.Unmarshal(b, appModel); err != nil {
+		return "", err
+	}
+
+	return checker.GenerateCheckerCEL(appModel)
+}
+
 func NewCheck() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "check [application model file]",
@@ -646,11 +701,42 @@ func NewCheck() *cobra.Command {
 		},
 	}
 
+	ret.AddCommand(NewGenerate())
+
 	flags := ret.Flags()
 	flags.StringArrayVarP(&celFiles, "files", "f", celFiles, "CEL source file(s)")
 	flags.StringArrayVarP(&celExprs, "expressions", "e", celFiles, "CEL expression(s)")
-	flags.StringVarP(&appModelFilename, "model", "m", appModelFilename, "Application model JSON file. Pass \"-\" to use stdin. If not provided, tetra will perform a gRPC query to get the application model.")
 	viper.BindPFlags(flags)
+
+	pflags := ret.PersistentFlags()
+	pflags.StringVarP(&appModelFilename, "model", "m", appModelFilename, "Application model JSON file. Pass \"-\" to use stdin. If not provided, tetra will perform a gRPC query to get the application model.")
+	viper.BindPFlags(pflags)
+
+	return ret
+}
+
+func NewGenerate() *cobra.Command {
+	ret := &cobra.Command{
+		Use:   "generate",
+		Short: "Generate an application model checker from application model JSON",
+		Example: `  # Generate from a JSON file model.json
+  tetra pstree check generate -m model.json
+  # Generate from stdin
+  tetra pstree check generate -m -
+		`,
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cel, err := generateChecker()
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(cel)
+
+			return nil
+		},
+	}
 
 	return ret
 }

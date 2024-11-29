@@ -15,8 +15,8 @@ import (
 	_ "embed"
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,22 +27,22 @@ import (
 var testModelJSON []byte
 
 func TestGenerate(t *testing.T) {
-	model := &tetragon.ApplicationModelEvent{
+	model := &appModelV1.ApplicationModelEvent{
 		ClusterName: "foo",
 		NodeName:    "foo-a5cf729e",
 		Time: &timestamppb.Timestamp{
 			Seconds: 13333337,
 			Nanos:   123,
 		},
-		ApplicationModel: &tetragon.ApplicationModel{
-			Host: &tetragon.ApplicationHost{
-				Processes: []*tetragon.ApplicationProcess{
+		ApplicationModel: &appModelV1.ApplicationModel{
+			Host: &appModelV1.ApplicationHost{
+				Processes: []*appModelV1.ApplicationProcess{
 					{
 						Name: "/bin/foobar",
 					},
 					{
 						Name: "/bin/baz",
-						Connections: []*tetragon.ApplicationConnection{
+						Connections: []*appModelV1.ApplicationConnection{
 							{
 								DestinationName: "isovalent.com",
 								DestinationPort: 443,
@@ -53,21 +53,21 @@ func TestGenerate(t *testing.T) {
 					},
 				},
 			},
-			Namespaces: []*tetragon.ApplicationNamespace{
+			Namespaces: []*appModelV1.ApplicationNamespace{
 				{
 					Name:      "ns1",
-					Workloads: []*tetragon.ApplicationWorkload{},
+					Workloads: []*appModelV1.ApplicationWorkload{},
 				},
 				{
 					Name: "ns2",
-					Workloads: []*tetragon.ApplicationWorkload{
+					Workloads: []*appModelV1.ApplicationWorkload{
 						{
 							Name: "quxbaz",
 							Kind: "DaemonSet",
-							Processes: []*tetragon.ApplicationProcess{
+							Processes: []*appModelV1.ApplicationProcess{
 								{
 									Name: "/bin/bash",
-									Connections: []*tetragon.ApplicationConnection{
+									Connections: []*appModelV1.ApplicationConnection{
 										{
 											DestinationName: "google.ca",
 											DestinationPort: 443,
@@ -93,7 +93,7 @@ func TestGenerate(t *testing.T) {
 }
 
 func TestGenerateComplex(t *testing.T) {
-	model := &tetragon.ApplicationModelEvent{}
+	model := &appModelV1.ApplicationModelEvent{}
 	err := protojson.Unmarshal(testModelJSON, model)
 	require.NoError(t, err)
 
