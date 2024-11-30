@@ -256,7 +256,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1 or kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
+          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1 or kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
           "hide": false,
           "legendFormat": "Agent not running",
           "range": true,
@@ -268,7 +268,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0)",
+          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "Agent running",
@@ -424,7 +424,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
+          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents not running",
@@ -437,7 +437,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
+          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents running",
@@ -593,7 +593,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents not running",
@@ -606,7 +606,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents running",
@@ -762,7 +762,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents not running",
@@ -775,7 +775,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents running",
@@ -931,7 +931,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents not running",
@@ -944,7 +944,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
+          "expr": "max_over_time((count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0))[$__range:$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Agents running",
@@ -4230,6 +4230,6 @@
   "timezone": "",
   "title": "Tetragon High Level Health",
   "uid": "adtue3swqycxsb",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
