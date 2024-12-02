@@ -104,6 +104,10 @@ type Map struct {
 	Owner        bool
 }
 
+func (m *Map) String() string {
+	return fmt.Sprintf("Map{Name:%s PinPath:%s}", m.Name, m.PinPath)
+}
+
 // globalMaps keeps a record of all global maps to exclude them from per policy
 // memory map accounting.
 var globalMaps = struct {
@@ -220,7 +224,7 @@ func (m *Map) Unload(unpin bool) error {
 		log.WithField("count", count).Debug("Reference exists, not unloading map yet")
 		return nil
 	}
-	log.Info("map was unloaded")
+	log.Debug("map was unloaded")
 	if m.MapHandle != nil {
 		if m.IsOwner() && unpin {
 			m.MapHandle.Unpin()
@@ -381,12 +385,12 @@ func GetMaxEntriesPinnedMap(pinPath string) (uint32, error) {
 	return m.MaxEntries(), nil
 }
 
-func (m *Map) SetMaxEntries(max int) {
-	m.Entries = MaxEntries{uint32(max), true}
+func (m *Map) SetMaxEntries(maximum int) {
+	m.Entries = MaxEntries{uint32(maximum), true}
 }
 
-func (m *Map) SetInnerMaxEntries(max int) {
-	m.InnerEntries = MaxEntries{uint32(max), true}
+func (m *Map) SetInnerMaxEntries(maximum int) {
+	m.InnerEntries = MaxEntries{uint32(maximum), true}
 }
 
 func (m *Map) GetMaxEntries() (uint32, bool) {

@@ -148,9 +148,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0 // indirect
@@ -172,7 +169,6 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	k8s.io/apiserver v0.31.3 // indirect
 	k8s.io/component-base v0.31.3 // indirect
-	k8s.io/cri-api v0.31.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 	sigs.k8s.io/gateway-api v1.2.0 // indirect
 	sigs.k8s.io/mcs-api v0.1.1-0.20241002142749-eff1ba8c3ab2 // indirect
