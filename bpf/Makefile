@@ -40,6 +40,7 @@ TIMESTAMPDIR := networking/timestamp/
 ISOPROCESS := process/
 FILEDIR := file/
 PROCESSDIR := $(OSSBPFDIR)/process/
+CGROUPDIR := $(OSSBPFDIR)/cgroup/
 BPFTESTDIR := $(OSSBPFDIR)/test/
 
 ALIGNCHECKER = bpf_alignchecker.o
@@ -112,6 +113,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  probe_security_file_permission.o probe_security_path_truncate.o probe_security_file_open.o probe_security_kernel_read_file.o probe_bpf_loop.o probe_for_each_map_elem.o lsm_test_glob.o \
 	  lsm_security_bprm_check_digests.o probe_bpf_ima_file_hash.o
 
+CGROUP = bpf_cgtracker.o
 
 BPFTEST = bpf_lseek.o
 
@@ -153,11 +155,12 @@ ICMPOBJ	      := $(addprefix $(OBJSDIR),$(ICMP))
 RAWSOCKOBJ    := $(addprefix $(OBJSDIR),$(RAWSOCK))
 TIMESTAMPOBJ  := $(addprefix $(OBJSDIR),$(TIMESTAMP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
+CGROUPOBJ    := $(addprefix $(OBJSDIR),$(CGROUP))
 FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(CGROUPOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -293,6 +296,10 @@ $(DEPSDIR)%.d: $(TIMESTAMPDIR)%.c
 objs/%.ll: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
+# CGROUPDIR
+objs/%.ll: $(CGROUPDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
 # bpf_exit: special case because the enterprise version is different than OSS
 objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
@@ -414,6 +421,9 @@ objs/%_v611.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__V611_BPF_PROG -D__V61_BPF_PROG -D__LARGE_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+$(DEPSDIR)%.d: $(CGROUPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 deps/bpf_execve_event_v511.d: $(ISOPROCESS)/bpf_ee_execve_event.c
