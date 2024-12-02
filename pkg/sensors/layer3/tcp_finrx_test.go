@@ -39,13 +39,14 @@ import (
 
 func parsePortFromAddrPort(addrPort string) (uint32, error) {
 	parts := strings.Split(addrPort, ":")
-	if len(parts) != 2 {
+	portStr := parts[len(parts)-1]
+	if len(portStr) < 1 {
 		return 0, fmt.Errorf("Cannot extract port from '%s'", addrPort)
 	}
-	if parts[1] == "*" {
+	if portStr == "*" {
 		return 0, nil
 	}
-	port, err := strconv.ParseUint(parts[1], 10, 32)
+	port, err := strconv.ParseUint(portStr, 10, 32)
 	if err != nil {
 		return 0, err
 	}
