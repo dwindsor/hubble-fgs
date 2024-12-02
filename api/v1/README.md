@@ -3755,6 +3755,9 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | connections | [ApplicationConnection](#tetragon-ApplicationConnection) | repeated |  |
+| arguments | [string](#string) |  | Arguments passed to this process. |
+| hash | [string](#string) |  | Hash to identify this process in the process tree. |
+| parent_hash | [string](#string) |  | Hash to identify the parent of this process in the process tree. |
 
 
 

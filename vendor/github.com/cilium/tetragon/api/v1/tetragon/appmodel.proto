@@ -48,6 +48,12 @@ message ApplicationWorkload {
 message ApplicationProcess {
 	string name = 1;
 	repeated ApplicationConnection connections = 2;
+        // Arguments passed to this process.
+        string arguments = 3;
+        // Hash to identify this process in the process tree.
+        string hash = 4;
+        // Hash to identify the parent of this process in the process tree.
+        string parent_hash = 5;
 }
 
 message ApplicationConnection {
