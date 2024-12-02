@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"flag"
 	"maps"
 	"net"
 	"net/netip"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -20,6 +22,8 @@ const (
 	ip4ToDomainMapName = "ip_map"
 	errorMap           = "error_map"
 )
+
+var verifierLogs = flag.Bool("verlogs", false, "Write the full verifier logs in the ./verifier.log file")
 
 type ipMapCache struct {
 	ipMap *ebpf.Map
@@ -120,7 +124,17 @@ func Test_DNSParser(t *testing.T) {
 	}
 
 	// load test program
-	coll, err := ebpf.LoadCollection("objs/dns_parser_test.o")
+	collSpec, err := ebpf.LoadCollectionSpec("objs/dns_parser_test.o")
+	if err != nil {
+		t.Fatal(err)
+	}
+	collOpts := ebpf.CollectionOptions{}
+	if verifierLogs != nil && *verifierLogs {
+		collOpts.Programs = ebpf.ProgramOptions{
+			LogLevel: ebpf.LogLevelInstruction,
+		}
+	}
+	coll, err := ebpf.NewCollectionWithOptions(collSpec, collOpts)
 	if err != nil {
 		var ve *ebpf.VerifierError
 		if errors.As(err, &ve) {
@@ -135,10 +149,18 @@ func Test_DNSParser(t *testing.T) {
 		t.Fatalf("%s not found", programName)
 	}
 
-	// errMap, ok := coll.Maps[errorMap]
-	// if !ok {
-	// 	t.Fatalf("map %s not found", errorMap)
-	// }
+	if verifierLogs != nil && *verifierLogs {
+		logFile, err := os.Create("verifier.log")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = logFile.WriteString(prog.VerifierLog)
+		if err != nil {
+			t.Fatal(err)
+		}
+		logFile.Close()
+	}
 
 	errMap, ok := coll.Maps[errorMap]
 	if !ok {
