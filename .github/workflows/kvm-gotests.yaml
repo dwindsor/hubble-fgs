@@ -15,29 +15,33 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on:
-    - majestic-ketchup-light
-    timeout-minutes: 60
+    env:
+      SHARED_FOLDER: /home/runners
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
+        os: 
+          - majestic-ketchup-light 
+          - splendid-metal-arm64
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'rhel8.9-20240806.173325'
+          - "rhel8.9-20241218.004849"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - 'bpf-next-20241204.013358'
+          - "bpf-next-20241213.013358"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20241107.001101"
+          - "6.6-20241212.120648"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20241107.001101"
+          - "6.1-20241212.120648"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20241107.001101"
+          - "5.15-20241212.120648"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20241107.001101"
+          - "5.10-20241212.120648"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.4-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "4.19-20241107.001101"
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -45,15 +49,55 @@ jobs:
           path: hubble-fgs
           submodules: true
 
+      - name: Set up job variables
+        id: vars
+        run: |
+          if [[ "${{ matrix.os }}" == "splendid-metal-arm64" ]]
+          then
+            # this is racy but it should be fine
+            ssh_port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+            echo metal_arm64=true >> $GITHUB_OUTPUT
+            echo lvh_install_deps=false >> $GITHUB_OUTPUT
+            echo lvh_kernel="${{ env.SHARED_FOLDER }}/vmlinuz-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
+            echo ssh_port=$ssh_port >> $GITHUB_OUTPUT
+            echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}-arm64" >> $GITHUB_OUTPUT
+
+            # skip RedHat kernel because metal AMR64 tests don't support it yet
+            if [[ ${{ matrix.kernel }} == rhel* ]]
+            then
+              echo skip_kernel=true >> $GITHUB_OUTPUT
+            fi
+          else
+            echo metal_arm64=false >> $GITHUB_OUTPUT
+            echo lvh_install_deps=true >> $GITHUB_OUTPUT
+            echo lvh_kernel="" >> $GITHUB_OUTPUT
+            echo ssh_port=2222 >> $GITHUB_OUTPUT
+            echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Local caching mechanism since we run on the same runner, we could use GitHub cache also
+      - name: Download the kernel
+        if: steps.vars.outputs.metal_arm64 == 'true' && steps.vars.outputs.skip_kernel != 'true'
+        run: |
+          if [ ! -e "$SHARED_FOLDER/vmlinuz-${{ matrix.kernel }}" ]; then
+            lvh kernel pull ${{ matrix.kernel }}
+            mkdir -p $SHARED_FOLDER
+            mv ${{ matrix.kernel }}/boot/vmlinuz* $SHARED_FOLDER/vmlinuz-${{ matrix.kernel }}
+            rm -rf ${{ matrix.kernel }}
+          fi
+
       - name: Provision LVH VM
+        if: steps.vars.outputs.skip_kernel != 'true'
         uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
-          install-dependencies: true
+          install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
           test-name: tetragon-unit-tests
           image: kind
           image-version: '${{ matrix.kernel }}'
+          images-folder-parent: '${{ env.SHARED_FOLDER }}'
+          kernel: '${{ steps.vars.outputs.lvh_kernel }}'
           host-mount: ./
-          ssh-port: 2222
+          ssh-port: ${{ steps.vars.outputs.ssh_port }}
           mem: 4G
           cpu: 2
           cpu-kind: host
@@ -62,8 +106,11 @@ jobs:
             cd /host/hubble-fgs
             git config --global --add safe.directory /host/hubble-fgs
 
-            systemd-detect-virt
-            (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
+            if [[ "${{ steps.vars.outputs.metal_arm64 }}" == "false" ]]
+            then
+              systemd-detect-virt
+              (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
+            fi
 
             # copy btf file
             mkdir -p bpf/objs
@@ -72,21 +119,30 @@ jobs:
             # wait for network to be available
             while true;
             do
-              wget --spider -q -T 10  http://google.com && break
+              wget --spider -q -T 10 http://google.com && break
               sleep 10
             done
 
             # install test deps
-            apt update -y
-            DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat libc6-dev-i386 iproute2 net-tools
+            apt-get update -y
+            DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat iproute2 net-tools
+
+            if [[ "${{ steps.vars.outputs.metal_arm64 }}" == "false" ]]
+            then
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386
+            else
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf build-essential
+            fi
 
             # restart ssh server
             service ssh restart
 
       - name: Run Tests
+        if: steps.vars.outputs.skip_kernel != 'true'
         uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
           provision: 'false'
+          ssh-port: ${{ steps.vars.outputs.ssh_port }}
           cmd: |
             set -eux
             cd /host/hubble-fgs
@@ -123,14 +179,30 @@ jobs:
           mkdir -p logs/unit-tests
 
           # Copy logs over
-          scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
-          scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
-          scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
+          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
+          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.json' logs/unit-tests || true
+          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: tetragon-unit-tests-${{ matrix.kernel }}
+          name: tetragon-unit-tests-${{ matrix.kernel }}-arm64
           path: logs/unit-tests
           retention-days: 5
+
+      - name: Cleanup LVH mess
+        if: ${{ always() }} && steps.vars.outputs.metal_arm64 == 'true'
+        run: |
+          set +e
+          # stop our VM
+          ssh -p ${{ steps.vars.outputs.ssh_port }} -o ConnectTimeout=5 root@localhost poweroff
+          # cleanup work folder as root (because we created a symbolic link as
+          # root in the VM while the fs was mounted)
+          sudo rm -rf ~/runner/_work/hubble-fgs/hubble-fgs/hubble-fgs
+          # cleanup my images
+          find /home/runners -user $(whoami) -type f -iname '*.qcow2' -delete
+          find /home/runners -user $(whoami) -type f -iname '*.zst' -delete
+          # cleanup shared folder cache, trash all files older than 7 days
+          find /home/runners -mtime +7 -type f -exec rm {} \;
+
