@@ -574,3 +574,4 @@ clean:
 		$(MAKE) -C $(TARGET) clean)
 	$(QUIET)rm -f $(OBJSDIR)*.{o,ll,i,s}
 	$(QUIET)rm -f $(DEPSDIR)*.d
+	make -C $(OSSBPFDIR) clean
