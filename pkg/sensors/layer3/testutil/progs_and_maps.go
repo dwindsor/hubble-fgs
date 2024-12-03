@@ -261,7 +261,7 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 	return sensorMaps
 }
 
-func kprobeSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
+func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 	var skFreeProg string
 
@@ -555,13 +555,17 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 	return sensorProgs, sockProgsOffset
 }
 
-func kprobeSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
+func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	sensorProgs := []tus.SensorProg{
 		{Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
 		{Name: tcpListenProg, Type: ebpf.Kprobe},
 		{Name: tcpAcceptProg, Type: ebpf.Kprobe},
 		{Name: tcpAcceptRetProg, Type: ebpf.Kprobe},
-		{Name: tcpConnectProg, Type: ebpf.Kprobe},
+	}
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Tracing})
+	} else {
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Kprobe})
 	}
 
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
@@ -643,15 +647,15 @@ func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.Senso
 
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH != "amd64" {
-			sensorProgs, ni = kprobeSensorProgs(withUdpLatency, withIcmp, withRaw)
-			sensorMaps = kprobeSensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+			sensorProgs, ni = kprobeOrFentrySensorProgs(withUdpLatency, withIcmp, withRaw)
+			sensorMaps = kprobeOrFentrySensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 		} else {
 			sensorProgs, ni = sockopsSensorProgs(withUdpLatency, withIcmp, withRaw)
 			sensorMaps = sockopsSensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 		}
 	} else {
-		sensorProgs, ni = kprobeSensorProgs(withUdpLatency, withIcmp, withRaw)
-		sensorMaps = kprobeSensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+		sensorProgs, ni = kprobeOrFentrySensorProgs(withUdpLatency, withIcmp, withRaw)
+		sensorMaps = kprobeOrFentrySensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 	}
 
 	return sensorProgs, sensorMaps

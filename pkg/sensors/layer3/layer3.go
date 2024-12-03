@@ -39,6 +39,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"golang.org/x/sys/unix"
 )
 
@@ -507,6 +508,8 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		var err error
 		if args.Load.Attach == "sockops" {
 			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		} else if args.Load.Attach == "fentry" {
+			err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
 		} else {
 			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
 		}
@@ -601,7 +604,10 @@ func HTTPContext() *program.Map {
 }
 
 func SocketMap() *program.Map {
-	return tcp.SocketMap
+	if utils.SupportFentry() {
+		return tcp.SocketMapFentry
+	}
+	return tcp.SocketMapKprobe
 }
 
 func SocketStats() *program.Map {
@@ -609,7 +615,10 @@ func SocketStats() *program.Map {
 }
 
 func TcpSocketMap() *program.Map {
-	return tcp.TcpSocketMap
+	if utils.SupportFentry() {
+		return tcp.TcpSocketMapFentry
+	}
+	return tcp.TcpSocketMapKprobe
 }
 
 func TcpSocketStats() *program.Map {
@@ -621,7 +630,10 @@ func TLSContext() *program.Map {
 }
 
 func TLSMapStats() *program.Map {
-	return tcp.TLSMapStats
+	if utils.SupportFentry() {
+		return tcp.TLSMapStatsFentry
+	}
+	return tcp.TLSMapStatsKprobe
 }
 
 func TLSBottles() *program.Map {

@@ -11,10 +11,9 @@
 
 #include "bpf_tcp_connect.h"
 
-__attribute__((section("kprobe/tcp_connect"), used)) int
-tg_event_tcp_connect(struct pt_regs *ctx)
+SEC("fentry/tcp_connect")
+int BPF_PROG(tg_event_tcp_connect, struct sock *skp)
 {
-	struct sock *skp = (struct sock *)PT_REGS_PARM1(ctx);
-
-	return __event_tcp_connect(ctx, skp);
+	__event_tcp_connect(ctx, skp);
+	return 0;
 }

@@ -77,19 +77,17 @@ event_post_connect(void *ctx, struct msg_ip_event *val)
 }
 
 static inline __attribute__((always_inline)) int
-__event_tcp_connect(struct pt_regs *ctx)
+__event_tcp_connect(void *ctx, struct sock *skp)
 {
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
 	struct msg_execve_key *key;
 	struct msg_ip_event *val;
 	__u32 ppid = 0, zero = 0;
-	struct sock *skp;
 	bool walker = 0;
 	u16 family;
 	u64 cookie;
 
-	skp = (struct sock *)PT_REGS_PARM1(ctx);
 	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skp;
 

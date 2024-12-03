@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -65,11 +66,19 @@ func StatsEnabled() bool {
 }
 
 var (
-	Connect = program.Builder(
+	ConnectKprobe = program.Builder(
 		"bpf_tcp_connect.o",
 		"tcp_connect",
 		"kprobe/tcp_connect",
-		"tg_tcp_connect",
+		"tg_tcp_connect_kprobe",
+		"layer3_sensor",
+	)
+
+	ConnectFentry = program.Builder(
+		"bpf_tcp_connect_fentry.o",
+		"fentry",
+		"fentry/tcp_connect",
+		"tg_tcp_connect_fentry",
 		"layer3_sensor",
 	)
 
@@ -154,12 +163,17 @@ var (
 		"kprobe")
 
 	// Maps for TCP Sockets
-	SocketStats        = program.MapBuilder(base.SocketStats.Name, Accept)
-	SocketMap          = program.MapBuilder(base.SocketMap.Name, Connect)
-	SocketTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, Connect)
-	SocketTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, Connect)
-	SocketTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, Connect)
-	SocketTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, Connect)
+	SocketStats              = program.MapBuilder(base.SocketStats.Name, Accept)
+	SocketMapKprobe          = program.MapBuilder(base.SocketMap.Name, ConnectKprobe)
+	SocketTupleMapKprobe     = program.MapBuilder(base.SocketTupleMap.Name, ConnectKprobe)
+	SocketTupleStatsKprobe   = program.MapBuilder(base.SocketTupleStats.Name, ConnectKprobe)
+	SocketTupleRevMapKprobe  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectKprobe)
+	SocketTupleHintMapKprobe = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectKprobe)
+	SocketMapFentry          = program.MapBuilder(base.SocketMap.Name, ConnectFentry)
+	SocketTupleMapFentry     = program.MapBuilder(base.SocketTupleMap.Name, ConnectFentry)
+	SocketTupleStatsFentry   = program.MapBuilder(base.SocketTupleStats.Name, ConnectFentry)
+	SocketTupleRevMapFentry  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectFentry)
+	SocketTupleHintMapFentry = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectFentry)
 
 	// Maps for TCP Sockets on Sockops
 	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops515)
@@ -181,30 +195,35 @@ var (
 	ListenEndpointMap        = program.MapUser("listen_endpoint_map", TcpSockops515)
 
 	// TCP Runtime maps
-	CfgMap          = program.MapBuilder("tg_cfg_map", Connect)
-	CfgOpsMap       = program.MapBuilder("tg_cfg_map", TcpSockops515)
-	AcceptSocketMap = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
-	TcpSocketMap    = program.MapBuilder("tg_tcpsocket_map", Connect)
-	TcpOpsSocketMap = program.MapBuilder("tg_tcpsocket_map", TcpSockops515)
-	TcpSocketStats  = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
-	VerMap          = program.MapBuilder("tg_ver_map", Connect)
-	VerOpsMap       = program.MapBuilder("tg_ver_map", TcpSockops515)
+	CfgMapKprobe       = program.MapBuilder("tg_cfg_map", ConnectKprobe)
+	CfgMapFentry       = program.MapBuilder("tg_cfg_map", ConnectFentry)
+	CfgOpsMap          = program.MapBuilder("tg_cfg_map", TcpSockops515)
+	AcceptSocketMap    = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
+	TcpSocketMapKprobe = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe)
+	TcpSocketMapFentry = program.MapBuilder("tg_tcpsocket_map", ConnectFentry)
+	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops515)
+	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
+	VerMapKprobe       = program.MapBuilder("tg_ver_map", ConnectKprobe)
+	VerMapFentry       = program.MapBuilder("tg_ver_map", ConnectFentry)
+	VerOpsMap          = program.MapBuilder("tg_ver_map", TcpSockops515)
 
 	// Parser maps
-	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops515)
-	TLSContext     = program.MapBuilder("tg_tls_map", TcpSockops515)
-	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", Connect)
-	TLSOpsMapStats = program.MapBuilder("tg_tls_map_stats", TcpSockops515)
-	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops515)
-	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops515)
+	HTTPContext       = program.MapBuilder("tg_http_map", TcpSockops515)
+	TLSContext        = program.MapBuilder("tg_tls_map", TcpSockops515)
+	TLSMapStatsKprobe = program.MapBuilder("tg_tls_map_stats", ConnectKprobe)
+	TLSMapStatsFentry = program.MapBuilder("tg_tls_map_stats", ConnectFentry)
+	TLSOpsMapStats    = program.MapBuilder("tg_tls_map_stats", TcpSockops515)
+	TLSBottles        = program.MapBuilder("tg_bottles", TcpSockops515)
+	TLSBottleStats    = program.MapBuilder("tg_bottle_map_stats", TcpSockops515)
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 
 	// Map for disabling events
-	EventDisableConfig    = program.MapBuilder("tg_event_disable_config", Connect)
-	EventDisableConfigOps = program.MapBuilder("tg_event_disable_config", TcpSockops515)
+	EventDisableConfigKprobe = program.MapBuilder("tg_event_disable_config", ConnectKprobe)
+	EventDisableConfigFentry = program.MapBuilder("tg_event_disable_config", ConnectFentry)
+	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops515)
 )
 
 func ConfigureSensor() error {
@@ -259,17 +278,31 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		CfgOpsMap,
 		EventDisableConfigOps,
 	}
-	mapsConnect := []*program.Map{
-		SocketMap,
-		TcpSocketMap,
-		VerMap,
-		SocketTupleMap,
-		SocketTupleStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
-		TLSMapStats,
-		CfgMap,
-		EventDisableConfig,
+
+	mapsConnectKprobe := []*program.Map{
+		SocketMapKprobe,
+		TcpSocketMapKprobe,
+		VerMapKprobe,
+		SocketTupleMapKprobe,
+		SocketTupleStatsKprobe,
+		SocketTupleRevMapKprobe,
+		SocketTupleHintMapKprobe,
+		TLSMapStatsKprobe,
+		CfgMapKprobe,
+		EventDisableConfigKprobe,
+	}
+
+	mapsConnectFentry := []*program.Map{
+		SocketMapFentry,
+		TcpSocketMapFentry,
+		VerMapFentry,
+		SocketTupleMapFentry,
+		SocketTupleStatsFentry,
+		SocketTupleRevMapFentry,
+		SocketTupleHintMapFentry,
+		TLSMapStatsFentry,
+		CfgMapFentry,
+		EventDisableConfigFentry,
 	}
 
 	maps := []*program.Map{
@@ -287,25 +320,36 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	// Kernels before 5.15 are difficult to support BPF in kernel models
 	// for connect maps. The main issue is lack of atomic operations to
 	// support multiple cores accessing the map.
-	if !kernels.MinKernelVersion("5.14.0") {
+	// Kernels before 5.5 don't support Fentry, so use kprobes here.
+	// These can be unreliable as they can be preempted.
+	if !utils.SupportFentry() {
 		progs = append(progs, []*program.Program{
-			Connect,
+			ConnectKprobe,
 			CloseAndAccept,
 			Listen,
 			Accept,
 			AcceptRet,
 		}...)
-		maps = append(maps, mapsConnect...)
+		maps = append(maps, mapsConnectKprobe...)
+	} else if !kernels.MinKernelVersion("5.14.0") {
+		progs = append(progs, []*program.Program{
+			ConnectFentry,
+			CloseAndAccept,
+			Listen,
+			Accept,
+			AcceptRet,
+		}...)
+		maps = append(maps, mapsConnectFentry...)
 	} else {
 		if runtime.GOARCH != "amd64" {
 			progs = append(progs, []*program.Program{
-				Connect,
+				ConnectFentry,
 				CloseAndAccept,
 				Listen,
 				Accept,
 				AcceptRet,
 			}...)
-			maps = append(maps, mapsConnect...)
+			maps = append(maps, mapsConnectFentry...)
 		} else {
 			progs = append(progs, TcpSockops515, SecurityAccept, SecurityGraft)
 			maps = append(maps, mapsOps...)
