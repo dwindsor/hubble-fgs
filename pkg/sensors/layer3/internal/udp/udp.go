@@ -218,7 +218,7 @@ func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP)
+	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP, 0)
 	udpconfig.UdpMapRemoves = 0
 	return nil
 }

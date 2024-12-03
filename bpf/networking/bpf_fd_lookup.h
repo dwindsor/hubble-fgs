@@ -35,6 +35,7 @@ struct fd_lookup_config {
 	uint16_t protocol;
 	uint16_t pad;
 	uint64_t cgrpid;
+	uint64_t hint;
 } __attribute__((packed));
 
 struct {

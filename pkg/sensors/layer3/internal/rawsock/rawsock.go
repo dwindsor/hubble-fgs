@@ -94,7 +94,7 @@ func EnableRawsock() ([]*program.Program, []*program.Map) {
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_RAW)
+	ip.LoadSockets(fdCallback, unix.IPPROTO_RAW, 0)
 	return nil
 }
 

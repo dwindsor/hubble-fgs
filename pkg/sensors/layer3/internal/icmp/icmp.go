@@ -135,7 +135,7 @@ func ConfigureIcmpSensor(mapDir string, mapName string, config ConfigValue) erro
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_ICMP)
+	ip.LoadSockets(fdCallback, unix.IPPROTO_ICMP, 0)
 	return nil
 }
 

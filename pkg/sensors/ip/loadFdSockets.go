@@ -59,6 +59,7 @@ type FdLookupValue struct {
 	Protocol    uint16
 	Pad         uint16
 	CgrpId      uint64
+	Hint        uint64
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -252,7 +253,7 @@ func unloadFdLookup(fdLoadSensor *sensors.Sensor, _ string) error {
 	return nil
 }
 
-func LoadSockets(callback FdCallback, protocol uint16) error {
+func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 	/* Load existing network sockets. This consists of: loading a BPF program to respond to kill
 	 * syscalls; exercising it once per socket that was previously discovered in order to load it
 	 * into the socket cookie map; and then unloading the BPF program.
@@ -273,7 +274,7 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
 		return err
 	}
-	writeSocketCookies(procSocketFds, callback, protocol)
+	writeSocketCookies(procSocketFds, callback, protocol, hint)
 	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir); err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 		return err
@@ -488,7 +489,7 @@ func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map)
 	return socket, nil
 }
 
-func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
+func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16, hint uint64) {
 	m := openConfigMap()
 	if m == nil {
 		return
@@ -506,6 +507,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				Protocol:  protocol,
 				CgrpId:    cgid,
 				SignalHit: 0,
+				Hint:      hint,
 			}
 			m.Put(k, v)
 			for loadWait := 0; loadWait < numIterations; loadWait++ {

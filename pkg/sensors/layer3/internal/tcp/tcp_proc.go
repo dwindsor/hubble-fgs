@@ -109,5 +109,5 @@ func getRunningSockets(_, pushEvents bool) {
 	defer loading.Unlock()
 
 	_pushEvents = pushEvents
-	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP)
+	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP, 0)
 }
