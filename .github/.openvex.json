@@ -1,47 +1,35 @@
 {
-  "@context": "https://openvex.dev/ns",
+  "@context": "https://openvex.dev/ns/v0.2.0",
   "author": "Isovalent Security Team",
   "role": "vendor",
   "timestamp": "2023-11-03T14:14:12.004221+00:00",
-  "version": "1",
+  "version": 1,
   "statements": [
      {
-       "vulnerability": "CVE-2023-29002",
+       "vulnerability": {
+         "name": "GHSA-7p9f-6x8j-gxxp"
+       },
        "products": [
-           "hubble-enterprise-operator:v1.10"
-        ],
+         {
+           "@id": "pkg:oci/tetragon-ci",
+           "subcomponents": [
+             {
+                "@id": "pkg:golang/github.com/cri-o/cri-o"
+             }
+           ]
+         },
+         {
+           "@id": "pkg:oci/hubble-enterprise-ci",
+           "subcomponents": [
+             {
+                "@id": "pkg:golang/github.com/cri-o/cri-o"
+             }
+           ]
+         }
+       ],
        "status": "not_affected",
-       "justification": "vulnerable_code_not_in_execute_path"
-     },
-     {
-       "vulnerability": "CVE-2023-5363",
-       "products": [
-           "tetragon-ci:v1.10",
-           "tetragon-ci:v1.11",
-           "tetragon-ci:v1.12"
-        ],
-       "status": "not_affected",
-       "justification": "vulnerable_code_not_in_execute_path"
-     },
-     {
-       "vulnerability": "CVE-2023-5678",
-       "products": [
-           "tetragon-ci:v1.10",
-           "tetragon-ci:v1.11",
-           "tetragon-ci:v1.12"
-        ],
-       "status": "not_affected",
-       "justification": "vulnerable_code_not_in_execute_path"
-     },
-     {
-       "vulnerability": "CVE-2019-0190",
-       "products": [
-           "tetragon-ci:v1.10",
-           "tetragon-ci:v1.11",
-           "tetragon-ci:v1.12"
-        ],
-       "status": "not_affected",
-       "justification": "vulnerable_code_not_in_execute_path"
+       "justification": "vulnerable_code_not_in_execute_path",
+       "status_notes": "Tetragon does not use the affected functionality"
      }
   ]
 }
