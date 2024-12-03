@@ -20,14 +20,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/tcp_set_state"), used)) int
-tg_event_tcp_close_and_accept(struct pt_regs *ctx)
+SEC("fentry/tcp_set_state")
+int BPF_PROG(tg_event_tcp_close_and_accept, struct sock *skp, int state)
 {
-	struct sock *skp;
-	int state;
-
-	state = PT_REGS_PARM2(ctx);
-	skp = (struct sock *)PT_REGS_PARM1(ctx);
-
-	return __event_tcp_close_and_accept(ctx, skp, state);
+	__event_tcp_close_and_accept(ctx, skp, state);
+	return 0;
 }

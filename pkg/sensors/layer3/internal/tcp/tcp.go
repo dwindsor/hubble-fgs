@@ -90,12 +90,20 @@ var (
 		"layer3_sensor",
 	)
 
-	CloseAndAccept = program.Builder(
+	CloseAndAcceptKprobe = program.Builder(
 		"bpf_tcp_close_and_accept.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
 		"tg_tcp_set_state",
 		"kprobe",
+	)
+
+	CloseAndAcceptFentry = program.Builder(
+		"bpf_tcp_close_and_accept_fentry.o",
+		"fentry",
+		"fentry/tcp_set_state",
+		"tg_tcp_set_state",
+		"tcp_fentry",
 	)
 
 	Listen = program.Builder(
@@ -325,7 +333,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	if !utils.SupportFentry() {
 		progs = append(progs, []*program.Program{
 			ConnectKprobe,
-			CloseAndAccept,
+			CloseAndAcceptKprobe,
 			Listen,
 			Accept,
 			AcceptRet,
@@ -334,7 +342,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	} else if !kernels.MinKernelVersion("5.14.0") {
 		progs = append(progs, []*program.Program{
 			ConnectFentry,
-			CloseAndAccept,
+			CloseAndAcceptFentry,
 			Listen,
 			Accept,
 			AcceptRet,
@@ -344,7 +352,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		if runtime.GOARCH != "amd64" {
 			progs = append(progs, []*program.Program{
 				ConnectFentry,
-				CloseAndAccept,
+				CloseAndAcceptFentry,
 				Listen,
 				Accept,
 				AcceptRet,

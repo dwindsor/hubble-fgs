@@ -557,15 +557,20 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 
 func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	sensorProgs := []tus.SensorProg{
-		{Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
 		{Name: tcpListenProg, Type: ebpf.Kprobe},
 		{Name: tcpAcceptProg, Type: ebpf.Kprobe},
 		{Name: tcpAcceptRetProg, Type: ebpf.Kprobe},
 	}
 	if utils.SupportFentry() {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Tracing})
+		sensorProgs = append(sensorProgs,
+			tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Tracing},
+			tus.SensorProg{Name: tcpCloseAndAcceptProg, Type: ebpf.Tracing},
+		)
 	} else {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Kprobe})
+		sensorProgs = append(sensorProgs,
+			tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Kprobe},
+			tus.SensorProg{Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
+		)
 	}
 
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
