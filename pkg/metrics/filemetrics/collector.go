@@ -11,13 +11,12 @@
 package filemetrics
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -55,21 +54,12 @@ func collectMapStats(mapPath string, sum *fileapi.FileExecStats) error {
 
 func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 	sum := fileapi.FileExecStats{}
-	err := filepath.Walk(option.Config.BpfDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	for _, tp := range pol.FileExecMonitoringTable.GetValuesFileExec() {
+		path := filepath.Join(option.Config.BpfDir, tp.PolicyName, "file_exec_stats_map")
+		if err := collectMapStats(path, &sum); err != nil {
+			fileExecCollectorErrors.Inc()
+			return
 		}
-		if info.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(info.Name(), "file_exec_stats_map") {
-			return collectMapStats(path, &sum)
-		}
-		return nil
-	})
-	if err != nil {
-		fileExecCollectorErrors.Inc()
-		return
 	}
 
 	for i := 0; i < fileapi.FileExecMetricMax; i++ {

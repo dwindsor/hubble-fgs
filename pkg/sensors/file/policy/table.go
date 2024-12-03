@@ -24,8 +24,7 @@ var (
 	FileMonitoringTable = FimTable{
 		mp: make(map[uint32]*FileMonitoring),
 	}
-	SensorCounter     uint32
-	SensorExecCounter uint32
+	SensorCounter uint32
 )
 
 func ResetFIMTracingPolicies() {
@@ -33,7 +32,6 @@ func ResetFIMTracingPolicies() {
 		mp: make(map[uint32]*FileMonitoring),
 	}
 	atomic.StoreUint32(&SensorCounter, 0)
-	atomic.StoreUint32(&SensorExecCounter, 0)
 }
 
 type FileMonitoring struct {

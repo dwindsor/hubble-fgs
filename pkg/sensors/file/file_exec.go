@@ -60,6 +60,9 @@ func (k *observerFileExecSensor) PolicyHandler(
 	tpid := atomic.AddUint32(&pol.SensorExecCounter, 1)
 	name := fmt.Sprintf("fim_exec_sensor_%d", tpid)
 	spec := policy.TpSpec()
+	pol.FileExecMonitoringTable.AddFileExec(tpid, pol.FileExecMonitoring{
+		PolicyName: policy.TpName(),
+	})
 
 	// having support for bpf_ima_file_hash helper means that we have everything that
 	// we need to enable process_file_exec events
@@ -203,6 +206,10 @@ func (k *observerFileExecSensor) PolicyHandler(
 		Name:  name,
 		Progs: progs,
 		Maps:  maps,
+		PreUnloadHook: func() error {
+			pol.FileExecMonitoringTable.RmFileExec(tpid)
+			return nil
+		},
 	}, nil
 }
 
