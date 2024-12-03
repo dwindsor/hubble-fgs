@@ -84,6 +84,7 @@ ignore_rmdir:
 
 	if (map_delete_elem(&hash_map_inode_alloc, &file_key) < 0)
 		return -FILE_ERR_DELETE_INODE_MAP;
+	mod_inode_map_stats(-1);
 
 	return operation;
 }

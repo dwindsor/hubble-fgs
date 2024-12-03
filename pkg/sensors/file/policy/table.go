@@ -44,6 +44,7 @@ type FileMonitoring struct {
 	Config        *fileapi.FileConfigMapValue
 	DigestPaths   []string
 	PathMetadata  map[string][]fm.DigestPathMetadata
+	UserInodeNum  int64
 }
 
 type FimTable struct {
@@ -119,6 +120,7 @@ func (t *FimTable) GetValuesFIM() []fm.SpecPinPath {
 			Spec:         *elem.Spec,
 			DigestPaths:  elem.DigestPaths,
 			PathMetadata: elem.PathMetadata,
+			UserInodeNum: elem.UserInodeNum,
 		})
 	}
 	return vals

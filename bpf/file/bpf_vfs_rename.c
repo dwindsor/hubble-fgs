@@ -305,12 +305,16 @@ static inline __attribute__((always_inline)) int
 remove_inode_rename(struct msg_rename_elem *v)
 {
 	struct inode_key file_key;
+	int err;
 
 	file_key.ino = v->ino;
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	return map_delete_elem(&hash_map_inode_alloc, &file_key);
+	err = map_delete_elem(&hash_map_inode_alloc, &file_key);
+	if (!err)
+		mod_inode_map_stats(-1);
+	return err;
 }
 
 static inline __attribute__((always_inline)) int
@@ -318,12 +322,18 @@ update_inode_rename(struct msg_rename_elem *v,
 		    struct inode_val *file_val)
 {
 	struct inode_key file_key;
+	void *exists;
+	int err;
 
 	file_key.ino = v->ino;
 	file_key.dev_major = MAJOR(v->fs.dev);
 	file_key.dev_minor = MINOR(v->fs.dev);
 
-	return map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0);
+	exists = map_lookup_elem(&hash_map_inode_alloc, &file_key);
+	err = map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0);
+	if (!err && !exists)
+		mod_inode_map_stats(1);
+	return err;
 }
 
 static inline __attribute__((always_inline)) struct inode_val *

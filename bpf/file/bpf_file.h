@@ -292,6 +292,13 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, __u32);
+	__type(value, __s64);
+} hash_map_inode_alloc_stats SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct inode_val);
 	__uint(max_entries, 1);
@@ -1769,4 +1776,14 @@ get_rename_dst_flags(umode_t i_mode)
 		flags |= DST_INVALID;
 
 	return flags;
+}
+
+static inline __attribute__((always_inline)) void mod_inode_map_stats(__s64 diff)
+{
+	__u32 zero = 0;
+	__s64 *cnt;
+
+	cnt = map_lookup_elem(&hash_map_inode_alloc_stats, &zero);
+	if (cnt)
+		*cnt = *cnt + diff;
 }

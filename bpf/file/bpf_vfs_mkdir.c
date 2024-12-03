@@ -286,6 +286,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 		err = -FILE_ERR_UPDATE_INODE_MAP;
 		goto vfs_mkdir_exit_error;
 	}
+	mod_inode_map_stats(1);
 
 	if (action == FILTER_IGNORE) // due to path_file_exclude
 		return 0;

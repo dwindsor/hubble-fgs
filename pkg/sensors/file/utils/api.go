@@ -93,6 +93,10 @@ type FsScannerRename struct {
 	Flags       uint32
 }
 
+type FsScannerRenameReply struct {
+	Diff int64
+}
+
 type DigestPathMetadata struct {
 	SelIdx  uint32
 	PathIdx uint32
@@ -104,6 +108,7 @@ type SpecPinPath struct {
 	Spec         v1alpha1.FileSpec
 	DigestPaths  []string
 	PathMetadata map[string][]DigestPathMetadata
+	UserInodeNum int64
 }
 
 type FsScannerContainerInit struct {

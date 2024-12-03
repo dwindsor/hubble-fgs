@@ -643,8 +643,9 @@ func CheckPath(spec v1alpha1.FileSpec, path string, mode fs.FileMode) (uint32, u
 }
 
 // This function is used to walk the path and remove inodes from the map.
-func WalkPathRenameCleanup(path string, store InodeStore) error {
-	return filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+func WalkPathRenameCleanup(path string, store InodeStore) (int64, error) {
+	num := int64(0)
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -656,22 +657,27 @@ func WalkPathRenameCleanup(path string, store InodeStore) error {
 
 		switch mode := info.Mode(); {
 		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
-			store.RemoveInode(fileapi.InodeKey{
+			k := fileapi.InodeKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
 				DevMinor: GetDevMinor(stat.Dev),
-			})
+			}
+			if err := store.RemoveInode(k); err == nil {
+				num++
+			}
 		}
 
 		return nil
 	})
+	return num, err
 }
 
 // This function is used to walk the path and add inodes to the map.
 // It is used in the case of a rename operation when we move a directory
 // inside or internally a watched directory.
-func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.FileMode) (uint32, uint32, error), locationFn func(v *fileapi.InodeVal)) error {
-	return filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.FileMode) (uint32, uint32, error), locationFn func(v *fileapi.InodeVal)) (int64, error) {
+	num := int64(0)
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -734,9 +740,12 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 
 			if err := store.AddInode(key, val); err != nil {
 				return fmt.Errorf("failed to call AddInode: %w", err)
+			} else {
+				num++
 			}
 		}
 
 		return nil
 	})
+	return num, err
 }

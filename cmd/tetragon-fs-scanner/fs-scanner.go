@@ -160,21 +160,33 @@ func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, reply *map[file
 }
 
 type rpcRename struct {
-	arg *fm.FsScannerRename
+	arg   *fm.FsScannerRename
+	reply *fm.FsScannerRenameReply
+	done  chan error
 }
 
 func (r rpcRename) Run() {
-	renameDir(r.arg)
+	err := renameDir(r.arg, r.reply)
+	if r.done != nil {
+		r.done <- err
+	}
 }
 
-func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
+func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, reply *fm.FsScannerRenameReply) error {
 	r := rpcRename{
-		arg: args,
+		arg:   args,
+		reply: reply,
+		done:  make(chan error),
 	}
 
 	select {
 	case runnerChan <- r:
-		return nil // do not wait for operation to complete
+		select { // wait for operation to complete
+		case err := <-r.done:
+			return err
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("op RenameDir timed out")
+		}
 	default:
 		return fmt.Errorf("runnerChan is full")
 	}
@@ -409,7 +421,7 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 	return nil
 }
 
-func renameDir(args *fm.FsScannerRename) error {
+func renameDir(args *fm.FsScannerRename, reply *fm.FsScannerRenameReply) error {
 	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PolicyName)
 	if err != nil {
 		return err
@@ -439,14 +451,18 @@ func renameDir(args *fm.FsScannerRename) error {
 	}
 
 	if hasFlag(args.Flags, fm.MOVE_OUTSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
-		if err := fm.WalkPathRenameCleanup(args.WalkPath, maps); err != nil {
+		if num, err := fm.WalkPathRenameCleanup(args.WalkPath, maps); err != nil {
 			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Removing files/directories during rename failed")
+		} else {
+			reply.Diff -= num
 		}
 	}
 
 	if hasFlag(args.Flags, fm.MOVE_INSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
-		if err := fm.WalkPathRenameAdd(args.WalkPath, maps, actionFn, locFn); err != nil {
+		if num, err := fm.WalkPathRenameAdd(args.WalkPath, maps, actionFn, locFn); err != nil {
 			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories during rename failed")
+		} else {
+			reply.Diff += num
 		}
 	}
 

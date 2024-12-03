@@ -97,6 +97,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	// add this new file to the map of files
 	if (map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0) < 0)
 		return -FILE_ERR_UPDATE_INODE_MAP;
+	mod_inode_map_stats(1);
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

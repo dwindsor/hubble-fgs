@@ -15,7 +15,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -31,28 +30,27 @@ func (c *bpfInodeMapCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- fileMapInode.Desc()
 }
 
-func countInodeMapEnties(handle *ebpf.Map) uint64 {
-	var key fileapi.InodeKey
-	var val fileapi.InodeVal
-	var count uint64
-
-	entries := handle.Iterate()
-	for entries.Next(&key, &val) {
-		count++
-	}
-	return count
-}
-
 func (c *bpfInodeMapCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, tp := range pol.FileMonitoringTable.GetValuesFIM() {
-		inodePinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "hash_map_inode_alloc")
-		inodeMapHandle, err := ebpf.LoadPinnedMap(inodePinPath, nil)
+		inodeStatsPinPath := filepath.Join(option.Config.BpfDir, tp.PolicyName, "hash_map_inode_alloc_stats")
+		inodeStatsMapHandle, err := ebpf.LoadPinnedMap(inodeStatsPinPath, nil)
 		if err != nil {
 			FileTotalErrorsInc(MetricsInodeMap)
 			return
 		}
-		defer inodeMapHandle.Close()
+		defer inodeStatsMapHandle.Close()
 
-		ch <- fileMapInode.MustMetric(float64(countInodeMapEnties(inodeMapHandle)), tp.PolicyName)
+		var zero uint32
+		var allCpuValue []int64
+		if err := inodeStatsMapHandle.Lookup(zero, &allCpuValue); err != nil {
+			continue
+		}
+
+		sum := tp.UserInodeNum
+		for _, val := range allCpuValue {
+			sum += val
+		}
+
+		ch <- fileMapInode.MustMetric(float64(sum), tp.PolicyName)
 	}
 }
