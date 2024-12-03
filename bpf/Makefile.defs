@@ -46,5 +46,3 @@ endif
 NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR)
 CLANG_FLAGS += $(FLAGS) -I $(EEDIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
 LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
-LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
-

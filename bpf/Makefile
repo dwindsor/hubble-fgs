@@ -504,26 +504,6 @@ objs/%.ll: $(BPFTESTDIR)%.c
 $(DEPSDIR)%.d: $(BPFTESTDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-# Build sockops/sockmsg with ALU32 for 5.4+ kernels
-objs/bpf_skskb_verdict.o: objs/bpf_skskb_verdict.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-objs/bpf_skskb_parser.o: objs/bpf_skskb_parser.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-objs/bpf_skmsg.o: objs/bpf_skmsg.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-objs/bpf_http.o: objs/bpf_http.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-objs/bpf_http_verdict.o: objs/bpf_http_verdict.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-objs/bpf_http_parser.o: objs/bpf_http_parser.ll
-	$(LLC) $(LLC_FLAGS_ALU32) -filetype=obj $< -o $@
-
-# Remaining objects are built without mcpu=v2
 objs/%.o: objs/%.ll
 	$(LLC) $(LLC_FLAGS) -filetype=obj $< -o $@
 
