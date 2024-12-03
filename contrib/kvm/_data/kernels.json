@@ -318,6 +318,10 @@
         ],
         [
             "--enable",
+            "CONFIG_FUNCTION_TRACER"
+        ],
+        [
+            "--enable",
             "CONFIG_HAVE_BPF_JIT"
         ],
         [
