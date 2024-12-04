@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,8 +31,10 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/gdamore/tcell/v2"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	"github.com/rivo/tview"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -283,6 +286,114 @@ func printModel(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
+func addProcessNodes(node *tview.TreeNode, processes []*tetragon.ApplicationProcess) {
+	for _, ps := range processes {
+		childName := ps.GetName()
+		if len(ps.GetConnections()) == 1 {
+			childName += " (1 connection)"
+		} else if len(ps.GetConnections()) > 0 {
+			childName += fmt.Sprintf(" (%d connections)", len(ps.GetConnections()))
+		}
+		child := tview.NewTreeNode(childName).
+			SetReference(ps).
+			SetSelectable(true).
+			SetColor(tcell.ColorGreen)
+		node.AddChild(child)
+	}
+}
+
+func selected(node *tview.TreeNode) {
+	if len(node.GetChildren()) > 0 {
+		// Toggle expand / collapse
+		node.SetExpanded(!node.IsExpanded())
+		return
+	}
+	switch val := node.GetReference().(type) {
+	case *tetragon.ApplicationModel:
+		if len(val.GetNamespaces()) > 0 {
+			namespaces := tview.NewTreeNode(fmt.Sprintf("%d namespaces", len(val.GetNamespaces()))).
+				SetColor(tcell.ColorSnow).
+				SetReference(val.GetNamespaces()).
+				SetSelectable(true)
+			node.AddChild(namespaces)
+		}
+		if len(val.GetHost().GetProcesses()) > 0 {
+			host := tview.NewTreeNode(fmt.Sprintf("%d host processes", len(val.GetHost().GetProcesses()))).
+				SetColor(tcell.ColorSnow).
+				SetReference(val.GetHost()).
+				SetSelectable(true)
+			node.AddChild(host)
+		}
+	case []*tetragon.ApplicationNamespace:
+		for _, ns := range val {
+			nodeName := ns.GetName()
+			if len(ns.GetWorkloads()) == 1 {
+				nodeName += " (1 workload)"
+			} else if len(ns.GetWorkloads()) > 0 {
+				nodeName += fmt.Sprintf(" (%d workloads)", len(ns.GetWorkloads()))
+			}
+			nsNode := tview.NewTreeNode(nodeName).
+				SetReference(ns).
+				SetSelectable(true).
+				SetColor(tcell.ColorGreen)
+			node.AddChild(nsNode)
+		}
+	case *tetragon.ApplicationNamespace:
+		for _, wl := range val.GetWorkloads() {
+			nodeName := fmt.Sprintf("%s/%s", wl.GetKind(), wl.GetName())
+			if len(wl.GetProcesses()) == 1 {
+				nodeName += " (1 process)"
+			} else if len(wl.GetProcesses()) > 0 {
+				nodeName += fmt.Sprintf(" (%d processes)", len(wl.GetProcesses()))
+			}
+			wlNode := tview.NewTreeNode(nodeName).
+				SetReference(wl).
+				SetSelectable(true).
+				SetColor(tcell.ColorSkyblue)
+			node.AddChild(wlNode)
+		}
+	case *tetragon.ApplicationHost:
+		addProcessNodes(node, val.GetProcesses())
+	case *tetragon.ApplicationWorkload:
+		addProcessNodes(node, val.GetProcesses())
+	case *tetragon.ApplicationProcess:
+		for _, conn := range val.GetConnections() {
+			childName := fmt.Sprintf("%s:%d", conn.GetDestinationName(), conn.GetDestinationPort())
+			child := tview.NewTreeNode(childName).
+				SetReference(conn).
+				SetSelectable(true).
+				SetColor(tcell.ColorAliceBlue)
+			node.AddChild(child)
+		}
+	}
+}
+
+func printInteractiveTree() error {
+	appModel := &tetragon.ApplicationModelEvent{}
+	fi, _ := os.Stdin.Stat()
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+		err := decoder.Decode(&appModel)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else {
+		res, err := getProcessTreeGrpc()
+		if err != nil {
+			return err
+		}
+		appModel = model.ProcessModelToApplicationModel(res)
+	}
+	root := tview.NewTreeNode("app_model").
+		SetReference(appModel.GetApplicationModel()).
+		SetColor(tcell.ColorSnow)
+	tree := tview.NewTreeView().
+		SetRoot(root).
+		SetCurrentNode(root).
+		SetSelectedFunc(selected)
+	return tview.NewApplication().SetRoot(tree, true).EnableMouse(true).Run()
+}
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -484,12 +595,15 @@ func NewShow() *cobra.Command {
 		Hidden:       false,
 		SilenceUsage: false,
 		RunE: func(_ *cobra.Command, _ []string) error {
+			if output == "interactive" {
+				return printInteractiveTree()
+			}
 			return printGrpcTree()
 		},
 	}
 
 	flags := ret.Flags()
-	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model|interactive")
 	viper.BindPFlags(flags)
 
 	return ret
