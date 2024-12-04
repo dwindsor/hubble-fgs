@@ -36,7 +36,7 @@ UDP = bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o \
 TCP = bpf_tcp_close_and_accept.o bpf_tcp_close_and_accept_fentry.o \
       bpf_tcp_connect.o bpf_tcp_connect_fentry.o \
       bpf_tcp_accept.o \
-      bpf_tcp_listen.o \
+      bpf_tcp_listen.o bpf_tcp_listen_fentry.o \
       bpf_tcp_rtt.o \
       bpf_tcp_send_check.o \
       bpf_tcp_sockops_5_15.o \

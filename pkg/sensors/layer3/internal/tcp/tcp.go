@@ -66,6 +66,10 @@ func StatsEnabled() bool {
 }
 
 var (
+	// Kprobes are for systems without fentry support (<v5.5).
+	// Fentry are preferred from v5.5.
+	// SockOps are more efficient and available from v5.14.
+	// SockOps needs the SecurityAccept and SecurityGraft.
 	ConnectKprobe = program.Builder(
 		"bpf_tcp_connect.o",
 		"tcp_connect",
@@ -79,14 +83,6 @@ var (
 		"fentry",
 		"fentry/tcp_connect",
 		"tg_tcp_connect_fentry",
-		"layer3_sensor",
-	)
-
-	TcpSockops515 = program.Builder(
-		"bpf_tcp_sockops_5_15.o",
-		"sockops",
-		"sockops/tcp_sockops",
-		"tg_tcp_sockops",
 		"layer3_sensor",
 	)
 
@@ -106,12 +102,20 @@ var (
 		"tcp_fentry",
 	)
 
-	Listen = program.Builder(
+	ListenKprobe = program.Builder(
 		"bpf_tcp_listen.o",
 		"__inet_hash",
 		"kprobe/__inet_hash",
 		"tg___inet_hash",
 		"kprobe",
+	)
+
+	ListenFentry = program.Builder(
+		"bpf_tcp_listen_fentry.o",
+		"fentry",
+		"fentry/__inet_hash",
+		"tg___inet_hash",
+		"tcp_fentry",
 	)
 
 	SecurityAccept = program.Builder(
@@ -159,6 +163,14 @@ var (
 		"kprobe/inet6_csk_xmit",
 		"tg_inet6_csk_xmit",
 		"layer3_sensor")
+
+	TcpSockops515 = program.Builder(
+		"bpf_tcp_sockops_5_15.o",
+		"sockops",
+		"sockops/tcp_sockops",
+		"tg_tcp_sockops",
+		"layer3_sensor",
+	)
 
 	// RTT Tracer uses kprobe on the TCP ACK Send Check to get the rtt_us value
 	// as that is easily obtained. This is probably as good as we can easily get,
@@ -334,7 +346,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		progs = append(progs, []*program.Program{
 			ConnectKprobe,
 			CloseAndAcceptKprobe,
-			Listen,
+			ListenKprobe,
 			Accept,
 			AcceptRet,
 		}...)
@@ -343,7 +355,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		progs = append(progs, []*program.Program{
 			ConnectFentry,
 			CloseAndAcceptFentry,
-			Listen,
+			ListenFentry,
 			Accept,
 			AcceptRet,
 		}...)
@@ -353,7 +365,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			progs = append(progs, []*program.Program{
 				ConnectFentry,
 				CloseAndAcceptFentry,
-				Listen,
+				ListenFentry,
 				Accept,
 				AcceptRet,
 			}...)

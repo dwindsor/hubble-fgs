@@ -19,11 +19,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/__inet_hash"), used)) int
-tg_event_sys_listen(struct pt_regs *ctx)
+SEC("fentry/__inet_hash")
+int BPF_PROG(tg_event_sys_listen, struct sock *skp, struct sock *osk)
 {
-	struct sock *skp;
-
-	skp = (struct sock *)PT_REGS_PARM1(ctx);
-	return __event_sys_listen(ctx, skp);
+	__event_sys_listen(ctx, skp);
+	return 0;
 }
