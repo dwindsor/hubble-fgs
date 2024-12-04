@@ -30,7 +30,7 @@ NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o bpf_fd_lookup_5_15.o
 
 SOCKTRACK = bpf_sk_alloc.o bpf_security_sk_alloc.o
 
-UDP = bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o \
+UDP = bpf_udp_bind.o bpf_udp_bind_fentry.o bpf_udp_bind_5_15.o bpf_udp_bind_5_15_fentry.o bpf_udp_bind_dummy.o \
       bpf_udp_inet_lazy_kp.o
 
 TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \

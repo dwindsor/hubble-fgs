@@ -42,6 +42,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 const (
@@ -67,7 +68,7 @@ var (
 )
 
 var (
-	SkUdpBind = program.Builder(
+	SkUdpBindKprobe = program.Builder(
 		"bpf_udp_bind.o",
 		"__cgroup_bpf_run_filter_sk",
 		"kprobe/__cgroup_bpf_run_filter_sk",
@@ -75,12 +76,28 @@ var (
 		"kprobe",
 	)
 
-	SkUdpBind_5_15 = program.Builder(
+	SkUdpBindFentry = program.Builder(
+		"bpf_udp_bind_fentry.o",
+		"fentry",
+		"fentry/__cgroup_bpf_run_filter_sk",
+		"tg_udp_bind_sock",
+		"udp_fentry",
+	)
+
+	SkUdpBind_5_15Kprobe = program.Builder(
 		"bpf_udp_bind_5_15.o",
 		"__cgroup_bpf_run_filter_sk",
 		"kprobe/__cgroup_bpf_run_filter_sk",
 		"tg_udp_bind_sock",
 		"kprobe",
+	)
+
+	SkUdpBind_5_15Fentry = program.Builder(
+		"bpf_udp_bind_5_15_fentry.o",
+		"fentry",
+		"fentry/__cgroup_bpf_run_filter_sk",
+		"tg_udp_bind_sock",
+		"udp_fentry",
 	)
 
 	// Dummy (NOP) programs need to be attached to the cgroup hooks in order to cause the __cgroup_bpf_run_filter_sk
@@ -110,13 +127,13 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap    = program.MapBuilder(SocketMapName, SkUdpBind)
-	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", SkUdpBind)
-	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBind)
-	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", SkUdpBind)
-	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBind)
-	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBind)
-	PsVerMap           = program.MapBuilder("tg_psver_map", SkUdpBind)
+	SocketCookieMap    = program.MapBuilder(SocketMapName, SkUdpBindKprobe)
+	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", SkUdpBindKprobe)
+	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBindKprobe)
+	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", SkUdpBindKprobe)
+	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBindKprobe)
+	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBindKprobe)
+	PsVerMap           = program.MapBuilder("tg_psver_map", SkUdpBindKprobe)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
@@ -237,6 +254,19 @@ func UnloadSensor() error {
 	return nil
 }
 
+func bindProg() *program.Program {
+	if !kernels.MinKernelVersion("5.15.0") {
+		if utils.SupportFentry() {
+			return SkUdpBindFentry
+		}
+		return SkUdpBindKprobe
+	}
+	if utils.SupportFentry() {
+		return SkUdpBind_5_15Fentry
+	}
+	return SkUdpBind_5_15Kprobe
+}
+
 func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program.Program, []*program.Map) {
 	var progs []*program.Program
 	var maps []*program.Map
@@ -255,7 +285,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			InetSendRecvLazy,
 		}
 		if !DisableListenEvents {
-			progs = append(progs, SkUdpBind)
+			progs = append(progs, bindProg())
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
@@ -269,12 +299,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		dns.LazyDns = true
 	} else {
 		if !DisableListenEvents {
-			if !kernels.MinKernelVersion("5.14.0") {
-				progs = append(progs, SkUdpBind)
-			} else if !kernels.MinKernelVersion("5.15.0") {
-				progs = append(progs, []*program.Program{SkUdpBind, SkUdpBindDummy4, SkUdpBindDummy6}...)
-			} else {
-				progs = append(progs, []*program.Program{SkUdpBind_5_15, SkUdpBindDummy4, SkUdpBindDummy6}...)
+			progs = append(progs, bindProg())
+			if kernels.MinKernelVersion("5.14.0") {
+				progs = append(progs, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
 			}
 		}
 		maps = []*program.Map{

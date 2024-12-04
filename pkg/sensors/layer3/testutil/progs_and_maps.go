@@ -518,11 +518,16 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 		{Name: tcpSecurityGraft, Type: ebpf.Tracing},
 		{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
 		{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
-		{Name: udpBindProg, Type: ebpf.Kprobe},
 		{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
 		{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
 		{Name: fentrySkAlloc, Type: ebpf.Tracing},
 		{Name: fentrySkFreeProg, Type: ebpf.Tracing},
+	}
+
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Tracing})
+	} else {
+		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Kprobe})
 	}
 
 	if withUdpLatency {
@@ -587,9 +592,12 @@ func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool)
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
 			{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
-			{Name: udpBindProg, Type: ebpf.Kprobe},
 		}...)
-
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Tracing})
+		} else {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Kprobe})
+		}
 	}
 
 	if kernels.MinKernelVersion("5.14.0") { // 5.14+

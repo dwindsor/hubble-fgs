@@ -27,9 +27,8 @@ struct {
 } udp_bind_event_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-__udp_bind_sock(struct pt_regs *ctx, bool ipv6)
+__udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 {
-	__u64 cookie = PT_REGS_PARM1(ctx);
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
 	struct sock *sk;
