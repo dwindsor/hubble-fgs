@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -28,6 +29,72 @@ var verifierLogs = flag.Bool("verlogs", false, "Write the full verifier logs in 
 type ipMapCache struct {
 	ipMap *ebpf.Map
 	t     *testing.T
+}
+
+type errorMapCache struct {
+	errMap *ebpf.Map
+	t      *testing.T
+}
+
+func newErrorMap(t *testing.T, coll *ebpf.Collection) errorMapCache {
+	errMap, ok := coll.Maps[errorMap]
+	if !ok {
+		t.Fatalf("map %s not found", errorMap)
+	}
+
+	return errorMapCache{
+		errMap: errMap,
+		t:      t,
+	}
+}
+
+func (m *errorMapCache) ReadUnique() int {
+	entries := m.errMap.Iterate()
+
+	var key uint32
+	perCPUValue := make([]uint32, runtime.NumCPU())
+
+	for entries.Next(&key, perCPUValue) {
+		for _, value := range perCPUValue {
+			if value != 0 {
+				return int(key)
+			}
+		}
+	}
+
+	if err := entries.Err(); err != nil {
+		m.t.Fatal(err)
+	}
+
+	return 0
+}
+
+func (m *errorMapCache) Print() {
+	entries := m.errMap.Iterate()
+
+	var key uint32
+	perCPUValue := make([]uint32, runtime.NumCPU())
+
+	for entries.Next(&key, perCPUValue) {
+		m.t.Logf("key: %d, value: %v\n", key, perCPUValue)
+	}
+
+	if err := entries.Err(); err != nil {
+		m.t.Fatal(err)
+	}
+}
+
+func (m *errorMapCache) Clear() {
+	size := int(m.errMap.MaxEntries())
+	keys := make([]uint32, size)
+	for i := range size {
+		keys[i] = uint32(i)
+	}
+
+	clearValues := make([]uint32, size*runtime.NumCPU())
+	if _, err := m.errMap.BatchUpdate(keys, clearValues, &ebpf.BatchOptions{}); err != nil {
+		m.t.Fatal(err)
+	}
 }
 
 func newIPMapCache(t *testing.T, coll *ebpf.Collection) ipMapCache {
@@ -162,10 +229,7 @@ func Test_DNSParser(t *testing.T) {
 		logFile.Close()
 	}
 
-	errMap, ok := coll.Maps[errorMap]
-	if !ok {
-		t.Fatalf("map %s not found", errorMap)
-	}
+	errMap := newErrorMap(t, coll)
 
 	ipMap := newIPMapCache(t, coll)
 
@@ -257,6 +321,7 @@ func Test_DNSParser(t *testing.T) {
 		t.Run(tq.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				ipMap.Clear()
+				errMap.Clear()
 			})
 
 			code, err := prog.Run(&ebpf.RunOptions{
@@ -269,12 +334,7 @@ func Test_DNSParser(t *testing.T) {
 				t.Errorf("returned code is != 1: %d", code)
 			}
 
-			// Check the error number returned by the parser
-			var zero, errValue uint32
-			err = errMap.Lookup(&zero, &errValue)
-			if err != nil {
-				t.Fatal(err)
-			}
+			errValue := errMap.ReadUnique()
 			if errValue != 0 {
 				if tq.wantErr {
 					return // success

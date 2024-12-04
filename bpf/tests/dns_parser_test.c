@@ -10,5 +10,9 @@ char _license[] __attribute__((section("license"), used)) = "Dual BSD/GPL";
 __attribute__((section("cgroup_skb/egress"), used)) int
 test_dns_parser(struct __sk_buff *skb)
 {
-	return parse_dns(skb);
+	int parser_ret = parse_dns(skb);
+	if (parser_ret < 0) {
+		DEBUG("parser failed with: %d", parser_ret);
+	}
+	return SK_PASS;
 }

@@ -52,6 +52,11 @@
 // because labels are restricted to 63 octets or less.
 #define COMPRESSED_MSG_MASK 0b11000000
 
+#define MAX_ERROR_CODE 40
+
+#define DNS_PARSER_SKIP	   1
+#define DNS_PARSER_SUCCESS 0
+
 struct dnshdr {
 	__u16 id;
 	__u16 flags;
@@ -76,10 +81,9 @@ struct {
 	__type(value, char[MAX_NAME_SIZE]);
 } ip_map SEC(".maps");
 
-// TODO make them PERCPU
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__uint(max_entries, 1);
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, MAX_ERROR_CODE);
 	__type(key, __u32);
 	__type(value, __u32);
 } error_map SEC(".maps");
@@ -228,7 +232,8 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 }
 
 // parse_dns parses a DNS query response, it assumes checks have been made that
-// the packet is an IP packet with a UDP datagram.
+// the packet is an IP packet with a UDP datagram. It returns 0 on success, 1 on
+// not-applicable and < 0 on failure.
 __attribute__((always_inline)) int
 parse_dns(struct __sk_buff *skb)
 {
@@ -238,69 +243,48 @@ parse_dns(struct __sk_buff *skb)
 	void *data, *data_end;
 	char *data_start;
 	int8_t error, ret;
-	uint32_t error_nr;
+	uint32_t error_idx, *counter;
 
 	// Verify if the frame contains an IP packet.
-	if (skb->protocol != bpf_htons(ETH_P_IP)) {
-		DEBUG("fail 1");
-		return SK_PASS; // Skip non-IP packets.
-	}
+	if (skb->protocol != bpf_htons(ETH_P_IP))
+		return DNS_PARSER_SKIP; // Skip non-IP packets.
 
 	// Parse IP header.
 	ip = (struct iphdr *)(long)skb->data;
 	// Verify that there's something next to the IP header.
-	if (ip + 1 > (void *)(long)skb->data_end) {
-		DEBUG("fail 2");
-		return SK_PASS;
-	}
+	if (ip + 1 > (void *)(long)skb->data_end)
+		return DNS_PARSER_SKIP;
 
 	// Verify if protocol is UDP.
-	if (ip->protocol != IPPROTO_UDP) {
-		DEBUG("fail 3, what");
-		return SK_PASS;
-	}
+	if (ip->protocol != IPPROTO_UDP)
+		return DNS_PARSER_SKIP; // Skip non-UDP packets.
 
 	// Parse UDP header.
 	udp = (void *)ip + (ip->ihl * sizeof(u32)); // ihl is in 32 bits words.
 	// Verify that there's something next to the UDP header.
-	if (udp + 1 > (void *)(long)skb->data_end) {
-		DEBUG("fail 4");
-		return SK_PASS;
-	}
+	if (udp + 1 > (void *)(long)skb->data_end)
+		return DNS_PARSER_SKIP;
 
 	// Verify if that source port (answer) is DNS.
-	if (udp->source != bpf_htons(DNS_PORT)) {
-		DEBUG("fail 5");
-		return SK_PASS;
-	}
+	if (udp->source != bpf_htons(DNS_PORT))
+		return DNS_PARSER_SKIP; // Skip non-DNS answers packets.
 
 	// Parse the DNS header.
 	dns = (void *)udp + sizeof(struct udphdr);
 	// Verify that there's something next to the DNS header.
-	if (dns + 1 > (void *)(long)skb->data_end) {
-		DEBUG("fail 6");
-		return SK_PASS;
-	}
+	if (dns + 1 > (void *)(long)skb->data_end)
+		return DNS_PARSER_SKIP;
 
 	// Verify if it's a response and there are answers.
-	if ((bpf_ntohs(dns->flags) & BIT(15)) == 0 || dns->ancount == 0) {
-		DEBUG("fail 8");
-		return SK_PASS;
-	}
+	if ((bpf_ntohs(dns->flags) & BIT(15)) == 0 || dns->ancount == 0)
+		return DNS_PARSER_SKIP; // Skip incorrect DNS answers packets.
 
 	// Move to DNS answer section.
 	data = (void *)dns + DNS_HDR_SIZE;
 	data_end = (void *)(long)skb->data_end;
-	if (data >= data_end) {
-		DEBUG("fail 7");
-		return SK_PASS;
-	}
+	if (data >= data_end)
+		return DNS_PARSER_SKIP;
 
-	// Reset the error map
-	int err = map_update_elem(&error_map, &zero, &zero, BPF_ANY);
-	if (err) {
-		DEBUG("failed to retrieve error map");
-	}
 	error = 0;
 
 	// "In the DNS, QDCOUNT Is (Usually) One"
@@ -370,19 +354,14 @@ parse_dns(struct __sk_buff *skb)
 		data += ret;
 	}
 
-	DEBUG("success!");
-	return SK_PASS; // Allow packet.
+	return DNS_PARSER_SUCCESS;
 
 give_up:
-	// Send to the user space parser
-	// TODO
-	DEBUG("fail %d", error);
 	if (error < 0) {
-		error_nr = -error;
-		int err = map_update_elem(&error_map, &zero, &error_nr, BPF_ANY);
-		if (err) {
-			DEBUG("failed to retrieve error map");
-		}
+		error_idx = -error;
+		counter = map_lookup_elem(&error_map, &error_idx);
+		if (counter)
+			(*counter)++; // It's a per cpu array
 	}
-	return SK_PASS;
+	return error;
 }
