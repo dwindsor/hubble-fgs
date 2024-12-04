@@ -181,6 +181,7 @@ var (
 		{"execve_map", BaseMap},
 		{"policy_filter_maps", BaseMap},
 		{"tg_conf_map", BaseMap},
+		{"tg_cgtracker_map", BaseMap},
 		{"tg_stats_map", BaseMap},
 	}
 
@@ -202,6 +203,7 @@ var (
 		{"policy_filter_maps", BaseMap},
 		{"buffer_heap_map", PrivateMap}, // for d_path_local
 		{"tg_conf_map", BaseMap},
+		{"tg_cgtracker_map", BaseMap},
 		{"vfs_mkdir_info_heap", PrivateMap},
 		{"mkdir_retprobe_map", SharedMap},
 	}
@@ -222,6 +224,7 @@ var (
 		{"policy_filter_maps", BaseMap},
 		{"buffer_heap_map", PrivateMap}, // for d_path_local
 		{"tg_conf_map", BaseMap},
+		{"tg_cgtracker_map", BaseMap},
 		{"vfs_rename_info_heap", PrivateMap},
 		{"vr_retprobe_map", SharedMap},
 		{"rename_retprobe_map", SharedMap},
@@ -366,6 +369,7 @@ var (
 				{{"execve_map", BaseMap}},
 				{{"policy_filter_maps", BaseMap}},
 				{{"tg_conf_map", BaseMap}},
+				{{"tg_cgtracker_map", BaseMap}},
 				{{"exec_retprobe_map", SharedMap}},
 			},
 		}}},
@@ -510,6 +514,7 @@ var (
 			{{"execve_map", BaseMap}},
 			{{"policy_filter_maps", BaseMap}},
 			{{"tg_conf_map", BaseMap}},
+			{{"tg_cgtracker_map", BaseMap}},
 			{{"exec_retprobe_map", SharedMap}},
 			{{"file_digests_maps", SharedMap}},
 		}}}},
