@@ -136,6 +136,8 @@ $(OBJSDIR):
 $(DEPSDIR):
 	mkdir $(DEPSDIR)
 
+MTARGET = $(patsubst $(DEPSDIR)%.d,$(OBJSDIR)%.o,$@)
+
 # Generic build targets for each sub-dir
 
 # ALIGNCHECKER
@@ -143,42 +145,42 @@ objs/%.o: $(ALIGNCHECKERDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(ALIGNCHECKERDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # ALIGNCHECKER
 objs/%_oss.o: $(ALIGNCHECKEROSSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%_oss.d: $(ALIGNCHECKEROSSDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # PARSERDIR
 objs/%.o: $(PARSERDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(PARSERDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # TLSDIR
 objs/%.o: $(TLSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -I $(PARSERDIR) -c $< -o $@
 
 $(DEPSDIR)%.d: $(TLSDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # HTTPDIR
 objs/%.o: $(HTTPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -I $(PARSERDIR) -c $< -o $@
 
 $(DEPSDIR)%.d: $(HTTPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # NOPDIR
 objs/%.o: $(NOPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -I $(NOPDIR) -c $< -o $@
 
 $(DEPSDIR)%.d: $(NOPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 
 # NETWORKINGDIR
@@ -186,70 +188,70 @@ objs/%.o: $(NETWORKINGDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # SOCKTRACKDIR
 objs/%.o: $(SOCKTRACKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(SOCKTRACKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # UDPDIR
 objs/%.o: $(UDPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(UDPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # TCPDIR
 objs/%.o: $(TCPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(TCPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # L2DIR
 objs/%.o: $(L2DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(L2DIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # L3DIR
 objs/%.o: $(L3DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(L3DIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 #PING
 objs/%.o: $(PINGDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(PINGDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 #ICMP
 objs/%.o: $(ICMPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(ICMPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # RAWSOCKDIR
 objs/%.o: $(RAWSOCKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(RAWSOCKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # TIMESTAMPDIR
 objs/%.o: $(TIMESTAMPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(TIMESTAMPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # PROCESSDIR
 objs/%.o: $(PROCESSDIR)%.c
@@ -264,35 +266,35 @@ objs/bpf_exit.o: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)  $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # bpf_ee_execve_event: special case because the enterprise version is different than OSS
 objs/bpf_execve_event.o: $(ISOPROCESS)bpf_ee_execve_event.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 deps/bpf_execve_event.d: $(ISOPROCESS)bpf_ee_execve_event.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)  $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET)  $< > $@
 
 ## bpf_enforcer: __BPF_OVERRIDE_RETURN, but no __MULTI_KPROBE
 objs/bpf_enforcer.o: $(PROCESSDIR)/bpf_enforcer.c
 	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -c $< -o $@
 
 $(DEPSDIR)bpf_enforcer.d: $(PROCESSDIR)/bpf_enforcer.c
-	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@) $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -MM -MP -MT $(MTARGET) $< > $@
 
 ## bpf_multi_enforcer: __BPF_OVERRIDE_RETURN and __MULTI_KPROBE
 objs/bpf_multi_enforcer.o: $(PROCESSDIR)/bpf_enforcer.c
 	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -D__MULTI_KPROBE -c $< -o $@
 
 $(DEPSDIR)/bpf_multi_enforcer.d: $(PROCESSDIR)/bpf_enforcer.c
-	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -D__MULTI_KPROBE -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@) $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__BPF_OVERRIDE_RETURN -D__MULTI_KPROBE -MM -MP -MT $(MTARGET) $< > $@
 
 ## bpf_fmodret_enforcer no bpf_override_return: we need fmod_ret
 objs/bpf_fmodret_enforcer.o: $(PROCESSDIR)/bpf_enforcer.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)/bpf_fmodret_enforcer.d: $(PROCESSDIR)/bpf_enforcer.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@) $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # FILEDIR
 objs/%.o: $(FILEDIR)%.c
@@ -302,43 +304,43 @@ objs/%_lsm.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -c $< -o $@
 
 $(DEPSDIR)%_lsm.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_lsm_digest.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM -c $< -o $@
 
 $(DEPSDIR)%_lsm_digest.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_fmod.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -c $< -o $@
 
 $(DEPSDIR)%_fmod.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_lsm_v60.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V60_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%_lsm_v60.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V60_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V60_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_fmod_v60.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V60_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%_fmod_v60.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V60_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V60_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_lsm_v63.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V63_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%_lsm_v63.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V63_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__V63_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 objs/%_fmod_v63.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V63_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%_fmod_v63.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V63_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V63_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 objs/bpf_execve_event_v611.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
@@ -384,10 +386,10 @@ objs/%_v611.o:
 	$(CLANG) $(CLANG_FLAGS) -D__V611_BPF_PROG -D__V61_BPF_PROG -D__LARGE_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 $(DEPSDIR)%.d: $(CGROUPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 deps/bpf_execve_event_v511.d: $(ISOPROCESS)/bpf_ee_execve_event.c
 deps/bpf_generic_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -450,10 +452,10 @@ deps/bpf_security_file_open_enforce_fmod.d: $(FILEDIR)/bpf_security_file_open.c
 deps/bpf_security_file_open_v419.d: $(FILEDIR)/bpf_security_file_open.c
 
 $(DEPSDIR)%_v419.d:
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 $(DEPSDIR)%_v53.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_generic_kprobe_v511.o: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -494,14 +496,14 @@ deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_uprobe_v61.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 $(DEPSDIR)%_v61.d:
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -MM -MP -MT $(MTARGET) $< > $@
 
 # BPFTESTDIR
 objs/%.o: $(BPFTESTDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(BPFTESTDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(MTARGET) $< > $@
 
 # include dependencies, see https://lists.gnu.org/archive/html/make-w32/2004-03/msg00062.html
 ifeq (,$(filter $(MAKECMDGOALS),clean test))
