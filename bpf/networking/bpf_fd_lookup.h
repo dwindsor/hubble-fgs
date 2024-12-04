@@ -23,6 +23,9 @@
 #define S_IFMT	 00170000
 #define S_IFSOCK 0140000
 
+#define TCP_LEARN_LISTEN_SOCKETS  1
+#define TCP_LEARN_CONNECT_SOCKETS 2
+
 struct fd_lookup_config {
 	uint32_t pid;
 	uint32_t fd;
@@ -240,12 +243,17 @@ __kprobe_proc_task_name(struct pt_regs *ctx)
 		if (!tcp_stats)
 			return 0;
 
-		if ((1 << config->state) & TCPF_LISTEN)
+		if ((1 << config->state) & TCPF_LISTEN) {
+			if (config->hint == TCP_LEARN_CONNECT_SOCKETS)
+				return 0;
 			tcp_stats->socket_flags = SOCKFLAGS_TYPE_LISTEN;
-		else if ((1 << config->state) & TCPF_ESTABLISHED)
+		} else if ((1 << config->state) & TCPF_ESTABLISHED) {
+			if (config->hint == TCP_LEARN_LISTEN_SOCKETS)
+				return 0;
 			tcp_stats->socket_flags = 0;
-		else
+		} else {
 			return 0;
+		}
 
 		tcp_stats->stats.bytes_sent = 0;
 		tcp_stats->stats.bytes_received = 0;

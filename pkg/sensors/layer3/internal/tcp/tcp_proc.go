@@ -29,7 +29,9 @@ import (
 )
 
 const (
-	TCP_PROC_STATE_LISTEN = 10
+	TCP_PROC_STATE_LISTEN     = 10
+	TCP_LEARN_LISTEN_SOCKETS  = 1
+	TCP_LEARN_CONNECT_SOCKETS = 2
 )
 
 var (
@@ -109,5 +111,6 @@ func getRunningSockets(_, pushEvents bool) {
 	defer loading.Unlock()
 
 	_pushEvents = pushEvents
-	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP, 0)
+	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP, TCP_LEARN_LISTEN_SOCKETS)
+	ip.LoadSockets(fdCallback, syscall.IPPROTO_TCP, TCP_LEARN_CONNECT_SOCKETS)
 }
