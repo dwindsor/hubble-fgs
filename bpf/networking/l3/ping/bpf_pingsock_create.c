@@ -24,9 +24,6 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-static inline __attribute__((always_inline)) int
-store_socket(void *ctx, u64 cookie, u8 protocol);
-
 // Raw sockets are used for ping in some environments.
 // These are handled by the rawsock programs.
 // Ping sockets are used for ping in other environments (handles IPv4 and IPv6)

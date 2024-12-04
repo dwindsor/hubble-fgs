@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
@@ -39,7 +40,7 @@ var (
 )
 
 var (
-	SkPingAlloc = program.Builder(
+	SkPingAllocKprobe = program.Builder(
 		"bpf_pingsock_create.o",
 		"ping_init_sock",
 		"kprobe/ping_init_sock",
@@ -47,7 +48,15 @@ var (
 		"kprobe",
 	)
 
-	IcmpRcv = program.Builder(
+	SkPingAllocFentry = program.Builder(
+		"bpf_pingsock_create_fentry.o",
+		"fentry",
+		"fentry/ping_init_sock",
+		"tg_ping_init_sock",
+		"icmp_fentry",
+	)
+
+	IcmpRcvKprobe = program.Builder(
 		"bpf_icmp_rcv.o",
 		"icmp_rcv",
 		"kprobe/icmp_rcv",
@@ -55,7 +64,15 @@ var (
 		"kprobe",
 	)
 
-	IcmpRcv6 = program.Builder(
+	IcmpRcvFentry = program.Builder(
+		"bpf_icmp_rcv_fentry.o",
+		"fentry",
+		"fentry/icmp_rcv",
+		"tg_icmp_rcv",
+		"icmp_fentry",
+	)
+
+	IcmpRcv6Kprobe = program.Builder(
 		"bpf_icmp_rcv.o",
 		"icmpv6_rcv",
 		"kprobe/icmpv6_rcv",
@@ -63,17 +80,34 @@ var (
 		"kprobe",
 	)
 
+	IcmpRcv6Fentry = program.Builder(
+		"bpf_icmp_rcv_fentry.o",
+		"fentry",
+		"fentry/icmpv6_rcv",
+		"tg_icmpv6_rcv",
+		"icmp_fentry",
+	)
+
 	// Shared socket cookie infrastructure
-	SocketCookieMap    = program.MapBuilder(SocketMapName, IcmpRcv)
-	SocketCookieStats  = program.MapBuilder("tg_socket_map_stats", IcmpRcv)
-	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", IcmpRcv)
-	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcv)
-	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", IcmpRcv)
-	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcv)
+	SocketCookieMapKprobe    = program.MapBuilder(SocketMapName, IcmpRcvKprobe)
+	SocketCookieStatsKprobe  = program.MapBuilder("tg_socket_map_stats", IcmpRcvKprobe)
+	SocketTupleMapKprobe     = program.MapBuilder("tg_socket_tuple_map", IcmpRcvKprobe)
+	SocketTupleStatsKprobe   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcvKprobe)
+	SocketTupleRevMapKprobe  = program.MapBuilder("tg_rev_tuple_map", IcmpRcvKprobe)
+	SocketTupleHintMapKprobe = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcvKprobe)
+	SocketCookieMapFentry    = program.MapBuilder(SocketMapName, IcmpRcvFentry)
+	SocketCookieStatsFentry  = program.MapBuilder("tg_socket_map_stats", IcmpRcvFentry)
+	SocketTupleMapFentry     = program.MapBuilder("tg_socket_tuple_map", IcmpRcvFentry)
+	SocketTupleStatsFentry   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcvFentry)
+	SocketTupleRevMapFentry  = program.MapBuilder("tg_rev_tuple_map", IcmpRcvFentry)
+	SocketTupleHintMapFentry = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcvFentry)
 	// ICMP runtime maps
-	CfgMap     = program.MapBuilder("tg_cfg_map", IcmpRcv)
-	IcmpCfgMap = program.MapBuilder("tg_icmp_cfg_map", IcmpRcv)
-	VerMap     = program.MapBuilder("tg_ver_map", SkPingAlloc)
+	CfgMapKprobe     = program.MapBuilder("tg_cfg_map", IcmpRcvKprobe)
+	IcmpCfgMapKprobe = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvKprobe)
+	VerMapKprobe     = program.MapBuilder("tg_ver_map", SkPingAllocKprobe)
+	CfgMapFentry     = program.MapBuilder("tg_cfg_map", IcmpRcvFentry)
+	IcmpCfgMapFentry = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvFentry)
+	VerMapFentry     = program.MapBuilder("tg_ver_map", SkPingAllocFentry)
 )
 
 type sensorConfigKey struct {
@@ -98,21 +132,41 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 		return nil, nil
 	}
 
-	progs = []*program.Program{
-		SkPingAlloc,
-		IcmpRcv,
-		IcmpRcv6,
-	}
-	maps = []*program.Map{
-		SocketCookieMap,
-		SocketCookieStats,
-		SocketTupleMap,
-		SocketTupleStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
-		CfgMap,
-		IcmpCfgMap,
-		VerMap,
+	if utils.SupportFentry() {
+		progs = []*program.Program{
+			SkPingAllocFentry,
+			IcmpRcvFentry,
+			IcmpRcv6Fentry,
+		}
+		maps = []*program.Map{
+			SocketCookieMapFentry,
+			SocketCookieStatsFentry,
+			SocketTupleMapFentry,
+			SocketTupleStatsFentry,
+			SocketTupleRevMapFentry,
+			SocketTupleHintMapFentry,
+			CfgMapFentry,
+			IcmpCfgMapFentry,
+			VerMapFentry,
+		}
+
+	} else {
+		progs = []*program.Program{
+			SkPingAllocKprobe,
+			IcmpRcvKprobe,
+			IcmpRcv6Kprobe,
+		}
+		maps = []*program.Map{
+			SocketCookieMapKprobe,
+			SocketCookieStatsKprobe,
+			SocketTupleMapKprobe,
+			SocketTupleStatsKprobe,
+			SocketTupleRevMapKprobe,
+			SocketTupleHintMapKprobe,
+			CfgMapKprobe,
+			IcmpCfgMapKprobe,
+			VerMapKprobe,
+		}
 	}
 
 	logger.GetLogger().Infof("Enable ICMP")

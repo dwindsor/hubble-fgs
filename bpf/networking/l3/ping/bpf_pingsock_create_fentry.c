@@ -9,7 +9,14 @@
 // permission is obtained from Isovalent Inc.
 
 #include "vmlinux.h"
-#include "bpf_icmp_rcv.h"
+
+#include "api.h"
+#include "bpf_event.h"
+#include "bpf_task.h"
+#include "bpf_cookie.h"
+#include "bpf_network_helpers.h"
+#include "bpf_tracing.h"
+#include "socktrack/bpf_sk_alloc.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -17,20 +24,15 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-// Handles received ICMP packets. We assume they are all linear and
-// therefore can be read successfully with probe_read.
-__attribute__((section("kprobe/icmp_rcv"), used)) int
-tg_icmp_rcv(struct pt_regs *ctx)
+// Raw sockets are used for ping in some environments.
+// These are handled by the rawsock programs.
+// Ping sockets are used for ping in other environments (handles IPv4 and IPv6)
+SEC("fentry/ping_init_sock")
+int BPF_PROG(tg_ping_init_sock, struct sock *sk)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
-	return icmp_rcv(ctx, skb);
-}
+	u64 cookie = (u64)sk;
 
-// Handles received ICMPv6 packets. We assume they are all linear and
-// therefore can be read successfully with probe_read.
-__attribute__((section("kprobe/icmpv6_rcv"), used)) int
-tg_icmpv6_rcv(struct pt_regs *ctx)
-{
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
-	return icmp_rcv(ctx, skb);
+	store_socket(ctx, cookie, IPPROTO_ICMP);
+
+	return 0;
 }

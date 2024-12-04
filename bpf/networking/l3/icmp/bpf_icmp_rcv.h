@@ -16,9 +16,8 @@
 #include "../udp/bpf_udp_event.h"
 
 static inline __attribute__((always_inline)) int
-icmp_rcv(struct pt_regs *ctx)
+icmp_rcv(void *ctx, struct sk_buff *skb)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
 	__attribute__((aligned(8))) struct ipv6hdr ip6;
 	u8 icmp_data[ICMP_HDR_LEN];
 	struct msg_icmp_event *val;

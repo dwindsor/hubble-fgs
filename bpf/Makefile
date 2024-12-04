@@ -43,8 +43,8 @@ TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \
 
 L2 = bpf_dev_queue_xmit.o
 
-ICMP = bpf_icmp_rcv.o
-PING = bpf_pingsock_create.o
+ICMP = bpf_icmp_rcv.o bpf_icmp_rcv_fentry.o
+PING = bpf_pingsock_create.o bpf_pingsock_create_fentry.o
 L3 = bpf_cgroup_net_load_5-4.o bpf_cgroup_net_load.o bpf_cgroup_net.o
 
 RAWSOCK = bpf_rawsock_create.o

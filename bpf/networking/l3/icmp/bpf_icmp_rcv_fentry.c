@@ -19,18 +19,20 @@ int _version __attribute__((section(("version")), used)) =
 
 // Handles received ICMP packets. We assume they are all linear and
 // therefore can be read successfully with probe_read.
-__attribute__((section("kprobe/icmp_rcv"), used)) int
-tg_icmp_rcv(struct pt_regs *ctx)
+SEC("fentry/icmp_rcv")
+int BPF_PROG(tg_icmp_rcv, struct sk_buff *skb)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
-	return icmp_rcv(ctx, skb);
+	icmp_rcv(ctx, skb);
+
+	return 0;
 }
 
 // Handles received ICMPv6 packets. We assume they are all linear and
 // therefore can be read successfully with probe_read.
-__attribute__((section("kprobe/icmpv6_rcv"), used)) int
-tg_icmpv6_rcv(struct pt_regs *ctx)
+SEC("fentry/icmpv6_rcv")
+int BPF_PROG(tg_icmpv6_rcv, struct sk_buff *skb)
 {
-	struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
-	return icmp_rcv(ctx, skb);
+	icmp_rcv(ctx, skb);
+
+	return 0;
 }

@@ -535,11 +535,19 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 	}
 
 	if withIcmp {
-		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			{Name: pingInitSockProg, Type: ebpf.Kprobe},
-			{Name: icmp4RcvProg, Type: ebpf.Kprobe},
-			{Name: icmp6RcvProg, Type: ebpf.Kprobe},
-		}...)
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: pingInitSockProg, Type: ebpf.Tracing},
+				{Name: icmp4RcvProg, Type: ebpf.Tracing},
+				{Name: icmp6RcvProg, Type: ebpf.Tracing},
+			}...)
+		} else {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: pingInitSockProg, Type: ebpf.Kprobe},
+				{Name: icmp4RcvProg, Type: ebpf.Kprobe},
+				{Name: icmp6RcvProg, Type: ebpf.Kprobe},
+			}...)
+		}
 	}
 
 	if withRaw {
@@ -612,11 +620,19 @@ func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool)
 	}
 
 	if withIcmp && kernels.MinKernelVersion("5.4.0") {
-		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			{Name: pingInitSockProg, Type: ebpf.Kprobe},
-			{Name: icmp4RcvProg, Type: ebpf.Kprobe},
-			{Name: icmp6RcvProg, Type: ebpf.Kprobe},
-		}...)
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: pingInitSockProg, Type: ebpf.Tracing},
+				{Name: icmp4RcvProg, Type: ebpf.Tracing},
+				{Name: icmp6RcvProg, Type: ebpf.Tracing},
+			}...)
+		} else {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: pingInitSockProg, Type: ebpf.Kprobe},
+				{Name: icmp4RcvProg, Type: ebpf.Kprobe},
+				{Name: icmp6RcvProg, Type: ebpf.Kprobe},
+			}...)
+		}
 	}
 
 	if withRaw && kernels.MinKernelVersion("5.4.0") {
