@@ -33,14 +33,13 @@ SOCKTRACK = bpf_sk_alloc.o bpf_security_sk_alloc.o
 UDP = bpf_udp_bind.o bpf_udp_bind_5_15.o bpf_udp_bind_dummy.o \
       bpf_udp_inet_lazy_kp.o
 
-TCP = bpf_tcp_close_and_accept.o bpf_tcp_close_and_accept_fentry.o \
+TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \
       bpf_tcp_connect.o bpf_tcp_connect_fentry.o \
-      bpf_tcp_accept.o \
+      bpf_tcp_security_accept_kprobe.o bpf_tcp_security_accept.o \
       bpf_tcp_listen.o bpf_tcp_listen_fentry.o \
       bpf_tcp_rtt.o \
       bpf_tcp_send_check.o \
-      bpf_tcp_sockops_5_15.o \
-      bpf_tcp_security_accept.o
+      bpf_tcp_sockops_5_15.o
 
 L2 = bpf_dev_queue_xmit.o
 

@@ -13,7 +13,6 @@
 #include "bpf_tcp_connect.h"
 #include "bpf_tcp_state.h"
 #include "bpf_tcp_listen.h"
-#include "bpf_tcp_accept.h"
 #include "parsers/http/http_parser.h"
 #include "parsers/bottle.h"
 

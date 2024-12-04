@@ -21,7 +21,6 @@
 #include "bpf_tracing.h"
 #include "socktrack/bpf_sk_alloc.h"
 #include "lib/address_family.h"
-#include "bpf_tcp_accept.h"
 #include "bpf_tcp_listen.h"
 
 struct {
@@ -38,6 +37,13 @@ struct {
 	__uint(max_entries, 1);
 } tg_listen_process SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct msg_ip_event);
+	__uint(max_entries, 1);
+} tcp_accept_event_map SEC(".maps");
+
 /* Theory of Operations: The kernel does not at the moment have a hook that
  * is reliable to capture both the listen sock and the new sock from the
  * accept. In the past we've glue'd the enter/exit of child sock create
@@ -52,10 +58,9 @@ struct {
  */
 
 static inline __attribute__((always_inline)) int
-__security_socket_accept(struct socket *sock, struct socket *newsocket)
+__security_socket_accept(struct sock *sk, struct socket *newsocket)
 {
 	u64 cookie = (u64)newsocket;
-	u64 sk = (u64)sock->sk;
 
 	map_update_elem(&tg_tcp_accept_socket_to_sk_map, &cookie, &sk, 0);
 	return 0;

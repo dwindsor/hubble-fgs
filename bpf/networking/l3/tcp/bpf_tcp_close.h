@@ -23,11 +23,10 @@
 #include "parsers/http/http.h"
 #include "parsers/bottle.h"
 #include "bpf_tcp_network_event_config.h"
-#include "bpf_tcp_accept.h"
 #include "bpf_tcp_state.h"
 
 static inline __attribute__((always_inline)) int
-__event_tcp_close_and_accept(void *ctx, struct sock *skp, int state)
+__event_tcp_close(void *ctx, struct sock *skp, int state)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
@@ -37,22 +36,18 @@ __event_tcp_close_and_accept(void *ctx, struct sock *skp, int state)
 	size_t size;
 	u64 cookie;
 
+	if (state != TCP_CLOSE)
+		return 0;
+
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;
 
-	/* Get the state that we are transitioning from */
-	probe_read_kernel(&old_state, sizeof(old_state),
-			  (const void *)_(&(skp->__sk_common.skc_state)));
-
-	if (old_state == TCP_SYN_RECV && state == TCP_ESTABLISHED)
-		return __event_tcp_accept_state(ctx, skp);
-
-	if (state != TCP_CLOSE)
-		return 0;
-
 	socket = lookup_tcpsocketmap(&cookie);
 	if (!socket) {
+		/* Get the state that we are transitioning from */
+		probe_read_kernel(&old_state, sizeof(old_state),
+				  (const void *)_(&(skp->__sk_common.skc_state)));
 		// Don't report an error here if the TCP socket isn't yet active.
 		if (tcp_active(old_state))
 			emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);

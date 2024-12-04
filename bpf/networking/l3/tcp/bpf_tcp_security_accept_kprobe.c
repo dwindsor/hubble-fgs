@@ -7,12 +7,12 @@
 // protected by trade secret or copyright law.  Dissemination of this information
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
+//
 
 #include "vmlinux.h"
 
 #include "api.h"
-#include "bpf_event.h"
-#include "bpf_tcp_close_and_accept.h"
+#include "bpf_tcp_security_accept.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -20,9 +20,23 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-SEC("fentry/tcp_set_state")
-int BPF_PROG(tg_event_tcp_close_and_accept, struct sock *skp, int state)
+__attribute__((section("kprobe/security_socket_accept"), used)) int
+tg_security_socket_accept(struct pt_regs *ctx)
 {
-	__event_tcp_close_and_accept(ctx, skp, state);
-	return 0;
+	struct socket *newsocket = (struct socket *)PT_REGS_PARM2(ctx);
+	struct socket *sock = (struct socket *)PT_REGS_PARM1(ctx);
+	struct sock *sk;
+
+	probe_read_kernel(&sk, sizeof(sk), _(&(sock->sk)));
+
+	return __security_socket_accept(sk, newsocket);
+}
+
+__attribute__((section("kprobe/security_sock_graft"), used)) int
+tg_security_sock_graft(struct pt_regs *ctx)
+{
+	struct socket *parent = (struct socket *)PT_REGS_PARM2(ctx);
+	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+
+	return __security_sock_graft(ctx, sk, parent);
 }

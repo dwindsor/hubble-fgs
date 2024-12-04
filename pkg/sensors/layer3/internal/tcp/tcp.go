@@ -86,16 +86,16 @@ var (
 		"layer3_sensor",
 	)
 
-	CloseAndAcceptKprobe = program.Builder(
-		"bpf_tcp_close_and_accept.o",
+	CloseKprobe = program.Builder(
+		"bpf_tcp_close.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
 		"tg_tcp_set_state",
 		"kprobe",
 	)
 
-	CloseAndAcceptFentry = program.Builder(
-		"bpf_tcp_close_and_accept_fentry.o",
+	CloseFentry = program.Builder(
+		"bpf_tcp_close_fentry.o",
 		"fentry",
 		"fentry/tcp_set_state",
 		"tg_tcp_set_state",
@@ -118,12 +118,28 @@ var (
 		"tcp_fentry",
 	)
 
+	SecurityAcceptKprobe = program.Builder(
+		"bpf_tcp_security_accept_kprobe.o",
+		"security_socket_accept",
+		"kprobe/security_socket_accept",
+		"tg_tcp_security_accept",
+		"kprobe",
+	)
+
 	SecurityAccept = program.Builder(
 		"bpf_tcp_security_accept.o",
 		"security_socket_accept",
 		"fentry/security_socket_accept",
 		"tg_tcp_security_accept",
 		"tcp_fentry",
+	)
+
+	SecurityGraftKprobe = program.Builder(
+		"bpf_tcp_security_accept_kprobe.o",
+		"security_sock_graft",
+		"kprobe/security_sock_graft",
+		"tg_tcp_security_graft",
+		"kprobe",
 	)
 
 	SecurityGraft = program.Builder(
@@ -133,22 +149,6 @@ var (
 		"tg_tcp_security_graft",
 		"tcp_fentry",
 	)
-
-	Accept = program.Builder(
-		"bpf_tcp_accept.o",
-		"tcp_create_openreq_child",
-		"kprobe/tcp_create_openreq_child",
-		"tg_event_tcp_accept",
-		"kprobe",
-	)
-
-	AcceptRet = program.Builder(
-		"bpf_tcp_accept.o",
-		"tcp_create_openreq_child",
-		"kretprobe/tcp_create_openreq_child",
-		"tg_event_tcp_accept_ret",
-		"kprobe",
-	).SetRetProbe(true)
 
 	SendCheck4 = program.Builder(
 		"bpf_tcp_send_check.o",
@@ -183,7 +183,7 @@ var (
 		"kprobe")
 
 	// Maps for TCP Sockets
-	SocketStats              = program.MapBuilder(base.SocketStats.Name, Accept)
+	SocketStats              = program.MapBuilder(base.SocketStats.Name, SecurityGraft)
 	SocketMapKprobe          = program.MapBuilder(base.SocketMap.Name, ConnectKprobe)
 	SocketTupleMapKprobe     = program.MapBuilder(base.SocketTupleMap.Name, ConnectKprobe)
 	SocketTupleStatsKprobe   = program.MapBuilder(base.SocketTupleStats.Name, ConnectKprobe)
@@ -203,7 +203,6 @@ var (
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
-	SecurityGraftMap  = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityGraft)
 
 	// Endpoint Models
 	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
@@ -218,11 +217,10 @@ var (
 	CfgMapKprobe       = program.MapBuilder("tg_cfg_map", ConnectKprobe)
 	CfgMapFentry       = program.MapBuilder("tg_cfg_map", ConnectFentry)
 	CfgOpsMap          = program.MapBuilder("tg_cfg_map", TcpSockops515)
-	AcceptSocketMap    = program.MapBuilder("tg_tcp_accept_sock_map", Accept)
 	TcpSocketMapKprobe = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe)
 	TcpSocketMapFentry = program.MapBuilder("tg_tcpsocket_map", ConnectFentry)
 	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops515)
-	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", Accept)
+	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
 	VerMapKprobe       = program.MapBuilder("tg_ver_map", ConnectKprobe)
 	VerMapFentry       = program.MapBuilder("tg_ver_map", ConnectFentry)
 	VerOpsMap          = program.MapBuilder("tg_ver_map", TcpSockops515)
@@ -288,47 +286,47 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 
 	mapsOps := []*program.Map{
 		SocketOpsMap,
-		TcpOpsSocketMap,
-		VerOpsMap,
 		SocketOpsTupleMap,
 		SocketOpsTupleStats,
 		SocketOpsTupleRevMap,
 		SocketOpsTupleHintMap,
-		TLSOpsMapStats,
 		CfgOpsMap,
+		TcpOpsSocketMap,
+		VerOpsMap,
+		TLSOpsMapStats,
 		EventDisableConfigOps,
 	}
 
 	mapsConnectKprobe := []*program.Map{
 		SocketMapKprobe,
-		TcpSocketMapKprobe,
-		VerMapKprobe,
 		SocketTupleMapKprobe,
 		SocketTupleStatsKprobe,
 		SocketTupleRevMapKprobe,
 		SocketTupleHintMapKprobe,
-		TLSMapStatsKprobe,
 		CfgMapKprobe,
+		TcpSocketMapKprobe,
+		VerMapKprobe,
+		TLSMapStatsKprobe,
 		EventDisableConfigKprobe,
 	}
 
 	mapsConnectFentry := []*program.Map{
 		SocketMapFentry,
-		TcpSocketMapFentry,
-		VerMapFentry,
 		SocketTupleMapFentry,
 		SocketTupleStatsFentry,
 		SocketTupleRevMapFentry,
 		SocketTupleHintMapFentry,
-		TLSMapStatsFentry,
 		CfgMapFentry,
+		TcpSocketMapFentry,
+		VerMapFentry,
+		TLSMapStatsFentry,
 		EventDisableConfigFentry,
 	}
 
 	maps := []*program.Map{
 		SocketStats,
+		SecurityAcceptMap,
 		TcpSocketStats,
-		AcceptSocketMap,
 		HTTPContext,
 		TLSContext,
 		TLSBottles,
@@ -345,36 +343,35 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	if !utils.SupportFentry() {
 		progs = append(progs, []*program.Program{
 			ConnectKprobe,
-			CloseAndAcceptKprobe,
+			CloseKprobe,
 			ListenKprobe,
-			Accept,
-			AcceptRet,
+			SecurityAcceptKprobe,
+			SecurityGraftKprobe,
 		}...)
 		maps = append(maps, mapsConnectKprobe...)
 	} else if !kernels.MinKernelVersion("5.14.0") {
 		progs = append(progs, []*program.Program{
 			ConnectFentry,
-			CloseAndAcceptFentry,
+			CloseFentry,
 			ListenFentry,
-			Accept,
-			AcceptRet,
+			SecurityAccept,
+			SecurityGraft,
 		}...)
 		maps = append(maps, mapsConnectFentry...)
 	} else {
 		if runtime.GOARCH != "amd64" {
 			progs = append(progs, []*program.Program{
 				ConnectFentry,
-				CloseAndAcceptFentry,
+				CloseFentry,
 				ListenFentry,
-				Accept,
-				AcceptRet,
+				SecurityAccept,
+				SecurityGraft,
 			}...)
 			maps = append(maps, mapsConnectFentry...)
 		} else {
 			progs = append(progs, TcpSockops515, SecurityAccept, SecurityGraft)
 			maps = append(maps, mapsOps...)
 			maps = append(maps, processModelMapsEnable()...)
-			maps = append(maps, SecurityAcceptMap, SecurityGraftMap)
 		}
 	}
 

@@ -83,16 +83,14 @@ const (
 	cgroupEgressProg  = "tg_cgroup_egress"
 	cgroupIngressProg = "tg_cgroup_ingress"
 
-	tcpConnectProg        = "tg_event_tcp_connect"
-	tcpSockopsProg        = "tg_event_tcp_sockops"
-	tcpSecurityAccept     = "tg_security_socket_accept"
-	tcpSecurityGraft      = "tg_security_sock_graft"
-	tcpCloseAndAcceptProg = "tg_event_tcp_close_and_accept"
-	tcpListenProg         = "tg_event_sys_listen"
-	tcpAcceptProg         = "tg_event_tcp_accept"
-	tcpAcceptRetProg      = "tg_event_tcp_accept_ret"
-	tcpSendCheck4Prog     = "tg_event_tcp_v4_send_check"
-	tcpSendCheck6Prog     = "tg_event_tcp_v6_send_check"
+	tcpConnectProg    = "tg_event_tcp_connect"
+	tcpSockopsProg    = "tg_event_tcp_sockops"
+	tcpSecurityAccept = "tg_security_socket_accept"
+	tcpSecurityGraft  = "tg_security_sock_graft"
+	tcpCloseProg      = "tg_event_tcp_close"
+	tcpListenProg     = "tg_event_sys_listen"
+	tcpSendCheck4Prog = "tg_event_tcp_v4_send_check"
+	tcpSendCheck6Prog = "tg_event_tcp_v6_send_check"
 
 	udpInetLazySendProg    = "tg_inet_lazy_send_kp"
 	udpBindProg            = "tg_udp_bind_sock"
@@ -111,17 +109,18 @@ const (
 func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
-	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{tcpSockopsProg})
+	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{tcpSockopsProg, tcpSecurityGraft})
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{tcpSecurityGraft})
-	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, fentrySkFreeProg})
-	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{tcpSockopsProg})
-	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{tcpSockopsProg})
-	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{tcpSockopsProg})
-	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{tcpSockopsProg})
-	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{tcpSockopsProg})
-	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{tcpSockopsProg})
-	cfgMap := SensorMapByProgName(sensorProgs, "tg_cfg_map", []string{tcpSockopsProg})
+	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, fentrySkFreeProg, tcpSecurityGraft})
+	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft})
+	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{tcpSockopsProg, tcpSecurityGraft})
+	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft})
+	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{tcpSockopsProg, tcpSecurityGraft})
+	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{tcpSockopsProg, tcpSecurityGraft})
+	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{tcpSockopsProg, tcpSecurityGraft})
+	cfgMap := SensorMapByProgName(sensorProgs, "tg_cfg_map", []string{tcpSockopsProg, tcpSecurityGraft})
 	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{tcpSecurityGraft})
+	acceptMap := SensorMapByProgName(sensorProgs, "tg_tcp_accept_socket_to_sk_map", []string{tcpSecurityAccept, tcpSecurityGraft})
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
 	if withUdpLatency {
@@ -146,34 +145,34 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 	}...)
 
 	socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	socketTupleMapStats.Progs = append(socketTupleMapStats.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	socketTupleRevMap.Progs = append(socketTupleRevMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	socketTupleHintMap.Progs = append(socketTupleHintMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, udpBindProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg, udpBindProg,
 	})...)
 	tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, udpBindProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg, udpBindProg,
 	})...)
 	latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
 		cgroupEgressProg, cgroupIngressProg,
 	})...)
 	cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg, tcpSecurityGraft,
+		cgroupEgressProg, cgroupIngressProg,
 	})...)
 
 	if withIcmp {
@@ -256,6 +255,7 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 		cfgMap,
 		verMap,
 		confMap,
+		acceptMap,
 	}...)
 
 	return sensorMaps
@@ -272,62 +272,57 @@ func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, 
 	}
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
+		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{
-		tcpAcceptRetProg,
+		tcpSecurityGraft,
 	})
 
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
+		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft,
 		skFreeProg,
 	})
 
 	tcpSocketMapStats := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map_stats", []string{
-		tcpConnectProg, tcpListenProg, tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 		skFreeProg,
 	})
 
 	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg, tcpAcceptRetProg,
+		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{
-		tcpConnectProg, tcpListenProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_cfg_map", []string{
-		tcpConnectProg, tcpCloseAndAcceptProg, tcpListenProg,
-		tcpAcceptRetProg,
+		tcpConnectProg, tcpListenProg, tcpSecurityGraft,
 	})
 
 	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{
-		tcpAcceptRetProg,
+		tcpSecurityGraft,
 	})
 
-	acceptMap := SensorMapByProgName(sensorProgs, "tg_tcp_accept_sock_map", []string{
-		tcpAcceptProg, tcpAcceptRetProg,
+	acceptMap := SensorMapByProgName(sensorProgs, "tg_tcp_accept_socket_to_sk_map", []string{
+		tcpSecurityAccept, tcpSecurityGraft,
 	})
 
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
@@ -556,21 +551,23 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 }
 
 func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
-	sensorProgs := []tus.SensorProg{
-		{Name: tcpAcceptProg, Type: ebpf.Kprobe},
-		{Name: tcpAcceptRetProg, Type: ebpf.Kprobe},
-	}
+	var sensorProgs []tus.SensorProg
+
 	if utils.SupportFentry() {
 		sensorProgs = append(sensorProgs,
 			tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Tracing},
-			tus.SensorProg{Name: tcpCloseAndAcceptProg, Type: ebpf.Tracing},
+			tus.SensorProg{Name: tcpCloseProg, Type: ebpf.Tracing},
 			tus.SensorProg{Name: tcpListenProg, Type: ebpf.Tracing},
+			tus.SensorProg{Name: tcpSecurityAccept, Type: ebpf.Tracing},
+			tus.SensorProg{Name: tcpSecurityGraft, Type: ebpf.Tracing},
 		)
 	} else {
 		sensorProgs = append(sensorProgs,
 			tus.SensorProg{Name: tcpConnectProg, Type: ebpf.Kprobe},
-			tus.SensorProg{Name: tcpCloseAndAcceptProg, Type: ebpf.Kprobe},
+			tus.SensorProg{Name: tcpCloseProg, Type: ebpf.Kprobe},
 			tus.SensorProg{Name: tcpListenProg, Type: ebpf.Kprobe},
+			tus.SensorProg{Name: tcpSecurityAccept, Type: ebpf.Kprobe},
+			tus.SensorProg{Name: tcpSecurityGraft, Type: ebpf.Kprobe},
 		)
 	}
 
