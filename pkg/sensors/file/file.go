@@ -225,7 +225,7 @@ var (
 		{"buffer_heap_map", PrivateMap}, // for d_path_local
 		{"tg_conf_map", BaseMap},
 		{"tg_cgtracker_map", BaseMap},
-		{"vfs_rename_info_heap", PrivateMap},
+		{"vfs_rename_info_heap", SharedMap},
 		{"vr_retprobe_map", SharedMap},
 		{"rename_retprobe_map", SharedMap},
 	}
@@ -250,7 +250,7 @@ var (
 		{"file_errors_map", SharedMap}, // for eBPF errors
 		{"rename_retprobe_map", SharedMap},
 		{"spr_retprobe_map", SharedMap},
-		{"vfs_rename_info_heap", PrivateMap},
+		{"vfs_rename_info_heap", SharedMap},
 	}
 
 	KretprobeSecurityPathRenameMaps = []MapInfo{

@@ -1003,7 +1003,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{18}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{19}},
 
-		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10}},
+		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10, 12}},
 
 		tus.SensorMap{Name: "file_rename_heap_map", Progs: []uint{13}},
 
