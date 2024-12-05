@@ -89,6 +89,7 @@ const (
 	tcpSecurityGraft  = "tg_security_sock_graft"
 	tcpCloseProg      = "tg_event_tcp_close"
 	tcpListenProg     = "tg_event_sys_listen"
+	tcpRttProg        = "tg_tcp_ack_update_rtt"
 	tcpSendCheck4Prog = "tg_event_tcp_v4_send_check"
 	tcpSendCheck6Prog = "tg_event_tcp_v6_send_check"
 
@@ -106,7 +107,7 @@ const (
 	rawsock6SkInitProg = "tg_rawsockv6_init_sk"
 )
 
-func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
+func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{tcpSockopsProg, tcpSecurityGraft})
@@ -121,6 +122,25 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_cfg_map", []string{tcpSockopsProg, tcpSecurityGraft})
 	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{tcpSecurityGraft})
 	acceptMap := SensorMapByProgName(sensorProgs, "tg_tcp_accept_socket_to_sk_map", []string{tcpSecurityAccept, tcpSecurityGraft})
+	sendCheckSamplerMap := SensorMapByProgName(sensorProgs, "tg_tcp_send_check_sampler", []string{cgroupEgressProg, cgroupIngressProg})
+
+	if withRTT {
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		sendCheckSamplerMap.Progs = append(sendCheckSamplerMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+	}
 
 	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
 	if withUdpLatency {
@@ -261,7 +281,7 @@ func sockopsSensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorP
 	return sensorMaps
 }
 
-func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
+func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 	var skFreeProg string
 
@@ -325,9 +345,11 @@ func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, 
 		tcpSecurityAccept, tcpSecurityGraft,
 	})
 
+	var sendCheckSamplerMap tus.SensorMap
+
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			"tg_event_tcp_v4_send_check", "tg_event_tcp_v6_send_check",
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
@@ -337,6 +359,27 @@ func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, 
 		})...)
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
+		})...)
+		sendCheckSamplerMap = SensorMapByProgName(sensorProgs, "tg_tcp_send_check_sampler", []string{tcpSendCheck4Prog, tcpSendCheck6Prog})
+	} else {
+		sendCheckSamplerMap = SensorMapByProgName(sensorProgs, "tg_tcp_send_check_sampler", []string{cgroupEgressProg, cgroupIngressProg})
+	}
+
+	if withRTT {
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
+		})...)
+		sendCheckSamplerMap.Progs = append(sendCheckSamplerMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpRttProg,
 		})...)
 	}
 
@@ -511,7 +554,7 @@ func kprobeOrFentrySensorMaps(withUdpLatency bool, withIcmp bool, withRaw bool, 
 	return sensorMaps
 }
 
-func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
+func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	sensorProgs := []tus.SensorProg{
 		{Name: tcpSockopsProg, Type: ebpf.SockOps},
 		{Name: tcpSecurityAccept, Type: ebpf.Tracing},
@@ -522,6 +565,14 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 		{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
 		{Name: fentrySkAlloc, Type: ebpf.Tracing},
 		{Name: fentrySkFreeProg, Type: ebpf.Tracing},
+	}
+
+	if withRTT {
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpRttProg, Type: ebpf.Tracing})
+		} else {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpRttProg, Type: ebpf.Kprobe})
+		}
 	}
 
 	if utils.SupportFentry() {
@@ -570,7 +621,7 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 	return sensorProgs, sockProgsOffset
 }
 
-func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
+func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	var sensorProgs []tus.SensorProg
 
 	if utils.SupportFentry() {
@@ -589,6 +640,14 @@ func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool)
 			tus.SensorProg{Name: tcpSecurityAccept, Type: ebpf.Kprobe},
 			tus.SensorProg{Name: tcpSecurityGraft, Type: ebpf.Kprobe},
 		)
+	}
+
+	if withRTT {
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpRttProg, Type: ebpf.Tracing})
+		} else {
+			sensorProgs = append(sensorProgs, tus.SensorProg{Name: tcpRttProg, Type: ebpf.Kprobe})
+		}
 	}
 
 	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
@@ -681,22 +740,22 @@ func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool)
 	return sensorProgs, sockProgsOffset
 }
 
-func ProgsAndMaps(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
+func ProgsAndMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
 	var sensorProgs []tus.SensorProg
 	var sensorMaps []tus.SensorMap
 	var ni uint
 
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH != "amd64" {
-			sensorProgs, ni = kprobeOrFentrySensorProgs(withUdpLatency, withIcmp, withRaw)
-			sensorMaps = kprobeOrFentrySensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+			sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
+			sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 		} else {
-			sensorProgs, ni = sockopsSensorProgs(withUdpLatency, withIcmp, withRaw)
-			sensorMaps = sockopsSensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+			sensorProgs, ni = sockopsSensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
+			sensorMaps = sockopsSensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 		}
 	} else {
-		sensorProgs, ni = kprobeOrFentrySensorProgs(withUdpLatency, withIcmp, withRaw)
-		sensorMaps = kprobeOrFentrySensorMaps(withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+		sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
+		sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 	}
 
 	return sensorProgs, sensorMaps

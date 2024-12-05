@@ -37,7 +37,7 @@ TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \
       bpf_tcp_connect.o bpf_tcp_connect_fentry.o \
       bpf_tcp_security_accept_kprobe.o bpf_tcp_security_accept.o \
       bpf_tcp_listen.o bpf_tcp_listen_fentry.o \
-      bpf_tcp_rtt.o \
+      bpf_tcp_rtt.o bpf_tcp_rtt_fentry.o \
       bpf_tcp_send_check.o \
       bpf_tcp_sockops_5_15.o
 

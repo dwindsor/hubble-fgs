@@ -149,6 +149,10 @@ spec:
     tcp:
       enable: true
       statsInterval: 20
+      histogram:
+        enable: true
+        min: 0
+        max: 4000
       watermarks:
         enable: true
         windowSize: 1000
@@ -199,7 +203,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true)
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true, true)
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

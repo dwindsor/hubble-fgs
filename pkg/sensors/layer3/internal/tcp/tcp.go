@@ -172,15 +172,22 @@ var (
 		"layer3_sensor",
 	)
 
-	// RTT Tracer uses kprobe on the TCP ACK Send Check to get the rtt_us value
+	// RTT Tracer uses kprobe or Fentry on the TCP ACK Update RTT to get the rtt_us value
 	// as that is easily obtained. This is probably as good as we can easily get,
 	// although open to improvements and discussion.
-	RttTracer = program.Builder(
+	RttTracerKprobe = program.Builder(
 		"bpf_tcp_rtt.o",
 		"tcp_ack_update_rtt",
 		"kprobe/tcp_ack_update_rtt",
 		"tg_tcp_ack_update_rtt",
 		"kprobe")
+
+	RttTracerFentry = program.Builder(
+		"bpf_tcp_rtt_fentry.o",
+		"fentry",
+		"fentry/tcp_ack_update_rtt",
+		"tg_tcp_ack_update_rtt",
+		"tcp_fentry")
 
 	// Maps for TCP Sockets
 	SocketStats              = program.MapBuilder(base.SocketStats.Name, SecurityGraft)
@@ -376,7 +383,11 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	}
 
 	if tcpconfig.RttHistogramMax != 0 {
-		progs = append(progs, RttTracer)
+		if utils.SupportFentry() {
+			progs = append(progs, RttTracerFentry)
+		} else {
+			progs = append(progs, RttTracerKprobe)
+		}
 	}
 
 	/* Kernels <=5.4 do not have probe_read() support for cgroup/skb programs

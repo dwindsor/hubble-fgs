@@ -16,13 +16,9 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/tcp_ack_update_rtt"), used)) int
-tg_tcp_ack_update_rtt(struct pt_regs *ctx)
+SEC("fentry/tcp_ack_update_rtt")
+int BPF_PROG(tg_tcp_ack_update_rtt, struct sock *skp, u32 flag, s64 seq_rtt_us, s64 sack_rtt_us)
 {
-	struct sock *skp = (struct sock *)PT_REGS_PARM1(ctx);
-	s64 sack_rtt_us = (s64)PT_REGS_PARM4(ctx);
-	s64 seq_rtt_us = (s64)PT_REGS_PARM3(ctx);
-	u32 flag = (u32)PT_REGS_PARM2(ctx);
-
-	return __tcp_ack_update_rtt(ctx, (struct tcp_sock *)skp, flag, seq_rtt_us, sack_rtt_us);
+	__tcp_ack_update_rtt(ctx, (struct tcp_sock *)skp, flag, seq_rtt_us, sack_rtt_us);
+	return 0;
 }
