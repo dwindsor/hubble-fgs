@@ -272,8 +272,9 @@ check:
 endif
 
 .PHONY: test
-test: tester-progs hubble-bpf ## Run Go tests.
-	$(SUDO) $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ./operator/... ${EXTRA_TESTFLAGS}
+test: tester-progs tetragon-bpf ## Run Go tests.
+	$(MAKE) bpf-test BPFGOTESTFLAGS="-v"
+	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ./operator/... ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
 tester-progs:
@@ -283,10 +284,26 @@ tester-progs:
 	# programs. We can probably refactor OSS to deal with it, but that's for another day.
 	ln -s -f $(OSS_DIR)/contrib vendor/github.com/cilium/tetragon/
 
-## bpf-test: ## run BPF tests.
-## bpf-test BPFGOTESTFLAGS="-v": ## run BPF tests with verbose.
+.PHONY: tetragon-bpf-test
+ifeq (1,$(LOCAL_CLANG))
+tetragon-bpf-test: tetragon-bpf-test-local ## Compile BPF unit test programs.
+else
+tetragon-bpf-test: tetragon-bpf-test-container
+endif
+
+.PHONY: tetragon-bpf-test-local
+tetragon-bpf-test-local:
+	$(MAKE) -C ./bpf/tests BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
+
+.PHONY: tetragon-bpf-test-container
+tetragon-bpf-test-container:
+	$(CONTAINER_ENGINE) rm tetragon-clang || true
+	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name tetragon-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf/tests BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
+
+## bpf-test: ## Run BPF tests.
+## bpf-test BPFGOTESTFLAGS="-v": ## Run BPF tests with verbose.
 .PHONY: bpf-test
-bpf-test:
+bpf-test: tetragon-bpf-test
 	$(MAKE) -C ./bpf test
 
 .PHONY: tetragon-bpf-verify hubble-bpf-verify
