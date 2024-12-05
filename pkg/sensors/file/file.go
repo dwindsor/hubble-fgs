@@ -1700,6 +1700,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Progs:  progs,
 		Maps:   maps,
 		Policy: policy.TpName(),
+		PostLoadHook: func() error {
+			clear(allInodes)
+			allInodes = nil
+			return nil
+		},
 		PreUnloadHook: func() error {
 			pol.FileMonitoringTable.RmFIM(config.TpId)
 			return nil
