@@ -3,17 +3,12 @@
 
 //go:build ignore
 
-#include "vmlinux.h"
-
-#include "bpf_tracing.h" // bpf_printk
-
-#include "bpf_task.h"
-
 char _license[] __attribute__((section("license"), used)) = "Dual BSD/GPL";
 
-__attribute__((section("cgroup_skb/egress"), used)) int
-test_dns_parser()
-{
-	return 1;
-}
+#include "../parsers/dns/dns_parser.h"
 
+__attribute__((section("cgroup_skb/egress"), used)) int
+test_dns_parser(struct __sk_buff *skb)
+{
+	return parse_dns(skb);
+}

@@ -1,6 +1,7 @@
 include ../Makefile.defs
 
 TESTS = dns_parser_test.o
+HEADERS = ../parsers/dns/dns_parser.h
 
 OBJSDIR  := objs/
 OBJS := $(addprefix $(OBJSDIR),$(TESTS))
@@ -18,7 +19,7 @@ $(OBJS): | $(OBJSDIR)
 $(OBJSDIR):
 	mkdir $(OBJSDIR)
 
-objs/%.ll: %.c
+objs/%.ll: %.c $(HEADERS)
 	$(CLANG) $(CLANG_FLAGS) -I ../ -c $< -o $@
 
 objs/%.o: objs/%.ll
