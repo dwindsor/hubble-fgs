@@ -23,8 +23,8 @@ func ProgsAndMaps() ([]tus.SensorProg, []tus.SensorMap) {
 
 	if utils.SupportFentry() {
 		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "security_sk_alloc", Type: ebpf.Tracing},
-			1: tus.SensorProg{Name: "security_sk_free", Type: ebpf.Tracing},
+			0: tus.SensorProg{Name: "tg_security_sk_alloc", Type: ebpf.Tracing},
+			1: tus.SensorProg{Name: "tg_security_sk_free", Type: ebpf.Tracing},
 		}
 	} else {
 		sensorProgs = []tus.SensorProg{

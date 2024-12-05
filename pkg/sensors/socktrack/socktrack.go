@@ -33,28 +33,28 @@ var (
 		"bpf_sk_alloc.o",
 		"security_sk_alloc",
 		"kprobe/security_sk_alloc",
-		"tg_security_sk_alloc_kprobe",
+		"tg_security_sk_alloc",
 		"kprobe")
 
 	SkFreeKprobe = program.Builder(
 		"bpf_sk_alloc.o",
 		"security_sk_free",
 		"kprobe/security_sk_free",
-		"tg_security_sk_free_kprobe",
+		"tg_security_sk_free",
 		"kprobe")
 
 	SkAllocFentry = program.Builder(
 		"bpf_security_sk_alloc.o",
 		"security_sk_alloc",
 		"fentry/security_sk_alloc",
-		"tg_security_sk_alloc_fentry",
+		"tg_security_sk_alloc",
 		"socktrack_fentry")
 
 	SkFreeFentry = program.Builder(
 		"bpf_security_sk_alloc.o",
 		"security_sk_free",
 		"fentry/security_sk_free",
-		"tg_security_sk_free_fentry",
+		"tg_security_sk_free",
 		"socktrack_fentry")
 
 	SocketMapKprobe           = program.MapBuilder(SocketMapName, SkAllocKprobe)

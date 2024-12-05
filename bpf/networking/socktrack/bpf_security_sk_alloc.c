@@ -26,7 +26,7 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 SEC("fentry/security_sk_alloc")
-int BPF_PROG(security_sk_alloc, struct sock *sk, int family, int priority)
+int BPF_PROG(tg_security_sk_alloc, struct sock *sk, int family, int priority)
 {
 	u64 cookie = (u64)sk;
 	u16 skc_num = 0;
@@ -44,7 +44,7 @@ int BPF_PROG(security_sk_alloc, struct sock *sk, int family, int priority)
 }
 
 SEC("fentry/security_sk_free")
-int BPF_PROG(security_sk_free, struct sock *sk)
+int BPF_PROG(tg_security_sk_free, struct sock *sk)
 {
 	u64 cookie = (u64)sk;
 	u16 family;
