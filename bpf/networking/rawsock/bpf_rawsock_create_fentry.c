@@ -19,19 +19,21 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section("kprobe/raw_sk_init"), used)) int
-tg_rawsock_sk_init(struct pt_regs *ctx)
+SEC("fentry/raw_sk_init")
+int BPF_PROG(tg_rawsock_sk_init, struct sock *sk)
 {
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
+	u64 cookie = (u64)sk;
 
-	return __rawsock_sk_init(ctx, cookie);
+	__rawsock_sk_init(ctx, cookie);
+	return 0;
 }
 
 // IPv6 version
-__attribute__((section("kprobe/rawv6_init_sk"), used)) int
-tg_rawsockv6_init_sk(struct pt_regs *ctx)
+SEC("fentry/rawv6_init_sk")
+int BPF_PROG(tg_rawsockv6_init_sk, struct sock *sk)
 {
-	u64 cookie = (u64)PT_REGS_PARM1(ctx);
+	u64 cookie = (u64)sk;
 
-	return __rawsock_sk_init(ctx, cookie);
+	__rawsock_sk_init(ctx, cookie);
+	return 0;
 }

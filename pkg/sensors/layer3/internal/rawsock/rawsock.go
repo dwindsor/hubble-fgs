@@ -33,10 +33,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
-	SkRawAllocV4 = program.Builder(
+	SkRawAllocV4Kprobe = program.Builder(
 		"bpf_rawsock_create.o",
 		"raw_sk_init",
 		"kprobe/raw_sk_init",
@@ -44,7 +45,15 @@ var (
 		"kprobe",
 	)
 
-	SkRawAllocV6 = program.Builder(
+	SkRawAllocV4Fentry = program.Builder(
+		"bpf_rawsock_create_fentry.o",
+		"fentry",
+		"fentry/raw_sk_init",
+		"tg_rawsock_sk_init",
+		"rawsock_fentry",
+	)
+
+	SkRawAllocV6Kprobe = program.Builder(
 		"bpf_rawsock_create.o",
 		"rawv6_init_sk",
 		"kprobe/rawv6_init_sk",
@@ -52,10 +61,21 @@ var (
 		"kprobe",
 	)
 
+	SkRawAllocV6Fentry = program.Builder(
+		"bpf_rawsock_create_fentry.o",
+		"fentry",
+		"fentry/rawv6_init_sk",
+		"tg_rawsockv6_init_sk",
+		"rawsock_fentry",
+	)
+
 	// Shared socket cookie infrastructure
-	SocketCookieMap   = program.MapBuilder(SocketMapName, SkRawAllocV4)
-	SocketCookieStats = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4)
-	VerMap            = program.MapBuilder("tg_ver_map", SkRawAllocV4)
+	SocketCookieMapKprobe   = program.MapBuilder(SocketMapName, SkRawAllocV4Kprobe)
+	SocketCookieStatsKprobe = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4Kprobe)
+	VerMapKprobe            = program.MapBuilder("tg_ver_map", SkRawAllocV4Kprobe)
+	SocketCookieMapFentry   = program.MapBuilder(SocketMapName, SkRawAllocV4Fentry)
+	SocketCookieStatsFentry = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4Fentry)
+	VerMapFentry            = program.MapBuilder("tg_ver_map", SkRawAllocV4Fentry)
 )
 
 const (
@@ -80,15 +100,31 @@ func EnableRawsock() ([]*program.Program, []*program.Map) {
 		return nil, nil
 	}
 
-	progs := []*program.Program{
-		SkRawAllocV4,
-		SkRawAllocV6,
+	var progs []*program.Program
+	var maps []*program.Map
+
+	if utils.SupportFentry() {
+		progs = []*program.Program{
+			SkRawAllocV4Fentry,
+			SkRawAllocV6Fentry,
+		}
+		maps = []*program.Map{
+			SocketCookieMapFentry,
+			SocketCookieStatsFentry,
+			VerMapFentry,
+		}
+	} else {
+		progs = []*program.Program{
+			SkRawAllocV4Kprobe,
+			SkRawAllocV6Kprobe,
+		}
+		maps = []*program.Map{
+			SocketCookieMapKprobe,
+			SocketCookieStatsKprobe,
+			VerMapKprobe,
+		}
 	}
-	maps := []*program.Map{
-		SocketCookieMap,
-		SocketCookieStats,
-		VerMap,
-	}
+
 	logger.GetLogger().Infof("Enable Raw socket")
 	return progs, maps
 }

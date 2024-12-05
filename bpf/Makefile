@@ -47,7 +47,7 @@ ICMP = bpf_icmp_rcv.o bpf_icmp_rcv_fentry.o
 PING = bpf_pingsock_create.o bpf_pingsock_create_fentry.o
 L3 = bpf_cgroup_net_load_5-4.o bpf_cgroup_net_load.o bpf_cgroup_net.o
 
-RAWSOCK = bpf_rawsock_create.o
+RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
 
 TIMESTAMP =  bpf_timestamp.o
 

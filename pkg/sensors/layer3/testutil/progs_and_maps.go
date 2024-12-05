@@ -551,10 +551,17 @@ func sockopsSensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus
 	}
 
 	if withRaw {
-		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			{Name: rawsock4SkInitProg, Type: ebpf.Kprobe},
-			{Name: rawsock6SkInitProg, Type: ebpf.Kprobe},
-		}...)
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: rawsock4SkInitProg, Type: ebpf.Tracing},
+				{Name: rawsock6SkInitProg, Type: ebpf.Tracing},
+			}...)
+		} else {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: rawsock4SkInitProg, Type: ebpf.Kprobe},
+				{Name: rawsock6SkInitProg, Type: ebpf.Kprobe},
+			}...)
+		}
 	}
 
 	sockProgs, _ := socktrack.ProgsAndMaps()
@@ -636,10 +643,17 @@ func kprobeOrFentrySensorProgs(withUdpLatency bool, withIcmp bool, withRaw bool)
 	}
 
 	if withRaw && kernels.MinKernelVersion("5.4.0") {
-		sensorProgs = append(sensorProgs, []tus.SensorProg{
-			{Name: rawsock4SkInitProg, Type: ebpf.Kprobe},
-			{Name: rawsock6SkInitProg, Type: ebpf.Kprobe},
-		}...)
+		if utils.SupportFentry() {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: rawsock4SkInitProg, Type: ebpf.Tracing},
+				{Name: rawsock6SkInitProg, Type: ebpf.Tracing},
+			}...)
+		} else {
+			sensorProgs = append(sensorProgs, []tus.SensorProg{
+				{Name: rawsock4SkInitProg, Type: ebpf.Kprobe},
+				{Name: rawsock6SkInitProg, Type: ebpf.Kprobe},
+			}...)
+		}
 	}
 
 	if utils.SupportFentry() {
