@@ -47,7 +47,7 @@ require (
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.3.1
 	golang.org/x/net v0.31.0
-	golang.org/x/sys v0.27.0
+	golang.org/x/sys v0.28.0
 	golang.org/x/time v0.8.0
 	google.golang.org/api v0.206.0
 	google.golang.org/grpc v1.68.0
