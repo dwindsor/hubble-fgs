@@ -392,6 +392,35 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 	return 0;
 }
 
+static inline __attribute__((always_inline)) int process_socketmap_rekey(struct destination_endpoint_key *key, struct __sk_buff *skb)
+{
+	struct endpoint_id_value *value;
+	struct endpoint_id_key idkey;
+
+	if (skb->protocol != bpf_htons(ETH_P_IPV6)) {
+		idkey.addr[0] = skb->remote_ip4;
+		idkey.addr[1] = 0;
+	} else {
+		__u32 l[2];
+		__u32 u[2];
+
+		l[0] = skb->remote_ip6[0];
+		l[1] = skb->remote_ip6[1];
+		u[0] = skb->remote_ip6[2];
+		u[1] = skb->remote_ip6[3];
+
+		idkey.addr[0] = (__u64)l;
+		idkey.addr[1] = (__u64)u;
+	}
+
+	value = map_lookup_elem(&tg_endpoint_id_map, &idkey);
+	if (value && value->id != key->destination_id) {
+		key->source = DESTINATION_SOURCE_USERSPACE;
+		key->destination_id = value->id;
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
@@ -405,6 +434,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
+	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
 		return SK_PASS;
@@ -459,6 +489,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
+	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
 		return SK_PASS;
