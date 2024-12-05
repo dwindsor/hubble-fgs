@@ -239,10 +239,18 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 
-	if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess {
+	if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess ||
+		iperrormetrics.IpError(m.Return) == iperrormetrics.TcpSendNoSocket {
 		pid, fd, family, err := findPidFdForCookie(m.SockCookie)
 		if err == nil {
-			GetSocketForFD(syscall.IPPROTO_UDP, pid, fd, m.SockCookie, family)
+			proto := uint16(0)
+			switch iperrormetrics.IpError(m.Return) {
+			case iperrormetrics.UdpStackBurstNoProcess:
+				proto = syscall.IPPROTO_UDP
+			case iperrormetrics.TcpSendNoSocket:
+				proto = syscall.IPPROTO_TCP
+			}
+			GetSocketForFD(proto, pid, fd, m.SockCookie, family)
 		}
 	}
 
