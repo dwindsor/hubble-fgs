@@ -11,6 +11,8 @@
 #ifndef __PROCESS_ENDPOINTS_H__
 #define __PROCESS_ENDPOINTS_H__
 
+#include "lib/process.h"
+
 struct endpoint_id_key {
 	uint64_t addr[2];
 };
@@ -53,10 +55,22 @@ struct {
 	__uint(value_size, sizeof(struct endpoint_id_value));
 } tg_bpf_endpoint_id_heap SEC(".maps");
 
+struct process_tree_binary_uid_key {
+	char binary[BINARY_PATH_MAX_LEN];
+	char args[MAXARGLENGTH];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
+} process_tree_binary_uid_key_map SEC(".maps");
+
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__type(key, __u8[BINARY_PATH_MAX_LEN]);
+	__uint(key_size, sizeof(struct process_tree_binary_uid_key));
 	__uint(value_size, sizeof(struct msg_execve_key));
 } process_tree_binary_uid_map SEC(".maps");
 
@@ -70,7 +84,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
 	__uint(key_size, sizeof(struct msg_execve_key));
-	__type(value, __u8[BINARY_PATH_MAX_LEN]);
+	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
 } process_tree_uid_binary_map SEC(".maps");
 
 struct process_tree_key {

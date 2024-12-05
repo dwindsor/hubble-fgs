@@ -39,6 +39,7 @@ const (
 
 type binary struct {
 	Path [256]byte
+	Args [256]byte
 }
 
 type ProcessExecveKey struct {

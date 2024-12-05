@@ -71,13 +71,19 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	if (!k)
 		return 0;
 
+	struct process_tree_binary_uid_key *tree_key;
+	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	if (!tree_key)
+		return 0;
+	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map,
-				   curr->bin.path);
+				   tree_key);
 	if (!self_uid) {
 		map_update_elem(&process_tree_uid_binary_map,
-				&curr->key, &curr->bin.path, 0);
+				&curr->key, tree_key, 0);
 		map_update_elem(&process_tree_binary_uid_map,
-				curr->bin.path, &curr->key, 0);
+				tree_key, &curr->key, 0);
 		self_uid = &curr->key;
 	}
 
@@ -91,7 +97,10 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	if (!parent) {
 		parent_uid = &zero_uid;
 	} else {
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
+		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
+
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 		if (!parent_uid)
 			parent_uid = &zero_uid;
 	}
@@ -185,7 +194,14 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!curr)
 		return 0;
 
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map, curr->bin.path);
+	struct process_tree_binary_uid_key *tree_key;
+
+	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	if (!tree_key)
+		return 0;
+	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	if (!self_uid)
 		return 0;
 
@@ -197,7 +213,9 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!parent) {
 		parent_uid = &zero_uid;
 	} else {
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
+		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 		if (!parent_uid)
 			parent_uid = &zero_uid;
 	}
@@ -253,7 +271,13 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 	if (!curr)
 		return 0;
 
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map, curr->bin.path);
+	struct process_tree_binary_uid_key *tree_key;
+	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	if (!tree_key)
+		return 0;
+	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	if (!self_uid)
 		return 0;
 
@@ -265,7 +289,9 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 	if (!parent) {
 		parent_uid = &zero_uid;
 	} else {
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, parent->bin.path);
+		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
+		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 		if (!parent_uid)
 			parent_uid = &zero_uid;
 	}
