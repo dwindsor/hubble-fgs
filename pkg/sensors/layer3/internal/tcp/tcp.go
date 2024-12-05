@@ -316,9 +316,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		progs = append(progs, RttTracer)
 	}
 
-	/* Kernels <=5.4 do not have support for sk_to_tcp() which means
-	 * we can not support reading stats off the TCP socket easily so
-	 * for these kernels fall back to extra kprobe hook.
+	/* Kernels <=5.4 do not have probe_read() support for cgroup/skb programs
+	 * so we fall back on kprobes here.
 	 */
 	if !kernels.MinKernelVersion("5.5.0") {
 		progs = append(progs, SendCheck4)

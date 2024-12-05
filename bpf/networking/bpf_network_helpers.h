@@ -113,19 +113,15 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk, struct tcp_sock *
 static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
 	struct tcp_sock *tcp;
-	struct sock *skp;
 
 	if (!sk)
 		return SK_PASS;
 	if (!v)
 		return SK_PASS;
 
-	tcp = skc_to_tcp_sock(sk);
-	if (!tcp)
-		return SK_PASS;
-	skp = (struct sock *)tcp;
+	tcp = (struct tcp_sock *)sk;
 
-	get_tcp_stats(&v->stats, skp, tcp);
+	get_tcp_stats(&v->stats, sk, tcp);
 
 	return SK_PASS;
 }

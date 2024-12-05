@@ -161,7 +161,6 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
 	struct tcp_sock *tcp;
-	struct bpf_sock *skp;
 	struct sock *sk;
 	__u32 rcv_wnd;
 	int zero = 0;
@@ -173,13 +172,10 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 		return SK_PASS;
 	}
 
-	skp = skb->sk;
-	if (!skp) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SK);
-		return SK_PASS;
-	}
-
-	tcp = (struct tcp_sock *)skc_to_tcp_sock(skp);
+	c = *cookie;
+	// We can just cast pointers here because a struct bpf_sock * points to the same location
+	// as a struct sock * (with BPF magic behind the scenes to provide different functionality).
+	tcp = (struct tcp_sock *)c;
 	sk = (struct sock *)tcp;
 	if (!tcp) {
 		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_TCPSOCK);
@@ -188,7 +184,6 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 
 	probe_read_kernel(&state, sizeof(state), _((const void *)&(sk->__sk_common.skc_state)));
 
-	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (unlikely(!socket)) {
 		// Don't report an error here if the TCP socket isn't yet active.
@@ -252,7 +247,7 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	if (send) {
 		if (ip)
 			tcp_check_fin_tx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
-#ifndef NO_SK_TO_TCP
+#ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
 #else
 		return SK_PASS;
@@ -297,7 +292,7 @@ tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 pay
 {
 	if (send) {
 		tcp_check_fin_tx(skb, ip6, payload_off, cookie, true);
-#ifndef NO_SK_TO_TCP
+#ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
 #else
 		return SK_PASS;
