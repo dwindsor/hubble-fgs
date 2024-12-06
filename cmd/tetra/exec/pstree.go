@@ -231,7 +231,7 @@ func printTree(res *tetragon.GetProcessModelResponse) error {
 			for _, p := range wlProcesses {
 				path := ""
 				if p.Binary != "" {
-					path = fmt.Sprintf("%s:%s", p.Parent, p.Binary)
+					path = fmt.Sprintf("%s %s:%s %s", p.Parent, p.ParentArgs, p.Binary, p.BinaryArgs)
 				} else {
 					path = fmt.Sprintf(model.WorkloadDestinations)
 				}
