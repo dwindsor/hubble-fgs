@@ -430,21 +430,28 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		// uidValue.Path is a fixed size byte array. Trim trailing null bytes.
 		n := bytes.IndexByte(uidValue.Path[:], 0)
 		selfStr := fmt.Sprintf("%s", uidValue.Path[:n])
+		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
+		selfArgs := fmt.Sprintf("%s", uidValue.Args[:m])
 
 		parentPath := ""
+		parentArgs := ""
 		err = uidMap.Lookup(&key.Parent, &uidValue)
 		if err == nil {
 			n = bytes.IndexByte(uidValue.Path[:], 0)
 			parentPath = fmt.Sprintf("%s", uidValue.Path[:n])
+			m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
+			parentArgs = fmt.Sprintf("%s", uidValue.Args[:m])
 		}
 
 		var dest []*tetragon.Destination
 		dest = dstList[key]
 
 		model = append(model, &tetragon.ProcessModel{
-			Binary:    selfStr,
-			Parent:    parentPath,
-			Namespace: ns,
+			Binary:     selfStr,
+			BinaryArgs: selfArgs,
+			Parent:     parentPath,
+			ParentArgs: parentArgs,
+			Namespace:  ns,
 			Workload: &tetragon.Workload{
 				Name: wl,
 				Kind: kind,
