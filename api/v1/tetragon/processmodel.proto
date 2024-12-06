@@ -52,10 +52,12 @@ message Destination {
 
 message ProcessModel {
 	string binary = 1;
-	string parent = 2;
-	string namespace = 3;
-	Workload workload = 4;
-	repeated Destination dest = 5;
+	string binary_args = 2;
+	string parent = 3;
+	string parent_args = 4;
+	string namespace = 5;
+	Workload workload = 6;
+	repeated Destination dest = 7;
 }
 
 message GetProcessModelResponse {

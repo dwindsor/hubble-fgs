@@ -3577,7 +3577,9 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | binary | [string](#string) |  |  |
+| binary_args | [string](#string) |  |  |
 | parent | [string](#string) |  |  |
+| parent_args | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
 | workload | [Workload](#tetragon-Workload) |  |  |
 | dest | [Destination](#tetragon-Destination) | repeated |  |
