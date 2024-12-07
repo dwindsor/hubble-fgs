@@ -58,7 +58,6 @@ jobs:
         make check-copyright
         sudo make hubble-bpf
         sudo -E echo "run go tests: " `uname -a`
-        sudo -E go mod verify
         export FGS_LIB="${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs/bpf/objs/"
         sudo apt install gcc # needed for tester-progs
         sudo -E make tetragon-fs-scanner

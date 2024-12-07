@@ -14,8 +14,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -27,11 +27,11 @@ func TestCheckApplicationEventModel(t *testing.T) {
 
 	ctx := context.Background()
 
-	model := &tetragon.ApplicationModelEvent{
+	model := &appModelV1.ApplicationModelEvent{
 		ClusterName:      "foo",
 		NodeName:         "foo-a5cf729e",
 		Time:             &timestamppb.Timestamp{},
-		ApplicationModel: &tetragon.ApplicationModel{},
+		ApplicationModel: &appModelV1.ApplicationModel{},
 	}
 
 	chk, err = checker.NewApplicationModelChecker([]string{`cluster_name == "foo" && node_name.matches("^" + cluster_name + "-[0-9a-f]+$")`})

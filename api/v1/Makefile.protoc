@@ -11,7 +11,6 @@ TETRAGON_PROTO_SOURCES := \
 	tetragon/dns.proto \
 	tetragon/sandbox.proto \
 	tetragon/processmodel.proto \
-	tetragon/appmodel.proto \
 
 TETRAGON_GO_TARGETS := \
 	$(TETRAGON_PROTO_SOURCES:.proto=.pb.go) \
@@ -47,7 +46,6 @@ protobuf:
 	--go_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go_opt=Mtetragon/sandbox.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go_opt=Mtetragon/processmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
-	--go_opt=Mtetragon/appmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-grpc_out=require_unimplemented_servers=false,paths=source_relative:. \
 	--go-grpc_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-grpc_opt=Mtetragon/bpf.proto="github.com/cilium/tetragon/api/v1/tetragon" \
@@ -59,7 +57,6 @@ protobuf:
 	--go-grpc_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-grpc_opt=Mtetragon/sandbox.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-grpc_opt=Mtetragon/processmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
-	--go-grpc_opt=Mtetragon/appmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-json_out=orig_name=true,paths=source_relative:. \
 	--go-json_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-json_opt=Mtetragon/bpf.proto="github.com/cilium/tetragon/api/v1/tetragon" \
@@ -89,5 +86,4 @@ codegen:
 	--go-tetragon_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-tetragon_opt=Mtetragon/sandbox.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	--go-tetragon_opt=Mtetragon/processmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
-	--go-tetragon_opt=Mtetragon/appmodel.proto="github.com/cilium/tetragon/api/v1/tetragon" \
 	${TETRAGON_PROTO_SOURCES}

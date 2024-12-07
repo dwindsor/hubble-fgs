@@ -34,6 +34,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/rivo/tview"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -286,7 +287,7 @@ func printModel(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
-func addProcessNodes(node *tview.TreeNode, processes []*tetragon.ApplicationProcess) {
+func addProcessNodes(node *tview.TreeNode, processes []*appModelV1.ApplicationProcess) {
 	for _, ps := range processes {
 		childName := ps.GetName()
 		if len(ps.GetConnections()) == 1 {
@@ -309,7 +310,7 @@ func selected(node *tview.TreeNode) {
 		return
 	}
 	switch val := node.GetReference().(type) {
-	case *tetragon.ApplicationModel:
+	case *appModelV1.ApplicationModel:
 		if len(val.GetNamespaces()) > 0 {
 			namespaces := tview.NewTreeNode(fmt.Sprintf("%d namespaces", len(val.GetNamespaces()))).
 				SetColor(tcell.ColorSnow).
@@ -324,7 +325,7 @@ func selected(node *tview.TreeNode) {
 				SetSelectable(true)
 			node.AddChild(host)
 		}
-	case []*tetragon.ApplicationNamespace:
+	case []*appModelV1.ApplicationNamespace:
 		for _, ns := range val {
 			nodeName := ns.GetName()
 			if len(ns.GetWorkloads()) == 1 {
@@ -338,7 +339,7 @@ func selected(node *tview.TreeNode) {
 				SetColor(tcell.ColorGreen)
 			node.AddChild(nsNode)
 		}
-	case *tetragon.ApplicationNamespace:
+	case *appModelV1.ApplicationNamespace:
 		for _, wl := range val.GetWorkloads() {
 			nodeName := fmt.Sprintf("%s/%s", wl.GetKind(), wl.GetName())
 			if len(wl.GetProcesses()) == 1 {
@@ -352,11 +353,11 @@ func selected(node *tview.TreeNode) {
 				SetColor(tcell.ColorSkyblue)
 			node.AddChild(wlNode)
 		}
-	case *tetragon.ApplicationHost:
+	case *appModelV1.ApplicationHost:
 		addProcessNodes(node, val.GetProcesses())
-	case *tetragon.ApplicationWorkload:
+	case *appModelV1.ApplicationWorkload:
 		addProcessNodes(node, val.GetProcesses())
-	case *tetragon.ApplicationProcess:
+	case *appModelV1.ApplicationProcess:
 		for _, conn := range val.GetConnections() {
 			childName := fmt.Sprintf("%s:%d", conn.GetDestinationName(), conn.GetDestinationPort())
 			child := tview.NewTreeNode(childName).
@@ -369,7 +370,7 @@ func selected(node *tview.TreeNode) {
 }
 
 func printInteractiveTree() error {
-	appModel := &tetragon.ApplicationModelEvent{}
+	appModel := &appModelV1.ApplicationModelEvent{}
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
@@ -731,12 +732,12 @@ func NewSquash() *cobra.Command {
 }
 
 func squash() error {
-	appModel := &tetragon.ApplicationModel{}
+	appModel := &appModelV1.ApplicationModel{}
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 		for {
-			var ev tetragon.ApplicationModelEvent
+			var ev appModelV1.ApplicationModelEvent
 			err := decoder.Decode(&ev)
 			if err == io.EOF {
 				break
@@ -746,7 +747,7 @@ func squash() error {
 			}
 			appModel = model.Merge(appModel, ev.GetApplicationModel())
 		}
-		res := &tetragon.ApplicationModelEvent{
+		res := &appModelV1.ApplicationModelEvent{
 			ApplicationModel: appModel,
 		}
 		appBytes, err := res.MarshalJSON()

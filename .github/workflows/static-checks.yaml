@@ -96,6 +96,7 @@ jobs:
 
       - name: Check module vendoring
         run: |
+          git config --global url."https://isovalent-bot:${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}@github.com".insteadOf "https://github.com"
           make vendor
           echo "git status --porcelain:" `git status --porcelain`
           test -z "$(git status --porcelain)" || (echo "Module vendoring checks failed. Please run 'make vendor', and submit your changes"; exit 1)

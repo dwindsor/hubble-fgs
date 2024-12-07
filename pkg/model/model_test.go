@@ -13,21 +13,21 @@ package model
 import (
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMerge(t *testing.T) {
-	m1 := tetragon.ApplicationModel{
+	m1 := appModelV1.ApplicationModel{
 		Namespaces: nil,
-		Host: &tetragon.ApplicationHost{
-			Processes: []*tetragon.ApplicationProcess{{Name: "curl"}},
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcess{{Name: "curl"}},
 		},
 	}
-	m2 := tetragon.ApplicationModel{
+	m2 := appModelV1.ApplicationModel{
 		Namespaces: nil,
-		Host: &tetragon.ApplicationHost{
-			Processes: []*tetragon.ApplicationProcess{{Name: "curl"}, {Name: "wget"}},
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcess{{Name: "curl"}, {Name: "wget"}},
 		},
 	}
 	res := Merge(&m1, &m2)

@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/cel-go/cel"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -67,10 +67,10 @@ type ApplicationModelChecker struct {
 }
 
 func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error) {
-	applicationModelEventName := string((&tetragon.ApplicationModelEvent{}).ProtoReflect().Descriptor().FullName())
-	applicationModelName := string((&tetragon.ApplicationModel{}).ProtoReflect().Descriptor().FullName())
+	applicationModelEventName := string((&appModelV1.ApplicationModelEvent{}).ProtoReflect().Descriptor().FullName())
+	applicationModelName := string((&appModelV1.ApplicationModel{}).ProtoReflect().Descriptor().FullName())
 	options := []cel.EnvOption{
-		cel.Container("tetragon"),
+		cel.Container("application_model.v1alpha"),
 		cel.Variable("event", cel.ObjectType(applicationModelEventName)),
 		cel.Variable("model", cel.ObjectType(applicationModelName)),
 		cel.Variable("application_model", cel.ObjectType(applicationModelName)),
@@ -78,13 +78,13 @@ func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error
 		cel.Variable("node_name", cel.StringType),
 		cel.Variable("time", cel.TimestampType),
 		cel.Types(
-			&tetragon.ApplicationModelEvent{},
-			&tetragon.ApplicationModel{},
-			&tetragon.ApplicationConnection{},
-			&tetragon.ApplicationProcess{},
-			&tetragon.ApplicationHost{},
-			&tetragon.ApplicationNamespace{},
-			&tetragon.ApplicationWorkload{},
+			&appModelV1.ApplicationModelEvent{},
+			&appModelV1.ApplicationModel{},
+			&appModelV1.ApplicationConnection{},
+			&appModelV1.ApplicationProcess{},
+			&appModelV1.ApplicationHost{},
+			&appModelV1.ApplicationNamespace{},
+			&appModelV1.ApplicationWorkload{},
 		),
 	}
 
@@ -100,7 +100,7 @@ func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error
 }
 
 // CheckApplicationModelEvent checks an application model.
-func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.Context, appModelEvent *tetragon.ApplicationModelEvent) (ApplicationCheckerResult, error) {
+func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.Context, appModelEvent *appModelV1.ApplicationModelEvent) (ApplicationCheckerResult, error) {
 	failed := []string{}
 
 	for _, expr := range checker.exprs {
@@ -148,7 +148,7 @@ func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.C
 
 // CheckApplicationModelEventJSON checks an application model's JSON representation.
 func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx context.Context, appModelEventJSON string) (ApplicationCheckerResult, error) {
-	appModel := &tetragon.ApplicationModelEvent{}
+	appModel := &appModelV1.ApplicationModelEvent{}
 	if err := protojson.Unmarshal([]byte(appModelEventJSON), appModel); err != nil {
 		return nil, err
 	}

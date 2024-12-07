@@ -1,8 +1,8 @@
 module github.com/isovalent/hubble-fgs
 
-go 1.23.0
+go 1.23.2
 
-toolchain go1.23.1
+toolchain go1.23.3
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.32.4
@@ -28,6 +28,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000
+	github.com/isovalent/ipa v0.0.0-20241207203040-fd8bdee0bb87
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.62
 	github.com/operator-framework/api v0.27.0

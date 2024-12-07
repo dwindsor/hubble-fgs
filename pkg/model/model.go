@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -39,7 +40,7 @@ type connectionKey struct {
 	destinationPort uint64
 }
 
-type connectionMap map[connectionKey]*tetragon.ApplicationConnection
+type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
 type processMap map[processKey]connectionMap
 type workloadMap map[workloadKey]processMap
 type namespaceMap map[namespaceKey]workloadMap
@@ -63,7 +64,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
 		nsMap[nsKey][wlkey][pskey] = make(connectionMap)
 	}
-	nsMap[nsKey][wlkey][pskey][connKey] = &tetragon.ApplicationConnection{
+	nsMap[nsKey][wlkey][pskey][connKey] = &appModelV1.ApplicationConnection{
 		DestinationName: connKey.destinationName,
 		DestinationPort: connKey.destinationPort,
 		BytesSent:       bc.BytesSent(),
@@ -86,22 +87,22 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
 	}
 }
 
-func sortNamespace(a, b *tetragon.ApplicationNamespace) int {
+func sortNamespace(a, b *appModelV1.ApplicationNamespace) int {
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortProcess(a, b *tetragon.ApplicationProcess) int {
+func sortProcess(a, b *appModelV1.ApplicationProcess) int {
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortWorkload(a, b *tetragon.ApplicationWorkload) int {
+func sortWorkload(a, b *appModelV1.ApplicationWorkload) int {
 	if kindComp := strings.Compare(a.Kind, b.Kind); kindComp != 0 {
 		return kindComp
 	}
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortConnection(a, b *tetragon.ApplicationConnection) int {
+func sortConnection(a, b *appModelV1.ApplicationConnection) int {
 	if nameComp := strings.Compare(a.DestinationName, b.DestinationName); nameComp != 0 {
 		return nameComp
 	}
@@ -112,10 +113,10 @@ func sortConnection(a, b *tetragon.ApplicationConnection) int {
 	return -1
 }
 
-func namespaceMapToApplicationModel(nsMap namespaceMap) *tetragon.ApplicationModelEvent {
-	result := &tetragon.ApplicationModelEvent{}
-	result.ApplicationModel = &tetragon.ApplicationModel{}
-	result.ApplicationModel.Host = &tetragon.ApplicationHost{}
+func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationModelEvent {
+	result := &appModelV1.ApplicationModelEvent{}
+	result.ApplicationModel = &appModelV1.ApplicationModel{}
+	result.ApplicationModel.Host = &appModelV1.ApplicationHost{}
 	result.NodeName = node.GetNodeNameForExport()
 	result.ClusterName = option.Config.ClusterName
 	result.Time = timestamppb.Now()
@@ -124,7 +125,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *tetragon.ApplicationMod
 			// There is no workload info for host processes.
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
-					ps := &tetragon.ApplicationProcess{
+					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
@@ -132,16 +133,16 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *tetragon.ApplicationMod
 				}
 			}
 		} else {
-			ns := &tetragon.ApplicationNamespace{
+			ns := &appModelV1.ApplicationNamespace{
 				Name: key.name,
 			}
 			for wlkey, wlval := range val {
-				wl := &tetragon.ApplicationWorkload{
+				wl := &appModelV1.ApplicationWorkload{
 					Name: wlkey.name,
 					Kind: wlkey.kind,
 				}
 				for pskey, psval := range wlval {
-					ps := &tetragon.ApplicationProcess{
+					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
@@ -170,7 +171,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *tetragon.ApplicationMod
 	return result
 }
 
-func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *tetragon.ApplicationModelEvent {
+func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *appModelV1.ApplicationModelEvent {
 	// Ignore quota info for now.
 	monitor, _, processes := ConvertToMonitorData(res, true)
 	nsMap := make(namespaceMap)
@@ -183,7 +184,7 @@ func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *tetr
 	return namespaceMapToApplicationModel(nsMap)
 }
 
-func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *tetragon.ApplicationModel) {
+func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModelV1.ApplicationModel) {
 	for _, ns := range app.GetNamespaces() {
 		for _, wl := range ns.GetWorkloads() {
 			for _, ps := range wl.GetProcesses() {
@@ -252,7 +253,7 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *tet
 	}
 }
 
-func Merge(m1, m2 *tetragon.ApplicationModel) *tetragon.ApplicationModel {
+func Merge(m1, m2 *appModelV1.ApplicationModel) *appModelV1.ApplicationModel {
 	nmd := NetworkMonitorData{}
 	pmd := ProcessMonitorData{}
 	modelToMonitorData(nmd, pmd, m1)
