@@ -1,9 +1,6 @@
 # Request a review from the Tetragon team on any PR
 * @isovalent/tetragon
 
-# request a review from timescape team members when API changes
-/api/v1/tetragon/*.proto @isovalent/timescape
-
 # Request a review from the OpenShift team on OLM PRs
 /install/olm @isovalent/tetragon-openshift
 # Request a review from both Tetragon and OpenShift teams on Helm PRs.
