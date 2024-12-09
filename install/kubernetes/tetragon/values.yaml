@@ -172,7 +172,7 @@ tetragon:
     # -- Comma-separated list of enabled metrics labels.
     # The configurable labels are: namespace, workload, pod, binary. Unkown labels will be ignored.
     # Removing some labels from the list might help reduce the metrics cardinality if needed.
-    metricsLabelFilter: "namespace,workload,pod,binary"
+    metricsLabelFilter: "namespace,workload,binary"
     serviceMonitor:
       # -- Whether to create a 'ServiceMonitor' resource targeting the tetragon pods.
       enabled: false

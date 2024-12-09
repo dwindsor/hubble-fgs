@@ -45,6 +45,8 @@ tetragon:
   enableSandboxpolicies: true
   # -- Enable process tree.
   enableProcessTree: false
+  prometheus:
+    metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:
