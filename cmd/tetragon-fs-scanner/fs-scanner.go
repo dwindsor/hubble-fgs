@@ -49,8 +49,13 @@ var (
 var stopChan = make(chan os.Signal, 2)
 var containerRuntimeEndpoint = ""
 
-// maximum time in seconds to wait for digest computation
-const maxTimeoutDigestSeconds = 30
+const (
+	// maximum time in seconds to wait for digest computation
+	maxTimeoutDigestSeconds = 30
+
+	// this is the maximum size of a file that we will compute a digest (1GB)
+	maxFixSizeDigest = 1 * 1024 * 1024 * 1024
+)
 
 type rpcRunner interface {
 	Run()
@@ -360,6 +365,11 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 			continue
 		}
 
+		if stat.Size() > maxFixSizeDigest {
+			logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFixSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
+			continue
+		}
+
 		// we should not spend more than 30 seconds to generate a digest of a file
 		// this means that the file is very large so return an error in that case
 		ctx, cancel := context.WithTimeout(context.Background(), maxTimeoutDigestSeconds*time.Second)
@@ -423,6 +433,11 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 				// we cannot get digests for non-regular files
 				if !stat.Mode().IsRegular() {
 					logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+					continue
+				}
+
+				if stat.Size() > maxFixSizeDigest {
+					logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFixSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
 					continue
 				}
 
