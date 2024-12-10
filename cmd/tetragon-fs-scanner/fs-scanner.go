@@ -11,6 +11,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -47,6 +48,9 @@ var (
 
 var stopChan = make(chan os.Signal, 2)
 var containerRuntimeEndpoint = ""
+
+// maximum time in seconds to wait for digest computation
+const maxTimeoutDigestSeconds = 30
 
 type rpcRunner interface {
 	Run()
@@ -312,6 +316,25 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 	return nil
 }
 
+type readerCtx struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (rc readerCtx) Read(p []byte) (n int, err error) {
+	if err := rc.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return rc.r.Read(p)
+}
+
+func newReaderCtx(ctx context.Context, rdr io.Reader) io.Reader {
+	return &readerCtx{
+		ctx: ctx,
+		r:   rdr,
+	}
+}
+
 func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]string) error {
 	h, err := fm.GetHashAlgo(args.Algo)
 	if err != nil {
@@ -337,7 +360,12 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 			continue
 		}
 
-		if _, err := io.Copy(h, f); err != nil {
+		// we should not spend more than 30 seconds to generate a digest of a file
+		// this means that the file is very large so return an error in that case
+		ctx, cancel := context.WithTimeout(context.Background(), maxTimeoutDigestSeconds*time.Second)
+		defer cancel()
+
+		if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
 			return fmt.Errorf("tracingPolicyFileDigests: io.Copy: %w", err)
 		}
 		digest := fmt.Sprintf("%x", h.Sum(nil))
@@ -398,7 +426,12 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 					continue
 				}
 
-				if _, err := io.Copy(h, f); err != nil {
+				// we should not spend more than 30 seconds to generate a digest of a file
+				// this means that the file is very large so return an error in that case
+				ctx, cancel := context.WithTimeout(context.Background(), maxTimeoutDigestSeconds*time.Second)
+				defer cancel()
+
+				if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
 					return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
 				}
 				digest := fmt.Sprintf("%x", h.Sum(nil))
