@@ -379,64 +379,73 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 			defer handle.Close()
 		}
 
+		walkFn := func() error {
+			for _, path := range tp.DigestPaths {
+				f, err := os.Open(path)
+				if err != nil {
+					continue // file does not exist, skip that
+				}
+				defer f.Close()
+
+				stat, err := f.Stat()
+				if err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: f.Stat: %w", err)
+				}
+
+				// we cannot get digests for non-regular files
+				if !stat.Mode().IsRegular() {
+					logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+					continue
+				}
+
+				if _, err := io.Copy(h, f); err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
+				}
+				digest := fmt.Sprintf("%x", h.Sum(nil))
+
+				if args.AddToMaps {
+					meta, ok := tp.PathMetadata[path]
+					if !ok {
+						continue // nothing needs to be set here
+					}
+
+					for _, m := range meta {
+						var innerMapID ebpf.MapID
+						if err := handle.Lookup(m.SelIdx, &innerMapID); err != nil {
+							continue
+						}
+
+						var innerMap *ebpf.Map
+						if innerMap, err = ebpf.NewMapFromID(innerMapID); err != nil {
+							return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.NewMapFromID: %w", err)
+						}
+
+						if err := innerMap.Put(fm.CreateDigestKey(digest, args.Algo), m.PathIdx); err != nil {
+							return fmt.Errorf("tracingPolicyContainerFileDigests: innerMap.Put: %w", err)
+						}
+					}
+				} else {
+					(*reply)[path] = digest
+				}
+			}
+			return nil
+		}
+
 		// enter chroot
 		exit, err := chroot(rootDir)
 		if err != nil {
 			return fmt.Errorf("chroot to %s: %w", rootDir, err)
 		}
 
-		for _, path := range tp.DigestPaths {
-			f, err := os.Open(path)
-			if err != nil {
-				continue // file does not exist, skip that
-			}
-			defer f.Close()
-
-			stat, err := f.Stat()
-			if err != nil {
-				return fmt.Errorf("tracingPolicyContainerFileDigests: f.Stat: %w", err)
-			}
-
-			// we cannot get digests for non-regular files
-			if !stat.Mode().IsRegular() {
-				logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
-				continue
-			}
-
-			if _, err := io.Copy(h, f); err != nil {
-				return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
-			}
-			digest := fmt.Sprintf("%x", h.Sum(nil))
-
-			if args.AddToMaps {
-				meta, ok := tp.PathMetadata[path]
-				if !ok {
-					continue // nothing needs to be set here
-				}
-
-				for _, m := range meta {
-					var innerMapID ebpf.MapID
-					if err := handle.Lookup(m.SelIdx, &innerMapID); err != nil {
-						continue
-					}
-
-					var innerMap *ebpf.Map
-					if innerMap, err = ebpf.NewMapFromID(innerMapID); err != nil {
-						return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.NewMapFromID: %w", err)
-					}
-
-					if err := innerMap.Put(fm.CreateDigestKey(digest, args.Algo), m.PathIdx); err != nil {
-						return fmt.Errorf("tracingPolicyContainerFileDigests: innerMap.Put: %w", err)
-					}
-				}
-			} else {
-				(*reply)[path] = digest
-			}
-		}
+		walkErr := walkFn()
 
 		// exit from the chroot
 		if err := exit(); err != nil {
 			return fmt.Errorf("exit from chroot: %w", err)
+		}
+
+		if walkErr != nil {
+			return walkErr
 		}
 	}
 
@@ -548,41 +557,50 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			copy(v.ContainerID[:], []byte(containerID))
 		}
 
-		// enter chroot
+		walkFn := func() error {
+			for i, p := range tp.Spec.PathsPatterns {
+				matcher, err := fm.GetMatcher(p)
+				if err != nil {
+					return err
+				}
+
+				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
+					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
+				} else {
+					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
+				}
+			}
+
+			for _, p := range tp.Spec.PathsExclude {
+				matcher := fm.PrefixPathMatcher{
+					Prefix: p,
+				}
+				if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
+					logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding container files/directories failed")
+				} else {
+					logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded container files/directories")
+				}
+			}
+
+			return nil
+		}
+
+		// enter chroot and run
 		exit, err := chroot(rootDir)
 		if err != nil {
 			return fmt.Errorf("chroot to %s: %w", rootDir, err)
 		}
 
-		for i, p := range tp.Spec.PathsPatterns {
-			matcher, err := fm.GetMatcher(p)
-			if err != nil {
-				return err
-			}
-
-			if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
-				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
-			} else {
-				logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
-			}
-		}
-
-		for _, p := range tp.Spec.PathsExclude {
-			matcher := fm.PrefixPathMatcher{
-				Prefix: p,
-			}
-			if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
-				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding container files/directories failed")
-			} else {
-				logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded container files/directories")
-			}
-		}
+		walkErr := walkFn()
 
 		// exit from the chroot
 		if err := exit(); err != nil {
 			return fmt.Errorf("exit from chroot: %w", err)
 		}
 
+		if walkErr != nil {
+			return walkErr
+		}
 	}
 	return nil
 }
