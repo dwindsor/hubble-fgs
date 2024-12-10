@@ -19,11 +19,12 @@ Helm chart for Tetragon Enterprise
 | crds.installMethod | string | `"operator"` | Method for installing CRDs. Supported values are: "operator", "helm" and "none". The "operator" method allows for fine-grained control over which CRDs are installed and by default doesn't perform CRD downgrades. These can be configured in tetragonOperator section. The "helm" method always installs all CRDs for the chart version. |
 | daemonSetAnnotations | object | `{}` |  |
 | daemonSetLabelsOverride | object | `{}` |  |
-| dashboards | object | `{"annotations":{},"health":{"enabled":false},"labels":{"grafana_dashboard":"1"},"namespace":null}` | Grafana dashboards, installed as ConfigMaps. They can be mounted in a Grafana deployment, or loaded automatically using the Grafana's sidecar for dashboards. See: https://github.com/grafana/helm-charts/tree/main/charts/grafana#sidecar-for-dashboards |
+| dashboards | object | `{"annotations":{},"health":{"enabled":false},"labels":{"grafana_dashboard":"1"},"namespace":null,"network":{"enabled":false}}` | Grafana dashboards, installed as ConfigMaps. They can be mounted in a Grafana deployment, or loaded automatically using the Grafana's sidecar for dashboards. See: https://github.com/grafana/helm-charts/tree/main/charts/grafana#sidecar-for-dashboards |
 | dashboards.annotations | object | `{}` | Annotations to add to the dashboards ConfigMaps. |
 | dashboards.health.enabled | bool | `false` | Enable dashboards for monitoring Tetragon health and operations. |
 | dashboards.labels | object | `{"grafana_dashboard":"1"}` | Labels to add to the dashboards ConfigMaps. If using the dashboards sidecar, these must include the label used for dashboards discovery. |
 | dashboards.namespace | string | `nil` | Namespace to create the dashboards ConfigMaps in. Defaults to namespace of the Helm release. |
+| dashboards.network.enabled | bool | `false` | Enable dashboards for layer 3/4 networking. |
 | dnsPolicy | string | `"Default"` | DNS policy for Tetragon pods.  https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | enabled | bool | `true` |  |
 | export | object | `{"argsOverride":[],"commandOverride":[],"extraArgs":{},"extraEnv":[],"extraVolumeMounts":[],"filenames":["tetragon.log"],"mode":"","securityContext":{},"stdout":{"image":{"override":null,"repository":"quay.io/isovalent/hubble-export-stdout","tag":"v1.0.4"}}}` | Tetragon events export settings |

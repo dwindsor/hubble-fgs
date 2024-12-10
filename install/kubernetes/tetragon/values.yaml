@@ -463,6 +463,9 @@ dashboards:
   health:
     # -- Enable dashboards for monitoring Tetragon health and operations.
     enabled: false
+  network:
+    # -- Enable dashboards for layer 3/4 networking.
+    enabled: false
   # -- Namespace to create the dashboards ConfigMaps in. Defaults to namespace of the Helm release.
   namespace: ~
   # -- Labels to add to the dashboards ConfigMaps. If using the dashboards sidecar, these
@@ -513,9 +516,13 @@ grafana:
           allowUiUpdates: false
           options:
             path: /var/lib/grafana/dashboards/tetragon-health
+        - name: tetragon-l3l4network
+          folder: Tetragon Network
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-l3l4network
   # @ignored
   dashboardsConfigMaps:
-    # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
+    # Grafana subchart templates these values, so we can use {{ .Release.Name }} etc:
     # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_pod.tpl#L1195
     # NOTE: Dashboards configmap will be mounted correctly only if it's
     # installed in the same namespace as Tetragon (see dashboards.namespace
@@ -523,6 +530,7 @@ grafana:
     # configmaps in case both dashboards.namespace is set and
     # integratedGrafana.enabled is set to true.
     tetragon-health: "{{ .Release.Name }}-dashboards-health"
+    tetragon-l3l4network: "{{ .Release.Name }}-dashboards-l3l4network"
   # -- Resources for the Grafana container.
   resources:
     limits:
