@@ -10,7 +10,6 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
@@ -166,10 +165,10 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 
 	if spec.Parser.Dns.Metrics != nil {
 		dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
-		dnsconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)
+		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)
 	} else {
 		dnsconfig.MetricsEnabled = true
-		dnsconfig.CurrentLabels = option.DefaultLabelFilter()
+		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter()
 	}
 
 	// Enable DNS cache in core, abstraction breaking but

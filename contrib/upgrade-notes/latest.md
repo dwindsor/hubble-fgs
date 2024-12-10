@@ -33,3 +33,7 @@ Depending on your setup, changes listed here might require a manual intervention
   default. This was done to reduce the default metrics cardinality. If you want
   to keep `pod` label, overwrite the default `tetragon.prometheus.metricsLabelFilter`
   Helm value.
+* Similarly to global events metrics, network metrics with configurable labels
+  (TCP, UDP, raw socket, DNS, HTTP and TLS) now don't have `pod` and `dstpod`
+  labels by default. If you want to keep them, overwrite the default
+  `metrics.labelFilter` fields in the relevant sections of a TracingPolicy.

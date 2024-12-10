@@ -19,7 +19,7 @@ var (
 	MetricsLabelFilter = DefaultLabelFilter()
 )
 
-// Keys should be kept in sync with:
+// The returned label filter should be kept in sync with:
 // HTTPLabels.Keys in pkg/metrics/socketmetrics
 // createHTTPLabels in pkg/metrics/eventmetrics
 // HTTPSpec.Metrics docs in pkg/k8s (CRD)
@@ -27,11 +27,11 @@ func DefaultLabelFilter() metrics.LabelFilter {
 	return metrics.LabelFilter{
 		"namespace":    true,
 		"workload":     true,
-		"pod":          true,
+		"pod":          false,
 		"binary":       true,
 		"dstnamespace": true,
 		"dstworkload":  true,
-		"dstpod":       true,
+		"dstpod":       false,
 		"dstdns":       true,
 		"host":         true,
 	}

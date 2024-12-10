@@ -30,7 +30,7 @@ var (
 	UdpMapRemovesUpdate sync.Mutex
 )
 
-// Keys should be kept in sync with:
+// The returned label filter should be kept in sync with:
 // SocketLabels.Keys and MulticastSocketLabels.Keys in pkg/metrics/socketmetrics
 // createSocketLabels and createMulticastSocketLabels in pkg/metrics/eventmetrics
 // UdpPolicySpec.Metrics docs in pkg/k8s (CRD)
@@ -38,11 +38,11 @@ func DefaultLabelFilter() metrics.LabelFilter {
 	return metrics.LabelFilter{
 		"namespace":    true,
 		"workload":     true,
-		"pod":          true,
+		"pod":          false,
 		"binary":       true,
 		"dstnamespace": true,
 		"dstworkload":  true,
-		"dstpod":       true,
+		"dstpod":       false,
 		"dstdns":       true,
 		"srcmcast":     true,
 		"dstmcast":     true,

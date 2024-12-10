@@ -65,10 +65,10 @@ const (
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	if spec.Parser.Rawsock.Metrics != nil {
 		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
-		rawsockconfig.CurrentLabels = option.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
+		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
 	} else {
 		rawsockconfig.MetricsEnabled = true
-		rawsockconfig.CurrentLabels = option.DefaultLabelFilter()
+		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter()
 	}
 
 	return spec.Parser.Rawsock.ReportClose, nil

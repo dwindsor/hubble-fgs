@@ -11,10 +11,21 @@
 package tlsconfig
 
 import (
-	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/metrics"
 )
 
 var (
 	MetricsEnabled     bool
-	MetricsLabelFilter = option.DefaultLabelFilter()
+	MetricsLabelFilter = DefaultLabelFilter()
 )
+
+// The returned label filter should be kept in sync with:
+// TlsSpec.Metrics docs in pkg/k8s (CRD)
+func DefaultLabelFilter() metrics.LabelFilter {
+	return metrics.LabelFilter{
+		"namespace": true,
+		"workload":  true,
+		"pod":       false,
+		"binary":    true,
+	}
+}
