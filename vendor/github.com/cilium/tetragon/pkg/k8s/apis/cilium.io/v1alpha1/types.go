@@ -415,6 +415,7 @@ type TlsSpec struct {
 	Selectors []TlsSelector `json:"selectors,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary
 	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
@@ -451,6 +452,7 @@ type HttpSpec struct {
 	Http2 bool `json:"http2"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, host
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, host
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
@@ -474,6 +476,7 @@ type DnsPolicySpec struct {
 	Ports []uint16 `json:"ports,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary
 	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
@@ -498,6 +501,7 @@ type PromMetrics struct {
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
 	// List of enabled metrics labels. It can be used to control the metrics cardinality.
+	// For the lists of labels enabled by default and configurable, see the parent object.
 	// Null value means the default label set.
 	// Empty list disables all configurable labels.
 	// Unknown labels are ignored.
@@ -582,6 +586,7 @@ type TcpPolicySpec struct {
 	Qos *QosPolicySpec `json:"qos,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional
@@ -635,6 +640,7 @@ type RawsockPolicySpec struct {
 	ReportClose bool `json:"reportClose"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary
 	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 }
@@ -669,6 +675,7 @@ type UdpPolicySpec struct {
 	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
 	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
+	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, srcmcast, dstmcast
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
 	Metrics *PromMetrics `json:"metrics,omitempty"`
 	// +kubebuilder:validation:Optional

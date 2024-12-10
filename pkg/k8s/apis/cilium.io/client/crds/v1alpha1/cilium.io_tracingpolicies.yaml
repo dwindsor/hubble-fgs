@@ -2069,6 +2069,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary
                           Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
@@ -2077,6 +2078,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
@@ -2128,6 +2130,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, host
                           Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, host
                         properties:
                           enable:
@@ -2136,6 +2139,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
@@ -2255,6 +2259,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary
                           Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
@@ -2263,6 +2268,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
@@ -2401,6 +2407,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns
                           Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
                         properties:
                           enable:
@@ -2409,6 +2416,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
@@ -2503,6 +2511,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary
                           Configurable labels: namespace, workload, pod, binary
                         properties:
                           enable:
@@ -2511,6 +2520,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
@@ -2664,6 +2674,7 @@ spec:
                       metrics:
                         description: |-
                           Metrics Configuration.
+                          Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, srcmcast, dstmcast
                           Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
                         properties:
                           enable:
@@ -2672,6 +2683,7 @@ spec:
                           labelFilter:
                             description: |-
                               List of enabled metrics labels. It can be used to control the metrics cardinality.
+                              For the lists of labels enabled by default and configurable, see the parent object.
                               Null value means the default label set.
                               Empty list disables all configurable labels.
                               Unknown labels are ignored.
