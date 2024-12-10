@@ -2462,8 +2462,7 @@
   "revision": 1,
   "schemaVersion": 39,
   "tags": [
-    "Tetragon",
-    "networking"
+    "Tetragon"
   ],
   "templating": {
     "list": [

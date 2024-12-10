@@ -2602,8 +2602,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "Tetragon",
-    "networking"
+    "Tetragon"
   ],
   "templating": {
     "list": [
