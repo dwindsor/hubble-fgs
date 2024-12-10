@@ -326,6 +326,17 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 		}
 		defer f.Close()
 
+		stat, err := f.Stat()
+		if err != nil {
+			return fmt.Errorf("tracingPolicyFileDigests: f.Stat: %w", err)
+		}
+
+		// we cannot get digests for non-regular files
+		if !stat.Mode().IsRegular() {
+			logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+			continue
+		}
+
 		if _, err := io.Copy(h, f); err != nil {
 			return fmt.Errorf("tracingPolicyFileDigests: io.Copy: %w", err)
 		}
@@ -380,6 +391,17 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 				continue // file does not exist, skip that
 			}
 			defer f.Close()
+
+			stat, err := f.Stat()
+			if err != nil {
+				return fmt.Errorf("tracingPolicyContainerFileDigests: f.Stat: %w", err)
+			}
+
+			// we cannot get digests for non-regular files
+			if !stat.Mode().IsRegular() {
+				logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+				continue
+			}
 
 			if _, err := io.Copy(h, f); err != nil {
 				return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
