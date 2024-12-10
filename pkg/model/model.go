@@ -32,7 +32,8 @@ type workloadKey struct {
 }
 
 type processKey struct {
-	name string
+	name      string
+	arguments string
 }
 
 type connectionKey struct {
@@ -53,7 +54,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 	nsKey := namespaceKey{name: nk.SourceNamespace}
 	wlkey := workloadKey{name: nk.SourceWorkloadName, kind: nk.SourceWorkloadKind}
-	pskey := processKey{name: nk.SourceProcessName}
+	pskey := processKey{name: nk.SourceProcessName, arguments: nk.SourceProcessArgs}
 	connKey := connectionKey{destinationName: nk.DestinationName, destinationPort: nk.DestinationPort}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
@@ -75,7 +76,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
 	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
-	pskey := processKey{name: pk.Name}
+	pskey := processKey{name: pk.Name, arguments: pk.Args}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
 	}
@@ -127,6 +128,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
+						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
@@ -144,6 +146,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
+						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval)),
 					}
 					wl.Processes = append(wl.Processes, ps)
@@ -194,6 +197,7 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 						WorkloadKind: wl.GetKind(),
 						WorkloadName: wl.GetName(),
 						Name:         ps.GetName(),
+						Args:         ps.GetArguments(),
 					}
 					pmd[pmk] = ProcessValue{}
 					continue
@@ -204,6 +208,7 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 						SourceWorkloadKind: wl.GetKind(),
 						SourceWorkloadName: wl.GetName(),
 						SourceProcessName:  ps.GetName(),
+						SourceProcessArgs:  ps.GetArguments(),
 						DestinationName:    conn.GetDestinationName(),
 						DestinationPort:    conn.GetDestinationPort(),
 					}
@@ -227,6 +232,7 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 				WorkloadKind: HostKind,
 				WorkloadName: HostWorkload,
 				Name:         ps.GetName(),
+				Args:         ps.GetArguments(),
 			}
 			pmd[pmk] = ProcessValue{}
 			continue
@@ -237,6 +243,7 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 				SourceWorkloadKind: HostKind,
 				SourceWorkloadName: HostWorkload,
 				SourceProcessName:  ps.GetName(),
+				SourceProcessArgs:  ps.GetArguments(),
 				DestinationName:    conn.GetDestinationName(),
 				DestinationPort:    conn.GetDestinationPort(),
 			}

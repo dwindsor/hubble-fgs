@@ -27,6 +27,7 @@ type NetworkKey struct {
 	SourceWorkloadKind string
 	SourceWorkloadName string
 	SourceProcessName  string
+	SourceProcessArgs  string
 	DestinationName    string
 	DestinationPort    uint64
 }
@@ -119,6 +120,7 @@ type ProcessKey struct {
 	WorkloadKind string
 	WorkloadName string
 	Name         string
+	Args         string
 }
 
 type ProcessValue struct{}
@@ -134,6 +136,9 @@ func sortNetworkKeys(a, b NetworkKey) int {
 		return result
 	}
 	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceProcessArgs, b.SourceProcessArgs); result != 0 {
 		return result
 	}
 	ipA, errA := netip.ParseAddr(a.DestinationName)
@@ -199,6 +204,7 @@ func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destinat
 	}
 	if includeProcess {
 		nwKey.SourceProcessName = process.GetBinary()
+		nwKey.SourceProcessArgs = process.GetBinaryArgs()
 	}
 	return nwKey
 }
@@ -209,6 +215,7 @@ func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
 		WorkloadName: process.GetWorkload().GetName(),
 		WorkloadKind: process.GetWorkload().GetKind(),
 		Name:         process.GetBinary(),
+		Args:         process.GetBinaryArgs(),
 	}
 }
 
