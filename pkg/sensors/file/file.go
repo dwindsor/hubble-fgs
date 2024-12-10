@@ -866,7 +866,14 @@ func startFsScanner() (*exec.Cmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("startFsScanner: failed to get host mnt namespace: %w", err)
 	}
-	args := []string{fmt.Sprintf("%s/1/ns/mnt", option.Config.ProcFS), execName, "-hostMntNs", strconv.FormatUint(uint64(mntNsId), 10), "-scannerFifoPath", fm.ScannerFifoPath}
+	args := []string{
+		fmt.Sprintf("%s/1/ns/mnt", option.Config.ProcFS),
+		execName,
+		"-hostMntNs", strconv.FormatUint(uint64(mntNsId), 10),
+		"-scannerFifoPath", fm.ScannerFifoPath,
+		"-maxSizeFileDigest", strconv.FormatInt(eeOption.Config.FimMaxFileSizeDigest, 10),
+		"-maxTimeoutFileDigest", strconv.FormatInt(eeOption.Config.FimMaxTimeoutDigestSec, 10),
+	}
 
 	if option.Config.Debug {
 		args = append(args, "-debug")

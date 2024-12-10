@@ -29,6 +29,8 @@ const (
 	KeyFlowExportFileCompress    = "flow-export-file-compress"
 	KeyFimFifoPath               = "fim-fifo-path"
 	KeyFimRuntimeEndpoint        = "fim-runtime-endpoint"
+	keyFimMaxFileSizeDigest      = "fim-max-file-size-digest"
+	keyFimTimeoutDigest          = "fim-timeout-digest"
 	KeyDnsCacheSize              = "dns-cache-size"
 	KeyEndpointCacheSize         = "endpoint-cache-size"
 	KeyBpfEndpointCacheSize      = "bpf-endpoint-cache-size"
@@ -81,6 +83,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
 	flags.String(KeyFimFifoPath, defaults.DefaultRunDir, "Path for the FIFO used for fs-scanner and tetragon communication")
 	flags.String(KeyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
+	flags.Int64(keyFimMaxFileSizeDigest, 1*1024*1024*1024, "Set the maximum file size in FIM that we will compute a digest (in bytes)")
+	flags.Int64(keyFimTimeoutDigest, 30, "Set the timeout when computing a file digest in FIM (in seconds)")
 
 	// Provide option to detach old programs even when using old names that make it
 	// hard to find Tetragon specific programs. Use with some caution because we
@@ -116,6 +120,8 @@ func ReadAndSetEnterpriseFlags() {
 	Config.NetNsCacheSize = viper.GetInt(KeyNetNsCacheSize)
 	Config.FimFifoPath = viper.GetString(KeyFimFifoPath)
 	Config.FimRuntimeEndpoint = viper.GetString(KeyFimRuntimeEndpoint)
+	Config.FimMaxFileSizeDigest = viper.GetInt64(keyFimMaxFileSizeDigest)
+	Config.FimMaxTimeoutDigestSec = viper.GetInt64(keyFimTimeoutDigest)
 	Config.FlowExportFilename = viper.GetString(KeyFlowExportFilename)
 	Config.FlowExportFileMaxSizeMB = viper.GetInt(KeyFlowExportFileMaxSizeMB)
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)

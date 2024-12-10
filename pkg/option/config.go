@@ -19,6 +19,8 @@ type config struct {
 	FimFifoPath               string
 	DisableKprobeMulti        bool
 	FimRuntimeEndpoint        string
+	FimMaxFileSizeDigest      int64
+	FimMaxTimeoutDigestSec    int64
 	DetachOldBpf              bool
 
 	FlowExportFilename       string
@@ -61,6 +63,8 @@ var (
 		NetNsCacheSize:            256,
 		FimFifoPath:               "/var/run/cilium/hubble",
 		FimRuntimeEndpoint:        "",
+		FimMaxFileSizeDigest:      1 * 1024 * 1024 * 1024, // 1GB
+		FimMaxTimeoutDigestSec:    30,
 		EnableDnsDebug:            false,
 		EnableIcmpTracking:        false,
 		EnableCilium:              false,

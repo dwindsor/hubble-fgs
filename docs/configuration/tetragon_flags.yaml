@@ -186,9 +186,17 @@ options:
       default_value: /var/run/tetragon/
       usage: |
         Path for the FIFO used for fs-scanner and tetragon communication
+    - name: fim-max-file-size-digest
+      default_value: "1073741824"
+      usage: |
+        Set the maximum file size in FIM that we will compute a digest (in bytes)
     - name: fim-runtime-endpoint
       usage: |
         Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
+    - name: fim-timeout-digest
+      default_value: "30"
+      usage: |
+        Set the timeout when computing a file digest in FIM (in seconds)
     - name: flow-export-file-compress
       default_value: "false"
       usage: Compress rotated flow JSON export files

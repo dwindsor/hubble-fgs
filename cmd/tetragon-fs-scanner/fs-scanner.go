@@ -49,12 +49,12 @@ var (
 var stopChan = make(chan os.Signal, 2)
 var containerRuntimeEndpoint = ""
 
-const (
+var (
 	// maximum time in seconds to wait for digest computation
-	maxTimeoutDigestSeconds = 30
+	maxTimeoutDigestSeconds int64
 
-	// this is the maximum size of a file that we will compute a digest (1GB)
-	maxFixSizeDigest = 1 * 1024 * 1024 * 1024
+	// this is the maximum size of a file that we will compute a digest
+	maxFileSizeDigest int64
 )
 
 type rpcRunner interface {
@@ -365,14 +365,14 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 			continue
 		}
 
-		if stat.Size() > maxFixSizeDigest {
-			logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFixSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
+		if stat.Size() > maxFileSizeDigest {
+			logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFileSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
 			continue
 		}
 
 		// we should not spend more than 30 seconds to generate a digest of a file
 		// this means that the file is very large so return an error in that case
-		ctx, cancel := context.WithTimeout(context.Background(), maxTimeoutDigestSeconds*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(maxTimeoutDigestSeconds)*time.Second)
 		defer cancel()
 
 		if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
@@ -436,14 +436,14 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 					continue
 				}
 
-				if stat.Size() > maxFixSizeDigest {
-					logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFixSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
+				if stat.Size() > maxFileSizeDigest {
+					logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFileSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
 					continue
 				}
 
 				// we should not spend more than 30 seconds to generate a digest of a file
 				// this means that the file is very large so return an error in that case
-				ctx, cancel := context.WithTimeout(context.Background(), maxTimeoutDigestSeconds*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), time.Duration(maxTimeoutDigestSeconds)*time.Second)
 				defer cancel()
 
 				if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
@@ -700,6 +700,8 @@ func GetMntNsInode() (uint, error) {
 }
 
 func main() {
+	flag.Int64Var(&maxFileSizeDigest, "maxSizeFileDigest", 1*1024*1024*1024, "Set the maximum file size that we will compute a digest (in bytes)")
+	flag.Int64Var(&maxTimeoutDigestSeconds, "maxTimeoutFileDigest", 30, "Set the timeout when computing a file digest (in seconds)")
 	flag.Parse()
 
 	if *help {
