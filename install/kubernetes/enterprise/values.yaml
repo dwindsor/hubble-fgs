@@ -118,32 +118,38 @@ dashboards:
     grafana_dashboard: "1"
   # -- Annotations to add to the dashboards ConfigMaps.
   annotations: {}
-# -- Install Grafana with dashboards and lightweight Prometheus datasource.
-# It's intended to quickly set up Tetragon monitoring and/or get value out of
-# Tetragon without setting up a custom data pipeline.
 integratedGrafana:
+  # -- Install Grafana with dashboards and lightweight Prometheus datasource.
+  # It's intended to quickly set up Tetragon monitoring and/or get value out of
+  # Tetragon without setting up a custom data pipeline.
   enabled: false
+  prometheus:
+    # -- Resources for the Prometheus container.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 200m
+        memory: 512Mi
 # Values for grafana subchart, used when integratedGrafana.enabled is true.
-# TODO:
-# resources requests & limits
-# pin image and allow overwriting it
-# @ignored
 grafana:
   # Password for the admin user. Grafana subchart defaults to "admin", but then
   # Grafana prompts you to change it on the first login because it's insecure.
   # "tetragon" is a very secure password though, so Grafana is fine with it.
   adminPassword: tetragon
+  # @ignored
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
         - name: Prometheus
           type: prometheus
-          # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
+          # Grafana subchart templates this value, so we can use {{ .Release.Name }} etc:
           # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_config.tpl#L45
           url: http://{{ include "prometheus.name" . }}:9090
           access: proxy
           isDefault: true
+  # @ignored
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -154,6 +160,7 @@ grafana:
           allowUiUpdates: false
           options:
             path: /var/lib/grafana/dashboards/tetragon-health
+  # @ignored
   dashboardsConfigMaps:
     # Grafana subchart templates it, so we can use {{ .Release.Name }} etc here:
     # https://github.com/grafana/helm-charts/blob/563977e617b8f6861fadfe567c9dd399a4c8c054/charts/grafana/templates/_pod.tpl#L1195
@@ -163,14 +170,26 @@ grafana:
     # configmaps in case both dashboards.namespace is set and
     # integratedGrafana.enabled is set to true.
     tetragon-health: "{{ .Release.Name }}-dashboards-health"
+  # -- Resources for the Grafana container.
+  resources:
+    limits:
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  # @ignored
   testFramework:
     enabled: false
 # Values for kube-state-metrics subchart, used when integratedGrafana.enabled is true.
-# TODO:
-# resources requests & limits
-# pin image and allow overwriting it
-# @ignored
 kube-state-metrics:
   # Enable only collectors needed by Tetragon dashboards.
+  # @ignored
   collectors:
     - pods
+  # -- Resources for the kube-state-metrics container.
+  resources:
+    limits:
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi

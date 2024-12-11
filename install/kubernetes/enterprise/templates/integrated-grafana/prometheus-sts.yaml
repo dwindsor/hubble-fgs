@@ -53,8 +53,10 @@ spec:
         - containerPort: 9090
           name: http-web
           protocol: TCP
-        # TODO: Set requests and limits
-        resources: {}
+        {{- with .Values.integratedGrafana.prometheus.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
