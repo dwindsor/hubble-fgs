@@ -19,7 +19,7 @@ ifeq ($(UNAME_M),aarch64)
 endif
 BPF_TARGET_ARCH ?= x86
 
-OSSBPFDIR := $(OSS_DIR)/bpf
+OSSBPFDIR := $(shell realpath --relative-to $(CURDIR) $(OSS_DIR)/bpf)
 
 TLSDIR := parsers/tls/
 HTTPDIR := parsers/http/
@@ -118,6 +118,7 @@ CGROUP = bpf_cgtracker.o
 BPFTEST = bpf_lseek.o
 
 LDIR = ./lib
+EEDIR = ./enterprise
 OSSIDIR = $(OSSBPFDIR)/include/
 OSSLDIR = $(OSSBPFDIR)/lib
 OSSLIBBPFDIR = $(OSSBPFDIR)/libbpf
@@ -134,7 +135,7 @@ ifeq ($(DEBUG),1)
 endif
 
 NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR) -I $(TIMESTAMP)
-CLANG_FLAGS += $(FLAGS) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
+CLANG_FLAGS += $(FLAGS) -I $(EEDIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
 LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
 LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
 
