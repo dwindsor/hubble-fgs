@@ -8076,6 +8076,7 @@ type ProcessChecker struct {
 	ProcessCredentials *ProcessCredentialsChecker         `json:"processCredentials,omitempty"`
 	BinaryProperties   *BinaryPropertiesChecker           `json:"binaryProperties,omitempty"`
 	User               *UserRecordChecker                 `json:"user,omitempty"`
+	InInitTree         *bool                              `json:"inInitTree,omitempty"`
 }
 
 // NewProcessChecker creates a new ProcessChecker
@@ -8202,6 +8203,14 @@ func (checker *ProcessChecker) Check(event *tetragon.Process) error {
 				return fmt.Errorf("User check failed: %w", err)
 			}
 		}
+		if checker.InInitTree != nil {
+			if event.InInitTree == nil {
+				return fmt.Errorf("InInitTree is nil and does not match expected value %v", *checker.InInitTree)
+			}
+			if *checker.InInitTree != event.InInitTree.Value {
+				return fmt.Errorf("InInitTree has value %v which does not match expected value %v", event.InInitTree.Value, *checker.InInitTree)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -8324,6 +8333,12 @@ func (checker *ProcessChecker) WithUser(check *UserRecordChecker) *ProcessChecke
 	return checker
 }
 
+// WithInInitTree adds a InInitTree check to the ProcessChecker
+func (checker *ProcessChecker) WithInInitTree(check bool) *ProcessChecker {
+	checker.InInitTree = &check
+	return checker
+}
+
 //FromProcess populates the ProcessChecker using data from a Process field
 func (checker *ProcessChecker) FromProcess(event *tetragon.Process) *ProcessChecker {
 	if event == nil {
@@ -8375,6 +8390,10 @@ func (checker *ProcessChecker) FromProcess(event *tetragon.Process) *ProcessChec
 	}
 	if event.User != nil {
 		checker.User = NewUserRecordChecker().FromUserRecord(event.User)
+	}
+	if event.InInitTree != nil {
+		val := event.InInitTree.Value
+		checker.InInitTree = &val
 	}
 	return checker
 }

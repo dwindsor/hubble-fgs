@@ -1018,6 +1018,7 @@ found.
 | process_credentials | [ProcessCredentials](#tetragon-ProcessCredentials) |  | Process credentials, disabled by default, can be enabled by the `--enable-process-cred` flag. |
 | binary_properties | [BinaryProperties](#tetragon-BinaryProperties) |  | Executed binary properties. This field is only available on ProcessExec events. |
 | user | [UserRecord](#tetragon-UserRecord) |  | UserRecord contains user information about the event. It is only supported when i) Tetragon is running as a systemd service or directly on the host, and ii) when the flag `--username-metadata` is set to &#34;unix&#34;. In this case, the information is retrieved from the traditional user database `/etc/passwd` and no name services lookups are performed. The resolution will only be attempted for processes in the host namespace. Note that this resolution happens in user-space, which means that mapping might have changed between the in-kernel BPF hook being executed and the username resolution. |
+| in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | If set to true, this process is containerized and is a member of the process tree rooted at pid=1 in its PID namespace. This is useful if, for example, you wish to discern whether a process was spawned using a tool like nsenter or kubectl exec. |
 
 
 
@@ -2123,6 +2124,8 @@ Capability set to filter over. NOTE: you may specify only ONE set here.
 | parent_binary_regex | [string](#string) | repeated | Filter parent process&#39; binary using RE2 regular expression syntax. |
 | cel_expression | [string](#string) | repeated | Filter using CEL expressions. |
 | parent_arguments_regex | [string](#string) | repeated | Filter by process.parent.arguments field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
+| container_id | [string](#string) | repeated | Filter by the container ID in the process.docker field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
+| in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | Filter containerized processes based on whether they are descendants of the container&#39;s init process. This can be used, for example, to watch for processes injected into a container via docker exec, kubectl exec, or similar mechanisms. |
 | source_ip_cidr | [string](#string) | repeated | Filter by source_ip field using an address range specified using CIDR notation.
 
 Example: {&#34;event_set&#34;: [&#34;PROCESS_ACCEPT&#34;], &#34;source_ip_cidr&#34;: [&#34;127.0.0.0/16&#34;]} |

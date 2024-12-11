@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.4
 	github.com/aws/aws-sdk-go-v2/config v1.28.4
 	github.com/cilium/cilium v1.17.0-pre.2
-	github.com/cilium/ebpf v0.16.1-0.20241112095022-ddcaa8c274b4
+	github.com/cilium/ebpf v0.16.1-0.20241205185900-f0eec7efba9d
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
@@ -41,7 +41,7 @@ require (
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/spf13/viper v1.19.0
 	github.com/sryoya/protorand v0.0.0-20240429201223-e7440656b2a4
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/vishvananda/netlink v1.3.1-0.20241022031324-976bd8de7d81
 	github.com/vishvananda/netns v0.0.5
 	github.com/xlab/treeprint v1.2.0
@@ -110,7 +110,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.2.2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.1-0.20231103132048-7d375ecc2b09 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.7.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect

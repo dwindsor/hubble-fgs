@@ -368,7 +368,7 @@ github.com/cilium/cilium/pkg/wireguard/types
 # github.com/cilium/dns v1.1.51-0.20240603182237-af788769786a
 ## explicit; go 1.18
 github.com/cilium/dns
-# github.com/cilium/ebpf v0.16.1-0.20241112095022-ddcaa8c274b4
+# github.com/cilium/ebpf v0.16.1-0.20241205185900-f0eec7efba9d
 ## explicit; go 1.22
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
@@ -760,7 +760,7 @@ github.com/cri-o/cri-o/pkg/types
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/deckarep/golang-set/v2 v2.6.0
+# github.com/deckarep/golang-set/v2 v2.7.0
 ## explicit; go 1.18
 github.com/deckarep/golang-set/v2
 # github.com/distribution/reference v0.6.0
@@ -1334,9 +1334,10 @@ github.com/sryoya/protorand
 # github.com/stoewer/go-strcase v1.3.0
 ## explicit; go 1.11
 github.com/stoewer/go-strcase
-# github.com/stretchr/testify v1.9.0
+# github.com/stretchr/testify v1.10.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
 # github.com/subosito/gotenv v1.6.0
 ## explicit; go 1.18

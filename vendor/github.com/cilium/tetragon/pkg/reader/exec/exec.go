@@ -34,6 +34,9 @@ var FlagStrings = map[uint32]string{
 	api.EventErrorCgroupSubsys:     "errorCgroupSubsys",
 	api.EventErrorCgroups:          "errorCgroups",
 	api.EventErrorPathComponents:   "errorPathResolutionCwd",
+	api.EventDataFilename:          "dataFilename",
+	api.EventDataArgs:              "dataArgs",
+	api.EventInInitTree:            "inInitTree",
 }
 
 var flagsOrdered = []uint32{
@@ -59,6 +62,9 @@ var flagsOrdered = []uint32{
 	api.EventErrorCgroupSubsys,
 	api.EventErrorCgroups,
 	api.EventErrorPathComponents,
+	api.EventDataFilename,
+	api.EventDataArgs,
+	api.EventInInitTree,
 }
 
 func DecodeCommonFlags(flags uint32) []string {
