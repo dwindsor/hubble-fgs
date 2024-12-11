@@ -71,21 +71,21 @@ func (c colorer) tls(tls *tetragon.Tls) string {
 		tls.Cipher)
 }
 
-func (c colorer) close(close *tetragon.ProcessClose) string {
-	if close.SocketType == "listen" {
-		return c.hostPort(close.Protocol, close.SourceIp, close.SourcePort) + " (listen)"
+func (c colorer) close(pClose *tetragon.ProcessClose) string {
+	if pClose.SocketType == "listen" {
+		return c.hostPort(pClose.Protocol, pClose.SourceIp, pClose.SourcePort) + " (listen)"
 	}
 	destination := c.fiveTuple(
-		close.Protocol,
-		close.SourceIp,
-		close.SourcePort,
-		close.DestinationIp,
-		close.DestinationPort,
-		close.DestinationNames)
+		pClose.Protocol,
+		pClose.SourceIp,
+		pClose.SourcePort,
+		pClose.DestinationIp,
+		pClose.DestinationPort,
+		pClose.DestinationNames)
 	var txBytes, rxBytes string
-	if close.Stats != nil {
-		txBytes = humanize.Bytes(close.Stats.BytesSent)
-		rxBytes = humanize.Bytes(close.Stats.BytesReceived)
+	if pClose.Stats != nil {
+		txBytes = humanize.Bytes(pClose.Stats.BytesSent)
+		rxBytes = humanize.Bytes(pClose.Stats.BytesReceived)
 	}
 	return c.Cyan.Sprint(
 		destination,

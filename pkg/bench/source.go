@@ -648,7 +648,7 @@ func (src h2LoadSource) Run(_ context.Context, sinkPort int, args SourceArgs) (s
 	}
 
 	var reqPerSec float64
-	var max, mean time.Duration
+	var maximum, mean time.Duration
 
 	stats.CPUUsage, _ = CPUUsageFromTime(string(out),
 		func(line string) {
@@ -677,7 +677,7 @@ func (src h2LoadSource) Run(_ context.Context, sinkPort int, args SourceArgs) (s
 					err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
 					return
 				}
-				max, _ = time.ParseDuration(maxS)
+				maximum, _ = time.ParseDuration(maxS)
 				mean, _ = time.ParseDuration(meanS)
 			}
 		})
@@ -685,8 +685,8 @@ func (src h2LoadSource) Run(_ context.Context, sinkPort int, args SourceArgs) (s
 	stats.Forked = true
 	stats.ActualRate = reqPerSec
 	stats.LatencyP50 = mean
-	stats.LatencyP90 = max // TODO: Fake p90/p99 for now. Could consider extending h2load or changing stats to min/max/mean?
-	stats.LatencyP99 = max
+	stats.LatencyP90 = maximum // TODO: Fake p90/p99 for now. Could consider extending h2load or changing stats to min/max/mean?
+	stats.LatencyP99 = maximum
 
 	return
 }

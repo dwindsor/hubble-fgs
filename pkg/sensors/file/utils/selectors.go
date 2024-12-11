@@ -946,13 +946,13 @@ func (k *KernelSelectorState) NeedEnforcement() bool {
 	return false
 }
 
-func ParseLinuxMatchCapability(k *KernelSelectorState, cap *v1alpha1.FileCapabilitiesSelector, selIdx int) error {
+func ParseLinuxMatchCapability(k *KernelSelectorState, capability *v1alpha1.FileCapabilitiesSelector, selIdx int) error {
 	val := k.InitOrGetCapabilities(uint32(selIdx))
 	var err error
 	var ok bool
 
 	// operator
-	val.Op, err = selectors.SelectorOp(cap.Operator)
+	val.Op, err = selectors.SelectorOp(capability.Operator)
 	if err != nil {
 		return fmt.Errorf("matchLinuxCapabilities error: %w", err)
 	}
@@ -961,15 +961,15 @@ func ParseLinuxMatchCapability(k *KernelSelectorState, cap *v1alpha1.FileCapabil
 	}
 
 	// type
-	tystr := strings.ToLower(cap.Type)
+	tystr := strings.ToLower(capability.Type)
 	val.Type, ok = capabilitiesTypeTable[tystr]
 	if !ok {
-		return fmt.Errorf("parseMatchLinuxCapability: actionType %s unknown", cap.Type)
+		return fmt.Errorf("parseMatchLinuxCapability: actionType %s unknown", capability.Type)
 	}
 
 	// values
 	val.Filter = uint64(0)
-	for _, v := range cap.Values {
+	for _, v := range capability.Values {
 		valstr := strings.ToUpper(v)
 		c, ok := tetragon.CapabilitiesType_value[valstr]
 		if !ok {

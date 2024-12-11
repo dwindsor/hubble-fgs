@@ -24,11 +24,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
-func getPromBucket(min, max, upperLimitPercent uint32) string {
+func getPromBucket(minimum, maximum, upperLimitPercent uint32) string {
 	if upperLimitPercent == 100 {
 		return "+Inf"
 	}
-	return strconv.Itoa(int(min + (max-min)*upperLimitPercent/100))
+	return strconv.Itoa(int(minimum + (maximum-minimum)*upperLimitPercent/100))
 }
 
 func getTcpRttPromBucket(upperLimitPercent uint32) string {

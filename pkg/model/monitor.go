@@ -255,9 +255,9 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 	return result, quota, proc
 }
 
-func Diff(current, new NetworkMonitorData) NetworkMonitorData {
+func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 	diff := NetworkMonitorData{}
-	for newKey, newValue := range new {
+	for newKey, newValue := range newer {
 		if currentValue, ok := current[newKey]; ok {
 			if !cmp.Equal(currentValue, newValue) {
 				diff[newKey] = NetworkMonitorValue{
