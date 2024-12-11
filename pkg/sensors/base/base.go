@@ -15,6 +15,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/errmetrics"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -123,6 +124,7 @@ var (
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
+	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV61, ExecveV611)
 )
 
 func setupPrograms() {
@@ -208,6 +210,7 @@ func GetDefaultMaps() []*program.Map {
 		DestinationEndpointMap,
 		ListenEndpointMap,
 		BpfEndpointIdMap,
+		ErrMetricsMap,
 	}
 
 	ConfigureMapSizes()
