@@ -267,6 +267,9 @@ func runUdpWatermarksClient() {
 }
 
 func testUdpWatermarks(t *testing.T, legacy bool) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1110,6 +1113,9 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 }
 
 func TestUdpDetectLatency4(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 

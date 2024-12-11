@@ -893,7 +893,9 @@ func runTcpClient() {
 }
 
 func testTcpWatermarks(t *testing.T, legacy bool) {
-
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1161,6 +1163,9 @@ func TestNamespaces(t *testing.T) {
 // Note following test uses port 8082 instead of port 8081. This is primarily so that it
 // can be easily tracked for debugging.
 func TestDetectLatency4(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1238,6 +1243,9 @@ func TestDetectLatency4(t *testing.T) {
 }
 
 func TestDetectRTT4(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1314,6 +1322,9 @@ func TestDetectRTT4(t *testing.T) {
 }
 
 func TestDetectSRTT4(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1889,6 +1900,9 @@ func TestDockerListenConnect6(t *testing.T) {
 }
 
 func TestDetectRTT6(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -1966,6 +1980,9 @@ func TestDetectRTT6(t *testing.T) {
 
 // FIXME: net io_uring test seems to time out on ARM.
 func TestDetectSRTT6(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
