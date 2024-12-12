@@ -36,7 +36,7 @@
   ],
   "hostRules": [
     {
-      "hostType": "github"
+      "hostType": "github",
       "token": "{{ secrets.RENOVATE_GITHUB_COM_TOKEN }}",
     },
   ],
