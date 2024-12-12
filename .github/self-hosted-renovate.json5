@@ -36,7 +36,7 @@
   ],
   "hostRules": [
     {
-      "matchHost": "https://github.com/isovalent",
+      "matchHost": "https://github.com/",
       "token": "{{ secrets.RENOVATE_GITHUB_COM_TOKEN }}",
       "hostType": "go"
     },
