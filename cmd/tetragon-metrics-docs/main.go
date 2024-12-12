@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetragon-metrics-docs/metricsmd"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
 
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 )
 
@@ -44,6 +45,7 @@ func main() {
 		"tls":                 "Tetragon TLS",
 		"sandbox":             "Tetragon SandboxPolicy metrics",
 		"process-cache-clean": "Tetragon Process Cache Clean metrics",
+		"debug-dns-parser":    "Tetragon Debug DNS Parser",
 	}
 
 	if err := metricsmd.New(targets, initMetrics).Execute(); err != nil {
@@ -91,6 +93,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitTLSEventsMetricsForDocs(reg)
 	case "process-cache-clean":
 		enterpriseMetricsConfig.InitProcessCacheCleanMetricsForDocs(reg)
+	case "debug-dns-parser":
+		dnsmetrics.EnableDebugDNSParserMetrics(reg).InitForDocs()
 	}
 	return nil
 }

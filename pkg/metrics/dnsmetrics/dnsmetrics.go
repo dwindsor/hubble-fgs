@@ -11,9 +11,12 @@
 package dnsmetrics
 
 import (
+	"sync"
+
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,4 +83,23 @@ func InitMetricsForDocs(registry *prometheus.Registry) {
 		dnsQtypes.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, t.String())...).Add(0)
 		dnsRtypes.WithLabelValues(append(consts.ExampleProcessLabels, enterpriseMetrics.ExampleDNSNamesLabel, t.String())...).Add(0)
 	}
+}
+
+var (
+	dnsParserMetrics     metrics.Group
+	dnsParserMetricsOnce sync.Once
+)
+
+func GetDebugDNSParserGroup() metrics.Group {
+	dnsParserMetricsOnce.Do(func() {
+		dnsParserMetrics = metrics.NewMetricsGroup(false)
+	})
+	return dnsParserMetrics
+}
+
+func EnableDebugDNSParserMetrics(registry *prometheus.Registry) metrics.Group {
+	dnsParserMetrics := GetDebugDNSParserGroup()
+	dnsParserMetrics.MustRegister(dnsparser.NewDNSParserErrorCollector())
+	registry.MustRegister(dnsParserMetrics)
+	return dnsParserMetrics
 }

@@ -506,6 +506,7 @@ metrics-docs: tetragon-metrics-docs ## Generate metrics reference.
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs udp >> $(METRICS_DOCS_PATH)
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs rawsocket >> $(METRICS_DOCS_PATH)
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs tls >> $(METRICS_DOCS_PATH)
+	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs debug-dns-parser >> $(METRICS_DOCS_PATH)
 
 .PHONY: lint-metrics-md
 lint-metrics-md: metrics-docs ## Check if metrics reference is up to date.

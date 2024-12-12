@@ -1738,3 +1738,13 @@ TLS handshake statistics
 | `version` | `TLS1.0, TLS1.1, TLS1.2, TLS1.3` |
 | `workload` | `example-workload` |
 
+## Tetragon Debug DNS Parser Metrics
+
+### `tetragon_dns_parser_error_total`
+
+The total and type of errors encountered while parsing DNS answers. Internal use only.
+
+| label | values |
+| ----- | ------ |
+| `error_number` | `    0` |
+

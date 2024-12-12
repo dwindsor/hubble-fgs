@@ -159,6 +159,10 @@ func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
 	processcachecleanmetrics.InitEventsMetricsForDocs(registry)
 }
 
+func initAllDebugDNSParserMetrics(registry *prometheus.Registry) {
+	dnsmetrics.EnableDebugDNSParserMetrics(registry)
+}
+
 func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllDNSHealthMetrics(registry)
 	initAllDNSEventsMetrics(registry)
@@ -176,6 +180,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllTLSEventsMetrics(registry)
 	initAllSandboxMetrics(registry)
 	initAllProcessCacheCleanMetrics(registry)
+	initAllDebugDNSParserMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {
