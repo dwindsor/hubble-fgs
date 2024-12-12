@@ -423,6 +423,7 @@ github.com/cilium/stream
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
 ## explicit; go 1.23.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
+github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
 github.com/cilium/tetragon/cmd/tetra/debug
 github.com/cilium/tetragon/cmd/tetra/getevents
@@ -456,6 +457,7 @@ github.com/cilium/tetragon/pkg/arch
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
+github.com/cilium/tetragon/pkg/cgidarg
 github.com/cilium/tetragon/pkg/cgidmap
 github.com/cilium/tetragon/pkg/cgrouprate
 github.com/cilium/tetragon/pkg/cgroups
