@@ -27,6 +27,8 @@
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
 
+#include "../../../parsers/dns/dns_parser.h"
+
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
 	u8 ip_off;
@@ -476,6 +478,9 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
+	// TODO(mtardy) make parse_dns a real function call: the main issue is that
+	// the stack is already quite busy here.
+	parse_dns(skb);
 	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
 		 payload_off,
 		 payload_sz, send);
