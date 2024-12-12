@@ -1,47 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "11.1.3"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "text",
-      "name": "Text",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -66,11 +23,9 @@
   "description": "High level overview dashboard for Tetragon Enterprise (part of Isovalent Platform). At a glance, should provide strong indicators of potential issues in the cluster. Indicators here are designed to provide opinionated thresholds on problematic Tetragon metrics.",
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "gnetId": 16611,
   "graphTooltip": 1,
   "id": null,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
@@ -86,9 +41,13 @@
       "type": "row"
     },
     {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "gridPos": {
-        "h": 3,
-        "w": 24,
+        "h": 5,
+        "w": 12,
         "x": 0,
         "y": 1
       },
@@ -102,9 +61,107 @@
         "content": "ℹ️ High level health indicators on Tetragon components in a Kubernetes cluster, such as whether components are in a running state (i.e. not Pending/Crashing etc).\n\nNote: this section requires metrics exported by [kube-state-metrics](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/).\n\n",
         "mode": "markdown"
       },
-      "pluginVersion": "11.1.3",
-      "title": "Uptime (Kubernetes)",
+      "pluginVersion": "11.3.0",
+      "title": "",
       "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": false
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 250,
+      "options": {
+        "cellHeight": "lg",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (version, time) (tetragon_build_info{cluster=~\"$cluster\", pod=~\"$pod\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Tetragon version(s) running",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "Value": 3,
+              "time": 2,
+              "version": 1
+            },
+            "renameByName": {
+              "time": "build time",
+              "version": ""
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -125,6 +182,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": -1,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -229,10 +287,10 @@
         ]
       },
       "gridPos": {
-        "h": 12,
+        "h": 9,
         "w": 12,
         "x": 0,
-        "y": 4
+        "y": 6
       },
       "id": 135,
       "options": {
@@ -248,7 +306,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -303,176 +361,6 @@
       ],
       "title": "Tetragon Pods Running State",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Tracks the running state of Tetragon Agents. A non-zero number of not running Tetragon Agents could indicate the number of Pods that are crashing, cannot be scheduled (i.e. Pending), or having image pull issues, etc.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic",
-            "seriesBy": "last"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "(Agents|Operators)+ not running"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "(Agents|Operators)+ running"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "yellow",
-                      "value": null
-                    },
-                    {
-                      "color": "green",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 5,
-        "x": 12,
-        "y": 4
-      },
-      "id": 172,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.1.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Agents not running",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-[0-9a-z]+\", container=\"tetragon\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Agents running",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(kube_pod_status_phase{pod=~\"tetragon-operator.*\", phase!=\"Running\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} == 1) or count(kube_pod_container_status_waiting_reason{pod=~\"tetragon-operator.*\", reason=~\"CrashLoopBackOff|ErrImagePull|ImagePullBackOff|Init:CrashLoopBackOff\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Operators not running",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(kube_pod_container_status_running{pod=~\"tetragon-operator.*\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} > 0) or vector(0)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Operators running",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Tetragon Pods Running State (current)",
-      "type": "stat"
     },
     {
       "datasource": {
@@ -562,10 +450,10 @@
         ]
       },
       "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
-        "y": 4
+        "h": 3,
+        "w": 12,
+        "x": 12,
+        "y": 6
       },
       "id": 202,
       "options": {
@@ -582,10 +470,11 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -731,10 +620,10 @@
         ]
       },
       "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
-        "y": 8
+        "h": 3,
+        "w": 12,
+        "x": 12,
+        "y": 9
       },
       "id": 207,
       "options": {
@@ -754,7 +643,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -900,9 +789,9 @@
         ]
       },
       "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
+        "h": 3,
+        "w": 12,
+        "x": 12,
         "y": 12
       },
       "id": 209,
@@ -923,7 +812,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -999,6 +888,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1070,10 +960,10 @@
         ]
       },
       "gridPos": {
-        "h": 12,
+        "h": 9,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 15
       },
       "id": 149,
       "options": {
@@ -1089,7 +979,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -1136,80 +1026,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
-        "w": 5,
+        "h": 3,
+        "w": 12,
         "x": 12,
-        "y": 16
-      },
-      "id": 186,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.1.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (container) (increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[15m]))",
-          "hide": false,
-          "legendFormat": "{{container}} restarts",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Tetragon Pod Restarts (current)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Displays Tetragon components that have restarted in the given time range.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 3
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
-        "y": 16
+        "y": 15
       },
       "id": 183,
       "options": {
@@ -1226,10 +1046,11 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -1237,7 +1058,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (container) (increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))",
+          "expr": "sum by (container) (round(increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])))",
           "hide": false,
           "legendFormat": "{{container}} restarts",
           "range": true,
@@ -1277,10 +1098,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
-        "y": 20
+        "h": 3,
+        "w": 12,
+        "x": 12,
+        "y": 18
       },
       "id": 184,
       "options": {
@@ -1300,7 +1121,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -1308,7 +1129,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (container) (increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))",
+          "expr": "sum by (container) (round(increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])))",
           "hide": false,
           "legendFormat": "{{container}} restarts",
           "range": true,
@@ -1348,10 +1169,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 7,
-        "x": 17,
-        "y": 24
+        "h": 3,
+        "w": 12,
+        "x": 12,
+        "y": 21
       },
       "id": 185,
       "options": {
@@ -1371,7 +1192,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.3",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -1379,7 +1200,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (container) (increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))",
+          "expr": "sum by (container) (round(increase(kube_pod_container_status_restarts_total{container=~\"tetragon.*\", namespace=~\"$namespace\", pod=~\"$pod\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])))",
           "hide": false,
           "legendFormat": "{{container}} restarts",
           "range": true,
@@ -1396,7 +1217,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 24
       },
       "id": 244,
       "panels": [
@@ -1419,6 +1240,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -1450,7 +1272,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -1462,7 +1285,7 @@
             "h": 12,
             "w": 12,
             "x": 0,
-            "y": 29
+            "y": 25
           },
           "id": 245,
           "options": {
@@ -1478,7 +1301,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1513,76 +1336,6 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Rate of Lost Events\n\nThis panel shows top k pods with the highest loss rates across all Tetragon agents. If you spot an outlier pod, you can select it in a dashboard filter for more insights.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "eps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 12,
-            "w": 5,
-            "x": 12,
-            "y": 29
-          },
-          "id": 246,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "11.1.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "topk($k, sum(rate(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (pod) + sum(rate(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (pod))",
-              "legendFormat": "{{pod}}",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Lost Events Rate (current, top k)",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
           "description": "Total Lost Events\n\nThis panel shows top k pods with the highest loss rates across all Tetragon agents. If you spot an outlier pod, you can select it in a dashboard filter for more insights.",
           "fieldConfig": {
             "defaults": {
@@ -1595,7 +1348,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1609,9 +1363,9 @@
           },
           "gridPos": {
             "h": 4,
-            "w": 7,
-            "x": 17,
-            "y": 29
+            "w": 12,
+            "x": 12,
+            "y": 25
           },
           "id": 247,
           "options": {
@@ -1628,10 +1382,13 @@
               "values": false
             },
             "showPercentChange": false,
+            "text": {
+              "titleSize": 12
+            },
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1639,7 +1396,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk($k, sum(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod) + sum(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod))",
+              "expr": "topk($k, sum(round(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod) + sum(round(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -1666,7 +1423,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1680,9 +1438,9 @@
           },
           "gridPos": {
             "h": 4,
-            "w": 7,
-            "x": 17,
-            "y": 33
+            "w": 12,
+            "x": 12,
+            "y": 332
           },
           "id": 248,
           "options": {
@@ -1699,10 +1457,13 @@
               "values": false
             },
             "showPercentChange": false,
+            "text": {
+              "titleSize": 12
+            },
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1710,7 +1471,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk($k, sum(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod) + sum(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod))",
+              "expr": "topk($k, sum(round(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod) + sum(round(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -1737,7 +1498,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1751,9 +1513,9 @@
           },
           "gridPos": {
             "h": 4,
-            "w": 7,
-            "x": 17,
-            "y": 37
+            "w": 12,
+            "x": 12,
+            "y": 336
           },
           "id": 249,
           "options": {
@@ -1770,10 +1532,13 @@
               "values": false
             },
             "showPercentChange": false,
+            "text": {
+              "titleSize": 12
+            },
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1781,7 +1546,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk($k, sum(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod) + sum(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range])) by (pod))",
+              "expr": "topk($k, sum(round(increase(tetragon_observer_ringbuf_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod) + sum(round(increase(tetragon_observer_ringbuf_queue_events_lost_total{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__range]))) by (pod))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -1801,16 +1566,20 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 25
       },
       "id": 18,
       "panels": [
         {
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
-            "h": 4,
+            "h": 3,
             "w": 24,
             "x": 0,
-            "y": 30
+            "y": 26
           },
           "id": 104,
           "options": {
@@ -1822,8 +1591,8 @@
             "content": "ℹ️ Tetragon uses BPF maps as a datastore.\n\n**These maps are fundamental to Tetragon's operations. If they reach capacity then related functionality may fail.**",
             "mode": "markdown"
           },
-          "pluginVersion": "11.1.3",
-          "title": "BPF Maps",
+          "pluginVersion": "11.3.0",
+          "title": "",
           "type": "text"
         },
         {
@@ -1844,6 +1613,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -1876,7 +1646,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -1896,7 +1667,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 123
           },
           "id": 44,
           "options": {
@@ -1912,7 +1683,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1920,7 +1691,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(tetragon_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", map!~\"tg_socket_tuple_map\"}) by (map) / sum(tetragon_map_capacity{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}) by (map)",
+              "expr": "sum(tetragon_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", map!~\"tg_socket_tuple_map\"}) by (map) / sum(tetragon_map_capacity{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}) by (map) or label_replace(sum(tetragon_inode_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}) / sum(tetragon_inode_map_max{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}), \"map\", \"hash_map_inode_alloc\", \"\", \"\")",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -1934,7 +1705,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Utilization of BPF maps, which act as data stores for Tetragon.  \n\nHigh values can indicate overutilization of BPF maps and may lead to degradation of functionality. This graph shows top k maps with the highest utilization across all Tetragon nodes. If you spot an outlier pod, you can select it in a dashboard filter for more insights.",
+          "description": "Utilization of BPF maps, which act as data stores for Tetragon.  \n\nHigh values can indicate overutilization of BPF maps and may lead to degradation of functionality. This graph shows top k maps with the highest utilization across all Tetragon nodes. If you spot an outlier pod, you can select it in a dashboard filter for more insights.\n\nLegend format:\n<map> : <policy (if applicable)> : <Tetragon pod>",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1947,7 +1718,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -1967,7 +1739,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 123
           },
           "id": 214,
           "options": {
@@ -1984,10 +1756,13 @@
               "values": false
             },
             "showPercentChange": false,
+            "text": {
+              "titleSize": 12
+            },
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -1995,8 +1770,8 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk($k, tetragon_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", map!~\"tg_socket_tuple_map|tg_udp_retprobe_map\"} / tetragon_map_capacity{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"})",
-              "legendFormat": "{{map}} : {{pod}}",
+              "expr": "topk($k, tetragon_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", map!~\"tg_socket_tuple_map\"} / tetragon_map_capacity{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} or label_replace(tetragon_inode_map_entries{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"} / tetragon_inode_map_max{pod=~\"$pod\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}, \"map\", \"hash_map_inode_alloc\", \"\", \"\"))",
+              "legendFormat": "{{map}}  : {{policy}} : {{pod}}",
               "range": true,
               "refId": "A"
             }
@@ -2022,6 +1797,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -2053,7 +1829,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2065,7 +1842,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 43
+            "y": 132
           },
           "id": 77,
           "options": {
@@ -2081,7 +1858,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2103,7 +1880,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "This is a low level indicator that provides a rate of errors Tetragon BPF code returned when updating BPF maps.",
+          "description": "This is a low level indicator that provides a rate of errors Tetragon BPF code returned when updating BPF maps.\n\nLegend format:\n<map> : <Tetragon pod>",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2115,7 +1892,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2131,7 +1909,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 43
+            "y": 132
           },
           "id": 213,
           "options": {
@@ -2148,10 +1926,13 @@
               "values": false
             },
             "showPercentChange": false,
+            "text": {
+              "titleSize": 12
+            },
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2178,16 +1959,20 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 26
       },
       "id": 212,
       "panels": [
         {
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 31
+            "y": 27
           },
           "id": 216,
           "options": {
@@ -2199,7 +1984,7 @@
             "content": "",
             "mode": "markdown"
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "title": "Process Cache",
           "type": "text"
         },
@@ -2221,6 +2006,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -2252,7 +2038,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2294,7 +2081,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 33
+            "y": 65
           },
           "id": 218,
           "options": {
@@ -2310,7 +2097,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2357,7 +2144,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -2377,7 +2165,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 33
+            "y": 65
           },
           "id": 220,
           "options": {
@@ -2397,7 +2185,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2432,6 +2220,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -2463,7 +2252,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2475,7 +2265,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 42
+            "y": 74
           },
           "id": 219,
           "options": {
@@ -2491,7 +2281,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2525,7 +2315,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -2541,7 +2332,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 42
+            "y": 74
           },
           "id": 221,
           "options": {
@@ -2561,7 +2352,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2596,6 +2387,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -2627,7 +2419,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "yellow"
+                    "color": "yellow",
+                    "value": null
                   }
                 ]
               },
@@ -2639,7 +2432,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 51
+            "y": 83
           },
           "id": 238,
           "options": {
@@ -2655,7 +2448,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2689,7 +2482,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -2705,7 +2499,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 51
+            "y": 83
           },
           "id": 241,
           "options": {
@@ -2725,7 +2519,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2743,11 +2537,15 @@
           "type": "stat"
         },
         {
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 60
+            "y": 92
           },
           "id": 225,
           "options": {
@@ -2759,7 +2557,7 @@
             "content": "",
             "mode": "markdown"
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "title": "Event Cache",
           "type": "text"
         },
@@ -2781,6 +2579,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -2812,7 +2611,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2824,7 +2624,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 62
+            "y": 94
           },
           "id": 223,
           "options": {
@@ -2840,7 +2640,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2875,6 +2675,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -2906,7 +2707,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2918,7 +2720,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 71
+            "y": 103
           },
           "id": 242,
           "options": {
@@ -2934,7 +2736,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -2968,7 +2770,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2980,7 +2783,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 71
+            "y": 103
           },
           "id": 243,
           "options": {
@@ -3000,7 +2803,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3035,6 +2838,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 15,
                 "gradientMode": "none",
@@ -3066,7 +2870,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3078,7 +2883,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 80
+            "y": 112
           },
           "id": 226,
           "options": {
@@ -3094,7 +2899,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3128,7 +2933,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3144,7 +2950,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 80
+            "y": 112
           },
           "id": 227,
           "options": {
@@ -3164,7 +2970,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3191,16 +2997,41 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 27
       },
       "id": 228,
       "panels": [
+        {
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 28
+          },
+          "id": 251,
+          "options": {
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false,
+              "showMiniMap": false
+            },
+            "content": "ℹ️ Memory and CPU consumption of Tetragon components.\n\nFor more information about understanding Tetragon memory consumption, refer to [Tetragon Troubleshooting Documentation](https://docs.isovalent.com/operations-guide/tetragon/troubleshooting/index.html#understanding-tetragon-memory-consumption).\n\nNote: some panels in this section require metrics exported by [cAdvisor](https://github.com/google/cadvisor) (in Kubernetes they're provided by kubelet) and [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics).",
+            "mode": "markdown"
+          },
+          "pluginVersion": "11.3.0",
+          "title": "",
+          "type": "text"
+        },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Memory utilization of Tetragon agents",
+          "description": "Memory consumption of Tetragon agents",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3212,7 +3043,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3252,7 +3084,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3260,7 +3092,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-                  "expr": "topk($k, sum(container_memory_working_set_bytes{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", }) by (pod))",
+              "expr": "topk($k, sum(container_memory_working_set_bytes{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", }) by (pod))",
               "hide": false,
               "instant": true,
               "legendFormat": "__auto",
@@ -3268,7 +3100,7 @@
               "refId": "A"
             }
           ],
-          "title": "Tetragon Agent Container Memory Utilization (current, top k)",
+          "title": "Tetragon Agent Container Memory Consumption (current, top k)",
           "type": "stat"
         },
         {
@@ -3276,7 +3108,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "CPU Utilization of Tetragon agents",
+          "description": "CPU consumption of Tetragon agents",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3285,18 +3117,19 @@
               "mappings": [],
               "min": 0,
               "thresholds": {
-                "mode": "percentage",
+                "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 5
+                    "value": 0.05
                   },
                   {
                     "color": "red",
-                    "value": 10
+                    "value": 0.1
                   }
                 ]
               },
@@ -3328,7 +3161,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3336,7 +3169,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-                  "expr": "topk($k, sum(rate(container_cpu_usage_seconds_total{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", cpu=\"total\"}[$__rate_interval])) by (pod))",
+              "expr": "topk($k, sum(rate(container_cpu_usage_seconds_total{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", cpu=\"total\"}[$__rate_interval])) by (pod))",
               "hide": false,
               "instant": true,
               "legendFormat": "{{pod}}",
@@ -3344,7 +3177,7 @@
               "refId": "A"
             }
           ],
-          "title": "Tetragon Agent Container CPU Utilization (current, top k)",
+          "title": "Tetragon Agent Container CPU Consumption (current, top k)",
           "type": "stat"
         },
         {
@@ -3352,7 +3185,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Memory utilization of Tetragon agents",
+          "description": "Memory consumption of Tetragon agents",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3365,6 +3198,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3375,7 +3209,7 @@
                 },
                 "insertNulls": false,
                 "lineInterpolation": "smooth",
-                "lineWidth": 3,
+                "lineWidth": 2,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
@@ -3396,7 +3230,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3432,7 +3267,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3447,7 +3282,7 @@
               "refId": "A"
             }
           ],
-          "title": "Tetragon Agent Container Memory Utilization (top k)",
+          "title": "Tetragon Agent Container Memory Consumption (top k)",
           "type": "timeseries"
         },
         {
@@ -3455,7 +3290,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "CPU Utilization of Tetragon agents",
+          "description": "CPU consumption of Tetragon agents",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3468,6 +3303,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3478,7 +3314,7 @@
                 },
                 "insertNulls": false,
                 "lineInterpolation": "smooth",
-                "lineWidth": 3,
+                "lineWidth": 2,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
@@ -3496,18 +3332,19 @@
               "mappings": [],
               "min": 0,
               "thresholds": {
-                "mode": "percentage",
+                "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 5
+                    "value": 0.05
                   },
                   {
                     "color": "red",
-                    "value": 10
+                    "value": 0.1
                   }
                 ]
               },
@@ -3535,7 +3372,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "10.1.5",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3543,7 +3380,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-                  "expr": "topk($k, sum(rate(container_cpu_usage_seconds_total{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", cpu=\"total\"}[$__rate_interval])) by (pod))",
+              "expr": "topk($k, sum(rate(container_cpu_usage_seconds_total{pod=~\"$pod\", pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\", container=\"\", cpu=\"total\"}[$__rate_interval])) by (pod))",
               "hide": false,
               "instant": false,
               "legendFormat": "{{pod}}",
@@ -3551,7 +3388,7 @@
               "refId": "A"
             }
           ],
-          "title": "Tetragon Agent Container CPU Utilization (top k)",
+          "title": "Tetragon Agent Container CPU Consumption (top k)",
           "type": "timeseries"
         },
         {
@@ -3572,6 +3409,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3603,7 +3441,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3639,7 +3478,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3674,7 +3513,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3714,7 +3554,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3722,7 +3562,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-                  "expr": "topk($k, histogram_quantile(0.50, sum(rate(go_sched_latencies_seconds_bucket{pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (le, pod)) )",
+              "expr": "topk($k, histogram_quantile(0.50, sum(rate(go_sched_latencies_seconds_bucket{pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (le, pod)) )",
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
@@ -3749,7 +3589,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3789,7 +3630,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3797,7 +3638,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-                  "expr": "topk($k, histogram_quantile(0.95, sum(rate(go_sched_latencies_seconds_bucket{pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (le, pod)) )",
+              "expr": "topk($k, histogram_quantile(0.95, sum(rate(go_sched_latencies_seconds_bucket{pod=~\"tetragon-[a-z0-9]+\", namespace=~\"$namespace\", job=~\"$job\", cluster=~\"$cluster\", instance=~\"$instance\"}[$__rate_interval])) by (le, pod)) )",
               "instant": true,
               "legendFormat": "{{pod}}: P95",
               "range": false,
@@ -3825,6 +3666,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3856,7 +3698,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3892,7 +3735,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "11.1.3",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -3928,6 +3771,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3959,7 +3803,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "yellow",
@@ -3995,7 +3840,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "10.1.5",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
@@ -4025,13 +3870,13 @@
           "type": "timeseries"
         }
       ],
-      "title": "💻 Tetragon CPU/Memory Utilization",
+      "title": "💻 Tetragon CPU/Memory Consumption",
       "type": "row"
     }
   ],
+  "preload": false,
   "refresh": "",
-  "revision": 1,
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "tags": [
     "Tetragon"
   ],
@@ -4039,17 +3884,13 @@
     "list": [
       {
         "current": {},
-        "hide": 0,
         "includeAll": false,
         "label": "datasource",
-        "multi": false,
         "name": "datasource",
         "options": [],
         "query": "prometheus",
-        "queryValue": "",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "type": "datasource"
       },
       {
@@ -4060,7 +3901,6 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_build_info,cluster)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "cluster",
@@ -4072,7 +3912,6 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
@@ -4096,7 +3935,6 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
@@ -4108,7 +3946,6 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\"}, pod)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "pod",
@@ -4120,20 +3957,14 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
+        "type": "query"
       },
       {
         "current": {
-          "selected": true,
           "text": "8",
           "value": "8"
         },
-        "hide": 0,
         "label": "top k",
         "name": "k",
         "options": [
@@ -4144,7 +3975,6 @@
           }
         ],
         "query": "8",
-        "skipUrlSync": false,
         "type": "textbox"
       },
       {
@@ -4168,8 +3998,6 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
@@ -4193,8 +4021,6 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       }
     ]
@@ -4214,22 +4040,11 @@
       "1h",
       "2h",
       "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
     ]
   },
   "timezone": "",
   "title": "Tetragon High Level Health",
   "uid": "adtue3swqycxsb",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
