@@ -36,8 +36,19 @@
   ],
   "hostRules": [
     {
-      "hostType": "github",
+      "matchHost": "https://github.com/isovalent",
       "token": "{{ secrets.RENOVATE_GITHUB_COM_TOKEN }}",
+      "hostType": "go"
+    },
+    {
+      "matchHost": "https://api.github.com/repos/isovalent",
+      "token": "{{ secrets.RENOVATE_GITHUB_COM_TOKEN }}",
+      "hostType": "github"
     },
   ],
+  "customEnvVariables": {
+    "GOPRIVATE": "github.com/isovalent",
+    "GONOSUMDB": "github.com/isovalent",
+    "GONOPROXY": "github.com/isovalent",
+  },
 }
