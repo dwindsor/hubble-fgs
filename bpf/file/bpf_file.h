@@ -151,6 +151,7 @@ static inline gid_t __kgid_val(kgid_t gid)
 
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 
+#ifdef __LARGE_BPF_PROG
 // re-write this in user-space to enable bpf_d_path helper
 // This is because https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe
 // which allows bpf_d_path helper into security_path_* functions.
@@ -161,6 +162,7 @@ volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
 #define FS_TYPE_MATCHER 2
 
 volatile const __u32 PATH_BASED_MATCHER = 0;
+#endif /* __LARGE_BPF_PROG */
 
 #define INVALID_RULE_ID 0xffffffff // UINT32_MAX
 
@@ -1495,14 +1497,18 @@ static inline __attribute__((always_inline)) void
 __generate_path(struct path *path, char *buf, __u32 bufsz, __u32 *sz, __u32 *flags)
 {
 	int error = 0, buflen = 0;
-	long ret;
 	char *p;
 
+#ifdef __LARGE_BPF_PROG
 	if (USE_BPF_D_PATH_HELPER) {
+		long ret;
+
 		ret = d_path(path, buf, bufsz);
 		if (ret > 0)
 			*sz = ret - 1;
-	} else {
+	} else
+#endif /* __LARGE_BPF_PROG */
+	{
 		p = d_path_local(path, &buflen, &error);
 		if (!error) {
 			asm volatile("%[buflen] &= 0xff;\n"
@@ -1570,6 +1576,7 @@ static inline __attribute__((always_inline))
 __u32
 run_matcher(__u32 s_magic)
 {
+#ifdef __LARGE_BPF_PROG
 	__u32 *r;
 
 	if (PATH_BASED_MATCHER == FS_TYPE_MATCHER) {
@@ -1581,6 +1588,7 @@ run_matcher(__u32 s_magic)
 	} else if (PATH_BASED_MATCHER == MATCH_ALL) {
 		return 0;
 	}
+#endif /* __LARGE_BPF_PROG */
 
 	// make sure that the PATH_BASED_MATCHER is correctly set
 	// otherwise the verifier will fail
