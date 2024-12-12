@@ -36,3 +36,29 @@ func TestMerge(t *testing.T) {
 	expected := `{"host":{"processes":[{"name":"curl"},{"name":"wget"}]}}`
 	assert.JSONEq(t, expected, string(merged))
 }
+
+func TestMergeArgs(t *testing.T) {
+	m1 := appModelV1.ApplicationModel{
+		Namespaces: nil,
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcess{
+				{Name: "curl", Arguments: "-v ebpf.io"},
+				{Name: "curl", Arguments: "-v tetragon.io"},
+			},
+		},
+	}
+	m2 := appModelV1.ApplicationModel{
+		Namespaces: nil,
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcess{
+				{Name: "curl", Arguments: "-v ebpf.io"},
+				{Name: "wget"},
+			},
+		},
+	}
+	res := Merge(&m1, &m2)
+	merged, err := res.MarshalJSON()
+	assert.NoError(t, err)
+	expected := `{"host":{"processes":[{"name":"curl", "arguments":"-v ebpf.io"},{"name":"curl", "arguments":"-v tetragon.io"},{"name":"wget"}]}}`
+	assert.JSONEq(t, expected, string(merged))
+}
