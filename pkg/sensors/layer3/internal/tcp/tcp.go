@@ -165,6 +165,7 @@ var (
 	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops515)
 	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops515)
 	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
+	SocketOpsTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, TcpSockops515)
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
@@ -252,6 +253,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		VerOpsMap,
 		SocketOpsTupleMap,
 		SocketOpsTupleStats,
+		SocketOpsTupleRevMap,
 		SocketOpsTupleHintMap,
 		TLSOpsMapStats,
 		CfgOpsMap,
