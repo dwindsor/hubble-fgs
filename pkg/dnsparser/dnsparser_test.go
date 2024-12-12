@@ -1,9 +1,20 @@
-package bpftests
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+package dnsparser
 
 import (
 	"encoding/binary"
 	"errors"
 	"flag"
+	"io/fs"
 	"maps"
 	"net/netip"
 	"os"
@@ -14,7 +25,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 )
 
 const (
@@ -47,8 +57,11 @@ func Test_DNSParser(t *testing.T) {
 	}
 
 	// load test program
-	collSpec, err := ebpf.LoadCollectionSpec(filepath.Join("objs", objName))
+	collSpec, err := ebpf.LoadCollectionSpec(filepath.Join("../../bpf/tests/objs", objName))
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("please run 'make tetragon-bpf-test' to compile the BPF test program: %s", err)
+		}
 		t.Fatal(err)
 	}
 	collOpts := ebpf.CollectionOptions{}
@@ -91,17 +104,17 @@ func Test_DNSParser(t *testing.T) {
 		t.Skipf("DNS parser test prog loads but cannot run: minimum kernel version (%v) not met, skipping", v)
 	}
 
-	rawErrMap, ok := coll.Maps[dnsparser.ErrorMapName]
+	rawErrMap, ok := coll.Maps[ErrorMapName]
 	if !ok {
-		t.Fatalf("map %s not found", dnsparser.ErrorMapName)
+		t.Fatalf("map %s not found", ErrorMapName)
 	}
-	errMap := dnsparser.NewErrorMap(rawErrMap)
+	errMap := NewErrorMap(rawErrMap)
 
-	rawIPMap, ok := coll.Maps[dnsparser.IP4ToDomainMapName]
+	rawIPMap, ok := coll.Maps[IP4ToDomainMapName]
 	if !ok {
-		t.Fatalf("map %s not found", dnsparser.IP4ToDomainMapName)
+		t.Fatalf("map %s not found", IP4ToDomainMapName)
 	}
-	ipMap := dnsparser.NewIPMap(rawIPMap)
+	ipMap := NewIPMap(rawIPMap)
 
 	testQueries := []testQuery{
 		{

@@ -12,7 +12,7 @@ all: $(OBJS)
 
 .PHONY: test
 test: $(OBJS)
-	go test -exec "$(SUDO)" ./ $(BPFGOTESTFLAGS)
+	go test -exec "$(SUDO)" ../../pkg/dnsparser -v $(BPFGOTESTFLAGS)
 
 $(OBJS): | $(OBJSDIR)
 

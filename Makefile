@@ -271,8 +271,7 @@ check:
 endif
 
 .PHONY: test
-test: tester-progs tetragon-bpf ## Run Go tests.
-	$(MAKE) bpf-test BPFGOTESTFLAGS="-v"
+test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
 	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ./operator/... ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
@@ -300,7 +299,6 @@ tetragon-bpf-test-container:
 	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name tetragon-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf/tests BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
 ## bpf-test: ## Run BPF tests.
-## bpf-test BPFGOTESTFLAGS="-v": ## Run BPF tests with verbose.
 .PHONY: bpf-test
 bpf-test: tetragon-bpf-test
 	$(MAKE) -C ./bpf test
