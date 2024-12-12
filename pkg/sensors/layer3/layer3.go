@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -192,6 +193,9 @@ var (
 	EndpointIdEgressMap             = program.MapUser("tg_endpoint_id_map", EgressDispatcher)
 	EndpointIdIngressMap            = program.MapUser("tg_endpoint_id_map", IngressDispatcher)
 
+	// DNS Parser maps
+	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher)
+
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
 		[]*program.Map{protoCfgMap,
@@ -243,6 +247,9 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		progs = append(progs, rawProgs...)
 		maps = append(maps, rawMaps...)
 		needDispatcher = true
+	}
+	if dnsEnabled {
+		maps = append(maps, DNSParserErrorMap)
 	}
 
 	if needDispatcher == true {
