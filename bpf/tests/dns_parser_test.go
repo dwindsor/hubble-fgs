@@ -1,171 +1,28 @@
 package bpftests
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"flag"
 	"maps"
-	"net"
 	"net/netip"
 	"os"
-	"runtime"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 )
 
 const (
-	programName        = "test_dns_parser"
-	ip4ToDomainMapName = "ip_map"
-	errorMap           = "error_map"
+	programName = "test_dns_parser"
+	objName     = "dns_parser_test.o"
 )
 
 var verifierLogs = flag.Bool("verlogs", false, "Write the full verifier logs in the ./verifier.log file")
-
-type ipMapCache struct {
-	ipMap *ebpf.Map
-	t     *testing.T
-}
-
-type errorMapCache struct {
-	errMap *ebpf.Map
-	t      *testing.T
-}
-
-func newErrorMap(t *testing.T, coll *ebpf.Collection) errorMapCache {
-	errMap, ok := coll.Maps[errorMap]
-	if !ok {
-		t.Fatalf("map %s not found", errorMap)
-	}
-
-	return errorMapCache{
-		errMap: errMap,
-		t:      t,
-	}
-}
-
-func (m *errorMapCache) ReadUnique() int {
-	entries := m.errMap.Iterate()
-
-	var key uint32
-	perCPUValue := make([]uint32, runtime.NumCPU())
-
-	for entries.Next(&key, perCPUValue) {
-		for _, value := range perCPUValue {
-			if value != 0 {
-				return int(key)
-			}
-		}
-	}
-
-	if err := entries.Err(); err != nil {
-		m.t.Fatal(err)
-	}
-
-	return 0
-}
-
-func (m *errorMapCache) Print() {
-	entries := m.errMap.Iterate()
-
-	var key uint32
-	perCPUValue := make([]uint32, runtime.NumCPU())
-
-	for entries.Next(&key, perCPUValue) {
-		m.t.Logf("key: %d, value: %v\n", key, perCPUValue)
-	}
-
-	if err := entries.Err(); err != nil {
-		m.t.Fatal(err)
-	}
-}
-
-func (m *errorMapCache) Clear() {
-	size := int(m.errMap.MaxEntries())
-	keys := make([]uint32, size)
-	for i := range size {
-		keys[i] = uint32(i)
-	}
-
-	clearValues := make([]uint32, size*runtime.NumCPU())
-	if _, err := m.errMap.BatchUpdate(keys, clearValues, &ebpf.BatchOptions{}); err != nil {
-		m.t.Fatal(err)
-	}
-}
-
-func newIPMapCache(t *testing.T, coll *ebpf.Collection) ipMapCache {
-	ipMap, ok := coll.Maps[ip4ToDomainMapName]
-	if !ok {
-		t.Fatalf("map %s not found", ip4ToDomainMapName)
-	}
-
-	return ipMapCache{
-		ipMap: ipMap,
-		t:     t,
-	}
-}
-
-func (m *ipMapCache) Clear() {
-	entries := m.ipMap.Iterate()
-
-	keys := []uint32{}
-	var key uint32
-	value := make([]byte, 255)
-
-	for entries.Next(&key, value) {
-		keys = append(keys, key)
-	}
-
-	if err := entries.Err(); err != nil {
-		m.t.Fatal(err)
-	}
-
-	if _, err := m.ipMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
-		m.t.Fatal(err)
-	}
-}
-
-func (m ipMapCache) Print() {
-	entries := m.ipMap.Iterate()
-
-	var key uint32
-	value := make([]byte, 255)
-
-	for entries.Next(&key, value) {
-		ip := make(net.IP, 4)
-		binary.BigEndian.PutUint32(ip, key)
-		str, _, _ := bytes.Cut(value, []byte("\x00"))
-		m.t.Logf("key: %s, value: %s\n", ip, string(str))
-	}
-
-	if err := entries.Err(); err != nil {
-		m.t.Fatal(err)
-	}
-}
-
-func (m *ipMapCache) Values() map[uint32]string {
-	entries := m.ipMap.Iterate()
-
-	var key uint32
-	value := make([]byte, 255)
-
-	actualIPMaps := map[uint32]string{}
-
-	for entries.Next(&key, value) {
-		str, _, _ := bytes.Cut(value, []byte("\x00"))
-		actualIPMaps[key] = string(str)
-	}
-
-	if err := entries.Err(); err != nil {
-		m.t.Fatal(err)
-	}
-
-	return actualIPMaps
-}
 
 type testQuery struct {
 	name       string
@@ -190,7 +47,7 @@ func Test_DNSParser(t *testing.T) {
 	}
 
 	// load test program
-	collSpec, err := ebpf.LoadCollectionSpec("objs/dns_parser_test.o")
+	collSpec, err := ebpf.LoadCollectionSpec(filepath.Join("objs", objName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,9 +91,17 @@ func Test_DNSParser(t *testing.T) {
 		t.Skipf("DNS parser test prog loads but cannot run: minimum kernel version (%v) not met, skipping", v)
 	}
 
-	errMap := newErrorMap(t, coll)
+	rawErrMap, ok := coll.Maps[dnsparser.ErrorMapName]
+	if !ok {
+		t.Fatalf("map %s not found", dnsparser.ErrorMapName)
+	}
+	errMap := dnsparser.NewErrorMap(rawErrMap)
 
-	ipMap := newIPMapCache(t, coll)
+	rawIPMap, ok := coll.Maps[dnsparser.IP4ToDomainMapName]
+	if !ok {
+		t.Fatalf("map %s not found", dnsparser.IP4ToDomainMapName)
+	}
+	ipMap := dnsparser.NewIPMap(rawIPMap)
 
 	testQueries := []testQuery{
 		{
@@ -339,7 +204,10 @@ func Test_DNSParser(t *testing.T) {
 				t.Errorf("returned code is != 1: %d", code)
 			}
 
-			errValue := errMap.ReadUnique()
+			errValue, err := errMap.ReadUnique()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if errValue != 0 {
 				if tq.wantErr {
 					return // success
@@ -356,7 +224,10 @@ func Test_DNSParser(t *testing.T) {
 				wantIPMaps[binary.BigEndian.Uint32(ip.AsSlice())] = tq.wantDomain
 			}
 
-			actualIP := ipMap.Values()
+			actualIP, err := ipMap.Values()
+			if err != nil {
+				t.Fatalf("failed to retrieve values out of IP map: %s", err)
+			}
 
 			if len(actualIP) != len(wantIPMaps) {
 				t.Errorf("len(got) %d != len(want) %d", len(actualIP), len(wantIPMaps))
