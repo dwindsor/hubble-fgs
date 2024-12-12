@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // SandboxPolicyLister helps list SandboxPolicies.
@@ -17,19 +17,19 @@ import (
 type SandboxPolicyLister interface {
 	// List lists all SandboxPolicies in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.SandboxPolicy, err error)
+	List(selector labels.Selector) (ret []*ciliumiov1alpha1.SandboxPolicy, err error)
 	// Get retrieves the SandboxPolicy from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.SandboxPolicy, error)
+	Get(name string) (*ciliumiov1alpha1.SandboxPolicy, error)
 	SandboxPolicyListerExpansion
 }
 
 // sandboxPolicyLister implements the SandboxPolicyLister interface.
 type sandboxPolicyLister struct {
-	listers.ResourceIndexer[*v1alpha1.SandboxPolicy]
+	listers.ResourceIndexer[*ciliumiov1alpha1.SandboxPolicy]
 }
 
 // NewSandboxPolicyLister returns a new SandboxPolicyLister.
 func NewSandboxPolicyLister(indexer cache.Indexer) SandboxPolicyLister {
-	return &sandboxPolicyLister{listers.New[*v1alpha1.SandboxPolicy](indexer, v1alpha1.Resource("sandboxpolicy"))}
+	return &sandboxPolicyLister{listers.New[*ciliumiov1alpha1.SandboxPolicy](indexer, ciliumiov1alpha1.Resource("sandboxpolicy"))}
 }

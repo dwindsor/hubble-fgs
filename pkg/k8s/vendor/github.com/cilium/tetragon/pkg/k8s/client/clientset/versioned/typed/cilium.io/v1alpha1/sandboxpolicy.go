@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
 	scheme "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/scheme"
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -24,31 +24,32 @@ type SandboxPoliciesGetter interface {
 
 // SandboxPolicyInterface has methods to work with SandboxPolicy resources.
 type SandboxPolicyInterface interface {
-	Create(ctx context.Context, sandboxPolicy *v1alpha1.SandboxPolicy, opts v1.CreateOptions) (*v1alpha1.SandboxPolicy, error)
-	Update(ctx context.Context, sandboxPolicy *v1alpha1.SandboxPolicy, opts v1.UpdateOptions) (*v1alpha1.SandboxPolicy, error)
+	Create(ctx context.Context, sandboxPolicy *ciliumiov1alpha1.SandboxPolicy, opts v1.CreateOptions) (*ciliumiov1alpha1.SandboxPolicy, error)
+	Update(ctx context.Context, sandboxPolicy *ciliumiov1alpha1.SandboxPolicy, opts v1.UpdateOptions) (*ciliumiov1alpha1.SandboxPolicy, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.SandboxPolicy, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.SandboxPolicyList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*ciliumiov1alpha1.SandboxPolicy, error)
+	List(ctx context.Context, opts v1.ListOptions) (*ciliumiov1alpha1.SandboxPolicyList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.SandboxPolicy, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *ciliumiov1alpha1.SandboxPolicy, err error)
 	SandboxPolicyExpansion
 }
 
 // sandboxPolicies implements SandboxPolicyInterface
 type sandboxPolicies struct {
-	*gentype.ClientWithList[*v1alpha1.SandboxPolicy, *v1alpha1.SandboxPolicyList]
+	*gentype.ClientWithList[*ciliumiov1alpha1.SandboxPolicy, *ciliumiov1alpha1.SandboxPolicyList]
 }
 
 // newSandboxPolicies returns a SandboxPolicies
 func newSandboxPolicies(c *CiliumV1alpha1Client) *sandboxPolicies {
 	return &sandboxPolicies{
-		gentype.NewClientWithList[*v1alpha1.SandboxPolicy, *v1alpha1.SandboxPolicyList](
+		gentype.NewClientWithList[*ciliumiov1alpha1.SandboxPolicy, *ciliumiov1alpha1.SandboxPolicyList](
 			"sandboxpolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.SandboxPolicy { return &v1alpha1.SandboxPolicy{} },
-			func() *v1alpha1.SandboxPolicyList { return &v1alpha1.SandboxPolicyList{} }),
+			func() *ciliumiov1alpha1.SandboxPolicy { return &ciliumiov1alpha1.SandboxPolicy{} },
+			func() *ciliumiov1alpha1.SandboxPolicyList { return &ciliumiov1alpha1.SandboxPolicyList{} },
+		),
 	}
 }

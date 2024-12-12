@@ -6,13 +6,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
 	versioned "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	internalinterfaces "github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1"
-	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1"
+	apisciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -23,7 +23,7 @@ import (
 // SandboxPolicies.
 type SandboxPolicyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.SandboxPolicyLister
+	Lister() ciliumiov1alpha1.SandboxPolicyLister
 }
 
 type sandboxPolicyInformer struct {
@@ -57,7 +57,7 @@ func NewFilteredSandboxPolicyInformer(client versioned.Interface, resyncPeriod t
 				return client.CiliumV1alpha1().SandboxPolicies().Watch(context.TODO(), options)
 			},
 		},
-		&ciliumiov1alpha1.SandboxPolicy{},
+		&apisciliumiov1alpha1.SandboxPolicy{},
 		resyncPeriod,
 		indexers,
 	)
@@ -68,9 +68,9 @@ func (f *sandboxPolicyInformer) defaultInformer(client versioned.Interface, resy
 }
 
 func (f *sandboxPolicyInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&ciliumiov1alpha1.SandboxPolicy{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisciliumiov1alpha1.SandboxPolicy{}, f.defaultInformer)
 }
 
-func (f *sandboxPolicyInformer) Lister() v1alpha1.SandboxPolicyLister {
-	return v1alpha1.NewSandboxPolicyLister(f.Informer().GetIndexer())
+func (f *sandboxPolicyInformer) Lister() ciliumiov1alpha1.SandboxPolicyLister {
+	return ciliumiov1alpha1.NewSandboxPolicyLister(f.Informer().GetIndexer())
 }

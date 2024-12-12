@@ -16,23 +16,23 @@ type FakeCiliumV1alpha1 struct {
 }
 
 func (c *FakeCiliumV1alpha1) PodInfo(namespace string) v1alpha1.PodInfoInterface {
-	return &FakePodInfo{c, namespace}
+	return newFakePodInfo(c, namespace)
 }
 
 func (c *FakeCiliumV1alpha1) SandboxPolicies() v1alpha1.SandboxPolicyInterface {
-	return &FakeSandboxPolicies{c}
+	return newFakeSandboxPolicies(c)
 }
 
 func (c *FakeCiliumV1alpha1) SandboxPoliciesNamespaced(namespace string) v1alpha1.SandboxPolicyNamespacedInterface {
-	return &FakeSandboxPoliciesNamespaced{c, namespace}
+	return newFakeSandboxPoliciesNamespaced(c, namespace)
 }
 
 func (c *FakeCiliumV1alpha1) TracingPolicies() v1alpha1.TracingPolicyInterface {
-	return &FakeTracingPolicies{c}
+	return newFakeTracingPolicies(c)
 }
 
 func (c *FakeCiliumV1alpha1) TracingPoliciesNamespaced(namespace string) v1alpha1.TracingPolicyNamespacedInterface {
-	return &FakeTracingPoliciesNamespaced{c, namespace}
+	return newFakeTracingPoliciesNamespaced(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

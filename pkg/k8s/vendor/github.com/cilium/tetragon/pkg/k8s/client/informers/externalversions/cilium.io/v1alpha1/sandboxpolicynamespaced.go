@@ -6,13 +6,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
 	versioned "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	internalinterfaces "github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1"
-	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1"
+	apisciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -23,7 +23,7 @@ import (
 // SandboxPoliciesNamespaced.
 type SandboxPolicyNamespacedInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.SandboxPolicyNamespacedLister
+	Lister() ciliumiov1alpha1.SandboxPolicyNamespacedLister
 }
 
 type sandboxPolicyNamespacedInformer struct {
@@ -58,7 +58,7 @@ func NewFilteredSandboxPolicyNamespacedInformer(client versioned.Interface, name
 				return client.CiliumV1alpha1().SandboxPoliciesNamespaced(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&ciliumiov1alpha1.SandboxPolicyNamespaced{},
+		&apisciliumiov1alpha1.SandboxPolicyNamespaced{},
 		resyncPeriod,
 		indexers,
 	)
@@ -69,9 +69,9 @@ func (f *sandboxPolicyNamespacedInformer) defaultInformer(client versioned.Inter
 }
 
 func (f *sandboxPolicyNamespacedInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&ciliumiov1alpha1.SandboxPolicyNamespaced{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisciliumiov1alpha1.SandboxPolicyNamespaced{}, f.defaultInformer)
 }
 
-func (f *sandboxPolicyNamespacedInformer) Lister() v1alpha1.SandboxPolicyNamespacedLister {
-	return v1alpha1.NewSandboxPolicyNamespacedLister(f.Informer().GetIndexer())
+func (f *sandboxPolicyNamespacedInformer) Lister() ciliumiov1alpha1.SandboxPolicyNamespacedLister {
+	return ciliumiov1alpha1.NewSandboxPolicyNamespacedLister(f.Informer().GetIndexer())
 }

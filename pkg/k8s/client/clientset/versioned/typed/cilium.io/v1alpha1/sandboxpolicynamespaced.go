@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
 	scheme "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/scheme"
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -24,31 +24,34 @@ type SandboxPoliciesNamespacedGetter interface {
 
 // SandboxPolicyNamespacedInterface has methods to work with SandboxPolicyNamespaced resources.
 type SandboxPolicyNamespacedInterface interface {
-	Create(ctx context.Context, sandboxPolicyNamespaced *v1alpha1.SandboxPolicyNamespaced, opts v1.CreateOptions) (*v1alpha1.SandboxPolicyNamespaced, error)
-	Update(ctx context.Context, sandboxPolicyNamespaced *v1alpha1.SandboxPolicyNamespaced, opts v1.UpdateOptions) (*v1alpha1.SandboxPolicyNamespaced, error)
+	Create(ctx context.Context, sandboxPolicyNamespaced *ciliumiov1alpha1.SandboxPolicyNamespaced, opts v1.CreateOptions) (*ciliumiov1alpha1.SandboxPolicyNamespaced, error)
+	Update(ctx context.Context, sandboxPolicyNamespaced *ciliumiov1alpha1.SandboxPolicyNamespaced, opts v1.UpdateOptions) (*ciliumiov1alpha1.SandboxPolicyNamespaced, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.SandboxPolicyNamespaced, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.SandboxPolicyNamespacedList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*ciliumiov1alpha1.SandboxPolicyNamespaced, error)
+	List(ctx context.Context, opts v1.ListOptions) (*ciliumiov1alpha1.SandboxPolicyNamespacedList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.SandboxPolicyNamespaced, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *ciliumiov1alpha1.SandboxPolicyNamespaced, err error)
 	SandboxPolicyNamespacedExpansion
 }
 
 // sandboxPoliciesNamespaced implements SandboxPolicyNamespacedInterface
 type sandboxPoliciesNamespaced struct {
-	*gentype.ClientWithList[*v1alpha1.SandboxPolicyNamespaced, *v1alpha1.SandboxPolicyNamespacedList]
+	*gentype.ClientWithList[*ciliumiov1alpha1.SandboxPolicyNamespaced, *ciliumiov1alpha1.SandboxPolicyNamespacedList]
 }
 
 // newSandboxPoliciesNamespaced returns a SandboxPoliciesNamespaced
 func newSandboxPoliciesNamespaced(c *CiliumV1alpha1Client, namespace string) *sandboxPoliciesNamespaced {
 	return &sandboxPoliciesNamespaced{
-		gentype.NewClientWithList[*v1alpha1.SandboxPolicyNamespaced, *v1alpha1.SandboxPolicyNamespacedList](
+		gentype.NewClientWithList[*ciliumiov1alpha1.SandboxPolicyNamespaced, *ciliumiov1alpha1.SandboxPolicyNamespacedList](
 			"sandboxpoliciesnamespaced",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.SandboxPolicyNamespaced { return &v1alpha1.SandboxPolicyNamespaced{} },
-			func() *v1alpha1.SandboxPolicyNamespacedList { return &v1alpha1.SandboxPolicyNamespacedList{} }),
+			func() *ciliumiov1alpha1.SandboxPolicyNamespaced { return &ciliumiov1alpha1.SandboxPolicyNamespaced{} },
+			func() *ciliumiov1alpha1.SandboxPolicyNamespacedList {
+				return &ciliumiov1alpha1.SandboxPolicyNamespacedList{}
+			},
+		),
 	}
 }

@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // SandboxPolicyNamespacedLister helps list SandboxPoliciesNamespaced.
@@ -17,7 +17,7 @@ import (
 type SandboxPolicyNamespacedLister interface {
 	// List lists all SandboxPoliciesNamespaced in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.SandboxPolicyNamespaced, err error)
+	List(selector labels.Selector) (ret []*ciliumiov1alpha1.SandboxPolicyNamespaced, err error)
 	// SandboxPoliciesNamespaced returns an object that can list and get SandboxPoliciesNamespaced.
 	SandboxPoliciesNamespaced(namespace string) SandboxPolicyNamespacedNamespaceLister
 	SandboxPolicyNamespacedListerExpansion
@@ -25,17 +25,17 @@ type SandboxPolicyNamespacedLister interface {
 
 // sandboxPolicyNamespacedLister implements the SandboxPolicyNamespacedLister interface.
 type sandboxPolicyNamespacedLister struct {
-	listers.ResourceIndexer[*v1alpha1.SandboxPolicyNamespaced]
+	listers.ResourceIndexer[*ciliumiov1alpha1.SandboxPolicyNamespaced]
 }
 
 // NewSandboxPolicyNamespacedLister returns a new SandboxPolicyNamespacedLister.
 func NewSandboxPolicyNamespacedLister(indexer cache.Indexer) SandboxPolicyNamespacedLister {
-	return &sandboxPolicyNamespacedLister{listers.New[*v1alpha1.SandboxPolicyNamespaced](indexer, v1alpha1.Resource("sandboxpolicynamespaced"))}
+	return &sandboxPolicyNamespacedLister{listers.New[*ciliumiov1alpha1.SandboxPolicyNamespaced](indexer, ciliumiov1alpha1.Resource("sandboxpolicynamespaced"))}
 }
 
 // SandboxPoliciesNamespaced returns an object that can list and get SandboxPoliciesNamespaced.
 func (s *sandboxPolicyNamespacedLister) SandboxPoliciesNamespaced(namespace string) SandboxPolicyNamespacedNamespaceLister {
-	return sandboxPolicyNamespacedNamespaceLister{listers.NewNamespaced[*v1alpha1.SandboxPolicyNamespaced](s.ResourceIndexer, namespace)}
+	return sandboxPolicyNamespacedNamespaceLister{listers.NewNamespaced[*ciliumiov1alpha1.SandboxPolicyNamespaced](s.ResourceIndexer, namespace)}
 }
 
 // SandboxPolicyNamespacedNamespaceLister helps list and get SandboxPoliciesNamespaced.
@@ -43,15 +43,15 @@ func (s *sandboxPolicyNamespacedLister) SandboxPoliciesNamespaced(namespace stri
 type SandboxPolicyNamespacedNamespaceLister interface {
 	// List lists all SandboxPoliciesNamespaced in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.SandboxPolicyNamespaced, err error)
+	List(selector labels.Selector) (ret []*ciliumiov1alpha1.SandboxPolicyNamespaced, err error)
 	// Get retrieves the SandboxPolicyNamespaced from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.SandboxPolicyNamespaced, error)
+	Get(name string) (*ciliumiov1alpha1.SandboxPolicyNamespaced, error)
 	SandboxPolicyNamespacedNamespaceListerExpansion
 }
 
 // sandboxPolicyNamespacedNamespaceLister implements the SandboxPolicyNamespacedNamespaceLister
 // interface.
 type sandboxPolicyNamespacedNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.SandboxPolicyNamespaced]
+	listers.ResourceIndexer[*ciliumiov1alpha1.SandboxPolicyNamespaced]
 }

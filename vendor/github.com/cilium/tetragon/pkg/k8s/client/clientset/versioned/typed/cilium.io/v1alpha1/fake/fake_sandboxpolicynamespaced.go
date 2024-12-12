@@ -6,116 +6,34 @@
 package fake
 
 import (
-	"context"
-
+	ciliumiov1alpha1 "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1"
 	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeSandboxPoliciesNamespaced implements SandboxPolicyNamespacedInterface
-type FakeSandboxPoliciesNamespaced struct {
+// fakeSandboxPoliciesNamespaced implements SandboxPolicyNamespacedInterface
+type fakeSandboxPoliciesNamespaced struct {
+	*gentype.FakeClientWithList[*v1alpha1.SandboxPolicyNamespaced, *v1alpha1.SandboxPolicyNamespacedList]
 	Fake *FakeCiliumV1alpha1
-	ns   string
 }
 
-var sandboxpoliciesnamespacedResource = v1alpha1.SchemeGroupVersion.WithResource("sandboxpoliciesnamespaced")
-
-var sandboxpoliciesnamespacedKind = v1alpha1.SchemeGroupVersion.WithKind("SandboxPolicyNamespaced")
-
-// Get takes name of the sandboxPolicyNamespaced, and returns the corresponding sandboxPolicyNamespaced object, and an error if there is any.
-func (c *FakeSandboxPoliciesNamespaced) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.SandboxPolicyNamespaced, err error) {
-	emptyResult := &v1alpha1.SandboxPolicyNamespaced{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeSandboxPoliciesNamespaced(fake *FakeCiliumV1alpha1, namespace string) ciliumiov1alpha1.SandboxPolicyNamespacedInterface {
+	return &fakeSandboxPoliciesNamespaced{
+		gentype.NewFakeClientWithList[*v1alpha1.SandboxPolicyNamespaced, *v1alpha1.SandboxPolicyNamespacedList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("sandboxpoliciesnamespaced"),
+			v1alpha1.SchemeGroupVersion.WithKind("SandboxPolicyNamespaced"),
+			func() *v1alpha1.SandboxPolicyNamespaced { return &v1alpha1.SandboxPolicyNamespaced{} },
+			func() *v1alpha1.SandboxPolicyNamespacedList { return &v1alpha1.SandboxPolicyNamespacedList{} },
+			func(dst, src *v1alpha1.SandboxPolicyNamespacedList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.SandboxPolicyNamespacedList) []*v1alpha1.SandboxPolicyNamespaced {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.SandboxPolicyNamespacedList, items []*v1alpha1.SandboxPolicyNamespaced) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.SandboxPolicyNamespaced), err
-}
-
-// List takes label and field selectors, and returns the list of SandboxPoliciesNamespaced that match those selectors.
-func (c *FakeSandboxPoliciesNamespaced) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.SandboxPolicyNamespacedList, err error) {
-	emptyResult := &v1alpha1.SandboxPolicyNamespacedList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(sandboxpoliciesnamespacedResource, sandboxpoliciesnamespacedKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.SandboxPolicyNamespacedList{ListMeta: obj.(*v1alpha1.SandboxPolicyNamespacedList).ListMeta}
-	for _, item := range obj.(*v1alpha1.SandboxPolicyNamespacedList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested sandboxPoliciesNamespaced.
-func (c *FakeSandboxPoliciesNamespaced) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a sandboxPolicyNamespaced and creates it.  Returns the server's representation of the sandboxPolicyNamespaced, and an error, if there is any.
-func (c *FakeSandboxPoliciesNamespaced) Create(ctx context.Context, sandboxPolicyNamespaced *v1alpha1.SandboxPolicyNamespaced, opts v1.CreateOptions) (result *v1alpha1.SandboxPolicyNamespaced, err error) {
-	emptyResult := &v1alpha1.SandboxPolicyNamespaced{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, sandboxPolicyNamespaced, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.SandboxPolicyNamespaced), err
-}
-
-// Update takes the representation of a sandboxPolicyNamespaced and updates it. Returns the server's representation of the sandboxPolicyNamespaced, and an error, if there is any.
-func (c *FakeSandboxPoliciesNamespaced) Update(ctx context.Context, sandboxPolicyNamespaced *v1alpha1.SandboxPolicyNamespaced, opts v1.UpdateOptions) (result *v1alpha1.SandboxPolicyNamespaced, err error) {
-	emptyResult := &v1alpha1.SandboxPolicyNamespaced{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, sandboxPolicyNamespaced, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.SandboxPolicyNamespaced), err
-}
-
-// Delete takes name of the sandboxPolicyNamespaced and deletes it. Returns an error if one occurs.
-func (c *FakeSandboxPoliciesNamespaced) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, name, opts), &v1alpha1.SandboxPolicyNamespaced{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeSandboxPoliciesNamespaced) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.SandboxPolicyNamespacedList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched sandboxPolicyNamespaced.
-func (c *FakeSandboxPoliciesNamespaced) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.SandboxPolicyNamespaced, err error) {
-	emptyResult := &v1alpha1.SandboxPolicyNamespaced{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(sandboxpoliciesnamespacedResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.SandboxPolicyNamespaced), err
 }
