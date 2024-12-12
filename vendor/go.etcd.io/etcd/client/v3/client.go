@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/client/v3/internal/endpoint"
 	"go.etcd.io/etcd/client/v3/internal/resolver"
@@ -54,9 +55,7 @@ type Client struct {
 	cfg      Config
 	creds    grpccredentials.TransportCredentials
 	resolver *resolver.EtcdManualResolver
-
-	epMu      *sync.RWMutex
-	endpoints []string
+	mu       *sync.RWMutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -87,7 +86,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context, opts ...Option) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex)}
+	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex), mu: new(sync.RWMutex)}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -149,7 +148,7 @@ func (c *Client) Close() error {
 		c.Lease.Close()
 	}
 	if c.conn != nil {
-		return toErr(c.ctx, c.conn.Close())
+		return ContextError(c.ctx, c.conn.Close())
 	}
 	return c.ctx.Err()
 }
@@ -162,18 +161,18 @@ func (c *Client) Ctx() context.Context { return c.ctx }
 // Endpoints lists the registered endpoints for the client.
 func (c *Client) Endpoints() []string {
 	// copy the slice; protect original endpoints from being changed
-	c.epMu.RLock()
-	defer c.epMu.RUnlock()
-	eps := make([]string, len(c.endpoints))
-	copy(eps, c.endpoints)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	eps := make([]string, len(c.cfg.Endpoints))
+	copy(eps, c.cfg.Endpoints)
 	return eps
 }
 
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
-	c.epMu.Lock()
-	defer c.epMu.Unlock()
-	c.endpoints = eps
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cfg.Endpoints = eps
 
 	c.resolver.SetEndpoints(eps)
 }
@@ -186,7 +185,9 @@ func (c *Client) Sync(ctx context.Context) error {
 	}
 	var eps []string
 	for _, m := range mresp.Members {
-		eps = append(eps, m.ClientURLs...)
+		if len(m.Name) != 0 && !m.IsLearner {
+			eps = append(eps, m.ClientURLs...)
+		}
 	}
 	c.SetEndpoints(eps...)
 	return nil
@@ -230,15 +231,30 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		opts = append(opts, grpc.WithInsecure())
 	}
 
+	unaryMaxRetries := defaultUnaryMaxRetries
+	if c.cfg.MaxUnaryRetries > 0 {
+		unaryMaxRetries = c.cfg.MaxUnaryRetries
+	}
+
+	backoffWaitBetween := defaultBackoffWaitBetween
+	if c.cfg.BackoffWaitBetween > 0 {
+		backoffWaitBetween = c.cfg.BackoffWaitBetween
+	}
+
+	backoffJitterFraction := defaultBackoffJitterFraction
+	if c.cfg.BackoffJitterFraction > 0 {
+		backoffJitterFraction = c.cfg.BackoffJitterFraction
+	}
+
 	// Interceptor retry and backoff.
 	// TODO: Replace all of clientv3/retry.go with RetryPolicy:
 	// https://github.com/grpc/grpc-proto/blob/cdd9ed5c3d3f87aef62f373b93361cf7bddc620d/grpc/service_config/service_config.proto#L130
-	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
+	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(backoffWaitBetween, backoffJitterFraction))
 	opts = append(opts,
 		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
 		// Streams that are safe to retry are enabled individually.
 		grpc.WithStreamInterceptor(c.streamClientInterceptor(withMax(0), rrBackoff)),
-		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
+		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(unaryMaxRetries), rrBackoff)),
 	)
 
 	return opts, nil
@@ -298,7 +314,7 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
 		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
 	}
-	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
+	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.Endpoints()[0]))
 	conn, err := grpc.DialContext(dctx, target, opts...)
 	if err != nil {
 		return nil, err
@@ -359,7 +375,7 @@ func newClient(cfg *Config) (*Client, error) {
 		creds:    creds,
 		ctx:      ctx,
 		cancel:   cancel,
-		epMu:     new(sync.RWMutex),
+		mu:       new(sync.RWMutex),
 		callOpts: defaultCallOpts,
 		lgMu:     new(sync.RWMutex),
 	}
@@ -370,7 +386,10 @@ func newClient(cfg *Config) (*Client, error) {
 	} else if cfg.LogConfig != nil {
 		client.lg, err = cfg.LogConfig.Build()
 	} else {
-		client.lg, err = CreateDefaultZapLogger()
+		client.lg, err = logutil.CreateDefaultZapLogger(etcdClientDebugLevel())
+		if client.lg != nil {
+			client.lg = client.lg.Named("etcd-client")
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -405,8 +424,6 @@ func newClient(cfg *Config) (*Client, error) {
 		client.cancel()
 		return nil, fmt.Errorf("at least one Endpoint is required in client config")
 	}
-	client.SetEndpoints(cfg.Endpoints...)
-
 	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dialWithBalancer()
@@ -500,7 +517,7 @@ func (c *Client) checkVersion() (err error) {
 					return
 				}
 			}
-			if maj < 3 || (maj == 3 && min < 2) {
+			if maj < 3 || (maj == 3 && min < 4) {
 				rerr = ErrOldCluster
 			}
 			errc <- rerr
@@ -508,7 +525,7 @@ func (c *Client) checkVersion() (err error) {
 	}
 	// wait for success
 	for range eps {
-		if err = <-errc; err == nil {
+		if err = <-errc; err != nil {
 			break
 		}
 	}
@@ -556,7 +573,9 @@ func isUnavailableErr(ctx context.Context, err error) bool {
 	return false
 }
 
-func toErr(ctx context.Context, err error) error {
+// ContextError converts the error into an EtcdError if the error message matches one of
+// the defined messages; otherwise, it tries to retrieve the context error.
+func ContextError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
 	}
