@@ -93,7 +93,7 @@ func sortNamespace(a, b *appModelV1.ApplicationNamespace) int {
 }
 
 func sortProcess(a, b *appModelV1.ApplicationProcess) int {
-	return strings.Compare(a.Name, b.Name)
+	return strings.Compare(a.Name+a.Arguments, b.Name+b.Arguments)
 }
 
 func sortWorkload(a, b *appModelV1.ApplicationWorkload) int {
