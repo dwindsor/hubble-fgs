@@ -157,16 +157,30 @@ grafana:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-        - name: tetragon-health
+        - name: tetragon-events
           folder: Tetragon Health
-          disableDeletion: true
-          allowUiUpdates: false
           options:
-            path: /var/lib/grafana/dashboards/tetragon-health
-        - name: tetragon-l3l4network
+            path: /var/lib/grafana/dashboards/tetragon-events
+        - name: tetragon-high-level-health
+          folder: Tetragon Health
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-high-level-health
+        - name: tetragon-tcp-throughput-socket
           folder: Tetragon Network
           options:
-            path: /var/lib/grafana/dashboards/tetragon-l3l4network
+            path: /var/lib/grafana/dashboards/tetragon-tcp-throughput-socket
+        - name: tetragon-tcp-throughput-socket-host-binaries
+          folder: Tetragon Network
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-tcp-throughput-socket-host-binaries
+        - name: tetragon-udp-throughput-socket
+          folder: Tetragon Network
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-udp-throughput-socket
+        - name: tetragon-udp-throughput-socket-host-binaries
+          folder: Tetragon Network
+          options:
+            path: /var/lib/grafana/dashboards/tetragon-udp-throughput-socket-host-binaries
   # @ignored
   dashboardsConfigMaps:
     # Grafana subchart templates these values, so we can use {{ .Release.Name }} etc:
@@ -176,8 +190,12 @@ grafana:
     # value). If required, we can lift this limitation by installing two
     # configmaps in case both dashboards.namespace is set and
     # integratedGrafana.enabled is set to true.
-    tetragon-health: "{{ .Release.Name }}-dashboards-health"
-    tetragon-l3l4network: "{{ .Release.Name }}-dashboards-l3l4network"
+    tetragon-events: "{{ .Release.Name }}-dashboard-events"
+    tetragon-high-level-health: "{{ .Release.Name }}-dashboard-high-level-health"
+    tetragon-tcp-throughput-socket: "{{ .Release.Name }}-dashboard-tcp-throughput-socket"
+    tetragon-tcp-throughput-socket-host-binaries: "{{ .Release.Name }}-dashboard-tcp-throughput-socket-host-binaries"
+    tetragon-udp-throughput-socket: "{{ .Release.Name }}-dashboard-udp-throughput-socket"
+    tetragon-udp-throughput-socket-host-binaries: "{{ .Release.Name }}-dashboard-udp-throughput-socket-host-binaries"
   # -- Resources for the Grafana container.
   resources:
     limits:
