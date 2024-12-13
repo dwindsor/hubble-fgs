@@ -24,6 +24,7 @@
   // config, for example the regex. See:
   // https://docs.renovatebot.com/self-hosted-configuration/#requireconfig
   "allowedPostUpgradeCommands": [
+    "^git config -l$",
     "^/tmp/install-buildx$",
     "^make protogen$",
     "^make crds$",
