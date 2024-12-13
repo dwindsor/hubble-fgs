@@ -1,8 +1,8 @@
-{{- if or .Values.dashboards.health.enabled .Values.integratedGrafana.enabled }}
+{{- if or .Values.dashboards.network.enabled .Values.integratedGrafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-dashboards-health
+  name: {{ .Release.Name }}-dashboard-tcp-throughput-socket
   namespace: {{ .Values.dashboards.namespace | default .Release.Namespace }}
   labels:
     {{- with .Values.dashboards.labels }}
@@ -13,5 +13,5 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
-{{ (.Files.Glob "dashboards/health/*.json").AsConfig | indent 2 }}
+{{ (.Files.Glob "dashboards/network/tcp-throughput-socket.json").AsConfig | indent 2 }}
 {{- end }}

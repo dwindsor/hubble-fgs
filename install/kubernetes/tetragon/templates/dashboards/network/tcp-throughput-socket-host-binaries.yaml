@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-dashboards-l3l4network
+  name: {{ .Release.Name }}-dashboard-tcp-throughput-socket-host-binaries
   namespace: {{ .Values.dashboards.namespace | default .Release.Namespace }}
   labels:
     {{- with .Values.dashboards.labels }}
@@ -13,5 +13,5 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
-{{ (.Files.Glob "dashboards/network/*.json").AsConfig | indent 2 }}
+{{ (.Files.Glob "dashboards/network/tcp-throughput-socket-host-binaries.json").AsConfig | indent 2 }}
 {{- end }}
