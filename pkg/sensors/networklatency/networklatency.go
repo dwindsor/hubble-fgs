@@ -306,6 +306,7 @@ func runTcCheck() {
 
 func AttachTc(args sensors.LoadProbeArgs) error {
 	tcAttaching.Lock()
+	defer tcAttaching.Unlock()
 	var interfacesToAttach []string
 	for _, ifaces := range interfaces {
 		interfacesToAttach = append(interfacesToAttach, ifaces...)
@@ -315,9 +316,7 @@ func AttachTc(args sensors.LoadProbeArgs) error {
 	if err == nil {
 		tcAttachedInterfaces[args.Load] = attachedInterfaces
 		tcList = append(tcList, args)
-		tcAttaching.Unlock()
 	} else {
-		tcAttaching.Unlock()
 		return err
 	}
 	return nil
