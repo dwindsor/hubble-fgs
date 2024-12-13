@@ -1,0 +1,31 @@
+.proc:has(> div)::before {
+  border-style: solid;
+  border-image-slice: 1;
+  /* border-image-source: linear-gradient(to left, #fff, var(--branch-color)); */
+  border-image-source: linear-gradient(
+    to right,
+    var(--branch-color),
+    var(--branch-color) 50%,
+    #fff
+  );
+  border-width: 0 0 2px 2px;
+}
+
+.procLine {
+  display: flex;
+  align-items: center;
+}
+
+.arguments {
+  margin-left: 7px;
+  color: #999;
+}
+
+.connector {
+  margin-left: 10px;
+  margin-right: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #999;
+}

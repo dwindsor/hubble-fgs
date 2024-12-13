@@ -16,15 +16,18 @@ import (
 
 	"bufio"
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"sort"
 	"strconv"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -395,6 +398,52 @@ func printInteractiveTree() error {
 	return tview.NewApplication().SetRoot(tree, true).EnableMouse(true).Run()
 }
 
+//go:embed ui
+var uiDir embed.FS
+
+func getTreeHtml(w http.ResponseWriter, _ *http.Request, appModel *appModelV1.ApplicationModelEvent) {
+	tmpl, err := template.ParseFS(uiDir, "ui/index.html")
+	if err != nil {
+		io.WriteString(w, "couldn't read ui index.html")
+		return
+	}
+	appModelJson, err := json.Marshal(appModel)
+	if err != nil {
+		io.WriteString(w, "couldn't serialize app model json")
+		return
+	}
+	values := map[string]interface{}{
+		"APP_MODEL_JSON": string(appModelJson),
+	}
+	tmpl.Execute(w, values)
+}
+
+func runBrowserTree() error {
+	appModel := &appModelV1.ApplicationModelEvent{}
+
+	fi, _ := os.Stdin.Stat()
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+		err := decoder.Decode(&appModel)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else {
+		res, err := getProcessTreeGrpc()
+		if err != nil {
+			return err
+		}
+		appModel = model.ProcessModelToApplicationModel(res)
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		getTreeHtml(w, r, appModel)
+	})
+
+	fmt.Printf("pstree web ui is running on http://localhost:3333")
+	return http.ListenAndServe(":3333", nil)
+}
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -598,6 +647,8 @@ func NewShow() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if output == "interactive" {
 				return printInteractiveTree()
+			} else if output == "web" {
+				return runBrowserTree()
 			}
 			return printGrpcTree()
 		},

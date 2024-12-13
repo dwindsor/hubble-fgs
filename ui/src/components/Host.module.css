@@ -1,0 +1,12 @@
+.hostIcon {
+  position: absolute;
+  top: 4px;
+  margin-left: -14px;
+  z-index: 2;
+}
+
+.hostTitle {
+  text-transform: uppercase;
+  color: #555;
+  font-size: 12px;
+}

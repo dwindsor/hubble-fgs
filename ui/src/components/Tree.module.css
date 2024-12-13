@@ -1,0 +1,97 @@
+.tree {
+  --padding: 1.5rem;
+  --radius: 4px;
+  --branch-color: #b8b8b8;
+  --clickable-hover-bg-color: #e9e9e9;
+
+  font-family: monospace;
+  font-size: 14px;
+
+  ul {
+    margin-left: calc(var(--radius) - var(--padding));
+    padding-left: 0;
+  }
+
+  & > ul > li:first-child::before {
+    border: none;
+  }
+
+  details > summary::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: calc(var(--padding) / 2 - var(--radius) - 2px);
+    left: calc(var(--padding) - var(--radius) - 1px);
+    width: calc(2 * var(--radius));
+    height: calc(2 * var(--radius));
+    background-color: var(--branch-color);
+    border-radius: 50%;
+  }
+
+  li {
+    display: block;
+    position: relative;
+    padding-left: calc(2 * var(--padding) - var(--radius) - 2px);
+    border-left: 2px solid var(--branch-color);
+
+    &::before {
+      content: "";
+      display: block;
+      position: absolute;
+      top: calc(var(--padding) / -2);
+      left: -2px;
+      width: calc(var(--padding) + 2px);
+      height: calc(var(--padding) - 1px);
+      border: solid var(--branch-color);
+      border-width: 0 0 2px 2px;
+    }
+
+    &::after {
+      background: var(--branch-color);
+    }
+
+    &:last-child {
+      border-color: transparent;
+    }
+  }
+
+  summary {
+    display: inline-block;
+    cursor: pointer;
+
+    &::marker,
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover > span {
+      background-color: var(--clickable-hover-bg-color);
+      transition: background-color 0.2s;
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 1px dotted #000;
+    }
+  }
+
+  li details > summary,
+  li > div {
+    margin-left: calc(var(--padding) * -1 + var(--radius));
+    padding-left: calc(var(--radius) * 2);
+
+    & > span {
+      margin-left: 1px;
+      padding: 0 3px;
+      border-radius: 3px;
+    }
+  }
+
+  li details > summary > span,
+  li > div > span {
+    background-color: rgba(255, 255, 255, 0.75);
+  }
+}

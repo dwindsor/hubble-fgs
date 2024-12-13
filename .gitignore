@@ -29,3 +29,4 @@ compile_commands.json
 /tetragon-oci-hook
 /tetragon-oci-hook-setup
 /tetragon-metrics-docs
+.DS_Store

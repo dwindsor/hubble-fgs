@@ -1,0 +1,20 @@
+.app {
+  position: relative;
+  display: flex;
+}
+
+.tree {
+  flex: 2;
+}
+
+.endpoints {
+  flex: 1;
+}
+
+.connectionsLines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 100%;
+}

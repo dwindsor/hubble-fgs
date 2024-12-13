@@ -1,0 +1,52 @@
+{
+  "private": true,
+  "name": "splunk-app",
+  "version": "0.1.0",
+  "description": "Splunk App",
+  "type": "module",
+  "directories": {
+    "isovalent_platform2": "isovalent_platform2"
+  },
+  "files": [
+    "isovalent_platform2"
+  ],
+  "scripts": {
+    "start": "npm run dev",
+    "release": "run-s build pack",
+    "build": "NODE_ENV=production vite build",
+    "_disable_postbuild": "node ./scripts/post-build.js",
+    "pack": "slim package isovalent_platform2 -o package",
+    "dev": "NODE_ENV=development vite",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "upgrade-deps": "ncu --interactive --format group",
+    "prepare": "husky",
+    "gen-proto": "cd src/proto && protoc --plugin=../../node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. ./appmodel.proto"
+  },
+  "dependencies": {
+    "clsx": "2.1.1",
+    "date-fns": "4.1.0",
+    "events": "3.3.0",
+    "lodash": "4.17.21",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "typed-emitter": "2.1.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "4.17.13",
+    "@types/node": "22.10.1",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "fs-extra": "11.2.0",
+    "husky": "9.1.7",
+    "npm-check-updates": "^17.1.11",
+    "npm-run-all": "4.1.5",
+    "postcss-nesting": "13.0.1",
+    "semver": "7.6.3",
+    "ts-proto": "2.5.0",
+    "typescript": "5.7.2",
+    "vite": "6.0.3",
+    "vite-plugin-checker": "0.8.0",
+    "vite-plugin-singlefile": "2.1.0"
+  }
+}
