@@ -26,7 +26,6 @@
   "graphTooltip": 0,
   "id": null,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
@@ -79,6 +78,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -90,7 +90,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -127,6 +127,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -187,7 +188,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -242,6 +243,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -253,7 +255,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -290,6 +292,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -350,7 +353,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -405,6 +408,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -416,7 +420,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -453,6 +457,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -514,7 +519,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -569,6 +574,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -580,7 +586,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -617,6 +623,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -678,7 +685,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -733,6 +740,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "last"
@@ -744,7 +752,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -782,6 +790,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -842,7 +851,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -900,6 +909,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "last"
@@ -911,7 +921,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -949,6 +959,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1009,7 +1020,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1048,6 +1059,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": -1,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1113,7 +1125,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.0.0",
+      "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
@@ -1161,7 +1173,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1185,6 +1198,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1199,7 +1213,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1239,7 +1253,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1263,6 +1278,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1277,7 +1293,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1323,7 +1339,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 49
+            "y": 369
           },
           "id": 83,
           "options": {
@@ -1365,7 +1381,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1374,7 +1390,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{namespace}}/{{workload}} > {{binary}}",
               "queryType": "randomWalk",
@@ -1383,6 +1399,15 @@
             }
           ],
           "title": "Avg Sent Segment Size (top 5)",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^/ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -1417,7 +1442,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1441,6 +1467,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1455,7 +1482,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1495,7 +1522,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1519,6 +1547,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1533,7 +1562,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1579,7 +1608,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 50
+            "y": 341
           },
           "id": 84,
           "options": {
@@ -1621,7 +1650,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1630,7 +1659,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (namespace, workload, binary) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{namespace}}/{{workload}} > {{binary}}",
               "queryType": "randomWalk",
@@ -1639,6 +1668,15 @@
             }
           ],
           "title": "Avg Received Segment Size (top 5)",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^/ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -1723,7 +1761,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1784,7 +1822,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1800,7 +1839,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 63
+            "y": 34
           },
           "id": 133,
           "options": {
@@ -1808,6 +1847,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1822,7 +1862,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1862,7 +1902,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1878,7 +1919,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 63
+            "y": 34
           },
           "id": 134,
           "options": {
@@ -1886,6 +1927,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -1900,7 +1942,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1946,7 +1988,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 81
+            "y": 303
           },
           "id": 135,
           "options": {
@@ -1980,7 +2022,6 @@
             "tooltip": {
               "maxHeight": 600,
               "mode": "single",
-              "show": true,
               "showColorScale": false,
               "yHistogram": false
             },
@@ -1989,7 +2030,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -1998,7 +2039,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (node, binary) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (node, binary) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (node, binary) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (node, binary) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{node}} > {{binary}}",
               "queryType": "randomWalk",
@@ -2007,6 +2048,15 @@
             }
           ],
           "title": "Avg Sent Segment Size (top 5)",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2041,7 +2091,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2065,6 +2116,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2079,7 +2131,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2119,7 +2171,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2143,6 +2196,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2157,7 +2211,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2203,7 +2257,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 53
+            "y": 184
           },
           "id": 138,
           "options": {
@@ -2245,7 +2299,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2254,7 +2308,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (node, binary) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (node, binary) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (node, binary) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (node, binary) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{node}} > {{binary}}",
               "queryType": "randomWalk",
@@ -2263,6 +2317,15 @@
             }
           ],
           "title": "Avg Received Segment Size (top 5)",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "^ > $",
+                "renamePattern": "<empty>"
+              }
+            }
+          ],
           "type": "heatmap"
         }
       ],
@@ -2347,7 +2410,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2408,7 +2471,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2432,6 +2496,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2446,7 +2511,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2495,7 +2560,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2519,6 +2585,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2533,7 +2600,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2588,7 +2655,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 55
+            "y": 66
           },
           "id": 108,
           "options": {
@@ -2630,7 +2697,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2639,7 +2706,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (dstdns) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (dstdns) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (dstdns) (increase(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (dstdns) (increase(tetragon_socket_stats_udp_txsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{dstdns}}",
               "queryType": "randomWalk",
@@ -2691,7 +2758,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2707,7 +2775,7 @@
             "h": 18,
             "w": 12,
             "x": 0,
-            "y": 38
+            "y": 118
           },
           "id": 112,
           "options": {
@@ -2715,6 +2783,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2729,7 +2798,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2778,7 +2847,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2794,7 +2864,7 @@
             "h": 18,
             "w": 12,
             "x": 12,
-            "y": 38
+            "y": 118
           },
           "id": 114,
           "options": {
@@ -2802,6 +2872,7 @@
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "mean"
@@ -2816,7 +2887,7 @@
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2871,7 +2942,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 56
+            "y": 136
           },
           "id": 116,
           "options": {
@@ -2913,7 +2984,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -2922,7 +2993,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "topk(5, (sum by (dstdns) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (dstdns) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0)",
+              "expr": "topk(5, (sum by (dstdns) (increase(tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval])) / sum by (dstdns) (increase(tetragon_socket_stats_udp_rxsegs_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\", dstdns=~\"$dstdns\"}[$__interval]))) > 0) or vector(0)",
               "interval": "",
               "legendFormat": "{{dstdns}}",
               "queryType": "randomWalk",
@@ -3024,7 +3095,7 @@
               "reverse": false
             }
           },
-          "pluginVersion": "11.0.0",
+          "pluginVersion": "11.4.0",
           "targets": [
             {
               "datasource": {
@@ -3058,9 +3129,9 @@
       "type": "row"
     }
   ],
+  "preload": false,
   "refresh": "1m",
-  "revision": 1,
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "tags": [
     "Tetragon"
   ],
@@ -3068,26 +3139,21 @@
     "list": [
       {
         "current": {
-          "selected": false,
           "text": "Prometheus",
           "value": "prometheus"
         },
-        "hide": 0,
         "includeAll": false,
         "label": "datasource",
-        "multi": false,
         "name": "datasource",
         "options": [],
         "query": "prometheus",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "type": "datasource"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3096,7 +3162,6 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total, cluster)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "cluster",
@@ -3107,14 +3172,12 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3124,7 +3187,6 @@
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\"}, namespace)",
         "description": "",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "namespace",
@@ -3135,14 +3197,12 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3152,7 +3212,6 @@
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\"}, workload)",
         "description": "",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "workload",
@@ -3163,14 +3222,12 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3180,7 +3237,6 @@
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\"}, pod)",
         "description": "",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "pod",
@@ -3191,14 +3247,12 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3207,7 +3261,6 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\"}, node)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "node",
@@ -3218,14 +3271,12 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3235,7 +3286,6 @@
         },
         "definition": "label_values(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\"}, binary)",
         "description": "",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "binary",
@@ -3246,14 +3296,12 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -3263,7 +3311,6 @@
         },
         "definition": "query_result(tetragon_socket_stats_udp_txbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"} or tetragon_socket_stats_udp_rxbytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"})",
         "description": "",
-        "hide": 0,
         "includeAll": true,
         "label": "remote DNS name",
         "multi": true,
@@ -3275,7 +3322,6 @@
         },
         "refresh": 2,
         "regex": "/dstdns=\"([^\"]+)\"/",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       }
@@ -3285,11 +3331,10 @@
     "from": "now-1h",
     "to": "now"
   },
-  "timeRangeUpdatedDuringEditOrView": false,
   "timepicker": {},
   "timezone": "",
   "title": "Tetragon / UDP Throughput / Socket",
   "uid": "ae4p9tsz10jk0b",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
