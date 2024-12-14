@@ -17,6 +17,8 @@ HELMDOCS_IMAGE = docker.io/jnorwood/helm-docs:v1.14.2@sha256:7e562b49ab6b1dbc50c
 PYTHON_IMAGE = docker.io/python:3.13-slim-bookworm
 # renovate: datasource=docker
 YQ_IMAGE = docker.io/mikefarah/yq:4.44.6@sha256:b1d117c609ba990436ad1649299e2f6c378f62cb562caf30b6f2fb6144713422
+# renovate: datasource=docker
+JQ_IMAGE = ghcr.io/jqlang/jq:1.7.1@sha256:096b83865ad59b5b02841f103f83f45c51318394331bf1995e187ea3be937432
 
 #
 # -- Versions
@@ -38,6 +40,10 @@ CRDS_RELATIVE_DIR = pkg/k8s/apis/cilium.io/client/crds/v1alpha1
 CRDS := $(ROOT_DIR)/$(CRDS_RELATIVE_DIR)
 JSON_SCHEMAS := $(ROOT_DIR)/install/kubernetes/schemas
 TARGET_MAX_CHAR_NUM = 25
+DASHBOARDS_DIR := $(EE_PATCHES)/dashboards
+CHART_DASHBOARDS_DIR := $(EE_CHART)/dashboards
+DASHBOARDS := $(shell find $(DASHBOARDS_DIR) -type f -name '*.json')
+CHART_DASHBOARDS := $(patsubst $(DASHBOARDS_DIR)/%.json,$(CHART_DASHBOARDS_DIR)/%.json,$(DASHBOARDS))
 
 #
 # -- Commands
@@ -83,6 +89,7 @@ tetragon: $(OSS_CHART) $(EE_PATCHES) ## Generate and validate Tetragon Enterpris
 	$(MAKE) tetragon/Chart.yaml
 	$(MAKE) tetragon/values.yaml
 	$(MAKE) tetragon/templates
+	$(MAKE) dashboards
 	$(MAKE) docs
 	$(MAKE) tetragon/charts
 
@@ -103,9 +110,15 @@ tetragon/values.yaml: ## Merge values.yaml from OSS and EE
 tetragon/templates: $(CRDS) $(EE_PATCHES) ## Copy EE specific patched into the EE Helm chart (CRs, CRDs, etc.)
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
-	cp -rf $(EE_PATCHES)/dashboards/. $(EE_CHART)/dashboards
 	cp -rf $(EE_PATCHES)/files/. $(EE_CHART)/files
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates
+
+.PHONY: dashboards
+dashboards: $(CHART_DASHBOARDS) ## Copy, minify and normalize dashboards
+
+$(CHART_DASHBOARDS_DIR)/%.json: $(DASHBOARDS_DIR)/%.json
+	mkdir -p $(dir $@)
+	docker run --rm -i $(JQ_IMAGE) -c '.id = null' < $< > $@
 
 .PHONY: docs
 docs: ## Generate Helm docs for the README.md
