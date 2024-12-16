@@ -68,6 +68,7 @@ service ProcessModelService {
 rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
 rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
 rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}
+rpc GetProcessMap(GetProcessMapRequest) returns(GetProcessMapResponse) {}
 }
 
 enum EndpointType {
@@ -100,6 +101,23 @@ message GetEndpointMapResponse {
 }
 
 message GetEndpointMapRequest {
+}
+
+message ProcessUUID {
+	string Binary = 1;
+	string Args = 2;
+	uint32 id = 3;
+}
+
+message ProcessMap {
+	repeated ProcessUUID process = 1;
+}
+
+message GetProcessMapResponse {
+	ProcessMap map = 1;
+}
+
+message GetProcessMapRequest {
 }
 
 service EndpointMapService {

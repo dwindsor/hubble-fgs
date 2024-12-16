@@ -93,18 +93,14 @@ func sanitize(name string) string {
 	return strings.ReplaceAll(name, "/", "_")
 }
 
-type Prog struct {
+type ProgOverhead struct {
 	Namespace string
 	Policy    string
 	Sensor    string
 	Attach    string
 	Label     string
-}
-
-type ProgOverhead struct {
-	Prog
-	RunTime uint64
-	RunCnt  uint64
+	RunTime   uint64
+	RunCnt    uint64
 }
 
 // SensorIface is an interface for sensors.Sensor that allows implementing sensors for testing.
@@ -135,11 +131,9 @@ func (s *Sensor) Overhead() ([]ProgOverhead, bool) {
 		runCnt, _ := info.RunCount()
 
 		list = append(list, ProgOverhead{
-			Prog: Prog{
-				Attach: p.Attach,
-				Label:  p.Label,
-				Sensor: s.Name,
-			},
+			Attach:  p.Attach,
+			Label:   p.Label,
+			Sensor:  s.Name,
 			RunTime: uint64(runTime),
 			RunCnt:  runCnt,
 		})

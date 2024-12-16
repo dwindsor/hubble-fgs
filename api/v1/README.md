@@ -192,9 +192,13 @@
     - [EndpointMap](#tetragon-EndpointMap)
     - [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest)
     - [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse)
+    - [GetProcessMapRequest](#tetragon-GetProcessMapRequest)
+    - [GetProcessMapResponse](#tetragon-GetProcessMapResponse)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
     - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
+    - [ProcessMap](#tetragon-ProcessMap)
     - [ProcessModel](#tetragon-ProcessModel)
+    - [ProcessUUID](#tetragon-ProcessUUID)
     - [Workload](#tetragon-Workload)
   
     - [EndpointType](#tetragon-EndpointType)
@@ -3537,6 +3541,31 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-GetProcessMapRequest"></a>
+
+### GetProcessMapRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetProcessMapResponse"></a>
+
+### GetProcessMapResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| map | [ProcessMap](#tetragon-ProcessMap) |  |  |
+
+
+
+
+
+
 <a name="tetragon-GetProcessModelRequest"></a>
 
 ### GetProcessModelRequest
@@ -3568,6 +3597,21 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-ProcessMap"></a>
+
+### ProcessMap
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [ProcessUUID](#tetragon-ProcessUUID) | repeated |  |
+
+
+
+
+
+
 <a name="tetragon-ProcessModel"></a>
 
 ### ProcessModel
@@ -3583,6 +3627,23 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | namespace | [string](#string) |  |  |
 | workload | [Workload](#tetragon-Workload) |  |  |
 | dest | [Destination](#tetragon-Destination) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessUUID"></a>
+
+### ProcessUUID
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| Binary | [string](#string) |  |  |
+| Args | [string](#string) |  |  |
+| id | [uint32](#uint32) |  |  |
 
 
 
@@ -3647,6 +3708,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
 | GetEndpointMap | [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest) | [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse) |  |
 | GetProcesses | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [ProcessModel](#tetragon-ProcessModel) stream |  |
+| GetProcessMap | [GetProcessMapRequest](#tetragon-GetProcessMapRequest) | [GetProcessMapResponse](#tetragon-GetProcessMapResponse) |  |
 
  
 
