@@ -184,9 +184,8 @@ func parseIPs(ips ...string) []netip.Addr {
 }
 
 func Test_DNSParser(t *testing.T) {
-	// Direct packet access with BPF_PROG_TYPE_CGROUP_SKB in BPF_PROG_TEST_RUN needs
-	// https://lore.kernel.org/r/20241125152603.375898-1-mahe.tardy@gmail.com
-	if v := "6.13.0"; !kernels.MinKernelVersion(v) {
+	// Try at least loading the test program from 5.15, even if it cannot run it should load.
+	if v := "5.15.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
@@ -227,6 +226,12 @@ func Test_DNSParser(t *testing.T) {
 			t.Fatal(err)
 		}
 		logFile.Close()
+	}
+
+	// Direct packet access with BPF_PROG_TYPE_CGROUP_SKB in BPF_PROG_TEST_RUN needs
+	// https://lore.kernel.org/r/20241125152603.375898-1-mahe.tardy@gmail.com
+	if v := "6.13.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("DNS parser test prog loads but cannot run: minimum kernel version (%v) not met, skipping", v)
 	}
 
 	errMap := newErrorMap(t, coll)
