@@ -239,18 +239,24 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 
-	if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess ||
-		iperrormetrics.IpError(m.Return) == iperrormetrics.TcpSendNoSocket {
-		pid, fd, family, err := findPidFdForCookie(m.SockCookie)
-		if err == nil {
-			proto := uint16(0)
-			switch iperrormetrics.IpError(m.Return) {
-			case iperrormetrics.UdpStackBurstNoProcess:
-				proto = syscall.IPPROTO_UDP
-			case iperrormetrics.TcpSendNoSocket:
-				proto = syscall.IPPROTO_TCP
+	// The intent here was to have the socket recover on a no socket error
+	// by scanning the /proc for an entry and then populating the socket
+	// map. Unfortunately, this results in lots of CPU overhead in some
+	// cases. Mark as debug only for immediate fix.
+	if option.Config.Debug {
+		if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess ||
+			iperrormetrics.IpError(m.Return) == iperrormetrics.TcpSendNoSocket {
+			pid, fd, family, err := findPidFdForCookie(m.SockCookie)
+			if err == nil {
+				proto := uint16(0)
+				switch iperrormetrics.IpError(m.Return) {
+				case iperrormetrics.UdpStackBurstNoProcess:
+					proto = syscall.IPPROTO_UDP
+				case iperrormetrics.TcpSendNoSocket:
+					proto = syscall.IPPROTO_TCP
+				}
+				GetSocketForFD(proto, pid, fd, m.SockCookie, family)
 			}
-			GetSocketForFD(proto, pid, fd, m.SockCookie, family)
 		}
 	}
 
