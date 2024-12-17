@@ -672,7 +672,7 @@ func NewShow() *cobra.Command {
 	}
 
 	flags := ret.Flags()
-	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model|interactive")
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model|interactive|web")
 	viper.BindPFlags(flags)
 
 	return ret
