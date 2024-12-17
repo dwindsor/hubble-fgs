@@ -329,13 +329,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 	}
 
 	if timestampEnable {
+		logger.GetLogger().Info("Enabling UDP latency")
 		TimestampEnabled = true
-		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_UDP)
-		if err == nil {
-			progsInitSock = append(progsInitSock, timestampProg)
-		} else {
-			logger.GetLogger().Warn("UDP unsupported by network latency")
-		}
+		progsInitSock = append(progsInitSock, networklatency.Timestamp)
 	}
 
 	udpGcInterval = interval

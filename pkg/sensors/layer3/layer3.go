@@ -562,7 +562,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			logger.GetLogger().WithError(err).Warn("CGRP")
 			return err
 		}
-	case "udp_tc_egress", "tcp_tc_egress":
+	case "tc_egress":
 		err := networklatency.AttachTc(args)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("TC_EGRESS")
@@ -642,8 +642,7 @@ func AddLayer3() {
 	sensors.RegisterProbeType("cgrp_egress", l3)
 	sensors.RegisterProbeType("cgrp_inet4_bind", l3)
 	sensors.RegisterProbeType("cgrp_inet6_bind", l3)
-	sensors.RegisterProbeType("udp_tc_egress", l3)
-	sensors.RegisterProbeType("tcp_tc_egress", l3)
+	sensors.RegisterProbeType("tc_egress", l3)
 	sensors.RegisterProbeType("tcp_fentry", l3)
 	sensors.RegisterProbeType("udp_fentry", l3)
 	sensors.RegisterProbeType("icmp_fentry", l3)

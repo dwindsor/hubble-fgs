@@ -49,27 +49,15 @@ var (
 	tcCheckInterval      = time.Duration(0)
 	refCnt               = 0
 	refCntMu             sync.Mutex
-)
 
-func TCEgressTimestamp(protocol uint16) (*program.Program, error) {
-	pstr := ""
-	switch protocol {
-	case unix.IPPROTO_TCP:
-		pstr = "tcp"
-	case unix.IPPROTO_UDP:
-		pstr = "udp"
-	default:
-		return nil, fmt.Errorf("unsupported protocol")
-	}
-	p := program.Builder(
+	Timestamp = program.Builder(
 		"bpf_timestamp.o",
 		"egress_timestamp",
 		"classifier/egress_timestamp",
 		"tg_tc_egress_timestamp",
-		fmt.Sprintf("%s_tc_egress", pstr),
+		"tc_egress",
 	)
-	return p, nil
-}
+)
 
 type SubnetSelector struct {
 	Addr      [2]uint64

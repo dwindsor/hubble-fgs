@@ -424,12 +424,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		if timestampEnable {
 			logger.GetLogger().Info("Enabling TCP latency")
 			TimestampEnabled = true
-			timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
-			if err == nil {
-				progsInitSock = append(progsInitSock, timestampProg)
-			} else {
-				logger.GetLogger().Warn("TCP unsupported by network latency")
-			}
+			progsInitSock = append(progsInitSock, networklatency.Timestamp)
 		}
 	}
 
