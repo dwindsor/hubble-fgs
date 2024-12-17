@@ -483,7 +483,7 @@ func getProcessTreeGrpc() (*tetragon.GetProcessModelResponse, error) {
 	if host {
 		namespaces = append(namespaces, model.HostNamespace)
 	}
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+	res, err := getProcessModel(c, &tetragon.GetProcessModelRequest{
 		Namespaces: namespaces,
 		Debug:      common.Debug,
 	})
@@ -513,6 +513,24 @@ func printGrpcTree() error {
 	}
 }
 
+func getProcessModel(c ConnectedModelClient, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+	processModel := tetragon.GetProcessModelResponse{}
+	res, err := c.Client.GetProcesses(c.Ctx, req)
+	if err != nil || res == nil {
+		return nil, err
+	}
+	for {
+		proc, err := res.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		processModel.Processes = append(processModel.Processes, proc)
+	}
+	return &processModel, nil
+}
+
 func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
 	c := NewConnectedModelClient()
 	defer c.Close()
@@ -520,15 +538,14 @@ func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChec
 	if host {
 		namespaces = append(namespaces, model.HostNamespace)
 	}
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+	processModel, err := getProcessModel(c, &tetragon.GetProcessModelRequest{
 		Namespaces: namespaces,
 		Debug:      common.Debug,
 	})
-	if err != nil || res == nil {
+	if err != nil {
 		return nil, err
 	}
-
-	appModel := model.ProcessModelToApplicationModel(res)
+	appModel := model.ProcessModelToApplicationModel(processModel)
 
 	return chk.CheckApplicationModelEvent(ctx, appModel)
 }

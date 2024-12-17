@@ -26,7 +26,7 @@ func monitor(interval time.Duration, namespaces []string) error {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
+	res, err := getProcessModel(c, &tetragon.GetProcessModelRequest{
 		Namespaces: namespaces,
 		Debug:      common.Debug,
 	})
@@ -40,7 +40,7 @@ func monitor(interval time.Duration, namespaces []string) error {
 	for {
 		select {
 		case <-ticker.C:
-			res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
+			res, err := getProcessModel(c, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
 				return err

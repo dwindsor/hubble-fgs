@@ -464,6 +464,19 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	}, nil
 }
 
+func (s *Server) GetProcesses(req *tetragon.GetProcessModelRequest, stream tetragon.ProcessModelService_GetProcessesServer) error {
+	res, err := s.GetProcessModel(stream.Context(), req)
+	if err != nil {
+		return err
+	}
+	for _, proc := range res.GetProcesses() {
+		if err := stream.Send(proc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func DefaultNewServer() (*Server, error) {
 	dfltBpfId := true
 	return NewServer(dfltBpfId)

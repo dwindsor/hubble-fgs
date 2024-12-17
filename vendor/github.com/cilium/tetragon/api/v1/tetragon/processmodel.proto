@@ -67,6 +67,7 @@ message GetProcessModelResponse {
 service ProcessModelService {
 rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
 rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
+rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}
 }
 
 enum EndpointType {
