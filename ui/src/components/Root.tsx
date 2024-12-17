@@ -11,7 +11,11 @@ export const Root = memo(function Root(props: Props) {
   const appRef = useRef<HTMLDivElement>(null);
 
   const appContext = useMemo(
-    () => createAppContext(props.model, () => window.scrollY),
+    () =>
+      createAppContext({
+        model: props.model,
+        getTreeOffset: () => window.scrollY,
+      }),
     [props.model, appRef]
   );
 

@@ -1,11 +1,9 @@
-import debounce from "lodash/debounce";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
-import { Connection, WH } from "~/types";
+import { WH } from "~/types";
 
 export interface Props {
   size: WH;
-  connections: Connection[];
 }
 
 export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
@@ -22,25 +20,31 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    props.connections.forEach((connection) => {
-      const proc = state.processesMap.get(connection.proc);
-      const endpoint = state.endpointsMap.get(connection.endpoint);
+    state.connectionsMap.forEach((procs, endpoint) => {
+      const endpointInfo = state.endpointsMap.get(endpoint);
 
-      if (!proc?.xy || !endpoint?.xy || !proc?.visible) {
-        return;
-      }
+      procs.forEach((proc) => {
+        const procInfo = state.processesMap.get(proc);
 
-      const x1 = proc.xy.x;
-      const y1 = proc.xy.y;
+        if (
+          !procInfo?.xy ||
+          !endpointInfo?.xy ||
+          !procInfo?.visible ||
+          !endpointInfo?.visible
+        ) {
+          return;
+        }
 
-      const x2 = endpoint.xy.x;
-      const y2 = endpoint.xy.y;
+        const x1 = procInfo.xy.x;
+        const y1 = procInfo.xy.y;
 
-      drawLine(ctx, x1, y1, x2, y2);
+        const x2 = endpointInfo.xy.x;
+        const y2 = endpointInfo.xy.y;
+
+        drawLine(ctx, x1, y1, x2, y2);
+      });
     });
-  }, [props.connections]);
-
-  const debouncedDraw = useMemo(() => debounce(draw, 16), [draw]);
+  }, []);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -48,12 +52,12 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     ref.current.width = props.size.width;
     ref.current.height = props.size.height;
 
-    debouncedDraw();
-  }, [debouncedDraw, props.size]);
+    draw();
+  }, [draw, props.size]);
 
   useEffect(() => {
-    return state.onRedrawConnectionsLines(debouncedDraw);
-  }, [debouncedDraw]);
+    return state.onRedrawConnectionsLines(draw);
+  }, [draw]);
 
   return <canvas ref={ref} />;
 });

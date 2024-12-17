@@ -1,17 +1,15 @@
 import { memo } from "react";
-import { ApplicationModelEvent } from "~/proto/appmodel";
 import css from "./Tree.module.css";
 import { Cluster } from "./Cluster";
+import { useAppState } from "~/state/AppContext";
 
-export interface TreeProps {
-  model: ApplicationModelEvent;
-}
+export const Tree = memo(function Tree() {
+  const state = useAppState();
 
-export const Tree = memo(function Tree(props: TreeProps) {
   return (
     <div className={css.tree}>
       <ul className={css.clustersList}>
-        <Cluster model={props.model} />
+        <Cluster model={state.model} />
       </ul>
     </div>
   );

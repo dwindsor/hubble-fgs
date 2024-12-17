@@ -1,4 +1,4 @@
-import { Connection, EndpointsMap, ProcessesMap } from "~/types";
+import { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
 import {
   ApplicationConnection,
   ApplicationModelEvent,
@@ -15,16 +15,21 @@ export function getEndpointHash(conn: ApplicationConnection) {
 export function createAppState(model?: ApplicationModelEvent): {
   processesMap: ProcessesMap;
   endpointsMap: EndpointsMap;
-  connections: Connection[];
+  connectionsMap: ConnectionsMap;
   stats: Stats;
 } {
   const processesMap: ProcessesMap = new WeakMap();
   const endpointsMap: EndpointsMap = new Map();
-  const connections: Connection[] = [];
+  const connectionsMap: ConnectionsMap = new Map();
   const stats = createEmptyStat();
 
   if (!model) {
-    return { processesMap, endpointsMap, connections, stats };
+    return {
+      processesMap,
+      endpointsMap,
+      connectionsMap,
+      stats,
+    };
   }
 
   const rec = (processes?: ApplicationProcess[]) => {
@@ -39,9 +44,12 @@ export function createAppState(model?: ApplicationModelEvent): {
       bytesSent += procBytesSent;
       endpoints.forEach((endpoint) => {
         endpointsMap.set(endpoint, {});
-        connections.push({ proc, endpoint });
+
+        const connectionEntry = connectionsMap.get(endpoint) ?? new Set();
+        connectionEntry.add(proc);
+        connectionsMap.set(endpoint, connectionEntry);
       });
-      processesMap.set(proc, { endpoints: Array.from(endpoints) });
+      processesMap.set(proc, { endpoints });
       const subProcsBytesSent = rec(proc.children);
       stats.processesMap.set(proc, {
         bytesSent: procBytesSent,
@@ -55,9 +63,9 @@ export function createAppState(model?: ApplicationModelEvent): {
   const hostBytesSent = rec(model.applicationModel?.host?.processes ?? []);
 
   let namespacesBytesSent = 0;
-  model.applicationModel?.namespaces.forEach((namespace) => {
+  model.applicationModel?.namespaces?.forEach((namespace) => {
     let namespaceBytesSent = 0;
-    namespace.workloads.forEach((workload) => {
+    namespace.workloads?.forEach((workload) => {
       const workloadBytesSent = rec(workload.processes);
       stats.workloadsMap[workload.name] = {
         bytesSent: workloadBytesSent,
@@ -75,7 +83,7 @@ export function createAppState(model?: ApplicationModelEvent): {
   stats.node.bytesSent = hostBytesSent + namespacesBytesSent;
   stats.cluster.bytesSent = stats.node.bytesSent;
 
-  return { processesMap, endpointsMap, connections, stats };
+  return { processesMap, endpointsMap, connectionsMap: connectionsMap, stats };
 }
 
 export function createEmptyStat() {

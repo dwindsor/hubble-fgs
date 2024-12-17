@@ -1,11 +1,12 @@
 import clsx from "clsx";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import debounce from "lodash/debounce";
 import { useAppState } from "~/state/AppContext";
 import { ApplicationProcess } from "~/proto/appmodel";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
 import { Collapsible } from "./Collapsible";
+import { useConnector } from "~/hooks/useConnector";
 
 export interface ProcProps {
   proc: ApplicationProcess;
@@ -18,23 +19,21 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   const state = useAppState();
 
-  const stat = state.stat.processesMap.get(props.proc)!;
+  const connector = useConnector(connectorRef);
+
+  const stat = useMemo(() => {
+    return state.stat.processesMap.get(props.proc)!;
+  }, [props.proc]);
 
   const hasConnections = useMemo(() => {
     const curr = state.processesMap.get(props.proc);
-    return !!curr?.endpoints.length;
+    return !!curr?.endpoints.size;
   }, [props.proc, state.processesMap]);
 
-  const getConnectorXY = useCallback(() => {
-    if (!connectorRef.current) return;
-    const box = connectorRef.current.getBoundingClientRect();
-    return { x: box.x + 2.5, y: box.y + 2.5 + state.getTreeOffset() };
-  }, [connectorRef]);
-
-  const debouncedUpdateProcess = useMemo(() => {
+  const debouncedUpdate = useMemo(() => {
     return debounce((visible = true) => {
       const cur = state.processesMap.get(props.proc);
-      const xy = getConnectorXY();
+      const xy = connector.getXY();
 
       if (
         cur &&
@@ -46,25 +45,20 @@ export const Proc = memo(function Proc(props: ProcProps) {
       }
 
       state.updateProcess(props.proc, visible, xy);
-    }, 16);
-  }, [props.proc, getConnectorXY]);
+    });
+  }, [props.proc, connector]);
 
   useEffect(() => {
-    debouncedUpdateProcess(true);
-    return () => debouncedUpdateProcess(false);
+    debouncedUpdate(true);
+    return () => debouncedUpdate(false);
   }, []);
 
-  useEffect(
-    () => state.onTreeSizeChanged(debouncedUpdateProcess),
-    [debouncedUpdateProcess]
-  );
+  useEffect(() => state.onTreeSizeChanged(debouncedUpdate), [debouncedUpdate]);
 
-  useEffect(
-    () => state.onTreeChanged(debouncedUpdateProcess),
-    [debouncedUpdateProcess]
-  );
+  useEffect(() => state.onTreeChanged(debouncedUpdate), [debouncedUpdate]);
 
   const children = props.proc.children ?? [];
+
   return (
     <li className={clsx(css.proc, props.className)}>
       {children.length ? (

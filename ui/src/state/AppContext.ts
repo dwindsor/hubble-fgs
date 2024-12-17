@@ -7,10 +7,13 @@ import { createAppState } from "./utils";
 
 export type AppState = ReturnType<typeof useAppState>;
 
-export function createAppContext(
-  model: ApplicationModelEvent,
-  getTreeOffset: () => number
-) {
+export function createAppContext({
+  model,
+  getTreeOffset,
+}: {
+  model: ApplicationModelEvent;
+  getTreeOffset: () => number;
+}) {
   const state = createAppState(model);
 
   enum EmitterEventKind {
@@ -34,10 +37,6 @@ export function createAppContext(
     };
   };
 
-  const uniqSortedEndpoints = Array.from(state.endpointsMap.keys()).sort(
-    (a, b) => a.localeCompare(b)
-  );
-
   const changeAppSize = (size: WH) => {
     emitter.emit(EmitterEventKind.AppSizeChanged, size);
   };
@@ -57,8 +56,12 @@ export function createAppContext(
     emitter.emit(EmitterEventKind.RedrawConnectionsLines);
   };
 
-  const updateEndpoint = (endpoint: string, xy: XY) => {
-    state.endpointsMap.set(endpoint, { xy });
+  const updateEndpoint = (
+    endpoint: string,
+    visible: boolean | undefined,
+    xy: XY | undefined
+  ) => {
+    state.endpointsMap.set(endpoint, { visible, xy });
     emitter.emit(EmitterEventKind.RedrawConnectionsLines);
   };
 
@@ -76,8 +79,7 @@ export function createAppContext(
 
   return {
     model,
-    endpoints: uniqSortedEndpoints,
-    connections: state.connections,
+    connectionsMap: state.connectionsMap,
     processesMap: state.processesMap,
     endpointsMap: state.endpointsMap,
     stat: state.stats,
@@ -93,15 +95,15 @@ export function createAppContext(
 }
 
 export const AppContext = createContext(
-  createAppContext(
-    {
+  createAppContext({
+    model: {
       clusterName: "",
       nodeName: "",
       applicationModel: undefined,
       time: new Date(),
     },
-    () => 0
-  )
+    getTreeOffset: () => 0,
+  })
 );
 
 export const useAppState = () => useContext(AppContext);

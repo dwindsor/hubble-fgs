@@ -11,21 +11,19 @@ export interface Props {
 }
 
 export const App = memo(function App(props: Props) {
-  const state = useAppState();
-
   const tree = useTree(props.appRef);
 
   return (
     <div ref={props.appRef} className={css.app}>
       <div className={css.tree}>
-        <Tree model={state.model} />
+        <Tree />
       </div>
       <div className={css.endpoints}>
-        <Endpoints endpoints={state.endpoints} />
+        <Endpoints />
       </div>
       {tree.size && (
         <div className={css.connectionsLines}>
-          <ConnectionsLines size={tree.size} connections={state.connections} />
+          <ConnectionsLines size={tree.size} />
         </div>
       )}
     </div>

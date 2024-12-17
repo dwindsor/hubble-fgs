@@ -11,11 +11,17 @@ export type ProcessesMap = WeakMap<ApplicationProcess, ProcessInfo>;
 export type ProcessInfo = {
   visible?: boolean | undefined;
   xy?: XY | undefined;
-  endpoints: string[];
+  endpoints: Set<string>;
 };
 
 export type EndpointsMap = Map<string, EndpointInfo>;
 
-export type EndpointInfo = { xy?: XY };
+export type EndpointInfo = {
+  visible?: boolean | undefined;
+  xy?: XY | undefined;
+};
 
-export type Connection = { proc: ApplicationProcess; endpoint: string };
+export type ConnectionsMap = Map<
+  string /* endpoint */,
+  Set<ApplicationProcess>
+>;
