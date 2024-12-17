@@ -22,6 +22,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	HostNamespace        = "<host-namespace>"
+	HostWorkload         = "<host-workload>"
+	WorkloadDestinations = "<wl-destinations>"
+	HostKind             = "<host-kind>"
+)
+
 type namespaceKey struct {
 	name string
 }

@@ -13,6 +13,7 @@ package main
 import (
 	"github.com/cilium/tetragon/cmd/tetra/loglevel"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
 	"github.com/spf13/cobra"
 )
 
@@ -20,4 +21,5 @@ func addCommands(rootCmd *cobra.Command) {
 	addBaseCommands(rootCmd)
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(loglevel.New())
+	rootCmd.AddCommand(exec.New())
 }

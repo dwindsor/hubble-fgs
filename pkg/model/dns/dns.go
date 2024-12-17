@@ -17,7 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 
-	"github.com/isovalent/hubble-fgs/pkg/model"
+	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 )
 
 type quotaPolicy struct {

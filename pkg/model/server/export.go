@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package model
+package server
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, interval time.Duration) {
@@ -32,7 +33,7 @@ func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, i
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return
 			}
-			appModel := ProcessModelToApplicationModel(res)
+			appModel := model.ProcessModelToApplicationModel(res)
 			if err := encoder.Encode(appModel); err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to encode application model as JSON")
 				return

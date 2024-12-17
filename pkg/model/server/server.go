@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
 
-package model
+package server
 
 import (
 	"bytes"
@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -31,10 +32,6 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
-	HostNamespace          = "<host-namespace>"
-	HostWorkload           = "<host-workload>"
-	WorkloadDestinations   = "<wl-destinations>"
-	HostKind               = "<host-kind>"
 )
 
 type binary struct {
@@ -200,7 +197,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	if !option.Config.EnableProcessTree {
 		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
 	}
-	model := make([]*tetragon.ProcessModel, 0)
+	porcessModel := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
@@ -384,15 +381,15 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			wlPath = nsId.Workload
 			kind = nsId.Kind
 		} else {
-			nsPath = HostNamespace
-			wlPath = HostWorkload
-			kind = HostKind
+			nsPath = model.HostNamespace
+			wlPath = model.HostWorkload
+			kind = model.HostKind
 		}
 		if len(namespaces) > 0 && !slices.Contains(namespaces, nsPath) {
 			continue
 		}
 
-		model = append(model, &tetragon.ProcessModel{
+		porcessModel = append(porcessModel, &tetragon.ProcessModel{
 			Binary:    "",
 			Parent:    "",
 			Namespace: nsPath,
@@ -414,9 +411,9 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			wl = nsId.Workload
 			kind = nsId.Kind
 		} else {
-			ns = HostNamespace
-			wl = HostWorkload
-			kind = HostKind
+			ns = model.HostNamespace
+			wl = model.HostWorkload
+			kind = model.HostKind
 		}
 		if len(namespaces) > 0 && !slices.Contains(namespaces, ns) {
 			continue
@@ -446,7 +443,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var dest []*tetragon.Destination
 		dest = dstList[key]
 
-		model = append(model, &tetragon.ProcessModel{
+		porcessModel = append(porcessModel, &tetragon.ProcessModel{
 			Binary:     selfStr,
 			BinaryArgs: selfArgs,
 			Parent:     parentPath,
@@ -460,7 +457,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		})
 	}
 	return &tetragon.GetProcessModelResponse{
-		Processes: model,
+		Processes: porcessModel,
 	}, nil
 }
 
