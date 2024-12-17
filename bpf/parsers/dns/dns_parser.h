@@ -96,7 +96,7 @@ struct {
 	__uint(max_entries, MAX_ERROR_CODE);
 	__type(key, __u32);
 	__type(value, __u32);
-} error_map SEC(".maps");
+} tg_dns_error_map SEC(".maps");
 
 uint32_t zero = 0;
 
@@ -372,7 +372,7 @@ parse_dns(struct __sk_buff *skb)
 give_up:
 	if (error < 0) {
 		error_idx = -error;
-		counter = map_lookup_elem(&error_map, &error_idx);
+		counter = map_lookup_elem(&tg_dns_error_map, &error_idx);
 		if (counter)
 			(*counter)++; // It's a per cpu array
 	}

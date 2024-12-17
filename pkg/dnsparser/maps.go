@@ -23,7 +23,7 @@ import (
 
 const (
 	IP4ToDomainMapName = "ip_map"
-	ErrorMapName       = "error_map"
+	ErrorMapName       = "tg_dns_error_map"
 )
 
 type IpMap struct {
