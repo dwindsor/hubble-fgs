@@ -29,7 +29,7 @@ copy_oss_files:
 
 .PHONY: v1
 v1: copy_oss_files
-	docker container run --rm \
+	$(CONTAINER_ENGINE) container run --rm \
 		--volume $(CURDIR)/..:/src \
 		--user "$(shell id -u):$(shell id -g)" \
 		$(BUILDER_IMAGE) \

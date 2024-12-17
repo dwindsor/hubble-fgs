@@ -3,7 +3,6 @@ include Makefile.defs
 GO := go
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
-CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 TETRAGON_IMAGE_NAME ?= isovalent/tetragon
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
