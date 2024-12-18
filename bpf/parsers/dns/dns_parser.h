@@ -256,7 +256,7 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 // the packet is an IP packet with a UDP datagram using the DNS source port
 // (53), it parses from the UDP payload, needing an offset. It returns 0 on
 // success, 1 on not-applicable and < 0 on failure.
-FUNC_INLINE int parse_dns(struct __sk_buff *skb, __u64 offset)
+__attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 {
 	struct dnshdr *dns;
 	void *data, *data_end;
@@ -264,6 +264,7 @@ FUNC_INLINE int parse_dns(struct __sk_buff *skb, __u64 offset)
 	int8_t error, ret;
 	uint32_t error_idx, *counter;
 
+	offset &= UDP_MAX_SIZE - 1;
 	dns = (void *)(long)skb->data + offset;
 	// Verify that there's something next to the DNS header.
 	if (dns + 1 > (void *)(long)skb->data_end)
