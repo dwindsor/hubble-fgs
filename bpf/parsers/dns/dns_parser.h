@@ -14,6 +14,7 @@
 #include "vmlinux.h"
 #include "bpf_task.h"
 #include "../../lib/address_family.h"
+#include "../../lib/config.h"
 
 #define DNS_PORT     53
 #define DNS_HDR_SIZE 12
@@ -99,6 +100,13 @@ struct {
 } tg_dns_error_map SEC(".maps");
 
 uint32_t zero = 0;
+
+FUNC_INLINE bool dns_parser_enabled()
+{
+	struct cfg_value *cfg;
+	cfg = (struct cfg_value *)map_lookup_elem(&tg_cfg_map, &zero);
+	return cfg && cfg->enable_bpf_dns_parser;
+}
 
 // parse_dns_name_label parses a label in a uncompressed DNS name and write it
 // into the name heap map. It returns the offset needed to advance into the data

@@ -20,7 +20,8 @@ struct cfg_value {
 	__u8 raw_enabled;
 	__u8 raw_report_close;
 	__u8 udp_report_close;
-	__u8 pad[3];
+	__u8 enable_bpf_dns_parser;
+	__u8 pad[2];
 };
 
 struct {

@@ -40,6 +40,8 @@ type config struct {
 
 	EnableAWSSonar bool
 	AWSSonarRegion string
+
+	EnableBPFDNSParser bool
 }
 
 var (

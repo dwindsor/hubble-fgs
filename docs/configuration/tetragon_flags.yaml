@@ -48,6 +48,9 @@ options:
       default_value: "1024"
       usage: |
         Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones
+    - name: enable-bpf-dns-parser
+      default_value: "false"
+      usage: Enable in-kernel BPF DNS parser
     - name: enable-cgidmap
       default_value: "false"
       usage: enable pod resolution via cgroup ids

@@ -480,7 +480,9 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	payload_off = udp_off + sizeof(struct udphdr);
 	// TODO(mtardy) make parse_dns a real function call: the main issue is that
 	// the stack is already quite busy here.
-	parse_dns(skb);
+	if (dns_parser_enabled()) {
+		parse_dns(skb);
+	}
 	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
 		 payload_off,
 		 payload_sz, send);

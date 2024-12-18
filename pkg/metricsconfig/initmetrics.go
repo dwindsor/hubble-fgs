@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -160,7 +161,9 @@ func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
 }
 
 func initAllDebugDNSParserMetrics(registry *prometheus.Registry) {
-	dnsmetrics.EnableDebugDNSParserMetrics(registry)
+	if option.Config.EnableBPFDNSParser {
+		dnsmetrics.EnableDebugDNSParserMetrics(registry)
+	}
 }
 
 func InitAllEEMetrics(registry *prometheus.Registry) {
