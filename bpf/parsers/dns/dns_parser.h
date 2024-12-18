@@ -253,45 +253,18 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 }
 
 // parse_dns parses a DNS query response, it assumes checks have been made that
-// the packet is an IP packet with a UDP datagram. It returns 0 on success, 1 on
-// not-applicable and < 0 on failure.
-__attribute__((always_inline)) int
-parse_dns(struct __sk_buff *skb)
+// the packet is an IP packet with a UDP datagram using the DNS source port
+// (53), it parses from the UDP payload, needing an offset. It returns 0 on
+// success, 1 on not-applicable and < 0 on failure.
+FUNC_INLINE int parse_dns(struct __sk_buff *skb, __u64 offset)
 {
-	struct iphdr *ip;
-	struct udphdr *udp;
 	struct dnshdr *dns;
 	void *data, *data_end;
 	char *data_start;
 	int8_t error, ret;
 	uint32_t error_idx, *counter;
 
-	// Verify if the frame contains an IP packet.
-	if (skb->protocol != bpf_htons(ETH_P_IP))
-		return DNS_PARSER_SKIP; // Skip non-IP packets.
-
-	// Parse IP header.
-	ip = (struct iphdr *)(long)skb->data;
-	// Verify that there's something next to the IP header.
-	if (ip + 1 > (void *)(long)skb->data_end)
-		return DNS_PARSER_SKIP;
-
-	// Verify if protocol is UDP.
-	if (ip->protocol != IPPROTO_UDP)
-		return DNS_PARSER_SKIP; // Skip non-UDP packets.
-
-	// Parse UDP header.
-	udp = (void *)ip + (ip->ihl * sizeof(u32)); // ihl is in 32 bits words.
-	// Verify that there's something next to the UDP header.
-	if (udp + 1 > (void *)(long)skb->data_end)
-		return DNS_PARSER_SKIP;
-
-	// Verify if that source port (answer) is DNS.
-	if (udp->source != bpf_htons(DNS_PORT))
-		return DNS_PARSER_SKIP; // Skip non-DNS answers packets.
-
-	// Parse the DNS header.
-	dns = (void *)udp + sizeof(struct udphdr);
+	dns = (void *)(long)skb->data + offset;
 	// Verify that there's something next to the DNS header.
 	if (dns + 1 > (void *)(long)skb->data_end)
 		return DNS_PARSER_SKIP;
@@ -385,6 +358,42 @@ give_up:
 			(*counter)++; // It's a per cpu array
 	}
 	return error;
+}
+
+FUNC_INLINE int parse_dns_from_ip(struct __sk_buff *skb)
+{
+	struct iphdr *ip;
+	struct udphdr *udp;
+	struct dnshdr *dns;
+
+	// Verify if the frame contains an IP packet.
+	if (skb->protocol != bpf_htons(ETH_P_IP))
+		return DNS_PARSER_SKIP; // Skip non-IP packets.
+
+	// Parse IP header.
+	ip = (struct iphdr *)(long)skb->data;
+	// Verify that there's something next to the IP header.
+	if (ip + 1 > (void *)(long)skb->data_end)
+		return DNS_PARSER_SKIP;
+
+	// Verify if protocol is UDP.
+	if (ip->protocol != IPPROTO_UDP)
+		return DNS_PARSER_SKIP; // Skip non-UDP packets.
+
+	// Parse UDP header.
+	udp = (void *)ip + (ip->ihl * sizeof(u32)); // ihl is in 32 bits words.
+	// Verify that there's something next to the UDP header.
+	if (udp + 1 > (void *)(long)skb->data_end)
+		return DNS_PARSER_SKIP;
+
+	// Verify if that source port (answer) is DNS.
+	if (udp->source != bpf_htons(DNS_PORT))
+		return DNS_PARSER_SKIP; // Skip non-DNS answers packets.
+
+	// Parse the DNS header.
+	dns = (void *)udp + sizeof(struct udphdr);
+
+	return parse_dns(skb, (void *)dns - (void *)ip);
 }
 
 #endif // DNS_PARSER_H
