@@ -19,7 +19,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
-	github.com/gdamore/tcell/v2 v2.7.1
+	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/go-logr/logr v1.4.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/cel-go v0.22.1
