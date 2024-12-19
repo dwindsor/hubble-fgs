@@ -280,7 +280,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	if (data >= data_end)
 		return DNS_PARSER_SKIP;
 
-	error = 0;
+	error = DNS_PARSER_SUCCESS;
 
 	// "In the DNS, QDCOUNT Is (Usually) One"
 	// https://datatracker.ietf.org/doc/rfc9619/
@@ -349,10 +349,12 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		data += ret;
 	}
 
-	return DNS_PARSER_SUCCESS;
+	// For testing purposes, we want to know how many time the parser succeeded,
+	// so we use error = 0 as success, we might remove this and just return.
+	// return DNS_PARSER_SUCCESS;
 
 give_up:
-	if (error < 0) {
+	if (error <= 0) {
 		error_idx = -error;
 		counter = map_lookup_elem(&tg_dns_error_map, &error_idx);
 		if (counter)
