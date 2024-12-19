@@ -66,7 +66,6 @@ jobs:
         uses: renovatebot/github-action@28bcd5c4900a4353b5c9af9e1bd61dd6377f0f0d # v40.3.5
         env:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'false' && 'INFO' || 'DEBUG' }}
-          RENOVATE_HOST_RULES: "{\"matchHost\": \"https://github.com/isovalent\",\"token\": \"${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}\"}"
         with:
           configurationFile: .github/self-hosted-renovate.json5
           token: '${{ steps.get_token.outputs.app_token }}'
