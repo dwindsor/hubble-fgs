@@ -968,6 +968,49 @@ func NewProcessDebug() *cobra.Command {
 	return ret
 }
 
+func getDestinationDebug() (*tetragon.GetDestinationMapResponse, error) {
+	c := NewConnectedModelClient()
+	defer c.Close()
+
+	res, err := c.Client.GetDestinationMap(c.Ctx, &tetragon.GetDestinationMapRequest{})
+	if err != nil || res == nil {
+		logger.GetLogger().WithError(err).Warn("failed to get destination map")
+		return nil, err
+	}
+
+	return res, nil
+}
+func printDestinationDebug() error {
+	res, err := getDestinationDebug()
+	if err != nil {
+		return err
+	}
+
+	for _, d := range res.Destinations {
+		fmt.Printf("%d.%d -> %d:%d(%d)\n", d.LocalNsId, d.LocalId, d.DestinationId, d.DestinationSource, d.DestinationPort)
+	}
+	return nil
+
+}
+
+func NewDestinationDebug() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "debug-destination-keys",
+		Short:        "Debug the destination key state internal to the agent",
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return printDestinationDebug()
+		},
+	}
+
+	flags := ret.Flags()
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
+	viper.BindPFlags(flags)
+
+	return ret
+}
+
 func getDebug() (*tetragon.GetEndpointMapResponse, error) {
 	c := NewConnectedModelClient()
 	defer c.Close()
@@ -1132,6 +1175,7 @@ func New() *cobra.Command {
 	ret.AddCommand(NewCheck())
 	ret.AddCommand(NewDebug())
 	ret.AddCommand(NewProcessDebug())
+	ret.AddCommand(NewDestinationDebug())
 	ret.AddCommand(NewSquash())
 	ret.AddCommand(NewDiff())
 

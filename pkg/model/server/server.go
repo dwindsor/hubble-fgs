@@ -116,6 +116,40 @@ type ProcessTreeBinaryUUIDValue struct {
 type Server struct {
 }
 
+func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
+	dests := make([]*tetragon.DestinationEndpointDebug, 0)
+	destMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	m, err := ebpf.LoadPinnedMap(destMap, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", destinationEndpointMap).Warn("Could not open destinationEndpointMap for GetDestinationMapRequest")
+		return nil, err
+	}
+	defer m.Close()
+
+	var (
+		k DestinationEndpointKey
+		v DestinationEndpointValue
+	)
+
+	iter := m.Iterate()
+	for iter.Next(&k, &v) {
+		d := &tetragon.DestinationEndpointDebug{
+			LocalId:           k.LocalId,
+			LocalNsId:         k.LocalNSId,
+			DestinationId:     k.DestinationId,
+			DestinationSource: k.DestinationSource,
+			DestinationPort:   k.DestinationPort,
+		}
+		dests = append(dests, d)
+	}
+
+	resp := &tetragon.GetDestinationMapResponse{
+		Destinations: dests,
+	}
+
+	return resp, nil
+}
+
 func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapRequest) (*tetragon.GetProcessMapResponse, error) {
 	tetragonUUID := make([]*tetragon.ProcessUUID, 0)
 	indexedUUID := make(map[uint64]*tetragon.ProcessUUID)
