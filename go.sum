@@ -72,8 +72,8 @@ github.com/cilium/cilium v1.17.0-rc.0 h1:hZOr+6rqHJ06vdjTZ/q1tOln2QxPSUQPdHrqVdq
 github.com/cilium/cilium v1.17.0-rc.0/go.mod h1:Z9TPDoKIIUfq8/U6KqGBFLYHPVbEXxHGdV1n4+FAZhw=
 github.com/cilium/dns v1.1.51-0.20240603182237-af788769786a h1:PRGN7B+72mj3OtLL2DM3F/9jp+ItgqgNS7mecgCmwsQ=
 github.com/cilium/dns v1.1.51-0.20240603182237-af788769786a/go.mod h1:/7LC2GOgyXJ7maupZlaVIumYQiGPIgllSf6mA9sg6RU=
-github.com/cilium/ebpf v0.16.1-0.20241212130635-98ede8ac7aa8 h1:8JEXgZ0pcBvp430GkpfD8uMMMAJWQiJFYajKJGajKLM=
-github.com/cilium/ebpf v0.16.1-0.20241212130635-98ede8ac7aa8/go.mod h1:vay2FaYSmIlv3r8dNACd4mW/OCaZLJKJOo+IHBvCIO8=
+github.com/cilium/ebpf v0.17.1 h1:G8mzU81R2JA1nE5/8SRubzqvBMmAmri2VL8BIZPWvV0=
+github.com/cilium/ebpf v0.17.1/go.mod h1:vay2FaYSmIlv3r8dNACd4mW/OCaZLJKJOo+IHBvCIO8=
 github.com/cilium/hive v0.0.0-20241213121623-605c1412b9b3 h1:RfmUH1ouzj0LzORYJRhp43e1rlGpx6GNv4NIRUakU2w=
 github.com/cilium/hive v0.0.0-20241213121623-605c1412b9b3/go.mod h1:pI2GJ1n3SLKIQVFrKF7W6A6gb6BQkZ+3Hp4PAEo5SuI=
 github.com/cilium/lumberjack/v2 v2.4.1 h1:tU92KFJmLQ4Uls5vTgok5b5RbfxpawRia7L14y2qDBs=
