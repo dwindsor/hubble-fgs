@@ -88,7 +88,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 56); // This is an arbitrary number for testing, TBD
-	__type(key, __u32);
+	__type(key, struct ip_addr);
 	__type(value, char[MAX_NAME_SIZE]);
 } tg_dns_ip_map SEC(".maps");
 
@@ -98,6 +98,12 @@ struct {
 	__type(key, __u32);
 	__type(value, __u32);
 } tg_dns_error_map SEC(".maps");
+
+struct ip_addr {
+	uint64_t addr[2];
+	uint8_t af_inet6;
+	uint8_t pad[7];
+};
 
 uint32_t zero = 0;
 
@@ -180,8 +186,8 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 {
 	__u8 first_byte, offset;
 	__u16 type, data_len;
-	__u32 ipv4;
-	char *data, *data_end;
+	struct ip_addr ip;
+	char *data, *data_end, *name;
 
 	data_end = (void *)(long)skb->data_end;
 	if (off > SKB_DATA_MAX_SIZE) {
@@ -226,29 +232,56 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 	offset += sizeof(u16) * 2 + sizeof(u32) + sizeof(u16);
 	data += sizeof(u16) * 2 + sizeof(u32) + sizeof(u16);
 
-	if (type != A_RECORD) {
+	// Skip non A and AAAA records
+	if (type != A_RECORD && type != AAAA_RECORD) {
 		data_len &= 255; // TODO this is a incorrect approximation
 		return offset + data_len;
 	}
 
-	// Parse Data (IPv4 or IPv6)
+	name = map_lookup_elem(&name_heap_map, &zero);
+	if (!name)
+		return -35;
+
 	if (data_len == sizeof(u32) && type == (A_RECORD)) {
 		if (data + sizeof(u32) > data_end)
-			return -35;
-
-		ipv4 = bpf_ntohl(*(__u32 *)data);
-		DEBUG("A Record: %d.%d.%d.%d", (ipv4 >> 24), (ipv4 >> 16) & 0xFF, (ipv4 >> 8) & 0xFF, ipv4 & 0xFF);
-
-		char *name = map_lookup_elem(&name_heap_map, &zero);
-		if (!name)
 			return -36;
 
-		if (map_update_elem(&tg_dns_ip_map, &ipv4, name, BPF_ANY) < 0)
+		ip.addr[0] = *(__u32 *)data;
+		ip.addr[1] = 0;
+		ip.af_inet6 = 0;
+		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
+
+		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
 			return -37;
 
 		return offset + sizeof(u32);
+	} else if (data_len == sizeof(u128) && type == (AAAA_RECORD)) {
+		if (data + sizeof(u128) > data_end)
+			return -38;
+
+		ip.addr[0] = *(__u64 *)data;
+		ip.addr[1] = *(__u64 *)(data + sizeof(u64));
+		ip.af_inet6 = 1;
+#ifdef TETRAGON_BPF_DEBUG
+		__u16 *addr = (__u16 *)ip.addr;
+		DEBUG("AAAA Record: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+		      bpf_htons(addr[0]),
+		      bpf_htons(addr[1]),
+		      bpf_htons(addr[2]),
+		      bpf_htons(addr[3]),
+		      bpf_htons(addr[4]),
+		      bpf_htons(addr[5]),
+		      bpf_htons(addr[6]),
+		      bpf_htons(addr[7]));
+#endif
+
+		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
+			return -37;
+
+		return offset + sizeof(u128);
 	}
 
+	// We should never arrive here
 	return -39;
 }
 
@@ -327,7 +360,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		goto give_up;
 	}
 	__u16 qtype = bpf_ntohs(*(__u16 *)data);
-	if (qtype != A_RECORD) {
+	if (qtype != A_RECORD && qtype != AAAA_RECORD) {
 		error = -14;
 		goto give_up;
 	}

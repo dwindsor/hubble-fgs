@@ -12,7 +12,9 @@ package dnsparser
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"net/netip"
 	"runtime"
 
 	"github.com/cilium/ebpf"
@@ -99,11 +101,50 @@ func NewIPMap(m *ebpf.Map) IpMap {
 	}
 }
 
+type IPAddr struct {
+	Addr    [2]uint64
+	AFINET6 bool
+	_       [7]uint8
+}
+
+func newIPAddr(a netip.Addr) IPAddr {
+	i := IPAddr{}
+	i.Set(a)
+	return i
+}
+
+func (ip IPAddr) String() string {
+	return ip.Get().String()
+}
+
+func (ip IPAddr) Get() netip.Addr {
+	if ip.AFINET6 {
+		b := [16]byte{}
+		binary.LittleEndian.PutUint64(b[:], ip.Addr[0])
+		binary.LittleEndian.PutUint64(b[8:], ip.Addr[1])
+		return netip.AddrFrom16(b)
+	}
+
+	b := [4]byte{}
+	binary.LittleEndian.PutUint32(b[:], uint32(ip.Addr[0]))
+	return netip.AddrFrom4(b)
+}
+
+func (ip *IPAddr) Set(addr netip.Addr) {
+	if addr.Is4() {
+		ip.Addr[0] = uint64(binary.LittleEndian.Uint32(addr.AsSlice()))
+	} else {
+		ip.Addr[0] = binary.LittleEndian.Uint64(addr.AsSlice()[:8])
+		ip.Addr[1] = binary.LittleEndian.Uint64(addr.AsSlice()[8:])
+		ip.AFINET6 = true
+	}
+}
+
 func (m IpMap) Clear() error {
 	entries := m.ipMap.Iterate()
 
-	keys := []uint32{}
-	var key uint32
+	keys := []IPAddr{}
+	var key IPAddr
 	value := make([]byte, 255)
 
 	for entries.Next(&key, value) {
@@ -121,13 +162,13 @@ func (m IpMap) Clear() error {
 	return nil
 }
 
-func (m IpMap) Values() (map[uint32]string, error) {
+func (m IpMap) Values() (map[IPAddr]string, error) {
 	entries := m.ipMap.Iterate()
 
-	var key uint32
+	var key IPAddr
 	value := make([]byte, 255)
 
-	actualIPMaps := map[uint32]string{}
+	actualIPMaps := map[IPAddr]string{}
 
 	for entries.Next(&key, value) {
 		str, _, _ := bytes.Cut(value, []byte("\x00"))
