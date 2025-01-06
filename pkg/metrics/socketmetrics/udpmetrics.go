@@ -12,7 +12,6 @@ package socketmetrics
 
 import (
 	"path/filepath"
-	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -245,18 +244,8 @@ var UDPGCTypeStrings = map[UDPGCType]string{
 	UDPGCTypeCloseEventMissingSocket: "Close event missing socket",
 }
 
-var (
-	statsUpdate sync.Mutex
-)
-
 // Increment a UDP GC metric for a retrieval type
 func UDPGCMetricInc(ty UDPGCType) {
-	statsUpdate.Lock()
-	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
-	statsUpdate.Unlock()
-}
-
-func UDPGCMetricIncNoLock(ty UDPGCType) {
 	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
 }
 

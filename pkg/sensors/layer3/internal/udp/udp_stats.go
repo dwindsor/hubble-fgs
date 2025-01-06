@@ -290,7 +290,7 @@ func deleteLast(m *ebpf.Map) {
 
 func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 	// Access to TypeTotalRetrieve metrics is serialized by UdpGC.
-	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTotalRetrieve)
+	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTotalRetrieve)
 
 	// If we delete the key out from under the walker it can't find the
 	// next key and the result is we start walking from the first element
@@ -359,7 +359,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 
 func runUdpGC() {
 	// Access to UDPGCTypeTicker is serialized by UdpGC
-	socketmetrics.UDPGCMetricIncNoLock(socketmetrics.UDPGCTypeTicker)
+	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTicker)
 
 	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
