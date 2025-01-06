@@ -416,7 +416,11 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				// Entry has been evicted from the BPF map (likely LRU overspill).
 				// We can still (and should) send a close event, although stats and duration will be 0.
 				if !DisableCloseEvents {
-					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &api.UdpInfoValue{}, 0))
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &api.UdpInfoValue{
+						Ktime:    m.Common.Ktime,
+						Pid:      m.ProcessKey.Pid,
+						PidKtime: m.ProcessKey.Ktime,
+					}, 0))
 				}
 				// And we should remove the entry from our local stats cache.
 				stats.Remove(udpStatsKey)
