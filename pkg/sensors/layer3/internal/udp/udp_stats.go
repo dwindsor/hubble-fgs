@@ -62,7 +62,7 @@ type udpStatsKey struct {
 }
 
 var (
-	UdpDeleteInterval = time.Duration(600 * time.Second)
+	UdpDeleteInterval = time.Duration(120 * time.Second)
 	udpStatsEnable    = false
 
 	stats *lru.Cache[udpStatsKey, api.UdpInfoValue]
