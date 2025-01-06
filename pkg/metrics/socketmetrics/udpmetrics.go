@@ -269,6 +269,9 @@ func NewUdpBPFCollector() metrics.CollectorWithInit {
 }
 
 func collect(ch chan<- prometheus.Metric) {
+	if !udpconfig.MetricsEnabled {
+		return
+	}
 	statsFile := filepath.Join(bpf.MapPrefixPath(), udpconfig.UdpMapStatsName)
 	mStats, err := ebpf.LoadPinnedMap(statsFile, nil)
 	if err != nil {

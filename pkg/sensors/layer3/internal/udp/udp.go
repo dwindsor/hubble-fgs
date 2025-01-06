@@ -229,6 +229,7 @@ func UnloadSensor() error {
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(unix.IPPROTO_UDP)
 	}
+	udpconfig.MetricsEnabled = false
 	return nil
 }
 
