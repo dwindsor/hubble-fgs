@@ -662,7 +662,7 @@ UDP socket retrieval stats. For internal use only.
 
 | label | values |
 | ----- | ------ |
-| `count` | `Delete Key Failed, DiffValues Failure, DiffValues GC Failure, Failed To Open Map, NanoTimeSince Failure, Pid Is Zero, Ticker, Total Retrieved` |
+| `count` | `Close event missing socket, Delete Key Failed, DiffValues Failure, DiffValues GC Failure, Failed To Open Map, NanoTimeSince Failure, Pid Is Zero, Ticker, Total Retrieved` |
 
 ### `tetragon_udp_stats_cache_capacity`
 

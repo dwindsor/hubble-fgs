@@ -49,6 +49,8 @@ const (
 	ConfigMapName     = "tg_udp_config_map"
 	UdpPayloadMapName = "tg_udp_payload_map"
 	SocketMapName     = "tg_socket_map"
+
+	MissingStatsErrorInterval = time.Hour
 )
 
 var (
@@ -60,6 +62,8 @@ var (
 	DisableListenEvents  = false
 	DisableCloseEvents   = false
 	DisableStatsEvents   = false
+
+	LastMissingStats time.Time
 )
 
 var (
@@ -412,7 +416,11 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			var udpValue api.UdpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)
 			if err != nil {
-				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event. BPF UDP map might be too small?")
+				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeCloseEventMissingSocket)
+				if time.Since(LastMissingStats) > MissingStatsErrorInterval {
+					logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event. BPF UDP map might be too small, or IdleSocketDeleteInterval might be too large?")
+					LastMissingStats = time.Now()
+				}
 				// Entry has been evicted from the BPF map (likely LRU overspill).
 				// We can still (and should) send a close event, although stats and duration will be 0.
 				if !DisableCloseEvents {

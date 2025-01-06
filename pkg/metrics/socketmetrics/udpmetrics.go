@@ -230,17 +230,19 @@ const (
 	UDPGCTypeDiffValuesFailure
 	UDPGCTypeDiffValuesFailureGC
 	UDPGCTypeDeleteKeyFailed
+	UDPGCTypeCloseEventMissingSocket
 )
 
 var UDPGCTypeStrings = map[UDPGCType]string{
-	UDPGCTypeTicker:               "Ticker",
-	UDPGCTypeFailedToOpenMap:      "Failed To Open Map",
-	UDPGCTypeTotalRetrieve:        "Total Retrieved",
-	UDPGCTypePidIsZero:            "Pid Is Zero",
-	UDPGCTypeNanoTimeSinceFailure: "NanoTimeSince Failure",
-	UDPGCTypeDiffValuesFailure:    "DiffValues Failure",
-	UDPGCTypeDiffValuesFailureGC:  "DiffValues GC Failure",
-	UDPGCTypeDeleteKeyFailed:      "Delete Key Failed",
+	UDPGCTypeTicker:                  "Ticker",
+	UDPGCTypeFailedToOpenMap:         "Failed To Open Map",
+	UDPGCTypeTotalRetrieve:           "Total Retrieved",
+	UDPGCTypePidIsZero:               "Pid Is Zero",
+	UDPGCTypeNanoTimeSinceFailure:    "NanoTimeSince Failure",
+	UDPGCTypeDiffValuesFailure:       "DiffValues Failure",
+	UDPGCTypeDiffValuesFailureGC:     "DiffValues GC Failure",
+	UDPGCTypeDeleteKeyFailed:         "Delete Key Failed",
+	UDPGCTypeCloseEventMissingSocket: "Close event missing socket",
 }
 
 var (
