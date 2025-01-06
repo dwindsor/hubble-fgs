@@ -94,6 +94,7 @@ var (
 	// Endpoint Models
 	EndpointIdMapKprobe            = program.MapUser("tg_endpoint_id_map", FdLookupKprobe_5_15)
 	BpfEndpointIdMapKprobe         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupKprobe_5_15)
+	ProcessTreeIdMapKprobe         = program.MapBuilder("tg_tree_id", FdLookupKprobe_5_15)
 	ProcessTreeMapKprobe           = program.MapUser("process_tree_map", FdLookupKprobe_5_15)
 	ProcessTreeBinaryUUIDMapKprobe = program.MapUser("process_tree_binary_uid_map", FdLookupKprobe_5_15)
 	ProcessTreeUUIDBinaryMapKprobe = program.MapUser("process_tree_uid_binary_map", FdLookupKprobe_5_15)
@@ -101,6 +102,7 @@ var (
 	ListenEndpointMapKprobe        = program.MapUser("listen_endpoint_map", FdLookupKprobe_5_15)
 	EndpointIdMapFentry            = program.MapUser("tg_endpoint_id_map", FdLookupFentry_5_15)
 	BpfEndpointIdMapFentry         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupFentry_5_15)
+	ProcessTreeIdMapFentry         = program.MapBuilder("tg_tree_id", FdLookupFentry_5_15)
 	ProcessTreeMapFentry           = program.MapUser("process_tree_map", FdLookupFentry_5_15)
 	ProcessTreeBinaryUUIDMapFentry = program.MapUser("process_tree_binary_uid_map", FdLookupFentry_5_15)
 	ProcessTreeUUIDBinaryMapFentry = program.MapUser("process_tree_uid_binary_map", FdLookupFentry_5_15)
@@ -241,6 +243,7 @@ func getFdLookupMaps() []*program.Map {
 				maps = append(maps, []*program.Map{
 					EndpointIdMapFentry,
 					BpfEndpointIdMapFentry,
+					ProcessTreeIdMapFentry,
 					ProcessTreeMapFentry,
 					ProcessTreeBinaryUUIDMapFentry,
 					ProcessTreeUUIDBinaryMapFentry,
@@ -251,6 +254,7 @@ func getFdLookupMaps() []*program.Map {
 				maps = append(maps, []*program.Map{
 					EndpointIdMapKprobe,
 					BpfEndpointIdMapKprobe,
+					ProcessTreeIdMapKprobe,
 					ProcessTreeMapKprobe,
 					ProcessTreeBinaryUUIDMapKprobe,
 					ProcessTreeUUIDBinaryMapKprobe,

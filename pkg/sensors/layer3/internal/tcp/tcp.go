@@ -221,6 +221,7 @@ var (
 	// Endpoint Models
 	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
 	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", TcpSockops515)
+	ProcessTreeMapId         = program.MapUser("process_tree_id", TcpSockops515)
 	ProcessTreeMap           = program.MapUser("process_tree_map", TcpSockops515)
 	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", TcpSockops515)
 	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", TcpSockops515)

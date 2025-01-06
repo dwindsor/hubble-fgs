@@ -115,6 +115,7 @@ var (
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* In BPF memory aggregated data */
+	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV61, ExecveV611)
 	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV61, ExecveV611)
@@ -203,6 +204,7 @@ func GetDefaultMaps() []*program.Map {
 		MatchBinariesSetMap,
 		TetragonConfMap,
 		TCPMonMap,
+		ProcessTreeId,
 		ProcessTreeMap,
 		ProcessTreeBinaryUUIDMap,
 		ProcessTreeUUIDBinaryMap,
