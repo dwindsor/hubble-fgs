@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/probe"
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/dns"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
@@ -39,8 +40,10 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(syscallentries.New())
 	rootCmd.AddCommand(exec.New())
 	rootCmd.AddCommand(exec.NewMonitor())
-	rootCmd.AddCommand(debug.New())
 	rootCmd.AddCommand(debug.NewDumpAlias())
 	rootCmd.AddCommand(loglevel.New())
 	rootCmd.AddCommand(cgtracker.New())
+	debugCmd := debug.New()
+	debugCmd.AddCommand(dns.NewDNSCmd())
+	rootCmd.AddCommand(debugCmd)
 }
