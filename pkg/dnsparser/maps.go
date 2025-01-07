@@ -12,11 +12,8 @@ package dnsparser
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
-	"net"
 	"runtime"
-	"strings"
 
 	"github.com/cilium/ebpf"
 )
@@ -81,24 +78,6 @@ func (m ErrorMap) ReadAll() ([]int, error) {
 	return values, nil
 }
 
-func (m ErrorMap) String() (string, error) {
-	entries := m.errMap.Iterate()
-	out := strings.Builder{}
-
-	var key uint32
-	perCPUValue := make([]uint32, runtime.NumCPU())
-
-	for entries.Next(&key, perCPUValue) {
-		out.WriteString(fmt.Sprintf("key: %d, value: %v\n", key, perCPUValue))
-	}
-
-	if err := entries.Err(); err != nil {
-		return "", fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	return out.String(), nil
-}
-
 func (m ErrorMap) Clear() error {
 	size := int(m.errMap.MaxEntries())
 	keys := make([]uint32, size)
@@ -140,27 +119,6 @@ func (m IpMap) Clear() error {
 	}
 
 	return nil
-}
-
-func (m IpMap) String() (string, error) {
-	entries := m.ipMap.Iterate()
-
-	var key uint32
-	value := make([]byte, 255)
-	out := strings.Builder{}
-
-	for entries.Next(&key, value) {
-		ip := make(net.IP, 4)
-		binary.BigEndian.PutUint32(ip, key)
-		str, _, _ := bytes.Cut(value, []byte("\x00"))
-		out.WriteString(fmt.Sprintf("key: %s, value: %s\n", ip, string(str)))
-	}
-
-	if err := entries.Err(); err != nil {
-		return "", fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	return out.String(), nil
 }
 
 func (m IpMap) Values() (map[uint32]string, error) {
