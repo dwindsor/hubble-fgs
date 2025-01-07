@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	IP4ToDomainMapName = "ip_map"
-	ErrorMapName       = "tg_dns_error_map"
+	IPToDomainMapName = "tg_dns_ip_map"
+	ErrorMapName      = "tg_dns_error_map"
 )
 
 type IpMap struct {

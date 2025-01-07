@@ -110,9 +110,9 @@ func Test_DNSParser(t *testing.T) {
 	}
 	errMap := NewErrorMap(rawErrMap)
 
-	rawIPMap, ok := coll.Maps[IP4ToDomainMapName]
+	rawIPMap, ok := coll.Maps[IPToDomainMapName]
 	if !ok {
-		t.Fatalf("map %s not found", IP4ToDomainMapName)
+		t.Fatalf("map %s not found", IPToDomainMapName)
 	}
 	ipMap := NewIPMap(rawIPMap)
 

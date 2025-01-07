@@ -90,7 +90,7 @@ struct {
 	__uint(max_entries, 56); // This is an arbitrary number for testing, TBD
 	__type(key, __u32);
 	__type(value, char[MAX_NAME_SIZE]);
-} ip_map SEC(".maps");
+} tg_dns_ip_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -243,7 +243,7 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 		if (!name)
 			return -36;
 
-		if (map_update_elem(&ip_map, &ipv4, name, BPF_ANY) < 0)
+		if (map_update_elem(&tg_dns_ip_map, &ipv4, name, BPF_ANY) < 0)
 			return -37;
 
 		return offset + sizeof(u32);
