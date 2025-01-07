@@ -478,9 +478,8 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
-	if (udp->source == bpf_htons(DNS_PORT) && dns_parser_enabled()) {
+	if (udp->source == bpf_htons(DNS_PORT) && dns_parser_enabled())
 		parse_dns(skb, payload_off);
-	}
 	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
 		 payload_off,
 		 payload_sz, send);
