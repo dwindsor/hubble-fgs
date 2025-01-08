@@ -19,6 +19,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -133,6 +134,7 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 // needed for BPF to identify UDP options.
 func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (ConfigValue, networklatency.ProtocolConfig) {
 	config := ConfigValue{}
+	ParseOptions(&config)
 	ParseDnsSpec(&config, spec)
 	ParseUdpWatermarksSpec(&config, spec)
 	latencyConfig, _ := networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
@@ -142,18 +144,21 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (ConfigValue, networklatency
 	return config, latencyConfig
 }
 
+// ParseOptions parses the command line options into the config
+func ParseOptions(config *ConfigValue) {
+	config.dnsStatsPerSocket = 0
+	if option.Config.DNSStatsPerSocket {
+		config.dnsStatsPerSocket = 1
+	}
+}
+
 // ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
 // The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
 // the map in bpf_inet.h.
 func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if !spec.Parser.Dns.Enable {
-		// If DNS is disabled and udp enabled then we can disable
-		// dns caching.
-		ip.DisableDns()
-		return
-	}
+	// Store DNS ports even if DNS parsing is disabled as these are used for grouping DNS UDP stats.
 	// Only consider the first maxDnsPorts ports that are specified
 	if len(spec.Parser.Dns.Ports) == 0 {
 		config.dnsPorts[0] = defaultDnsPort
@@ -163,6 +168,12 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		copy(config.dnsPorts[:], spec.Parser.Dns.Ports[0:maxDnsPorts])
 	}
 
+	if !spec.Parser.Dns.Enable {
+		// If DNS is disabled and udp enabled then we can disable
+		// dns caching.
+		ip.DisableDns()
+		return
+	}
 	if spec.Parser.Dns.Metrics != nil {
 		dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
 		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)

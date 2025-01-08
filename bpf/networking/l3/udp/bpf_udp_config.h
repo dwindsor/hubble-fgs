@@ -13,7 +13,9 @@
 
 struct udp_sensor_config {
 	u16 dnsPorts[4];
-	u64 watermarks_enable;
+	u8 dnsStatsPerSocket;
+	u8 watermarks_enable;
+	u8 pad[6];
 	u64 watermarks_avg_window_size_ms;
 	u64 watermarks_window_size;
 	u64 watermarks_burst_trigger_percent;

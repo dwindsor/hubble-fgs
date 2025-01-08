@@ -152,7 +152,9 @@ type udpSensorConfigKey struct {
 
 type ConfigValue struct {
 	dnsPorts                      [maxDnsPorts]uint16
-	watermarksEnable              uint64
+	dnsStatsPerSocket             uint8
+	watermarksEnable              uint8
+	Pad                           [6]uint8
 	watermarksAvgWindowSizeMs     uint64
 	watermarksWindowSize          uint64
 	watermarksBurstTriggerPercent uint64
@@ -163,12 +165,13 @@ type ConfigValue struct {
 
 func (v *ConfigValue) String() string {
 	return fmt.Sprintf("dnsPorts: %d, "+
+		"dnsStatsPerSocket: %d, "+
 		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
 		"watermarkBurstTriggerPercent: %d, "+
 		"watermarkDipTriggerPercent: %d",
-		v.dnsPorts, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent,
+		v.dnsPorts, v.dnsStatsPerSocket, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent,
 		v.watermarksDipTriggerPercent)
 }
 
