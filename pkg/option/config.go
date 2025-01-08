@@ -42,6 +42,8 @@ type config struct {
 	AWSSonarRegion string
 
 	EnableBPFDNSParser bool
+
+	DNSStatsPerSocket bool
 }
 
 var (

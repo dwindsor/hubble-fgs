@@ -16,6 +16,7 @@ enable-process-tree: {{ .Values.tetragon.enableProcessTree | quote }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
 {{- end }}
+dns-stats-per-socket: {{ .Values.tetragon.dnsStatsPerSocket | quote }}
 {{- end }}
 
 {{- define "volumes.extra" -}}

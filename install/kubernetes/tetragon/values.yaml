@@ -277,6 +277,7 @@ tetragon:
   awsSonar:
     enabled: false
     region: ""
+  dnsStatsPerSocket: false
 # Tetragon Operator settings
 tetragonOperator:
   # -- Enables the Tetragon Operator.

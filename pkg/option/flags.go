@@ -51,6 +51,7 @@ const (
 	KeyEnableDnsDebug            = "enable-dns-debug"
 	KeyProcessCacheStaleInterval = "process-cache-stale-interval"
 	keyEnableBPFDNSParser        = "enable-bpf-dns-parser"
+	keyDNSStatsPerSocket         = "dns-stats-per-socket"
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -98,6 +99,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
 	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser")
+	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -138,4 +140,5 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
+	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 }

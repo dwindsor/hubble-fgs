@@ -76,6 +76,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.clusterName | string | `""` | Name of the cluster where Tetragon is installed. Tetragon uses this value to set the cluster_name field in GetEventsResponse messages. |
 | tetragon.commandOverride | list | `[]` | Override the command. For advanced users only. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
+| tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
 | tetragon.enableK8sAPI | bool | `true` | Access Kubernetes API to associate Tetragon events with Kubernetes pods. |
 | tetragon.enableKeepSensorsOnExit | bool | `false` | Persistent enforcement to allow the enforcement policy to continue running even when its Tetragon process is gone. |

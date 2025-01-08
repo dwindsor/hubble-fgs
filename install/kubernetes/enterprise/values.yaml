@@ -52,6 +52,7 @@ tetragon:
   awsSonar:
     enabled: false
     region: ""
+  dnsStatsPerSocket: false
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
