@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { memo, useEffect, useMemo, useRef } from "react";
 import debounce from "lodash/debounce";
 import { useAppState } from "~/state/AppContext";
-import { ApplicationProcess } from "~/proto/appmodel";
+import { ApplicationProcess } from "~/proto";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
 import { Collapsible } from "./Collapsible";

@@ -1,9 +1,15 @@
 import Emitter from "events";
 import { createContext, useContext } from "react";
 import TypedEmitter from "typed-emitter";
-import { ApplicationModelEvent, ApplicationProcess } from "~/proto/appmodel";
+import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
 import { WH, XY } from "~/types";
 import { createAppState } from "./utils";
+import {
+  ApplicationModelEventSchema,
+  file_application_model_v1alpha_application_model,
+} from "@ipa/application_model/v1alpha/application_model_pb";
+import { create } from "@bufbuild/protobuf";
+import { timestampNow } from "@bufbuild/protobuf/wkt";
 
 export type AppState = ReturnType<typeof useAppState>;
 
@@ -96,12 +102,11 @@ export function createAppContext({
 
 export const AppContext = createContext(
   createAppContext({
-    model: {
+    model: create(ApplicationModelEventSchema, {
       clusterName: "",
       nodeName: "",
-      applicationModel: undefined,
-      time: new Date(),
-    },
+      time: timestampNow(),
+    }),
     getTreeOffset: () => 0,
   })
 );

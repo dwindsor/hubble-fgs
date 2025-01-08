@@ -1,6 +1,6 @@
 import { memo } from "react";
 import css from "./Namespace.module.css";
-import { ApplicationNamespace } from "~/proto/appmodel";
+import { ApplicationNamespace } from "~/proto";
 import { WorkloadsList } from "./Workload";
 import clsx from "clsx";
 
@@ -17,7 +17,9 @@ export interface NamespaceProps {
 export const Namespace = memo(function Namespace(props: NamespaceProps) {
   const state = useAppState();
 
-  const stat = state.stat.namespacesMap[props.namespace.name];
+  const stat = props.namespace.name
+    ? state.stat.namespacesMap[props.namespace.name]
+    : null;
 
   const workloads = props.namespace.workloads ?? [];
   return (
@@ -31,7 +33,7 @@ export const Namespace = memo(function Namespace(props: NamespaceProps) {
               color="#b8b8b8"
             />
             <span>{props.namespace.name}</span>
-            {!opened && <Statistic stat={stat} />}
+            {!opened && stat && <Statistic stat={stat} />}
           </summary>
         )}
       >

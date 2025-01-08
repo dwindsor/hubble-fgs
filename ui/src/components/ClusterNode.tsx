@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ApplicationModelEvent } from "~/proto/appmodel";
+import { ApplicationModelEvent } from "~/proto";
 import css from "./ClusterNode.module.css";
 import { NamespacesList } from "./Namespace";
 import { Host } from "./Host";

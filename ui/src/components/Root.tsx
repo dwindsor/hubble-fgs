@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef } from "react";
 import { AppContext, createAppContext } from "~/state/AppContext";
-import { ApplicationModelEvent } from "~/proto/appmodel";
+import { ApplicationModelEvent } from "~/proto";
 import { App } from "./App";
 
 export interface Props {

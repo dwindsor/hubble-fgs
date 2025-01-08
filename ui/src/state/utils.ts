@@ -3,7 +3,7 @@ import {
   ApplicationConnection,
   ApplicationModelEvent,
   ApplicationProcess,
-} from "~/proto/appmodel";
+} from "~/proto";
 
 export type Stat = { bytesSent: number };
 export type Stats = ReturnType<typeof createEmptyStat>;
@@ -39,7 +39,7 @@ export function createAppState(model?: ApplicationModelEvent): {
       const endpoints = new Set<string>();
       proc.connections?.forEach((conn) => {
         endpoints.add(getEndpointHash(conn));
-        procBytesSent += conn.bytesSent;
+        procBytesSent += (conn.bytesSent || 0) as number;
       });
       bytesSent += procBytesSent;
       endpoints.forEach((endpoint) => {
@@ -64,8 +64,10 @@ export function createAppState(model?: ApplicationModelEvent): {
 
   let namespacesBytesSent = 0;
   model.applicationModel?.namespaces?.forEach((namespace) => {
+    if (!namespace.name) return;
     let namespaceBytesSent = 0;
     namespace.workloads?.forEach((workload) => {
+      if (!workload.name) return;
       const workloadBytesSent = rec(workload.processes);
       stats.workloadsMap[workload.name] = {
         bytesSent: workloadBytesSent,

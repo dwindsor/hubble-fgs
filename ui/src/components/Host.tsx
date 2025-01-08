@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ApplicationHost } from "~/proto/appmodel";
+import { ApplicationHost } from "~/proto";
 
 import css from "./Host.module.css";
 import { ProcsList } from "./Proc";
@@ -30,7 +30,7 @@ export const Host = memo(function Host(props: HostProps) {
       )}
     >
       <ProcsList
-        procs={props.host.processes}
+        procs={props.host.processes ?? []}
         className={css.hostProcessesList}
         procItemClassName={css.hostProcessItem}
       />

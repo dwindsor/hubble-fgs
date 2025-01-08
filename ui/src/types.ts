@@ -1,4 +1,4 @@
-import { ApplicationProcess } from "./proto/appmodel";
+import { ApplicationProcess } from "./proto";
 
 export type XY = { x: number; y: number };
 
@@ -25,3 +25,15 @@ export type ConnectionsMap = Map<
   string /* endpoint */,
   Set<ApplicationProcess>
 >;
+
+export type Builtin = Date | Function | Uint8Array | string | number | boolean;
+
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+  ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
+  : Partial<T>;

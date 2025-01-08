@@ -7,7 +7,22 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const root = __dirname;
 const src = path.resolve(root, "src");
+const ipa = path.resolve(
+  root,
+  "..",
+  "vendor",
+  "github.com",
+  "isovalent",
+  "ipa"
+);
 const isDev = process.env.NODE_ENV === "development";
+
+console.log(
+  path.resolve(
+    root,
+    "./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"
+  )
+);
 
 export default defineConfig(() => ({
   root: src,
@@ -27,6 +42,19 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "~": src,
+      "@ipa": ipa,
+      "@bufbuild/protobuf": path.resolve(
+        root,
+        "./node_modules/@bufbuild/protobuf/dist/esm"
+      ),
+      "@bufbuild/protobuf/wkt": path.resolve(
+        root,
+        "./node_modules/@bufbuild/protobuf/dist/esm/wkt"
+      ),
+      "@bufbuild/protobuf/codegenv1": path.resolve(
+        root,
+        "./node_modules/@bufbuild/protobuf/dist/esm/codegenv1"
+      ),
     },
   },
   css: {

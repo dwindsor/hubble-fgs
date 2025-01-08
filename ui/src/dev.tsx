@@ -1,8 +1,9 @@
 import { createRoot } from "react-dom/client";
+import { objectToCamel } from "ts-case-convert";
 import { Root } from "./components/Root";
 import { model as devModel } from "./dev-model";
+import { ApplicationModelEvent } from "./proto";
 import "./reset.css";
-import { ApplicationModelEvent } from "./proto/appmodel";
 
 const dom = document.getElementById("container");
 if (!dom) {
@@ -17,6 +18,8 @@ declare global {
 }
 
 const globalModel = window.APP_MODEL_JSON;
-const model = globalModel ? globalModel : devModel;
+const model = objectToCamel(
+  globalModel ? globalModel : devModel
+) as ApplicationModelEvent;
 
 root.render(<Root model={model} />);

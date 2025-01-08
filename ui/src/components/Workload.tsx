@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ApplicationWorkload } from "~/proto/appmodel";
+import { ApplicationWorkload } from "~/proto";
 import clsx from "clsx";
 import css from "./Workload.module.css";
 import { ProcsList } from "./Proc";
@@ -15,7 +15,9 @@ export interface WorkloadProps {
 export const Workload = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
-  const stat = state.stat.workloadsMap[props.workload.name];
+  const stat = props.workload.name
+    ? state.stat.workloadsMap[props.workload.name]
+    : null;
 
   const procs = props.workload.processes ?? [];
   return (
@@ -29,7 +31,7 @@ export const Workload = memo(function Workload(props: WorkloadProps) {
               color="#b8b8b8"
             />
             <span>{props.workload.name}</span>
-            {!opened && <Statistic stat={stat} />}
+            {!opened && stat && <Statistic stat={stat} />}
           </summary>
         )}
       >
