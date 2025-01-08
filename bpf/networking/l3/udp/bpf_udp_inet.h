@@ -74,12 +74,13 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   struct udp_info_key *key)
 {
 	struct udp_info_value *value;
+	bool dnsCombined = false;
 	u64 cookie_ver = 0;
 
 	if (process)
 		cookie_ver = process->version;
 
-	udp_key(key, cookie, cookie_ver, ip, ipv6, udp, send);
+	udp_key(key, &dnsCombined, cookie, cookie_ver, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
 
