@@ -66,6 +66,10 @@ To create a `X.Y` branch:
  - [ ] Create a "starting `X.Y+1` development" PR on the master branch with the following changes:
     - [ ] update [CustomResourceDefinitionSchemaVersion](https://github.com/isovalent/hubble-fgs/blob/c6d2699d9d1829a2ea6a6276d410da22fef71629/pkg/k8s/apis/cilium.io/v1alpha1/version.go#L21) to `X.Y+1.0`.
     - [ ] Update "Versions" in `docs/backporting.md`
+    - [ ] Clear upgrade notes:
+      ```
+      cp contrib/upgrade-notes/template.md contrib/upgrade-notes/latest.md
+      ```
  - [ ] Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
    `vX.Y+1.0-pre.0`.
  - [ ] Add the stable branch to the renovate configuration
