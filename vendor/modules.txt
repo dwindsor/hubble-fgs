@@ -186,6 +186,11 @@ github.com/blang/semver/v4
 # github.com/bombsimon/logrusr/v4 v4.1.0
 ## explicit; go 1.17
 github.com/bombsimon/logrusr/v4
+# github.com/breml/jsondiffprinter v0.0.12
+## explicit; go 1.22.3
+github.com/breml/jsondiffprinter
+github.com/breml/jsondiffprinter/internal/jsonpatch
+github.com/breml/jsondiffprinter/internal/jsonpointer
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -1341,9 +1346,12 @@ github.com/tidwall/gjson
 # github.com/tidwall/match v1.1.1
 ## explicit; go 1.15
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.2.0
+# github.com/tidwall/pretty v1.2.1
 ## explicit; go 1.16
 github.com/tidwall/pretty
+# github.com/tidwall/sjson v1.2.5
+## explicit; go 1.14
+github.com/tidwall/sjson
 # github.com/vishvananda/netlink v1.3.1-0.20241227191253-26ee0e2abe2d
 ## explicit; go 1.12
 github.com/vishvananda/netlink
@@ -1359,6 +1367,9 @@ github.com/vladimirvivien/gexe/fs
 github.com/vladimirvivien/gexe/http
 github.com/vladimirvivien/gexe/prog
 github.com/vladimirvivien/gexe/vars
+# github.com/wI2L/jsondiff v0.6.1
+## explicit; go 1.21
+github.com/wI2L/jsondiff
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16

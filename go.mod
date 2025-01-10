@@ -7,6 +7,7 @@ toolchain go1.23.3
 require (
 	github.com/aws/aws-sdk-go-v2 v1.32.6
 	github.com/aws/aws-sdk-go-v2/config v1.28.6
+	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.17.0-rc.1
 	github.com/cilium/ebpf v0.17.1
 	github.com/cilium/lumberjack/v2 v2.4.1
@@ -44,6 +45,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/vishvananda/netlink v1.3.1-0.20241227191253-26ee0e2abe2d
 	github.com/vishvananda/netns v0.0.5
+	github.com/wI2L/jsondiff v0.6.1
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.3.1
@@ -159,7 +161,8 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.17 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.17 // indirect
