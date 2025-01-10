@@ -43,6 +43,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xlab/treeprint"
+	"golang.org/x/term"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -56,6 +57,11 @@ var (
 	celFiles         []string
 	celExprs         []string
 	appModelFilename string
+	verboseDiff      bool
+	patch            bool
+	check            bool
+	ignoreInDiff     []string
+	ignoreByteCounts = true
 )
 
 type ConnectedModelClient struct {
@@ -664,6 +670,26 @@ func generateCheckerReader(reader io.Reader) (string, error) {
 	return checker.GenerateCheckerCEL(appModel)
 }
 
+func readAppModelFromFile(filename string) (*appModelV1.ApplicationModelEvent, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	model := &appModelV1.ApplicationModelEvent{}
+	err = json.Unmarshal(b, model)
+	if err != nil {
+		return nil, err
+	}
+
+	return model, nil
+}
+
 func NewCheck() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "check [application model file]",
@@ -737,6 +763,105 @@ func NewGenerate() *cobra.Command {
 			return nil
 		},
 	}
+
+	return ret
+}
+
+func NewDiff() *cobra.Command {
+	ret := &cobra.Command{
+		Use:   "diff <model file> <model file>",
+		Short: "Take the diff between two application model JSON files",
+		Example: `  # Take the diff between two application models
+  tetra pstree diff model-a.json model-b.json
+
+  # Take the diff between two application models and print it as a JSON patch
+  tetra pstree diff model-a.json model-b.json --patch
+
+  # Check whether two models match
+  tetra pstree diff model-a.json model-b.json --check
+		`,
+		Hidden:       false,
+		SilenceUsage: false,
+		Args:         cobra.ExactArgs(2),
+		RunE: func(_ *cobra.Command, args []string) error {
+			var opts []checker.Option
+			// Ignore bytes in connections if ignoreByteCounts is set
+			if ignoreByteCounts {
+				opts = append(opts, checker.IgnoreFields(
+					"namespaces.workloads.processes.connections.bytes_sent",
+					"namespaces.workloads.processes.connections.bytes_received",
+					"namespaces.workloads.processes.children.connections.bytes_sent",
+					"namespaces.workloads.processes.children.connections.bytes_received",
+					"host.processes.connections.bytes_sent",
+					"host.processes.connections.bytes_received",
+					"host.processes.children.connections.bytes_sent",
+					"host.processes.children.connections.bytes_received",
+				))
+			}
+			// Add custom ignores
+			if len(ignoreInDiff) > 0 {
+				opts = append(opts, checker.IgnoreFields(ignoreInDiff...))
+			}
+			// Print in color if we are printing to a terminal
+			if term.IsTerminal(int(os.Stdout.Fd())) {
+				opts = append(opts, checker.PrintColor())
+			}
+			if !verboseDiff {
+				opts = append(opts, checker.HideUnchanged())
+			}
+
+			a, err := readAppModelFromFile(args[0])
+			if err != nil {
+				return err
+			}
+
+			b, err := readAppModelFromFile(args[1])
+			if err != nil {
+				return err
+			}
+
+			if patch {
+				diff, changed, err := checker.JsonDiff(a.ApplicationModel, b.ApplicationModel, opts...)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(string(diff))
+
+				if check && changed {
+					os.Exit(-1)
+				}
+			} else {
+				diff, err := checker.PrettyJsonDiff(a.ApplicationModel, b.ApplicationModel, opts...)
+				if err != nil {
+					return err
+				}
+
+				if len(diff) == 0 {
+					fmt.Println("No differences to report.")
+				} else {
+					fmt.Println(diff)
+				}
+
+				if check {
+					if len(diff) > 0 {
+						fmt.Printf("❌ application model checks failed!\n")
+						os.Exit(-1)
+					}
+					fmt.Printf("✅ application model checks passed!")
+				}
+			}
+			return nil
+		},
+	}
+
+	flags := ret.Flags()
+	flags.BoolVarP(&check, "check", "c", check, "Exit with failure status when models do not match")
+	flags.BoolVarP(&patch, "patch", "p", patch, "Output as a JSON patch")
+	flags.BoolVarP(&verboseDiff, "verbose", "v", patch, "Print all fields when pretty printing diff")
+	flags.BoolVar(&ignoreByteCounts, "ignore-byte-counts", ignoreByteCounts, "Convenience helper to ignore connection byte counts in diff")
+	flags.StringArrayVarP(&ignoreInDiff, "ignore", "i", ignoreInDiff, "Field mask paths to ignore in the diff")
+	viper.BindPFlags(flags)
 
 	return ret
 }
@@ -928,6 +1053,7 @@ func New() *cobra.Command {
 	ret.AddCommand(NewCheck())
 	ret.AddCommand(NewDebug())
 	ret.AddCommand(NewSquash())
+	ret.AddCommand(NewDiff())
 
 	pflags := ret.PersistentFlags()
 	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
