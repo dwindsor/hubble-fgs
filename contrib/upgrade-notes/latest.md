@@ -11,7 +11,8 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Helm Values
 
-* TBD
+* `dashboards.annotations` value has been removed. Use `annotations` values for
+  specific dashboard groups instead, e.g. `dashboards.health.annotations`.
 
 ### OLM manifests
 

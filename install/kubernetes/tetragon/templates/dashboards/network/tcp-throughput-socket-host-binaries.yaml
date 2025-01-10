@@ -10,7 +10,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-    {{- with .Values.dashboards.annotations }}
+    {{- with .Values.dashboards.network.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
