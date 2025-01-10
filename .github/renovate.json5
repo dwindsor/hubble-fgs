@@ -59,6 +59,14 @@
         "v1.13",
       ]
     },
+    // This rule is just a reapply from the more global ignore on docker digest updates from OSS:
+    // https://github.com/cilium/tetragon/blob/11d65b823769c5d772520c8f9c0c73c97cc6faad/.github/renovate.json5#L461-L468
+    // Since we reenable all Go updates just above and can't combine allowedVersions and matchUpdatesTypes: ["!digest"]
+    {
+      "enabled": false,
+      "matchPackageNames": ["docker.io/library/golang"],
+      "matchUpdateTypes": ["digest"],
+    },
     {
       // Don't update Tetragon Helm chart directly as it's generated from the
       // OSS chart and enterprise extensions.
