@@ -5,6 +5,7 @@ metadata:
   name: {{ .Release.Name }}-dashboard-udp-throughput-socket
   namespace: {{ .Values.dashboards.namespace | default .Release.Namespace }}
   labels:
+    {{- include "commonLabels" . | nindent 4 }}
     {{- with .Values.dashboards.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

@@ -106,6 +106,8 @@ tracingPolicies:
 # -- Grafana dashboards, installed as ConfigMaps.
 # They can be mounted in a Grafana deployment, or loaded automatically using the Grafana's sidecar for dashboards.
 # See: https://github.com/grafana/helm-charts/tree/main/charts/grafana#sidecar-for-dashboards
+# If integratedGrafana.enabled is true, all dashboards are installed,
+# regardless of their individual enabled values.
 dashboards:
   health:
     # -- Enable dashboards for monitoring Tetragon health and operations.
