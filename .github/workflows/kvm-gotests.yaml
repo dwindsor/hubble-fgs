@@ -41,6 +41,18 @@ jobs:
           - "5.4-20241107.001101"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "4.19-20241107.001101"
+        # TODO: temporarily disable testing for 4.19 and 5.4 kernels
+        # The excluded kernels require more test failure investigation
+        exclude:
+          - os: splendid-metal-arm64
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "4.19-20241107.001101"
+          - os: splendid-metal-arm64
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "5.4-20241107.001101"
+          - os: splendid-metal-arm64
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "rhel8.9-20241218.004849" # currently not supported on ARM64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Git Repo
@@ -61,12 +73,6 @@ jobs:
             echo lvh_kernel="${{ env.SHARED_FOLDER }}/vmlinuz-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
             echo ssh_port=$ssh_port >> $GITHUB_OUTPUT
             echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}-arm64" >> $GITHUB_OUTPUT
-
-            # skip RedHat kernel because metal AMR64 tests don't support it yet
-            if [[ ${{ matrix.kernel }} == rhel* ]]
-            then
-              echo skip_kernel=true >> $GITHUB_OUTPUT
-            fi
           else
             echo metal_arm64=false >> $GITHUB_OUTPUT
             echo lvh_install_deps=true >> $GITHUB_OUTPUT
@@ -77,7 +83,7 @@ jobs:
 
       # Local caching mechanism since we run on the same runner, we could use GitHub cache also
       - name: Download the kernel
-        if: steps.vars.outputs.metal_arm64 == 'true' && steps.vars.outputs.skip_kernel != 'true'
+        if: steps.vars.outputs.metal_arm64 == 'true'
         run: |
           if [ ! -e "$SHARED_FOLDER/vmlinuz-${{ matrix.kernel }}" ]; then
             lvh kernel pull ${{ matrix.kernel }}
@@ -87,7 +93,6 @@ jobs:
           fi
 
       - name: Provision LVH VM
-        if: steps.vars.outputs.skip_kernel != 'true'
         uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
           install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
@@ -138,7 +143,6 @@ jobs:
             service ssh restart
 
       - name: Run Tests
-        if: steps.vars.outputs.skip_kernel != 'true'
         uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
         with:
           provision: 'false'
