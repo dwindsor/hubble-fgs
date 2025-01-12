@@ -97,13 +97,15 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		return 0;
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
 	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map,
-				   tree_key);
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+
 	__u32 id = 0;
 	if (self_uid) {
 		id = *self_uid;
 	} else {
 		id = get_new_tree_id();
+		if (!id)
+			return 0;
 		map_update_elem(&process_tree_uid_binary_map, &id, tree_key, 0);
 		map_update_elem(&process_tree_binary_uid_map, tree_key, &id, 0);
 	}
@@ -364,6 +366,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
+
 		destkey.local_id = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
