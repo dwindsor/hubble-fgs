@@ -31,7 +31,7 @@ jobs:
   # The context needs to be passed to the build.
   # => hence a separate job
   bundle-build-and-push:
-    if: ${{ startsWith(github.ref_name, 'v1.11') || startsWith(github.ref_name, 'v1.12') }}
+    if: ${{ !startsWith(github.ref_name, 'v1.11') && !startsWith(github.ref_name, 'v1.12') }}
     needs: build-and-push
     runs-on: ubuntu-24.04
     steps:
