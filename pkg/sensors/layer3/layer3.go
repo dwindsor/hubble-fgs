@@ -224,29 +224,34 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	configured = false
 	needDispatcher := false
 
-	progs, maps := socktrack.EnableSocktrack()
+	progsInitSock, maps := socktrack.EnableSocktrack()
+	var progsCollectStats []*program.Program
 
 	if tcpEnabled {
-		tcpProgs, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
-		progs = append(progs, tcpProgs...)
+		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
+		progsInitSock = append(progsInitSock, tcpProgsInit...)
+		progsCollectStats = append(progsCollectStats, tcpProgsStats...)
 		maps = append(maps, tcpMaps...)
 		needDispatcher = true
 	}
 	if udpEnabled {
-		udpProgs, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
-		progs = append(progs, udpProgs...)
+		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
+		progsInitSock = append(progsInitSock, udpProgsInit...)
+		progsCollectStats = append(progsCollectStats, udpProgsStats...)
 		maps = append(maps, udpMaps...)
 		needDispatcher = true
 	}
 	if icmpEnabled {
-		icmpProgs, icmpMaps := icmp.EnableIcmp()
-		progs = append(progs, icmpProgs...)
+		icmpProgsInit, icmpProgsStats, icmpMaps := icmp.EnableIcmp()
+		progsInitSock = append(progsInitSock, icmpProgsInit...)
+		progsCollectStats = append(progsCollectStats, icmpProgsStats...)
 		maps = append(maps, icmpMaps...)
 		needDispatcher = true
 	}
 	if rawEnabled {
-		rawProgs, rawMaps := rawsock.EnableRawsock()
-		progs = append(progs, rawProgs...)
+		rawProgsInit, rawProgsStats, rawMaps := rawsock.EnableRawsock()
+		progsInitSock = append(progsInitSock, rawProgsInit...)
+		progsCollectStats = append(progsCollectStats, rawProgsStats...)
 		maps = append(maps, rawMaps...)
 		needDispatcher = true
 	}
@@ -258,17 +263,17 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	if needDispatcher == true {
 		if kernels.MinKernelVersion("5.4.0") {
 			if !kernels.MinKernelVersion("5.5.0") {
-				progs = append(progs, dispatcherSkbLoad54Progs...)
+				progsCollectStats = append(progsCollectStats, dispatcherSkbLoad54Progs...)
 				maps = append(maps, dispatcherSkbLoad54Maps...)
 			} else if !kernels.MinKernelVersion("5.14.0") {
-				progs = append(progs, dispatcherSkbLoadProgs...)
+				progsCollectStats = append(progsCollectStats, dispatcherSkbLoadProgs...)
 				maps = append(maps, dispatcherSkbLoadMaps...)
 			} else {
 				if runtime.GOARCH != "amd64" {
-					progs = append(progs, dispatcherSkbLoadProgs...)
+					progsCollectStats = append(progsCollectStats, dispatcherSkbLoadProgs...)
 					maps = append(maps, dispatcherSkbLoadMaps...)
 				} else {
-					progs = append(progs, dispatcherProgs...)
+					progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 					maps = append(maps, dispatcherMaps...)
 				}
 			}
@@ -279,7 +284,7 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
-	l3Sensor := sensors.SensorBuilder(policy, "layer3_sensors", progs, maps)
+	l3Sensor := sensors.SensorBuilder(policy, "layer3_sensors", append(progsInitSock, progsCollectStats...), maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
 }

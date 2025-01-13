@@ -274,8 +274,9 @@ func bindProg() *program.Program {
 	return SkUdpBind_5_15Kprobe
 }
 
-func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program.Program, []*program.Map) {
-	var progs []*program.Program
+func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program.Program, []*program.Program, []*program.Map) {
+	var progsInitSock []*program.Program
+	var progsCollectStats []*program.Program
 	var maps []*program.Map
 	var versionStr string
 
@@ -288,11 +289,11 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 	versionStr = "__udp_sensor_probe__"
 
 	if !cgroup {
-		progs = []*program.Program{
+		progsCollectStats = []*program.Program{
 			InetSendRecvLazy,
 		}
 		if !DisableListenEvents {
-			progs = append(progs, bindProg())
+			progsInitSock = append(progsInitSock, bindProg())
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
@@ -306,9 +307,9 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		dns.LazyDns = true
 	} else {
 		if !DisableListenEvents {
-			progs = append(progs, bindProg())
+			progsInitSock = append(progsInitSock, bindProg())
 			if kernels.MinKernelVersion("5.14.0") {
-				progs = append(progs, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
+				progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
 			}
 		}
 		maps = []*program.Map{
@@ -326,7 +327,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		TimestampEnabled = true
 		timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_UDP)
 		if err == nil {
-			progs = append(progs, timestampProg)
+			progsInitSock = append(progsInitSock, timestampProg)
 		} else {
 			logger.GetLogger().Warn("UDP unsupported by network latency")
 		}
@@ -340,7 +341,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		"metrics":        udpconfig.MetricsEnabled,
 		"cgroup":         cgroup,
 	}).Infof("Enable UDP")
-	return progs, maps
+	return progsInitSock, progsCollectStats, maps
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {

@@ -123,18 +123,21 @@ func (v *ConfigValue) String() string {
 	return fmt.Sprintf("v6info: %d, ", v.v6info)
 }
 
-func EnableIcmp() ([]*program.Program, []*program.Map) {
-	var progs []*program.Program
+func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
+	var progsInitSock []*program.Program
+	var progsCollectStats []*program.Program
 	var maps []*program.Map
 
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if utils.SupportFentry() {
-		progs = []*program.Program{
+		progsInitSock = []*program.Program{
 			SkPingAllocFentry,
+		}
+		progsCollectStats = []*program.Program{
 			IcmpRcvFentry,
 			IcmpRcv6Fentry,
 		}
@@ -151,8 +154,10 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 		}
 
 	} else {
-		progs = []*program.Program{
+		progsInitSock = []*program.Program{
 			SkPingAllocKprobe,
+		}
+		progsCollectStats = []*program.Program{
 			IcmpRcvKprobe,
 			IcmpRcv6Kprobe,
 		}
@@ -170,7 +175,7 @@ func EnableIcmp() ([]*program.Program, []*program.Map) {
 	}
 
 	logger.GetLogger().Infof("Enable ICMP")
-	return progs, maps
+	return progsInitSock, progsCollectStats, maps
 }
 
 func ConfigureIcmpSensor(mapDir string, mapName string, config ConfigValue) error {

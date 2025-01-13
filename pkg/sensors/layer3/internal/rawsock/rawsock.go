@@ -94,17 +94,17 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	return spec.Parser.Rawsock.ReportClose, nil
 }
 
-func EnableRawsock() ([]*program.Program, []*program.Map) {
+func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	var progs []*program.Program
+	var progsInitSock []*program.Program
 	var maps []*program.Map
 
 	if utils.SupportFentry() {
-		progs = []*program.Program{
+		progsInitSock = []*program.Program{
 			SkRawAllocV4Fentry,
 			SkRawAllocV6Fentry,
 		}
@@ -114,7 +114,7 @@ func EnableRawsock() ([]*program.Program, []*program.Map) {
 			VerMapFentry,
 		}
 	} else {
-		progs = []*program.Program{
+		progsInitSock = []*program.Program{
 			SkRawAllocV4Kprobe,
 			SkRawAllocV6Kprobe,
 		}
@@ -126,7 +126,7 @@ func EnableRawsock() ([]*program.Program, []*program.Map) {
 	}
 
 	logger.GetLogger().Infof("Enable Raw socket")
-	return progs, maps
+	return progsInitSock, nil, maps
 }
 
 func ConfigureSensor() error {

@@ -297,10 +297,11 @@ func processModelMapsEnable() []*program.Map {
 	return maps
 }
 
-func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
+func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []*program.Map) {
 	TimestampEnabled = false
 
-	progs := []*program.Program{}
+	progsInitSock := []*program.Program{}
+	progsCollectStats := []*program.Program{}
 
 	mapsOps := []*program.Map{
 		SocketOpsMap,
@@ -359,7 +360,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
 	// These can be unreliable as they can be preempted.
 	if !utils.SupportFentry() {
-		progs = append(progs, []*program.Program{
+		progsInitSock = append(progsInitSock, []*program.Program{
 			ConnectKprobe,
 			CloseKprobe,
 			ListenKprobe,
@@ -368,7 +369,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		}...)
 		maps = append(maps, mapsConnectKprobe...)
 	} else if !kernels.MinKernelVersion("5.14.0") {
-		progs = append(progs, []*program.Program{
+		progsInitSock = append(progsInitSock, []*program.Program{
 			ConnectFentry,
 			CloseFentry,
 			ListenFentry,
@@ -378,7 +379,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		maps = append(maps, mapsConnectFentry...)
 	} else {
 		if runtime.GOARCH != "amd64" {
-			progs = append(progs, []*program.Program{
+			progsInitSock = append(progsInitSock, []*program.Program{
 				ConnectFentry,
 				CloseFentry,
 				ListenFentry,
@@ -387,7 +388,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			}...)
 			maps = append(maps, mapsConnectFentry...)
 		} else {
-			progs = append(progs, TcpSockops515, SecurityAccept, SecurityGraft)
+			progsInitSock = append(progsInitSock, TcpSockops515, SecurityAccept, SecurityGraft)
 			maps = append(maps, mapsOps...)
 			maps = append(maps, processModelMapsEnable()...)
 		}
@@ -395,9 +396,9 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 
 	if tcpconfig.RttHistogramMax != 0 {
 		if utils.SupportFentry() {
-			progs = append(progs, RttTracerFentry)
+			progsCollectStats = append(progsCollectStats, RttTracerFentry)
 		} else {
-			progs = append(progs, RttTracerKprobe)
+			progsCollectStats = append(progsCollectStats, RttTracerKprobe)
 		}
 	}
 
@@ -405,8 +406,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 	 * so we fall back on kprobes here.
 	 */
 	if !kernels.MinKernelVersion("5.5.0") {
-		progs = append(progs, SendCheck4)
-		progs = append(progs, SendCheck6)
+		progsCollectStats = append(progsCollectStats, SendCheck4)
+		progsCollectStats = append(progsCollectStats, SendCheck6)
 	}
 
 	if kernels.MinKernelVersion("5.4.0") {
@@ -415,7 +416,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 			TimestampEnabled = true
 			timestampProg, err := networklatency.TCEgressTimestamp(unix.IPPROTO_TCP)
 			if err == nil {
-				progs = append(progs, timestampProg)
+				progsInitSock = append(progsInitSock, timestampProg)
 			} else {
 				logger.GetLogger().Warn("TCP unsupported by network latency")
 			}
@@ -431,7 +432,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Map) {
 		"minRttHistogram":            tcpconfig.RttHistogramMin,
 		"metrics":                    tcpconfig.MetricsEnabled,
 	}).Infof("Enable TCP")
-	return progs, maps
+	return progsInitSock, progsCollectStats, maps
 }
 
 func configureQos(qos *v1alpha1.QosPolicySpec) error {
