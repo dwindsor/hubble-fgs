@@ -22,6 +22,8 @@ import (
 const (
 	IPToDomainMapName = "tg_dns_ip_map"
 	ErrorMapName      = "tg_dns_error_map"
+
+	dnsMaxNameSize = 255
 )
 
 type IpMap struct {
@@ -105,7 +107,7 @@ func (m IpMap) Clear() error {
 
 	keys := []dnsapi.IPAddr{}
 	var key dnsapi.IPAddr
-	value := make([]byte, 255)
+	value := make([]byte, dnsMaxNameSize+1)
 
 	for entries.Next(&key, value) {
 		keys = append(keys, key)
@@ -126,7 +128,7 @@ func (m IpMap) Values() (map[dnsapi.IPAddr]string, error) {
 	entries := m.ipMap.Iterate()
 
 	var key dnsapi.IPAddr
-	value := make([]byte, 255)
+	value := make([]byte, dnsMaxNameSize+1)
 
 	actualIPMaps := map[dnsapi.IPAddr]string{}
 

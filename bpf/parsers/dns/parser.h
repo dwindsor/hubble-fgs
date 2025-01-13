@@ -235,6 +235,12 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		goto give_up;
 	}
 
+	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
+	char *name = map_lookup_elem(&name_heap_map, &zero);
+	if (!name)
+		return 0;
+	memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
+
 	// Parse Question Section
 	// Parse QName (domain name)
 	data_start = data;
@@ -261,7 +267,6 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	data += 1;
 
 #ifdef TETRAGON_BPF_DEBUG
-	char *name = map_lookup_elem(&name_heap_map, &zero);
 	if (name) {
 		DEBUG("domain: %s", name);
 	}
