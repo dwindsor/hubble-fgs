@@ -7,12 +7,16 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Agent Options
 
-* TBD
+* Tetragon groups UDP statistics for DNS servers (identified as listening on a UDP
+  port listed in the dns.ports section of the policy) per local address and local port.
+  The --dns-stats-per-socket switch reverts to separate statistics per DNS connection.
 
 ### Helm Values
 
 * `dashboards.annotations` value has been removed. Use `annotations` values for
   specific dashboard groups instead, e.g. `dashboards.health.annotations`.
+* The new tetragon.dnsStatsPerSocket operates as per the --dns-stats-per-socket
+  switch (see Agent Options).
 
 ### OLM manifests
 
@@ -24,8 +28,10 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Events (protobuf API)
 
-* TBD
+* Socket statistics events, and socket statistics in close socket events, group UDP
+  statistics for DNS servers per local address and local port (see Agent Options).
 
 ### Metrics
 
-* TBD
+* Tetragon groups UDP statistics for DNS servers per local address and local port
+  (see Agent Options).
