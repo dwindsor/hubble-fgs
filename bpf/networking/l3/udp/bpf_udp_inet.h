@@ -156,7 +156,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) int
 udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	 struct timestamp_option *ts_opt, struct udphdr *udp, u64 *cookie,
-	 int payload_off, int payload_sz, u64 send)
+	 int payload_off, int payload_sz, u64 send, bool dns_send_userspace)
 {
 	struct latency_protocol_config *udp_latency = 0;
 	struct latency_config *latency_config = 0;
@@ -198,7 +198,10 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 
 	if (process)
 		cookie_ver = process->version;
-	udp_dns(skb, skb_head, &key, value, ip, ipv6, cookie, cookie_ver, payload_off, payload_sz);
+
+	if (dns_send_userspace)
+		udp_dns(skb, skb_head, &key, value, ip, ipv6, cookie, cookie_ver, payload_off, payload_sz);
+
 	return 1;
 }
 
@@ -367,7 +370,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
-		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz, send);
+		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz, send, true);
 	udp_watermarks(ctx, &cookie, &packet->ip.ip4, packet->payload_sz, packet->ipv6, send);
 	return;
 
@@ -424,7 +427,7 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 
 	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
-	udp_send(skb, 0, ip, false, ts_opt, &udp, cookie, payload_off, payload_sz, send);
+	udp_send(skb, 0, ip, false, ts_opt, &udp, cookie, payload_off, payload_sz, send, true);
 	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
 	return SK_PASS;
 }
@@ -441,6 +444,7 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	int payload_sz, payload_off;
 	struct udphdr *udp;
 	u8 udp_off;
+	bool dns_send_userspace = true;
 
 	if (!skb)
 		return SK_PASS;
@@ -479,11 +483,11 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
-	if (udp->source == bpf_htons(DNS_PORT) && dns_parser_enabled())
-		parse_dns(skb, payload_off);
+	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
+		dns_send_userspace = !!parse_dns(skb, payload_off);
 	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
 		 payload_off,
-		 payload_sz, send);
+		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
 	return SK_PASS;
 }
@@ -521,7 +525,7 @@ udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off
 	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
 	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, &udp,
-		 cookie, payload_off, payload_sz, send);
+		 cookie, payload_off, payload_sz, send, true);
 	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
 
 	return SK_PASS;
@@ -565,7 +569,7 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	payload_off = udp_off + sizeof(struct udphdr);
 	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, cookie,
 		 payload_off,
-		 payload_sz, send);
+		 payload_sz, send, true);
 	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
 	return SK_PASS;
 }
