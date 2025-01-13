@@ -496,17 +496,6 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	case "layer3_sensor":
-		if tcp.StatsEnabled() {
-			tcp.ConfigureSockStatSampler(tcp.StatsInterval,
-				tcp.WatermarksEnable,
-				tcp.WatermarksWindowSize,
-				tcp.WatermarksBurstTriggerMult,
-				tcp.WatermarksDipTriggerMult,
-				tcpconfig.RttHistogramMax,
-				tcpconfig.RttHistogramMin)
-		}
-		tcp.ConfigureTCPDisableEvents(tcp.DisableConnect, tcp.DisableClose, tcp.DisableAccept, tcp.DisableListen)
-
 		var err error
 		if args.Load.Attach == "sockops" {
 			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)

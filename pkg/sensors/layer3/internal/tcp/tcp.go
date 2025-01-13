@@ -254,6 +254,17 @@ var (
 func ConfigureSensor() error {
 	getRunningSockets(true, true)
 	tcpCache.StartGc()
+	if StatsEnabled() {
+		ConfigureSockStatSampler(StatsInterval,
+			WatermarksEnable,
+			WatermarksWindowSize,
+			WatermarksBurstTriggerMult,
+			WatermarksDipTriggerMult,
+			tcpconfig.RttHistogramMax,
+			tcpconfig.RttHistogramMin)
+	}
+	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
+
 	return nil
 }
 

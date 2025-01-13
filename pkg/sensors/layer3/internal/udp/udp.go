@@ -56,6 +56,7 @@ const (
 
 var (
 	Config            ConfigValue
+	udpGcInterval     time.Duration
 	WatermarksEnabled = false
 	TimestampEnabled  = false
 
@@ -244,6 +245,9 @@ func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error
 func ConfigureSensor() error {
 	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP, 0)
 	udpconfig.UdpMapRemoves = 0
+	if udpGcInterval > 0 {
+		gcTimer.Start(udpGcInterval)
+	}
 	return nil
 }
 
@@ -328,7 +332,7 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		}
 	}
 
-	gcTimer.Start(interval)
+	udpGcInterval = interval
 	logger.GetLogger().WithFields(logrus.Fields{
 		"sensorName":     versionStr,
 		"statsInterval":  interval,
