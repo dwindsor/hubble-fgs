@@ -269,10 +269,11 @@ type ProcessTreeKey struct {
 }
 
 type DestinationEndpointKey struct {
-	ProcessId     ProcessTreeKey `align:"process_id"`
-	DestinationId uint64         `align:"destination_id"`
-	Source        uint64         `align:"source"`
-	Port          uint64         `align:"port"`
+	LocalId       uint64 `align:"local_id"`
+	LocalNSId     uint64 `align:"local_nsid"`
+	DestinationId uint64 `align:"destination_id"`
+	Source        uint64 `align:"source"`
+	Port          uint64 `align:"port"`
 }
 
 type TcpValue struct {

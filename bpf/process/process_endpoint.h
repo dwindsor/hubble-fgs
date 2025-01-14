@@ -70,8 +70,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__type(key, struct process_tree_binary_uid_key);
-	__type(value, struct msg_execve_key);
+	__uint(key_size, sizeof(struct process_tree_binary_uid_key));
+	__uint(value_size, sizeof(uint32_t));
 } process_tree_binary_uid_map SEC(".maps");
 
 /* This map is redundant and will be removed. Its used for shorthand
@@ -83,14 +83,15 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__type(key, struct msg_execve_key);
-	__type(value, struct process_tree_binary_uid_key);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
 } process_tree_uid_binary_map SEC(".maps");
 
 struct process_tree_key {
 	__u64 nsid;
-	struct msg_execve_key self;
-	struct msg_execve_key parent;
+	__u64 depth;
+	__u64 self;
+	__u64 path[8];
 };
 
 struct process_tree_value {
@@ -113,6 +114,17 @@ struct {
 	__type(key, struct process_tree_key);
 	__type(value, struct process_tree_value);
 } process_tree_map SEC(".maps");
+
+/* tg_ee_pid_data allows us to store additional metadata about the
+ * process without having to touch OSS. Specifically this is used
+ * to keep process tree information about every process.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 32000);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct process_tree_key));
+} tg_ee_pid_data SEC(".maps");
 
 /* The process_tree_key_heap is simply heap storage to allocate
  * keys from.
@@ -138,8 +150,15 @@ struct {
 #define DESTINATION_SOURCE_BPF	     1
 #define DESTINATION_SOURCE_USERSPACE 2
 
+/* Somewhat counter-intuitively destinations are scoped by local
+ * id and/or local ns_id. This ensures that if two processes in
+ * the same network namespace sending to a destination will have
+ * separate stats. Similarly if the same process in different
+ * pods will have multiple stat records.
+ */
 struct destination_endpoint_key {
-	struct process_tree_key process_id;
+	uint64_t local_id;
+	uint64_t local_nsid;
 	uint64_t destination_id; // unwrapped endpoint_id_value
 	uint64_t source;
 	uint64_t port;
@@ -188,8 +207,8 @@ struct listen_endpoint_key {
 };
 
 struct listen_endpoint_value {
-	struct msg_execve_key self;
-	struct msg_execve_key parent;
+	__u32 self;
+	__u32 pad;
 	__u64 accepted;
 	__u64 tx_bytes;
 	__u64 rx_bytes;

@@ -43,20 +43,45 @@ struct {
 	__type(value, struct process_tree_config);
 } tg_process_tree_config_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(uint64_t));
+} tg_tree_id SEC(".maps");
+
 static int atomic_xchg(__u64 *cnt, __u64 val)
 {
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
 }
 
+static __u64 atomic_fetch_add(__u64 *v, __u64 val)
+{
+	return __atomic_fetch_add(v, val, __ATOMIC_SEQ_CST);
+}
+
+static __u32 get_new_tree_id()
+{
+	u32 zero = 0;
+	u64 *id, n;
+
+	id = map_lookup_elem(&tg_tree_id, &zero);
+	if (!id)
+		return 0;
+
+	n = atomic_fetch_add(id, 1);
+	return n + 1;
+}
+
 int __insert_process_tree(__u32 pid, __u64 cgid)
 {
-	struct msg_execve_key *self_uid, *parent_uid;
-	struct execve_map_value *parent;
+	struct process_tree_binary_uid_key *tree_key;
+	struct process_tree_key *k, local, *parent;
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
-	struct process_tree_key *k;
-	__u32 zero = 0;
+	__u32 *self_uid;
+	__u64 zero = 0;
 	__u64 *nsid;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
@@ -67,11 +92,6 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	if (!curr)
 		return 0;
 
-	k = map_lookup_elem(&process_tree_key_heap, &zero);
-	if (!k)
-		return 0;
-
-	struct process_tree_binary_uid_key *tree_key;
 	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
 	if (!tree_key)
 		return 0;
@@ -79,34 +99,37 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map,
 				   tree_key);
-	if (!self_uid) {
-		map_update_elem(&process_tree_uid_binary_map,
-				&curr->key, tree_key, 0);
-		map_update_elem(&process_tree_binary_uid_map,
-				tree_key, &curr->key, 0);
-		self_uid = &curr->key;
-	}
-
-	struct msg_execve_key zero_uid;
-
-	zero_uid.pid = 0;
-	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
-	zero_uid.ktime = 0;
-
-	parent = event_find_parent();
-	if (!parent) {
-		parent_uid = &zero_uid;
+	__u32 id = 0;
+	if (self_uid) {
+		id = *self_uid;
 	} else {
-		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
-		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
-
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-		if (!parent_uid)
-			parent_uid = &zero_uid;
+		id = get_new_tree_id();
+		map_update_elem(&process_tree_uid_binary_map, &id, tree_key, 0);
+		map_update_elem(&process_tree_binary_uid_map, tree_key, &id, 0);
+	}
+	parent = map_lookup_elem(&tg_ee_pid_data, &curr->pkey.pid);
+	k = &local;
+	if (parent) {
+		memcpy(k->path, parent->path, sizeof(u64) * 8);
+		__u32 index = (parent->depth) & 0xff;
+		if (index >= 8)
+			index = 7;
+		k->path[index] = parent->self;
+		k->depth = index + 1;
+	} else {
+		k->depth = 0;
+		k->path[0] = 0;
+		k->path[1] = 0;
+		k->path[2] = 0;
+		k->path[3] = 0;
+		k->path[4] = 0;
+		k->path[5] = 0;
+		k->path[6] = 0;
+		k->path[7] = 0;
 	}
 
-	k->parent = *parent_uid;
-	k->self = *self_uid;
+	k->self = id;
+	map_update_elem(&tg_ee_pid_data, &pid, k, 0);
 
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 	if (nsid)
@@ -158,7 +181,7 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 		subsys_idx = conf->tg_cgrpv1_subsys_idx;
 	}
 
-	task = (struct task_struct *)get_current_task();
+	task = (struct task_struct *)get_current_task_btf();
 
 	// NB: error_flags are ignored for now
 	cgrp = get_task_cgroup(task, cgrpfs_magic, subsys_idx, &error_flags);
@@ -170,11 +193,10 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 
 int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
-	struct msg_execve_key *self_uid, *parent_uid;
-	struct execve_map_value *parent;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
+	__u32 *self_uid;
 	int zero = 0;
 	__u64 *nsid;
 
@@ -209,17 +231,6 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
 	zero_uid.ktime = 0;
 
-	parent = event_find_parent();
-	if (!parent) {
-		parent_uid = &zero_uid;
-	} else {
-		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
-		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-		if (!parent_uid)
-			parent_uid = &zero_uid;
-	}
-
 	key.addr[0] = tuple->saddr[0];
 	key.addr[1] = tuple->saddr[1];
 	key.port = tuple->sport;
@@ -233,7 +244,6 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!value)
 		return 0;
 	value->self = *self_uid;
-	value->parent = *parent_uid;
 	value->accepted = 0;
 	value->tx_bytes = 0;
 	value->rx_bytes = 0;
@@ -242,15 +252,14 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	return 0;
 }
 
-int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
+static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
-	struct msg_execve_key *self_uid, *parent_uid;
 	struct destination_endpoint_key destkey;
 	struct destination_endpoint_value *dest;
-	struct execve_map_value *parent;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
+	__u32 *self_uid;
 	int zero = 0;
 	__u64 *nsid;
 
@@ -285,17 +294,6 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
 	zero_uid.ktime = 0;
 
-	parent = event_find_parent();
-	if (!parent) {
-		parent_uid = &zero_uid;
-	} else {
-		probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, parent->bin.path);
-		probe_read_kernel(&tree_key->args, MAXARGLENGTH, parent->bin.args);
-		parent_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-		if (!parent_uid)
-			parent_uid = &zero_uid;
-	}
-
 	key.addr[0] = tuple->daddr[0];
 	key.addr[1] = tuple->daddr[1];
 
@@ -322,15 +320,15 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 		destkey.source = DESTINATION_SOURCE_USERSPACE;
 	}
 
-	destkey.process_id.self = *self_uid;
-	destkey.process_id.parent = *parent_uid;
+	destkey.local_id = *self_uid;
 	destkey.port = tuple->dport;
+	destkey.local_nsid = 0;
 
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
-	if (nsid)
-		destkey.process_id.nsid = *nsid;
-	else
-		destkey.process_id.nsid = 0;
+	if (cgid) {
+		nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+		if (nsid)
+			destkey.local_nsid = *nsid;
+	}
 
 	/* Push destkey into socket metadata so future update can avoid
 	 * the key generation above. Notice because many sockets may have
@@ -366,11 +364,7 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-
-		destkey.process_id.self.pid = 0;
-		destkey.process_id.self.ktime = 0;
-		destkey.process_id.parent.pid = 0;
-		destkey.process_id.parent.ktime = 0;
+		destkey.local_id = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
@@ -379,7 +373,7 @@ int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *t
 	return 0;
 }
 
-int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
+static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
 {
 	__u64 cgid;
 
@@ -412,8 +406,10 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 		key.addr[1] = 0;
 
 		listen = map_lookup_elem(&listen_endpoint_map, &key);
-		if (!listen)
-			return __process_socketmap_add(v, tuple, cgid);
+		if (!listen) {
+			cgid = 0;
+			__process_socketmap_add(v, tuple, cgid);
+		}
 	}
 	return 0;
 }
@@ -478,10 +474,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 
-	key.process_id.self.pid = 0;
-	key.process_id.self.ktime = 0;
-	key.process_id.parent.pid = 0;
-	key.process_id.parent.ktime = 0;
+	key.local_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
@@ -533,10 +526,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->rx_bytes, len);
 
-	key.process_id.self.pid = 0;
-	key.process_id.self.ktime = 0;
-	key.process_id.parent.pid = 0;
-	key.process_id.parent.ktime = 0;
+	key.local_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
