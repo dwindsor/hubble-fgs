@@ -33,10 +33,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ProcessModelService_GetProcessModel_FullMethodName = "/tetragon.ProcessModelService/GetProcessModel"
-	ProcessModelService_GetEndpointMap_FullMethodName  = "/tetragon.ProcessModelService/GetEndpointMap"
-	ProcessModelService_GetProcesses_FullMethodName    = "/tetragon.ProcessModelService/GetProcesses"
-	ProcessModelService_GetProcessMap_FullMethodName   = "/tetragon.ProcessModelService/GetProcessMap"
+	ProcessModelService_GetProcessModel_FullMethodName   = "/tetragon.ProcessModelService/GetProcessModel"
+	ProcessModelService_GetEndpointMap_FullMethodName    = "/tetragon.ProcessModelService/GetEndpointMap"
+	ProcessModelService_GetDestinationMap_FullMethodName = "/tetragon.ProcessModelService/GetDestinationMap"
+	ProcessModelService_GetProcesses_FullMethodName      = "/tetragon.ProcessModelService/GetProcesses"
+	ProcessModelService_GetProcessMap_FullMethodName     = "/tetragon.ProcessModelService/GetProcessMap"
 )
 
 // ProcessModelServiceClient is the client API for ProcessModelService service.
@@ -45,6 +46,7 @@ const (
 type ProcessModelServiceClient interface {
 	GetProcessModel(ctx context.Context, in *GetProcessModelRequest, opts ...grpc.CallOption) (*GetProcessModelResponse, error)
 	GetEndpointMap(ctx context.Context, in *GetEndpointMapRequest, opts ...grpc.CallOption) (*GetEndpointMapResponse, error)
+	GetDestinationMap(ctx context.Context, in *GetDestinationMapRequest, opts ...grpc.CallOption) (*GetDestinationMapResponse, error)
 	GetProcesses(ctx context.Context, in *GetProcessModelRequest, opts ...grpc.CallOption) (ProcessModelService_GetProcessesClient, error)
 	GetProcessMap(ctx context.Context, in *GetProcessMapRequest, opts ...grpc.CallOption) (*GetProcessMapResponse, error)
 }
@@ -69,6 +71,15 @@ func (c *processModelServiceClient) GetProcessModel(ctx context.Context, in *Get
 func (c *processModelServiceClient) GetEndpointMap(ctx context.Context, in *GetEndpointMapRequest, opts ...grpc.CallOption) (*GetEndpointMapResponse, error) {
 	out := new(GetEndpointMapResponse)
 	err := c.cc.Invoke(ctx, ProcessModelService_GetEndpointMap_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *processModelServiceClient) GetDestinationMap(ctx context.Context, in *GetDestinationMapRequest, opts ...grpc.CallOption) (*GetDestinationMapResponse, error) {
+	out := new(GetDestinationMapResponse)
+	err := c.cc.Invoke(ctx, ProcessModelService_GetDestinationMap_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +133,7 @@ func (c *processModelServiceClient) GetProcessMap(ctx context.Context, in *GetPr
 type ProcessModelServiceServer interface {
 	GetProcessModel(context.Context, *GetProcessModelRequest) (*GetProcessModelResponse, error)
 	GetEndpointMap(context.Context, *GetEndpointMapRequest) (*GetEndpointMapResponse, error)
+	GetDestinationMap(context.Context, *GetDestinationMapRequest) (*GetDestinationMapResponse, error)
 	GetProcesses(*GetProcessModelRequest, ProcessModelService_GetProcessesServer) error
 	GetProcessMap(context.Context, *GetProcessMapRequest) (*GetProcessMapResponse, error)
 }
@@ -135,6 +147,9 @@ func (UnimplementedProcessModelServiceServer) GetProcessModel(context.Context, *
 }
 func (UnimplementedProcessModelServiceServer) GetEndpointMap(context.Context, *GetEndpointMapRequest) (*GetEndpointMapResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEndpointMap not implemented")
+}
+func (UnimplementedProcessModelServiceServer) GetDestinationMap(context.Context, *GetDestinationMapRequest) (*GetDestinationMapResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDestinationMap not implemented")
 }
 func (UnimplementedProcessModelServiceServer) GetProcesses(*GetProcessModelRequest, ProcessModelService_GetProcessesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetProcesses not implemented")
@@ -186,6 +201,24 @@ func _ProcessModelService_GetEndpointMap_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ProcessModelServiceServer).GetEndpointMap(ctx, req.(*GetEndpointMapRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProcessModelService_GetDestinationMap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDestinationMapRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProcessModelServiceServer).GetDestinationMap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProcessModelService_GetDestinationMap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProcessModelServiceServer).GetDestinationMap(ctx, req.(*GetDestinationMapRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -243,6 +276,10 @@ var ProcessModelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEndpointMap",
 			Handler:    _ProcessModelService_GetEndpointMap_Handler,
+		},
+		{
+			MethodName: "GetDestinationMap",
+			Handler:    _ProcessModelService_GetDestinationMap_Handler,
 		},
 		{
 			MethodName: "GetProcessMap",

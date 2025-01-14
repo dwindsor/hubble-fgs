@@ -187,9 +187,12 @@
   
 - [tetragon/processmodel.proto](#tetragon_processmodel-proto)
     - [Destination](#tetragon-Destination)
+    - [DestinationEndpointDebug](#tetragon-DestinationEndpointDebug)
     - [DestinationStats](#tetragon-DestinationStats)
     - [Endpoint](#tetragon-Endpoint)
     - [EndpointMap](#tetragon-EndpointMap)
+    - [GetDestinationMapRequest](#tetragon-GetDestinationMapRequest)
+    - [GetDestinationMapResponse](#tetragon-GetDestinationMapResponse)
     - [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest)
     - [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse)
     - [GetProcessMapRequest](#tetragon-GetProcessMapRequest)
@@ -3457,6 +3460,25 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-DestinationEndpointDebug"></a>
+
+### DestinationEndpointDebug
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| local_id | [uint64](#uint64) |  |  |
+| local_ns_id | [uint64](#uint64) |  |  |
+| destination_id | [uint64](#uint64) |  |  |
+| destination_source | [uint64](#uint64) |  |  |
+| destination_port | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="tetragon-DestinationStats"></a>
 
 ### DestinationStats
@@ -3510,6 +3532,31 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | endpoints | [Endpoint](#tetragon-Endpoint) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-GetDestinationMapRequest"></a>
+
+### GetDestinationMapRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetDestinationMapResponse"></a>
+
+### GetDestinationMapResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| destinations | [DestinationEndpointDebug](#tetragon-DestinationEndpointDebug) | repeated |  |
 
 
 
@@ -3709,6 +3756,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ----------- | ------------ | ------------- | ------------|
 | GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
 | GetEndpointMap | [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest) | [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse) |  |
+| GetDestinationMap | [GetDestinationMapRequest](#tetragon-GetDestinationMapRequest) | [GetDestinationMapResponse](#tetragon-GetDestinationMapResponse) |  |
 | GetProcesses | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [ProcessModel](#tetragon-ProcessModel) stream |  |
 | GetProcessMap | [GetProcessMapRequest](#tetragon-GetProcessMapRequest) | [GetProcessMapResponse](#tetragon-GetProcessMapResponse) |  |
 

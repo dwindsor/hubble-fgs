@@ -67,6 +67,7 @@ message GetProcessModelResponse {
 service ProcessModelService {
 rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
 rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
+rpc GetDestinationMap(GetDestinationMapRequest) returns (GetDestinationMapResponse) {}
 rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}
 rpc GetProcessMap(GetProcessMapRequest) returns(GetProcessMapResponse) {}
 }
@@ -120,6 +121,21 @@ message GetProcessMapResponse {
 }
 
 message GetProcessMapRequest {
+}
+
+message DestinationEndpointDebug {
+	uint64 local_id = 1;
+	uint64 local_ns_id = 2;
+	uint64 destination_id = 3;
+	uint64 destination_source = 4;
+	uint64 destination_port = 5;
+}
+
+message GetDestinationMapResponse {
+	repeated DestinationEndpointDebug destinations = 1;
+}
+
+message GetDestinationMapRequest {
 }
 
 service EndpointMapService {
