@@ -53,13 +53,6 @@ jobs:
         run: sha256sum -c tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum
         working-directory: ./release
 
-      - name: Install AWC CLI for arm64
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-        if: ${{ matrix.arch == 'arm64' }}
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
