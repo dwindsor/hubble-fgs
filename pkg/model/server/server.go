@@ -116,6 +116,88 @@ type ProcessTreeBinaryUUIDValue struct {
 type Server struct {
 }
 
+func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapRequest) (*tetragon.GetProcessMapResponse, error) {
+	tetragonUUID := make([]*tetragon.ProcessUUID, 0)
+	indexedUUID := make(map[uint64]*tetragon.ProcessUUID)
+
+	uuidMap := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
+	uuid, err := ebpf.LoadPinnedMap(uuidMap, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", uuid).Warn("Could not open processTreeUUID map for GetProcessMapRequest")
+		return nil, err
+	}
+	defer uuid.Close()
+
+	var (
+		key   ProcessTreeBinaryUUIDKey
+		value ProcessTreeBinaryUUIDValue
+	)
+
+	iter := uuid.Iterate()
+	for iter.Next(&key, &value) {
+		n := bytes.IndexByte(value.Binary[:], 0)
+		selfStr := fmt.Sprintf("%s", value.Binary[:n])
+		m := bytes.Index(value.Args[:], []byte{0x00, 0x00})
+		selfArgs := fmt.Sprintf("%s", value.Args[:m])
+
+		t := tetragon.ProcessUUID{
+			Binary: selfStr,
+			Args:   selfArgs,
+			Id:     key.Id,
+		}
+		indexedUUID[uint64(key.Id)] = &t
+	}
+
+	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
+
+	m, err := ebpf.LoadPinnedMap(treeMap, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", treeMap).Warn("Could not open process tree map")
+		return nil, err
+	}
+
+	defer m.Close()
+
+	var (
+		keyTk ProcessTreeKey
+		valTk processTreeValue
+	)
+
+	iter = m.Iterate()
+	for iter.Next(&keyTk, &valTk) {
+		v := indexedUUID[keyTk.Self]
+		value := tetragon.ProcessUUID{
+			Binary: v.Binary,
+			Args: v.Args,
+			Id: v.Id,
+			Depth: v.Depth,
+			Children: v.Children,
+		}
+		children := make([]*tetragon.ProcessUUID, 0)
+
+		for i := 0; i < 8; i++ {
+			if keyTk.Path[i] == 0 {
+				break
+			}
+			child := indexedUUID[keyTk.Path[i]]
+			children = append(children, child)
+		}
+		value.Depth = uint32(keyTk.Depth)
+		value.Children = children
+		tetragonUUID = append(tetragonUUID, &value)
+	}
+
+	processMap := &tetragon.ProcessMap{
+		Process: tetragonUUID,
+	}
+
+	resp := &tetragon.GetProcessMapResponse{
+		Map: processMap,
+	}
+
+	return resp, nil
+}
+
 func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapRequest) (*tetragon.GetEndpointMapResponse, error) {
 	c := endpoint.Get()
 	keys, endpoints := c.DebugEndpointMap()
