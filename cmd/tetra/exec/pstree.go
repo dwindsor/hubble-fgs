@@ -945,7 +945,7 @@ func printProcessDebug() error {
 		for _, parent := range p.Children {
 			children = children + " " + parent.Binary
 		}
-		fmt.Printf("%d: [%s %s] -> {%s }\n", p.Id, p.Binary, p.Args, children)
+		fmt.Printf("%d(%d): [%s %s] -> {%s }\n", p.Id, p.Depth, p.Binary, p.Args, children)
 	}
 	return nil
 }
