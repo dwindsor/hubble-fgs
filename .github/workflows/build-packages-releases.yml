@@ -36,11 +36,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
 
-      - name: Getting version tag
-        id: tag
-        run: |
-          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
-
       - name: Checkout Source Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -69,8 +64,6 @@ jobs:
 
       - name: Upload Tetragon EE Tarball to AWS s3
         run: |
-          # new naming, 1.12 onwards
-          # NB: before 1.12, we pushed to <bucket>/hubble-enterprise-standalone-tetragon
           aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
           aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
         working-directory: ./release
