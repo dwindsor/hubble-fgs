@@ -902,21 +902,50 @@ func getProcessDebug() (*tetragon.GetProcessMapResponse, error) {
 	return res, nil
 }
 
-func printProcessDebug() error {
-	index := make(map[uint32]*tetragon.ProcessUUID)
+type sortableProcessDebug struct {
+	p []*tetragon.ProcessUUID
+}
 
+func (s sortableProcessDebug) Less(x, y int) bool {
+	if s.p[x].Id < s.p[y].Id {
+		return false
+	}
+	return true
+}
+
+func (s sortableProcessDebug) Len() int {
+	return len(s.p)
+}
+
+func (s sortableProcessDebug) Swap(x, y int) {
+	temp := s.p[x]
+	s.p[x] = s.p[y]
+	s.p[y] = temp
+}
+
+func printProcessDebug() error {
 	res, err := getProcessDebug()
 	if err != nil {
 		return err
 	}
 
+	index := make([]*tetragon.ProcessUUID, 0, len(res.Map.Process))
+
 	for _, p := range res.Map.Process {
-		path := ""
-		index[p.Id] = p
+		index = append(index, p)
+	}
+
+	s := sortableProcessDebug{
+		p: index,
+	}
+	sort.Sort(s)
+
+	for _, p := range s.p {
+		children := ""
 		for _, parent := range p.Children {
-			path = path + " " + parent.Binary
+			children = children + " " + parent.Binary
 		}
-		fmt.Printf("%d: [%s %s] -> {%s }\n", p.Id, p.Binary, p.Args, path)
+		fmt.Printf("%d: [%s %s] -> {%s }\n", p.Id, p.Binary, p.Args, children)
 	}
 	return nil
 }
