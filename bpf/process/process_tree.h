@@ -39,8 +39,8 @@ struct process_tree_config {
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct process_tree_config));
+	__type(key, uint32_t);
+	__type(value, struct process_tree_config);
 } tg_process_tree_config_map SEC(".maps");
 
 static int atomic_xchg(__u64 *cnt, __u64 val)

@@ -28,8 +28,8 @@ struct endpoint_id_value {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct endpoint_id_key));
-	__uint(value_size, sizeof(struct endpoint_id_value));
+	__type(key, struct endpoint_id_key);
+	__type(value, struct endpoint_id_value);
 } tg_endpoint_id_map SEC(".maps");
 
 /* Maps a binary name to a unique ID (UID). Currently the key is simply
@@ -44,15 +44,15 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct endpoint_id_key));
-	__uint(value_size, sizeof(struct endpoint_id_value));
+	__type(key, struct endpoint_id_key);
+	__type(value, struct endpoint_id_value);
 } tg_bpf_endpoint_id_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct endpoint_id_value));
+	__type(key, uint32_t);
+	__type(value, struct endpoint_id_value);
 } tg_bpf_endpoint_id_heap SEC(".maps");
 
 struct process_tree_binary_uid_key {
@@ -63,15 +63,15 @@ struct process_tree_binary_uid_key {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
+	__type(key, uint32_t);
+	__type(value, struct process_tree_binary_uid_key);
 } process_tree_binary_uid_key_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct process_tree_binary_uid_key));
-	__uint(value_size, sizeof(struct msg_execve_key));
+	__type(key, struct process_tree_binary_uid_key);
+	__type(value, struct msg_execve_key);
 } process_tree_binary_uid_map SEC(".maps");
 
 /* This map is redundant and will be removed. Its used for shorthand
@@ -83,8 +83,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct msg_execve_key));
-	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
+	__type(key, struct msg_execve_key);
+	__type(value, struct process_tree_binary_uid_key);
 } process_tree_uid_binary_map SEC(".maps");
 
 struct process_tree_key {
@@ -110,8 +110,8 @@ struct process_tree_value {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct process_tree_key));
-	__uint(value_size, sizeof(struct process_tree_value));
+	__type(key, struct process_tree_key);
+	__type(value, struct process_tree_value);
 } process_tree_map SEC(".maps");
 
 /* The process_tree_key_heap is simply heap storage to allocate
@@ -120,8 +120,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct process_tree_key));
+	__type(key, uint32_t);
+	__type(value, struct process_tree_key);
 } process_tree_key_heap SEC(".maps");
 
 /* process_tree_value_heap is simply heap storage to allocate
@@ -130,8 +130,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct process_tree_value));
+	__type(key, uint32_t);
+	__type(value, struct process_tree_value);
 } process_tree_value_heap SEC(".maps");
 
 #define DESTINATION_SOURCE_UNKNOWNN  0
@@ -170,15 +170,15 @@ struct destination_endpoint_value {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by userspace
-	__uint(key_size, sizeof(struct destination_endpoint_key));
-	__uint(value_size, sizeof(struct destination_endpoint_value));
+	__type(key, struct destination_endpoint_key);
+	__type(value, struct destination_endpoint_value);
 } destination_endpoint_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct destination_endpoint_value));
+	__type(key, uint32_t);
+	__type(value, struct destination_endpoint_value);
 } destination_endpoint_heap SEC(".maps");
 
 struct listen_endpoint_key {
@@ -199,15 +199,15 @@ struct listen_endpoint_value {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct listen_endpoint_value));
+	__type(key, uint32_t);
+	__type(value, struct listen_endpoint_value);
 } listen_endpoint_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by userspace
-	__uint(key_size, sizeof(struct listen_endpoint_key));
-	__uint(value_size, sizeof(struct listen_endpoint_value));
+	__type(key, struct listen_endpoint_key);
+	__type(value, struct listen_endpoint_value);
 } listen_endpoint_map SEC(".maps");
 
 #endif //__PROCESS_ENDPOINTS_H__

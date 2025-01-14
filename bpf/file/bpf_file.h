@@ -328,7 +328,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
 	__uint(max_entries, MAX_FIM_SELECTORS);
-	__uint(key_size, sizeof(__u32)); /* selector id */
+	__type(key, __u32); /* selector id */
 	__array(
 		values, struct {
 			__uint(type, BPF_MAP_TYPE_HASH);
@@ -341,7 +341,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
 	__uint(max_entries, MAX_FIM_SELECTORS);
-	__uint(key_size, sizeof(__u32)); /* selector id */
+	__type(key, __u32); /* selector id */
 	__array(
 		values, struct {
 			__uint(type, BPF_MAP_TYPE_HASH);
@@ -363,8 +363,8 @@ struct {
 	__array(
 		values, struct {
 			__uint(type, BPF_MAP_TYPE_ARRAY);
-			__uint(key_size, sizeof(__u32));
-			__uint(value_size, sizeof(struct glob_state));
+			__type(key, __u32);
+			__type(value, struct glob_state);
 			__uint(max_entries, 1);
 		});
 } glob_patterns_map SEC(".maps");
@@ -398,7 +398,7 @@ struct {
 		values, struct {
 			__uint(type, BPF_MAP_TYPE_HASH);
 			__uint(key_size, MAX_FILEPATH_SIZE * sizeof(char));
-			__uint(value_size, sizeof(__u32));
+			__type(value, __u32);
 			__uint(max_entries, 1); // to be set from the user-space
 		});
 } filename_path_map SEC(".maps");
@@ -417,8 +417,8 @@ struct {
 	__array(
 		values, struct {
 			__uint(type, BPF_MAP_TYPE_HASH);
-			__uint(key_size, sizeof(struct digest_key));
-			__uint(value_size, sizeof(__u32));
+			__type(key, struct digest_key);
+			__type(value, __u32);
 			__uint(max_entries, 1); // to be set from the user-space
 		});
 } filename_digest_map SEC(".maps");
@@ -443,6 +443,7 @@ struct {
 // of inner map: can't get size of BTF value: type *btf.Fwd: type is
 // unsized"
 __attribute__((unused)) struct onflags _onflags;
+__attribute__((unused)) struct glob_state _glob_state;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);

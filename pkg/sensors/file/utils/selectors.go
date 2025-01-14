@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -757,10 +758,19 @@ func GeneratePatternsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPr
 		for patternID, fsm := range entries.fsm {
 			innerName := fmt.Sprintf("glob_patterns_map_%d", selID)
 			innerSpec := &ebpf.MapSpec{
-				Name:       innerName,
-				Type:       ebpf.Array,
-				KeySize:    4, // uint32
-				ValueSize:  uint32(unsafe.Sizeof(GlobState{})),
+				Name:    innerName,
+				Type:    ebpf.Array,
+				KeySize: uint32(unsafe.Sizeof(uint32(0))),
+				Key: &btf.Int{
+					Name:     "unsigned int",
+					Size:     uint32(unsafe.Sizeof(uint32(0))),
+					Encoding: btf.Unsigned,
+				},
+				ValueSize: uint32(unsafe.Sizeof(GlobState{})),
+				Value: &btf.Struct{
+					Name: "glob_state",
+					Size: uint32(unsafe.Sizeof(GlobState{})),
+				},
 				MaxEntries: uint32(GetMaxInnerEntriesPatternsMap(sel)),
 			}
 			innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{

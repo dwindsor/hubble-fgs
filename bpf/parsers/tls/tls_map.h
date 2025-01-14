@@ -20,8 +20,8 @@
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(__u32));
+	__type(key, __u32);
+	__type(value, __u32);
 	__uint(max_entries, 2);
 } tg_tls_calls SEC(".maps");
 
