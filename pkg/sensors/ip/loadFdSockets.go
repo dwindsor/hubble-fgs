@@ -164,7 +164,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 
 		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("pid read error")
+			logger.GetLogger().WithError(err).Debugf("pid read error")
 			continue
 		}
 
@@ -254,8 +254,8 @@ func unloadFdLookup(fdLoadSensor *sensors.Sensor, _ string) error {
 }
 
 func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
-	/* Load existing network sockets. This consists of: loading a BPF program to respond to kill
-	 * syscalls; exercising it once per socket that was previously discovered in order to load it
+	/* Load existing network sockets. This consists of: loading a BPF program to respond to reading /proc
+	 * "comm" files"; exercising it once per socket that was previously discovered in order to load it
 	 * into the socket cookie map; and then unloading the BPF program.
 	 * This needs to happen before the sensors are loaded, as those sensors depend upon this map
 	 * being already populated.
@@ -530,7 +530,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				var err error
 				socket, err = GetAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {
-					logger.GetLogger().WithError(err).WithFields(logrus.Fields{"pid": pid, "fd": fd, "protocol": protocol}).Warn("Socket discovery failed")
+					logger.GetLogger().WithError(err).WithFields(logrus.Fields{"pid": pid, "fd": fd, "protocol": protocol}).Debug("Socket discovery failed")
 					continue
 				}
 				v = &socket
