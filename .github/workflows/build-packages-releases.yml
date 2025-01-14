@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: "Version to build: tag, branch or commit SHA"
 
 env:
   BUCKET_NAME : "isovalent-tetragon-enterprise-public"
@@ -38,6 +44,7 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           persist-credentials: false
           fetch-depth: 0
           submodules: true
