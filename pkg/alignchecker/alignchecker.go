@@ -2,6 +2,7 @@ package alignchecker
 
 import (
 	"github.com/cilium/cilium/pkg/alignchecker"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -37,6 +38,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"msg_tls_event":      {tlsapi.MsgTLSEvent{}},
 		"msg_tls":            {tlsapi.MsgTLS{}},
 		"__http_state_stats": {httpapi.HttpStateStats{}},
+		"ip_addr":            {dnsapi.IPAddr{}},
 
 		// FIM
 		"inode_key":           {fileapi.InodeKey{}},

@@ -8,6 +8,7 @@
 #include "lib/file.h"
 #include "networking/l3/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
+#include "parsers/dns/dns_parser.h"
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;
@@ -23,6 +24,7 @@ struct __msg_http _msg_http;
 struct msg_tls_event _msg_tls_event;
 struct msg_tls _msg_tls;
 struct __http_state_stats _http_state_stats;
+struct ip_addr _ip_addr;
 
 // FIM
 struct inode_key _inode_key;

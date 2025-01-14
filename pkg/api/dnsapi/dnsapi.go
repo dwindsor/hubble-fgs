@@ -1,6 +1,9 @@
 package dnsapi
 
 import (
+	"encoding/binary"
+	"net/netip"
+
 	"golang.org/x/net/dns/dnsmessage"
 )
 
@@ -30,4 +33,43 @@ var KnownDNSTypes = []dnsmessage.Type{
 	dnsmessage.TypeMINFO,
 	dnsmessage.TypeAXFR,
 	dnsmessage.TypeALL,
+}
+
+type IPAddr struct {
+	Addr    [2]uint64 `align:"addr"`
+	AFINET6 bool      `align:"af_inet6"`
+	_       [7]uint8  `align:"pad"`
+}
+
+func NewIPAddr(a netip.Addr) IPAddr {
+	i := IPAddr{}
+	i.Set(a)
+	return i
+}
+
+func (ip IPAddr) String() string {
+	return ip.Get().String()
+}
+
+func (ip IPAddr) Get() netip.Addr {
+	if ip.AFINET6 {
+		b := [16]byte{}
+		binary.LittleEndian.PutUint64(b[:], ip.Addr[0])
+		binary.LittleEndian.PutUint64(b[8:], ip.Addr[1])
+		return netip.AddrFrom16(b)
+	}
+
+	b := [4]byte{}
+	binary.LittleEndian.PutUint32(b[:], uint32(ip.Addr[0]))
+	return netip.AddrFrom4(b)
+}
+
+func (ip *IPAddr) Set(addr netip.Addr) {
+	if addr.Is4() {
+		ip.Addr[0] = uint64(binary.LittleEndian.Uint32(addr.AsSlice()))
+	} else {
+		ip.Addr[0] = binary.LittleEndian.Uint64(addr.AsSlice()[:8])
+		ip.Addr[1] = binary.LittleEndian.Uint64(addr.AsSlice()[8:])
+		ip.AFINET6 = true
+	}
 }

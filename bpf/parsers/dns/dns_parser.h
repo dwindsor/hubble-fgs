@@ -21,8 +21,8 @@
 #define A_RECORD     1
 #define AAAA_RECORD  28
 
-#define MAX_NAME_SIZE  255
-#define MAX_LABEL_SIZE 63
+#define DNS_MAX_NAME_SIZE  255
+#define DNS_MAX_LABEL_SIZE 63
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.4
 #define UDP_MAX_SIZE 512
@@ -82,14 +82,14 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, __u32);
 	// we can't tell the verifier that (name_offset + label_length < 255) so we need 63 extra bytes.
-	__type(value, char[MAX_NAME_SIZE + MAX_LABEL_SIZE]);
+	__type(value, char[DNS_MAX_NAME_SIZE + DNS_MAX_LABEL_SIZE]);
 } name_heap_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 56); // This is an arbitrary number for testing, TBD
 	__type(key, struct ip_addr);
-	__type(value, char[MAX_NAME_SIZE]);
+	__type(value, char[DNS_MAX_NAME_SIZE]);
 } tg_dns_ip_map SEC(".maps");
 
 struct {
@@ -132,7 +132,7 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 	data = (void *)(long)skb->data + off;
 
 	// This is the total current length of the name, check that it does not overflow
-	if (data - data_start > MAX_NAME_SIZE)
+	if (data - data_start > DNS_MAX_NAME_SIZE)
 		return -21;
 
 	name_offset = data - data_start;
@@ -141,7 +141,7 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 		return -22;
 
 	// Regular label, read the label length and skip the label
-	label_length = *((__u8 *)data) & MAX_LABEL_SIZE; // Max length is 63
+	label_length = *((__u8 *)data) & DNS_MAX_LABEL_SIZE; // Max length is 63
 	data += 1; // Move past length byte
 
 	name = map_lookup_elem(&name_heap_map, &zero);

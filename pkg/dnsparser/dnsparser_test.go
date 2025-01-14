@@ -24,6 +24,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 )
 
 const (
@@ -244,9 +245,9 @@ func Test_DNSParser(t *testing.T) {
 				}
 			}
 
-			wantIPMaps := map[IPAddr]string{}
+			wantIPMaps := map[dnsapi.IPAddr]string{}
 			for _, ip := range tq.wantIPs {
-				wantIPAddr := newIPAddr(ip)
+				wantIPAddr := dnsapi.NewIPAddr(ip)
 				wantIPMaps[wantIPAddr] = tq.wantDomain
 			}
 
