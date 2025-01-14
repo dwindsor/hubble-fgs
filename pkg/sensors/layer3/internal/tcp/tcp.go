@@ -66,6 +66,9 @@ func StatsEnabled() bool {
 }
 
 var (
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
+	//
 	// Kprobes are for systems without fentry support (<v5.5).
 	// Fentry are preferred from v5.5.
 	// SockOps are more efficient and available from v5.14.
@@ -83,7 +86,7 @@ var (
 		"fentry",
 		"fentry/tcp_connect",
 		"tg_tcp_connect_fentry",
-		"layer3_sensor",
+		"tcp_fentry",
 	)
 
 	CloseKprobe = program.Builder(
@@ -91,7 +94,7 @@ var (
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
 		"tg_tcp_set_state",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	CloseFentry = program.Builder(
@@ -107,7 +110,7 @@ var (
 		"__inet_hash",
 		"kprobe/__inet_hash",
 		"tg___inet_hash",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	ListenFentry = program.Builder(
@@ -123,7 +126,7 @@ var (
 		"security_socket_accept",
 		"kprobe/security_socket_accept",
 		"tg_tcp_security_accept",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SecurityAccept = program.Builder(
@@ -139,7 +142,7 @@ var (
 		"security_sock_graft",
 		"kprobe/security_sock_graft",
 		"tg_tcp_security_graft",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SecurityGraft = program.Builder(
@@ -155,14 +158,16 @@ var (
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"tg_tcp_v4_send_check",
-		"layer3_sensor")
+		"layer3_sensor",
+	)
 
 	SendCheck6 = program.Builder(
 		"bpf_tcp_send_check.o",
 		"inet6_csk_xmit",
 		"kprobe/inet6_csk_xmit",
 		"tg_inet6_csk_xmit",
-		"layer3_sensor")
+		"layer3_sensor",
+	)
 
 	TcpSockops515 = program.Builder(
 		"bpf_tcp_sockops_5_15.o",
@@ -180,14 +185,16 @@ var (
 		"tcp_ack_update_rtt",
 		"kprobe/tcp_ack_update_rtt",
 		"tg_tcp_ack_update_rtt",
-		"kprobe")
+		"layer3_sensor",
+	)
 
 	RttTracerFentry = program.Builder(
 		"bpf_tcp_rtt_fentry.o",
 		"fentry",
 		"fentry/tcp_ack_update_rtt",
 		"tg_tcp_ack_update_rtt",
-		"tcp_fentry")
+		"tcp_fentry",
+	)
 
 	// Maps for TCP Sockets
 	SocketStats              = program.MapBuilder(base.SocketStats.Name, SecurityGraft)

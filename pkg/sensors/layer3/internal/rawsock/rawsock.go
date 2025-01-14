@@ -37,12 +37,17 @@ import (
 )
 
 var (
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
+	//
+	// Kprobes are for systems without fentry support (<v5.5).
+	// Fentry are preferred from v5.5.
 	SkRawAllocV4Kprobe = program.Builder(
 		"bpf_rawsock_create.o",
 		"raw_sk_init",
 		"kprobe/raw_sk_init",
 		"tg_rawsock_sk_init",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SkRawAllocV4Fentry = program.Builder(
@@ -58,7 +63,7 @@ var (
 		"rawv6_init_sk",
 		"kprobe/rawv6_init_sk",
 		"tg_rawsockv6_init_sk",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SkRawAllocV6Fentry = program.Builder(

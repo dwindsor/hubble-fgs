@@ -12,7 +12,6 @@ package socktrack
 
 import (
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -34,14 +33,14 @@ var (
 		"security_sk_alloc",
 		"kprobe/security_sk_alloc",
 		"tg_security_sk_alloc",
-		"kprobe")
+		"layer3_sensor")
 
 	SkFreeKprobe = program.Builder(
 		"bpf_sk_alloc.o",
 		"security_sk_free",
 		"kprobe/security_sk_free",
 		"tg_security_sk_free",
-		"kprobe")
+		"layer3_sensor")
 
 	SkAllocFentry = program.Builder(
 		"bpf_security_sk_alloc.o",
@@ -75,24 +74,7 @@ var (
 	ConfigMapFentry           = program.MapBuilder(SocketCfgMapName, SkFreeFentry)
 )
 
-type socktrackSensor struct {
-	name string
-}
-
-func (sktr *socktrackSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	switch args.Load.Type {
-	case "socktrack_fentry":
-		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("FENTRY")
-			return err
-		}
-	}
-
-	return nil
-}
-
-/* Add sensor from CRD */
+/* Enabled from the layer3 sensor */
 func EnableSocktrack() ([]*program.Program, []*program.Map) {
 	logger.GetLogger().Infof("Enable Socktrack")
 
@@ -132,16 +114,4 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 	}
 
 	return progs, maps
-}
-
-func init() {
-	AddSocktrack()
-}
-
-func AddSocktrack() {
-	socktrack := &socktrackSensor{
-		name: "Socktrack sensor",
-	}
-
-	sensors.RegisterProbeType("socktrack_fentry", socktrack)
 }

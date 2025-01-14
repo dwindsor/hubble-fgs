@@ -69,12 +69,17 @@ var (
 )
 
 var (
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
+	//
+	// Kprobes are for systems without fentry support (<v5.5).
+	// Fentry are preferred from v5.5.
 	SkUdpBindKprobe = program.Builder(
 		"bpf_udp_bind.o",
 		"__cgroup_bpf_run_filter_sk",
 		"kprobe/__cgroup_bpf_run_filter_sk",
 		"tg_udp_bind_sock",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SkUdpBindFentry = program.Builder(
@@ -90,7 +95,7 @@ var (
 		"__cgroup_bpf_run_filter_sk",
 		"kprobe/__cgroup_bpf_run_filter_sk",
 		"tg_udp_bind_sock",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SkUdpBind_5_15Fentry = program.Builder(

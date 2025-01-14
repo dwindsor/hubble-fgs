@@ -40,12 +40,17 @@ var (
 )
 
 var (
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
+	//
+	// Kprobes are for systems without fentry support (<v5.5).
+	// Fentry are preferred from v5.5.
 	SkPingAllocKprobe = program.Builder(
 		"bpf_pingsock_create.o",
 		"ping_init_sock",
 		"kprobe/ping_init_sock",
 		"tg_ping_init_sock",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	SkPingAllocFentry = program.Builder(
@@ -61,7 +66,7 @@ var (
 		"icmp_rcv",
 		"kprobe/icmp_rcv",
 		"tg_icmp_rcv",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	IcmpRcvFentry = program.Builder(
@@ -77,7 +82,7 @@ var (
 		"icmpv6_rcv",
 		"kprobe/icmpv6_rcv",
 		"tg_icmpv6_rcv",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	IcmpRcv6Fentry = program.Builder(
