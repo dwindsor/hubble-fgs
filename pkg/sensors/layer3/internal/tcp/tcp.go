@@ -258,6 +258,11 @@ var (
 	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops515)
 )
 
+func ConfigureMaps() error {
+	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
+	return nil
+}
+
 func ConfigureSensor() error {
 	getRunningSockets(true, true)
 	tcpCache.StartGc()
@@ -270,8 +275,6 @@ func ConfigureSensor() error {
 			tcpconfig.RttHistogramMax,
 			tcpconfig.RttHistogramMin)
 	}
-	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
-
 	return nil
 }
 

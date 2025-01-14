@@ -52,6 +52,9 @@ var (
 	dnsEnabled              = false
 	icmpEnabled             = false
 	rawEnabled              = false
+
+	lastInitProg   *program.Program
+	firstStatsProg *program.Program
 )
 
 var (
@@ -284,6 +287,26 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
+	// We want progsInitSock to load first, then socket discovery, then progsCollectStats. This will ensure that
+	// we don't miss a socket, but we might see the same socket in both an init prog and in socket discovery. We
+	// will make sure that's not a problem by ensuring socket discovery updates the map entry with the same info.
+	// In terms of programs loading, we simply have LoadProbe called for all programs for which we've registered
+	// loaders for their types. We therefore make all our programs have novel types so every one hits our
+	// LoadProbe. Then if progsInitSock is not empty, we note its last program; after that program is loaded, we
+	// call socket discovery. If progsInitSock is empty, then we note the first program of progsCollectStats and
+	// call socket discovery before that program loads.
+	if len(progsInitSock) > 0 {
+		lastInitProg = progsInitSock[len(progsInitSock)-1]
+		firstStatsProg = nil
+	} else {
+		lastInitProg = nil
+		if len(progsCollectStats) > 0 {
+			firstStatsProg = progsCollectStats[0]
+		} else {
+			firstStatsProg = nil
+		}
+	}
+
 	l3Sensor := sensors.SensorBuilder(policy, "layer3_sensors", append(progsInitSock, progsCollectStats...), maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
@@ -431,33 +454,84 @@ func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) 
 	return nil
 }
 
-func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	if !configured {
-		l3cfg := CgroupProtocolConfigValue{}
+func (l3 *l3Sensor) configureMaps(args sensors.LoadProbeArgs) error {
+	l3cfg := CgroupProtocolConfigValue{}
 
-		if tcpEnabled {
-			tcp.ConfigureSensor()
-			l3cfg.tcp4Enabled = 1
-			l3cfg.tcp6Enabled = 1
+	if tcpEnabled {
+		tcp.ConfigureMaps()
+		l3cfg.tcp4Enabled = 1
+		l3cfg.tcp6Enabled = 1
+	}
+	if udpEnabled {
+		if err := udp.ConfigureMaps(args.BPFDir, udp.ConfigMapName, udp.Config); err != nil {
+			return err
 		}
-		if udpEnabled {
-			udp.ConfigureSensor()
-			l3cfg.udp4Enabled = 1
-			l3cfg.udp6Enabled = 1
+		l3cfg.udp4Enabled = 1
+		l3cfg.udp6Enabled = 1
+	}
+	if icmpEnabled {
+		if err := icmp.ConfigureMaps(args.BPFDir, icmp.ConfigMapName, icmp.Config); err != nil {
+			return err
 		}
-		if icmpEnabled {
-			icmp.ConfigureSensor()
-			l3cfg.icmp4Enabled = 1
-			l3cfg.icmp6Enabled = 1
-		}
-		if rawEnabled {
-			rawsock.ConfigureSensor()
-		}
+		l3cfg.icmp4Enabled = 1
+		l3cfg.icmp6Enabled = 1
+	}
+	// Rawsock has no config maps.
 
-		if icmpEnabled || tcpEnabled || udpEnabled {
-			if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
+	if icmpEnabled || tcpEnabled || udpEnabled {
+		if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func configureSensor(args sensors.LoadProbeArgs) error {
+	if tcpEnabled {
+		tcp.ConfigureSensor()
+		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("TCP Loader")
+		if tcp.TimestampEnabled {
+			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
+				logger.GetLogger().WithError(err).Warn("ConfigureLatency TCP")
 				return err
 			}
+			networklatency.Start()
+		}
+	}
+	if udpEnabled {
+		udp.ConfigureSensor()
+		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("UDP Loader")
+		if udp.TimestampEnabled {
+			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
+				return err
+			}
+			networklatency.Start()
+		}
+	}
+	if icmpEnabled {
+		icmp.ConfigureSensor()
+	}
+	if rawEnabled {
+		rawsock.ConfigureSensor()
+	}
+
+	return nil
+}
+
+func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	// Configure maps when the first program is loaded.
+	if !configured {
+		l3.configureMaps(args)
+		configured = true
+	}
+
+	// If this is the first of the collect stats programs, discover sockets.
+	if args.Load == firstStatsProg {
+		firstStatsProg = nil
+		err := configureSensor(args)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -515,33 +589,13 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	}
 
-	if !configured {
-		if tcpEnabled && tcp.TimestampEnabled {
-			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
-				logger.GetLogger().WithError(err).Warn("ConfigureLatency TCP")
-				return err
-			}
-			networklatency.Start()
+	// If this is the last of the init progs, discover sockets.
+	if args.Load == lastInitProg {
+		lastInitProg = nil
+		err := configureSensor(args)
+		if err != nil {
+			return err
 		}
-		if udpEnabled {
-			if err := udp.ConfigureUdpSensor(args.BPFDir, udp.ConfigMapName, udp.Config); err != nil {
-				return err
-			}
-			logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("UDP Loader")
-			if udp.TimestampEnabled {
-				if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
-					return err
-				}
-				networklatency.Start()
-			}
-		}
-		if icmpEnabled {
-			if err := icmp.ConfigureIcmpSensor(args.BPFDir, icmp.ConfigMapName, icmp.Config); err != nil {
-				return err
-			}
-		}
-
-		configured = true
 	}
 
 	return nil

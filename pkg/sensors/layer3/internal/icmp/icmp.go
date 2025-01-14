@@ -183,7 +183,7 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	return progsInitSock, progsCollectStats, maps
 }
 
-func ConfigureIcmpSensor(mapDir string, mapName string, config ConfigValue) error {
+func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("LoadPinnedMap")

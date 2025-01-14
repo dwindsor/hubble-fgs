@@ -232,7 +232,7 @@ func fdCallback(socket *ip.FdLookupValue, pid uint32) {
 	observer.AllListeners(&udp)
 }
 
-func ConfigureUdpSensor(mapDir string, mapName string, config ConfigValue) error {
+func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return err
