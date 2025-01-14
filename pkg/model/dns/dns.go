@@ -45,7 +45,7 @@ func addSingleDnsQuota(src *model.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 		return err
 	}
 	key := &model.DestinationEndpointKey{
-		ProcessId:         *src,
+		LocalId:           src.Self,
 		DestinationId:     dst,
 		DestinationSource: model.DestinationSourceUser,
 		DestinationPort:   0,
@@ -144,16 +144,9 @@ func createSrcKey(namespace, wl, kind string) (*model.ProcessTreeKey, error) {
 
 	return &model.ProcessTreeKey{
 		CgroupId: uint64(nsId),
-		Self: model.ProcessExecveKey{
-			Pid:   0,
-			Pad:   0,
-			Ktime: 0,
-		},
-		Parent: model.ProcessExecveKey{
-			Pid:   0,
-			Pad:   0,
-			Ktime: 0,
-		},
+		Depth:    0,
+		Self:     0,
+		Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 	}, nil
 }
 

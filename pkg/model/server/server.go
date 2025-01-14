@@ -34,11 +34,6 @@ const (
 	endpointIdMap          = "tg_endpoint_id_map"
 )
 
-type binary struct {
-	Path [256]byte
-	Args [256]byte
-}
-
 type ProcessExecveKey struct {
 	Pid   uint32
 	Pad   uint32
@@ -47,8 +42,9 @@ type ProcessExecveKey struct {
 
 type ProcessTreeKey struct {
 	CgroupId uint64
-	Self     ProcessExecveKey
-	Parent   ProcessExecveKey
+	Depth    uint64
+	Self     uint64
+	Path     [8]uint64
 }
 
 type processTreeValue struct {
@@ -63,7 +59,8 @@ const (
 )
 
 type DestinationEndpointKey struct {
-	ProcessId         ProcessTreeKey
+	LocalId           uint64
+	LocalNSId         uint64
 	DestinationId     uint64
 	DestinationSource uint64
 	DestinationPort   uint64
@@ -105,6 +102,15 @@ type EndpointIdKey struct {
 
 type EndpointIdValue struct {
 	Id uint64
+}
+
+type ProcessTreeBinaryUUIDKey struct {
+	Id uint32
+}
+
+type ProcessTreeBinaryUUIDValue struct {
+	Binary [256]byte
+	Args   [256]byte
 }
 
 type Server struct {
@@ -215,7 +221,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		dstVal DestinationEndpointValue
 	)
 
-	dstList := make(map[ProcessTreeKey][]*tetragon.Destination)
+	dstList := make(map[uint64][]*tetragon.Destination)
 	nsList := make(map[uint64][]*tetragon.Destination)
 
 	c := endpoint.Get()
@@ -308,10 +314,10 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			}
 		}
 
-		// If this is the Zero ProcessID then its an aggregated CgroupId
-		// destination. Log separately so we can entry for these.
-		if dstKey.ProcessId.Self.Pid == 0 {
-			cgid := dstKey.ProcessId.CgroupId
+		// If this is the Zero ProcessID and it has a NSId then its an
+		// aggregated CgroupId destination.
+		if dstKey.LocalId == 0 && dstKey.LocalNSId != 0 {
+			cgid := dstKey.LocalNSId
 			l, ok := nsList[cgid]
 			if !ok {
 				nsList[cgid] = []*tetragon.Destination{d}
@@ -319,26 +325,26 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				l := append(l, d)
 				nsList[cgid] = l
 			}
-		}
-
-		l, ok := dstList[dstKey.ProcessId]
-		if !ok {
-			dstList[dstKey.ProcessId] = []*tetragon.Destination{d}
 		} else {
-			skip := false
+			l, ok := dstList[dstKey.LocalId]
+			if !ok {
+				dstList[dstKey.LocalId] = []*tetragon.Destination{d}
+			} else {
+				skip := false
 
-			for _, dedup := range l {
-				if dedup.DestinationPod == nil &&
-					strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 &&
-					dedup.Port == d.Port {
-					skip = true
-					break
+				for _, dedup := range l {
+					if dedup.DestinationPod == nil &&
+						strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 &&
+						dedup.Port == d.Port {
+						skip = true
+						break
+					}
 				}
+				if !skip {
+					l = append(l, d)
+				}
+				dstList[dstKey.LocalId] = l
 			}
-			if !skip {
-				l = append(l, d)
-			}
-			dstList[dstKey.ProcessId] = l
 		}
 	}
 
@@ -361,9 +367,6 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		return nil, err
 	}
 	defer uidMap.Close()
-	var (
-		uidValue binary
-	)
 
 	state, err := policyfilter.GetState()
 	if err != nil {
@@ -419,29 +422,38 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			continue
 		}
 
-		err := uidMap.Lookup(&key.Self, &uidValue)
+		var (
+			processKey ProcessTreeBinaryUUIDKey
+			uidValue   ProcessTreeBinaryUUIDValue
+		)
+
+		processKey.Id = uint32(key.Self)
+		err := uidMap.Lookup(&processKey, &uidValue)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("Could not map self UUID to Path")
 			continue
 		}
-		// uidValue.Path is a fixed size byte array. Trim trailing null bytes.
-		n := bytes.IndexByte(uidValue.Path[:], 0)
-		selfStr := fmt.Sprintf("%s", uidValue.Path[:n])
+		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
+		n := bytes.IndexByte(uidValue.Binary[:], 0)
+		selfStr := fmt.Sprintf("%s", uidValue.Binary[:n])
 		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
 		selfArgs := fmt.Sprintf("%s", uidValue.Args[:m])
 
 		parentPath := ""
 		parentArgs := ""
-		err = uidMap.Lookup(&key.Parent, &uidValue)
-		if err == nil {
-			n = bytes.IndexByte(uidValue.Path[:], 0)
-			parentPath = fmt.Sprintf("%s", uidValue.Path[:n])
-			m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
-			parentArgs = fmt.Sprintf("%s", uidValue.Args[:m])
+		if key.Depth > 0 {
+			parent := uint32(key.Path[key.Depth-1])
+			err = uidMap.Lookup(&parent, &uidValue)
+			if err == nil {
+				n = bytes.IndexByte(uidValue.Binary[:], 0)
+				parentPath = fmt.Sprintf("%s", uidValue.Binary[:n])
+				m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
+				parentArgs = fmt.Sprintf("%s", uidValue.Args[:m])
+			}
 		}
 
 		var dest []*tetragon.Destination
-		dest = dstList[key]
+		dest = dstList[key.Self]
 
 		porcessModel = append(porcessModel, &tetragon.ProcessModel{
 			Binary:     selfStr,
