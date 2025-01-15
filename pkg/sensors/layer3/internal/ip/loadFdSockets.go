@@ -28,7 +28,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/sirupsen/logrus"
@@ -50,12 +49,14 @@ var (
 	loading sync.Mutex
 
 	// Socket lookup program
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
 	FdLookup = program.Builder(
 		"bpf_fd_lookup.o",
 		"proc_task_name",
 		"kprobe/proc_task_name",
 		"kprobe_proc_task_name",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	FdLookup_5_15 = program.Builder(
@@ -63,14 +64,14 @@ var (
 		"proc_task_name",
 		"kprobe/proc_task_name",
 		"kprobe_proc_task_name",
-		"kprobe",
+		"layer3_sensor",
 	)
 
 	// All the FdLookup sensor maps below are accessed from other sensors,
 	// so they need to stay global as is expected by its users.
 
 	// Socket lookup config map
-	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
+	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup, FdLookup_5_15)
 
 	// Endpoint Models
 	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", FdLookup_5_15)
@@ -82,10 +83,20 @@ var (
 	ListenEndpointMap        = program.MapUser("listen_endpoint_map", FdLookup_5_15)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap   = program.MapBuilder(SocketMapName, FdLookup)
-	SocketCookieStats = program.MapBuilder(SocketMapStatsName, FdLookup)
-	VerMap            = program.MapBuilder("tg_ver_map", FdLookup)
+	SocketCookieMap     = program.MapBuilder(SocketMapName, FdLookup, FdLookup_5_15)
+	SocketCookieStats   = program.MapBuilder(SocketMapStatsName, FdLookup, FdLookup_5_15)
+	VerMap              = program.MapBuilder("tg_ver_map", FdLookup, FdLookup_5_15)
+	SocketTupleMap      = program.MapBuilder("tg_socket_tuple_map", FdLookup, FdLookup_5_15)
+	SocketTupleMapStats = program.MapBuilder("tg_socket_tuple_map_stats", FdLookup, FdLookup_5_15)
+	SocketTupleRevMap   = program.MapBuilder("tg_rev_tuple_map", FdLookup, FdLookup_5_15)
+	SocketTupleHintMap  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookup, FdLookup_5_15)
+	TcpSocketMap        = program.MapBuilder("tg_tcpsocket_map", FdLookup, FdLookup_5_15)
+	CfgMap              = program.MapBuilder("tg_cfg_map", FdLookup, FdLookup_5_15)
 )
+
+func Enable() ([]*program.Program, []*program.Map) {
+	return getFdLookupPrograms(), getFdLookupMaps()
+}
 
 func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
 	var socketFds []uint32
@@ -171,7 +182,8 @@ func getFdLookupPrograms() []*program.Program {
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap)
+	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap,
+		SocketTupleMap, SocketTupleMapStats, SocketTupleRevMap, SocketTupleHintMap, TcpSocketMap, CfgMap)
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH == "amd64" {
 			maps = append(maps, []*program.Map{
@@ -189,47 +201,8 @@ func getFdLookupMaps() []*program.Map {
 	return maps
 }
 
-func getOnlyFdLookupMaps() []*program.Map {
-	maps := []*program.Map{
-		FdLookupConfigMap,
-	}
-
-	return maps
-}
-
-// GetInitialSensor returns the collection of Sensor that is loaded at
-// initialization time.
-func getFdLookupSensor() *sensors.Sensor {
-	return &sensors.Sensor{
-		Name:   "FdLookup",
-		Progs:  getFdLookupPrograms(),
-		Maps:   getFdLookupMaps(),
-		Policy: "__ip__",
-	}
-}
-
-// LoadFdLookup loads the kernel oracle.
-func loadFdLookup(bpfDir string) (*sensors.Sensor, error) {
-	fdLoadSensor := getFdLookupSensor()
-	if err := fdLoadSensor.Load(bpfDir); err != nil {
-		return nil, fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
-	}
-	return fdLoadSensor, nil
-}
-
-func unloadFdLookup(fdLoadSensor *sensors.Sensor, _ string) error {
-	if fdLoadSensor == nil {
-		return fmt.Errorf("hubble-fgs, could not unload BPF programs: fdLoadSensor")
-	}
-	fdLoadSensor.Maps = getOnlyFdLookupMaps()
-	if err := fdLoadSensor.Unload(true); err != nil {
-		return fmt.Errorf("hubble-fgs, could not unload BPF programs: %w", err)
-	}
-	return nil
-}
-
 func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
-	/* Load existing network sockets. This consists of: loading a BPF program to respond to reading /proc
+	/* Load existing network sockets. This consists of: using a BPF program to respond to reading /proc
 	 * "comm" files"; exercising it once per socket that was previously discovered in order to load it
 	 * into the socket cookie map; and then unloading the BPF program.
 	 * This needs to happen before the sensors are loaded, as those sensors depend upon this map
@@ -244,16 +217,7 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
 		return err
 	}
-	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
-		return err
-	}
 	writeSocketCookies(procSocketFds, callback, protocol, hint)
-	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir); err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
-		return err
-	}
 
 	return nil
 }
@@ -526,12 +490,6 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 
 	socket := uint64(0)
 
-	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
-		return 0
-	}
-
 	m := openConfigMap()
 	if m == nil {
 		return 0
@@ -563,10 +521,6 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 
 	if v.Protocol == protocol {
 		socket = v.Sockaddr
-	}
-
-	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir); err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 	}
 
 	return socket

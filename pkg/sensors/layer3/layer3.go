@@ -228,6 +228,9 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	needDispatcher := false
 
 	progsInitSock, maps := socktrack.EnableSocktrack()
+	fdLookupProgs, fdLookupMaps := ip.Enable()
+	progsInitSock = append(progsInitSock, fdLookupProgs...)
+	maps = append(maps, fdLookupMaps...)
 	var progsCollectStats []*program.Program
 
 	if tcpEnabled {
