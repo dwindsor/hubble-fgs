@@ -26,10 +26,11 @@ import (
 	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -222,7 +223,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	return nil
 }
 
-func fdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
 }
 

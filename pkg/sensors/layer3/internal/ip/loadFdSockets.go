@@ -43,26 +43,7 @@ const (
 	SocketMapStatsName    = "tg_socket_map_stats"
 )
 
-type FdLookupKey struct {
-	Zero uint32
-}
-
-type FdLookupValue struct {
-	Pid         uint32
-	Fd          uint32
-	Sockaddr    uint64
-	SockVersion uint64
-	Tuple       networkapi.MsgIPTuple
-	State       uint8
-	SignalHit   uint8
-	Family      uint16
-	Protocol    uint16
-	Pad         uint16
-	CgrpId      uint64
-	Hint        uint64
-}
-
-type FdCallback func(*FdLookupValue, uint32)
+type FdCallback func(*networkapi.FdLookupValue, uint32)
 
 var (
 	// Mutex to prevent concurrent loading
@@ -105,12 +86,6 @@ var (
 	SocketCookieStats = program.MapBuilder(SocketMapStatsName, FdLookup)
 	VerMap            = program.MapBuilder("tg_ver_map", FdLookup)
 )
-
-func (k *FdLookupKey) String() string { return fmt.Sprintf("key=%d", k.Zero) }
-
-func (v *FdLookupValue) String() string {
-	return fmt.Sprintf("value=%d %d", v.Pid, v.Fd)
-}
 
 func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
 	var socketFds []uint32
@@ -340,7 +315,7 @@ func getIpAddrPort(ipPort string, ipv6 bool) ([2]uint64, uint16, error) {
 	return ipOut, uint16(port), nil
 }
 
-func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, protocol uint16) error {
+func getSocketsForNsFromFile(sockets *map[uint64]networkapi.FdLookupValue, netFile string, protocol uint16) error {
 	fileBytes, err := os.ReadFile(netFile)
 	if err != nil {
 		return err
@@ -392,7 +367,7 @@ func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, 
 		} else {
 			ipv6char = 0
 		}
-		(*sockets)[inode] = FdLookupValue{
+		(*sockets)[inode] = networkapi.FdLookupValue{
 			Sockaddr: cookie,
 			State:    uint8(state),
 			Tuple: networkapi.MsgIPTuple{
@@ -408,7 +383,7 @@ func getSocketsForNsFromFile(sockets *map[uint64]FdLookupValue, netFile string, 
 	return nil
 }
 
-func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol uint16) error {
+func getSocketsForNs(sockets *map[uint64]networkapi.FdLookupValue, netPath string, protocol uint16) error {
 	var socketFiles []string
 	switch protocol {
 	case syscall.IPPROTO_TCP:
@@ -430,46 +405,46 @@ func getSocketsForNs(sockets *map[uint64]FdLookupValue, netPath string, protocol
 	return nil
 }
 
-func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map) (FdLookupValue, error) {
+func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map) (networkapi.FdLookupValue, error) {
 	if m == nil {
 		m = openConfigMap()
 		if m == nil {
-			return FdLookupValue{}, fmt.Errorf("could not open fd lookup config map")
+			return networkapi.FdLookupValue{}, fmt.Errorf("could not open fd lookup config map")
 		}
 		defer m.Close()
 	}
 
-	sockets := make(map[uint64]FdLookupValue)
+	sockets := make(map[uint64]networkapi.FdLookupValue)
 	err := getSocketsForNs(&sockets, filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "net"), protocol)
 	if err != nil {
-		return FdLookupValue{}, err
+		return networkapi.FdLookupValue{}, err
 	}
 	fdLink, err := os.Readlink(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d/fd/%d", pid, fd)))
 	if err != nil {
-		return FdLookupValue{}, err
+		return networkapi.FdLookupValue{}, err
 	}
 	fdInode := uint64(0)
 	if strings.HasPrefix(fdLink, "socket:[") {
 		fdInode, err = strconv.ParseUint(fdLink[8:len(fdLink)-1], 10, 64)
 		if err != nil {
-			return FdLookupValue{}, err
+			return networkapi.FdLookupValue{}, err
 		}
 	} else if strings.HasPrefix(fdLink, "[0000]:") {
 		fdInode, err = strconv.ParseUint(fdLink[7:], 10, 64)
 		if err != nil {
-			return FdLookupValue{}, err
+			return networkapi.FdLookupValue{}, err
 		}
 	}
 	var ok bool
 	socket, ok := sockets[fdInode]
 	if !ok {
-		return FdLookupValue{}, fmt.Errorf("socket not found in process namespace")
+		return networkapi.FdLookupValue{}, fmt.Errorf("socket not found in process namespace")
 	}
 	// Add the socket
 	socket.Pid = pid
 	socket.Fd = fd
 
-	k := &FdLookupKey{Zero: 0}
+	k := &networkapi.FdLookupKey{Zero: 0}
 	m.Put(k, &socket)
 	/* Trigger BPF FD Lookup program.
 	 * The approach taken here (and later in writeSocketCookies and GetSocketForFD) is to hook
@@ -500,8 +475,8 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 	for pid, fds := range procSocketFds {
 		cgid, _ := cgroups.CgroupIDFromPID(pid)
 		for _, fd := range fds {
-			k := &FdLookupKey{Zero: 0}
-			v := &FdLookupValue{
+			k := &networkapi.FdLookupKey{Zero: 0}
+			v := &networkapi.FdLookupValue{
 				Pid:       pid,
 				Fd:        fd,
 				Protocol:  protocol,
@@ -524,7 +499,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				time.Sleep(10 * time.Millisecond)
 			}
 
-			var socket FdLookupValue
+			var socket networkapi.FdLookupValue
 			if int16(v.Protocol) == -1 {
 				// This indicates a read error in BPF, so reread via /proc.
 				var err error
@@ -563,8 +538,8 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 	}
 	defer m.Close()
 
-	k := &FdLookupKey{Zero: 0}
-	v := &FdLookupValue{
+	k := &networkapi.FdLookupKey{Zero: 0}
+	v := &networkapi.FdLookupValue{
 		Pid:       uint32(pid),
 		Fd:        uint32(fd),
 		Protocol:  protocol,

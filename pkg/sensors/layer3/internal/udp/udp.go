@@ -38,7 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -181,7 +181,7 @@ func (v *ConfigValue) String() string {
 		v.watermarksDipTriggerPercent)
 }
 
-func fdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	saddr := api.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
 	daddr := api.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")

@@ -23,7 +23,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"golang.org/x/sys/unix"

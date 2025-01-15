@@ -31,7 +31,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -143,7 +143,7 @@ func UnloadSensor() error {
 	return nil
 }
 
-func fdCallback(socket *ip.FdLookupValue, pid uint32) {
+func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered Raw Socket")
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
 	stats, err := proc.GetProcStatStrings(pathName)

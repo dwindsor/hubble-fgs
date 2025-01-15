@@ -352,3 +352,28 @@ func (v *UdpInfoValue) Copy() *UdpInfoValue {
 	*newValue = *v
 	return newValue
 }
+
+type FdLookupKey struct {
+	Zero uint32
+}
+
+type FdLookupValue struct {
+	Pid         uint32     `align:"pid"`
+	Fd          uint32     `align:"fd"`
+	Sockaddr    uint64     `align:"sockaddr"`
+	SockVersion uint64     `align:"sockversion"`
+	Tuple       MsgIPTuple `align:"tuple"`
+	State       uint8      `align:"state"`
+	SignalHit   uint8      `align:"signal_hit"`
+	Family      uint16     `align:"family"`
+	Protocol    uint16     `align:"protocol"`
+	Pad         uint16     `align:"pad"`
+	CgrpId      uint64     `align:"cgrpid"`
+	Hint        uint64     `align:"hint"`
+}
+
+func (k *FdLookupKey) String() string { return fmt.Sprintf("key=%d", k.Zero) }
+
+func (v *FdLookupValue) String() string {
+	return fmt.Sprintf("value=%d %d", v.Pid, v.Fd)
+}

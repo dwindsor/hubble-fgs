@@ -8,7 +8,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 )
 
 // CheckStructAlignments checks whether size and offsets of the C and Go
@@ -60,7 +59,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"full_path":           {fileapi.FullPath{}},
 		"glob_state":          {fm.GlobState{}},
 
-		"fd_lookup_config": {ip.FdLookupValue{}},
+		"fd_lookup_config": {networkapi.FdLookupValue{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)
