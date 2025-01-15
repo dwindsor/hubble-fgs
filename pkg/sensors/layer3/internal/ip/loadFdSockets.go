@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -51,7 +52,7 @@ var (
 	// Socket lookup program
 	// Ensure every program has a type defined by the layer3 sensor to force loading
 	// through our own LoadProbe function. This is essential for socket discovery.
-	FdLookup = program.Builder(
+	FdLookupKprobe = program.Builder(
 		"bpf_fd_lookup.o",
 		"proc_task_name",
 		"kprobe/proc_task_name",
@@ -59,7 +60,15 @@ var (
 		"layer3_sensor",
 	)
 
-	FdLookup_5_15 = program.Builder(
+	FdLookupFentry = program.Builder(
+		"bpf_fd_lookup_fentry.o",
+		"fentry",
+		"fentry/proc_task_name",
+		"fentry_proc_task_name",
+		"layer3_sensor",
+	)
+
+	FdLookupKprobe_5_15 = program.Builder(
 		"bpf_fd_lookup_5_15.o",
 		"proc_task_name",
 		"kprobe/proc_task_name",
@@ -67,31 +76,56 @@ var (
 		"layer3_sensor",
 	)
 
+	FdLookupFentry_5_15 = program.Builder(
+		"bpf_fd_lookup_fentry_5_15.o",
+		"fentry",
+		"fentry/proc_task_name",
+		"fentry_proc_task_name",
+		"layer3_sensor",
+	)
+
 	// All the FdLookup sensor maps below are accessed from other sensors,
 	// so they need to stay global as is expected by its users.
 
 	// Socket lookup config map
-	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup, FdLookup_5_15)
+	FdLookupConfigMapKprobe = program.MapBuilder(FdLookupConfigMapName, FdLookupKprobe)
+	FdLookupConfigMapFentry = program.MapBuilder(FdLookupConfigMapName, FdLookupFentry)
 
 	// Endpoint Models
-	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", FdLookup_5_15)
-	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", FdLookup_5_15)
-	ProcessTreeMap           = program.MapUser("process_tree_map", FdLookup_5_15)
-	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", FdLookup_5_15)
-	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", FdLookup_5_15)
-	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", FdLookup_5_15)
-	ListenEndpointMap        = program.MapUser("listen_endpoint_map", FdLookup_5_15)
+	EndpointIdMapKprobe            = program.MapUser("tg_endpoint_id_map", FdLookupKprobe_5_15)
+	BpfEndpointIdMapKprobe         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupKprobe_5_15)
+	ProcessTreeMapKprobe           = program.MapUser("process_tree_map", FdLookupKprobe_5_15)
+	ProcessTreeBinaryUUIDMapKprobe = program.MapUser("process_tree_binary_uid_map", FdLookupKprobe_5_15)
+	ProcessTreeUUIDBinaryMapKprobe = program.MapUser("process_tree_uid_binary_map", FdLookupKprobe_5_15)
+	DestinationEndpointMapKprobe   = program.MapUser("destination_endpoint_map", FdLookupKprobe_5_15)
+	ListenEndpointMapKprobe        = program.MapUser("listen_endpoint_map", FdLookupKprobe_5_15)
+	EndpointIdMapFentry            = program.MapUser("tg_endpoint_id_map", FdLookupFentry_5_15)
+	BpfEndpointIdMapFentry         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupFentry_5_15)
+	ProcessTreeMapFentry           = program.MapUser("process_tree_map", FdLookupFentry_5_15)
+	ProcessTreeBinaryUUIDMapFentry = program.MapUser("process_tree_binary_uid_map", FdLookupFentry_5_15)
+	ProcessTreeUUIDBinaryMapFentry = program.MapUser("process_tree_uid_binary_map", FdLookupFentry_5_15)
+	DestinationEndpointMapFentry   = program.MapUser("destination_endpoint_map", FdLookupFentry_5_15)
+	ListenEndpointMapFentry        = program.MapUser("listen_endpoint_map", FdLookupFentry_5_15)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap     = program.MapBuilder(SocketMapName, FdLookup, FdLookup_5_15)
-	SocketCookieStats   = program.MapBuilder(SocketMapStatsName, FdLookup, FdLookup_5_15)
-	VerMap              = program.MapBuilder("tg_ver_map", FdLookup, FdLookup_5_15)
-	SocketTupleMap      = program.MapBuilder("tg_socket_tuple_map", FdLookup, FdLookup_5_15)
-	SocketTupleMapStats = program.MapBuilder("tg_socket_tuple_map_stats", FdLookup, FdLookup_5_15)
-	SocketTupleRevMap   = program.MapBuilder("tg_rev_tuple_map", FdLookup, FdLookup_5_15)
-	SocketTupleHintMap  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookup, FdLookup_5_15)
-	TcpSocketMap        = program.MapBuilder("tg_tcpsocket_map", FdLookup, FdLookup_5_15)
-	CfgMap              = program.MapBuilder("tg_cfg_map", FdLookup, FdLookup_5_15)
+	SocketCookieMapKprobe     = program.MapBuilder(SocketMapName, FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketCookieStatsKprobe   = program.MapBuilder(SocketMapStatsName, FdLookupKprobe, FdLookupKprobe_5_15)
+	VerMapKprobe              = program.MapBuilder("tg_ver_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketTupleMapKprobe      = program.MapBuilder("tg_socket_tuple_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketTupleMapStatsKprobe = program.MapBuilder("tg_socket_tuple_map_stats", FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketTupleRevMapKprobe   = program.MapBuilder("tg_rev_tuple_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketTupleHintMapKprobe  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	TcpSocketMapKprobe        = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	CfgMapKprobe              = program.MapBuilder("tg_cfg_map", FdLookupKprobe, FdLookupKprobe_5_15)
+	SocketCookieMapFentry     = program.MapBuilder(SocketMapName, FdLookupFentry, FdLookupFentry_5_15)
+	SocketCookieStatsFentry   = program.MapBuilder(SocketMapStatsName, FdLookupFentry, FdLookupFentry_5_15)
+	VerMapFentry              = program.MapBuilder("tg_ver_map", FdLookupFentry, FdLookupFentry_5_15)
+	SocketTupleMapFentry      = program.MapBuilder("tg_socket_tuple_map", FdLookupFentry, FdLookupFentry_5_15)
+	SocketTupleMapStatsFentry = program.MapBuilder("tg_socket_tuple_map_stats", FdLookupFentry, FdLookupFentry_5_15)
+	SocketTupleRevMapFentry   = program.MapBuilder("tg_rev_tuple_map", FdLookupFentry, FdLookupFentry_5_15)
+	SocketTupleHintMapFentry  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookupFentry, FdLookupFentry_5_15)
+	TcpSocketMapFentry        = program.MapBuilder("tg_tcpsocket_map", FdLookupFentry, FdLookupFentry_5_15)
+	CfgMapFentry              = program.MapBuilder("tg_cfg_map", FdLookupFentry, FdLookupFentry_5_15)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -167,12 +201,24 @@ func getFdLookupPrograms() []*program.Program {
 	var progs []*program.Program
 
 	if !kernels.MinKernelVersion("5.15.0") {
-		progs = append(progs, FdLookup)
+		if utils.SupportFentry() {
+			progs = append(progs, FdLookupFentry)
+		} else {
+			progs = append(progs, FdLookupKprobe)
+		}
 	} else {
 		if runtime.GOARCH != "amd64" {
-			progs = append(progs, FdLookup)
+			if utils.SupportFentry() {
+				progs = append(progs, FdLookupFentry)
+			} else {
+				progs = append(progs, FdLookupKprobe)
+			}
 		} else {
-			progs = append(progs, FdLookup_5_15)
+			if utils.SupportFentry() {
+				progs = append(progs, FdLookupFentry_5_15)
+			} else {
+				progs = append(progs, FdLookupKprobe_5_15)
+			}
 		}
 	}
 
@@ -182,19 +228,36 @@ func getFdLookupPrograms() []*program.Program {
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap, SocketCookieMap, SocketCookieStats, VerMap,
-		SocketTupleMap, SocketTupleMapStats, SocketTupleRevMap, SocketTupleHintMap, TcpSocketMap, CfgMap)
+	if utils.SupportFentry() {
+		maps = append(maps, FdLookupConfigMapFentry, SocketCookieMapFentry, SocketCookieStatsFentry, VerMapFentry,
+			SocketTupleMapFentry, SocketTupleMapStatsFentry, SocketTupleRevMapFentry, SocketTupleHintMapFentry, TcpSocketMapFentry, CfgMapFentry)
+	} else {
+		maps = append(maps, FdLookupConfigMapKprobe, SocketCookieMapKprobe, SocketCookieStatsKprobe, VerMapKprobe,
+			SocketTupleMapKprobe, SocketTupleMapStatsKprobe, SocketTupleRevMapKprobe, SocketTupleHintMapKprobe, TcpSocketMapKprobe, CfgMapKprobe)
+	}
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH == "amd64" {
-			maps = append(maps, []*program.Map{
-				EndpointIdMap,
-				BpfEndpointIdMap,
-				ProcessTreeMap,
-				ProcessTreeBinaryUUIDMap,
-				ProcessTreeUUIDBinaryMap,
-				DestinationEndpointMap,
-				ListenEndpointMap,
-			}...)
+			if utils.SupportFentry() {
+				maps = append(maps, []*program.Map{
+					EndpointIdMapFentry,
+					BpfEndpointIdMapFentry,
+					ProcessTreeMapFentry,
+					ProcessTreeBinaryUUIDMapFentry,
+					ProcessTreeUUIDBinaryMapFentry,
+					DestinationEndpointMapFentry,
+					ListenEndpointMapFentry,
+				}...)
+			} else {
+				maps = append(maps, []*program.Map{
+					EndpointIdMapKprobe,
+					BpfEndpointIdMapKprobe,
+					ProcessTreeMapKprobe,
+					ProcessTreeBinaryUUIDMapKprobe,
+					ProcessTreeUUIDBinaryMapKprobe,
+					DestinationEndpointMapKprobe,
+					ListenEndpointMapKprobe,
+				}...)
+			}
 		}
 	}
 
@@ -222,7 +285,12 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 func openConfigMap() *ebpf.Map {
 	mapDir := bpf.MapPrefixPath()
 
-	fdLookupMapPath := filepath.Join(mapDir, FdLookupConfigMap.PinPath)
+	var fdLookupMapPath string
+	if utils.SupportFentry() {
+		fdLookupMapPath = filepath.Join(mapDir, FdLookupConfigMapFentry.PinPath)
+	} else {
+		fdLookupMapPath = filepath.Join(mapDir, FdLookupConfigMapKprobe.PinPath)
+	}
 
 	m, err := ebpf.LoadPinnedMap(fdLookupMapPath, nil)
 	for i := 0; err != nil; i++ {

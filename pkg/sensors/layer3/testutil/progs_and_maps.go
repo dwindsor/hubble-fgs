@@ -103,7 +103,7 @@ const (
 	rawsock4SkInitProg = "tg_rawsock_sk_init"
 	rawsock6SkInitProg = "tg_rawsockv6_init_sk"
 
-	fdLookupProg = "kprobe_proc_task_name"
+	fdLookupProg = "tg_proc_task_name"
 )
 
 func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
@@ -612,9 +612,15 @@ func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRa
 		}
 	}
 
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		{Name: fdLookupProg, Type: ebpf.Kprobe},
-	}...)
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: fdLookupProg, Type: ebpf.Tracing},
+		}...)
+	} else {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: fdLookupProg, Type: ebpf.Kprobe},
+		}...)
+	}
 
 	sockProgs, _ := socktrack.ProgsAndMaps()
 	sockProgsOffset := uint(len(sensorProgs))
@@ -716,9 +722,15 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}
 	}
 
-	sensorProgs = append(sensorProgs, []tus.SensorProg{
-		{Name: fdLookupProg, Type: ebpf.Kprobe},
-	}...)
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: fdLookupProg, Type: ebpf.Tracing},
+		}...)
+	} else {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: fdLookupProg, Type: ebpf.Kprobe},
+		}...)
+	}
 
 	sockProgs, _ := socktrack.ProgsAndMaps()
 	sockProgsOffset := uint(len(sensorProgs))

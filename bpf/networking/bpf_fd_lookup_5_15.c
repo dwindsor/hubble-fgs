@@ -18,8 +18,10 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("kprobe/proc_task_name"), used)) int
-kprobe_proc_task_name(struct pt_regs *ctx)
+tg_proc_task_name(struct pt_regs *ctx)
 {
-	__kprobe_proc_task_name(ctx);
+	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
+
+	__proc_task_name(ctx, p);
 	return 0;
 }

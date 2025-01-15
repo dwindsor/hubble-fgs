@@ -71,9 +71,8 @@ event_find_task(struct task_struct *task, __u32 pid, __u32 *ppid, bool *walked)
 }
 
 static inline __attribute__((always_inline)) int
-__kprobe_proc_task_name(struct pt_regs *ctx)
+__proc_task_name(void *ctx, struct task_struct *p)
 {
-	struct task_struct *p = (struct task_struct *)PT_REGS_PARM2(ctx);
 	struct socketmap_value *socket, sockmap_process = { 0 };
 	struct tcpsocketmap_value *tcp_stats;
 	struct fd_lookup_config *config;
