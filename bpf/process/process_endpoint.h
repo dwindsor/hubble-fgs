@@ -157,6 +157,7 @@ struct {
 #define DESTINATION_SOURCE_UNKNOWNN  0
 #define DESTINATION_SOURCE_BPF	     1
 #define DESTINATION_SOURCE_USERSPACE 2
+#define DESTINATION_SOURCE_DNS	     3
 
 /* Somewhat counter-intuitively destinations are scoped by local
  * id and/or local ns_id. This ensures that if two processes in

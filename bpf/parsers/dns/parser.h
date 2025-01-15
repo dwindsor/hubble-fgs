@@ -15,6 +15,7 @@
 #include "bpf_task.h"
 
 #include "dns.h"
+#include "pstree.h"
 #include "lib/address_family.h"
 #include "lib/config.h"
 
@@ -166,6 +167,8 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 
 		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
 			return -37;
+
+		assign_dns_id_mapping((struct endpoint_id_key *)&ip, name);
 
 		return offset + sizeof(u32);
 	} else if (data_len == sizeof(u128) && type == (AAAA_RECORD)) {
