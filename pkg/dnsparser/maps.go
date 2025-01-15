@@ -13,11 +13,14 @@ package dnsparser
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net/netip"
+	"path/filepath"
 	"runtime"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -289,6 +292,82 @@ func (m DNSEndpointIDMap) Clear() error {
 
 	if _, err := m.dnsEndpointIDMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
 		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
+	}
+
+	return nil
+}
+
+// DomainMap combines domainToID and idToDomain maps for operation that needs to
+// be done on both objects.
+type DomainMap struct {
+	DomainToIDMap
+	IDToDomainMap
+}
+
+func (m *DomainMap) CloseMaps() error {
+	err1 := m.domainToIDMap.Close()
+	err2 := m.idToDomainMap.Close()
+	return errors.Join(err1, err2)
+}
+
+func (m *DomainMap) loadPinnedIDToDomainMap() error {
+	if m.idToDomainMap != nil {
+		return nil
+	}
+	idToDomainMapFile := filepath.Join(bpf.MapPrefixPath(), IDToDomainMapName)
+	var err error
+	m.idToDomainMap, err = ebpf.LoadPinnedMap(idToDomainMapFile, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *DomainMap) loadPinnedDomainToIDMap() error {
+	if m.domainToIDMap != nil {
+		return nil
+	}
+	domainToIDMapFile := filepath.Join(bpf.MapPrefixPath(), DomainToIDMapName)
+	var err error
+	m.domainToIDMap, err = ebpf.LoadPinnedMap(domainToIDMapFile, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *DomainMap) Update(domain string, id uint64) error {
+	if len(domain) > dnsMaxNameSize {
+		return fmt.Errorf("domain is too long: len(%s)=%d > %d", domain, len(domain), dnsMaxNameSize)
+	}
+
+	if m.idToDomainMap == nil {
+		if err := m.loadPinnedIDToDomainMap(); err != nil {
+			return fmt.Errorf("failed to open map %s: %w", IDToDomainMapName, err)
+		}
+	}
+	if m.domainToIDMap == nil {
+		if err := m.loadPinnedDomainToIDMap(); err != nil {
+			return fmt.Errorf("failed to open map %s: %w", DomainToIDMapName, err)
+		}
+	}
+
+	domainBytes := make([]byte, dnsMaxNameSize+1)
+	for i, l := range domain {
+		domainBytes[i] = byte(l)
+	}
+	idValue := DNSID{
+		ID:     id,
+		Source: types.DestinationSourceUser,
+	}
+
+	err := m.domainToIDMap.Update(domainBytes, idValue, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed to update the bpf domain map: %w", err)
+	}
+	err = m.idToDomainMap.Update(idValue, domainBytes, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed to update the bpf domain rev map: %w", err)
 	}
 
 	return nil

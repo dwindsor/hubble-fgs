@@ -29,6 +29,10 @@ type quotaPolicy struct {
 var (
 	queueWl     = make(map[policyfilter.NSID]quotaPolicy)
 	queueWlLock = sync.Mutex{}
+
+	// QuotasDNSDomainMappings stores the mappings between the domain and
+	// their ID generated after parsing a quota policy.
+	QuotasDNSDomainMappings = map[endpoint.Endpoint]uint64{}
 )
 
 const (
@@ -44,6 +48,10 @@ func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
 		return err
 	}
+
+	// This configuration for the DNS domain maps will be written at load time
+	QuotasDNSDomainMappings[*ep] = dst
+
 	key := &types.DestinationEndpointKey{
 		LocalId:           src.Self,
 		DestinationId:     dst,
@@ -223,7 +231,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 				"quota":     quotaBytes,
 				"reset":     reset,
 				"dest":      entry,
-			}).Warn("TCP quota entry Failed")
+			}).WithError(err).Error("TCP quota entry Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{

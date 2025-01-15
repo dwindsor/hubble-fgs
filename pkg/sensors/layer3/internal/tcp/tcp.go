@@ -26,7 +26,10 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -261,6 +264,24 @@ var (
 
 func ConfigureMaps() error {
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
+	err := configureQuotasDNSMaps(dns.QuotasDNSDomainMappings)
+	if err != nil {
+		return fmt.Errorf("failed to configure quotas DNS maps: %w", err)
+	}
+	return nil
+}
+
+func configureQuotasDNSMaps(mappings map[endpoint.Endpoint]uint64) error {
+	var dnsDomainMap dnsparser.DomainMap
+	defer dnsDomainMap.CloseMaps()
+
+	for endpoint, id := range mappings {
+		err := dnsDomainMap.Update(endpoint.Dns, id)
+		if err != nil {
+			return fmt.Errorf("failed to write BPF domain maps: %w", err)
+		}
+	}
+
 	return nil
 }
 
