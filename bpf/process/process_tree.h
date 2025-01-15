@@ -30,6 +30,8 @@
 #include "policy_filter.h"
 #include "process_endpoint.h"
 
+#include "parsers/dns/pstree.h"
+
 struct process_tree_config {
 	uint64_t enableProcessTree;
 	uint64_t bpfGenIds;
@@ -276,6 +278,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 
 	struct endpoint_id_key key;
 	struct endpoint_id_value *value;
+	struct dns_endpoint_id_value *dns_value;
 
 	if (!tuple)
 		return 0;
@@ -308,27 +311,34 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	key.addr[0] = tuple->daddr[0];
 	key.addr[1] = tuple->daddr[1];
 
-	// destination_id verifier fix to if/else;
-	value = map_lookup_elem(&tg_endpoint_id_map, &key);
-	if (!value) {
-		if (!cfg->bpfGenIds)
-			return 0;
-
-		destkey.source = DESTINATION_SOURCE_BPF;
-		value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
+	// destination precedence DNS, Userspace (service, pods), BPF generated ID.
+	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &key);
+	if (dns_value) {
+		destkey.destination_id = dns_value->id;
+		destkey.source = dns_value->source;
+	} else {
+		// destination_id verifier fix to if/else;
+		value = map_lookup_elem(&tg_endpoint_id_map, &key);
 		if (!value) {
-			value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
-			if (!value)
+			if (!cfg->bpfGenIds)
 				return 0;
-			value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
-			destkey.destination_id = value->id;
-			map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
+
+			destkey.source = DESTINATION_SOURCE_BPF;
+			value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
+			if (!value) {
+				value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
+				if (!value)
+					return 0;
+				value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
+				destkey.destination_id = value->id;
+				map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
+			} else {
+				destkey.destination_id = value->id;
+			}
 		} else {
 			destkey.destination_id = value->id;
+			destkey.source = DESTINATION_SOURCE_USERSPACE;
 		}
-	} else {
-		destkey.destination_id = value->id;
-		destkey.source = DESTINATION_SOURCE_USERSPACE;
 	}
 
 	destkey.local_id = *self_uid;
