@@ -45,8 +45,8 @@ const (
 type FdCallback func(*networkapi.FdLookupValue, uint32)
 
 var (
-	// Mutex to prevent concurrent loading
-	loading sync.Mutex
+	// Mutex to prevent concurrent access
+	access sync.Mutex
 
 	// Socket lookup program
 	// Ensure every program has a type defined by the layer3 sensor to force loading
@@ -209,9 +209,6 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 	 * being already populated.
 	 */
 
-	loading.Lock()
-	defer loading.Unlock()
-
 	procSocketFds, err := getExistingSockets()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
@@ -370,6 +367,12 @@ func getSocketsForNs(sockets *map[uint64]networkapi.FdLookupValue, netPath strin
 }
 
 func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map) (networkapi.FdLookupValue, error) {
+	access.Lock()
+	defer access.Unlock()
+	return getAndAddSocketViaProc(pid, fd, protocol, m)
+}
+
+func getAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map) (networkapi.FdLookupValue, error) {
 	if m == nil {
 		m = openConfigMap()
 		if m == nil {
@@ -429,6 +432,9 @@ func GetAndAddSocketViaProc(pid uint32, fd uint32, protocol uint16, m *ebpf.Map)
 }
 
 func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16, hint uint64) {
+	access.Lock()
+	defer access.Unlock()
+
 	m := openConfigMap()
 	if m == nil {
 		return
@@ -467,7 +473,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 			if int16(v.Protocol) == -1 {
 				// This indicates a read error in BPF, so reread via /proc.
 				var err error
-				socket, err = GetAndAddSocketViaProc(pid, fd, protocol, m)
+				socket, err = getAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {
 					logger.GetLogger().WithError(err).WithFields(logrus.Fields{"pid": pid, "fd": fd, "protocol": protocol}).Debug("Socket discovery failed")
 					continue
@@ -485,8 +491,8 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 }
 
 func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int) uint64 {
-	loading.Lock()
-	defer loading.Unlock()
+	access.Lock()
+	defer access.Unlock()
 
 	socket := uint64(0)
 
