@@ -200,6 +200,10 @@ var (
 	// DNS Parser maps
 	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher)
 	DNSParserIPMap    = program.MapBuilder(dnsparser.IPToDomainMapName, IngressDispatcher)
+	DNSEndpointIDMap  = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcher)
+	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcher)
+	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcher)
+	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcher)
 
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
@@ -264,6 +268,10 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	if dnsEnabled {
 		maps = append(maps, DNSParserErrorMap)
 		maps = append(maps, DNSParserIPMap)
+		maps = append(maps, DNSEndpointIDMap)
+		maps = append(maps, DNSDomainMap)
+		maps = append(maps, DNSDomainMapRev)
+		maps = append(maps, DNSGlobalIDMap)
 	}
 
 	if needDispatcher == true {
