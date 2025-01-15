@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -255,6 +256,9 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	}
 	defer endpt.Close()
 
+	var dnsDomainMap dnsparser.DomainMap
+	defer dnsDomainMap.CloseMaps()
+
 	var (
 		dstKey types.DestinationEndpointKey
 		dstVal types.DestinationEndpointValue
@@ -270,7 +274,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var d *tetragon.Destination
 		var ep endpoint.Endpoint
 
-		if dstKey.DestinationSource == types.DestinationSourceBPF {
+		switch dstKey.DestinationSource {
+		case types.DestinationSourceBPF:
 			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
 			// If the IP has resolved to a DNS or K8s object lets
 			// omit the duplicate individual IP. This can happen
@@ -293,14 +298,24 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 					Ip:   ip.String(),
 				}
 			}
-		} else if dstKey.DestinationSource == types.DestinationSourceUser {
+		case types.DestinationSourceUser:
 			var ok bool
 
 			ep, ok = c.LookupID(dstKey.DestinationId)
 			if !ok {
 				continue
 			}
-		} else {
+		case types.DestinationSourceDNS:
+			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warn("Could not retrieve BPF DNS parser domain info")
+				continue
+			}
+			ep = endpoint.Endpoint{
+				Type: endpoint.DnsType,
+				Dns:  domain,
+			}
+		default:
 			logger.GetLogger().WithError(err).Warn("unknown dstKey.DestinationSrc")
 			continue
 		}

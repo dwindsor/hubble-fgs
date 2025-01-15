@@ -373,6 +373,26 @@ func (m *DomainMap) Update(domain string, id uint64) error {
 	return nil
 }
 
+func (m *DomainMap) Domain(id uint64) (string, error) {
+	if m.idToDomainMap == nil {
+		if err := m.loadPinnedIDToDomainMap(); err != nil {
+			return "", fmt.Errorf("failed to open map %s: %w", IDToDomainMapName, err)
+		}
+	}
+
+	key := DNSID{
+		ID:     id,
+		Source: types.DestinationSourceDNS,
+	}
+	domain := make([]byte, dnsMaxNameSize)
+	err := m.idToDomainMap.Lookup(&key, &domain)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup domain for id %d: %w", id, err)
+	}
+	domain, _, _ = bytes.Cut(domain, []byte("\x00"))
+	return string(domain), nil
+}
+
 type GlobalDNSIDMap struct {
 	globalDNSIDMap *ebpf.Map
 }
