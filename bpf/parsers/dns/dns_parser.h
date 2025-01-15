@@ -186,7 +186,7 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 {
 	__u8 first_byte, offset;
 	__u16 type, data_len;
-	struct ip_addr ip;
+	struct ip_addr ip = { 0 };
 	char *data, *data_end, *name;
 
 	data_end = (void *)(long)skb->data_end;
