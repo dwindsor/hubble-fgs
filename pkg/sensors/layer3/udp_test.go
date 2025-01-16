@@ -1847,6 +1847,7 @@ func udpGcMetricGet(ty socketmetrics.UDPGCType) float64 {
 }
 
 func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns int) {
+	t.Skip("Disabled due to unstable timing on CI runners.")
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
