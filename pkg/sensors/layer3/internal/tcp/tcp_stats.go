@@ -176,7 +176,7 @@ func getRunTcpGC(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, netw
 
 		m, err := ebpf.LoadPinnedMap(file, nil)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("file", file).Warn("TCP GC failed to open file")
+			logger.GetLogger().WithError(err).WithField("file", file).Debug("TCP GC failed to open file")
 			return
 		}
 		defer m.Close()
