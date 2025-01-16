@@ -612,10 +612,10 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 		ec.NewProcessCloseChecker("ncClose").
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
-			WithSourceIp(sm.Full("0.0.0.0")).
+			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8086).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("listen")),
+			WithSocketType(sm.Full("accept")),
 	)
 
 	obs := getTcpObserverDisableEvents(t, ctx, false, true, disableClose, disableAccept, disableListen)
