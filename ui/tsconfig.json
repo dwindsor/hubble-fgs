@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "rootDir": "../",
-    "outDir": "dist",
+    "baseUrl": ".",
+    "outDir": "lib",
     "jsx": "react-jsx",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -17,9 +18,10 @@
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
+    "emitDeclarationOnly": true,
     "noEmitOnError": true,
     "resolveJsonModule": true,
-    "tsBuildInfoFile": "./ui/tsconfig.tsbuildinfo",
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
     "strict": true,

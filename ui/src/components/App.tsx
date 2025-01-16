@@ -1,7 +1,6 @@
 import { memo } from "react";
 import css from "./App.module.css";
 import { ConnectionsLines } from "./ConnectionsLines";
-import { useAppState } from "~/state/AppContext";
 import { Endpoints } from "./Endpoints";
 import { Tree } from "./Tree";
 import { useTree } from "~/hooks/useTree";

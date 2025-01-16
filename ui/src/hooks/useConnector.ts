@@ -11,7 +11,11 @@ export function useConnector(ref: React.RefObject<HTMLDivElement | null>) {
   const getXY = useCallback(() => {
     if (!ref.current) return;
     const box = ref.current.getBoundingClientRect();
-    return { x: box.x + 2.5, y: box.y + 2.5 + state.getTreeOffset() };
+    const offset = state.getTreeOffset();
+    return {
+      x: box.x + 2.5 + (offset.x ?? 0),
+      y: box.y + 2.5 + (offset.y ?? 0),
+    };
   }, [ref]);
 
   return useMemo(

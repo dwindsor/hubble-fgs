@@ -4,10 +4,7 @@ import TypedEmitter from "typed-emitter";
 import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
 import { WH, XY } from "~/types";
 import { createAppState } from "./utils";
-import {
-  ApplicationModelEventSchema,
-  file_application_model_v1alpha_application_model,
-} from "@ipa/application_model/v1alpha/application_model_pb";
+import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { create } from "@bufbuild/protobuf";
 import { timestampNow } from "@bufbuild/protobuf/wkt";
 
@@ -18,7 +15,7 @@ export function createAppContext({
   getTreeOffset,
 }: {
   model: ApplicationModelEvent;
-  getTreeOffset: () => number;
+  getTreeOffset: () => { x?: number; y?: number };
 }) {
   const state = createAppState(model);
 
@@ -107,7 +104,7 @@ export const AppContext = createContext(
       nodeName: "",
       time: timestampNow(),
     }),
-    getTreeOffset: () => 0,
+    getTreeOffset: () => ({}),
   })
 );
 
