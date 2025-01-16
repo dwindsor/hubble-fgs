@@ -662,6 +662,8 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	/* Start server before creating obs */
 	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
 	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
@@ -721,6 +723,8 @@ func TestDockerListenConnect4(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
 	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
@@ -1776,6 +1780,8 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	/* Start server before creating obs */
 	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
 	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
@@ -1835,6 +1841,8 @@ func TestDockerListenConnect6(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
 	time.Sleep(1 * time.Second)
 	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8087")
