@@ -3690,7 +3690,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ----- | ---- | ----- | ----------- |
 | Binary | [string](#string) |  |  |
 | Args | [string](#string) |  |  |
-| id | [uint32](#uint32) |  |  |
+| id | [uint64](#uint64) |  |  |
 | Depth | [uint32](#uint32) |  |  |
 | children | [ProcessUUID](#tetragon-ProcessUUID) | repeated |  |
 

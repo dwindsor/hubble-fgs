@@ -67,11 +67,16 @@ struct {
 	__type(value, struct process_tree_binary_uid_key);
 } process_tree_binary_uid_key_map SEC(".maps");
 
+struct tree_id {
+	uint32_t uid;
+	uint32_t cpu;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
 	__uint(key_size, sizeof(struct process_tree_binary_uid_key));
-	__uint(value_size, sizeof(uint32_t));
+	__uint(value_size, sizeof(struct tree_id));
 } process_tree_binary_uid_map SEC(".maps");
 
 /* This map is redundant and will be removed. Its used for shorthand
@@ -83,15 +88,15 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(uint32_t));
+	__uint(key_size, sizeof(struct tree_id));
 	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
 } process_tree_uid_binary_map SEC(".maps");
 
 struct process_tree_key {
 	__u64 nsid;
 	__u64 depth;
-	__u64 self;
-	__u64 path[8];
+	struct tree_id self;
+	struct tree_id path[8];
 };
 
 struct process_tree_value {
@@ -157,7 +162,7 @@ struct {
  * pods will have multiple stat records.
  */
 struct destination_endpoint_key {
-	uint64_t local_id;
+	struct tree_id local_id;
 	uint64_t local_nsid;
 	uint64_t destination_id; // unwrapped endpoint_id_value
 	uint64_t source;
@@ -207,8 +212,7 @@ struct listen_endpoint_key {
 };
 
 struct listen_endpoint_value {
-	__u32 self;
-	__u32 pad;
+	struct tree_id self;
 	__u64 accepted;
 	__u64 tx_bytes;
 	__u64 rx_bytes;

@@ -107,7 +107,7 @@ message GetEndpointMapRequest {
 message ProcessUUID {
 	string Binary = 1;
 	string Args = 2;
-	uint32 id = 3;
+	uint64 id = 3;
 	uint32 Depth = 4;
 	repeated ProcessUUID children = 5;
 }

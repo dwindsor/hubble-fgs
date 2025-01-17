@@ -105,7 +105,7 @@ type EndpointIdValue struct {
 }
 
 type ProcessTreeBinaryUUIDKey struct {
-	Id uint32
+	Id uint64
 }
 
 type ProcessTreeBinaryUUIDValue struct {
@@ -201,10 +201,10 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	for iter.Next(&keyTk, &valTk) {
 		v := indexedUUID[keyTk.Self]
 		value := tetragon.ProcessUUID{
-			Binary: v.Binary,
-			Args: v.Args,
-			Id: v.Id,
-			Depth: v.Depth,
+			Binary:   v.Binary,
+			Args:     v.Args,
+			Id:       v.Id,
+			Depth:    v.Depth,
 			Children: v.Children,
 		}
 		children := make([]*tetragon.ProcessUUID, 0)
@@ -543,7 +543,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			uidValue   ProcessTreeBinaryUUIDValue
 		)
 
-		processKey.Id = uint32(key.Self)
+		processKey.Id = key.Self
 		err := uidMap.Lookup(&processKey, &uidValue)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("Could not map self UUID to Path")

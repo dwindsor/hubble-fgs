@@ -55,22 +55,22 @@ static int atomic_xchg(__u64 *cnt, __u64 val)
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
 }
 
-static __u64 atomic_fetch_add(__u64 *v, __u64 val)
-{
-	return __atomic_fetch_add(v, val, __ATOMIC_SEQ_CST);
-}
-
-static __u32 get_new_tree_id()
+static struct tree_id get_new_tree_id()
 {
 	u32 zero = 0;
-	u64 *id, n;
+	u64 *counter;
+	struct tree_id id;
 
-	id = map_lookup_elem(&tg_tree_id, &zero);
-	if (!id)
-		return 0;
+	counter = map_lookup_elem(&tg_tree_id, &zero);
+	if (!counter) {
+		id.uid = 0;
+		return id;
+	}
 
-	n = atomic_fetch_add(id, 1);
-	return n + 1;
+	id.uid = ++(*counter);
+	id.cpu = get_smp_processor_id();
+	bpf_printk("ID: %d.%d\n", id.cpu, id.uid);
+	return id;
 }
 
 int __insert_process_tree(__u32 pid, __u64 cgid)
@@ -80,7 +80,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
-	__u32 *self_uid;
+	struct tree_id id, *self_uid;
 	__u64 zero = 0;
 	__u64 *nsid;
 
@@ -99,12 +99,11 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 
-	__u32 id = 0;
 	if (self_uid) {
 		id = *self_uid;
 	} else {
 		id = get_new_tree_id();
-		if (!id)
+		if (!id.uid)
 			return 0;
 		map_update_elem(&process_tree_uid_binary_map, &id, tree_key, 0);
 		map_update_elem(&process_tree_binary_uid_map, tree_key, &id, 0);
@@ -120,14 +119,14 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		k->depth = index + 1;
 	} else {
 		k->depth = 0;
-		k->path[0] = 0;
-		k->path[1] = 0;
-		k->path[2] = 0;
-		k->path[3] = 0;
-		k->path[4] = 0;
-		k->path[5] = 0;
-		k->path[6] = 0;
-		k->path[7] = 0;
+		k->path[0].uid = 0;
+		k->path[1].uid = 0;
+		k->path[2].uid = 0;
+		k->path[3].uid = 0;
+		k->path[4].uid = 0;
+		k->path[5].uid = 0;
+		k->path[6].uid = 0;
+		k->path[7].uid = 0;
 	}
 
 	k->self = id;
@@ -198,7 +197,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
-	__u32 *self_uid;
+	struct tree_id *self_uid;
 	int zero = 0;
 	__u64 *nsid;
 
@@ -261,7 +260,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
-	__u32 *self_uid;
+	struct tree_id *self_uid;
 	int zero = 0;
 	__u64 *nsid;
 
@@ -367,7 +366,8 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
 
-		destkey.local_id = 0;
+		destkey.local_id.uid = 0;
+		destkey.local_id.cpu = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
@@ -477,7 +477,8 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 
-	key.local_id = 0;
+	key.local_id.uid = 0;
+	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
@@ -529,7 +530,8 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->rx_bytes, len);
 
-	key.local_id = 0;
+	key.local_id.uid = 0;
+	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		return SK_PASS;
