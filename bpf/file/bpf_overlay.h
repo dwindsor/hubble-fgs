@@ -2,14 +2,10 @@
 #define __OVERLAY_H__
 
 #include "vmlinux.h"
+#include "vmlinux_overlay.h"
 #include "api.h"
 #include "bpf_tracing.h"
 #include "bpf_core_read.h"
-
-struct ovl_kstat {
-	u64 ino;
-	dev_t dev;
-};
 
 static inline __attribute__((always_inline)) struct inode *d_inode(const struct dentry *dentry)
 {

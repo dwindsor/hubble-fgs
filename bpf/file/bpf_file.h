@@ -166,11 +166,6 @@ volatile const __u32 PATH_BASED_MATCHER = 0;
 
 #define INVALID_RULE_ID 0xffffffff // UINT32_MAX
 
-struct mnt_idmap {
-	struct user_namespace *owner;
-	refcount_t count;
-};
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct file_retprobe_key);

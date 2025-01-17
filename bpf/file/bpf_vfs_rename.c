@@ -250,17 +250,6 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	return 0;
 }
 
-struct renamedata {
-	struct user_namespace *old_mnt_userns;
-	struct inode *old_dir;
-	struct dentry *old_dentry;
-	struct user_namespace *new_mnt_userns;
-	struct inode *new_dir;
-	struct dentry *new_dentry;
-	struct inode **delegated_inode;
-	unsigned int flags;
-} __attribute__((preserve_access_index));
-
 #ifdef __LARGE_BPF_PROG
 SEC("kprobe/vfs_rename/512")
 int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)

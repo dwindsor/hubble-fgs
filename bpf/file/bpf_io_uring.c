@@ -17,11 +17,12 @@ struct io_ring_ctx___pre58 {
 // This function gets the pointer to mm_struct for different kernel versions.
 static inline __attribute__((always_inline)) struct mm_struct *get_mm_struct(struct io_ring_ctx *arg)
 {
-	if (bpf_core_field_exists(arg->sqo_mm)) {
-		struct io_ring_ctx___pre58 *ctx = (struct io_ring_ctx___pre58 *)arg;
+	struct io_ring_ctx___pre58 *ctx_pre58 = (struct io_ring_ctx___pre58 *)arg;
+
+	if (bpf_core_field_exists(ctx_pre58->sqo_mm)) {
 		struct mm_struct *mm;
 
-		probe_read_kernel(&mm, sizeof(mm), _(&ctx->sqo_mm));
+		probe_read_kernel(&mm, sizeof(mm), _(&ctx_pre58->sqo_mm));
 		return mm;
 	} else {
 		struct io_ring_ctx___post58 *ctx = (struct io_ring_ctx___post58 *)arg;

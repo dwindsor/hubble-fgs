@@ -120,6 +120,11 @@ struct full_path {
 	char path[256];
 };
 
+struct bpf_lpm_trie_key {
+	__u32 prefixlen;
+	__u8 data[0];
+};
+
 struct lpm_key {
 	struct bpf_lpm_trie_key key;
 	char data[256];

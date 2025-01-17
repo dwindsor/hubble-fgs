@@ -20,11 +20,6 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-enum cgroup_bpf_attach_type {
-	CGROUP_INET4_POST_BIND,
-	CGROUP_INET6_POST_BIND
-};
-
 __attribute__((section("kprobe/__cgroup_bpf_run_filter_sk"), used)) int
 tg_udp_bind_sock(struct pt_regs *ctx)
 {
