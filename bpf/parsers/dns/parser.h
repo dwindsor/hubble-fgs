@@ -13,97 +13,10 @@
 
 #include "vmlinux.h"
 #include "bpf_task.h"
-#include "../../lib/address_family.h"
-#include "../../lib/config.h"
 
-#define DNS_PORT     53
-#define DNS_HDR_SIZE 12
-#define A_RECORD     1
-#define AAAA_RECORD  28
-
-#define DNS_MAX_NAME_SIZE  255
-#define DNS_MAX_LABEL_SIZE 63
-
-// https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.4
-#define UDP_MAX_SIZE 512
-
-// Ethernet header (14 bytes) are already parsed in skb and the IP headers size
-// can be from 20 to 60 bytes.
-#define SKB_DATA_MAX_SIZE UDP_MAX_SIZE + 60
-
-// A DNS name can contain MAX_NUMBER_LABEL labels. These would be of length one,
-// so 127 bytes needed to set length to 1, 127 bytes for the actual char and a
-// zero at the end.
-#define MAX_NUMBER_LABEL 127
-
-// A DNS A answer will contain at minimum a 2 bytes compressed name, 10 bytes
-// for type, class, TTL, data_length and 4 bytes for the IPv4 address.
-#define MIN_ANSWER_LEN 16
-
-// Let's compute how many answers a UDP DNS query can contain.
-// ---
-// Protocol overhead:
-// UDP + DNS headers
-// 8   + 12          = 20 bytes
-// ---
-// One A query:
-// minimal name + type + class
-// 3              2      2     = 7 bytes
-// ---
-// Typical answer is:
-// Name (compressed) + Type + Class + TTL + Length + IPv4 Addresss
-// 2                 + 2    + 2     + 4   + 2      + 4             = 16 bytes
-// ---
-// UDP_MAX_SIZE(512) - (20 + 7) = 485
-// 485 / 16 = 30,3125
-#define MAX_DNS_ANSWERS_UDP 30
-
-// The first two bits of a compressed message are ones. This allows a pointer to
-// be distinguished from a label, since the label must begin with two zero bits
-// because labels are restricted to 63 octets or less.
-#define COMPRESSED_MSG_MASK 0b11000000
-
-#define MAX_ERROR_CODE 40
-
-#define DNS_PARSER_SKIP	   1
-#define DNS_PARSER_SUCCESS 0
-
-struct dnshdr {
-	__u16 id;
-	__u16 flags;
-	__u16 qdcount;
-	__u16 ancount;
-	__u16 nscount;
-	__u16 arcount;
-};
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, __u32);
-	// we can't tell the verifier that (name_offset + label_length < 255) so we need 63 extra bytes.
-	__type(value, char[DNS_MAX_NAME_SIZE + DNS_MAX_LABEL_SIZE]);
-} name_heap_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 56); // This is an arbitrary number for testing, TBD
-	__type(key, struct ip_addr);
-	__type(value, char[DNS_MAX_NAME_SIZE]);
-} tg_dns_ip_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_ERROR_CODE);
-	__type(key, __u32);
-	__type(value, __u32);
-} tg_dns_error_map SEC(".maps");
-
-struct ip_addr {
-	uint64_t addr[2];
-	uint8_t af_inet6;
-	uint8_t pad[7];
-};
+#include "dns.h"
+#include "lib/address_family.h"
+#include "lib/config.h"
 
 uint32_t zero = 0;
 

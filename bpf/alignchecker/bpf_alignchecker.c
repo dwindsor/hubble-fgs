@@ -8,8 +8,8 @@
 #include "lib/file.h"
 #include "networking/l3/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
-#include "parsers/dns/dns_parser.h"
 #include "process/process_endpoint.h"
+#include "parsers/dns/dns.h"
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;

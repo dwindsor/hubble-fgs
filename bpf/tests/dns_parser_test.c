@@ -5,7 +5,7 @@
 
 char _license[] __attribute__((section("license"), used)) = "Dual BSD/GPL";
 
-#include "../parsers/dns/dns_parser.h"
+#include "parsers/dns/parser.h"
 
 __attribute__((section("cgroup_skb/egress"), used)) int
 test_dns_parser(struct __sk_buff *skb)
