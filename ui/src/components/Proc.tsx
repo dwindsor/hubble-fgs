@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import debounce from "lodash/debounce";
 import { useAppState } from "~/state/AppContext";
 import { ApplicationProcess } from "~/proto";
@@ -57,17 +57,31 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   useEffect(() => state.onTreeChanged(debouncedUpdate), [debouncedUpdate]);
 
+  const highlight = useCallback(() => {
+    state.toggleProcHighlight(props.proc, true);
+  }, [props.proc]);
+
+  const unhighlight = useCallback(() => {
+    state.toggleProcHighlight(props.proc, false);
+  }, [props.proc]);
+
   const children = props.proc.children ?? [];
 
   return (
-    <li className={clsx(css.proc, props.className)}>
+    <li
+      className={clsx(css.proc, props.className)}
+      onMouseEnter={highlight}
+      onMouseLeave={unhighlight}
+    >
       {children.length ? (
         <Collapsible
           summary={({ opened, onClick }) => (
             <summary className={css.procLine} onClick={onClick}>
               <span>
                 {props.proc.name}{" "}
-                <span className={css.arguments}>{props.proc.arguments}</span>
+                <span className={css.arguments} title={props.proc.arguments}>
+                  {props.proc.arguments}
+                </span>
               </span>
               {!opened && <Statistic stat={stat} />}
               {hasConnections && (
@@ -84,9 +98,11 @@ export const Proc = memo(function Proc(props: ProcProps) {
         </Collapsible>
       ) : (
         <div className={css.procLine}>
-          <span>
+          <span className={css.procContent}>
             {props.proc.name}{" "}
-            <span className={css.arguments}>{props.proc.arguments}</span>
+            <span className={css.arguments} title={props.proc.arguments}>
+              {props.proc.arguments}
+            </span>
             <Statistic stat={stat} />
           </span>
           {hasConnections && (

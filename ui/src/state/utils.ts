@@ -1,9 +1,16 @@
-import { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
+import {
+  ConnectionsMap,
+  EndpointKind,
+  EndpointKindUnion,
+  EndpointsMap,
+  ProcessesMap,
+} from "~/types";
 import {
   ApplicationConnection,
   ApplicationModelEvent,
   ApplicationProcess,
 } from "~/proto";
+import { inferEndpointKind } from "~/utils/endpoints";
 
 export type Stat = { bytesSent: number };
 export type Stats = ReturnType<typeof createEmptyStat>;
@@ -43,7 +50,7 @@ export function createAppState(model?: ApplicationModelEvent): {
       });
       bytesSent += procBytesSent;
       endpoints.forEach((endpoint) => {
-        endpointsMap.set(endpoint, {});
+        endpointsMap.set(endpoint, { kind: inferEndpointKind(endpoint) });
 
         const connectionEntry = connectionsMap.get(endpoint) ?? new Set();
         connectionEntry.add(proc);

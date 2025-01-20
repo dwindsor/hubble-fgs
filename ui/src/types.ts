@@ -4,6 +4,12 @@ export type XY = { x: number; y: number };
 
 export type WH = { width: number; height: number };
 
+export type Line = { from: XY; to: XY };
+
+export type ConnectionLine = Line & { color: string };
+
+export type Connector = XY & { color: string };
+
 export type XYWH = XY & WH;
 
 export type ProcessesMap = WeakMap<ApplicationProcess, ProcessInfo>;
@@ -17,9 +23,22 @@ export type ProcessInfo = {
 export type EndpointsMap = Map<string, EndpointInfo>;
 
 export type EndpointInfo = {
+  kind: EndpointKindUnion;
   visible?: boolean | undefined;
   xy?: XY | undefined;
 };
+
+export const EndpointKind = {
+  Ip: "inner-ip",
+  OuterDns: "outer-dns",
+  InnerDns: "inner-dns",
+  K8s: "k8s",
+  HostMetadataService: "host-metadata-service",
+  Other: "other",
+} as const;
+
+export type EndpointKindUnion =
+  (typeof EndpointKind)[keyof typeof EndpointKind];
 
 export type ConnectionsMap = Map<
   string /* endpoint */,

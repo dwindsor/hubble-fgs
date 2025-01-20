@@ -19,16 +19,29 @@ export function createAppContext({
 }) {
   const state = createAppState(model);
 
-  enum EmitterEventKind {
-    AppSizeChanged = "app-size-changed",
-    TreeChanged = "tree-changed",
-    RedrawConnectionsLines = "redraw-connections-lines",
-  }
+  const EmitterEventKind = {
+    AppSizeChanged: "app-size-changed",
+    TreeChanged: "tree-changed",
+    RedrawConnectionsLines: "redraw-connections-lines",
+    ToggleEndpointHighlight: "toggle-endpoint-highlight",
+    ToggleProcHighlight: "toggle-process-highlight",
+  } as const;
+
+  type EmitterEventKind =
+    (typeof EmitterEventKind)[keyof typeof EmitterEventKind];
 
   const emitter = new Emitter().setMaxListeners(4096) as TypedEmitter<{
     [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
     [EmitterEventKind.TreeChanged]: () => void;
     [EmitterEventKind.RedrawConnectionsLines]: () => void;
+    [EmitterEventKind.ToggleEndpointHighlight]: (
+      endpoint: string,
+      state: boolean
+    ) => void;
+    [EmitterEventKind.ToggleProcHighlight]: (
+      proc: ApplicationProcess,
+      state: boolean
+    ) => void;
   }>;
 
   const createSubscriber = <Args extends any[]>(kind: EmitterEventKind) => {
@@ -52,10 +65,10 @@ export function createAppContext({
     const cur = state.processesMap.get(proc);
     if (!cur) {
       throw new Error(
-        "All processes excpected to be available in processes map"
+        "All processes expected to be available in processes map"
       );
     }
-    state.processesMap.set(proc, { visible, xy, endpoints: cur.endpoints });
+    state.processesMap.set(proc, { ...cur, visible, xy });
     emitter.emit(EmitterEventKind.RedrawConnectionsLines);
   };
 
@@ -64,9 +77,33 @@ export function createAppContext({
     visible: boolean | undefined,
     xy: XY | undefined
   ) => {
-    state.endpointsMap.set(endpoint, { visible, xy });
+    const cur = state.endpointsMap.get(endpoint);
+    if (!cur) {
+      throw new Error(
+        "All endpoints expected to be available in endpoints map"
+      );
+    }
+    state.endpointsMap.set(endpoint, { ...cur, visible, xy });
     emitter.emit(EmitterEventKind.RedrawConnectionsLines);
   };
+
+  let highlightedEndpoint: string | null = null;
+  const toggleEndpontHighlight = (endpoint: string, state: boolean) => {
+    highlightedEndpoint = state ? endpoint : null;
+    emitter.emit(EmitterEventKind.ToggleEndpointHighlight, endpoint, state);
+  };
+  const onToggleEndpointHighlight = createSubscriber(
+    EmitterEventKind.ToggleEndpointHighlight
+  );
+
+  let highlightedProc: ApplicationProcess | null = null;
+  const toggleProcHighlight = (proc: ApplicationProcess, state: boolean) => {
+    highlightedProc = state ? proc : null;
+    emitter.emit(EmitterEventKind.ToggleProcHighlight, proc, state);
+  };
+  const onToggleProcHighlight = createSubscriber(
+    EmitterEventKind.ToggleProcHighlight
+  );
 
   const changeTree = () => {
     emitter.emit(EmitterEventKind.TreeChanged);
@@ -94,6 +131,12 @@ export function createAppContext({
     onTreeSizeChanged: onAppSizeChanged,
     onTreeChanged,
     onRedrawConnectionsLines,
+    toggleEndpontHighlight,
+    onToggleEndpointHighlight,
+    getHighlightedEndpoint: () => highlightedEndpoint,
+    toggleProcHighlight,
+    onToggleProcHighlight,
+    getHighlightedProc: () => highlightedProc,
   };
 }
 

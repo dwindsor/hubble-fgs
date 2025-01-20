@@ -1,10 +1,14 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
-import { WH } from "~/types";
+import { ConnectionLine, Connector, Line, WH, XY } from "~/types";
 
 export interface Props {
   size: WH;
 }
+
+const LINE_COLOR = "#aaa";
+const HIGHLIGHTED_LINE_COLOR = "#666";
+const MUTED_LINE_COLOR = "#ddd";
 
 export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   const state = useAppState();
@@ -20,30 +24,69 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const foregroundLines: ConnectionLine[] = [];
+    const foregroundConnectors: Connector[] = [];
+    const backgroundLines: ConnectionLine[] = [];
+    const backgroundConnectors: Connector[] = [];
+
+    const highlightedEndpoint = state.getHighlightedEndpoint();
+    const highlightedProc = state.getHighlightedProc();
     state.connectionsMap.forEach((procs, endpoint) => {
       const endpointInfo = state.endpointsMap.get(endpoint);
+
+      if (!endpointInfo?.xy || !endpointInfo?.visible) {
+        return;
+      }
+
+      let color = highlightedEndpoint
+        ? endpoint === highlightedEndpoint
+          ? HIGHLIGHTED_LINE_COLOR
+          : MUTED_LINE_COLOR
+        : LINE_COLOR;
+
+      const x2 = endpointInfo.xy.x;
+      const y2 = endpointInfo.xy.y;
 
       procs.forEach((proc) => {
         const procInfo = state.processesMap.get(proc);
 
-        if (
-          !procInfo?.xy ||
-          !endpointInfo?.xy ||
-          !procInfo?.visible ||
-          !endpointInfo?.visible
-        ) {
+        if (!procInfo?.xy || !procInfo?.visible) {
           return;
         }
+
+        color = highlightedProc
+          ? proc === highlightedProc
+            ? HIGHLIGHTED_LINE_COLOR
+            : MUTED_LINE_COLOR
+          : color;
 
         const x1 = procInfo.xy.x;
         const y1 = procInfo.xy.y;
 
-        const x2 = endpointInfo.xy.x;
-        const y2 = endpointInfo.xy.y;
+        const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
+        const procConnector = { x: x1, y: y1, color };
 
-        drawLine(ctx, x1, y1, x2, y2);
+        if (color === HIGHLIGHTED_LINE_COLOR) {
+          foregroundLines.push(line);
+          foregroundConnectors.push(procConnector);
+        } else {
+          backgroundLines.push(line);
+          backgroundConnectors.push(procConnector);
+        }
       });
+
+      const endpointConnector = { x: x2, y: y2, color };
+      if (color === HIGHLIGHTED_LINE_COLOR) {
+        foregroundConnectors.push(endpointConnector);
+      } else {
+        backgroundConnectors.push(endpointConnector);
+      }
     });
+
+    backgroundLines.forEach((line) => drawLine(ctx, line));
+    backgroundConnectors.forEach((connector) => drawConnector(ctx, connector));
+    foregroundLines.forEach((line) => drawLine(ctx, line));
+    foregroundConnectors.forEach((connector) => drawConnector(ctx, connector));
   }, []);
 
   useEffect(() => {
@@ -59,20 +102,39 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     return state.onRedrawConnectionsLines(draw);
   }, [draw]);
 
+  useEffect(() => {
+    return state.onToggleEndpointHighlight(draw);
+  }, [draw]);
+
+  useEffect(() => {
+    return state.onToggleProcHighlight(draw);
+  }, [draw]);
+
   return <canvas ref={ref} />;
 });
 
-function drawLine(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-) {
+function drawLine(ctx: CanvasRenderingContext2D, line: ConnectionLine) {
   ctx.beginPath();
-  ctx.strokeStyle = "#666";
-  ctx.moveTo(x1, y1);
-  ctx.bezierCurveTo(x2 - 100, y1, x2 - 100, y2, x2, y2);
+  ctx.strokeStyle = line.color;
+  ctx.lineWidth = 1.25;
+  ctx.moveTo(line.from.x, line.from.y);
+  ctx.bezierCurveTo(
+    line.to.x - 100,
+    line.from.y,
+    line.to.x - 100,
+    line.to.y,
+    line.to.x,
+    line.to.y
+  );
   ctx.stroke();
   ctx.closePath();
+}
+
+function drawConnector(ctx: CanvasRenderingContext2D, connector: Connector) {
+  ctx.beginPath();
+  ctx.arc(connector.x, connector.y, 2, 0, 2 * Math.PI);
+  ctx.fillStyle = connector.color;
+  ctx.fill();
+  ctx.strokeStyle = connector.color;
+  ctx.stroke();
 }

@@ -1,3 +1,7 @@
+.proc {
+  cursor: default;
+}
+
 .proc:has(> div)::before {
   border-style: solid;
   border-image-slice: 1;
@@ -16,7 +20,16 @@
   align-items: center;
 }
 
+.procContent {
+  display: flex;
+}
+
 .arguments {
+  display: block;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
   margin-left: 7px;
   color: #999;
 }
@@ -26,6 +39,4 @@
   margin-right: 10px;
   width: 5px;
   height: 5px;
-  border-radius: 50%;
-  background: #999;
 }

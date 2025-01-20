@@ -1,22 +1,62 @@
 .endpoint {
   display: flex;
-  align-items: center;
+  cursor: default;
+  padding-top: 5px;
+  padding-bottom: 5px;
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.icon {
+  position: relative;
+  top: 0;
+  align-self: flex-start;
+  margin-right: 7px;
 }
 
 .connector {
   position: relative;
+  top: 5px;
   margin-right: 10px;
-  width: 5px;
-  height: 5px;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #999;
-  }
+.title {
+  padding: 2px 0 2px 5px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(to right, #ebebeb, #fff);
+}
+
+.port {
+  padding: 2px 5px 2px 0;
+}
+
+.namespace {
+  margin-left: 5px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background-color: #e8f4fb;
+}
+
+.k8sEntityName {
+  background: linear-gradient(to right, #cbe7fa, #fff);
+}
+
+.outerDns {
+  background: linear-gradient(to right, #e2d6ff, #fff);
+}
+
+.k8sEntityType {
+  margin-left: 5px;
+  font-size: 0.9em;
+  color: #999;
+}
+
+.separator {
+  color: #999;
 }

@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from "react";
 import { Endpoint } from "./Endpoint";
 import { AppState, useAppState } from "~/state/AppContext";
+import { EndpointKind, EndpointKindUnion } from "~/types";
 
 export const Endpoints = memo(function Endpoints() {
   const endpoints = useEndpoints();
@@ -42,5 +43,25 @@ function createEndpoints(state: AppState): string[] {
     });
   }
 
-  return Array.from(endpoints).sort((a, b) => a.localeCompare(b));
+  const order = [
+    EndpointKind.OuterDns,
+    EndpointKind.K8s,
+    EndpointKind.HostMetadataService,
+    EndpointKind.Ip,
+    EndpointKind.InnerDns,
+  ].reduce((acc, item, idx) => {
+    acc[item] = idx;
+    return acc;
+  }, {} as { [key in EndpointKindUnion]: number });
+
+  return Array.from(endpoints).sort((a, b) => {
+    const x = state.endpointsMap.get(a)!;
+    const y = state.endpointsMap.get(b)!;
+
+    if (x.kind !== y.kind) {
+      return order[x.kind] - order[y.kind];
+    }
+
+    return a.localeCompare(b);
+  });
 }
