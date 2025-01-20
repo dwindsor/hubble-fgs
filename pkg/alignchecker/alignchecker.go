@@ -7,7 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
-	"github.com/isovalent/hubble-fgs/pkg/model/server"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -63,17 +63,17 @@ func CheckStructAlignments(pathToObj string) error {
 		"fd_lookup_config": {networkapi.FdLookupValue{}},
 
 		// App model
-		"msg_execve_key":              {server.ProcessExecveKey{}},
-		"process_tree_value":          {server.ProcessTreeValue{}},
-		"process_tree_key":            {server.ProcessTreeKey{}},
-		"destination_endpoint_key":    {server.DestinationEndpointKey{}},
-		"destination_endpoint_value":  {server.DestinationEndpointValue{}},
-		"listen_endpoint_key":         {server.ListenKey{}},
-		"listen_endpoint_value":       {server.ListenValue{}},
-		"endpoint_id_key":             {server.EndpointIdKey{}},
-		"endpoint_id_value":           {server.EndpointIdValue{}},
-		"process_tree_binary_uid_key": {server.ProcessTreeBinaryUUIDValue{}},
-		"tree_id":                     {server.TreeId{}},
+		"msg_execve_key":              {types.ProcessExecveKey{}},
+		"process_tree_value":          {types.ProcessTreeValue{}},
+		"process_tree_key":            {types.ProcessTreeKey{}},
+		"destination_endpoint_key":    {types.DestinationEndpointKey{}},
+		"destination_endpoint_value":  {types.DestinationEndpointValue{}},
+		"listen_endpoint_key":         {types.ListenKey{}},
+		"listen_endpoint_value":       {types.ListenValue{}},
+		"endpoint_id_key":             {types.EndpointIdKey{}},
+		"endpoint_id_value":           {types.EndpointIdValue{}},
+		"process_tree_binary_uid_key": {types.ProcessTreeBinaryUUIDValue{}},
+		"tree_id":                     {types.TreeId{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)

@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -34,92 +35,6 @@ const (
 	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
 )
-
-type ProcessExecveKey struct {
-	Pid   uint32
-	Pad   uint32
-	Ktime uint64
-}
-
-type ProcessTreeKey struct {
-	CgroupId uint64
-	Depth    uint64
-	Self     uint64
-	Path     [8]uint64
-}
-
-type ProcessTreeValue struct {
-	KtimeFirstExec uint64
-	KtimeLastExec  uint64
-	Pad0           [6]uint8
-	InContainer    bool
-	InInitTree     bool
-}
-
-const (
-	DestinationSourceUknown = 0
-	DestinationSourceBpf    = 1
-	DestinationSourceUser   = 2
-)
-
-type DestinationEndpointKey struct {
-	LocalId           uint64
-	LocalNSId         uint64
-	DestinationId     uint64
-	DestinationSource uint64
-	DestinationPort   uint64
-}
-
-type DestinationEndpointValue struct {
-	TxQuota        uint64
-	TxLimit        uint64
-	TxDrops        uint64
-	KtimeLastReset uint64
-	KtimeTxReset   uint64
-	TxBytes        uint64
-	RxBytes        uint64
-	Pad0           uint64
-	IPv6           uint64
-	KtimeCreate    uint64
-	AddrCreate     [2]uint64
-	Port           uint64
-}
-
-type TreeId struct {
-	Uid uint32
-	Cpu uint32
-}
-
-type ListenKey struct {
-	Addr [2]uint64
-	Nsid uint64
-	Port uint64
-}
-
-type ListenValue struct {
-	Self     TreeId
-	Accepted uint64
-	TxBytes  uint64
-	RxBytes  uint64
-	Pad      uint64
-}
-
-type EndpointIdKey struct {
-	Addr [2]uint64
-}
-
-type EndpointIdValue struct {
-	Id uint64
-}
-
-type ProcessTreeBinaryUUIDKey struct {
-	Id uint64
-}
-
-type ProcessTreeBinaryUUIDValue struct {
-	Binary [256]byte
-	Args   [256]byte
-}
 
 type Server struct {
 }
@@ -135,8 +50,8 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 	defer m.Close()
 
 	var (
-		k DestinationEndpointKey
-		v DestinationEndpointValue
+		k types.DestinationEndpointKey
+		v types.DestinationEndpointValue
 	)
 
 	iter := m.Iterate()
@@ -171,8 +86,8 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	defer uuid.Close()
 
 	var (
-		key   ProcessTreeBinaryUUIDKey
-		value ProcessTreeBinaryUUIDValue
+		key   types.ProcessTreeBinaryUUIDKey
+		value types.ProcessTreeBinaryUUIDValue
 	)
 
 	iter := uuid.Iterate()
@@ -201,8 +116,8 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	defer m.Close()
 
 	var (
-		keyTk ProcessTreeKey
-		valTk ProcessTreeValue
+		keyTk types.ProcessTreeKey
+		valTk types.ProcessTreeValue
 	)
 
 	iter = m.Iterate()
@@ -255,8 +170,8 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	defer endpt.Close()
 
 	var (
-		endptIdKey   EndpointIdKey
-		endptIdValue EndpointIdValue
+		endptIdKey   types.EndpointIdKey
+		endptIdValue types.EndpointIdValue
 	)
 
 	for i, e := range endpoints {
@@ -294,8 +209,8 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	}
 
 	var (
-		listenKey   ListenKey
-		listenValue ListenValue
+		listenKey   types.ListenKey
+		listenValue types.ListenValue
 	)
 
 	liter := listen.Iterate()
@@ -341,8 +256,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	defer endpt.Close()
 
 	var (
-		dstKey DestinationEndpointKey
-		dstVal DestinationEndpointValue
+		dstKey types.DestinationEndpointKey
+		dstVal types.DestinationEndpointValue
 	)
 
 	dstList := make(map[uint64][]*tetragon.Destination)
@@ -355,7 +270,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var d *tetragon.Destination
 		var ep endpoint.Endpoint
 
-		if dstKey.DestinationSource == DestinationSourceBpf {
+		if dstKey.DestinationSource == types.DestinationSourceBpf {
 			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
 			// If the IP has resolved to a DNS or K8s object lets
 			// omit the duplicate individual IP. This can happen
@@ -378,7 +293,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 					Ip:   ip.String(),
 				}
 			}
-		} else if dstKey.DestinationSource == DestinationSourceUser {
+		} else if dstKey.DestinationSource == types.DestinationSourceUser {
 			var ok bool
 
 			ep, ok = c.LookupID(dstKey.DestinationId)
@@ -481,8 +396,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	defer m.Close()
 
 	var (
-		key ProcessTreeKey
-		val ProcessTreeValue
+		key types.ProcessTreeKey
+		val types.ProcessTreeValue
 	)
 
 	uidMap, err := ebpf.LoadPinnedMap(binaryFile, nil)
@@ -547,8 +462,8 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		}
 
 		var (
-			processKey ProcessTreeBinaryUUIDKey
-			uidValue   ProcessTreeBinaryUUIDValue
+			processKey types.ProcessTreeBinaryUUIDKey
+			uidValue   types.ProcessTreeBinaryUUIDValue
 		)
 
 		processKey.Id = key.Self

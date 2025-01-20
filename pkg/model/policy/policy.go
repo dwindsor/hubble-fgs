@@ -10,7 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
-	model "github.com/isovalent/hubble-fgs/pkg/model/server"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 )
 
@@ -62,8 +62,8 @@ func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset 
 // the update. However, this is a heavy operation to remove a quotas so we
 // accept it.
 func ClearDnsQuota() error {
-	var dstVal model.DestinationEndpointValue
-	var dstKey model.DestinationEndpointKey
+	var dstVal types.DestinationEndpointValue
+	var dstKey types.DestinationEndpointKey
 
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)

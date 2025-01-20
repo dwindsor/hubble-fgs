@@ -17,7 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 
-	model "github.com/isovalent/hubble-fgs/pkg/model/server"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 type quotaPolicy struct {
@@ -35,7 +35,7 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func addSingleDnsQuota(src *model.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset uint64) error {
+func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset uint64) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
@@ -44,14 +44,14 @@ func addSingleDnsQuota(src *model.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
 		return err
 	}
-	key := &model.DestinationEndpointKey{
+	key := &types.DestinationEndpointKey{
 		LocalId:           src.Self,
 		DestinationId:     dst,
-		DestinationSource: model.DestinationSourceUser,
+		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   0,
 	}
 
-	value := &model.DestinationEndpointValue{
+	value := &types.DestinationEndpointValue{
 		TxQuota:        0,
 		TxLimit:        quota,
 		TxDrops:        0,
@@ -113,7 +113,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
 }
 
-func createSrcKey(namespace, wl, kind string) (*model.ProcessTreeKey, error) {
+func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	var nsId policyfilter.StateID
 	if namespace != "" {
 		var ok bool
@@ -142,7 +142,7 @@ func createSrcKey(namespace, wl, kind string) (*model.ProcessTreeKey, error) {
 		nsId = policyfilter.StateID(0)
 	}
 
-	return &model.ProcessTreeKey{
+	return &types.ProcessTreeKey{
 		CgroupId: uint64(nsId),
 		Depth:    0,
 		Self:     0,
