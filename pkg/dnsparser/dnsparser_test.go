@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 const (
@@ -34,14 +35,6 @@ const (
 
 var verifierLogs = flag.Bool("verlogs", false, "Write the full verifier logs in the ./verifier.log file")
 
-type testQuery struct {
-	name       string
-	packet     []byte
-	wantDomain string
-	wantIPs    []netip.Addr
-	wantErr    bool
-}
-
 func parseIPs(ips ...string) []netip.Addr {
 	netIPs := []netip.Addr{}
 	for _, ip := range ips {
@@ -50,7 +43,7 @@ func parseIPs(ips ...string) []netip.Addr {
 	return netIPs
 }
 
-func Test_DNSParser(t *testing.T) {
+func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	// Try at least loading the test program from 5.15, even if it cannot run it should load.
 	if v := "5.15.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
@@ -78,7 +71,9 @@ func Test_DNSParser(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	defer coll.Close()
+	t.Cleanup(func() {
+		coll.Close()
+	})
 
 	prog, ok := coll.Programs[programName]
 	if !ok {
@@ -104,6 +99,18 @@ func Test_DNSParser(t *testing.T) {
 		t.Skipf("DNS parser test prog loads but cannot run: minimum kernel version (%v) not met, skipping", v)
 	}
 
+	return coll
+}
+
+// Test_DNSParser is a collection of unit tests for the DNS parser.
+func Test_DNSParser(t *testing.T) {
+	coll := loadDNSTestCollection(t)
+
+	prog, ok := coll.Programs[programName]
+	if !ok {
+		t.Fatalf("%s not found", programName)
+	}
+
 	rawErrMap, ok := coll.Maps[ErrorMapName]
 	if !ok {
 		t.Fatalf("map %s not found", ErrorMapName)
@@ -115,6 +122,14 @@ func Test_DNSParser(t *testing.T) {
 		t.Fatalf("map %s not found", IPToDomainMapName)
 	}
 	ipMap := NewIPMap(rawIPMap)
+
+	type testQuery struct {
+		name       string
+		packet     []byte
+		wantDomain string
+		wantIPs    []netip.Addr
+		wantErr    bool
+	}
 
 	testQueries := []testQuery{
 		{
@@ -268,6 +283,192 @@ func Test_DNSParser(t *testing.T) {
 					wantValues := slices.Collect(maps.Values(wantIPMaps))
 					t.Errorf("domain: got %v, expected %v", []byte(actualValues[0]), []byte(wantValues[0]))
 				}
+			}
+		})
+	}
+}
+
+// Test_DNSParser_ProcessTree is a collection of tests for process tree integration.
+func Test_DNSParser_ProcessTree(t *testing.T) {
+	coll := loadDNSTestCollection(t)
+
+	prog, ok := coll.Programs[programName]
+	if !ok {
+		t.Fatalf("%s not found", programName)
+	}
+
+	rawErrMap, ok := coll.Maps[ErrorMapName]
+	if !ok {
+		t.Fatalf("map %s not found", ErrorMapName)
+	}
+	errMap := NewErrorMap(rawErrMap)
+
+	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
+	if !ok {
+		t.Fatalf("map %s not found", IDToDomainMapName)
+	}
+	idToDomainMap := NewIDToDomainMap(rawIDToDomainMap)
+
+	rawDomainToIDMap, ok := coll.Maps[DomainToIDMapName]
+	if !ok {
+		t.Fatalf("map %s not found", DomainToIDMapName)
+	}
+	domainToIDMap := NewDomainToIDMap(rawDomainToIDMap)
+
+	rawDNSEndpointIDMap, ok := coll.Maps[DNSEndpointIDMapName]
+	if !ok {
+		t.Fatalf("map %s not found", DNSEndpointIDMapName)
+	}
+	dnsEndpointIDMap := NewDNSEndpointIDMap(rawDNSEndpointIDMap)
+
+	type Wanted struct {
+		wantDomain string
+		wantID     DNSID
+		wantSource int
+		wantIPs    []netip.Addr
+	}
+
+	type testQuery struct {
+		name    string
+		packets [][]byte
+		wantErr bool
+		wants   []Wanted
+	}
+
+	testQueries := []testQuery{
+		{
+			name: "3 packets 4 IPs",
+			packets: [][]byte{
+				{0x10, 0x2b, 0x41, 0x81, 0x9b, 0x8, 0xc4, 0x8b, 0xa3, 0x54, 0x2e, 0x3f, 0x8, 0x0, 0x45, 0x0, 0x0, 0x52, 0x41, 0x80, 0x40, 0x0, 0x39, 0x11, 0x3f, 0x6d, 0x1, 0x1, 0x1, 0x1, 0xc0, 0xa8, 0xfe, 0x3, 0x0, 0x35, 0xe1, 0x39, 0x0, 0x3e, 0x1d, 0x8a, 0xcc, 0xe1, 0x81, 0x80, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x5, 0x61, 0x70, 0x70, 0x6c, 0x65, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0x1, 0x0, 0x1, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x3, 0x7b, 0x0, 0x4, 0x11, 0xfd, 0x90, 0xa, 0x0, 0x0, 0x29, 0x4, 0xd0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
+				{0x10, 0x2b, 0x41, 0x81, 0x9b, 0x8, 0xc4, 0x8b, 0xa3, 0x54, 0x2e, 0x3f, 0x8, 0x0, 0x45, 0x0, 0x0, 0x52, 0x6a, 0x28, 0x40, 0x0, 0x39, 0x11, 0x16, 0xc5, 0x1, 0x1, 0x1, 0x1, 0xc0, 0xa8, 0xfe, 0x3, 0x0, 0x35, 0xd3, 0x3f, 0x0, 0x3e, 0xb3, 0x28, 0x56, 0x85, 0x81, 0x80, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x5, 0x63, 0x69, 0x73, 0x63, 0x6f, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0x1, 0x0, 0x1, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x1, 0x25, 0x0, 0x4, 0x48, 0xa3, 0x4, 0xb9, 0x0, 0x0, 0x29, 0x4, 0xd0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
+				{0x10, 0x2b, 0x41, 0x81, 0x9b, 0x8, 0xc4, 0x8b, 0xa3, 0x54, 0x2e, 0x3f, 0x8, 0x0, 0x45, 0x0, 0x0, 0x5c, 0x8e, 0x4c, 0x40, 0x0, 0x39, 0x11, 0xf2, 0x96, 0x1, 0x1, 0x1, 0x1, 0xc0, 0xa8, 0xfe, 0x3, 0x0, 0x35, 0xf0, 0xe, 0x0, 0x48, 0x6e, 0x58, 0xd2, 0x0, 0x81, 0x80, 0x0, 0x1, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x4, 0x69, 0x6d, 0x61, 0x70, 0x5, 0x67, 0x6d, 0x61, 0x69, 0x6c, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0x1, 0x0, 0x1, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0xbd, 0x0, 0x4, 0x4a, 0x7d, 0x47, 0x6d, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0xbd, 0x0, 0x4, 0x4a, 0x7d, 0x47, 0x6c},
+			},
+			wantErr: false,
+			wants: []Wanted{
+				{
+					wantDomain: "apple.com",
+					wantID:     DNSID{ID: uint64(0), Source: types.DestinationSourceDNS},
+					wantIPs:    parseIPs("17.253.144.10"),
+				},
+				{
+					wantDomain: "cisco.com",
+					wantID:     DNSID{ID: uint64(1), Source: types.DestinationSourceDNS},
+					wantIPs:    parseIPs("72.163.4.185"),
+				},
+				{
+					wantDomain: "imap.gmail.com",
+					wantID:     DNSID{ID: uint64(2), Source: types.DestinationSourceDNS},
+					wantIPs:    parseIPs("74.125.71.109", "74.125.71.108"),
+				},
+			},
+		},
+	}
+
+	for _, tq := range testQueries {
+
+		t.Run(tq.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				err := errMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
+				err = idToDomainMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
+				err = domainToIDMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
+				err = dnsEndpointIDMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
+			})
+
+			// parse each packets
+			for _, packet := range tq.packets {
+				code, err := prog.Run(&ebpf.RunOptions{
+					Data: packet,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if code != 1 {
+					t.Errorf("returned code is != 1: %d", code)
+				}
+
+				errValue, err := errMap.ReadUnique()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if errValue != 0 {
+					if tq.wantErr {
+						return // success
+					}
+					t.Errorf("got error %d and want no error", errValue)
+				} else {
+					if tq.wantErr {
+						t.Errorf("got no error and want error")
+					}
+				}
+			}
+
+			// We could do individual lookups, but since we want to
+			// check for multiple values, let's read everything
+			idToDomain, err := idToDomainMap.Values()
+			if err != nil {
+				t.Fatal(err)
+			}
+			domainToID, err := domainToIDMap.Values()
+			if err != nil {
+				t.Fatal(err)
+			}
+			dnsEndpointID, err := dnsEndpointIDMap.Values()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(idToDomain) != len(tq.wants) {
+				t.Errorf("length mismatch in ID to domain map, got %d expected %d", len(idToDomain), len(tq.wants))
+				t.FailNow()
+			}
+
+			if len(domainToID) != len(tq.wants) {
+				t.Errorf("length mismatch in domain to ID map, got %d expected %d", len(idToDomain), len(tq.wants))
+				t.FailNow()
+			}
+
+			for _, w := range tq.wants {
+				domain, ok := idToDomain[w.wantID]
+				if !ok {
+					t.Errorf("ID %v to domain %s entry missing", w.wantID, w.wantDomain)
+
+				}
+				if domain != w.wantDomain {
+					t.Errorf("ID to domain entry mismatch, got %s want %s", domain, w.wantDomain)
+				}
+
+				id, ok := domainToID[w.wantDomain]
+				if !ok {
+					t.Errorf("Domain %s to ID %v entry missing", w.wantDomain, w.wantID)
+
+				}
+				if id != w.wantID {
+					t.Errorf("Domain to ID entry mismatch, got %v want %v", id, w.wantID)
+				}
+
+				for _, ip := range w.wantIPs {
+					id, ok := dnsEndpointID[ip]
+					if !ok {
+						t.Errorf("DNS endpoint ID entry %s to ID %v missing", ip, w.wantID)
+						t.FailNow()
+					}
+					if id != w.wantID {
+						t.Errorf("DNS endpoint ID mismatch, got %v want %v", id, w.wantID)
+					}
+				}
+
 			}
 		})
 	}
