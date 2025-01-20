@@ -30,6 +30,7 @@ const (
 	DomainToIDMapName    = "tg_bpf_domain_map"
 	IDToDomainMapName    = "tg_bpf_domain_rev_map"
 	DNSEndpointIDMapName = "tg_dns_endpoint_id_map"
+	GlobalDNSIDMapName   = "tg_glb_dns_id"
 
 	dnsMaxNameSize = 255
 )
@@ -291,4 +292,21 @@ func (m DNSEndpointIDMap) Clear() error {
 	}
 
 	return nil
+}
+
+type GlobalDNSIDMap struct {
+	globalDNSIDMap *ebpf.Map
+}
+
+func NewGlobalDNSIDMap(globalDNSIDMap *ebpf.Map) GlobalDNSIDMap {
+	return GlobalDNSIDMap{
+		globalDNSIDMap: globalDNSIDMap,
+	}
+}
+
+func (m *GlobalDNSIDMap) Reset() error {
+	var key uint32
+	var value uint64
+
+	return m.globalDNSIDMap.Update(&key, &value, ebpf.UpdateAny)
 }
