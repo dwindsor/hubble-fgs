@@ -341,11 +341,7 @@ func (m *DomainMap) Update(domain string, id uint64) error {
 		return fmt.Errorf("domain is too long: len(%s)=%d > %d", domain, len(domain), dnsMaxNameSize)
 	}
 
-	if m.idToDomainMap == nil {
-		if err := m.loadPinnedIDToDomainMap(); err != nil {
-			return fmt.Errorf("failed to open map %s: %w", IDToDomainMapName, err)
-		}
-	}
+	// First lookup that the DNS parser didn't already parsed this domain
 	if m.domainToIDMap == nil {
 		if err := m.loadPinnedDomainToIDMap(); err != nil {
 			return fmt.Errorf("failed to open map %s: %w", DomainToIDMapName, err)
@@ -356,16 +352,35 @@ func (m *DomainMap) Update(domain string, id uint64) error {
 	for i, l := range domain {
 		domainBytes[i] = byte(l)
 	}
-	idValue := DNSID{
+	var idValue DNSID
+
+	err := m.domainToIDMap.Lookup(domainBytes, &idValue)
+	// lookup for genuine error apart from ErrKeyNotExist
+	if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+		return fmt.Errorf("failed to lookup the bpf domain rev map: %w", err)
+	}
+	// entry already exists and was parsed by the DNS parser, "normal"
+	// execution flow is errors.Is(err, ebpf.ErrKeyNotExist) here
+	if err == nil && idValue.Source == types.DestinationSourceDNS {
+		// This is a known limitation of current implementation
+		return fmt.Errorf("domain was already parsed by the BPF DNS parser and given an ID")
+	}
+
+	if m.idToDomainMap == nil {
+		if err := m.loadPinnedIDToDomainMap(); err != nil {
+			return fmt.Errorf("failed to open map %s: %w", IDToDomainMapName, err)
+		}
+	}
+
+	idValueUpdate := DNSID{
 		ID:     id,
 		Source: types.DestinationSourceUser,
 	}
-
-	err := m.domainToIDMap.Update(domainBytes, idValue, ebpf.UpdateAny)
+	err = m.domainToIDMap.Update(domainBytes, idValueUpdate, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed to update the bpf domain map: %w", err)
 	}
-	err = m.idToDomainMap.Update(idValue, domainBytes, ebpf.UpdateAny)
+	err = m.idToDomainMap.Update(idValueUpdate, domainBytes, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed to update the bpf domain rev map: %w", err)
 	}
