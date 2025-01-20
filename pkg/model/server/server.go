@@ -270,7 +270,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var d *tetragon.Destination
 		var ep endpoint.Endpoint
 
-		if dstKey.DestinationSource == types.DestinationSourceBpf {
+		if dstKey.DestinationSource == types.DestinationSourceBPF {
 			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
 			// If the IP has resolved to a DNS or K8s object lets
 			// omit the duplicate individual IP. This can happen

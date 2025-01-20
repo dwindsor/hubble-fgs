@@ -32,9 +32,10 @@ type ProcessTreeValue struct {
 }
 
 const (
-	DestinationSourceUknown = 0
-	DestinationSourceBpf    = 1
-	DestinationSourceUser   = 2
+	DestinationSourceUnknown = 0
+	DestinationSourceBPF     = 1
+	DestinationSourceUser    = 2
+	DestinationSourceDNS     = 3
 )
 
 type DestinationEndpointKey struct {
