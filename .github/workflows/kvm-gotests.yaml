@@ -46,12 +46,6 @@ jobs:
         exclude:
           - os: splendid-metal-arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "4.19-20241107.001101"
-          - os: splendid-metal-arm64
-            # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "5.4-20241107.001101"
-          - os: splendid-metal-arm64
-            # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: "rhel8.9-20241218.004849" # currently not supported on ARM64
     runs-on: ${{ matrix.os }}
     steps:
