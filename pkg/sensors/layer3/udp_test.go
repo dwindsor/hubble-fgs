@@ -108,6 +108,35 @@ spec:
       ports: [53]
 `
 
+const udpConfigWithoutDnsQuestions = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+    dns:
+      enable: true
+      ports: [53]
+`
+
+const udpConfigWithDnsQuestions = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+    dns:
+      enable: true
+      ports: [53]
+      reportQuestions: true
+`
+
 const udpL7Config = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -1571,7 +1600,7 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestDnsEvents(t *testing.T) {
+func testDnsEvents(t *testing.T, withQuestions bool) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skipf("dns requires kernel >= 5.4")
 	}
@@ -1582,7 +1611,12 @@ func TestDnsEvents(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
+	config := udpConfigWithoutDnsQuestions
+	if withQuestions {
+		config = udpConfigWithDnsQuestions
+	}
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
@@ -1606,7 +1640,7 @@ func TestDnsEvents(t *testing.T) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("-6 https://www.google.com"))
 
-	checker := ec.NewUnorderedEventChecker(
+	checks := []ec.EventChecker{
 		ec.NewProcessExecChecker("curl4Exec").
 			WithProcess(curl4Checker).
 			WithParent(selfChecker),
@@ -1633,17 +1667,6 @@ func TestDnsEvents(t *testing.T) {
 					WithOperator(listmatcher.Subset).
 					// Match a valid IPv4 address
 					WithValues(sm.Regex(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$`)))),
-		// This is less specific than the above so it must be specified second
-		ec.NewProcessDnsChecker("curl4DnsRequest").
-			WithProcess(curl4Checker).
-			WithParent(selfChecker).
-			WithDns(ec.NewDnsInfoChecker().
-				WithRcode(0).
-				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
-				// TODO: remove this check at some point once we stop populating
-				// Dns.QuestionTypes
-				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
-				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A)))),
 		ec.NewProcessExecChecker("curl6Exec").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker),
@@ -1671,7 +1694,21 @@ func TestDnsEvents(t *testing.T) {
 					// Full IPv6 regex is probably too complicated, let's just see if it
 					// contains a ::
 					WithValues(sm.Contains(`::`)))),
-		// This is less specific than the above so it must be specified second
+	}
+
+	questionChecks := []ec.EventChecker{
+		// This is less specific than the reply above so it must be specified second
+		ec.NewProcessDnsChecker("curl4DnsRequest").
+			WithProcess(curl4Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				// TODO: remove this check at some point once we stop populating
+				// Dns.QuestionTypes
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_A)))),
+		// This is less specific than the reply above so it must be specified second
 		ec.NewProcessDnsChecker("curl6DnsRequest").
 			WithProcess(curl6Checker).
 			WithParent(selfChecker).
@@ -1679,7 +1716,13 @@ func TestDnsEvents(t *testing.T) {
 				WithRcode(0).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
 				WithQueryTypes(ec.NewDnsTypeListMatcher().WithValues(ec.NewDnsTypeChecker(tetragon.DnsType_AAAA)))),
-	)
+	}
+
+	if withQuestions {
+		checks = append(checks, questionChecks...)
+	}
+
+	checker := ec.NewUnorderedEventChecker(checks...)
 
 	curl4 := exec.Command("curl", "-4", "https://www.google.com")
 	assert.NoError(t, curl4.Start())
@@ -1694,6 +1737,14 @@ func TestDnsEvents(t *testing.T) {
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	jsonchecker.RetryDelay = oldDelay
+}
+
+func TestDnsEventsWithQuestions(t *testing.T) {
+	testDnsEvents(t, true)
+}
+
+func TestDnsEventsWithoutQuestions(t *testing.T) {
+	testDnsEvents(t, false)
 }
 
 func testDisableCloseConfig(t *testing.T, disableClose bool) {
