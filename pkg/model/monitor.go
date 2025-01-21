@@ -21,6 +21,8 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/google/go-cmp/cmp"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -205,6 +207,7 @@ type ProcessKey struct {
 
 type ProcessValue struct {
 	InInitTree *wrapperspb.BoolValue
+	Syscalls   *appModelV1.ApplicationSyscalls
 }
 
 func (pk ProcessKey) String() string {
@@ -334,6 +337,31 @@ func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	}
 }
 
+func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSyscalls, error) {
+	syscall_info := &appModelV1.ApplicationSyscalls{}
+	for _, syscall := range syscalls {
+		name, err := syscallinfo.GetSyscallName(abi, int(syscall))
+		if err != nil {
+			return nil, err
+		}
+		name = "SYS_" + strings.ToUpper(name)
+		value, ok := appModelV1.Sys_value[name]
+		if !ok {
+			return nil, fmt.Errorf("no such syscall defined in protobuf API: %q", name)
+		}
+		syscall_info.Syscalls = append(syscall_info.Syscalls, appModelV1.Sys(value))
+	}
+	switch abi {
+	case "x64":
+		syscall_info.Abi = appModelV1.Abi_ABI_X86_64
+	case "arm64":
+		syscall_info.Abi = appModelV1.Abi_ABI_ARM64
+	default:
+		return nil, fmt.Errorf("unsupported arch: %s", abi)
+	}
+	return syscall_info, nil
+}
+
 func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
@@ -341,8 +369,14 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 	for _, process := range res.GetProcesses() {
 		if len(process.GetDest()) == 0 {
 			processKey := getProcessMonitorKey(process)
+			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("failed to populate system call data for process")
+				continue
+			}
 			proc[processKey] = ProcessValue{
 				InInitTree: process.InInitTree,
+				Syscalls:   syscalls,
 			}
 			continue
 		}

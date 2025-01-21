@@ -75,6 +75,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"endpoint_id_value":           {types.EndpointIdValue{}},
 		"process_tree_binary_uid_key": {types.ProcessTreeBinaryUUIDValue{}},
 		"tree_id":                     {types.TreeId{}},
+		"process_syscall_value":       {types.ProcessSyscallValue{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)

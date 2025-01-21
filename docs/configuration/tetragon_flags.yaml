@@ -161,6 +161,10 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
+    - name: enable-syscall-tracking
+      default_value: "false"
+      usage: |
+        Track system calls in the application model. Application model must be enabled for this to work
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |

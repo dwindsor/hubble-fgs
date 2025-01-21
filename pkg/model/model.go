@@ -53,6 +53,7 @@ type connectionKey struct {
 type processValue struct {
 	connections connectionMap
 	inInitTree  *wrapperspb.BoolValue
+	syscalls    *appModelV1.ApplicationSyscalls
 }
 
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
@@ -116,6 +117,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 		nsMap[nsKey][wlkey][pskey] = processValue{
 			connections: make(connectionMap),
 			inInitTree:  psval.InInitTree,
+			syscalls:    psval.Syscalls,
 		}
 	}
 }
@@ -149,6 +151,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
 						InInitTree:  psval.inInitTree,
+						SyscallInfo: psval.syscalls,
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 				}
@@ -168,6 +171,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
 						InInitTree:  psval.inInitTree,
+						SyscallInfo: psval.syscalls,
 					}
 					wl.Processes = append(wl.Processes, ps)
 				}

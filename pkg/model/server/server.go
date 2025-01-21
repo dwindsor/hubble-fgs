@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/cilium/pkg/container/set"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api"
@@ -20,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
@@ -37,6 +39,7 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
+	syscallMap             = "tg_syscall_map"
 )
 
 type Server struct {
@@ -250,6 +253,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMap)
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
@@ -412,9 +416,27 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 
 	defer m.Close()
 
+	var sm *ebpf.Map
+	var abi string
+	if option.Config.EnableSyscallTracking {
+		abi, err = syscallinfo.DefaultABI()
+		if err != nil {
+			return nil, fmt.Errorf("unsupported ABI %q for syscall sensor: %w", abi, err)
+		}
+
+		sm, err = ebpf.LoadPinnedMap(syscallMap, nil)
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("file", syscallMap).Info("Could not open syscall map")
+			return nil, err
+		}
+
+		defer sm.Close()
+	}
+
 	var (
-		key types.ProcessTreeKey
-		val types.ProcessTreeValue
+		key        types.ProcessTreeKey
+		val        types.ProcessTreeValue
+		syscallVal types.ProcessSyscallValue
 	)
 
 	uidMap, err := ebpf.LoadPinnedMap(binaryFile, nil)
@@ -476,6 +498,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
+		syscalls := set.NewSet[uint32]()
 
 		nsId, ok := state.GetNsId(policyfilter.StateID(key.CgroupId))
 		if ok {
@@ -534,12 +557,30 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			inInitTree = &wrapperspb.BoolValue{Value: val.InInitTree}
 		}
 
+		if option.Config.EnableSyscallTracking {
+			err = sm.Lookup(&key.Self, &syscallVal)
+			if err == nil {
+				for i, mask := range syscallVal.Syscalls {
+					for j := 0; j < 64; j++ {
+						if mask&(uint64(1)<<j) != uint64(0) {
+							id := i*64 + j
+							syscalls.Insert(uint32(id))
+						}
+					}
+				}
+			} else {
+				logger.GetLogger().WithError(err).WithField("key", key.Self).Debugf("Failed to look up system calls for process")
+			}
+		}
+
 		processModel = append(processModel, &tetragon.ProcessModel{
 			Binary:     selfStr,
 			BinaryArgs: selfArgs,
 			Parent:     parentPath,
 			ParentArgs: parentArgs,
 			Namespace:  ns,
+			Syscalls:   syscalls.AsSlice(),
+			Abi:        abi,
 			Workload: &tetragon.Workload{
 				Name: wl,
 				Kind: kind,

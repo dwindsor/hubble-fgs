@@ -9,6 +9,7 @@
 #include "networking/l3/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
 #include "process/process_endpoint.h"
+#include "process/process_syscall.h"
 #include "parsers/dns/dns.h"
 
 // Layer 3
@@ -63,3 +64,4 @@ struct endpoint_id_key _endpoint_id_key;
 struct endpoint_id_value _endpoint_id_value;
 struct process_tree_binary_uid_key _process_tree_binary_uid_key;
 struct tree_id _tree_id;
+struct process_syscall_value _process_syscall_value;

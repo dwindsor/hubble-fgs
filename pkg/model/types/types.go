@@ -98,6 +98,12 @@ type ProcessTreeBinaryUUIDValue struct {
 	Args   [256]byte
 }
 
+const SyscallBitmaskSize = 16
+
+type ProcessSyscallValue struct {
+	Syscalls [SyscallBitmaskSize]uint64
+}
+
 type TetragonWorkloadNetworkSubject struct {
 	Namespace string
 	Name      string

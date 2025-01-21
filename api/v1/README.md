@@ -3554,7 +3554,8 @@ Determins the behaviour of a field filter
 | workload | [Workload](#tetragon-Workload) |  |  |
 | dest | [Destination](#tetragon-Destination) | repeated |  |
 | in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | If set to true, this process is containerized and is a member of the process tree rooted at pid=1 in its PID namespace. This is useful if, for example, you wish to discern whether a process was spawned using a tool like nsenter or kubectl exec. |
-| syscalls | [string](#string) | repeated |  |
+| syscalls | [uint32](#uint32) | repeated |  |
+| abi | [string](#string) |  |  |
 
 
 

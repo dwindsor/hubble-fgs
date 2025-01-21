@@ -40,6 +40,7 @@ const (
 	KeyNetNsCacheSize                 = "net-ns-cache-size"
 	KeyDetatchOldBPF                  = "detach-old-bpf"
 	KeyEnableApplicationModel         = "enable-application-model"
+	KeyEnableSyscallTracking          = "enable-syscall-tracking"
 	KeyApplicationModelCacheSize      = "application-model-cache-size"
 	KeyApplicationModelExportInterval = "application-model-export-interval"
 	KeyApplicationModelExportFilename = "application-model-export-filename"
@@ -88,6 +89,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
 	flags.Bool(KeyEnableApplicationModel, false, "Enable application model in memory")
+	flags.Bool(KeyEnableSyscallTracking, false, "Track system calls in the application model. Application model must be enabled for this to work")
 	// Experimental flags to periodically export process model to export JSON file.
 	flags.Duration(KeyApplicationModelExportInterval, 0, "Interval at which to export application model as JSON.")
 	flags.MarkHidden(KeyApplicationModelExportInterval)
@@ -135,6 +137,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 
 func ReadAndSetEnterpriseFlags() {
 	Config.EnableProcessTree = viper.GetBool(KeyEnableApplicationModel)
+	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ProcessTreeExportFilename = viper.GetString(KeyApplicationModelExportFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
@@ -178,6 +181,11 @@ func ReadAndSetEnterpriseFlags() {
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
+
+	if viper.IsSet(KeyEnableSyscallTracking) && !viper.IsSet(KeyEnableApplicationModel) {
+		logger.GetLogger().Warnf("You must enable the application model with --enable-application-model before enabling system call tracking")
+		Config.EnableSyscallTracking = false
+	}
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
 	Config.MandateConf.URL = viper.GetString(KeyMandateURL)
 	Config.MandateConf.RefreshPeriod = viper.GetDuration(KeyMandateRefreshPeriod)

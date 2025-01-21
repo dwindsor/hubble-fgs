@@ -100,6 +100,14 @@ var (
 		"kprobe",
 	).SetPolicy(basePolicy)
 
+	SysEnterProg = program.Builder(
+		"bpf_syscall.o",
+		"raw_syscalls/sys_enter",
+		"tracepoint/sys_enter",
+		"sys_enter",
+		"tracepoint",
+	).SetPolicy(basePolicy)
+
 	/* Event Ring map */
 	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
@@ -128,7 +136,7 @@ var (
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* In BPF memory aggregated data */
-	PidDataMap               = program.MapBuilder("tg_ee_pid_data", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	PidDataMap               = program.MapBuilder("tg_ee_pid_data", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, SysEnterProg)
 	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
@@ -140,6 +148,7 @@ var (
 	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
 )
 
 func setupSensor() {
@@ -204,6 +213,10 @@ func GetDefaultPrograms() []*program.Program {
 	} else {
 		progs = append(progs, Execve)
 	}
+	if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableSyscallTracking {
+		logger.GetLogger().Info("Enable syscall tracking")
+		progs = append(progs, SysEnterProg)
+	}
 	return progs
 }
 
@@ -238,6 +251,9 @@ func GetDefaultMaps() []*program.Map {
 		ListenEndpointMap,
 		BpfEndpointIdMap,
 		ErrMetricsMap,
+	}
+	if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableSyscallTracking {
+		maps = append(maps, SyscallsMap)
 	}
 
 	ConfigureMapSizes()
@@ -288,6 +304,10 @@ func ConfigureMapSizes() {
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	DestinationEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ListenEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+
+	if enterpriseOption.Config.EnableSyscallTracking {
+		SyscallsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	}
 }
 
 func EnableV611Progs() bool {
