@@ -66,6 +66,7 @@ message ProcessModel {
   // for example, you wish to discern whether a process was spawned using a
   // tool like nsenter or kubectl exec.
   google.protobuf.BoolValue in_init_tree = 8;
+  repeated string syscalls = 9;
 }
 
 message GetProcessModelResponse {
