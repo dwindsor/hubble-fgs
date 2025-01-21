@@ -184,12 +184,6 @@ compile-commands:
 	$(MAKE) -C ./bpf clean
 	bear -- $(MAKE) -C ./bpf
 
-.PHONY: install
-install:
-	groupadd -f hubble
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
-
 ##@ Container images
 
 .PHONY: image
