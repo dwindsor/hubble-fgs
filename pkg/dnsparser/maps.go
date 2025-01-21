@@ -336,6 +336,8 @@ func (m *DomainMap) loadPinnedDomainToIDMap() error {
 	return nil
 }
 
+// Update simultaneously updates the domain to ID and ID to domain maps with the
+// domain and ID given.
 func (m *DomainMap) Update(domain string, id uint64) error {
 	if len(domain) > dnsMaxNameSize {
 		return fmt.Errorf("domain is too long: len(%s)=%d > %d", domain, len(domain), dnsMaxNameSize)
@@ -361,9 +363,15 @@ func (m *DomainMap) Update(domain string, id uint64) error {
 	}
 	// entry already exists and was parsed by the DNS parser, "normal"
 	// execution flow is errors.Is(err, ebpf.ErrKeyNotExist) here
-	if err == nil && idValue.Source == types.DestinationSourceDNS {
-		// This is a known limitation of current implementation
-		return fmt.Errorf("domain was already parsed by the BPF DNS parser and given an ID")
+	if err == nil {
+		switch idValue.Source {
+		case types.DestinationSourceDNS:
+			// This is a known limitation of current implementation
+			return fmt.Errorf("domain was already parsed by the BPF DNS parser and given an ID")
+		case types.DestinationSourceUser:
+			// This is a misuse, caller should already know this already exists
+			return fmt.Errorf("domain already exists and was created by userspace")
+		}
 	}
 
 	if m.idToDomainMap == nil {
