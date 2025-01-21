@@ -12,6 +12,7 @@ package utils
 
 import (
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/option"
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -21,4 +22,12 @@ func SkSkbParserRequired() bool {
 	// After 5.10 we can run with only the skskb verdict programs
 	// improving performance.
 	return !kernels.MinKernelVersion("5.10.0")
+}
+
+func EnableV511Progs() bool {
+	if option.Config.ForceSmallProgs {
+		return false
+	}
+	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return (int64(kernelVer) >= kernels.KernelStringToNumeric("5.11.0"))
 }

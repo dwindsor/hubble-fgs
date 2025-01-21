@@ -158,10 +158,14 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 
 int insert_process_tree(void)
 {
+	int err = 0;
+#if defined(__V511_BPF_PROG) || defined(__V60_BPF_PROG) || defined(__V61_BPF_PROG) || defined(__V63_BPF_PROG) || defined(__V611_BPF_PROG)
 	__u32 pid = get_current_pid_tgid();
 	__u64 cgid = tg_get_current_cgroup_id();
 
-	return __insert_process_tree(pid, cgid);
+	err = __insert_process_tree(pid, cgid);
+#endif
+	return err;
 }
 
 uint64_t glbl_bpf_endpoint_id = 1;

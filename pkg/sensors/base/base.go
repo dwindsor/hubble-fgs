@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
@@ -41,6 +42,14 @@ var (
 
 	ExecveV53 = program.Builder(
 		"bpf_execve_event_v53.o",
+		"sched/sched_process_exec",
+		"tracepoint/sys_execve",
+		"event_execve",
+		"execve",
+	).SetPolicy(basePolicy)
+
+	ExecveV511 = program.Builder(
+		"bpf_execve_event_v511.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
@@ -88,10 +97,10 @@ var (
 	).SetPolicy(basePolicy)
 
 	/* Event Ring map */
-	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrack.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrack.SocketStatsName, Exit)
@@ -101,37 +110,38 @@ var (
 	SocketTupleHintMap          = program.MapBuilder(socktrack.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrack.SocketCfgMapName, Exit)
 
-	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV61, ExecveV611)
+	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
 	/* Tetragon runtime configuration */
-	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
 	/* Internal statistics for debugging */
-	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV61, ExecveV611)
+	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* In BPF memory aggregated data */
-	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV61, ExecveV611)
-	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
 	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
-	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV61, ExecveV611)
+	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 )
 
 func setupPrograms() {
 	// execve program tail calls details
 	Execve.SetTailCall("tracepoint", ExecveTailCallsMap)
 	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMap)
+	ExecveV511.SetTailCall("tracepoint", ExecveTailCallsMap)
 	ExecveV61.SetTailCall("tracepoint", ExecveTailCallsMap)
 
 	ks, err := ksyms.KernelSymbols()
@@ -175,6 +185,8 @@ func GetDefaultPrograms() []*program.Program {
 		progs = append(progs, ExecveV611)
 	} else if kernels.EnableV61Progs() {
 		progs = append(progs, ExecveV61)
+	} else if utils.EnableV511Progs() {
+		progs = append(progs, ExecveV511)
 	} else if kernels.EnableLargeProgs() {
 		progs = append(progs, ExecveV53)
 	} else {
