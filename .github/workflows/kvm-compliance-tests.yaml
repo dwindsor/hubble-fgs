@@ -101,7 +101,7 @@ jobs:
 
             export KVM_CI=true
             export SUDO=
-            make hubble-bpf
+            make tetragon-bpf
             go test ./tests/compliance -print-stdout
 
       - name: Create an issue

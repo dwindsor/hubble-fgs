@@ -114,23 +114,19 @@ clean: tarball-clean
 
 ##@ Build and install
 
-.PHONY: tetragon hubble-fgs
-hubble-fgs: | tetragon
+.PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 	$(GO_BUILD) ./cmd/tetragon
 
-.PHONY: tetragon-operator hubble-enterprise-operator
-hubble-enterprise-operator: | tetragon-operator
+.PHONY: tetragon-operator
 tetragon-operator: ## Compile the Tetragon operator.
 	$(GO_BUILD) -o $@ ./operator
 
-.PHONY: tetra hubble-enterprise
-hubble-enterprise: | tetra
+.PHONY: tetra
 tetra: ## Compile the Tetragon gRPC client.
 	$(GO_BUILD) ./cmd/tetra
 
-.PHONY: tetragon-bpf hubble-bpf
-hubble-bpf: | tetragon-bpf
+.PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
 tetragon-bpf: tetragon-bpf-local ## Compile bpf programs.
 else
@@ -143,8 +139,8 @@ tetragon-bpf-local:
 
 .PHONY: tetragon-bpf-container
 tetragon-bpf-container:
-	$(CONTAINER_ENGINE) rm hubble-clang || true
-	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
+	$(CONTAINER_ENGINE) rm tetragon-clang || true
+	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name tetragon-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
 
 .PHONY: fgs-bench
 fgs-bench: ## Compile fgs-bench tool.
@@ -200,9 +196,9 @@ image-operator: ## Build the Tetragon operator container image.
 
 .PHONY: image-test
 image-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/tetragon-test:${DOCKER_IMAGE_TAG}" .
 	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
+	@echo "${CONTAINER_ENGINE} push isovalent/tetragon-test:$(DOCKER_IMAGE_TAG)"
 
 .PHONY: image-clang
 image-clang:
@@ -246,7 +242,7 @@ tarball-clean:
 	rm -fr $(BUILD_PKG_DIR)
 
 .PHONY: package-fgs-bench
-package-fgs-bench: hubble-bpf-local fgs-bench
+package-fgs-bench: tetragon-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
 
@@ -297,8 +293,7 @@ tetragon-bpf-test-container:
 bpf-test: tetragon-bpf-test
 	$(MAKE) -C ./bpf test
 
-.PHONY: tetragon-bpf-verify hubble-bpf-verify
-hubble-bpf-verify: | tetragon-bpf-verify
+.PHONY: tetragon-bpf-verify
 tetragon-bpf-verify: tetragon-bpf ## Verify BPF programs.
 	sudo contrib/fgs-verify-programs bpf/objs
 

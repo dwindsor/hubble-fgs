@@ -184,7 +184,7 @@ jobs:
             if [[ "${{ matrix.kernel }}" == 5.10-* ]]; then
               export FLAKY_HTTP=1
             fi
-            make hubble-bpf tetragon-fs-scanner tester-progs test
+            make tetragon-fs-scanner test
 
       - name: Copy out FGS logs
         if: ${{ failure() || cancelled() }}

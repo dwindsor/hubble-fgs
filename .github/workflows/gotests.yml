@@ -56,7 +56,7 @@ jobs:
         echo `which llc`
         echo `clang --version`
         make check-copyright
-        sudo make hubble-bpf
+        sudo make tetragon-bpf
         sudo -E echo "run go tests: " `uname -a`
         export FGS_LIB="${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs/bpf/objs/"
         sudo apt install gcc # needed for tester-progs
