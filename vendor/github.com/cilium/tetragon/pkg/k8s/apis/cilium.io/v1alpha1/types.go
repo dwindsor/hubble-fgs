@@ -479,6 +479,9 @@ type DnsPolicySpec struct {
 	// Labels enabled by default: namespace, workload, binary
 	// Configurable labels: namespace, workload, pod, binary
 	Metrics *PromMetrics `json:"metrics,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Whether to report DNS questions
+	ReportQuestions bool `json:"reportQuestions"`
 }
 
 type NopSelector struct {

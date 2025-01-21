@@ -2091,6 +2091,9 @@ spec:
                         items:
                           type: integer
                         type: array
+                      reportQuestions:
+                        description: Whether to report DNS questions
+                        type: boolean
                     required:
                     - enable
                     type: object
