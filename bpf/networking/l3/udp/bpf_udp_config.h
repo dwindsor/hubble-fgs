@@ -12,8 +12,8 @@
 #define __BPF_UDP_CONFIG_H_
 
 struct udp_sensor_config {
-	u16 dnsPorts[4];
-	u8 dnsStatsPerSocket;
+	u16 dns_ports[4];
+	u8 dns_stats_per_socket;
 	u8 dns_report_questions;
 	u8 watermarks_enable;
 	u8 pad[5];

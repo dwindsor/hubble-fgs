@@ -12,6 +12,7 @@
 #define __BPF_DNS_H_
 
 #include "../bpf_udp_event.h"
+#include "../bpf_udp_info.h"
 
 static inline __attribute__((always_inline)) int
 dns_port_match(u16 *ports, u16 port1, u16 port2)
@@ -43,10 +44,10 @@ udp_dns(struct __sk_buff *skb,
 	if (!config)
 		return 0;
 
-	if (config->dnsPorts[0] == 0)
+	if (config->dns_ports[0] == 0)
 		return 0;
 
-	isdns = dns_port_match(config->dnsPorts, key->tuple.sport, key->tuple.dport);
+	isdns = dns_port_match(config->dns_ports, key->tuple.sport, key->tuple.dport);
 	if (!isdns)
 		return 0;
 

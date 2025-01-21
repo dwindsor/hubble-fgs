@@ -112,13 +112,13 @@ dns_source_port_match(u16 *ports, u16 port)
 }
 
 static inline __attribute__((always_inline)) void
-udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
+udp_key(struct udp_info_key *key, bool *dns_combined, u64 *cookie, u64 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 {
 	struct udp_sensor_config *config = get_udp_config();
 
 	if (send) {
-		if (config && !config->dnsStatsPerSocket && dns_source_port_match(config->dnsPorts, bpf_ntohs(udp->source))) {
-			*dnsCombined = true;
+		if (config && !config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->source))) {
+			*dns_combined = true;
 			// For DNS we zero the remote IP address and remote port.
 			key->tuple.daddr[0] = 0;
 			key->tuple.daddr[1] = 0;
@@ -127,7 +127,7 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 		if (!ipv6) {
 			key->tuple.saddr[0] = ip->saddr;
 			key->tuple.saddr[1] = 0;
-			if (!*dnsCombined) {
+			if (!*dns_combined) {
 				key->tuple.daddr[0] = ip->daddr;
 				key->tuple.daddr[1] = 0;
 			}
@@ -136,7 +136,7 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
 			key->tuple.saddr[0] = addr[0];
 			key->tuple.saddr[1] = addr[1];
-			if (!*dnsCombined) {
+			if (!*dns_combined) {
 				addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
 				key->tuple.daddr[0] = addr[0];
 				key->tuple.daddr[1] = addr[1];
@@ -145,11 +145,11 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 		}
 		// In the key, the port is always host order.
 		key->tuple.sport = bpf_ntohs(udp->source);
-		if (!*dnsCombined)
+		if (!*dns_combined)
 			key->tuple.dport = bpf_ntohs(udp->dest);
 	} else {
-		if (config && !config->dnsStatsPerSocket && dns_source_port_match(config->dnsPorts, bpf_ntohs(udp->dest))) {
-			*dnsCombined = true;
+		if (config && !config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->dest))) {
+			*dns_combined = true;
 			// For DNS we zero the remote IP addresses and remote port.
 			key->tuple.daddr[0] = 0;
 			key->tuple.daddr[1] = 0;
@@ -158,7 +158,7 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 		if (!ipv6) {
 			key->tuple.saddr[0] = ip->daddr;
 			key->tuple.saddr[1] = 0;
-			if (!*dnsCombined) {
+			if (!*dns_combined) {
 				key->tuple.daddr[0] = ip->saddr;
 				key->tuple.daddr[1] = 0;
 			}
@@ -167,7 +167,7 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 			u64 *addr = (u64 *)&((struct ipv6hdr *)ip)->daddr;
 			key->tuple.saddr[0] = addr[0];
 			key->tuple.saddr[1] = addr[1];
-			if (!*dnsCombined) {
+			if (!*dns_combined) {
 				addr = (u64 *)&((struct ipv6hdr *)ip)->saddr;
 				key->tuple.daddr[0] = addr[0];
 				key->tuple.daddr[1] = addr[1];
@@ -176,7 +176,7 @@ udp_key(struct udp_info_key *key, bool *dnsCombined, u64 *cookie, u64 version, s
 		}
 		// In the key, the port is always host order.
 		key->tuple.sport = bpf_ntohs(udp->dest);
-		if (!*dnsCombined)
+		if (!*dns_combined)
 			key->tuple.dport = bpf_ntohs(udp->source);
 	}
 	key->cookie = *cookie;

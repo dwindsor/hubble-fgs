@@ -74,13 +74,13 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   struct udp_info_key *key)
 {
 	struct udp_info_value *value;
-	bool dnsCombined = false;
+	bool dns_combined = false;
 	u64 cookie_ver = 0;
 
 	if (process)
 		cookie_ver = process->version;
 
-	udp_key(key, &dnsCombined, cookie, cookie_ver, ip, ipv6, udp, send);
+	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
 
@@ -149,7 +149,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
  * user land, as this isn't provided by older kernels.
  * We take a boolean, dns, to specify if we are sending DNS payloads
  * to userland. The reason we need this rather than a simple lookup
- * on config->dnsPorts[0] is to force clang to exclude the DNS code
+ * on config->dns_ports[0] is to force clang to exclude the DNS code
  * because it contains a call to skb_load_bytes() which we can't have
  * on the kprobe solution for older kernels.
  */
