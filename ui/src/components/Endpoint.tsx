@@ -1,18 +1,17 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import debounce from "lodash/debounce";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppState } from "~/state/AppContext";
 
-import css from "./Endpoint.module.css";
+import clsx from "clsx";
+import React from "react";
 import { useConnector } from "~/hooks/useConnector";
-import { ArrowRightIcon } from "./Icons/ArrowRightIcon";
+import { EndpointKind } from "~/types";
 import {
   getEndpointPort,
   inferEndpointKind,
   trimEndpointPort,
 } from "~/utils/endpoints";
-import { EndpointKind, EndpointKindUnion } from "~/types";
-import React from "react";
-import clsx from "clsx";
+import css from "./Endpoint.module.css";
 
 export interface Props {
   endpoint: string;
@@ -22,6 +21,8 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   const connectorRef = useRef<HTMLDivElement>(null);
 
   const state = useAppState();
+
+  const [highlighted, setHighlighted] = useState<boolean>(false);
 
   const kind = useMemo(() => {
     return inferEndpointKind(props.endpoint);
@@ -60,9 +61,25 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     return () => debouncedUpdate(false);
   }, []);
 
-  useEffect(() => state.onTreeSizeChanged(debouncedUpdate), [debouncedUpdate]);
+  useEffect(
+    () => state.onTreeSizeChanged(() => debouncedUpdate()),
+    [debouncedUpdate]
+  );
 
-  useEffect(() => state.onTreeChanged(debouncedUpdate), [debouncedUpdate]);
+  useEffect(
+    () => state.onTreeChanged(() => debouncedUpdate()),
+    [debouncedUpdate]
+  );
+
+  useEffect(() => {
+    return state.onToggleProcHighlight((proc, value) => {
+      if (!state.connectionsMap.get(props.endpoint)?.has(proc)) {
+        setHighlighted(false);
+        return;
+      }
+      setHighlighted(value);
+    });
+  }, [props.endpoint]);
 
   const highlight = useCallback(() => {
     state.toggleEndpontHighlight(props.endpoint, true);
@@ -74,7 +91,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 
   return (
     <div
-      className={css.endpoint}
+      className={clsx(css.endpoint, { [css.highlighted]: highlighted })}
       onMouseEnter={highlight}
       onMouseLeave={unhighlight}
     >
@@ -87,7 +104,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 });
 
 function renderEndpoint(
-  kind: EndpointKindUnion,
+  kind: EndpointKind,
   title: string,
   port: string | null
 ) {
@@ -96,30 +113,25 @@ function renderEndpoint(
       return <K8sEndpoint str={title} port={port} />;
     case EndpointKind.OuterDns:
       return (
-        <>
-          <span className={clsx(css.title, css.outerDns)}>{title}</span>
+        <span className={clsx(css.title, css.outerDns)}>
+          {title}
           {port && <Port port={port} />}
-        </>
+        </span>
       );
     case EndpointKind.Ip:
     case EndpointKind.HostMetadataService:
-      return (
-        <>
-          <IpEndpoint ip={title} />
-          {port && <Port port={port} />}
-        </>
-      );
+      return <IpEndpoint ip={title} port={port} />;
     default:
       return (
-        <>
-          <span className={css.title}>{title}</span>
+        <span className={css.title}>
+          {title}
           {port && <Port port={port} />}
-        </>
+        </span>
       );
   }
 }
 
-function IpEndpoint(props: { ip: string }) {
+function IpEndpoint(props: { ip: string; port: string | null }) {
   const { parts, separator } = useMemo(() => {
     const separator = props.ip.includes(".") ? "." : ":";
     return {
@@ -141,6 +153,7 @@ function IpEndpoint(props: { ip: string }) {
           </React.Fragment>
         );
       })}
+      {props.port && <Port port={props.port} />}
     </span>
   );
 }
@@ -157,8 +170,10 @@ function K8sEndpoint(props: { str: string; port: string | null }) {
 
   return (
     <span className={css.k8sParts}>
-      <span className={clsx(css.title, css.k8sEntityName)}>{title}</span>
-      {props.port && <Port port={props.port} />}{" "}
+      <span className={clsx(css.title, css.k8sEntityName)}>
+        {title}
+        {props.port && <Port port={props.port} />}
+      </span>{" "}
       <Namespace namespace={namespace} /> <K8sEntityType type={type} />
     </span>
   );

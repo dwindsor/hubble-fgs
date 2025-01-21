@@ -14,6 +14,8 @@ export type XYWH = XY & WH;
 
 export type ProcessesMap = WeakMap<ApplicationProcess, ProcessInfo>;
 
+export type PropertyValues<Obj> = Obj[Exclude<keyof Obj, "__proto__">];
+
 export type ProcessInfo = {
   visible?: boolean | undefined;
   xy?: XY | undefined;
@@ -23,12 +25,13 @@ export type ProcessInfo = {
 export type EndpointsMap = Map<string, EndpointInfo>;
 
 export type EndpointInfo = {
-  kind: EndpointKindUnion;
+  kind: EndpointKind;
   visible?: boolean | undefined;
   xy?: XY | undefined;
 };
 
 export const EndpointKind = {
+  __proto__: null,
   Ip: "inner-ip",
   OuterDns: "outer-dns",
   InnerDns: "inner-dns",
@@ -37,8 +40,7 @@ export const EndpointKind = {
   Other: "other",
 } as const;
 
-export type EndpointKindUnion =
-  (typeof EndpointKind)[keyof typeof EndpointKind];
+export type EndpointKind = PropertyValues<typeof EndpointKind>;
 
 export type ConnectionsMap = Map<
   string /* endpoint */,

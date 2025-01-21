@@ -40,3 +40,8 @@
   width: 5px;
   height: 5px;
 }
+
+.proc:hover,
+.proc.highlighted {
+  font-weight: 700;
+}

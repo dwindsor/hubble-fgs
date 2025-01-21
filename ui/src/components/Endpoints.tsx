@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from "react";
 import { Endpoint } from "./Endpoint";
 import { AppState, useAppState } from "~/state/AppContext";
-import { EndpointKind, EndpointKindUnion } from "~/types";
+import { EndpointKind } from "~/types";
 
 export const Endpoints = memo(function Endpoints() {
   const endpoints = useEndpoints();
@@ -52,7 +52,7 @@ function createEndpoints(state: AppState): string[] {
   ].reduce((acc, item, idx) => {
     acc[item] = idx;
     return acc;
-  }, {} as { [key in EndpointKindUnion]: number });
+  }, {} as { [key in EndpointKind]: number });
 
   return Array.from(endpoints).sort((a, b) => {
     const x = state.endpointsMap.get(a)!;

@@ -1,12 +1,12 @@
-import Emitter from "events";
-import { createContext, useContext } from "react";
-import TypedEmitter from "typed-emitter";
-import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
-import { WH, XY } from "~/types";
-import { createAppState } from "./utils";
-import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { create } from "@bufbuild/protobuf";
 import { timestampNow } from "@bufbuild/protobuf/wkt";
+import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
+import { createContext, useContext } from "react";
+import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
+import { WH, XY } from "~/types";
+import { assert } from "~/utils/assert";
+import { AppEmitter, EmitterEventKind } from "./AppEmitter";
+import { createAppState } from "./utils";
 
 export type AppState = ReturnType<typeof useAppState>;
 
@@ -19,125 +19,106 @@ export function createAppContext({
 }) {
   const state = createAppState(model);
 
-  const EmitterEventKind = {
-    AppSizeChanged: "app-size-changed",
-    TreeChanged: "tree-changed",
-    RedrawConnectionsLines: "redraw-connections-lines",
-    ToggleEndpointHighlight: "toggle-endpoint-highlight",
-    ToggleProcHighlight: "toggle-process-highlight",
-  } as const;
-
-  type EmitterEventKind =
-    (typeof EmitterEventKind)[keyof typeof EmitterEventKind];
-
-  const emitter = new Emitter().setMaxListeners(4096) as TypedEmitter<{
-    [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
-    [EmitterEventKind.TreeChanged]: () => void;
-    [EmitterEventKind.RedrawConnectionsLines]: () => void;
-    [EmitterEventKind.ToggleEndpointHighlight]: (
-      endpoint: string,
-      state: boolean
-    ) => void;
-    [EmitterEventKind.ToggleProcHighlight]: (
-      proc: ApplicationProcess,
-      state: boolean
-    ) => void;
-  }>;
-
-  const createSubscriber = <Args extends any[]>(kind: EmitterEventKind) => {
-    return (callback: (...args: Args) => void) => {
-      emitter.on(kind, callback);
-      return () => {
-        emitter.off(kind, callback);
-      };
-    };
+  const inner = {
+    highlightedEndpoint: null as string | null,
+    highlightedProc: null as ApplicationProcess | null,
   };
 
-  const changeAppSize = (size: WH) => {
-    emitter.emit(EmitterEventKind.AppSizeChanged, size);
-  };
+  const emitter = new AppEmitter();
 
-  const updateProcess = (
-    proc: ApplicationProcess,
-    visible: boolean | undefined,
-    xy: XY | undefined
-  ) => {
-    const cur = state.processesMap.get(proc);
-    if (!cur) {
-      throw new Error(
-        "All processes expected to be available in processes map"
-      );
-    }
-    state.processesMap.set(proc, { ...cur, visible, xy });
-    emitter.emit(EmitterEventKind.RedrawConnectionsLines);
-  };
-
-  const updateEndpoint = (
-    endpoint: string,
-    visible: boolean | undefined,
-    xy: XY | undefined
-  ) => {
-    const cur = state.endpointsMap.get(endpoint);
-    if (!cur) {
-      throw new Error(
-        "All endpoints expected to be available in endpoints map"
-      );
-    }
-    state.endpointsMap.set(endpoint, { ...cur, visible, xy });
-    emitter.emit(EmitterEventKind.RedrawConnectionsLines);
-  };
-
-  let highlightedEndpoint: string | null = null;
-  const toggleEndpontHighlight = (endpoint: string, state: boolean) => {
-    highlightedEndpoint = state ? endpoint : null;
-    emitter.emit(EmitterEventKind.ToggleEndpointHighlight, endpoint, state);
-  };
-  const onToggleEndpointHighlight = createSubscriber(
-    EmitterEventKind.ToggleEndpointHighlight
-  );
-
-  let highlightedProc: ApplicationProcess | null = null;
-  const toggleProcHighlight = (proc: ApplicationProcess, state: boolean) => {
-    highlightedProc = state ? proc : null;
-    emitter.emit(EmitterEventKind.ToggleProcHighlight, proc, state);
-  };
-  const onToggleProcHighlight = createSubscriber(
-    EmitterEventKind.ToggleProcHighlight
-  );
-
-  const changeTree = () => {
-    emitter.emit(EmitterEventKind.TreeChanged);
-  };
-
-  const onAppSizeChanged = createSubscriber(EmitterEventKind.AppSizeChanged);
-
-  const onTreeChanged = createSubscriber(EmitterEventKind.TreeChanged);
-
-  const onRedrawConnectionsLines = createSubscriber(
-    EmitterEventKind.RedrawConnectionsLines
-  );
-
-  return {
+  const that = {
     model,
-    connectionsMap: state.connectionsMap,
-    processesMap: state.processesMap,
-    endpointsMap: state.endpointsMap,
-    stat: state.stats,
-    changeAppSize,
-    updateProcess,
-    updateEndpoint,
-    changeTree,
+
     getTreeOffset,
-    onTreeSizeChanged: onAppSizeChanged,
-    onTreeChanged,
-    onRedrawConnectionsLines,
-    toggleEndpontHighlight,
-    onToggleEndpointHighlight,
-    getHighlightedEndpoint: () => highlightedEndpoint,
-    toggleProcHighlight,
-    onToggleProcHighlight,
-    getHighlightedProc: () => highlightedProc,
+
+    get connectionsMap() {
+      return state.connectionsMap;
+    },
+
+    get processesMap() {
+      return state.processesMap;
+    },
+
+    get endpointsMap() {
+      return state.endpointsMap;
+    },
+
+    get stat() {
+      return state.stats;
+    },
+
+    changeAppSize(size: WH) {
+      emitter.emitter.emit(EmitterEventKind.TreeSizeChanged, size);
+    },
+
+    onTreeSizeChanged: emitter.createSubscriber(
+      EmitterEventKind.TreeSizeChanged
+    ),
+
+    changeTree() {
+      emitter.emitter.emit(EmitterEventKind.TreeChanged);
+    },
+
+    onTreeChanged: emitter.createSubscriber(EmitterEventKind.TreeChanged),
+
+    onRedrawConnectionsLines: emitter.createSubscriber(
+      EmitterEventKind.RedrawConnectionsLines
+    ),
+
+    updateProcess(
+      proc: ApplicationProcess,
+      visible: boolean | undefined,
+      xy: XY | undefined
+    ) {
+      const cur = state.processesMap.get(proc);
+      assert(cur, "All processes expected to be available in processes map");
+      state.processesMap.set(proc, { ...cur, visible, xy });
+      emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
+    },
+
+    updateEndpoint(
+      endpoint: string,
+      visible: boolean | undefined,
+      xy: XY | undefined
+    ) {
+      const cur = state.endpointsMap.get(endpoint);
+      assert(cur, "All endpoints expected to be available in endpoints map");
+      state.endpointsMap.set(endpoint, { ...cur, visible, xy });
+      emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
+    },
+
+    get highlightedEndpoint() {
+      return inner.highlightedEndpoint;
+    },
+
+    toggleEndpontHighlight(endpoint: string, state: boolean) {
+      inner.highlightedEndpoint = state ? endpoint : null;
+      emitter.emitter.emit(
+        EmitterEventKind.ToggleEndpointHighlight,
+        endpoint,
+        state
+      );
+    },
+
+    onToggleEndpointHighlight: emitter.createSubscriber(
+      EmitterEventKind.ToggleEndpointHighlight
+    ),
+
+    get highlightedProc() {
+      return inner.highlightedProc;
+    },
+
+    toggleProcHighlight(proc: ApplicationProcess, state: boolean) {
+      inner.highlightedProc = state ? proc : null;
+      emitter.emitter.emit(EmitterEventKind.ToggleProcHighlight, proc, state);
+    },
+
+    onToggleProcHighlight: emitter.createSubscriber(
+      EmitterEventKind.ToggleProcHighlight
+    ),
   };
+
+  return that;
 }
 
 export const AppContext = createContext(

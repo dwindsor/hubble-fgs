@@ -1,10 +1,4 @@
-import {
-  ConnectionsMap,
-  EndpointKind,
-  EndpointKindUnion,
-  EndpointsMap,
-  ProcessesMap,
-} from "~/types";
+import { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
 import {
   ApplicationConnection,
   ApplicationModelEvent,
@@ -18,6 +12,8 @@ export type Stats = ReturnType<typeof createEmptyStat>;
 export function getEndpointHash(conn: ApplicationConnection) {
   return `${conn.destinationName}:${conn.destinationPort}`;
 }
+
+export type AppState = ReturnType<typeof createAppState>;
 
 export function createAppState(model?: ApplicationModelEvent): {
   processesMap: ProcessesMap;

@@ -2,11 +2,11 @@ import { createRoot } from "react-dom/client";
 import { Root } from "./components/Root";
 import { model as devModel } from "./dev-model";
 import { ApplicationModelEvent } from "./proto";
+import { assert } from "./utils/assert";
 
 const dom = document.getElementById("container");
-if (!dom) {
-  throw new Error("dom node doesn't exist");
-}
+assert(dom, "dom node doesn't exist");
+
 const root = createRoot(dom);
 
 declare global {

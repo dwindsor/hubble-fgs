@@ -1,14 +1,21 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
-import { ConnectionLine, Connector, Line, WH, XY } from "~/types";
+import { ConnectionLine, Connector, EndpointKind, Line, WH, XY } from "~/types";
 
 export interface Props {
   size: WH;
 }
 
-const LINE_COLOR = "#aaa";
-const HIGHLIGHTED_LINE_COLOR = "#666";
-const MUTED_LINE_COLOR = "#ddd";
+const LINE_COLOR = "#ccc";
+const HIGHLIGHTED_LINE_COLOR = {
+  [EndpointKind.OuterDns]: "#7748e4",
+  [EndpointKind.K8s]: "#0b81d0",
+  [EndpointKind.HostMetadataService]: "#888",
+  [EndpointKind.Ip]: "#888",
+  [EndpointKind.InnerDns]: "#888",
+  [EndpointKind.Other]: "#888",
+} as const;
+const MUTED_LINE_COLOR = "#eee";
 
 export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   const state = useAppState();
@@ -29,8 +36,6 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     const backgroundLines: ConnectionLine[] = [];
     const backgroundConnectors: Connector[] = [];
 
-    const highlightedEndpoint = state.getHighlightedEndpoint();
-    const highlightedProc = state.getHighlightedProc();
     state.connectionsMap.forEach((procs, endpoint) => {
       const endpointInfo = state.endpointsMap.get(endpoint);
 
@@ -38,9 +43,11 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         return;
       }
 
-      let color = highlightedEndpoint
-        ? endpoint === highlightedEndpoint
-          ? HIGHLIGHTED_LINE_COLOR
+      let highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+
+      let color = state.highlightedEndpoint
+        ? endpoint === state.highlightedEndpoint
+          ? highlightedLineColor
           : MUTED_LINE_COLOR
         : LINE_COLOR;
 
@@ -54,9 +61,9 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           return;
         }
 
-        color = highlightedProc
-          ? proc === highlightedProc
-            ? HIGHLIGHTED_LINE_COLOR
+        color = state.highlightedProc
+          ? proc === state.highlightedProc
+            ? highlightedLineColor
             : MUTED_LINE_COLOR
           : color;
 
@@ -66,7 +73,7 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
         const procConnector = { x: x1, y: y1, color };
 
-        if (color === HIGHLIGHTED_LINE_COLOR) {
+        if (color === highlightedLineColor) {
           foregroundLines.push(line);
           foregroundConnectors.push(procConnector);
         } else {
@@ -74,13 +81,6 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           backgroundConnectors.push(procConnector);
         }
       });
-
-      const endpointConnector = { x: x2, y: y2, color };
-      if (color === HIGHLIGHTED_LINE_COLOR) {
-        foregroundConnectors.push(endpointConnector);
-      } else {
-        backgroundConnectors.push(endpointConnector);
-      }
     });
 
     backgroundLines.forEach((line) => drawLine(ctx, line));

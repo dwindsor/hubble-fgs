@@ -1,6 +1,6 @@
-import { EndpointKind, EndpointKindUnion } from "~/types";
+import { EndpointKind } from "~/types";
 
-export function inferEndpointKind(endpoint: string): EndpointKindUnion {
+export function inferEndpointKind(endpoint: string): EndpointKind {
   const endpointWithoutPort = trimEndpointPort(endpoint);
 
   if (endpoint === "169.254.169.254:80") {

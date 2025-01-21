@@ -1,12 +1,12 @@
 import clsx from "clsx";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import debounce from "lodash/debounce";
-import { useAppState } from "~/state/AppContext";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useConnector } from "~/hooks/useConnector";
 import { ApplicationProcess } from "~/proto";
+import { useAppState } from "~/state/AppContext";
+import { Collapsible } from "./Collapsible";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
-import { Collapsible } from "./Collapsible";
-import { useConnector } from "~/hooks/useConnector";
 
 export interface ProcProps {
   proc: ApplicationProcess;
@@ -20,6 +20,8 @@ export const Proc = memo(function Proc(props: ProcProps) {
   const state = useAppState();
 
   const connector = useConnector(connectorRef);
+
+  const [highlighted, setHighlighted] = useState<boolean>(false);
 
   const stat = useMemo(() => {
     return state.stat.processesMap.get(props.proc)!;
@@ -53,9 +55,25 @@ export const Proc = memo(function Proc(props: ProcProps) {
     return () => debouncedUpdate(false);
   }, []);
 
-  useEffect(() => state.onTreeSizeChanged(debouncedUpdate), [debouncedUpdate]);
+  useEffect(
+    () => state.onTreeSizeChanged(() => debouncedUpdate()),
+    [debouncedUpdate]
+  );
 
-  useEffect(() => state.onTreeChanged(debouncedUpdate), [debouncedUpdate]);
+  useEffect(
+    () => state.onTreeChanged(() => debouncedUpdate()),
+    [debouncedUpdate]
+  );
+
+  useEffect(() => {
+    return state.onToggleEndpointHighlight((endpoint, value) => {
+      if (!state.connectionsMap.get(endpoint)?.has(props.proc)) {
+        setHighlighted(false);
+        return;
+      }
+      setHighlighted(value);
+    });
+  }, [props.proc]);
 
   const highlight = useCallback(() => {
     state.toggleProcHighlight(props.proc, true);
@@ -69,7 +87,9 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   return (
     <li
-      className={clsx(css.proc, props.className)}
+      className={clsx(css.proc, props.className, {
+        [css.highlighted]: highlighted,
+      })}
       onMouseEnter={highlight}
       onMouseLeave={unhighlight}
     >

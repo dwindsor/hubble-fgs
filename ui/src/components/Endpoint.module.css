@@ -23,32 +23,32 @@
 .connector {
   position: relative;
   top: 5px;
-  margin-right: 10px;
 }
 
 .title {
-  padding: 2px 0 2px 5px;
+  display: inline-block;
+  padding: 0 0 2px 5px;
   border-radius: 3px 0 0 3px;
-  background: linear-gradient(to right, #ebebeb, #fff);
+  background: linear-gradient(to right, #ebebeb, #fff 50%);
 }
 
 .port {
-  padding: 2px 5px 2px 0;
+  padding: 0 5px 2px 0;
 }
 
 .namespace {
   margin-left: 5px;
-  padding: 2px 5px;
+  padding: 0 5px;
   border-radius: 3px;
   background-color: #e8f4fb;
 }
 
 .k8sEntityName {
-  background: linear-gradient(to right, #cbe7fa, #fff);
+  background: linear-gradient(to right, #cbe7fa, #fff 50%);
 }
 
 .outerDns {
-  background: linear-gradient(to right, #e2d6ff, #fff);
+  background: linear-gradient(to right, #e2d6ff, #fff 50%);
 }
 
 .k8sEntityType {
@@ -59,4 +59,27 @@
 
 .separator {
   color: #999;
+}
+
+.endpoint:hover,
+.endpoint.highlighted {
+  .title {
+    background: linear-gradient(to right, #d8d8d8, #fff 50%);
+  }
+
+  .outerDns {
+    background: linear-gradient(to right, #c7b2f8, #fff 50%);
+  }
+
+  .k8sEntityName {
+    background: linear-gradient(to right, #afdcfa, #fff 50%);
+  }
+
+  .k8sEntityType {
+    color: #666;
+  }
+
+  .namespace {
+    background-color: #cae7f9;
+  }
 }
