@@ -181,6 +181,10 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		dnsconfig.MetricsEnabled = true
 		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter()
 	}
+	config.dnsReportQuestions = 0
+	if spec.Parser.Dns.ReportQuestions {
+		config.dnsReportQuestions = 1
+	}
 
 	// Enable DNS cache in core, abstraction breaking but
 	// fix is to do in kernel BPF parser.
