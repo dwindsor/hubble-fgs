@@ -105,8 +105,8 @@ struct {
 static inline __attribute__((always_inline)) int
 dns_source_port_match(u16 *ports, u16 port)
 {
-	if (ports[0] == port || ports[1] == port ||
-	    ports[2] == port || ports[3] == port)
+	if (ports[0] == port || (ports[1] && ports[1] == port) ||
+	    (ports[2] && ports[2] == port) || (ports[3] && ports[3] == port))
 		return 1;
 	return 0;
 }

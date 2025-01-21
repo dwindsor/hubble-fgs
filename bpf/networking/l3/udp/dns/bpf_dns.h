@@ -17,11 +17,12 @@
 static inline __attribute__((always_inline)) int
 dns_port_match(u16 *ports, u16 port1, u16 port2)
 {
-	if (ports[0] == port1 || ports[0] == port2 || ports[1] == port1 ||
-	    ports[1] == port2 || ports[2] == port1 || ports[2] == port2 ||
-	    ports[3] == port1 || ports[3] == port2) {
+	if (ports[0] == port1 || ports[0] == port2 ||
+	    (ports[1] && (ports[1] == port1 || ports[1] == port2)) ||
+	    (ports[2] && (ports[2] == port1 || ports[2] == port2)) ||
+	    (ports[3] && (ports[3] == port1 || ports[3] == port2)))
 		return 1;
-	}
+
 	return 0;
 }
 
@@ -32,6 +33,7 @@ udp_dns(struct __sk_buff *skb,
 	struct udp_info_value *value,
 	struct iphdr *ip,
 	bool ipv6,
+	bool send,
 	u64 *cookie,
 	u64 cookie_ver,
 	int payload_off,
@@ -40,6 +42,9 @@ udp_dns(struct __sk_buff *skb,
 	struct udp_sensor_config *config = get_udp_config();
 	bool store = true;
 	int isdns;
+#ifndef IS_KPROBE
+	u16 sport;
+#endif
 
 	if (!config)
 		return 0;
@@ -47,7 +52,18 @@ udp_dns(struct __sk_buff *skb,
 	if (config->dns_ports[0] == 0)
 		return 0;
 
+#ifndef IS_KPROBE
+	if (config->dns_report_questions)
+		isdns = dns_port_match(config->dns_ports, key->tuple.sport, key->tuple.dport);
+	else {
+		sport = key->tuple.dport;
+		if (send)
+			sport = key->tuple.sport;
+		isdns = dns_source_port_match(config->dns_ports, sport);
+	}
+#else
 	isdns = dns_port_match(config->dns_ports, key->tuple.sport, key->tuple.dport);
+#endif
 	if (!isdns)
 		return 0;
 

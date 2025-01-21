@@ -161,8 +161,8 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	struct latency_protocol_config *udp_latency = 0;
 	struct latency_config *latency_config = 0;
 	struct socketmap_value *process;
-	struct udp_info_value *value;
 	struct udp_info_key key = { 0 };
+	struct udp_info_value *value;
 	u64 cookie_ver = 0;
 	s64 latency = 0;
 	int zero = 0;
@@ -200,8 +200,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		cookie_ver = process->version;
 
 	if (dns_send_userspace)
-		udp_dns(skb, skb_head, &key, value, ip, ipv6, cookie, cookie_ver, payload_off, payload_sz);
-
+		udp_dns(skb, skb_head, &key, value, ip, ipv6, send, cookie, cookie_ver, payload_off, payload_sz);
 	return 1;
 }
 
