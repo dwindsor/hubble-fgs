@@ -24,12 +24,16 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### TracingPolicy (k8s CRD)
 
-* TBD
+* New option dns-&gt;reportQuestions specifies that the DNS parser should report DNS
+  questions as well as DNS answers. The default is now to not report questions unless
+  this option is specified.
 
 ### Events (protobuf API)
 
 * Socket statistics events, and socket statistics in close socket events, group UDP
   statistics for DNS servers per local address and local port (see Agent Options).
+* The DNS parser will not report DNS questions by default. The dns-&gt;reportQuestions
+  tracing policy option can be used to report DNS questions as well as answers.
 
 ### Metrics
 
