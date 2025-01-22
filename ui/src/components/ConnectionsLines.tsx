@@ -6,7 +6,15 @@ export interface Props {
   size: WH;
 }
 
-const LINE_COLOR = "#ccc";
+const BASE_LINE_COLOR = {
+  [EndpointKind.OuterDns]: "#9e83df",
+  [EndpointKind.K8s]: "#78bbe8",
+  [EndpointKind.HostMetadataService]: "#ccc",
+  [EndpointKind.Ip]: "#ccc",
+  [EndpointKind.InnerDns]: "#ccc",
+  [EndpointKind.Other]: "#ccc",
+} as const;
+
 const HIGHLIGHTED_LINE_COLOR = {
   [EndpointKind.OuterDns]: "#7748e4",
   [EndpointKind.K8s]: "#0b81d0",
@@ -15,6 +23,7 @@ const HIGHLIGHTED_LINE_COLOR = {
   [EndpointKind.InnerDns]: "#888",
   [EndpointKind.Other]: "#888",
 } as const;
+
 const MUTED_LINE_COLOR = "#eee";
 
 export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
@@ -32,9 +41,7 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const foregroundLines: ConnectionLine[] = [];
-    const foregroundConnectors: Connector[] = [];
     const backgroundLines: ConnectionLine[] = [];
-    const backgroundConnectors: Connector[] = [];
 
     state.connectionsMap.forEach((procs, endpoint) => {
       const endpointInfo = state.endpointsMap.get(endpoint);
@@ -43,13 +50,14 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         return;
       }
 
+      let baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
       let highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
 
       let color = state.highlightedEndpoint
         ? endpoint === state.highlightedEndpoint
           ? highlightedLineColor
           : MUTED_LINE_COLOR
-        : LINE_COLOR;
+        : baseLineColor;
 
       const x2 = endpointInfo.xy.x;
       const y2 = endpointInfo.xy.y;
@@ -71,22 +79,17 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         const y1 = procInfo.xy.y;
 
         const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
-        const procConnector = { x: x1, y: y1, color };
 
         if (color === highlightedLineColor) {
           foregroundLines.push(line);
-          foregroundConnectors.push(procConnector);
         } else {
           backgroundLines.push(line);
-          backgroundConnectors.push(procConnector);
         }
       });
     });
 
     backgroundLines.forEach((line) => drawLine(ctx, line));
-    backgroundConnectors.forEach((connector) => drawConnector(ctx, connector));
     foregroundLines.forEach((line) => drawLine(ctx, line));
-    foregroundConnectors.forEach((connector) => drawConnector(ctx, connector));
   }, []);
 
   useEffect(() => {
@@ -119,22 +122,13 @@ function drawLine(ctx: CanvasRenderingContext2D, line: ConnectionLine) {
   ctx.lineWidth = 1.25;
   ctx.moveTo(line.from.x, line.from.y);
   ctx.bezierCurveTo(
-    line.to.x - 100,
+    Math.max(line.from.x, line.to.x - 100),
     line.from.y,
-    line.to.x - 100,
+    Math.max(line.from.x, line.to.x - 100),
     line.to.y,
     line.to.x,
     line.to.y
   );
   ctx.stroke();
   ctx.closePath();
-}
-
-function drawConnector(ctx: CanvasRenderingContext2D, connector: Connector) {
-  ctx.beginPath();
-  ctx.arc(connector.x, connector.y, 2, 0, 2 * Math.PI);
-  ctx.fillStyle = connector.color;
-  ctx.fill();
-  ctx.strokeStyle = connector.color;
-  ctx.stroke();
 }

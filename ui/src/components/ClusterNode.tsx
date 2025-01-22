@@ -5,14 +5,16 @@ import { NamespacesList } from "./Namespace";
 import { Host } from "./Host";
 import { NodeIcon } from "./Icons/NodeIcon";
 import { Collapsible } from "./Collapsible";
+import { useAppState } from "~/state/AppContext";
+import { Statistic } from "./Statistic";
 
-export interface Props {
-  model: ApplicationModelEvent;
-}
+export const ClusterNode = memo(function ClusterNode() {
+  const state = useAppState();
 
-export const ClusterNode = memo(function ClusterNode(props: Props) {
-  const host = props.model.applicationModel?.host;
-  const namespaces = props.model.applicationModel?.namespaces ?? [];
+  const stat = state.stat.node;
+
+  const host = state.model.applicationModel?.host;
+  const namespaces = state.model.applicationModel?.namespaces ?? [];
 
   return (
     <li className={css.nodeItem}>
@@ -20,8 +22,12 @@ export const ClusterNode = memo(function ClusterNode(props: Props) {
         initialOpened={true}
         summary={({ onClick }) => (
           <summary className={css.nodeName} onClick={onClick}>
-            <NodeIcon className={css.nodeIcon} size={14} color="#b8b8b8" />
-            <span>{props.model.nodeName}</span>
+            <div>
+              <NodeIcon className={css.nodeIcon} size={14} color="#b8b8b8" />
+              <span>
+                {state.model.nodeName} <Statistic stat={stat} />
+              </span>
+            </div>
           </summary>
         )}
       >

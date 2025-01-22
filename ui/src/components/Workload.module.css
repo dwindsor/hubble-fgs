@@ -1,6 +1,11 @@
+.inner {
+  display: flex;
+  align-items: center;
+}
+
 .workloadIcon {
   position: absolute;
-  top: 4px;
+  top: 3px;
   margin-left: -14px;
   z-index: 2;
 }

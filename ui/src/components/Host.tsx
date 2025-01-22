@@ -23,9 +23,11 @@ export const Host = memo(function Host(props: HostProps) {
       initialOpened={false}
       summary={({ onClick }) => (
         <summary className={css.hostTitle} onClick={onClick}>
-          <HostIcon className={css.hostIcon} size={14} color="#b8b8b8" />
-          <span>Host processes</span>
-          <Statistic stat={stat} />
+          <div>
+            <HostIcon className={css.hostIcon} size={14} color="#b8b8b8" />
+            <span>Host</span>
+            <Statistic stat={stat} />
+          </div>
         </summary>
       )}
     >

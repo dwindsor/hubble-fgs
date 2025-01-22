@@ -19,7 +19,6 @@ export type PropertyValues<Obj> = Obj[Exclude<keyof Obj, "__proto__">];
 export type ProcessInfo = {
   visible?: boolean | undefined;
   xy?: XY | undefined;
-  endpoints: Set<string>;
 };
 
 export type EndpointsMap = Map<string, EndpointInfo>;

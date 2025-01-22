@@ -1,9 +1,6 @@
 .wrapper {
-  display: inline-block;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-left: 7px;
-  color: #999;
+  color: #ccc;
+  font-size: 0.8em;
   white-space: pre;
+  word-spacing: -5px;
 }

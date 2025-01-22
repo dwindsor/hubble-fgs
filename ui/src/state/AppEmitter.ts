@@ -5,7 +5,7 @@ import { PropertyValues, WH } from "~/types";
 
 export const EmitterEventKind = {
   __proto__: null,
-  TreeSizeChanged: "tree-size-changed",
+  AppSizeChanged: "app-size-changed",
   TreeChanged: "tree-changed",
   RedrawConnectionsLines: "redraw-connections-lines",
   ToggleEndpointHighlight: "toggle-endpoint-highlight",
@@ -15,7 +15,7 @@ export const EmitterEventKind = {
 export type EmitterEventKind = PropertyValues<typeof EmitterEventKind>;
 
 export type EmitterHandlers = {
-  [EmitterEventKind.TreeSizeChanged]: (wh: WH) => void;
+  [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
   [EmitterEventKind.TreeChanged]: () => void;
   [EmitterEventKind.RedrawConnectionsLines]: () => void;
   [EmitterEventKind.ToggleEndpointHighlight]: (

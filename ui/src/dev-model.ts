@@ -1,4 +1,6 @@
 export const model = {
+  clusterName: "tetragon-dev",
+  nodeName: "node-aws-1",
   application_model: {
     namespaces: [
       {

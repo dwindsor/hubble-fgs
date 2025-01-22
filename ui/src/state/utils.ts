@@ -1,12 +1,13 @@
-import { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
 import {
   ApplicationConnection,
   ApplicationModelEvent,
   ApplicationProcess,
 } from "~/proto";
+import { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
 import { inferEndpointKind } from "~/utils/endpoints";
 
-export type Stat = { bytesSent: number };
+export type Stat = { totalBytesSent: number; totalBytesReceived: number };
+export type TreeEntryStat = Stat & { endpointsMap: Map<string, Stat> };
 export type Stats = ReturnType<typeof createEmptyStat>;
 
 export function getEndpointHash(conn: ApplicationConnection) {
@@ -19,89 +20,180 @@ export function createAppState(model?: ApplicationModelEvent): {
   processesMap: ProcessesMap;
   endpointsMap: EndpointsMap;
   connectionsMap: ConnectionsMap;
-  stats: Stats;
+  stat: Stats;
 } {
   const processesMap: ProcessesMap = new WeakMap();
   const endpointsMap: EndpointsMap = new Map();
   const connectionsMap: ConnectionsMap = new Map();
-  const stats = createEmptyStat();
+  const stat = createEmptyStat();
 
   if (!model) {
     return {
       processesMap,
       endpointsMap,
       connectionsMap,
-      stats,
+      stat,
     };
   }
 
   const rec = (processes?: ApplicationProcess[]) => {
-    let bytesSent = 0;
-    processes?.forEach((proc) => {
-      let procBytesSent = 0;
-      const endpoints = new Set<string>();
-      proc.connections?.forEach((conn) => {
-        endpoints.add(getEndpointHash(conn));
-        procBytesSent += (conn.bytesSent || 0) as number;
-      });
-      bytesSent += procBytesSent;
-      endpoints.forEach((endpoint) => {
-        endpointsMap.set(endpoint, { kind: inferEndpointKind(endpoint) });
+    let totalBytesSent = 0;
+    let totalBytesReceived = 0;
+    const subEndpointsMap = new Map<string, Stat>();
 
-        const connectionEntry = connectionsMap.get(endpoint) ?? new Set();
-        connectionEntry.add(proc);
-        connectionsMap.set(endpoint, connectionEntry);
+    processes?.forEach((proc) => {
+      let procTotalBytesSent = 0;
+      let procTotalBytesReceived = 0;
+
+      const procEndpointsMap = new Map<string, Stat>();
+
+      proc.connections?.forEach((conn) => {
+        const connBytesSent = Number(conn.bytesSent || 0);
+        const connBytesReceived = Number(conn.bytesReceived || 0);
+
+        const endpoint = getEndpointHash(conn);
+        procEndpointsMap.set(endpoint, {
+          totalBytesSent: connBytesSent,
+          totalBytesReceived: connBytesReceived,
+        });
+
+        procTotalBytesSent += connBytesSent;
+        procTotalBytesReceived += connBytesReceived;
+
+        const endpointStat: Stat = stat.endpointsMap.get(endpoint) ?? {
+          totalBytesSent: 0,
+          totalBytesReceived: 0,
+        };
+        stat.endpointsMap.set(endpoint, {
+          totalBytesSent: endpointStat.totalBytesSent + connBytesSent,
+          totalBytesReceived:
+            endpointStat.totalBytesReceived + connBytesReceived,
+        });
       });
-      processesMap.set(proc, { endpoints });
-      const subProcsBytesSent = rec(proc.children);
-      stats.processesMap.set(proc, {
-        bytesSent: procBytesSent,
-        subProcsBytesSent: subProcsBytesSent,
+
+      totalBytesSent += procTotalBytesSent;
+      totalBytesReceived += procTotalBytesReceived;
+
+      procEndpointsMap.forEach((procEndpointStat, procEndpoint) => {
+        const subEndpointStat = subEndpointsMap.get(procEndpoint) ?? {
+          totalBytesSent: 0,
+          totalBytesReceived: 0,
+        };
+        subEndpointStat.totalBytesSent += procEndpointStat.totalBytesSent;
+        subEndpointStat.totalBytesReceived +=
+          procEndpointStat.totalBytesReceived;
+        subEndpointsMap.set(procEndpoint, subEndpointStat);
+
+        const endpointKind = inferEndpointKind(procEndpoint);
+        endpointsMap.set(procEndpoint, { kind: endpointKind });
+
+        const endpointConnections =
+          connectionsMap.get(procEndpoint) ?? new Set();
+
+        endpointConnections.add(proc);
+        connectionsMap.set(procEndpoint, endpointConnections);
       });
-      bytesSent += subProcsBytesSent;
+
+      processesMap.set(proc, {});
+
+      const subResult = rec(proc.children);
+
+      stat.processesMap.set(proc, {
+        totalBytesSent: procTotalBytesSent,
+        totalBytesReceived: procTotalBytesReceived,
+        endpointsMap: procEndpointsMap,
+      });
+
+      totalBytesSent += subResult.totalBytesSent;
+      totalBytesReceived += subResult.totalBytesReceived;
+
+      subResult.endpointsMap.forEach((endpointStat, endpoint) => {
+        const subEndpointStat = subEndpointsMap.get(endpoint) ?? {
+          totalBytesSent: 0,
+          totalBytesReceived: 0,
+        };
+        subEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
+        subEndpointStat.totalBytesReceived += endpointStat.totalBytesReceived;
+        subEndpointsMap.set(endpoint, subEndpointStat);
+      });
     });
-    return bytesSent;
+
+    return {
+      totalBytesSent,
+      totalBytesReceived,
+      endpointsMap: subEndpointsMap,
+    };
   };
 
-  const hostBytesSent = rec(model.applicationModel?.host?.processes ?? []);
+  const hostResult = rec(model.applicationModel?.host?.processes ?? []);
 
-  let namespacesBytesSent = 0;
+  let namespacesTotalBytesSent = 0;
+  let namespacesTotalBytesReceived = 0;
   model.applicationModel?.namespaces?.forEach((namespace) => {
     if (!namespace.name) return;
-    let namespaceBytesSent = 0;
+    let namespaceTotalBytesSent = 0;
+    let namespaceTotalBytesReceived = 0;
+
+    const namespaceEndpointsMap = new Map<string, Stat>();
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
-      const workloadBytesSent = rec(workload.processes);
-      stats.workloadsMap[workload.name] = {
-        bytesSent: workloadBytesSent,
-      };
-      namespaceBytesSent += workloadBytesSent;
+      const workloadResult = rec(workload.processes);
+      stat.workloadsMap.set(workload.name, {
+        totalBytesSent: workloadResult.totalBytesSent,
+        totalBytesReceived: workloadResult.totalBytesReceived,
+        endpointsMap: workloadResult.endpointsMap,
+      });
+      namespaceTotalBytesSent += workloadResult.totalBytesSent;
+      namespaceTotalBytesReceived += workloadResult.totalBytesReceived;
+      workloadResult.endpointsMap.forEach((endpointStat, endpoint) => {
+        const namespaceEndpointStat = namespaceEndpointsMap.get(endpoint) ?? {
+          totalBytesSent: 0,
+          totalBytesReceived: 0,
+        };
+        namespaceEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
+        namespaceEndpointStat.totalBytesReceived +=
+          endpointStat.totalBytesReceived;
+        namespaceEndpointsMap.set(endpoint, namespaceEndpointStat);
+      });
     });
-    namespacesBytesSent += namespaceBytesSent;
-    stats.namespacesMap[namespace.name] = {
-      bytesSent: namespaceBytesSent,
-    };
+    namespacesTotalBytesSent += namespaceTotalBytesSent;
+    namespacesTotalBytesReceived += namespaceTotalBytesReceived;
+
+    stat.namespacesMap.set(namespace.name, {
+      totalBytesSent: namespaceTotalBytesSent,
+      totalBytesReceived: namespaceTotalBytesReceived,
+      endpointsMap: namespaceEndpointsMap,
+    });
   });
 
-  stats.host.bytesSent = hostBytesSent;
-  stats.namespaces.bytesSent = namespacesBytesSent;
-  stats.node.bytesSent = hostBytesSent + namespacesBytesSent;
-  stats.cluster.bytesSent = stats.node.bytesSent;
+  stat.host.totalBytesSent = hostResult.totalBytesSent;
+  stat.host.totalBytesReceived = hostResult.totalBytesSent;
+  stat.namespaces.totalBytesSent = namespacesTotalBytesSent;
+  stat.namespaces.totalBytesReceived = namespacesTotalBytesReceived;
+  stat.node.totalBytesSent =
+    hostResult.totalBytesSent + namespacesTotalBytesSent;
+  stat.node.totalBytesReceived =
+    hostResult.totalBytesReceived + namespacesTotalBytesReceived;
+  stat.cluster.totalBytesSent = stat.node.totalBytesSent;
+  stat.cluster.totalBytesReceived = stat.node.totalBytesReceived;
 
-  return { processesMap, endpointsMap, connectionsMap: connectionsMap, stats };
+  return {
+    processesMap,
+    endpointsMap,
+    connectionsMap,
+    stat: stat,
+  };
 }
 
 export function createEmptyStat() {
   return {
-    cluster: { bytesSent: 0 },
-    node: { bytesSent: 0 },
-    host: { bytesSent: 0 },
-    namespaces: { bytesSent: 0 },
-    namespacesMap: {} as { [key: string]: Stat },
-    workloadsMap: {} as { [key: string]: Stat },
-    processesMap: new WeakMap<
-      ApplicationProcess,
-      Stat & { subProcsBytesSent: number }
-    >(),
+    cluster: { totalBytesSent: 0, totalBytesReceived: 0 },
+    node: { totalBytesSent: 0, totalBytesReceived: 0 },
+    host: { totalBytesSent: 0, totalBytesReceived: 0 },
+    namespaces: { totalBytesSent: 0, totalBytesReceived: 0 },
+    namespacesMap: new Map<string, TreeEntryStat>(),
+    workloadsMap: new Map<string, TreeEntryStat>(),
+    processesMap: new WeakMap<ApplicationProcess, TreeEntryStat>(),
+    endpointsMap: new Map<string, Stat>(),
   };
 }

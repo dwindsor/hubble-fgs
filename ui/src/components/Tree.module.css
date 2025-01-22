@@ -63,9 +63,8 @@
       display: none;
     }
 
-    &:hover > span {
+    &:hover > span:nth-child(2) {
       background-color: var(--clickable-hover-bg-color);
-      transition: background-color 0.2s;
     }
 
     &:focus {
@@ -77,7 +76,7 @@
     }
   }
 
-  li details > summary,
+  li details > summary > div,
   li > div {
     margin-left: calc(var(--padding) * -1 + var(--radius));
     padding-left: calc(var(--radius) * 2);
@@ -85,12 +84,28 @@
     & > span {
       margin-left: 1px;
       padding: 0 3px;
-      border-radius: 3px;
     }
   }
 
-  li details > summary > span,
+  li details > summary:hover,
+  li > div:hover,
+  :global(.ipt-interactive.ipt-highlighted) {
+    :global(.process-tree-item-statistic) {
+      color: #555;
+    }
+
+    &:global(.ipt-endpoint-outer-dns) :global(.process-tree-item-statistic) {
+      color: #7748e4;
+    }
+
+    &:global(.ipt-endpoint-k8s) :global(.process-tree-item-statistic) {
+      color: #0b81d0;
+    }
+  }
+
+  li details > summary > div > span,
   li > div > span {
+    line-height: 22px;
     background-color: rgba(255, 255, 255, 0.75);
   }
 }

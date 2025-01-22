@@ -1,14 +1,14 @@
 import { memo } from "react";
-import css from "./Namespace.module.css";
+import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { ApplicationNamespace } from "~/proto";
-import { WorkloadsList } from "./Workload";
-import clsx from "clsx";
-
-import { NamespacesIcon } from "./Icons/NamespacesIcon";
-import { NamespaceIcon } from "./Icons/NamespaceIcon";
-import { Statistic } from "./Statistic";
 import { useAppState } from "~/state/AppContext";
 import { Collapsible } from "./Collapsible";
+import { Connector } from "./Connector";
+import { NamespaceIcon } from "./Icons/NamespaceIcon";
+import { NamespacesIcon } from "./Icons/NamespacesIcon";
+import css from "./Namespace.module.css";
+import { Statistic } from "./Statistic";
+import { WorkloadsList } from "./Workload";
 
 export interface NamespaceProps {
   namespace: ApplicationNamespace;
@@ -17,23 +17,31 @@ export interface NamespaceProps {
 export const Namespace = memo(function Namespace(props: NamespaceProps) {
   const state = useAppState();
 
-  const stat = props.namespace.name
-    ? state.stat.namespacesMap[props.namespace.name]
-    : null;
+  const entry = useTreeEntry({
+    statInfo: props.namespace.name
+      ? state.stat.namespacesMap.get(props.namespace.name)
+      : undefined,
+  });
 
   const workloads = props.namespace.workloads ?? [];
+
   return (
-    <li className={clsx(css.namespaceItem)}>
+    <li>
       <Collapsible
-        summary={({ opened, onClick }) => (
-          <summary onClick={onClick}>
-            <NamespaceIcon
-              className={css.namespaceIcon}
-              size={14}
-              color="#b8b8b8"
-            />
-            <span>{props.namespace.name}</span>
-            {!opened && stat && <Statistic stat={stat} />}
+        summary={({ onClick }) => (
+          <summary className={entry.className} onClick={onClick}>
+            <div className={css.inner}>
+              <NamespaceIcon
+                className={css.namespaceIcon}
+                size={14}
+                color="#b8b8b8"
+              />
+              <span>{props.namespace.name}</span>
+              {entry.stat && <Statistic stat={entry.stat} />}
+              {entry.hasConnections && (
+                <Connector endpoints={entry.connectorEndpoints} />
+              )}
+            </div>
           </summary>
         )}
       >
@@ -57,15 +65,17 @@ export const NamespacesList = memo(function NamespacesList(
   return (
     <Collapsible
       initialOpened={true}
-      summary={({ opened, onClick }) => (
+      summary={({ onClick }) => (
         <summary className={css.namespacesTitle} onClick={onClick}>
-          <NamespacesIcon
-            className={css.namespacesIcon}
-            size={14}
-            color="#b8b8b8"
-          />
-          <span>Namespaces</span>
-          {!opened && <Statistic stat={stat} />}
+          <div>
+            <NamespacesIcon
+              className={css.namespacesIcon}
+              size={14}
+              color="#b8b8b8"
+            />
+            <span>Namespaces</span>
+            <Statistic stat={stat} />
+          </div>
         </summary>
       )}
     >

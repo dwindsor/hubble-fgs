@@ -1,5 +1,5 @@
 .proc {
-  cursor: default;
+  cursor: pointer;
 }
 
 .proc:has(> div)::before {
@@ -15,33 +15,31 @@
   border-width: 0 0 2px 2px;
 }
 
-.procLine {
+.inner {
   display: flex;
   align-items: center;
 }
 
-.procContent {
-  display: flex;
+.binary {
+  max-width: 50%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
 }
 
 .arguments {
   display: block;
-  max-width: 380px;
+  max-width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: pre;
+  white-space: nowrap;
   margin-left: 7px;
   color: #999;
 }
 
-.connector {
-  margin-left: 10px;
-  margin-right: 10px;
-  width: 5px;
-  height: 5px;
-}
-
 .proc:hover,
-.proc.highlighted {
+.proc:global(.ipt-highlighted) {
   font-weight: 700;
 }

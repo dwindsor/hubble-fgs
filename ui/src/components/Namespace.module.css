@@ -1,18 +1,21 @@
+.inner {
+  display: flex;
+  align-items: center;
+}
+
 .namespacesIcon,
 .namespaceIcon {
   position: absolute;
-  top: 4px;
+  top: 3px;
   margin-left: -14px;
   z-index: 2;
   background: #fff;
 }
 
 .namespacesTitle {
-  text-transform: uppercase;
   color: #555;
-  font-size: 12px;
 }
 
-.namespaceLine {
+.namespace {
   display: flex;
 }

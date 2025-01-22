@@ -1,7 +1,8 @@
-import { memo, useEffect, useState } from "react";
-import { Endpoint } from "./Endpoint";
+import { memo, useEffect, useMemo, useState } from "react";
 import { AppState, useAppState } from "~/state/AppContext";
-import { EndpointKind } from "~/types";
+import { endpointsKindOrder } from "~/utils/endpoints";
+import { Endpoint } from "./Endpoint";
+import debounce from "lodash/debounce";
 
 export const Endpoints = memo(function Endpoints() {
   const endpoints = useEndpoints();
@@ -20,12 +21,15 @@ function useEndpoints() {
 
   const [endpoints, setEndpoints] = useState<string[]>(createEndpoints(state));
 
-  useEffect(() => {
-    return state.onRedrawConnectionsLines(() => {
+  const debouncedUpdate = useMemo(() => {
+    return debounce(() => {
       setEndpoints(createEndpoints(state));
-      state.changeTree();
     });
   }, []);
+
+  useEffect(() => {
+    return state.onTreeChanged(debouncedUpdate);
+  }, [debouncedUpdate]);
 
   return endpoints;
 }
@@ -43,23 +47,12 @@ function createEndpoints(state: AppState): string[] {
     });
   }
 
-  const order = [
-    EndpointKind.OuterDns,
-    EndpointKind.K8s,
-    EndpointKind.HostMetadataService,
-    EndpointKind.Ip,
-    EndpointKind.InnerDns,
-  ].reduce((acc, item, idx) => {
-    acc[item] = idx;
-    return acc;
-  }, {} as { [key in EndpointKind]: number });
-
   return Array.from(endpoints).sort((a, b) => {
     const x = state.endpointsMap.get(a)!;
     const y = state.endpointsMap.get(b)!;
 
     if (x.kind !== y.kind) {
-      return order[x.kind] - order[y.kind];
+      return endpointsKindOrder[x.kind] - endpointsKindOrder[y.kind];
     }
 
     return a.localeCompare(b);

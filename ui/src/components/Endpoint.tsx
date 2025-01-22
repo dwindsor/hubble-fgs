@@ -5,6 +5,7 @@ import { useAppState } from "~/state/AppContext";
 import clsx from "clsx";
 import React from "react";
 import { useConnector } from "~/hooks/useConnector";
+import { ApplicationProcess } from "~/proto";
 import { EndpointKind } from "~/types";
 import {
   getEndpointPort,
@@ -12,17 +13,19 @@ import {
   trimEndpointPort,
 } from "~/utils/endpoints";
 import css from "./Endpoint.module.css";
+import { Statistic } from "./Statistic";
+import { getEndpointHash, Stat } from "~/state/utils";
 
 export interface Props {
   endpoint: string;
 }
 
 export const Endpoint = memo(function Endpoint(props: Props) {
-  const connectorRef = useRef<HTMLDivElement>(null);
-
   const state = useAppState();
 
-  const [highlighted, setHighlighted] = useState<boolean>(false);
+  const connector = useConnector();
+
+  const [currProc, setCurrProc] = useState<ApplicationProcess | null>(null);
 
   const kind = useMemo(() => {
     return inferEndpointKind(props.endpoint);
@@ -36,48 +39,66 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     return getEndpointPort(props.endpoint);
   }, [props.endpoint]);
 
-  const connector = useConnector(connectorRef);
-
-  const debouncedUpdate = useMemo(() => {
-    return debounce((visible = true) => {
-      const cur = state.endpointsMap.get(props.endpoint);
-      const xy = connector.getXY();
-
-      if (
-        cur &&
-        cur.visible === visible &&
-        cur.xy?.x === xy?.x &&
-        cur.xy?.y === xy?.y
-      ) {
-        return;
+  const stat = useMemo(() => {
+    if (!currProc) {
+      return state.stat.endpointsMap.get(props.endpoint) ?? null;
+    }
+    const stat: Stat = {
+      totalBytesSent: 0,
+      totalBytesReceived: 0,
+    };
+    let was = false;
+    currProc.connections?.forEach((conn) => {
+      if (props.endpoint === getEndpointHash(conn)) {
+        was = true;
+        stat.totalBytesSent += Number(conn.bytesSent || 0);
+        stat.totalBytesReceived += Number(conn.bytesReceived || 0);
       }
-
-      state.updateEndpoint(props.endpoint, visible, xy);
     });
-  }, [props.endpoint, connector]);
+    if (!was) {
+      return null;
+    }
+    return stat;
+  }, [props.endpoint, currProc]);
+
+  const update = (visible = true) => {
+    const cur = state.endpointsMap.get(props.endpoint);
+    const xy = connector.getXY();
+
+    if (
+      cur &&
+      cur.visible === visible &&
+      cur.xy?.x === xy?.x &&
+      cur.xy?.y === xy?.y
+    ) {
+      return;
+    }
+
+    state.updateEndpoint(props.endpoint, visible, xy);
+  };
+
+  const debouncedUpdate = useMemo(
+    () => debounce(update),
+    [props.endpoint, connector]
+  );
 
   useEffect(() => {
-    debouncedUpdate(true);
-    return () => debouncedUpdate(false);
+    update(true);
+    return () => state.updateEndpoint(props.endpoint, false, undefined);
   }, []);
 
   useEffect(
-    () => state.onTreeSizeChanged(() => debouncedUpdate()),
-    [debouncedUpdate]
-  );
-
-  useEffect(
-    () => state.onTreeChanged(() => debouncedUpdate()),
+    () => state.onAppSizeChanged(() => debouncedUpdate()),
     [debouncedUpdate]
   );
 
   useEffect(() => {
     return state.onToggleProcHighlight((proc, value) => {
       if (!state.connectionsMap.get(props.endpoint)?.has(proc)) {
-        setHighlighted(false);
+        setCurrProc(null);
         return;
       }
-      setHighlighted(value);
+      setCurrProc(value ? proc : null);
     });
   }, [props.endpoint]);
 
@@ -89,15 +110,19 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     state.toggleEndpontHighlight(props.endpoint, false);
   }, [props.endpoint]);
 
+  const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
+    [css.highlighted]: currProc,
+  });
+
   return (
     <div
-      className={clsx(css.endpoint, { [css.highlighted]: highlighted })}
+      className={className}
       onMouseEnter={highlight}
       onMouseLeave={unhighlight}
     >
-      <div ref={connectorRef} className={css.connector} />
+      <div ref={connector.ref} className={css.connector} />
       <span className={css.endpointContent}>
-        {renderEndpoint(kind, title, port)}
+        {renderEndpoint(kind, title, port)} {stat && <Statistic stat={stat} />}
       </span>
     </div>
   );
@@ -113,7 +138,7 @@ function renderEndpoint(
       return <K8sEndpoint str={title} port={port} />;
     case EndpointKind.OuterDns:
       return (
-        <span className={clsx(css.title, css.outerDns)}>
+        <span className={clsx(css.title)}>
           {title}
           {port && <Port port={port} />}
         </span>
@@ -128,6 +153,17 @@ function renderEndpoint(
           {port && <Port port={port} />}
         </span>
       );
+  }
+}
+
+function classNameFromEndpointKind(kind: EndpointKind): string | null {
+  switch (kind) {
+    case EndpointKind.OuterDns:
+      return css.outerDns;
+    case EndpointKind.K8s:
+      return css.k8sEntity;
+    default:
+      return null;
   }
 }
 

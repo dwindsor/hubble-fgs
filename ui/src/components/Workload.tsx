@@ -1,12 +1,13 @@
 import { memo } from "react";
+import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { ApplicationWorkload } from "~/proto";
-import clsx from "clsx";
-import css from "./Workload.module.css";
-import { ProcsList } from "./Proc";
-import { WorkloadIcon } from "./Icons/WorkloadIcon";
 import { useAppState } from "~/state/AppContext";
-import { Statistic } from "./Statistic";
 import { Collapsible } from "./Collapsible";
+import { Connector } from "./Connector";
+import { WorkloadIcon } from "./Icons/WorkloadIcon";
+import { ProcsList } from "./Proc";
+import { Statistic } from "./Statistic";
+import css from "./Workload.module.css";
 
 export interface WorkloadProps {
   workload: ApplicationWorkload;
@@ -15,23 +16,31 @@ export interface WorkloadProps {
 export const Workload = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
-  const stat = props.workload.name
-    ? state.stat.workloadsMap[props.workload.name]
-    : null;
+  const entry = useTreeEntry({
+    statInfo: props.workload.name
+      ? state.stat.workloadsMap.get(props.workload.name)
+      : undefined,
+  });
 
   const procs = props.workload.processes ?? [];
+
   return (
-    <li className={clsx(css.workloadItem)}>
+    <li>
       <Collapsible
-        summary={({ opened, onClick }) => (
-          <summary className={css.workloadName} onClick={onClick}>
-            <WorkloadIcon
-              className={css.workloadIcon}
-              size={14}
-              color="#b8b8b8"
-            />
-            <span>{props.workload.name}</span>
-            {!opened && stat && <Statistic stat={stat} />}
+        summary={({ onClick }) => (
+          <summary className={entry.className} onClick={onClick}>
+            <div className={css.inner}>
+              <WorkloadIcon
+                className={css.workloadIcon}
+                size={14}
+                color="#b8b8b8"
+              />
+              <span>{props.workload.name}</span>
+              {entry.stat && <Statistic stat={entry.stat} />}
+              {entry.hasConnections && (
+                <Connector endpoints={entry.connectorEndpoints} />
+              )}
+            </div>
           </summary>
         )}
       >

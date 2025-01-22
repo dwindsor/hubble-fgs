@@ -16,12 +16,14 @@
 
 .tree {
   position: relative;
+  max-width: 50%;
   flex: 2;
   z-index: 2;
 }
 
 .endpoints {
   position: relative;
+  max-width: 50%;
   flex: 1;
   z-index: 2;
 }

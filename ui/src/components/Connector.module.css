@@ -1,0 +1,58 @@
+.connector {
+  display: flex;
+  flex-wrap: nowrap;
+  margin-left: 10px;
+  margin-right: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.part {
+  width: 7px;
+  height: 100%;
+  background: #eeed;
+
+  &:first-child {
+    border-radius: 3px 0 0 3px;
+  }
+
+  &:last-child {
+    border-radius: 0 3px 3px 0;
+  }
+
+  &:first-child:last-child {
+    border-radius: 3px;
+  }
+
+  &.outerDns {
+    background: #ded0ff;
+  }
+
+  &.k8sEntity {
+    background: #c0e6ff;
+  }
+}
+
+:global(.ipt-highlighted) .part {
+  background: #ccc;
+}
+
+:global(.ipt-highlighted) .outerDns {
+  background: #a289de;
+}
+
+:global(.ipt-highlighted) .k8sEntity {
+  background: #84bbe0;
+}
+
+:global(.ipt-muted) .part {
+  background: #eee;
+}
+
+:global(.ipt-muted) .outerDns {
+  background: #eee;
+}
+
+:global(.ipt-muted) .k8sEntity {
+  background: #eee;
+}

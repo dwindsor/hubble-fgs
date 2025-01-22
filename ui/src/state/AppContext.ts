@@ -44,19 +44,21 @@ export function createAppContext({
     },
 
     get stat() {
-      return state.stats;
+      return state.stat;
     },
 
     changeAppSize(size: WH) {
-      emitter.emitter.emit(EmitterEventKind.TreeSizeChanged, size);
+      emitter.emitter.emit(EmitterEventKind.AppSizeChanged, size);
     },
 
-    onTreeSizeChanged: emitter.createSubscriber(
-      EmitterEventKind.TreeSizeChanged
-    ),
+    onAppSizeChanged: emitter.createSubscriber(EmitterEventKind.AppSizeChanged),
 
     changeTree() {
       emitter.emitter.emit(EmitterEventKind.TreeChanged);
+    },
+
+    redrawConnectionLines() {
+      emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
     },
 
     onTreeChanged: emitter.createSubscriber(EmitterEventKind.TreeChanged),
@@ -72,8 +74,10 @@ export function createAppContext({
     ) {
       const cur = state.processesMap.get(proc);
       assert(cur, "All processes expected to be available in processes map");
+      console.log("update process", proc.name, visible);
       state.processesMap.set(proc, { ...cur, visible, xy });
-      emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
+      that.changeTree();
+      that.redrawConnectionLines();
     },
 
     updateEndpoint(
@@ -84,7 +88,7 @@ export function createAppContext({
       const cur = state.endpointsMap.get(endpoint);
       assert(cur, "All endpoints expected to be available in endpoints map");
       state.endpointsMap.set(endpoint, { ...cur, visible, xy });
-      emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
+      that.redrawConnectionLines();
     },
 
     get highlightedEndpoint() {

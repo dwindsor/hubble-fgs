@@ -1,6 +1,6 @@
 .endpoint {
   display: flex;
-  cursor: default;
+  cursor: pointer;
   padding-top: 5px;
   padding-bottom: 5px;
 
@@ -22,7 +22,6 @@
 
 .connector {
   position: relative;
-  top: 5px;
 }
 
 .title {
@@ -47,13 +46,13 @@
   background: linear-gradient(to right, #cbe7fa, #fff 50%);
 }
 
-.outerDns {
+.outerDns .title {
   background: linear-gradient(to right, #e2d6ff, #fff 50%);
 }
 
 .k8sEntityType {
   margin-left: 5px;
-  font-size: 0.9em;
+  font-size: 0.8em;
   color: #999;
 }
 
@@ -63,11 +62,16 @@
 
 .endpoint:hover,
 .endpoint.highlighted {
+  font-weight: 700;
+  :global(.process-tree-item-statistic) {
+    color: #555;
+  }
+
   .title {
     background: linear-gradient(to right, #d8d8d8, #fff 50%);
   }
 
-  .outerDns {
+  &.outerDns .title {
     background: linear-gradient(to right, #c7b2f8, #fff 50%);
   }
 
@@ -81,5 +85,29 @@
 
   .namespace {
     background-color: #cae7f9;
+  }
+}
+
+.endpoint.outerDns {
+  :global(.process-tree-item-statistic) {
+    color: #8a66e0 !important;
+  }
+}
+
+.endpoint.k8sEntity {
+  :global(.process-tree-item-statistic) {
+    color: #58abe2 !important;
+  }
+}
+
+.endpoint.outerDns.highlighted {
+  :global(.process-tree-item-statistic) {
+    color: #7748e4 !important;
+  }
+}
+
+.endpoint.k8sEntity.highlighted {
+  :global(.process-tree-item-statistic) {
+    color: #0b81d0 !important;
   }
 }

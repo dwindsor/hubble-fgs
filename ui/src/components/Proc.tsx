@@ -1,10 +1,11 @@
 import clsx from "clsx";
 import debounce from "lodash/debounce";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useConnector } from "~/hooks/useConnector";
+import { memo, useCallback, useEffect, useMemo } from "react";
+import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { ApplicationProcess } from "~/proto";
 import { useAppState } from "~/state/AppContext";
 import { Collapsible } from "./Collapsible";
+import { Connector } from "./Connector";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
 
@@ -15,65 +16,35 @@ export interface ProcProps {
 }
 
 export const Proc = memo(function Proc(props: ProcProps) {
-  const connectorRef = useRef<HTMLDivElement>(null);
-
   const state = useAppState();
 
-  const connector = useConnector(connectorRef);
+  const procInfo = state.processesMap.get(props.proc) ?? null;
 
-  const [highlighted, setHighlighted] = useState<boolean>(false);
+  const entry = useTreeEntry({
+    statInfo: state.stat.processesMap.get(props.proc),
+  });
 
-  const stat = useMemo(() => {
-    return state.stat.processesMap.get(props.proc)!;
-  }, [props.proc]);
-
-  const hasConnections = useMemo(() => {
-    const curr = state.processesMap.get(props.proc);
-    return !!curr?.endpoints.size;
-  }, [props.proc, state.processesMap]);
-
-  const debouncedUpdate = useMemo(() => {
-    return debounce((visible = true) => {
-      const cur = state.processesMap.get(props.proc);
-      const xy = connector.getXY();
+  const update = useCallback(
+    (visible = true) => {
+      const xy = entry.connector.getXY();
 
       if (
-        cur &&
-        cur.visible === visible &&
-        cur.xy?.x === xy?.x &&
-        cur.xy?.y === xy?.y
+        procInfo &&
+        procInfo.visible === visible &&
+        procInfo.xy?.x === xy?.x &&
+        procInfo.xy?.y === xy?.y
       ) {
         return;
       }
 
       state.updateProcess(props.proc, visible, xy);
-    });
-  }, [props.proc, connector]);
-
-  useEffect(() => {
-    debouncedUpdate(true);
-    return () => debouncedUpdate(false);
-  }, []);
-
-  useEffect(
-    () => state.onTreeSizeChanged(() => debouncedUpdate()),
-    [debouncedUpdate]
+    },
+    [props.proc, procInfo, entry.connector]
   );
 
-  useEffect(
-    () => state.onTreeChanged(() => debouncedUpdate()),
-    [debouncedUpdate]
-  );
-
-  useEffect(() => {
-    return state.onToggleEndpointHighlight((endpoint, value) => {
-      if (!state.connectionsMap.get(endpoint)?.has(props.proc)) {
-        setHighlighted(false);
-        return;
-      }
-      setHighlighted(value);
-    });
-  }, [props.proc]);
+  const debouncedUpdate = useMemo(() => {
+    return debounce(update);
+  }, [update]);
 
   const highlight = useCallback(() => {
     state.toggleProcHighlight(props.proc, true);
@@ -85,28 +56,62 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   const children = props.proc.children ?? [];
 
+  useEffect(() => {
+    update(true);
+    return () => {
+      state.updateProcess(props.proc, false, undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    return state.onAppSizeChanged(() => debouncedUpdate());
+  }, [debouncedUpdate]);
+
+  useEffect(() => {
+    return debouncedUpdate();
+  }, [entry.endpoint]);
+
+  useEffect(() => {
+    return state.onToggleProcHighlight((proc, value) => {
+      if (!proc || !value) {
+        entry.setVisualState("base");
+        return;
+      } else if (proc === props.proc && value) {
+        entry.setVisualState("highlighted");
+        return;
+      } else {
+        entry.setVisualState("muted");
+        return;
+      }
+    });
+  }, [props.proc]);
+
   return (
     <li
-      className={clsx(css.proc, props.className, {
-        [css.highlighted]: highlighted,
-      })}
+      className={clsx(css.proc, props.className)}
       onMouseEnter={highlight}
       onMouseLeave={unhighlight}
     >
       {children.length ? (
         <Collapsible
-          summary={({ opened, onClick }) => (
-            <summary className={css.procLine} onClick={onClick}>
-              <span>
-                {props.proc.name}{" "}
+          summary={({ onClick }) => (
+            <summary
+              className={clsx(css.inner, entry.className)}
+              onClick={onClick}
+            >
+              <div>
+                <Binary name={props.proc.name} />{" "}
                 <span className={css.arguments} title={props.proc.arguments}>
                   {props.proc.arguments}
                 </span>
-              </span>
-              {!opened && <Statistic stat={stat} />}
-              {hasConnections && (
-                <div ref={connectorRef} className={css.connector} />
-              )}
+                {entry.stat && <Statistic stat={entry.stat} />}
+                {entry.hasConnections && (
+                  <Connector
+                    connector={entry.connector}
+                    endpoints={entry.connectorEndpoints}
+                  />
+                )}
+              </div>
             </summary>
           )}
         >
@@ -117,16 +122,17 @@ export const Proc = memo(function Proc(props: ProcProps) {
           />
         </Collapsible>
       ) : (
-        <div className={css.procLine}>
-          <span className={css.procContent}>
-            {props.proc.name}{" "}
-            <span className={css.arguments} title={props.proc.arguments}>
-              {props.proc.arguments}
-            </span>
-            <Statistic stat={stat} />
+        <div className={clsx(css.inner, entry.className)}>
+          <Binary name={props.proc.name} />{" "}
+          <span className={css.arguments} title={props.proc.arguments}>
+            {props.proc.arguments}
           </span>
-          {hasConnections && (
-            <div ref={connectorRef} className={css.connector} />
+          {entry.stat && <Statistic stat={entry.stat} />}
+          {entry.hasConnections && (
+            <Connector
+              connector={entry.connector}
+              endpoints={entry.connectorEndpoints}
+            />
           )}
         </div>
       )}
@@ -156,3 +162,15 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
     </ul>
   );
 });
+
+function Binary(props: { name?: string | undefined }) {
+  return (
+    <span className={css.binary}>
+      <>&lrm;</>
+      {/* needed to fix text-overflow */}
+      {props.name ?? "-"}
+      <>&lrm;</>
+      {/* needed to fix text-overflow */}
+    </span>
+  );
+}

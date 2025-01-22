@@ -1,5 +1,16 @@
 import { EndpointKind } from "~/types";
 
+export const endpointsKindOrder = [
+  EndpointKind.OuterDns,
+  EndpointKind.K8s,
+  EndpointKind.HostMetadataService,
+  EndpointKind.Ip,
+  EndpointKind.InnerDns,
+].reduce((acc, item, idx) => {
+  acc[item] = idx;
+  return acc;
+}, {} as { [key in EndpointKind]: number });
+
 export function inferEndpointKind(endpoint: string): EndpointKind {
   const endpointWithoutPort = trimEndpointPort(endpoint);
 
