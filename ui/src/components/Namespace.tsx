@@ -45,7 +45,7 @@ export const Namespace = memo(function Namespace(props: NamespaceProps) {
           </summary>
         )}
       >
-        <WorkloadsList workloads={workloads} />
+        <WorkloadsList namespace={props.namespace} workloads={workloads} />
       </Collapsible>
     </li>
   );

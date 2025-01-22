@@ -53,8 +53,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
       let baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
       let highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
 
-      let color = state.highlightedEndpoint
-        ? endpoint === state.highlightedEndpoint
+      let color = state.highlightedEndpointsMap.size
+        ? state.highlightedEndpointsMap.has(endpoint)
           ? highlightedLineColor
           : MUTED_LINE_COLOR
         : baseLineColor;
@@ -106,7 +106,7 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   }, [draw]);
 
   useEffect(() => {
-    return state.onToggleEndpointHighlight(draw);
+    return state.onToggleEndpoint(draw);
   }, [draw]);
 
   useEffect(() => {

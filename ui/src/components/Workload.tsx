@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
-import { ApplicationWorkload } from "~/proto";
+import { ApplicationNamespace, ApplicationWorkload } from "~/proto";
 import { useAppState } from "~/state/AppContext";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
@@ -10,6 +10,7 @@ import { Statistic } from "./Statistic";
 import css from "./Workload.module.css";
 
 export interface WorkloadProps {
+  namespace: ApplicationNamespace;
   workload: ApplicationWorkload;
 }
 
@@ -17,9 +18,12 @@ export const Workload = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
   const entry = useTreeEntry({
-    statInfo: props.workload.name
-      ? state.stat.workloadsMap.get(props.workload.name)
-      : undefined,
+    statInfo:
+      props.namespace.name && props.workload.name
+        ? state.stat.workloadsMap.get(
+            props.namespace.name + "/" + props.workload.name
+          )
+        : undefined,
   });
 
   const procs = props.workload.processes ?? [];
@@ -51,6 +55,7 @@ export const Workload = memo(function Workload(props: WorkloadProps) {
 });
 
 export interface WorkloadsListProps {
+  namespace: ApplicationNamespace;
   workloads: ApplicationWorkload[];
 }
 
@@ -60,7 +65,13 @@ export const WorkloadsList = memo(function WorkloadsList(
   return (
     <ul className={css.workloadsList}>
       {props.workloads.map((workload) => {
-        return <Workload key={workload.name} workload={workload} />;
+        return (
+          <Workload
+            key={workload.name}
+            namespace={props.namespace}
+            workload={workload}
+          />
+        );
       })}
     </ul>
   );

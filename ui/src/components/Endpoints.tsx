@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { AppState, useAppState } from "~/state/AppContext";
-import { endpointsKindOrder } from "~/utils/endpoints";
+import { EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
 import { Endpoint } from "./Endpoint";
 import debounce from "lodash/debounce";
 
@@ -19,6 +19,8 @@ export const Endpoints = memo(function Endpoints() {
 function useEndpoints() {
   const state = useAppState();
 
+  console.log(state);
+
   const [endpoints, setEndpoints] = useState<string[]>(createEndpoints(state));
 
   const debouncedUpdate = useMemo(() => {
@@ -31,11 +33,21 @@ function useEndpoints() {
     return state.onTreeChanged(debouncedUpdate);
   }, [debouncedUpdate]);
 
+  useEffect(() => {
+    return state.onToggleEndpoint(debouncedUpdate);
+  }, [debouncedUpdate]);
+
   return endpoints;
 }
 
 function createEndpoints(state: AppState): string[] {
   const endpoints = new Set<string>();
+
+  state.highlightedEndpointsMap.forEach((modes, endpoint) => {
+    if (modes.has(EndpointMode.Pinned)) {
+      endpoints.add(endpoint);
+    }
+  });
 
   for (const endpoint of state.endpointsMap.keys()) {
     const procs = state.connectionsMap.get(endpoint);

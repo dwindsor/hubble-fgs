@@ -74,7 +74,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
   }, [visualState, selectedEndpoint, endpointKind]);
 
   useEffect(() => {
-    return state.onToggleEndpointHighlight((endpoint, value) => {
+    return state.onToggleEndpoint((endpoint, value) => {
       if (!value) {
         setSelectedEndpoint(null);
         setVisualState(VisualState.Base);

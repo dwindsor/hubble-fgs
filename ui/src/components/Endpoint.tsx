@@ -8,6 +8,7 @@ import { useConnector } from "~/hooks/useConnector";
 import { ApplicationProcess } from "~/proto";
 import { EndpointKind } from "~/types";
 import {
+  EndpointMode,
   getEndpointPort,
   inferEndpointKind,
   trimEndpointPort,
@@ -26,6 +27,11 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   const connector = useConnector();
 
   const [currProc, setCurrProc] = useState<ApplicationProcess | null>(null);
+  const [isPinned, setIsPinned] = useState<boolean>(
+    !!state.highlightedEndpointsMap
+      .get(props.endpoint)
+      ?.has(EndpointMode.Pinned)
+  );
 
   const kind = useMemo(() => {
     return inferEndpointKind(props.endpoint);
@@ -93,6 +99,19 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   );
 
   useEffect(() => {
+    return state.onToggleEndpoint((endpoint) => {
+      if (props.endpoint !== endpoint) {
+        return;
+      }
+      setIsPinned(
+        !!state.highlightedEndpointsMap
+          .get(props.endpoint)
+          ?.has(EndpointMode.Pinned)
+      );
+    });
+  }, [props.endpoint]);
+
+  useEffect(() => {
     return state.onToggleProcHighlight((proc, value) => {
       if (!state.connectionsMap.get(props.endpoint)?.has(proc)) {
         setCurrProc(null);
@@ -102,12 +121,21 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     });
   }, [props.endpoint]);
 
-  const highlight = useCallback(() => {
-    state.toggleEndpontHighlight(props.endpoint, true);
+  const onMouseEnter = useCallback(() => {
+    state.toggleEndpont(props.endpoint, true, EndpointMode.Hovered);
   }, [props.endpoint]);
 
-  const unhighlight = useCallback(() => {
-    state.toggleEndpontHighlight(props.endpoint, false);
+  const onMouseLeave = useCallback(() => {
+    state.toggleEndpont(props.endpoint, false, EndpointMode.Hovered);
+  }, [props.endpoint]);
+
+  const onClick = useCallback(() => {
+    const modes = state.highlightedEndpointsMap.get(props.endpoint);
+    if (modes?.has(EndpointMode.Pinned)) {
+      state.toggleEndpont(props.endpoint, false, EndpointMode.Pinned);
+      return;
+    }
+    state.toggleEndpont(props.endpoint, true, EndpointMode.Pinned);
   }, [props.endpoint]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
@@ -117,12 +145,14 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   return (
     <div
       className={className}
-      onMouseEnter={highlight}
-      onMouseLeave={unhighlight}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
     >
       <div ref={connector.ref} className={css.connector} />
       <span className={css.endpointContent}>
-        {renderEndpoint(kind, title, port)} {stat && <Statistic stat={stat} />}
+        {renderEndpoint(kind, title, port, isPinned)}{" "}
+        {stat && <Statistic stat={stat} />}
       </span>
     </div>
   );
@@ -131,24 +161,27 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 function renderEndpoint(
   kind: EndpointKind,
   title: string,
-  port: string | null
+  port: string | null,
+  isPinned: boolean
 ) {
   switch (kind) {
     case EndpointKind.K8s:
-      return <K8sEndpoint str={title} port={port} />;
+      return <K8sEndpoint str={title} port={port} isPinned={isPinned} />;
     case EndpointKind.OuterDns:
       return (
         <span className={clsx(css.title)}>
+          {isPinned && <Pin />}
           {title}
           {port && <Port port={port} />}
         </span>
       );
     case EndpointKind.Ip:
     case EndpointKind.HostMetadataService:
-      return <IpEndpoint ip={title} port={port} />;
+      return <IpEndpoint ip={title} port={port} isPinned={isPinned} />;
     default:
       return (
         <span className={css.title}>
+          {isPinned && <Pin />}
           {title}
           {port && <Port port={port} />}
         </span>
@@ -167,7 +200,11 @@ function classNameFromEndpointKind(kind: EndpointKind): string | null {
   }
 }
 
-function IpEndpoint(props: { ip: string; port: string | null }) {
+function IpEndpoint(props: {
+  ip: string;
+  port: string | null;
+  isPinned: boolean;
+}) {
   const { parts, separator } = useMemo(() => {
     const separator = props.ip.includes(".") ? "." : ":";
     return {
@@ -180,6 +217,7 @@ function IpEndpoint(props: { ip: string; port: string | null }) {
 
   return (
     <span className={css.title}>
+      {props.isPinned && <Pin />}
       {parts.map((part, idx) => {
         const isLast = idx === lastIdx;
         return (
@@ -194,7 +232,11 @@ function IpEndpoint(props: { ip: string; port: string | null }) {
   );
 }
 
-function K8sEndpoint(props: { str: string; port: string | null }) {
+function K8sEndpoint(props: {
+  str: string;
+  port: string | null;
+  isPinned: boolean;
+}) {
   const { title, type, namespace } = useMemo(() => {
     const parts = props.str.split(/[\/:]/);
     return {
@@ -207,6 +249,7 @@ function K8sEndpoint(props: { str: string; port: string | null }) {
   return (
     <span className={css.k8sParts}>
       <span className={clsx(css.title, css.k8sEntityName)}>
+        {props.isPinned && <Pin />}
         {title}
         {props.port && <Port port={props.port} />}
       </span>{" "}
@@ -230,4 +273,8 @@ function Namespace(props: { namespace: string }) {
 
 function K8sEntityType(props: { type: string }) {
   return <span className={css.k8sEntityType}>{props.type}</span>;
+}
+
+function Pin() {
+  return <span className={css.pin}>●</span>;
 }

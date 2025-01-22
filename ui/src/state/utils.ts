@@ -138,7 +138,7 @@ export function createAppState(model?: ApplicationModelEvent): {
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
       const workloadResult = rec(workload.processes);
-      stat.workloadsMap.set(workload.name, {
+      stat.workloadsMap.set(namespace.name + "/" + workload.name, {
         totalBytesSent: workloadResult.totalBytesSent,
         totalBytesReceived: workloadResult.totalBytesReceived,
         endpointsMap: workloadResult.endpointsMap,

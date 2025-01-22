@@ -7,6 +7,7 @@ import { WH, XY } from "~/types";
 import { assert } from "~/utils/assert";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./utils";
+import { EndpointMode, EndpointModeType } from "~/utils/endpoints";
 
 export type AppState = ReturnType<typeof useAppState>;
 
@@ -20,7 +21,7 @@ export function createAppContext({
   const state = createAppState(model);
 
   const inner = {
-    highlightedEndpoint: null as string | null,
+    highlightedEndpointsMap: new Map<string, Set<EndpointModeType>>(),
     highlightedProc: null as ApplicationProcess | null,
   };
 
@@ -91,22 +92,30 @@ export function createAppContext({
       that.redrawConnectionLines();
     },
 
-    get highlightedEndpoint() {
-      return inner.highlightedEndpoint;
+    get highlightedEndpointsMap() {
+      return inner.highlightedEndpointsMap;
     },
 
-    toggleEndpontHighlight(endpoint: string, state: boolean) {
-      inner.highlightedEndpoint = state ? endpoint : null;
+    toggleEndpont(endpoint: string, state: boolean, mode: EndpointModeType) {
+      const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
+      if (!state) {
+        modes.delete(mode);
+        if (!modes.size) {
+          inner.highlightedEndpointsMap.delete(endpoint);
+        }
+      } else {
+        modes.add(mode);
+        inner.highlightedEndpointsMap.set(endpoint, modes);
+      }
       emitter.emitter.emit(
-        EmitterEventKind.ToggleEndpointHighlight,
+        EmitterEventKind.ToggleEndpoint,
         endpoint,
-        state
+        state,
+        mode
       );
     },
 
-    onToggleEndpointHighlight: emitter.createSubscriber(
-      EmitterEventKind.ToggleEndpointHighlight
-    ),
+    onToggleEndpoint: emitter.createSubscriber(EmitterEventKind.ToggleEndpoint),
 
     get highlightedProc() {
       return inner.highlightedProc;

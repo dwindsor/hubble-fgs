@@ -2,13 +2,14 @@ import Emitter from "events";
 import TypedEmitter from "typed-emitter";
 import { ApplicationProcess } from "~/proto";
 import { PropertyValues, WH } from "~/types";
+import { EndpointModeType } from "~/utils/endpoints";
 
 export const EmitterEventKind = {
   __proto__: null,
   AppSizeChanged: "app-size-changed",
   TreeChanged: "tree-changed",
   RedrawConnectionsLines: "redraw-connections-lines",
-  ToggleEndpointHighlight: "toggle-endpoint-highlight",
+  ToggleEndpoint: "toggle-endpoint",
   ToggleProcHighlight: "toggle-process-highlight",
 } as const;
 
@@ -18,9 +19,10 @@ export type EmitterHandlers = {
   [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
   [EmitterEventKind.TreeChanged]: () => void;
   [EmitterEventKind.RedrawConnectionsLines]: () => void;
-  [EmitterEventKind.ToggleEndpointHighlight]: (
+  [EmitterEventKind.ToggleEndpoint]: (
     endpoint: string,
-    state: boolean
+    state: boolean,
+    mode: EndpointModeType
   ) => void;
   [EmitterEventKind.ToggleProcHighlight]: (
     proc: ApplicationProcess,

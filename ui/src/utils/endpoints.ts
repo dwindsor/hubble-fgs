@@ -1,4 +1,12 @@
-import { EndpointKind } from "~/types";
+import { EndpointKind, PropertyValues } from "~/types";
+
+export const EndpointMode = {
+  __proto__: null,
+  Hovered: "hovered",
+  Pinned: "pinned",
+} as const;
+
+export type EndpointModeType = PropertyValues<typeof EndpointMode>;
 
 export const endpointsKindOrder = [
   EndpointKind.OuterDns,
