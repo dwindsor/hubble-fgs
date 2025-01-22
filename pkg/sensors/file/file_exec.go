@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
@@ -201,6 +202,8 @@ func (k *observerFileExecSensor) PolicyHandler(
 			maps = append(maps, m)
 		}
 	}
+
+	maps = append(maps, program.MapUserFrom(base.ExecveMap))
 
 	return &sensors.Sensor{
 		Name:  name,

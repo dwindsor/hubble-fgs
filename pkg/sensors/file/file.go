@@ -58,6 +58,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -1732,6 +1733,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
+	maps = append(maps, program.MapUserFrom(base.ExecveMap))
+
 	return &sensors.Sensor{
 		Name:   name,
 		Progs:  progs,
@@ -2196,11 +2199,11 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 	var err error
 	switch v.tp {
 	case "kprobe", "kretprobe":
-		err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 	case "fentry", "fexit", "fmod_ret":
-		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 	case "lsm", "lsm.s":
-		err = program.LoadLSMProgramSimple(args.BPFDir, args.Load, args.Verbose)
+		err = program.LoadLSMProgramSimple(args.BPFDir, args.Load, args.Maps, args.Verbose)
 	default:
 		err = fmt.Errorf("file: %s programs are not supported", v.tp)
 	}

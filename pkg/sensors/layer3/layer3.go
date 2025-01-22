@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -328,6 +329,8 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		}
 	}
 
+	maps = append(maps, program.MapUserFrom(base.ExecveMap))
+
 	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, append(progsInitSock, progsCollectStats...), maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
@@ -562,7 +565,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			break
 		}
 		cgrp_ingress_configured = true
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("CGRP")
 			return err
@@ -572,13 +575,13 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			break
 		}
 		cgrp_egress_configured = true
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("CGRP")
 			return err
 		}
 	case "cgrp_inet4_bind", "cgrp_inet6_bind":
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("CGRP")
 			return err
@@ -590,7 +593,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			return err
 		}
 	case "tcp_fentry", "udp_fentry", "icmp_fentry", "rawsock_fentry", "socktrack_fentry":
-		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
+		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("FENTRY")
 			return err
@@ -598,11 +601,11 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	case "layer3_sensor":
 		var err error
 		if args.Load.Attach == "sockops" {
-			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		} else if args.Load.Attach == "fentry" {
-			err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Verbose)
+			err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		} else {
-			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Verbose)
+			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		}
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("LAYER3_SENSOR")

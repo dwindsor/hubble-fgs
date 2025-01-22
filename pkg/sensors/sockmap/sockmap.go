@@ -111,7 +111,7 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := cgroup.LoadSockOpt(args.BPFDir, SockoptSet, args.Verbose)
+	err := cgroup.LoadSockOpt(args.BPFDir, SockoptSet, args.Maps, args.Verbose)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (tls *tlsSensor) PolicyHandler(
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if args.Load.Type == "tls_cgrp_ingress" || args.Load.Type == "tls_cgrp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Verbose)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			return err
 		}

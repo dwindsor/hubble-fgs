@@ -22,14 +22,15 @@ var (
 func LoadSockOpt(
 	bpfDir string,
 	load *program.Program,
+	maps []*program.Map,
 	verbose int,
 ) error {
-	return LoadCgroupProgram(bpfDir, load, verbose)
+	return LoadCgroupProgram(bpfDir, load, maps, verbose)
 }
 
 func LoadCgroupProgram(
 	bpfDir string,
-	load *program.Program, verbose int) error {
+	load *program.Program, maps []*program.Map, verbose int) error {
 	if fgsCgroupFD < 0 {
 		fd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
 		if err != nil {
@@ -37,7 +38,7 @@ func LoadCgroupProgram(
 		}
 		fgsCgroupFD = fd
 	}
-	return program.LoadProgram(bpfDir, load, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
+	return program.LoadProgram(bpfDir, load, maps, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
 }
 
 func DetachTetragonCgroups(tgTypes, bestEffort bool) error {

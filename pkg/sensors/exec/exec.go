@@ -247,7 +247,7 @@ type execSensor struct {
 }
 
 func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	return program.LoadTracepointProgram(args.BPFDir, args.Load, args.Verbose)
+	return program.LoadTracepointProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 }
 
 func init() {

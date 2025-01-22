@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/errmetrics"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -23,7 +24,9 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	ossbase "github.com/cilium/tetragon/pkg/sensors/base"
+	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/strutils"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -100,7 +103,7 @@ var (
 	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, Fork, Exit, ExecveBprmCommit)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrack.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrack.SocketStatsName, Exit)
@@ -137,7 +140,7 @@ var (
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 )
 
-func setupPrograms() {
+func setupSensor() {
 	// execve program tail calls details
 	Execve.SetTailCall("tracepoint", ExecveTailCallsMap)
 	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMap)
@@ -161,6 +164,13 @@ func setupPrograms() {
 		}
 	}
 	logger.GetLogger().Infof("Exit probe on %s", Exit.Attach)
+
+	entries := ossbase.GetExecveEntries(option.Config.ExecveMapEntries, option.Config.ExecveMapSize)
+	ExecveMap.SetMaxEntries(entries)
+
+	logger.GetLogger().
+		WithField("size", strutils.SizeWithSuffix(entries*int(unsafe.Sizeof(execvemap.ExecveValue{})))).
+		Infof("Set execve_map entries %d", entries)
 }
 
 func GetExecveMap() *program.Map {
@@ -235,7 +245,7 @@ func initBaseSensor() *sensors.Sensor {
 	sensor := sensors.Sensor{
 		Name: basePolicy,
 	}
-	setupPrograms()
+	setupSensor()
 	sensor.Progs = GetDefaultPrograms()
 	sensor.Maps = GetDefaultMaps()
 	return ossbase.ApplyExtensions(&sensor)
