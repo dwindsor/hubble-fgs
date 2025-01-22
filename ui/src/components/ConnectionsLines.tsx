@@ -106,11 +106,11 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   }, [draw]);
 
   useEffect(() => {
-    return state.onToggleEndpoint(draw);
+    return state.onEndpointHighlight(draw);
   }, [draw]);
 
   useEffect(() => {
-    return state.onToggleProcHighlight(draw);
+    return state.onProcHighlight(draw);
   }, [draw]);
 
   return <canvas ref={ref} />;

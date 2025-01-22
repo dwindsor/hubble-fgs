@@ -99,7 +99,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   );
 
   useEffect(() => {
-    return state.onToggleEndpoint((endpoint) => {
+    return state.onEndpointHighlight((endpoint) => {
       if (props.endpoint !== endpoint) {
         return;
       }
@@ -112,7 +112,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   }, [props.endpoint]);
 
   useEffect(() => {
-    return state.onToggleProcHighlight((proc, value) => {
+    return state.onProcHighlight((proc, value) => {
       if (!state.connectionsMap.get(props.endpoint)?.has(proc)) {
         setCurrProc(null);
         return;
@@ -122,20 +122,20 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   }, [props.endpoint]);
 
   const onMouseEnter = useCallback(() => {
-    state.toggleEndpont(props.endpoint, true, EndpointMode.Hovered);
+    state.highlightEndpoint(props.endpoint, true, EndpointMode.Hovered);
   }, [props.endpoint]);
 
   const onMouseLeave = useCallback(() => {
-    state.toggleEndpont(props.endpoint, false, EndpointMode.Hovered);
+    state.highlightEndpoint(props.endpoint, false, EndpointMode.Hovered);
   }, [props.endpoint]);
 
   const onClick = useCallback(() => {
     const modes = state.highlightedEndpointsMap.get(props.endpoint);
     if (modes?.has(EndpointMode.Pinned)) {
-      state.toggleEndpont(props.endpoint, false, EndpointMode.Pinned);
+      state.highlightEndpoint(props.endpoint, false, EndpointMode.Pinned);
       return;
     }
-    state.toggleEndpont(props.endpoint, true, EndpointMode.Pinned);
+    state.highlightEndpoint(props.endpoint, true, EndpointMode.Pinned);
   }, [props.endpoint]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {

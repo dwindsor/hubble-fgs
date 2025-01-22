@@ -47,11 +47,11 @@ export const Proc = memo(function Proc(props: ProcProps) {
   }, [update]);
 
   const highlight = useCallback(() => {
-    state.toggleProcHighlight(props.proc, true);
+    state.highlightProc(props.proc, true);
   }, [props.proc]);
 
   const unhighlight = useCallback(() => {
-    state.toggleProcHighlight(props.proc, false);
+    state.highlightProc(props.proc, false);
   }, [props.proc]);
 
   const children = props.proc.children ?? [];
@@ -72,7 +72,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
   }, [entry.endpoint]);
 
   useEffect(() => {
-    return state.onToggleProcHighlight((proc, value) => {
+    return state.onProcHighlight((proc, value) => {
       if (!proc || !value) {
         entry.setVisualState("base");
         return;

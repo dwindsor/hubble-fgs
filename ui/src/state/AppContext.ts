@@ -5,9 +5,9 @@ import { createContext, useContext } from "react";
 import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
 import { WH, XY } from "~/types";
 import { assert } from "~/utils/assert";
+import { EndpointModeType } from "~/utils/endpoints";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./utils";
-import { EndpointMode, EndpointModeType } from "~/utils/endpoints";
 
 export type AppState = ReturnType<typeof useAppState>;
 
@@ -58,11 +58,11 @@ export function createAppContext({
       emitter.emitter.emit(EmitterEventKind.TreeChanged);
     },
 
+    onTreeChanged: emitter.createSubscriber(EmitterEventKind.TreeChanged),
+
     redrawConnectionLines() {
       emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
     },
-
-    onTreeChanged: emitter.createSubscriber(EmitterEventKind.TreeChanged),
 
     onRedrawConnectionsLines: emitter.createSubscriber(
       EmitterEventKind.RedrawConnectionsLines
@@ -77,6 +77,7 @@ export function createAppContext({
       assert(cur, "All processes expected to be available in processes map");
       console.log("update process", proc.name, visible);
       state.processesMap.set(proc, { ...cur, visible, xy });
+      emitter.emitter.emit(EmitterEventKind.ProcUpdated, proc);
       that.changeTree();
       that.redrawConnectionLines();
     },
@@ -89,14 +90,23 @@ export function createAppContext({
       const cur = state.endpointsMap.get(endpoint);
       assert(cur, "All endpoints expected to be available in endpoints map");
       state.endpointsMap.set(endpoint, { ...cur, visible, xy });
+      emitter.emitter.emit(EmitterEventKind.EndpointUpdated, endpoint);
       that.redrawConnectionLines();
     },
+
+    onEndpointUpdated: emitter.createSubscriber(
+      EmitterEventKind.EndpointUpdated
+    ),
 
     get highlightedEndpointsMap() {
       return inner.highlightedEndpointsMap;
     },
 
-    toggleEndpont(endpoint: string, state: boolean, mode: EndpointModeType) {
+    highlightEndpoint(
+      endpoint: string,
+      state: boolean,
+      mode: EndpointModeType
+    ) {
       const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
       if (!state) {
         modes.delete(mode);
@@ -108,27 +118,27 @@ export function createAppContext({
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
       emitter.emitter.emit(
-        EmitterEventKind.ToggleEndpoint,
+        EmitterEventKind.HighlightEndpoint,
         endpoint,
         state,
         mode
       );
     },
 
-    onToggleEndpoint: emitter.createSubscriber(EmitterEventKind.ToggleEndpoint),
+    onEndpointHighlight: emitter.createSubscriber(
+      EmitterEventKind.HighlightEndpoint
+    ),
 
     get highlightedProc() {
       return inner.highlightedProc;
     },
 
-    toggleProcHighlight(proc: ApplicationProcess, state: boolean) {
+    highlightProc(proc: ApplicationProcess, state: boolean) {
       inner.highlightedProc = state ? proc : null;
-      emitter.emitter.emit(EmitterEventKind.ToggleProcHighlight, proc, state);
+      emitter.emitter.emit(EmitterEventKind.HighlightProc, proc, state);
     },
 
-    onToggleProcHighlight: emitter.createSubscriber(
-      EmitterEventKind.ToggleProcHighlight
-    ),
+    onProcHighlight: emitter.createSubscriber(EmitterEventKind.HighlightProc),
   };
 
   return that;

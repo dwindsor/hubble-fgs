@@ -9,8 +9,10 @@ export const EmitterEventKind = {
   AppSizeChanged: "app-size-changed",
   TreeChanged: "tree-changed",
   RedrawConnectionsLines: "redraw-connections-lines",
-  ToggleEndpoint: "toggle-endpoint",
-  ToggleProcHighlight: "toggle-process-highlight",
+  EndpointUpdated: "endpoint-updated",
+  ProcUpdated: "proc-updated",
+  HighlightEndpoint: "highlight-endpoint",
+  HighlightProc: "highlight-proc",
 } as const;
 
 export type EmitterEventKind = PropertyValues<typeof EmitterEventKind>;
@@ -19,12 +21,14 @@ export type EmitterHandlers = {
   [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
   [EmitterEventKind.TreeChanged]: () => void;
   [EmitterEventKind.RedrawConnectionsLines]: () => void;
-  [EmitterEventKind.ToggleEndpoint]: (
+  [EmitterEventKind.ProcUpdated]: (proc: ApplicationProcess) => void;
+  [EmitterEventKind.EndpointUpdated]: (endpoint: string) => void;
+  [EmitterEventKind.HighlightEndpoint]: (
     endpoint: string,
     state: boolean,
     mode: EndpointModeType
   ) => void;
-  [EmitterEventKind.ToggleProcHighlight]: (
+  [EmitterEventKind.HighlightProc]: (
     proc: ApplicationProcess,
     state: boolean
   ) => void;

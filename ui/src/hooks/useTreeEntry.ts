@@ -25,20 +25,35 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     VisualState.Base
   );
 
+  const getVisibleEndpoints = () => {
+    const entryEndpoints = new Set(args.statInfo?.endpointsMap.keys());
+    if (entryEndpoints.size === 0) {
+      return undefined;
+    }
+    const visibleEndpoints = new Set<string>();
+    let hasVisibleEndpoints = false;
+    state.endpointsMap.forEach((endpointInfo, endpoint) => {
+      hasVisibleEndpoints ||= !!endpointInfo.visible;
+      if (entryEndpoints.has(endpoint) && endpointInfo.visible) {
+        visibleEndpoints.add(endpoint);
+      }
+    });
+    return hasVisibleEndpoints ? visibleEndpoints : entryEndpoints;
+  };
+
+  const [endpoints, setEndpoints] = useState(getVisibleEndpoints());
+  useEffect(() => {
+    return state.onEndpointUpdated(() => {
+      setEndpoints(getVisibleEndpoints());
+    });
+  }, []);
+
   const endpointKind = useMemo(() => {
     if (!selectedEndpoint) {
       return null;
     }
     return state.endpointsMap.get(selectedEndpoint)?.kind ?? null;
   }, [selectedEndpoint]);
-
-  const endpoints = useMemo(() => {
-    const endpoints = args.statInfo?.endpointsMap.keys();
-    if (!endpoints) {
-      return undefined;
-    }
-    return new Set(endpoints);
-  }, [args.statInfo]);
 
   const hasConnections = useMemo(() => {
     return !!endpoints?.size;
@@ -74,7 +89,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
   }, [visualState, selectedEndpoint, endpointKind]);
 
   useEffect(() => {
-    return state.onToggleEndpoint((endpoint, value) => {
+    return state.onEndpointHighlight((endpoint, value) => {
       if (!value) {
         setSelectedEndpoint(null);
         setVisualState(VisualState.Base);

@@ -19,8 +19,6 @@ export const Endpoints = memo(function Endpoints() {
 function useEndpoints() {
   const state = useAppState();
 
-  console.log(state);
-
   const [endpoints, setEndpoints] = useState<string[]>(createEndpoints(state));
 
   const debouncedUpdate = useMemo(() => {
@@ -34,7 +32,11 @@ function useEndpoints() {
   }, [debouncedUpdate]);
 
   useEffect(() => {
-    return state.onToggleEndpoint(debouncedUpdate);
+    return state.onEndpointHighlight(debouncedUpdate);
+  }, [debouncedUpdate]);
+
+  useEffect(() => {
+    return state.onEndpointUpdated(debouncedUpdate);
   }, [debouncedUpdate]);
 
   return endpoints;
