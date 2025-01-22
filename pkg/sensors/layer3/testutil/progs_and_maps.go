@@ -256,10 +256,13 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
-	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
-	confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		tcpSockopsProg,
-	})...)
+	confMap := tus.SensorMap{}
+	if kernels.MinKernelVersion("5.11.0") {
+		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
+		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSockopsProg,
+		})...)
+	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
@@ -520,8 +523,9 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
-	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
+	confMap := tus.SensorMap{}
 	if kernels.MinKernelVersion("5.14.0") {
+		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 		if runtime.GOARCH == "amd64" {
 			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
 				tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft,

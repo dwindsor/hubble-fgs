@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	sensorsoss "github.com/cilium/tetragon/pkg/sensors"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
@@ -33,15 +34,19 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 		// all but event_execve
 		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{1, 2}},
 
-		// event_execve
-		tus.SensorMap{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3}},
-
 		// event_wake_up_new_task
 		tus.SensorMap{Name: "execve_val", Progs: []uint{2}},
 
 		// event_execve and tg_kp_bprm_committing_creds
 		tus.SensorMap{Name: "tg_execve_joined_info_map", Progs: []uint{0, 4}},
 		tus.SensorMap{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 4}},
+	}
+
+	if kernels.MinKernelVersion("5.11.0") {
+		pstreeMaps := []tus.SensorMap{
+			{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3}},
+		}
+		baseMaps = append(baseMaps, pstreeMaps...)
 	}
 
 	if option.CgroupRateEnabled() {
