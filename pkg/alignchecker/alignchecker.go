@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/model/server"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
@@ -60,6 +61,18 @@ func CheckStructAlignments(pathToObj string) error {
 		"glob_state":          {fm.GlobState{}},
 
 		"fd_lookup_config": {networkapi.FdLookupValue{}},
+
+		// App model
+		"msg_execve_key":              {server.ProcessExecveKey{}},
+		"process_tree_value":          {server.ProcessTreeValue{}},
+		"process_tree_key":            {server.ProcessTreeKey{}},
+		"destination_endpoint_key":    {server.DestinationEndpointKey{}},
+		"destination_endpoint_value":  {server.DestinationEndpointValue{}},
+		"listen_endpoint_key":         {server.ListenKey{}},
+		"listen_endpoint_value":       {server.ListenValue{}},
+		"endpoint_id_key":             {server.EndpointIdKey{}},
+		"endpoint_id_value":           {server.EndpointIdValue{}},
+		"process_tree_binary_uid_key": {server.ProcessTreeBinaryUUIDValue{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)

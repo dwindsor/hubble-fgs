@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -47,9 +48,12 @@ type ProcessTreeKey struct {
 	Path     [8]uint64
 }
 
-type processTreeValue struct {
+type ProcessTreeValue struct {
 	KtimeFirstExec uint64
 	KtimeLastExec  uint64
+	Pad0           [6]uint8
+	InContainer    bool
+	InInitTree     bool
 }
 
 const (
@@ -194,7 +198,7 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 
 	var (
 		keyTk ProcessTreeKey
-		valTk processTreeValue
+		valTk ProcessTreeValue
 	)
 
 	iter = m.Iterate()
@@ -319,7 +323,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	if !option.Config.EnableProcessTree {
 		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
 	}
-	porcessModel := make([]*tetragon.ProcessModel, 0)
+	processModel := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
@@ -474,7 +478,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 
 	var (
 		key ProcessTreeKey
-		val processTreeValue
+		val ProcessTreeValue
 	)
 
 	uidMap, err := ebpf.LoadPinnedMap(binaryFile, nil)
@@ -508,7 +512,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 			continue
 		}
 
-		porcessModel = append(porcessModel, &tetragon.ProcessModel{
+		processModel = append(processModel, &tetragon.ProcessModel{
 			Binary:    "",
 			Parent:    "",
 			Namespace: nsPath,
@@ -571,7 +575,12 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		var dest []*tetragon.Destination
 		dest = dstList[key.Self]
 
-		porcessModel = append(porcessModel, &tetragon.ProcessModel{
+		var inInitTree *wrapperspb.BoolValue
+		if val.InContainer {
+			inInitTree = &wrapperspb.BoolValue{Value: val.InInitTree}
+		}
+
+		processModel = append(processModel, &tetragon.ProcessModel{
 			Binary:     selfStr,
 			BinaryArgs: selfArgs,
 			Parent:     parentPath,
@@ -581,11 +590,12 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				Name: wl,
 				Kind: kind,
 			},
-			Dest: dest,
+			Dest:       dest,
+			InInitTree: inInitTree,
 		})
 	}
 	return &tetragon.GetProcessModelResponse{
-		Processes: porcessModel,
+		Processes: processModel,
 	}, nil
 }
 

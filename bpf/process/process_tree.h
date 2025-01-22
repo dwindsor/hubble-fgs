@@ -69,7 +69,7 @@ static struct tree_id get_new_tree_id()
 
 	id.uid = ++(*counter);
 	id.cpu = get_smp_processor_id();
-	bpf_printk("ID: %d.%d\n", id.cpu, id.uid);
+	DEBUG("ID: %d.%d\n", id.cpu, id.uid);
 	return id;
 }
 
@@ -138,12 +138,16 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	else
 		k->nsid = 0;
 
+	DEBUG("curr->nspid=%d curr->key.pid=%d", curr->nspid, curr->key.pid);
+
 	old = map_lookup_elem(&process_tree_map, k);
 	if (!old) {
 		old = map_lookup_elem(&process_tree_value_heap, &zero);
 		if (!old)
 			return 0;
 
+		old->in_init_tree = curr->flags & EVENT_IN_INIT_TREE;
+		old->in_container = curr->nspid != 0;
 		old->ktime_last_exec = ktime_get_ns();
 		old->ktime_first_exec = ktime_get_ns();
 		map_update_elem(&process_tree_map, k, old, 0);
@@ -151,6 +155,8 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		// Duplicating ktime sets in both branches to help verifier and
 		// clang generate code that play well together. Otherwise we lose
 		// old != NULL on some kernels.
+		old->in_init_tree = curr->flags & EVENT_IN_INIT_TREE;
+		old->in_container = curr->nspid != 0;
 		old->ktime_last_exec = ktime_get_ns();
 	}
 	return 0;

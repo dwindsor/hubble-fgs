@@ -20,6 +20,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type NetworkKey struct {
@@ -123,7 +124,9 @@ type ProcessKey struct {
 	Args         string
 }
 
-type ProcessValue struct{}
+type ProcessValue struct {
+	InInitTree *wrapperspb.BoolValue
+}
 
 func sortNetworkKeys(a, b NetworkKey) int {
 	if result := strings.Compare(a.SourceNamespace, b.SourceNamespace); result != 0 {
@@ -237,7 +240,9 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 	for _, process := range res.GetProcesses() {
 		if len(process.GetDest()) == 0 {
 			processKey := getProcessMonitorKey(process)
-			proc[processKey] = ProcessValue{}
+			proc[processKey] = ProcessValue{
+				InInitTree: process.InInitTree,
+			}
 			continue
 		}
 		for _, dst := range process.GetDest() {

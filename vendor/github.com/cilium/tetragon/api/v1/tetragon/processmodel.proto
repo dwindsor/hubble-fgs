@@ -19,6 +19,7 @@ package tetragon;
 import "tetragon/tetragon.proto";
 import "tetragon/fgs.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 message GetProcessModelRequest {
 	// Namespaces to list processes from. Specify "<host-namespace>" to list
@@ -58,6 +59,11 @@ message ProcessModel {
 	string namespace = 5;
 	Workload workload = 6;
 	repeated Destination dest = 7;
+	// If set to true, this process is containerized and is a member of the
+	// process tree rooted at pid=1 in its PID namespace. This is useful if,
+	// for example, you wish to discern whether a process was spawned using a
+	// tool like nsenter or kubectl exec.
+	google.protobuf.BoolValue in_init_tree = 8;
 }
 
 message GetProcessModelResponse {

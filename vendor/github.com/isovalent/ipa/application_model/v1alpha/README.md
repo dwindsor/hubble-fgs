@@ -119,6 +119,7 @@
 | arguments | [string](#string) |  | Arguments passed to this process. |
 | children | [ApplicationProcess](#application_model-v1alpha-ApplicationProcess) | repeated | Child processes of this process. |
 | connections | [ApplicationConnection](#application_model-v1alpha-ApplicationConnection) | repeated |  |
+| in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | Indicates if this process is containerized and is a member of the process tree rooted at pid=1 in its PID namespace. |
 
 
 

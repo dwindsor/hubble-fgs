@@ -13,6 +13,7 @@ syntax = "proto3";
 package application_model.v1alpha;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/isovalent/ipa/application_model/v1alpha";
 
@@ -52,6 +53,9 @@ message ApplicationProcess {
   // Child processes of this process.
   repeated ApplicationProcess children = 4;
   repeated ApplicationConnection connections = 5;
+  // Indicates if this process is containerized and is a member of the process
+  // tree rooted at pid=1 in its PID namespace.
+  google.protobuf.BoolValue in_init_tree = 6;
 }
 
 message ApplicationConnection {

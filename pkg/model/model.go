@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -48,8 +49,13 @@ type connectionKey struct {
 	destinationPort uint64
 }
 
+type processValue struct {
+	connections connectionMap
+	inInitTree  *wrapperspb.BoolValue
+}
+
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
-type processMap map[processKey]connectionMap
+type processMap map[processKey]processValue
 type workloadMap map[workloadKey]processMap
 type namespaceMap map[namespaceKey]workloadMap
 
@@ -70,9 +76,11 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 		nsMap[nsKey][wlkey] = make(processMap)
 	}
 	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
-		nsMap[nsKey][wlkey][pskey] = make(connectionMap)
+		nsMap[nsKey][wlkey][pskey] = processValue{
+			connections: make(connectionMap),
+		}
 	}
-	nsMap[nsKey][wlkey][pskey][connKey] = &appModelV1.ApplicationConnection{
+	nsMap[nsKey][wlkey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
 		DestinationName: connKey.destinationName,
 		DestinationPort: connKey.destinationPort,
 		BytesSent:       bc.BytesSent(),
@@ -80,7 +88,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 }
 
-func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
+func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
 	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
 	pskey := processKey{name: pk.Name, arguments: pk.Args}
@@ -91,7 +99,10 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, _ ProcessValue) {
 		nsMap[nsKey][wlkey] = make(processMap)
 	}
 	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
-		nsMap[nsKey][wlkey][pskey] = make(connectionMap)
+		nsMap[nsKey][wlkey][pskey] = processValue{
+			connections: make(connectionMap),
+			inInitTree:  psval.InInitTree,
+		}
 	}
 }
 
@@ -136,7 +147,8 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval)),
+						Connections: slices.Collect(maps.Values(psval.connections)),
+						InInitTree:  psval.inInitTree,
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 				}
@@ -154,7 +166,8 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 					ps := &appModelV1.ApplicationProcess{
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval)),
+						Connections: slices.Collect(maps.Values(psval.connections)),
+						InInitTree:  psval.inInitTree,
 					}
 					wl.Processes = append(wl.Processes, ps)
 				}
@@ -170,6 +183,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 		for _, wl := range ns.Workloads {
 			slices.SortFunc(wl.Processes, sortProcess)
 			for _, ps := range wl.Processes {
+				slices.SortFunc(ps.Connections, sortConnection)
 				slices.SortFunc(ps.Connections, sortConnection)
 			}
 		}

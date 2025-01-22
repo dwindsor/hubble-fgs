@@ -170,6 +170,14 @@ export declare type ApplicationProcess = Message<"application_model.v1alpha.Appl
    * @generated from field: repeated application_model.v1alpha.ApplicationConnection connections = 5;
    */
   connections: ApplicationConnection[];
+
+  /**
+   * Indicates if this process is containerized and is a member of the process
+   * tree rooted at pid=1 in its PID namespace.
+   *
+   * @generated from field: google.protobuf.BoolValue in_init_tree = 6;
+   */
+  inInitTree?: boolean;
 };
 
 /**

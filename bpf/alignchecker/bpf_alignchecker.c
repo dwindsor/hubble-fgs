@@ -9,6 +9,7 @@
 #include "networking/l3/udp/bpf_udp_event.h"
 #include "networking/bpf_fd_lookup.h"
 #include "parsers/dns/dns_parser.h"
+#include "process/process_endpoint.h"
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;
@@ -49,3 +50,15 @@ struct full_path _full_path;
 struct glob_state _glob_state;
 
 struct fd_lookup_config _fd_lookup_config;
+
+// App model
+struct msg_execve_key _process_execve_key;
+struct process_tree_value _process_tree_value;
+struct process_tree_key _process_tree_key;
+struct destination_endpoint_key _destination_endpoint_key;
+struct destination_endpoint_value _destination_endpoint_value;
+struct listen_endpoint_key _listen_endpoint_key;
+struct listen_endpoint_value _listen_endpoint_value;
+struct endpoint_id_key _endpoint_id_key;
+struct endpoint_id_value _endpoint_id_value;
+struct process_tree_binary_uid_key _process_tree_binary_uid_key;

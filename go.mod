@@ -29,7 +29,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000
-	github.com/isovalent/ipa v0.0.0-20250108151117-2f5caaf89016
+	github.com/isovalent/ipa v0.0.0-20250123152339-ddcb0d7c578a
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.62
 	github.com/operator-framework/api v0.29.0

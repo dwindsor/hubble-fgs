@@ -3674,6 +3674,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | namespace | [string](#string) |  |  |
 | workload | [Workload](#tetragon-Workload) |  |  |
 | dest | [Destination](#tetragon-Destination) | repeated |  |
+| in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | If set to true, this process is containerized and is a member of the process tree rooted at pid=1 in its PID namespace. This is useful if, for example, you wish to discern whether a process was spawned using a tool like nsenter or kubectl exec. |
 
 
 

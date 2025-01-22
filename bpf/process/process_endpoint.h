@@ -102,6 +102,9 @@ struct process_tree_key {
 struct process_tree_value {
 	__u64 ktime_first_exec;
 	__u64 ktime_last_exec;
+	__u8 pad[6];
+	bool in_container;
+	bool in_init_tree;
 };
 
 /* The process tree map creates a map from unique executables
