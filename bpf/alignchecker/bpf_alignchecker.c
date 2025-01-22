@@ -62,3 +62,4 @@ struct listen_endpoint_value _listen_endpoint_value;
 struct endpoint_id_key _endpoint_id_key;
 struct endpoint_id_value _endpoint_id_value;
 struct process_tree_binary_uid_key _process_tree_binary_uid_key;
+struct tree_id _tree_id;

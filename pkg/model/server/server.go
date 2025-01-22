@@ -85,6 +85,11 @@ type DestinationEndpointValue struct {
 	Port           uint64
 }
 
+type TreeId struct {
+	Uid uint32
+	Cpu uint32
+}
+
 type ListenKey struct {
 	Addr [2]uint64
 	Nsid uint64
@@ -92,8 +97,7 @@ type ListenKey struct {
 }
 
 type ListenValue struct {
-	Self     ProcessExecveKey
-	Parent   ProcessExecveKey
+	Self     TreeId
 	Accepted uint64
 	TxBytes  uint64
 	RxBytes  uint64
