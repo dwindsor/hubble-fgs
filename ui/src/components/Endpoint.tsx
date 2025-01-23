@@ -1,21 +1,21 @@
-import debounce from "lodash/debounce";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAppState } from "~/state/AppContext";
+import debounce from 'lodash/debounce';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppState } from '~/state/AppContext';
 
-import clsx from "clsx";
-import React from "react";
-import { useConnector } from "~/hooks/useConnector";
-import { ApplicationProcess } from "~/proto";
-import { EndpointKind } from "~/types";
+import clsx from 'clsx';
+import React from 'react';
+import { useConnector } from '~/hooks/useConnector';
+import { ApplicationProcess } from '~/proto';
+import { EndpointStat, getEndpointHash } from '~/state/utils';
+import { EndpointKind } from '~/types';
 import {
   EndpointMode,
   getEndpointPort,
   inferEndpointKind,
   trimEndpointPort,
-} from "~/utils/endpoints";
-import css from "./Endpoint.module.css";
-import { Statistic } from "./Statistic";
-import { getEndpointHash, Stat } from "~/state/utils";
+} from '~/utils/endpoints';
+import css from './Endpoint.module.css';
+import { Statistic } from './Statistic';
 
 export interface Props {
   endpoint: string;
@@ -27,11 +27,10 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 
   const connector = useConnector();
 
-  const [currProc, setCurrProc] = useState<ApplicationProcess | null>(null);
+  const [highlightedProc, setHighlightedProc] = useState<ApplicationProcess | null>(null);
+
   const [isPinned, setIsPinned] = useState<boolean>(
-    !!state.highlightedEndpointsMap
-      .get(props.endpoint)
-      ?.has(EndpointMode.Pinned)
+    !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned),
   );
 
   const kind = useMemo(() => {
@@ -47,37 +46,34 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   }, [props.endpoint]);
 
   const stat = useMemo(() => {
-    if (!currProc) {
+    if (!highlightedProc) {
       return state.stat.endpointsMap.get(props.endpoint) ?? null;
     }
-    const stat: Stat = {
+    const stat: EndpointStat = {
       totalBytesSent: 0,
       totalBytesReceived: 0,
+      hasSuspiciousEvents: false,
     };
     let was = false;
-    currProc.connections?.forEach((conn) => {
+    highlightedProc.connections?.forEach((conn) => {
       if (props.endpoint === getEndpointHash(conn)) {
         was = true;
         stat.totalBytesSent += Number(conn.bytesSent || 0);
         stat.totalBytesReceived += Number(conn.bytesReceived || 0);
+        stat.hasSuspiciousEvents ||= !!highlightedProc.inInitTree;
       }
     });
     if (!was) {
       return null;
     }
     return stat;
-  }, [props.endpoint, currProc]);
+  }, [props.endpoint, highlightedProc]);
 
   const update = (visible = true) => {
     const cur = state.endpointsMap.get(props.endpoint);
     const xy = connector.getXY();
 
-    if (
-      cur &&
-      cur.visible === visible &&
-      cur.xy?.x === xy?.x &&
-      cur.xy?.y === xy?.y
-    ) {
+    if (cur && cur.visible === visible && cur.xy?.x === xy?.x && cur.xy?.y === xy?.y) {
       return;
     }
 
@@ -86,41 +82,31 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     }
   };
 
-  const debouncedUpdate = useMemo(
-    () => debounce(update),
-    [props.endpoint, connector]
-  );
+  const debouncedUpdate = useMemo(() => debounce(update), [props.endpoint, connector]);
 
   useEffect(() => {
     update(true);
     return () => state.updateEndpoint(props.endpoint, false, undefined);
   }, []);
 
-  useEffect(
-    () => state.onAppSizeChanged(() => debouncedUpdate()),
-    [debouncedUpdate]
-  );
+  useEffect(() => state.onAppSizeChanged(() => debouncedUpdate()), [debouncedUpdate]);
 
   useEffect(() => {
     return state.onEndpointHighlight((endpoint) => {
       if (props.endpoint !== endpoint) {
         return;
       }
-      setIsPinned(
-        !!state.highlightedEndpointsMap
-          .get(props.endpoint)
-          ?.has(EndpointMode.Pinned)
-      );
+      setIsPinned(!!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned));
     });
   }, [props.endpoint]);
 
   useEffect(() => {
     return state.onProcHighlight((proc, value) => {
       if (!state.connectionsMap.get(props.endpoint)?.has(proc)) {
-        setCurrProc(null);
+        setHighlightedProc(null);
         return;
       }
-      setCurrProc(value ? proc : null);
+      setHighlightedProc(value ? proc : null);
     });
   }, [props.endpoint]);
 
@@ -142,7 +128,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   }, [props.endpoint]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
-    [css.highlighted]: currProc,
+    [css.highlighted]: highlightedProc,
   });
 
   return (
@@ -154,8 +140,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     >
       <div ref={connector.ref} className={css.connector} />
       <span className={css.endpointContent}>
-        {renderEndpoint(kind, title, port, isPinned)}{" "}
-        {stat && <Statistic stat={stat} />}
+        {renderEndpoint(kind, title, port, stat, isPinned)}
       </span>
     </div>
   );
@@ -165,28 +150,61 @@ function renderEndpoint(
   kind: EndpointKind,
   title: string,
   port: string | null,
-  isPinned: boolean
+  stat: EndpointStat | null,
+  isPinned: boolean,
 ) {
   switch (kind) {
     case EndpointKind.K8s:
-      return <K8sEndpoint str={title} port={port} isPinned={isPinned} />;
+      return (
+        <>
+          <K8sEndpoint str={title} port={port} isPinned={isPinned} />
+          {stat && (
+            <>
+              {' '}
+              <Statistic showSuspiciousMarker stat={stat} />
+            </>
+          )}
+        </>
+      );
     case EndpointKind.OuterDns:
       return (
         <span className={clsx(css.title)}>
           {isPinned && <Pin />}
           {title}
           {port && <Port port={port} />}
+          {stat && (
+            <>
+              {' '}
+              <Statistic showSuspiciousMarker stat={stat} />
+            </>
+          )}
         </span>
       );
     case EndpointKind.Ip:
     case EndpointKind.HostMetadataService:
-      return <IpEndpoint ip={title} port={port} isPinned={isPinned} />;
+      return (
+        <>
+          <IpEndpoint ip={title} port={port} isPinned={isPinned} />
+          {stat && (
+            <>
+              {' '}
+              <Statistic showSuspiciousMarker stat={stat} />
+            </>
+          )}
+        </>
+      );
     default:
       return (
         <span className={css.title}>
           {isPinned && <Pin />}
           {title}
           {port && <Port port={port} />}
+          {stat && (
+            <>
+              {' '}
+              <Statistic showSuspiciousMarker stat={stat} />
+            </>
+          )}
         </span>
       );
   }
@@ -203,13 +221,9 @@ function classNameFromEndpointKind(kind: EndpointKind): string | null {
   }
 }
 
-function IpEndpoint(props: {
-  ip: string;
-  port: string | null;
-  isPinned: boolean;
-}) {
+function IpEndpoint(props: { ip: string; port: string | null; isPinned: boolean }) {
   const { parts, separator } = useMemo(() => {
-    const separator = props.ip.includes(".") ? "." : ":";
+    const separator = props.ip.includes('.') ? '.' : ':';
     return {
       parts: props.ip.split(separator),
       separator,
@@ -235,11 +249,7 @@ function IpEndpoint(props: {
   );
 }
 
-function K8sEndpoint(props: {
-  str: string;
-  port: string | null;
-  isPinned: boolean;
-}) {
+function K8sEndpoint(props: { str: string; port: string | null; isPinned: boolean }) {
   const { title, type, namespace } = useMemo(() => {
     const parts = props.str.split(/[\/:]/);
     return {
@@ -255,7 +265,7 @@ function K8sEndpoint(props: {
         {props.isPinned && <Pin />}
         {title}
         {props.port && <Port port={props.port} />}
-      </span>{" "}
+      </span>{' '}
       <Namespace namespace={namespace} /> <K8sEntityType type={type} />
     </span>
   );

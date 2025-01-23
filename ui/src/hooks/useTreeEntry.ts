@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import { Stat, TreeEntryStat } from "~/state/utils";
+import { EndpointStat, TreeEntryStat } from "~/state/utils";
 import { EndpointKind, PropertyValues } from "~/types";
 import { useConnector } from "./useConnector";
 
@@ -62,21 +62,35 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return !!visibleEndpoints?.size;
   }, [visibleEndpoints]);
 
-  const stat = useMemo((): Stat | null => {
+  const stat = useMemo((): TreeEntryStat | null => {
     if (!args.statInfo) {
       return null;
     }
     if (selectedEndpoint) {
-      return args.statInfo.endpointsMap.get(selectedEndpoint) ?? null;
+      const endpointStat = args.statInfo.endpointsMap.get(selectedEndpoint);
+      if (!endpointStat) {
+        return null;
+      }
+      const endpointsMap = new Map<string, EndpointStat>();
+      endpointsMap.set(selectedEndpoint, endpointStat);
+      return {
+        ...endpointStat,
+        hasSuspiciousEvents: args.statInfo.hasSuspiciousEvents,
+        endpointsMap,
+      };
     }
-    const stat: Stat = {
+    const stat: TreeEntryStat = {
       totalBytesSent: 0,
       totalBytesReceived: 0,
+      hasSuspiciousEvents: false,
+      endpointsMap: new Map(),
     };
     args.statInfo.endpointsMap.forEach((endpointStat, endpoint) => {
       if (visibleEndpoints?.has(endpoint)) {
         stat.totalBytesSent += endpointStat.totalBytesSent;
         stat.totalBytesReceived += endpointStat.totalBytesReceived;
+        stat.hasSuspiciousEvents ||= endpointStat.hasSuspiciousEvents;
+        stat.endpointsMap.set(endpoint, endpointStat);
       }
     });
     return stat;

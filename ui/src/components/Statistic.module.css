@@ -4,3 +4,10 @@
   white-space: pre;
   word-spacing: -5px;
 }
+
+.suspiciousMarker {
+  position: relative;
+  top: 3px;
+  display: inline-block;
+  margin-left: 10px;
+}

@@ -35,7 +35,7 @@ export const Namespace = memo(function Namespace(props: NamespaceProps) {
               <NamespaceIcon
                 className={css.namespaceIcon}
                 size={14}
-                color="#b8b8b8"
+                color={entry.stat?.hasSuspiciousEvents ? "#d59011" : "#b8b8b8"}
               />
               <span>{props.namespace.name}</span>
               {entry.stat && <Statistic stat={entry.stat} />}

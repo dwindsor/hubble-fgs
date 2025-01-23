@@ -1,5 +1,9 @@
 .proc {
   cursor: default;
+
+  &.suspicious {
+    color: #d59011;
+  }
 }
 
 .proc:has(> div)::before {
