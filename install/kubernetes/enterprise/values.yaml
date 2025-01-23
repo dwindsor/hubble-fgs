@@ -65,6 +65,8 @@ tetragon:
   enableSandboxpolicies: true
   # -- Enable process tree.
   enableProcessTree: false
+  # -- Enable system call tracking in the process tree.
+  enableSyscallTracking: false
   prometheus:
     metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.

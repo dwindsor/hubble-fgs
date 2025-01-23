@@ -299,6 +299,8 @@ tetragon:
   enableSandboxpolicies: true
   # -- Enable process tree.
   enableProcessTree: false
+  # -- Enable system call tracking in the process tree.
+  enableSyscallTracking: false
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:

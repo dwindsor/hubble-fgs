@@ -99,6 +99,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.enableProcessNs | bool | `false` | Enable Namespaces visibility in exec and kprobe events. |
 | tetragon.enableProcessTree | bool | `false` | Enable process tree. |
 | tetragon.enableSandboxpolicies | bool | `true` | Enable sandboxpolicies. |
+| tetragon.enableSyscallTracking | bool | `false` | Enable system call tracking in the process tree. |
 | tetragon.enabled | bool | `true` |  |
 | tetragon.eventCacheRetries | int | `15` | Configure the number of retries in tetragon's event cache. |
 | tetragon.eventCacheRetryDelay | int | `2` | Configure the delay (in seconds) between retires in tetragon's event cache. |

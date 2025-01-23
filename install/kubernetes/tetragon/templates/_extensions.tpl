@@ -21,6 +21,15 @@ application-model-cache-size: {{ .Values.tetragon.applicationModelCacheSize | qu
 application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.applicationModelExportFilename }}
 application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
 {{- end }}
+{{- if .Values.tetragon.enableSyscallTracking }}
+{{- if .Values.tetragon.enableApplicationModel }}
+enable-syscall-tracking: "true"
+{{- else }}
+{{- fail "Application model must be enabled to enable system call tracking. Use tetragon.enableApplicationModel=true" }}
+{{- end }}
+{{- else }}
+enable-syscall-tracking: "false"
+{{- end }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
