@@ -41,10 +41,13 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return hasVisibleEndpoints ? visibleEndpoints : entryEndpoints;
   };
 
-  const [endpoints, setEndpoints] = useState(getVisibleEndpoints());
+  const [visibleEndpoints, setVisibleEndpoints] = useState(
+    getVisibleEndpoints()
+  );
+
   useEffect(() => {
     return state.onEndpointUpdated(() => {
-      setEndpoints(getVisibleEndpoints());
+      setVisibleEndpoints(getVisibleEndpoints());
     });
   }, []);
 
@@ -56,18 +59,28 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
   }, [selectedEndpoint]);
 
   const hasConnections = useMemo(() => {
-    return !!endpoints?.size;
-  }, [endpoints]);
+    return !!visibleEndpoints?.size;
+  }, [visibleEndpoints]);
 
   const stat = useMemo((): Stat | null => {
     if (!args.statInfo) {
       return null;
     }
-    if (!selectedEndpoint) {
-      return args.statInfo ?? null;
+    if (selectedEndpoint) {
+      return args.statInfo.endpointsMap.get(selectedEndpoint) ?? null;
     }
-    return args.statInfo.endpointsMap.get(selectedEndpoint) ?? null;
-  }, [args.statInfo, selectedEndpoint]);
+    const stat: Stat = {
+      totalBytesSent: 0,
+      totalBytesReceived: 0,
+    };
+    args.statInfo.endpointsMap.forEach((endpointStat, endpoint) => {
+      if (visibleEndpoints?.has(endpoint)) {
+        stat.totalBytesSent += endpointStat.totalBytesSent;
+        stat.totalBytesReceived += endpointStat.totalBytesReceived;
+      }
+    });
+    return stat;
+  }, [args.statInfo, selectedEndpoint, visibleEndpoints]);
 
   const connectorEndpoints = useMemo(() => {
     if (selectedEndpoint) {
@@ -75,8 +88,8 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       set.add(selectedEndpoint);
       return set;
     }
-    return endpoints;
-  }, [selectedEndpoint, endpoints]);
+    return visibleEndpoints;
+  }, [selectedEndpoint, visibleEndpoints]);
 
   const className = useMemo(() => {
     return clsx("ipt-interactive", {
@@ -95,7 +108,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
         setVisualState(VisualState.Base);
         return;
       }
-      if (!endpoints?.has(endpoint)) {
+      if (!visibleEndpoints?.has(endpoint)) {
         setSelectedEndpoint(null);
         setVisualState(VisualState.Muted);
         return;
@@ -103,7 +116,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       setSelectedEndpoint(endpoint);
       setVisualState(VisualState.Highlighted);
     });
-  }, [endpoints]);
+  }, [visibleEndpoints]);
 
   return {
     stat,

@@ -1,3 +1,8 @@
+.inner {
+  display: flex;
+  align-items: center;
+}
+
 .hostIcon {
   position: absolute;
   top: 3px;

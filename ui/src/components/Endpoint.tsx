@@ -19,6 +19,7 @@ import { getEndpointHash, Stat } from "~/state/utils";
 
 export interface Props {
   endpoint: string;
+  ephimeral?: boolean;
 }
 
 export const Endpoint = memo(function Endpoint(props: Props) {
@@ -80,7 +81,9 @@ export const Endpoint = memo(function Endpoint(props: Props) {
       return;
     }
 
-    state.updateEndpoint(props.endpoint, visible, xy);
+    if (!props.ephimeral) {
+      state.updateEndpoint(props.endpoint, visible, xy);
+    }
   };
 
   const debouncedUpdate = useMemo(

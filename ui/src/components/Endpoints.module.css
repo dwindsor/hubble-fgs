@@ -1,0 +1,24 @@
+.search {
+  margin-bottom: 20px;
+
+  input {
+    width: 240px;
+    padding: 5px 7px 3px 7px;
+    border-radius: 3px;
+    height: 22px;
+    line-height: 22px;
+    border: none;
+    background: #ddd;
+    font-family: sans-serif;
+    font-size: 14px;
+  }
+}
+
+.searchResults {
+  margin-bottom: 20px;
+}
+
+.searchResults + .endpointsList {
+  padding-top: 20px;
+  border-top: 1px solid #ccc;
+}

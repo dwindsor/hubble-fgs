@@ -9,6 +9,7 @@ import { NamespacesIcon } from "./Icons/NamespacesIcon";
 import css from "./Namespace.module.css";
 import { Statistic } from "./Statistic";
 import { WorkloadsList } from "./Workload";
+import clsx from "clsx";
 
 export interface NamespaceProps {
   namespace: ApplicationNamespace;
@@ -60,21 +61,29 @@ export const NamespacesList = memo(function NamespacesList(
 ) {
   const state = useAppState();
 
-  const stat = state.stat.namespaces;
+  const entry = useTreeEntry({
+    statInfo: state.stat.namespaces,
+  });
 
   return (
     <Collapsible
       initialOpened={true}
       summary={({ onClick }) => (
-        <summary className={css.namespacesTitle} onClick={onClick}>
-          <div>
+        <summary
+          className={clsx(entry.className, css.namespacesTitle)}
+          onClick={onClick}
+        >
+          <div className={css.inner}>
             <NamespacesIcon
               className={css.namespacesIcon}
               size={14}
               color="#b8b8b8"
             />
             <span>Namespaces</span>
-            <Statistic stat={stat} />
+            {entry.stat && <Statistic stat={entry.stat} />}
+            {entry.hasConnections && (
+              <Connector endpoints={entry.connectorEndpoints} />
+            )}
           </div>
         </summary>
       )}

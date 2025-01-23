@@ -1,17 +1,66 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import debounce from "lodash/debounce";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { AppState, useAppState } from "~/state/AppContext";
 import { EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
 import { Endpoint } from "./Endpoint";
-import debounce from "lodash/debounce";
+import css from "./Endpoints.module.css";
 
 export const Endpoints = memo(function Endpoints() {
+  const state = useAppState();
+
   const endpoints = useEndpoints();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [foundEndpoints, setFoundEndpoints] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setFoundEndpoints([]);
+      return;
+    }
+
+    const currentEndpointsSet = new Set(endpoints);
+    const foundEndpoints = new Set<string>();
+    for (const endpoint of state.endpointsMap.keys()) {
+      if (
+        !currentEndpointsSet.has(endpoint) &&
+        endpoint.includes(searchQuery)
+      ) {
+        foundEndpoints.add(endpoint);
+      }
+    }
+    setFoundEndpoints(sortEndpoints(state, foundEndpoints));
+  }, [searchQuery, endpoints]);
+
+  const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
   return (
     <div>
-      {endpoints.map((endpoint) => {
-        return <Endpoint key={endpoint} endpoint={endpoint} />;
-      })}
+      <div className={css.search}>
+        <input
+          value={searchQuery}
+          onChange={onSearch}
+          placeholder="Search endpoint..."
+        />
+      </div>
+      {!!foundEndpoints.length && (
+        <div className={css.searchResults}>
+          {foundEndpoints.map((endpoint) => {
+            return (
+              <Endpoint key={endpoint} ephimeral={true} endpoint={endpoint} />
+            );
+          })}
+        </div>
+      )}
+      {!!endpoints.length && (
+        <div className={css.endpointsList}>
+          {endpoints.map((endpoint) => {
+            return <Endpoint key={endpoint} endpoint={endpoint} />;
+          })}
+        </div>
+      )}
     </div>
   );
 });
@@ -61,6 +110,10 @@ function createEndpoints(state: AppState): string[] {
     });
   }
 
+  return sortEndpoints(state, endpoints);
+}
+
+function sortEndpoints(state: AppState, endpoints: Set<string>): string[] {
   return Array.from(endpoints).sort((a, b) => {
     const x = state.endpointsMap.get(a)!;
     const y = state.endpointsMap.get(b)!;

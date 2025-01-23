@@ -10,8 +10,6 @@ import { Statistic } from "./Statistic";
 export const Cluster = memo(function Cluster() {
   const state = useAppState();
 
-  const stat = state.stat.cluster;
-
   return (
     <li className={css.clusterItem}>
       <Collapsible
@@ -24,9 +22,7 @@ export const Cluster = memo(function Cluster() {
                 size={14}
                 color="#b8b8b8"
               />
-              <span>
-                {state.model.clusterName} <Statistic stat={stat} />
-              </span>
+              <span>{state.model.clusterName}</span>
             </div>
           </summary>
         )}

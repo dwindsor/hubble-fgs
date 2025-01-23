@@ -129,12 +129,15 @@ export function createAppState(model?: ApplicationModelEvent): {
 
   let namespacesTotalBytesSent = 0;
   let namespacesTotalBytesReceived = 0;
+  const namespacesEndpointsMap = new Map<string, Stat>();
+
   model.applicationModel?.namespaces?.forEach((namespace) => {
     if (!namespace.name) return;
+
     let namespaceTotalBytesSent = 0;
     let namespaceTotalBytesReceived = 0;
-
     const namespaceEndpointsMap = new Map<string, Stat>();
+
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
       const workloadResult = rec(workload.processes);
@@ -154,6 +157,15 @@ export function createAppState(model?: ApplicationModelEvent): {
         namespaceEndpointStat.totalBytesReceived +=
           endpointStat.totalBytesReceived;
         namespaceEndpointsMap.set(endpoint, namespaceEndpointStat);
+
+        const namespacesEndpointStat = namespacesEndpointsMap.get(endpoint) ?? {
+          totalBytesSent: 0,
+          totalBytesReceived: 0,
+        };
+        namespacesEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
+        namespacesEndpointStat.totalBytesReceived +=
+          endpointStat.totalBytesReceived;
+        namespacesEndpointsMap.set(endpoint, namespacesEndpointStat);
       });
     });
     namespacesTotalBytesSent += namespaceTotalBytesSent;
@@ -166,31 +178,40 @@ export function createAppState(model?: ApplicationModelEvent): {
     });
   });
 
-  stat.host.totalBytesSent = hostResult.totalBytesSent;
-  stat.host.totalBytesReceived = hostResult.totalBytesSent;
-  stat.namespaces.totalBytesSent = namespacesTotalBytesSent;
-  stat.namespaces.totalBytesReceived = namespacesTotalBytesReceived;
   stat.node.totalBytesSent =
     hostResult.totalBytesSent + namespacesTotalBytesSent;
   stat.node.totalBytesReceived =
     hostResult.totalBytesReceived + namespacesTotalBytesReceived;
-  stat.cluster.totalBytesSent = stat.node.totalBytesSent;
-  stat.cluster.totalBytesReceived = stat.node.totalBytesReceived;
+
+  stat.host.totalBytesSent = hostResult.totalBytesSent;
+  stat.host.totalBytesReceived = hostResult.totalBytesSent;
+  stat.host.endpointsMap = hostResult.endpointsMap;
+
+  stat.namespaces.totalBytesSent = namespacesTotalBytesSent;
+  stat.namespaces.totalBytesReceived = namespacesTotalBytesReceived;
+  stat.namespaces.endpointsMap = namespacesEndpointsMap;
 
   return {
     processesMap,
     endpointsMap,
     connectionsMap,
-    stat: stat,
+    stat,
   };
 }
 
 export function createEmptyStat() {
   return {
-    cluster: { totalBytesSent: 0, totalBytesReceived: 0 },
     node: { totalBytesSent: 0, totalBytesReceived: 0 },
-    host: { totalBytesSent: 0, totalBytesReceived: 0 },
-    namespaces: { totalBytesSent: 0, totalBytesReceived: 0 },
+    host: {
+      totalBytesSent: 0,
+      totalBytesReceived: 0,
+      endpointsMap: new Map(),
+    } satisfies TreeEntryStat,
+    namespaces: {
+      totalBytesSent: 0,
+      totalBytesReceived: 0,
+      endpointsMap: new Map(),
+    } satisfies TreeEntryStat,
     namespacesMap: new Map<string, TreeEntryStat>(),
     workloadsMap: new Map<string, TreeEntryStat>(),
     processesMap: new WeakMap<ApplicationProcess, TreeEntryStat>(),
