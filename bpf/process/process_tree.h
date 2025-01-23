@@ -76,7 +76,7 @@ static struct tree_id get_new_tree_id()
 int __insert_process_tree(__u32 pid, __u64 cgid)
 {
 	struct process_tree_binary_uid_key *tree_key;
-	struct process_tree_key *k, local, *parent;
+	struct process_tree_key *k, local = { 0 }, *parent;
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
@@ -130,7 +130,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	}
 
 	k->self = id;
-	map_update_elem(&tg_ee_pid_data, &pid, k, 0);
+	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
 
 	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 	if (nsid)
