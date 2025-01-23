@@ -75,7 +75,6 @@ export function createAppContext({
     ) {
       const cur = state.processesMap.get(proc);
       assert(cur, "All processes expected to be available in processes map");
-      console.log("update process", proc.name, visible);
       state.processesMap.set(proc, { ...cur, visible, xy });
       emitter.emitter.emit(EmitterEventKind.ProcUpdated, proc);
       that.changeTree();

@@ -150,9 +150,10 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
   return (
     <ul className={clsx(css.list, props.className)}>
       {props.procs.map((proc) => {
+        const key = `${proc.name}:[${proc.arguments}]`;
         return (
           <Proc
-            key={proc.hash}
+            key={key}
             proc={proc}
             className={clsx(props.procItemClassName)}
             childrenProcsListClassName={props.className}
