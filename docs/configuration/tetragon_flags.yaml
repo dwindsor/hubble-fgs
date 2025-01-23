@@ -280,6 +280,8 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
+    - name: process-tree-export-filename
+      usage: Filename for application model JSON export.
     - name: process-tree-export-interval
       default_value: 0s
       usage: Interval at which to export process tree as JSON.

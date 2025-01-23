@@ -498,8 +498,13 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if option.Config.ExportFilename != "" {
-		if err = startExporter(ctx, pm.Server, modelServer); err != nil {
+		if err = startExporter(ctx, pm.Server); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
+		}
+	}
+	if enterpriseOption.Config.ProcessTreeExportInterval != 0 && enterpriseOption.Config.ProcessTreeExportFilename != "" {
+		if err = startProcessTreeExporter(ctx, modelServer); err != nil {
+			return fmt.Errorf("failed to start json application model exporter: %w", err)
 		}
 	}
 
@@ -775,7 +780,7 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	return writer, nil
 }
 
-func startExporter(ctx context.Context, server *server.Server, modelServer *model.Server) error {
+func startExporter(ctx context.Context, server *server.Server) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
 		return err
@@ -844,9 +849,46 @@ func startExporter(ctx context.Context, server *server.Server, modelServer *mode
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 	exporter.Start()
 
-	if modelServer != nil && enterpriseOption.Config.ProcessTreeExportInterval != 0 {
-		go model.ExportProcessModel(ctx, modelServer, writer, enterpriseOption.Config.ProcessTreeExportInterval)
+	return nil
+}
+
+func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) error {
+	writer, err := getWriter(
+		enterpriseOption.Config.ProcessTreeExportFilename,
+		option.Config.ExportFileMaxSizeMB,
+		option.Config.ExportFileMaxBackups,
+		option.Config.ExportFileCompress,
+	)
+	if err != nil {
+		return err
 	}
+
+	if option.Config.ExportFileRotationInterval < 0 {
+		// Passed an invalid interval let's error out
+		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
+	} else if option.Config.ExportFileRotationInterval > 0 {
+		log.WithFields(logrus.Fields{
+			"frequency": option.Config.ExportFileRotationInterval.String(),
+		}).Info("Periodically rotating JSON application model export files")
+		go func() {
+			ticker := time.NewTicker(option.Config.ExportFileRotationInterval)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if rotationErr := writer.Rotate(); rotationErr != nil {
+						log.WithError(rotationErr).WithField(
+							"file", enterpriseOption.Config.ProcessTreeExportFilename,
+						).Warn("Failed to rotate JSON application model export file")
+					}
+				}
+			}
+		}()
+	}
+
+	go model.ExportProcessModel(ctx, modelServer, writer, enterpriseOption.Config.ProcessTreeExportInterval)
+
 	return nil
 }
 

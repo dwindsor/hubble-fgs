@@ -9,27 +9,28 @@ type config struct {
 	EnableProcessAncestors    bool
 	EnableProcessTree         bool
 	ProcessTreeExportInterval time.Duration
-	DnsCacheSize              int
-	ProcessTreeCacheSize      int
-	EndpointCacheSize         int
-	BpfEndpointCacheSize      int
-	TlsCacheSize              int
-	TcpCacheSize              int
-	NetNsCacheSize            int
-	FimFifoPath               string
-	DisableKprobeMulti        bool
-	FimRuntimeEndpoint        string
-	FimMaxFileSizeDigest      int64
-	FimMaxTimeoutDigestSec    int64
-	DetachOldBpf              bool
+	ProcessTreeExportFilename string
+
+	DnsCacheSize         int
+	ProcessTreeCacheSize int
+	EndpointCacheSize    int
+	BpfEndpointCacheSize int
+	TlsCacheSize         int
+	TcpCacheSize         int
+	NetNsCacheSize       int
+
+	FimFifoPath            string
+	FimRuntimeEndpoint     string
+	FimMaxFileSizeDigest   int64
+	FimMaxTimeoutDigestSec int64
+
+	DisableKprobeMulti bool
+	DetachOldBpf       bool
 
 	FlowExportFilename       string
 	FlowExportFileMaxSizeMB  int
 	FlowExportFileMaxBackups int
 	FlowExportFileCompress   bool
-	EnableIcmpTracking       bool
-
-	EnableDnsDebug bool
 
 	EnableSandboxPolicies    bool
 	EnableSandboxPoliciesCRD bool
@@ -43,9 +44,10 @@ type config struct {
 	EnableAWSSonar bool
 	AWSSonarRegion string
 
+	EnableIcmpTracking bool
+	EnableDnsDebug     bool
 	EnableBPFDNSParser bool
-
-	DNSStatsPerSocket bool
+	DNSStatsPerSocket  bool
 }
 
 var (

@@ -43,6 +43,7 @@ const (
 	KeyEnableProcessAncestors    = "enable-process-ancestors"
 	KeyEnableProcessTree         = "enable-process-tree"
 	KeyProcessTreeExportInterval = "process-tree-export-interval"
+	KeyProcessTreeExportFilename = "process-tree-export-filename"
 	keyEnableIcmpTracking        = "enable-icmp-tracking"
 	keyEnableSandboxPolicies     = "enable-sandboxpolicies"
 	keyEnableSandboxPoliciesCRD  = "enable-sandboxpolicies-crd"
@@ -72,9 +73,11 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
 	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.Bool(KeyEnableProcessTree, false, "Include BPF process tree in memory")
-	// An experimental flag to periodically export process model to export JSON file.
+	// Experimental flags to periodically export process model to export JSON file.
 	flags.Duration(KeyProcessTreeExportInterval, 0, "Interval at which to export process tree as JSON.")
 	flags.MarkHidden(KeyProcessTreeExportInterval)
+	flags.String(KeyProcessTreeExportFilename, "", "Filename for application model JSON export.")
+	flags.MarkHidden(KeyProcessTreeExportFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(KeyProcessTreeSize, 65536, "Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(KeyEndpointCacheSize, 65536, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
@@ -111,6 +114,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableProcessAncestors = viper.GetBool(KeyEnableProcessAncestors)
 	Config.EnableProcessTree = viper.GetBool(KeyEnableProcessTree)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyProcessTreeExportInterval)
+	Config.ProcessTreeExportFilename = viper.GetString(KeyProcessTreeExportFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
 	Config.ProcessTreeCacheSize = viper.GetInt(KeyProcessTreeSize)
