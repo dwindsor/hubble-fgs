@@ -8,9 +8,7 @@
   "directories": {
     "lib": "lib"
   },
-  "files": [
-    "lib"
-  ],
+  "files": ["lib"],
   "scripts": {
     "start": "npm run dev",
     "build": "run-p build:*",
@@ -32,6 +30,7 @@
     "typed-emitter": "2.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/events": "3.0.3",
     "@types/lodash": "4.17.13",
     "@types/node": "22.10.6",

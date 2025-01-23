@@ -1,6 +1,6 @@
 import { memo } from "react";
-import css from "./Tree.module.css";
 import { Cluster } from "./Cluster";
+import css from "./Tree.module.css";
 
 export const Tree = memo(function Tree() {
   return (

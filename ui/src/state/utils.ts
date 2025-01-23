@@ -1,6 +1,7 @@
-import { ApplicationConnection, ApplicationModelEvent, ApplicationProcess } from '~/proto';
-import { ConnectionsMap, EndpointsMap, ProcessesMap } from '~/types';
-import { inferEndpointKind } from '~/utils/endpoints';
+import type { ApplicationConnection, ApplicationModelEvent, ApplicationProcess } from "~/proto";
+import type { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
+import { inferEndpointKind } from "~/utils/endpoints";
+import { isSuspiciousProc } from "~/utils/procs";
 
 export type Stat = {
   totalBytesSent: number;
@@ -53,7 +54,7 @@ export function createAppState(model?: ApplicationModelEvent): {
 
       let procTotalBytesSent = 0;
       let procTotalBytesReceived = 0;
-      let procHasSuspiciousEvents = !!proc.inInitTree;
+      const procHasSuspiciousEvents = isSuspiciousProc(proc);
 
       recHasSuspiciousEvents ||= procHasSuspiciousEvents;
 
@@ -161,7 +162,7 @@ export function createAppState(model?: ApplicationModelEvent): {
 
       const workloadResult = rec(workload.processes);
 
-      stat.workloadsMap.set(namespace.name + '/' + workload.name, {
+      stat.workloadsMap.set(`${namespace.name}/${workload.name}`, {
         totalBytesSent: workloadResult.totalBytesSent,
         totalBytesReceived: workloadResult.totalBytesReceived,
         hasSuspiciousEvents: workloadResult.hasSuspiciousEvents,

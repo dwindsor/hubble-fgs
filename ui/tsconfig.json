@@ -43,12 +43,8 @@
     "paths": {
       "~/*": ["./src/*"],
       "@ipa/*": ["../vendor/github.com/isovalent/ipa/*"],
-      "@bufbuild/protobuf": [
-        "./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"
-      ],
-      "@bufbuild/protobuf/wkt": [
-        "./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"
-      ],
+      "@bufbuild/protobuf": ["./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"],
+      "@bufbuild/protobuf/wkt": ["./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"],
       "@bufbuild/protobuf/codegenv1": [
         "./node_modules/@bufbuild/protobuf/dist/esm/codegenv1/index.d.ts"
       ]

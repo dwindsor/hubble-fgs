@@ -1,8 +1,8 @@
 import Emitter from "events";
-import TypedEmitter from "typed-emitter";
-import { ApplicationProcess } from "~/proto";
-import { PropertyValues, WH } from "~/types";
-import { EndpointModeType } from "~/utils/endpoints";
+import type TypedEmitter from "typed-emitter";
+import type { ApplicationProcess } from "~/proto";
+import type { PropertyValues, WH } from "~/types";
+import type { EndpointModeType } from "~/utils/endpoints";
 
 export const EmitterEventKind = {
   __proto__: null,
@@ -26,26 +26,19 @@ export type EmitterHandlers = {
   [EmitterEventKind.HighlightEndpoint]: (
     endpoint: string,
     state: boolean,
-    mode: EndpointModeType
+    mode: EndpointModeType,
   ) => void;
-  [EmitterEventKind.HighlightProc]: (
-    proc: ApplicationProcess,
-    state: boolean
-  ) => void;
+  [EmitterEventKind.HighlightProc]: (proc: ApplicationProcess, state: boolean) => void;
 };
 
 export class AppEmitter {
   public readonly emitter: TypedEmitter<EmitterHandlers>;
 
   constructor() {
-    this.emitter = new Emitter().setMaxListeners(
-      16384
-    ) as TypedEmitter<EmitterHandlers>;
+    this.emitter = new Emitter().setMaxListeners(16384) as TypedEmitter<EmitterHandlers>;
   }
 
-  createSubscriber = <K extends EmitterEventKind, H extends EmitterHandlers[K]>(
-    kind: K
-  ) => {
+  createSubscriber = <K extends EmitterEventKind, H extends EmitterHandlers[K]>(kind: K) => {
     return (handler: H) => {
       this.emitter.on(kind, handler);
       return () => {

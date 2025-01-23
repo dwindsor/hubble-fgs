@@ -1,10 +1,10 @@
 import { memo } from "react";
 import { ApplicationModelEvent } from "~/proto";
+import { useAppState } from "~/state/AppContext";
 import css from "./Cluster.module.css";
-import { ClusterIcon } from "./Icons/ClusterIcon";
 import { ClusterNode } from "./ClusterNode";
 import { Collapsible } from "./Collapsible";
-import { useAppState } from "~/state/AppContext";
+import { ClusterIcon } from "./Icons/ClusterIcon";
 import { Statistic } from "./Statistic";
 
 export const Cluster = memo(function Cluster() {
@@ -17,11 +17,7 @@ export const Cluster = memo(function Cluster() {
         summary={({ onClick }) => (
           <summary className={css.clusterName} onClick={onClick}>
             <div>
-              <ClusterIcon
-                className={css.clusterIcon}
-                size={14}
-                color="#b8b8b8"
-              />
+              <ClusterIcon className={css.clusterIcon} size={14} color="#b8b8b8" />
               <span>{state.model.clusterName}</span>
             </div>
           </summary>

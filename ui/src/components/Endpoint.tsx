@@ -1,21 +1,22 @@
-import debounce from 'lodash/debounce';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { useAppState } from '~/state/AppContext';
+import debounce from "lodash/debounce";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useAppState } from "~/state/AppContext";
 
-import clsx from 'clsx';
-import React from 'react';
-import { useConnector } from '~/hooks/useConnector';
-import { ApplicationProcess } from '~/proto';
-import { EndpointStat, getEndpointHash } from '~/state/utils';
-import { EndpointKind } from '~/types';
+import clsx from "clsx";
+import React from "react";
+import { useConnector } from "~/hooks/useConnector";
+import type { ApplicationProcess } from "~/proto";
+import { type EndpointStat, getEndpointHash } from "~/state/utils";
+import { EndpointKind } from "~/types";
 import {
   EndpointMode,
   getEndpointPort,
   inferEndpointKind,
   trimEndpointPort,
-} from '~/utils/endpoints';
-import css from './Endpoint.module.css';
-import { Statistic } from './Statistic';
+} from "~/utils/endpoints";
+import { isSuspiciousProc } from "~/utils/procs";
+import css from "./Endpoint.module.css";
+import { Statistic } from "./Statistic";
 
 export interface Props {
   endpoint: string;
@@ -60,36 +61,45 @@ export const Endpoint = memo(function Endpoint(props: Props) {
         was = true;
         stat.totalBytesSent += Number(conn.bytesSent || 0);
         stat.totalBytesReceived += Number(conn.bytesReceived || 0);
-        stat.hasSuspiciousEvents ||= !!highlightedProc.inInitTree;
+        stat.hasSuspiciousEvents ||= isSuspiciousProc(highlightedProc);
       }
     });
     if (!was) {
       return null;
     }
     return stat;
-  }, [props.endpoint, highlightedProc]);
+  }, [state, props.endpoint, highlightedProc]);
 
-  const update = (visible = true) => {
-    const cur = state.endpointsMap.get(props.endpoint);
-    const xy = connector.getXY();
+  const update = useCallback(
+    (visible = true) => {
+      const cur = state.endpointsMap.get(props.endpoint);
+      const xy = connector.getXY();
 
-    if (cur && cur.visible === visible && cur.xy?.x === xy?.x && cur.xy?.y === xy?.y) {
-      return;
-    }
+      if (cur && cur.visible === visible && cur.xy?.x === xy?.x && cur.xy?.y === xy?.y) {
+        return;
+      }
 
-    if (!props.ephimeral) {
-      state.updateEndpoint(props.endpoint, visible, xy);
-    }
-  };
+      if (!props.ephimeral) {
+        state.updateEndpoint(props.endpoint, visible, xy);
+      }
+    },
+    [state, connector, props.endpoint, props.ephimeral],
+  );
 
-  const debouncedUpdate = useMemo(() => debounce(update), [props.endpoint, connector]);
+  const debouncedUpdate = useMemo(() => {
+    return debounce(update);
+  }, [update]);
 
   useEffect(() => {
     update(true);
-    return () => state.updateEndpoint(props.endpoint, false, undefined);
-  }, []);
+    return () => {
+      return state.updateEndpoint(props.endpoint, false, undefined);
+    };
+  }, [state, props.endpoint, update]);
 
-  useEffect(() => state.onAppSizeChanged(() => debouncedUpdate()), [debouncedUpdate]);
+  useEffect(() => {
+    return state.onAppSizeChanged(() => debouncedUpdate());
+  }, [state, debouncedUpdate]);
 
   useEffect(() => {
     return state.onEndpointHighlight((endpoint) => {
@@ -98,7 +108,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
       }
       setIsPinned(!!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned));
     });
-  }, [props.endpoint]);
+  }, [state, props.endpoint]);
 
   useEffect(() => {
     return state.onProcHighlight((proc, value) => {
@@ -108,15 +118,15 @@ export const Endpoint = memo(function Endpoint(props: Props) {
       }
       setHighlightedProc(value ? proc : null);
     });
-  }, [props.endpoint]);
+  }, [state, props.endpoint]);
 
   const onMouseEnter = useCallback(() => {
     state.highlightEndpoint(props.endpoint, true, EndpointMode.Hovered);
-  }, [props.endpoint]);
+  }, [state, props.endpoint]);
 
   const onMouseLeave = useCallback(() => {
     state.highlightEndpoint(props.endpoint, false, EndpointMode.Hovered);
-  }, [props.endpoint]);
+  }, [state, props.endpoint]);
 
   const onClick = useCallback(() => {
     const modes = state.highlightedEndpointsMap.get(props.endpoint);
@@ -125,7 +135,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
       return;
     }
     state.highlightEndpoint(props.endpoint, true, EndpointMode.Pinned);
-  }, [props.endpoint]);
+  }, [state, props.endpoint]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
     [css.highlighted]: highlightedProc,
@@ -160,7 +170,7 @@ function renderEndpoint(
           <K8sEndpoint str={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
-              {' '}
+              {" "}
               <Statistic showSuspiciousMarker stat={stat} />
             </>
           )}
@@ -174,7 +184,7 @@ function renderEndpoint(
           {port && <Port port={port} />}
           {stat && (
             <>
-              {' '}
+              {" "}
               <Statistic showSuspiciousMarker stat={stat} />
             </>
           )}
@@ -187,7 +197,7 @@ function renderEndpoint(
           <IpEndpoint ip={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
-              {' '}
+              {" "}
               <Statistic showSuspiciousMarker stat={stat} />
             </>
           )}
@@ -201,7 +211,7 @@ function renderEndpoint(
           {port && <Port port={port} />}
           {stat && (
             <>
-              {' '}
+              {" "}
               <Statistic showSuspiciousMarker stat={stat} />
             </>
           )}
@@ -223,7 +233,7 @@ function classNameFromEndpointKind(kind: EndpointKind): string | null {
 
 function IpEndpoint(props: { ip: string; port: string | null; isPinned: boolean }) {
   const { parts, separator } = useMemo(() => {
-    const separator = props.ip.includes('.') ? '.' : ':';
+    const separator = props.ip.includes(".") ? "." : ":";
     return {
       parts: props.ip.split(separator),
       separator,
@@ -265,7 +275,7 @@ function K8sEndpoint(props: { str: string; port: string | null; isPinned: boolea
         {props.isPinned && <Pin />}
         {title}
         {props.port && <Port port={props.port} />}
-      </span>{' '}
+      </span>{" "}
       <Namespace namespace={namespace} /> <K8sEntityType type={type} />
     </span>
   );

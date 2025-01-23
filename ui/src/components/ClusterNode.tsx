@@ -1,11 +1,11 @@
-import { memo } from 'react';
-import css from './ClusterNode.module.css';
-import { NamespacesList } from './Namespace';
-import { Host } from './Host';
-import { NodeIcon } from './Icons/NodeIcon';
-import { Collapsible } from './Collapsible';
-import { useAppState } from '~/state/AppContext';
-import { Statistic } from './Statistic';
+import { memo } from "react";
+import { useAppState } from "~/state/AppContext";
+import css from "./ClusterNode.module.css";
+import { Collapsible } from "./Collapsible";
+import { Host } from "./Host";
+import { NodeIcon } from "./Icons/NodeIcon";
+import { NamespacesList } from "./Namespace";
+import { Statistic } from "./Statistic";
 
 export const ClusterNode = memo(function ClusterNode() {
   const state = useAppState();
@@ -25,7 +25,7 @@ export const ClusterNode = memo(function ClusterNode() {
               <NodeIcon
                 className={css.nodeIcon}
                 size={14}
-                color={stat.hasSuspiciousEvents ? '#d59011' : '#b8b8b8'}
+                color={stat.hasSuspiciousEvents ? "#d59011" : "#b8b8b8"}
               />
               <span>
                 {state.model.nodeName} <Statistic stat={stat} />

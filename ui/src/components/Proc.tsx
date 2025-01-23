@@ -1,13 +1,14 @@
-import clsx from 'clsx';
-import debounce from 'lodash/debounce';
-import { memo, useCallback, useEffect, useMemo } from 'react';
-import { useTreeEntry } from '~/hooks/useTreeEntry';
-import { ApplicationProcess } from '~/proto';
-import { useAppState } from '~/state/AppContext';
-import { Collapsible } from './Collapsible';
-import { Connector } from './Connector';
-import css from './Proc.module.css';
-import { Statistic } from './Statistic';
+import clsx from "clsx";
+import debounce from "lodash/debounce";
+import { memo, useCallback, useEffect, useMemo } from "react";
+import { useTreeEntry } from "~/hooks/useTreeEntry";
+import type { ApplicationProcess } from "~/proto";
+import { useAppState } from "~/state/AppContext";
+import { isSuspiciousProc } from "~/utils/procs";
+import { Collapsible } from "./Collapsible";
+import { Connector } from "./Connector";
+import css from "./Proc.module.css";
+import { Statistic } from "./Statistic";
 
 export interface ProcProps {
   proc: ApplicationProcess;
@@ -39,7 +40,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
       state.updateProcess(props.proc, visible, xy);
     },
-    [props.proc, procInfo, entry.connector],
+    [state, props.proc, procInfo, entry],
   );
 
   const debouncedUpdate = useMemo(() => {
@@ -48,11 +49,11 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   const highlight = useCallback(() => {
     state.highlightProc(props.proc, true);
-  }, [props.proc]);
+  }, [state, props.proc]);
 
   const unhighlight = useCallback(() => {
     state.highlightProc(props.proc, false);
-  }, [props.proc]);
+  }, [state, props.proc]);
 
   const children = props.proc.children ?? [];
 
@@ -61,33 +62,33 @@ export const Proc = memo(function Proc(props: ProcProps) {
     return () => {
       state.updateProcess(props.proc, false, undefined);
     };
-  }, []);
+  }, [state, props.proc, update]);
 
   useEffect(() => {
     return state.onAppSizeChanged(() => debouncedUpdate());
-  }, [debouncedUpdate]);
+  }, [state, debouncedUpdate]);
 
   useEffect(() => {
     return debouncedUpdate();
-  }, [entry.endpoint]);
+  }, [debouncedUpdate]);
 
   useEffect(() => {
     return state.onProcHighlight((proc, value) => {
       if (!proc || !value) {
-        entry.setVisualState('base');
-        return;
-      } else if (proc === props.proc && value) {
-        entry.setVisualState('highlighted');
-        return;
-      } else {
-        entry.setVisualState('muted');
+        entry.setVisualState("base");
         return;
       }
+      if (proc === props.proc && value) {
+        entry.setVisualState("highlighted");
+        return;
+      }
+      entry.setVisualState("muted");
+      return;
     });
-  }, [props.proc]);
+  }, [state, entry, props.proc]);
 
   const className = clsx(css.proc, props.className, {
-    [css.suspicious]: !!props.proc.inInitTree,
+    [css.suspicious]: isSuspiciousProc(props.proc),
   });
 
   const innerClassName = clsx(css.inner, entry.className);
@@ -99,7 +100,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
           summary={({ onClick }) => (
             <summary className={innerClassName} onClick={onClick}>
               <div>
-                <Binary name={props.proc.name} />{' '}
+                <Binary name={props.proc.name} />{" "}
                 <span className={css.arguments} title={props.proc.arguments}>
                   {props.proc.arguments}
                 </span>
@@ -119,7 +120,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
         </Collapsible>
       ) : (
         <div className={innerClassName}>
-          <Binary name={props.proc.name} />{' '}
+          <Binary name={props.proc.name} />{" "}
           <span className={css.arguments} title={props.proc.arguments}>
             {props.proc.arguments}
           </span>
@@ -160,10 +161,10 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
 function Binary(props: { name?: string | undefined }) {
   return (
     <span className={css.binary}>
-      <>&lrm;</>
+      &lrm;
       {/* needed to fix text-overflow */}
-      {props.name ?? '-'}
-      <>&lrm;</>
+      {props.name ?? "-"}
+      &lrm;
       {/* needed to fix text-overflow */}
     </span>
   );

@@ -1,4 +1,4 @@
-import { EndpointKind, PropertyValues } from "~/types";
+import { EndpointKind, type PropertyValues } from "~/types";
 
 export const EndpointMode = {
   __proto__: null,
@@ -14,10 +14,13 @@ export const endpointsKindOrder = [
   EndpointKind.HostMetadataService,
   EndpointKind.Ip,
   EndpointKind.InnerDns,
-].reduce((acc, item, idx) => {
-  acc[item] = idx;
-  return acc;
-}, {} as { [key in EndpointKind]: number });
+].reduce(
+  (acc, item, idx) => {
+    acc[item] = idx;
+    return acc;
+  },
+  {} as { [key in EndpointKind]: number },
+);
 
 export function inferEndpointKind(endpoint: string): EndpointKind {
   const endpointWithoutPort = trimEndpointPort(endpoint);
@@ -32,8 +35,7 @@ export function inferEndpointKind(endpoint: string): EndpointKind {
     return EndpointKind.Ip;
   }
   if (
-    (endpointWithoutPort.startsWith("ip-") &&
-      endpointWithoutPort.endsWith(".internal")) ||
+    (endpointWithoutPort.startsWith("ip-") && endpointWithoutPort.endsWith(".internal")) ||
     endpointWithoutPort.endsWith(".svc.cluster.local")
   ) {
     return EndpointKind.InnerDns;

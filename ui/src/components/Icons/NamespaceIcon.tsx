@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { Props as IconProps, Icon } from "./Icon";
+import { Icon, type Props as IconProps } from "./Icon";
 
 export type Props = Omit<IconProps, "children">;
 

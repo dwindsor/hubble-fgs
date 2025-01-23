@@ -1,8 +1,8 @@
-import { Stat } from '~/state/utils';
-import css from './Statistic.module.css';
-import { memo, useMemo } from 'react';
-import clsx from 'clsx';
-import { WarningIcon } from './Icons/WarningIcon';
+import clsx from "clsx";
+import { memo, useMemo } from "react";
+import type { Stat } from "~/state/utils";
+import { WarningIcon } from "./Icons/WarningIcon";
+import css from "./Statistic.module.css";
 
 export interface Props {
   stat: Stat;
@@ -11,24 +11,24 @@ export interface Props {
 
 export const Statistic = memo(function Statistic(props: Props) {
   return (
-    <span className={clsx(css.wrapper, 'process-tree-item-statistic')}>
+    <span className={clsx(css.wrapper, "process-tree-item-statistic")}>
       {props.stat.totalBytesSent > 0 && (
         <>
           <Traffic dir="received" bytes={props.stat.totalBytesReceived} />
-          {'/'}
+          {"/"}
           <Traffic dir="sent" bytes={props.stat.totalBytesSent} />
         </>
       )}
       {props.showSuspiciousMarker && props.stat.hasSuspiciousEvents && (
         <span className={css.suspiciousMarker}>
-          <WarningIcon color={'#dda02f'} size={14} />
+          <WarningIcon color={"#dda02f"} size={14} />
         </span>
       )}
     </span>
   );
 });
 
-const Traffic = memo(function Traffic(props: { dir: 'sent' | 'received'; bytes: number }) {
+const Traffic = memo(function Traffic(props: { dir: "sent" | "received"; bytes: number }) {
   const value = useMemo(() => {
     const kb = props.bytes / 1024;
     if (kb < 1) {
@@ -45,18 +45,18 @@ const Traffic = memo(function Traffic(props: { dir: 'sent' | 'received'; bytes: 
     return `${+gb.toFixed(1)} GB`;
   }, [props.bytes]);
 
-  if (props.dir === 'sent') {
+  if (props.dir === "sent") {
     return (
       <>
         {value}
-        {' →'}
+        {" →"}
       </>
     );
   }
 
   return (
     <>
-      {'← '}
+      {"← "}
       {value}
     </>
   );

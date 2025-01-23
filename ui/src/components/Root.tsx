@@ -1,8 +1,8 @@
 import { memo, useMemo, useRef } from "react";
-import { AppContext, createAppContext } from "~/state/AppContext";
-import { ApplicationModelEvent } from "~/proto";
-import { App } from "./App";
 import { objectToCamel } from "ts-case-convert";
+import type { ApplicationModelEvent } from "~/proto";
+import { AppContext, createAppContext } from "~/state/AppContext";
+import { App } from "./App";
 
 export interface Props {
   model: ApplicationModelEvent;

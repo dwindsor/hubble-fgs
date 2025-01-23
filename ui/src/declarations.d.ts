@@ -1,8 +1,9 @@
-declare var showTooltip: (event: Event | undefined, text: string) => void;
-declare var hideTooltip: () => void;
+declare let showTooltip: (event: Event | undefined, text: string) => void;
+declare let hideTooltip: () => void;
 
 declare namespace Splunk {
-  export var SearchManager: any;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  export let SearchManager: any;
 
   export class SplunkView {
     constructor(arg: {
@@ -28,13 +29,18 @@ declare namespace Splunk {
     render(): void;
   }
 
-  export var SearchBarView: any;
-  export var SearchControlsView: any;
-  export var TimelineView: any;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  export let SearchBarView: any;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  export let SearchControlsView: any;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  export let TimelineView: any;
 
+  // biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
   export class SimpleSplunkView {
     public static extend(arg: {
       className?: string;
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       options?: any;
       createView?: () => SimpleSplunkView;
       render: () => void;

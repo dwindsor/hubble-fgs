@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { memo, useMemo } from "react";
-import { useConnector } from "~/hooks/useConnector";
+import type { useConnector } from "~/hooks/useConnector";
 import { useAppState } from "~/state/AppContext";
 import { EndpointKind } from "~/types";
 import { endpointsKindOrder } from "~/utils/endpoints";
@@ -34,7 +34,7 @@ export const Connector = memo(function Connector(props: Props) {
       classNames.add(CLASS_NAMES[kind] ?? "");
     });
     return Array.from(classNames);
-  }, [props.endpoints]);
+  }, [state, props.endpoints]);
 
   return (
     <div ref={props.connector?.ref} className={css.connector}>

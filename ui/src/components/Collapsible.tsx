@@ -1,4 +1,4 @@
-import { memo, ReactNode, useCallback, useState } from "react";
+import { type ReactNode, memo, useCallback, useState } from "react";
 import { useAppState } from "~/state/AppContext";
 
 export interface Props {
@@ -15,11 +15,14 @@ export const Collapsible = memo(function Collapsible(props: Props) {
 
   const [opened, setOpened] = useState(props.initialOpened ?? false);
 
-  const onClick = useCallback((event: React.MouseEvent) => {
-    event.preventDefault();
-    setOpened((prev) => !prev);
-    state.changeTree();
-  }, []);
+  const onClick = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      setOpened((prev) => !prev);
+      state.changeTree();
+    },
+    [state],
+  );
 
   return (
     <details open={opened}>

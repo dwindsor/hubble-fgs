@@ -18,13 +18,13 @@ export function useConnector() {
       x: box.x + box.width / 2 + (offset.x ?? 0),
       y: box.y + box.height / 2 + (offset.y ?? 0),
     };
-  }, [ref]);
+  }, [state]);
 
   return useMemo(
     () => ({
       ref,
       getXY,
     }),
-    [getXY]
+    [getXY],
   );
 }

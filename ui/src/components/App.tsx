@@ -1,9 +1,9 @@
 import { memo } from "react";
+import { useTree } from "~/hooks/useTree";
 import css from "./App.module.css";
 import { ConnectionsLines } from "./ConnectionsLines";
 import { Endpoints } from "./Endpoints";
 import { Tree } from "./Tree";
-import { useTree } from "~/hooks/useTree";
 
 export interface Props {
   appRef: React.RefObject<HTMLDivElement | null>;

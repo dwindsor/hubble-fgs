@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
-import { ConnectionLine, Connector, EndpointKind, Line, WH, XY } from "~/types";
+import { type ConnectionLine, EndpointKind, type WH } from "~/types";
 
 export interface Props {
   size: WH;
@@ -50,8 +50,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         return;
       }
 
-      let baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
-      let highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+      const baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
+      const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
 
       let color = state.highlightedEndpointsMap.size
         ? state.highlightedEndpointsMap.has(endpoint)
@@ -90,7 +90,7 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
 
     backgroundLines.forEach((line) => drawLine(ctx, line));
     foregroundLines.forEach((line) => drawLine(ctx, line));
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -103,15 +103,15 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
 
   useEffect(() => {
     return state.onRedrawConnectionsLines(draw);
-  }, [draw]);
+  }, [state, draw]);
 
   useEffect(() => {
     return state.onEndpointHighlight(draw);
-  }, [draw]);
+  }, [state, draw]);
 
   useEffect(() => {
     return state.onProcHighlight(draw);
-  }, [draw]);
+  }, [state, draw]);
 
   return <canvas ref={ref} />;
 });
@@ -127,7 +127,7 @@ function drawLine(ctx: CanvasRenderingContext2D, line: ConnectionLine) {
     Math.max(line.from.x, line.to.x - 100),
     line.to.y,
     line.to.x,
-    line.to.y
+    line.to.y,
   );
   ctx.stroke();
   ctx.closePath();

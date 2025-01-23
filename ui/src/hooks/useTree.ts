@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import { WH } from "../types";
+import type { WH } from "../types";
 
 export function useTree(ref: React.RefObject<HTMLDivElement | null>) {
   const state = useAppState();
@@ -13,7 +13,7 @@ export function useTree(ref: React.RefObject<HTMLDivElement | null>) {
       width: ref.current.scrollWidth,
       height: ref.current.scrollHeight,
     });
-  }, []);
+  }, [ref.current]);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -26,13 +26,13 @@ export function useTree(ref: React.RefObject<HTMLDivElement | null>) {
     });
     resizeObserver.observe(ref.current);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [ref.current]);
 
   useEffect(() => {
     if (size) {
       state.changeAppSize(size);
     }
-  }, [size]);
+  }, [state, size]);
 
   return { size };
 }

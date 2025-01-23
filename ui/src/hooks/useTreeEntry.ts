@@ -1,8 +1,8 @@
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import { EndpointStat, TreeEntryStat } from "~/state/utils";
-import { EndpointKind, PropertyValues } from "~/types";
+import type { EndpointStat, TreeEntryStat } from "~/state/utils";
+import { EndpointKind, type PropertyValues } from "~/types";
 import { useConnector } from "./useConnector";
 
 export const VisualState = {
@@ -21,11 +21,9 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
 
   const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
 
-  const [visualState, setVisualState] = useState<VisualStateType>(
-    VisualState.Base
-  );
+  const [visualState, setVisualState] = useState<VisualStateType>(VisualState.Base);
 
-  const getVisibleEndpoints = () => {
+  const getVisibleEndpoints = useCallback(() => {
     const entryEndpoints = new Set(args.statInfo?.endpointsMap.keys());
     if (entryEndpoints.size === 0) {
       return undefined;
@@ -39,24 +37,22 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       }
     });
     return hasVisibleEndpoints ? visibleEndpoints : entryEndpoints;
-  };
+  }, [state, args.statInfo]);
 
-  const [visibleEndpoints, setVisibleEndpoints] = useState(
-    getVisibleEndpoints()
-  );
+  const [visibleEndpoints, setVisibleEndpoints] = useState(getVisibleEndpoints());
 
   useEffect(() => {
     return state.onEndpointUpdated(() => {
       setVisibleEndpoints(getVisibleEndpoints());
     });
-  }, []);
+  }, [state, getVisibleEndpoints]);
 
   const endpointKind = useMemo(() => {
     if (!selectedEndpoint) {
       return null;
     }
     return state.endpointsMap.get(selectedEndpoint)?.kind ?? null;
-  }, [selectedEndpoint]);
+  }, [state, selectedEndpoint]);
 
   const hasConnections = useMemo(() => {
     return !!visibleEndpoints?.size;
@@ -107,8 +103,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
 
   const className = useMemo(() => {
     return clsx("ipt-interactive", {
-      "ipt-highlighted":
-        visualState === VisualState.Highlighted || selectedEndpoint,
+      "ipt-highlighted": visualState === VisualState.Highlighted || selectedEndpoint,
       "ipt-muted": visualState === VisualState.Muted,
       "ipt-endpoint-outer-dns": endpointKind === EndpointKind.OuterDns,
       "ipt-endpoint-k8s": endpointKind === EndpointKind.K8s,
@@ -130,16 +125,27 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       setSelectedEndpoint(endpoint);
       setVisualState(VisualState.Highlighted);
     });
-  }, [visibleEndpoints]);
+  }, [state, visibleEndpoints]);
 
-  return {
-    stat,
-    connector,
-    connectorEndpoints,
-    className,
-    hasConnections,
-    endpoint: selectedEndpoint,
-    endpointKind,
-    setVisualState,
-  };
+  return useMemo(
+    () => ({
+      stat,
+      connector,
+      connectorEndpoints,
+      className,
+      hasConnections,
+      endpoint: selectedEndpoint,
+      endpointKind,
+      setVisualState,
+    }),
+    [
+      stat,
+      connector,
+      connectorEndpoints,
+      className,
+      hasConnections,
+      selectedEndpoint,
+      endpointKind,
+    ],
+  );
 }

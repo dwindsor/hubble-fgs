@@ -2,10 +2,10 @@ import { create } from "@bufbuild/protobuf";
 import { timestampNow } from "@bufbuild/protobuf/wkt";
 import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
-import { ApplicationModelEvent, ApplicationProcess } from "~/proto";
-import { WH, XY } from "~/types";
+import type { ApplicationModelEvent, ApplicationProcess } from "~/proto";
+import type { WH, XY } from "~/types";
 import { assert } from "~/utils/assert";
-import { EndpointModeType } from "~/utils/endpoints";
+import type { EndpointModeType } from "~/utils/endpoints";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./utils";
 
@@ -64,48 +64,40 @@ export function createAppContext({
       emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
     },
 
-    onRedrawConnectionsLines: emitter.createSubscriber(
-      EmitterEventKind.RedrawConnectionsLines
-    ),
+    onRedrawConnectionsLines: emitter.createSubscriber(EmitterEventKind.RedrawConnectionsLines),
 
-    updateProcess(
-      proc: ApplicationProcess,
-      visible: boolean | undefined,
-      xy: XY | undefined
-    ) {
+    updateProcess(proc: ApplicationProcess, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.processesMap.get(proc);
+      if (cur) {
+        cur.visible = visible;
+        cur.xy = xy;
+      }
       assert(cur, "All processes expected to be available in processes map");
-      state.processesMap.set(proc, { ...cur, visible, xy });
+      state.processesMap.set(proc, cur);
       emitter.emitter.emit(EmitterEventKind.ProcUpdated, proc);
       that.changeTree();
       that.redrawConnectionLines();
     },
 
-    updateEndpoint(
-      endpoint: string,
-      visible: boolean | undefined,
-      xy: XY | undefined
-    ) {
+    updateEndpoint(endpoint: string, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.endpointsMap.get(endpoint);
+      if (cur) {
+        cur.visible = visible;
+        cur.xy = xy;
+      }
       assert(cur, "All endpoints expected to be available in endpoints map");
-      state.endpointsMap.set(endpoint, { ...cur, visible, xy });
+      state.endpointsMap.set(endpoint, cur);
       emitter.emitter.emit(EmitterEventKind.EndpointUpdated, endpoint);
       that.redrawConnectionLines();
     },
 
-    onEndpointUpdated: emitter.createSubscriber(
-      EmitterEventKind.EndpointUpdated
-    ),
+    onEndpointUpdated: emitter.createSubscriber(EmitterEventKind.EndpointUpdated),
 
     get highlightedEndpointsMap() {
       return inner.highlightedEndpointsMap;
     },
 
-    highlightEndpoint(
-      endpoint: string,
-      state: boolean,
-      mode: EndpointModeType
-    ) {
+    highlightEndpoint(endpoint: string, state: boolean, mode: EndpointModeType) {
       const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
       if (!state) {
         modes.delete(mode);
@@ -116,17 +108,10 @@ export function createAppContext({
         modes.add(mode);
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
-      emitter.emitter.emit(
-        EmitterEventKind.HighlightEndpoint,
-        endpoint,
-        state,
-        mode
-      );
+      emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, state, mode);
     },
 
-    onEndpointHighlight: emitter.createSubscriber(
-      EmitterEventKind.HighlightEndpoint
-    ),
+    onEndpointHighlight: emitter.createSubscriber(EmitterEventKind.HighlightEndpoint),
 
     get highlightedProc() {
       return inner.highlightedProc;
@@ -151,7 +136,7 @@ export const AppContext = createContext(
       time: timestampNow(),
     }),
     getTreeOffset: () => ({}),
-  })
+  }),
 );
 
 export const useAppState = () => useContext(AppContext);

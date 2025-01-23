@@ -1,6 +1,6 @@
 import debounce from "lodash/debounce";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { AppState, useAppState } from "~/state/AppContext";
+import { type AppState, useAppState } from "~/state/AppContext";
 import { EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
 import { Endpoint } from "./Endpoint";
 import css from "./Endpoints.module.css";
@@ -22,15 +22,12 @@ export const Endpoints = memo(function Endpoints() {
     const currentEndpointsSet = new Set(endpoints);
     const foundEndpoints = new Set<string>();
     for (const endpoint of state.endpointsMap.keys()) {
-      if (
-        !currentEndpointsSet.has(endpoint) &&
-        endpoint.includes(searchQuery)
-      ) {
+      if (!currentEndpointsSet.has(endpoint) && endpoint.includes(searchQuery)) {
         foundEndpoints.add(endpoint);
       }
     }
     setFoundEndpoints(sortEndpoints(state, foundEndpoints));
-  }, [searchQuery, endpoints]);
+  }, [state, searchQuery, endpoints]);
 
   const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -39,18 +36,12 @@ export const Endpoints = memo(function Endpoints() {
   return (
     <div>
       <div className={css.search}>
-        <input
-          value={searchQuery}
-          onChange={onSearch}
-          placeholder="Search endpoint..."
-        />
+        <input value={searchQuery} onChange={onSearch} placeholder="Search endpoint..." />
       </div>
       {!!foundEndpoints.length && (
         <div className={css.searchResults}>
           {foundEndpoints.map((endpoint) => {
-            return (
-              <Endpoint key={endpoint} ephimeral={true} endpoint={endpoint} />
-            );
+            return <Endpoint key={endpoint} ephimeral={true} endpoint={endpoint} />;
           })}
         </div>
       )}
@@ -74,19 +65,19 @@ function useEndpoints() {
     return debounce(() => {
       setEndpoints(createEndpoints(state));
     });
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     return state.onTreeChanged(debouncedUpdate);
-  }, [debouncedUpdate]);
+  }, [state, debouncedUpdate]);
 
   useEffect(() => {
     return state.onEndpointHighlight(debouncedUpdate);
-  }, [debouncedUpdate]);
+  }, [state, debouncedUpdate]);
 
   useEffect(() => {
     return state.onEndpointUpdated(debouncedUpdate);
-  }, [debouncedUpdate]);
+  }, [state, debouncedUpdate]);
 
   return endpoints;
 }
@@ -115,10 +106,10 @@ function createEndpoints(state: AppState): string[] {
 
 function sortEndpoints(state: AppState, endpoints: Set<string>): string[] {
   return Array.from(endpoints).sort((a, b) => {
-    const x = state.endpointsMap.get(a)!;
-    const y = state.endpointsMap.get(b)!;
+    const x = state.endpointsMap.get(a);
+    const y = state.endpointsMap.get(b);
 
-    if (x.kind !== y.kind) {
+    if (x && y && x?.kind !== y?.kind) {
       return endpointsKindOrder[x.kind] - endpointsKindOrder[y.kind];
     }
 
