@@ -8,7 +8,7 @@ include $(OSS_DIR)/Makefile.defs
 # -- Images
 #
 # renovate: datasource=docker
-HELM_IMAGE = docker.io/alpine/helm:3.16.4@sha256:9d4f34df9960682d0fc20586abc7a250d399fbb977ed2f79857d078d682dd0de
+HELM_IMAGE = docker.io/alpine/helm:3.17.0@sha256:1b397eed6c57d79640bd1351d523ab0ad6f70098adbe1b16283e377c84e7386f
 # renovate: datasource=docker
 KUBECONFORM_IMAGE = ghcr.io/yannh/kubeconform:v0.6.7-alpine@sha256:824e0c248809e4b2da2a768b16b107cf17ada88a89ec6aa6050e566ba93ebbc6
 # renovate: datasource=docker
@@ -16,7 +16,7 @@ HELMDOCS_IMAGE = docker.io/jnorwood/helm-docs:v1.14.2@sha256:7e562b49ab6b1dbc50c
 # renovate: datasource=docker
 PYTHON_IMAGE = docker.io/python:3.13-slim-bookworm
 # renovate: datasource=docker
-YQ_IMAGE = docker.io/mikefarah/yq:4.44.6@sha256:b1d117c609ba990436ad1649299e2f6c378f62cb562caf30b6f2fb6144713422
+YQ_IMAGE = docker.io/mikefarah/yq:4.45.1@sha256:2c100efaca06e95ffe452cfe9bfc0048b493f0f3a072d5fe06f828c638d9462b
 # renovate: datasource=docker
 JQ_IMAGE = ghcr.io/jqlang/jq:1.7.1@sha256:096b83865ad59b5b02841f103f83f45c51318394331bf1995e187ea3be937432
 
