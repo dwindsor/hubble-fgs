@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
@@ -102,7 +103,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
 	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
-	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser")
+	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 }
 
@@ -145,6 +146,6 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableDnsDebug = viper.GetBool(KeyEnableDnsDebug)
 	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
-	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
+	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 }

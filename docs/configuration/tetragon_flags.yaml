@@ -54,7 +54,8 @@ options:
         If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported
     - name: enable-bpf-dns-parser
       default_value: "false"
-      usage: Enable in-kernel BPF DNS parser
+      usage: |
+        Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.
     - name: enable-cgidmap
       default_value: "false"
       usage: enable pod resolution via cgroup ids
