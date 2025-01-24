@@ -365,6 +365,12 @@ func TestExecEventClone4(t *testing.T) {
 }
 
 func TestExistingListenEvent4(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -396,7 +402,9 @@ func TestExistingListenEvent4(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO(), false)
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 	killAndWaitCommand(t, cmdServer)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -464,6 +472,12 @@ func TestExistingAcceptEvent4(t *testing.T) {
 }
 
 func TestExistingRootCWDListenEvent4(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -501,7 +515,9 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO(), false)
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -1558,6 +1574,12 @@ func TestExecEventClone6(t *testing.T) {
 }
 
 func TestExistingListenEvent6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1589,7 +1611,9 @@ func TestExistingListenEvent6(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO(), false)
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 	killAndWaitCommand(t, cmdServer)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -1657,6 +1681,12 @@ func TestExistingAcceptEvent6(t *testing.T) {
 }
 
 func TestExistingRootCWDListenEvent6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1694,7 +1724,10 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	getBasicTcpObserver(t, context.TODO(), false)
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
 	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
