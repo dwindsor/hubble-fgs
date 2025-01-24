@@ -130,8 +130,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 32000);
-	__uint(key_size, sizeof(uint32_t));
-	__uint(value_size, sizeof(struct process_tree_key));
+	__type(key, uint32_t);
+	__type(value, struct process_tree_key);
 } tg_ee_pid_data SEC(".maps");
 
 /* The process_tree_key_heap is simply heap storage to allocate
